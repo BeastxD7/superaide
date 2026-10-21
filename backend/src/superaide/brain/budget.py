@@ -46,7 +46,13 @@ class BudgetExceeded(RuntimeError):
 
 
 # Which daily bucket each kind of model call draws from.
-BUCKETS = {"chat_turn": "chat", "verify": "chat", "intro_facts": "memory", "web_research": "research"}
+BUCKETS = {
+    "chat_turn": "chat",
+    "verify": "chat",
+    "intro_facts": "memory",
+    "web_research": "research",
+    "triage": "triage",  # ADR 0010: the triage classifier, rules only once this is spent
+}
 
 
 def bucket_for(purpose: str) -> str:
