@@ -15,7 +15,7 @@ from superaide.db.models import Approval, AuditLog, Event, Job, MemoryItem, Pers
 from superaide.db.session import session_scope
 from superaide.jobs.handlers import load
 from superaide.jobs.queue import run_due
-from superaide.knowledge.store import preferences_for
+from superaide.knowledge.store import add_contact, preferences_for
 from superaide.main import create_app
 from superaide.proactive import digest, prep
 from superaide.proactive.notify import notify_owner
@@ -64,6 +64,7 @@ def cal(monkeypatch):
     class Cal:
         events: list[dict[str, Any]] = []
         calls = 0
+        down = False
 
     def list_events(token, *, start, end, query="", **_):
         assert token == "tok"
@@ -75,9 +76,16 @@ def cal(monkeypatch):
 
         return [e for e in Cal.events if start <= at(e) < end]
 
+    def get_event(token, event_id, **_):
+        assert token == "tok"
+        if Cal.down:
+            raise google.GoogleError("Couldn't reach Google Calendar just now.")
+        return next((e for e in Cal.events if e["id"] == event_id), None)
+
     monkeypatch.setattr(calendar, "connected", lambda: True)
     monkeypatch.setattr(google, "access_token", lambda *a, **k: "tok")
     monkeypatch.setattr(google, "list_events", list_events)
+    monkeypatch.setattr(google, "get_event", get_event)
     with session_scope() as s:
         skill = registry.catalog()[calendar.SKILL_ID]
         registry.install(s, calendar.SKILL_ID, skill.manifest.permissions)
@@ -218,12 +226,15 @@ def test_nothing_useful_means_nothing_sent(owner):
         assert reasons == ["nothing_to_say"]
 
 
-def test_quiet_hours_are_respected(owner):
+def quiet_prep(vip: bool = False, vip_breaks_quiet: bool = True) -> list[Event]:
     start = datetime.now(UTC) + timedelta(hours=1)
     with session_scope() as s:
         person = me(s)
         note(s, person.id, "Priya prefers mornings.")
+        if vip:
+            add_contact(s, owner=person, name="Priya Sharma", vip=True)
         pref = preferences_for(s, person)
+        pref.vip_breaks_quiet = vip_breaks_quiet
         local = (start - prep.LEAD).astimezone(digest.zone(pref.timezone))
         pref.quiet_start = (local - timedelta(hours=1)).strftime("%H:%M")
         pref.quiet_end = (local + timedelta(hours=1)).strftime("%H:%M")
@@ -231,4 +242,92 @@ def test_quiet_hours_are_respected(owner):
         run_at = jobs[0].run_at
     assert run_due(run_at + timedelta(seconds=1)) == 1
     with session_scope() as s:
-        assert preps_sent(s) == []
+        return preps_sent(s)
+
+
+def test_quiet_hours_are_respected(owner):
+    assert quiet_prep() == []
+
+
+def test_a_vip_meeting_breaks_quiet_hours_when_the_owner_allows_it(owner):
+    assert len(quiet_prep(vip=True)) == 1
+
+
+def test_a_vip_meeting_stays_quiet_when_vips_may_not_break_through(owner):
+    assert quiet_prep(vip=True, vip_breaks_quiet=False) == []
+
+
+def queue_prep(cal, start: datetime) -> Job:
+    cal.events = [event("e1", "1:1 with Priya", start)]
+    with session_scope() as s:
+        note(s, me(s).id, "Priya prefers mornings.")
+        jobs = prep.schedule_preps(s, me(s), cal.events, datetime.now(UTC))
+        assert len(jobs) == 1
+        s.expunge(jobs[0])
+        return jobs[0]
+
+
+def skip_reasons(s) -> list[str]:
+    return [a.detail["reason"] for a in s.scalars(select(AuditLog)) if a.action == "meeting_prep_skipped"]
+
+
+def test_prep_rechecks_google_and_skips_a_cancelled_meeting(owner, cal):
+    job = queue_prep(cal, datetime.now(UTC) + timedelta(hours=1))
+    cal.events = []  # deleted since
+    assert run_due(job.run_at + timedelta(seconds=1)) == 1
+    with session_scope() as s:
+        assert preps_sent(s) == [] and skip_reasons(s) == ["cancelled"]
+
+
+def test_prep_skips_a_meeting_the_owner_declined_since(owner, cal):
+    job = queue_prep(cal, datetime.now(UTC) + timedelta(hours=1))
+    cal.events[0]["attendees"][0]["responseStatus"] = "declined"
+    assert run_due(job.run_at + timedelta(seconds=1)) == 1
+    with session_scope() as s:
+        assert preps_sent(s) == [] and skip_reasons(s) == ["declined"]
+
+
+def test_a_moved_meeting_gets_its_prep_requeued_for_the_new_time(owner, cal):
+    start = datetime.now(UTC) + timedelta(hours=1)
+    job = queue_prep(cal, start)
+    moved = start + timedelta(hours=2)
+    cal.events = [event("e1", "1:1 with Priya", moved)]
+    assert run_due(job.run_at + timedelta(seconds=1)) == 1
+    with session_scope() as s:
+        assert preps_sent(s) == [] and skip_reasons(s) == ["moved"]
+        queued = s.scalars(select(Job).where(Job.kind == prep.JOB_KIND, Job.status == "queued")).all()
+        assert len(queued) == 1 and queued[0].run_at == moved - prep.LEAD
+        assert queued[0].dedupe_key == prep.prep_key(me(s), "e1", moved)
+        new_at = queued[0].run_at
+    assert run_due(new_at + timedelta(seconds=1)) == 1
+    with session_scope() as s:
+        assert len(preps_sent(s)) == 1
+
+
+def test_google_down_at_prep_time_falls_back_to_the_stored_copy(owner, cal):
+    job = queue_prep(cal, datetime.now(UTC) + timedelta(hours=1))
+    cal.down = True
+    assert run_due(job.run_at + timedelta(seconds=1)) == 1
+    with session_scope() as s:
+        sent = preps_sent(s)
+        assert len(sent) == 1 and "Priya prefers mornings" in sent[0].content
+
+
+@pytest.mark.parametrize(("status", "expected"), [(200, {"id": "e1"}), (404, None), (410, None)])
+def test_get_event_reads_one_event_or_none_when_deleted(status, expected):
+    import httpx
+
+    def reply(request: httpx.Request) -> httpx.Response:
+        assert request.url.path.endswith("/events/e1") and request.headers["Authorization"] == "Bearer tok"
+        return httpx.Response(status, json={"id": "e1"})
+
+    with httpx.Client(transport=httpx.MockTransport(reply)) as client:
+        assert google.get_event("tok", "e1", client=client) == expected
+
+
+def test_get_event_raises_when_google_errors():
+    import httpx
+
+    with httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(500, json={}))) as client:
+        with pytest.raises(google.GoogleError):
+            google.get_event("tok", "e1", client=client)

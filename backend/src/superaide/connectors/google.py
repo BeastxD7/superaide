@@ -156,6 +156,26 @@ def list_events(
     return items if isinstance(items, list) else []
 
 
+def get_event(token: str, event_id: str, client: httpx.Client | None = None) -> dict[str, Any] | None:
+    """One event by id, or None when it's been deleted. Raises GoogleError when Google can't say."""
+    from urllib.parse import quote
+
+    try:
+        url = f"{EVENTS_URL}/{quote(event_id, safe='')}"
+        r = _client(client).get(url, headers={"Authorization": f"Bearer {token}"})
+    except httpx.HTTPError as exc:
+        raise GoogleError("Couldn't reach Google Calendar just now.") from exc
+    if r.status_code in (404, 410):
+        return None
+    try:
+        data = r.json()
+    except ValueError as exc:
+        raise GoogleError("Google Calendar sent something unreadable.") from exc
+    if r.status_code != 200 or not isinstance(data, dict):
+        raise GoogleError(f"Google Calendar answered with an error ({r.status_code}).")
+    return data
+
+
 def event_text(event: dict[str, Any], tz: Any) -> tuple[str, str]:
     """(title line, one-line description) for a calendar event, in the owner's time zone."""
     start = event.get("start") or {}

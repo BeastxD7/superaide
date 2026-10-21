@@ -2,9 +2,12 @@
 
 Code only, no model call. Meetings get a prep job from the daily digest (the day's events)
 and from a half-hourly scan of the next couple of hours, which catches events added later.
-Each event gets at most one job (dedupe key per event id). When the job runs it recalls the
-owner's notes and messages about the attendees and title; if there's nothing useful, or it's
-inside the owner's quiet hours, nothing is sent.
+Each event start gets at most one job (dedupe key per event id and start time). Before
+sending, the job asks Google for the event again: cancelled or declined means skip, moved
+means re-queue for the new start; if Google can't be reached the stored copy is used. Then it
+recalls the owner's notes and messages about the attendees and title; if there's nothing
+useful, or it's inside the owner's quiet hours (unless a VIP contact is attending and the
+owner lets VIPs through), nothing is sent.
 """
 
 from __future__ import annotations
@@ -14,12 +17,13 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.audit import audit
 from superaide.context.audience import Audience
 from superaide.context.recall import Source, recall
-from superaide.db.models import Job, Person
+from superaide.db.models import Contact, Job, Person
 from superaide.intentions.service import owner_zone
 from superaide.intentions.when import zone
 from superaide.jobs.queue import enqueue, handler
@@ -66,6 +70,10 @@ def _declined(event: dict[str, Any]) -> bool:
     return any(a.get("self") and a.get("responseStatus") == "declined" for a in event.get("attendees") or [])
 
 
+def prep_key(owner: Person, event_id: str, start: datetime) -> str:
+    return f"prep:{owner.id}:{event_id}:{start.astimezone(UTC).isoformat()}"
+
+
 def schedule_preps(session: Session, owner: Person, events: list[dict[str, Any]], now: datetime) -> list[Job]:
     """Queue one prep job per upcoming timed event; events already queued are left alone."""
     jobs = []
@@ -85,7 +93,7 @@ def schedule_preps(session: Session, owner: Person, events: list[dict[str, Any]]
             JOB_KIND,
             payload,
             run_at=max(now, start - LEAD).astimezone(UTC),
-            dedupe_key=f"prep:{owner.id}:{event_id}",
+            dedupe_key=prep_key(owner, event_id, start),
         )
         if job is not None:
             jobs.append(job)
@@ -99,6 +107,21 @@ def schedule_scan(session: Session, owner: Person, now: datetime | None = None) 
     at = datetime.fromtimestamp((int(now.timestamp()) // step + 1) * step, UTC)
     key = f"meetings:{owner.id}:{at.isoformat()}"
     return enqueue(session, SCAN_KIND, {"owner_id": str(owner.id)}, run_at=at, dedupe_key=key)
+
+
+def vip_attending(session: Session, owner: Person, names: list[str]) -> bool:
+    """Whether any attendee matches one of the owner's VIP contacts (full or first name)."""
+    vips = session.scalars(
+        select(Person.display_name)
+        .join(Contact, Contact.person_id == Person.id)
+        .where(Contact.owner_person_id == owner.id, Contact.vip.is_(True), Contact.removed_at.is_(None))
+    ).all()
+    wanted = {" ".join(v.lower().split()) for v in vips if v} | {v.lower().split()[0] for v in vips if v and v.split()}
+    for name in names:
+        n = " ".join(re.sub(r"[._]+", " ", name).lower().split())
+        if n and (n in wanted or n.split()[0] in wanted):
+            return True
+    return False
 
 
 def _terms(title: str, names: list[str]) -> list[str]:
@@ -154,17 +177,35 @@ def send_prep(session: Session, job: Job) -> None:
     event_id = str(job.payload.get("event_id", ""))
     now = max(datetime.now(UTC), job.run_at)
     start = datetime.fromisoformat(str(job.payload["start"]))
-    if start <= now:
-        audit(session, "proactive", "meeting_prep_skipped", reason="started", event_id=event_id)
-        return
-    if in_quiet_hours(preferences_for(session, owner), now):
-        audit(session, "proactive", "meeting_prep_skipped", reason="quiet_hours", event_id=event_id)
-        return
     title, names = str(job.payload.get("title", "")), [str(n) for n in job.payload.get("names") or []]
+
+    def skip(reason: str) -> None:
+        audit(session, "proactive", "meeting_prep_skipped", reason=reason, event_id=event_id)
+
+    try:
+        fresh = calendar.fresh_event(session, owner, event_id)
+    except calendar.Unknown:
+        pass  # can't check: go with what we stored
+    else:
+        if fresh is None or fresh.get("status") == "cancelled":
+            return skip("cancelled")
+        if _declined(fresh):
+            return skip("declined")
+        new_start = start_of(fresh)
+        if new_start is None:
+            return skip("now_all_day")
+        if new_start != start:
+            schedule_preps(session, owner, [fresh], now)
+            return skip("moved")
+        title, names = str(fresh.get("summary") or "")[:200], attendee_names(fresh)
+    if start <= now:
+        return skip("started")
+    pref = preferences_for(session, owner)
+    if in_quiet_hours(pref, now) and not (pref.vip_breaks_quiet and vip_attending(session, owner, names)):
+        return skip("quiet_hours")
     text = compose(title, names, start, now, zone(owner_zone(session, owner)), gather(session, owner, title, names))
     if text is None:
-        audit(session, "proactive", "meeting_prep_skipped", reason="nothing_to_say", event_id=event_id)
-        return
+        return skip("nothing_to_say")
     via = notify_owner(session, owner, text, {"kind": "meeting_prep", "event_id": event_id})
     audit(session, "proactive", "meeting_prep_sent", event_id=event_id, via=via)
 

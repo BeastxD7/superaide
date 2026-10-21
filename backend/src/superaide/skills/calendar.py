@@ -47,6 +47,25 @@ def events_between(session: Session, owner: Person, start: datetime, end: dateti
         return []
 
 
+class Unknown(Exception):
+    """The calendar can't be asked right now (skill off, not connected, or Google unreachable)."""
+
+
+def fresh_event(session: Session, owner: Person, event_id: str) -> dict[str, Any] | None:
+    """The event as Google has it now, or None if it was deleted. Raises Unknown when we can't tell."""
+    try:
+        if not enabled(session) or not connected():
+            raise Unknown("calendar not available")
+        s = runtime_settings()
+        token = google.access_token(s.google_client_id, s.google_client_secret, s.google_refresh_token)
+        return google.get_event(token, event_id)
+    except Unknown:
+        raise
+    except Exception as exc:
+        log.warning("couldn't re-check a calendar event", exc_info=True)
+        raise Unknown(str(exc)) from exc
+
+
 def window(session: Session, owner: Person, start_words: str, days: int) -> tuple[datetime, datetime, Any]:
     tz = zone(owner_zone(session, owner))
     now = datetime.now(UTC).astimezone(tz)
