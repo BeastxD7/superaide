@@ -278,7 +278,7 @@ class Agent:
         """The owner's own conversation: a tool loop that can look things up, set reminders,
         search the web and ask for approval, with every answer citing its sources."""
         from superaide.brain.loop import OwnerTurn
-        from superaide.factory import uses_real_model
+        from superaide.factory import brain_ready
 
         history = recent_events(s, ctx, thread_id=thread_of(msg))
         turn = OwnerTurn(
@@ -290,7 +290,7 @@ class Agent:
             audience=aud,
             brief=owner_brief(s, sender, aud),
             inbound=inbound,
-            web=uses_real_model(self.settings) and self.settings.web_tools_enabled,
+            web=brain_ready(self.settings) and self.settings.web_tools_enabled,
             emit=emit,
         )
         try:

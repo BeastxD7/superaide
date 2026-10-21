@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 from pydantic import BaseModel
@@ -32,9 +33,27 @@ def demo_responder(
     )
 
 
-def uses_real_model(settings: Settings) -> bool:
-    """Real Claude whenever a key is present, unless FAKE_LLM=true forces offline mode."""
-    return bool(settings.anthropic_api_key) and not settings.fake_llm
+@dataclass(frozen=True)
+class BrainStatus:
+    """Whether Ava has a real model to think with, and which provider it is."""
+
+    ready: bool
+    provider: str | None  # the provider in use when ready, e.g. "anthropic"
+    reason: str  # connected | fake_llm | no_provider
+
+
+def brain_status(settings: Settings) -> BrainStatus:
+    """A real model whenever a provider is connected, unless FAKE_LLM=true forces offline mode.
+    Today the only provider is Anthropic; ADR 0007 adds others behind this same check."""
+    if settings.fake_llm:
+        return BrainStatus(False, None, "fake_llm")
+    if settings.anthropic_api_key:
+        return BrainStatus(True, "anthropic", "connected")
+    return BrainStatus(False, None, "no_provider")
+
+
+def brain_ready(settings: Settings) -> bool:
+    return brain_status(settings).ready
 
 
 def load_prices() -> PriceRegistry:
@@ -44,7 +63,7 @@ def load_prices() -> PriceRegistry:
 
 
 def build_llm(settings: Settings) -> LLM:
-    if not uses_real_model(settings):
+    if not brain_ready(settings):
         return FakeLLM(demo_responder)
     guard = BudgetGuard(settings.max_spend_usd, limits=Limits.from_settings(settings), prices=load_prices())
     return ClaudeLLM(guard, api_key=settings.anthropic_api_key)

@@ -44,7 +44,7 @@ def schedule(session: Session, event: Event) -> None:
 
 @handler(JOB_KIND)
 def learn(session: Session, job: Job) -> None:
-    from superaide.factory import build_llm, uses_real_model
+    from superaide.factory import brain_ready, build_llm
     from superaide.vault.store import runtime_settings
 
     event = session.get(Event, uuid.UUID(job.payload["event_id"]))
@@ -54,7 +54,7 @@ def learn(session: Session, job: Job) -> None:
     if owner is None:
         return
     settings = runtime_settings()
-    if not uses_real_model(settings):
+    if not brain_ready(settings):
         return  # offline: nothing can read it; the message itself stays in the log
     agent = SimpleNamespace(settings=settings, llm=build_llm(settings))
     from superaide.intentions.service import owner_zone

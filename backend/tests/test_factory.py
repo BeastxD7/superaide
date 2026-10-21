@@ -16,7 +16,7 @@ from superaide.channels.base import FakeMessenger, WebMessenger
 from superaide.channels.slack import SlackMessenger
 from superaide.channels.telegram import TelegramMessenger
 from superaide.config import Settings, get_settings
-from superaide.factory import build_agent, build_llm, build_messengers, demo_responder, uses_real_model
+from superaide.factory import brain_ready, brain_status, build_agent, build_llm, build_messengers, demo_responder
 from superaide.pipeline import Agent
 from tests.conftest import MANAGER_TG, tg
 
@@ -33,12 +33,14 @@ def make_settings(**overrides) -> Settings:
     [("sk-test", False, True), ("sk-test", True, False), ("", False, False), ("", True, False)],
     ids=["key and real mode", "key but FAKE_LLM", "no key", "no key and FAKE_LLM"],
 )
-def test_uses_real_model_only_with_a_key_and_fake_llm_off(key, fake_llm, real):
-    assert uses_real_model(make_settings(anthropic_api_key=key, fake_llm=fake_llm)) is real
+def test_the_brain_is_ready_only_with_a_provider_and_fake_llm_off(key, fake_llm, real):
+    settings = make_settings(anthropic_api_key=key, fake_llm=fake_llm)
+    assert brain_ready(settings) is real
+    assert brain_status(settings).provider == ("anthropic" if real else None)
 
 
 def test_tests_run_offline():
-    assert uses_real_model(get_settings()) is False
+    assert brain_ready(get_settings()) is False
 
 
 @pytest.mark.parametrize(

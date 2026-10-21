@@ -73,7 +73,7 @@ class Recorder:
 def scenario(agent, monkeypatch):
     """The owner signs up, links Telegram, says the colour thing there, and learning runs."""
     rec = Recorder()
-    monkeypatch.setattr("superaide.factory.uses_real_model", lambda settings: True)
+    monkeypatch.setattr("superaide.factory.brain_ready", lambda settings: True)
     monkeypatch.setattr("superaide.factory.build_llm", lambda settings: FakeLLM(rec))
     agent.llm = FakeLLM(rec)
     agent.settings.web_tools_enabled = False

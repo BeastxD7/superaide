@@ -201,7 +201,7 @@ def test_an_answer_that_does_not_match_the_schema_is_not_parsed_but_is_still_bil
 def test_extraction_leaves_room_for_thinking(agent, monkeypatch):
     from superaide.knowledge import facts
 
-    monkeypatch.setattr("superaide.factory.uses_real_model", lambda settings: True)
+    monkeypatch.setattr("superaide.factory.brain_ready", lambda settings: True)
     seen: dict = {}
 
     def complete(**kwargs):

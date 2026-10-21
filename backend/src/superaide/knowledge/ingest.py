@@ -33,7 +33,7 @@ class IngestResult:
 
 
 def ingest(agent: Any, owner_id: uuid.UUID, extracted: Extracted, *, size_bytes: int = 0) -> IngestResult:
-    from superaide.factory import uses_real_model
+    from superaide.factory import brain_ready
 
     source_kind = "link" if extracted.kind in {"web", "github"} else "document"
     digest = hashlib.sha256((extracted.source + "\n" + extracted.text).encode()).hexdigest()
@@ -91,7 +91,7 @@ def ingest(agent: Any, owner_id: uuid.UUID, extracted: Extracted, *, size_bytes:
                 n += 1
         if facts is None:  # reading failed: keep it as saved so it is tried again
             message = f"I've saved {title}, but couldn't read it just now. I'll try again shortly."
-        elif uses_real_model(agent.settings):
+        elif brain_ready(agent.settings):
             doc.status = "read"
             message = (
                 f"I've read {title}. I picked up {n} {'thing' if n == 1 else 'things'}; they're in my notebook."
@@ -114,9 +114,9 @@ def safe_category(category: str, source: str) -> str:
 
 def read_pending(agent: Any, owner_id: uuid.UUID) -> int:
     """Read facts out of documents saved while offline. Returns how many documents were read."""
-    from superaide.factory import uses_real_model
+    from superaide.factory import brain_ready
 
-    if not uses_real_model(agent.settings):
+    if not brain_ready(agent.settings):
         return 0
     with session_scope() as s:
         pending = [

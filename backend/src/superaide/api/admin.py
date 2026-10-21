@@ -29,7 +29,7 @@ from superaide.db.models import (
     SpendEntry,
 )
 from superaide.db.session import session_scope
-from superaide.factory import uses_real_model
+from superaide.factory import brain_ready
 from superaide.identity.linking import operator_link, unlink
 from superaide.policy.killswitch import is_frozen, set_frozen
 
@@ -90,7 +90,7 @@ def overview() -> dict[str, Any]:
             "stage": "Infant",
             "frozen": is_frozen(s),
             "model_mode": "Claude API (real replies)"
-            if uses_real_model(settings)
+            if brain_ready(settings)
             else "offline (no API key, replies are echoes)",
             "channels": {
                 "telegram": bool(settings.telegram_bot_token),

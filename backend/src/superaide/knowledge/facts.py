@@ -50,9 +50,9 @@ def extract_facts(agent: Any, *, owner_name: str, text: str, source: str, today:
     """Facts from `text`. [] when there is nothing to read or in offline mode; None when reading
     failed (budget cap, kill switch, API error, an answer cut off), so the caller can keep the
     text and try again instead of treating it as read."""
-    from superaide.factory import uses_real_model
+    from superaide.factory import brain_ready
 
-    if not text.strip() or not uses_real_model(agent.settings):
+    if not text.strip() or not brain_ready(agent.settings):
         return []
     try:
         result = agent.llm.complete(

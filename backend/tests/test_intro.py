@@ -27,7 +27,7 @@ def client(agent):
 @pytest.fixture
 def brain(agent, monkeypatch):
     """Pretend a Claude key is set; the fake model answers fact-extraction calls."""
-    monkeypatch.setattr("superaide.factory.uses_real_model", lambda settings: True)
+    monkeypatch.setattr("superaide.factory.brain_ready", lambda settings: True)
     original = agent.llm.responder
     seen: list[str] = []
 
@@ -138,7 +138,7 @@ def test_unknown_call_question_is_refused(client):
 @pytest.fixture
 def broken_brain(agent, monkeypatch):
     """A Claude key is set, but reading fails (cut-off answer, API error, cap reached)."""
-    monkeypatch.setattr("superaide.factory.uses_real_model", lambda settings: True)
+    monkeypatch.setattr("superaide.factory.brain_ready", lambda settings: True)
     original = agent.llm.responder
 
     def responder(purpose, system, messages, output_model):

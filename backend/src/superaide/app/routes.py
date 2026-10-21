@@ -39,7 +39,7 @@ from superaide.db.models import (
     UserAccount,
 )
 from superaide.db.session import require, session_scope
-from superaide.factory import uses_real_model
+from superaide.factory import brain_ready, brain_status
 from superaide.intentions import service as intentions
 from superaide.intentions.when import clean_task, find_moment, zone
 from superaide.knowledge import extract
@@ -189,7 +189,8 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 "person": {"id": str(person.id), "name": person.display_name},
                 "agent": {"name": settings.agent_name, "role": "Personal assistant", "stage": "Infant"},
                 "onboarding": {"step": state.step, "done": state.step == "done"},
-                "brain": "claude" if uses_real_model(settings) else "offline",
+                "brain": "claude" if brain_ready(settings) else "offline",
+                "brain_provider": brain_status(settings).provider,
                 "paused": is_frozen(s),
                 "channels": {
                     "web": True,
