@@ -4,6 +4,7 @@ import { ArrowRight, BookOpen, Check, Clock, MessageCircle, Plug, ShieldCheck, S
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { Orb } from '@/components/Orb'
+import { ApprovalsCard } from '@/features/dashboard/Approvals'
 import { STAGES } from '@/components/site'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -54,6 +55,8 @@ export function DashboardHome() {
             </Button>
           </div>
         )}
+
+        <ApprovalsCard name={name} />
 
         <div className="mt-6 grid gap-4 lg:grid-cols-3">
           <AgentCard me={me} />

@@ -1,7 +1,8 @@
 // Hiring Ava and the introduction by chat:
-//   hire → hello → about (tell me here) → people → urgent → reach → share → rules → connect → done → workspace
+//   hire → hello → about (tell me here) → people → urgent → reach → share → rules → connect → done → dashboard
 // Each step is tested for what it accepts and for what it refuses (with the hint a person sees),
 // plus coming back later (reload, leave, new tab, log out and in) and double submission.
+import { existsSync } from 'node:fs'
 import { resetDatabase } from '../src/db'
 import { BASE_URL } from '../src/env'
 import { expect, newPerson, query, test } from '../src/fixtures'
@@ -158,7 +159,7 @@ test.describe('hiring Ava', () => {
     expect(refused).toEqual([])
   })
 
-  test('a second account sees that Ava works for the first owner and cannot hire her (UI and API)', async ({ page, api }) => {
+  test('a second account sees that Ava is taken, never by whom, and cannot hire her (UI and API)', async ({ page, api }) => {
     const meera = newPerson('Meera Iyer')
     await api.signup(meera)
     await api.hire()
@@ -168,10 +169,11 @@ test.describe('hiring Ava', () => {
     const rahul = newPerson('Rahul Verma')
     await api.signup(rahul)
 
-    // The profile says who she works for and offers no Hire button.
+    // The profile says she's taken, never who hired her, and offers no Hire button.
     await page.goto('/agents/ava')
-    await expect(page.getByText('Ava already works for Meera.')).toBeVisible()
-    await expect(page.getByText('Works for Meera', { exact: true })).toBeVisible()
+    await expect(page.getByText('Ava already works for someone.')).toBeVisible()
+    await expect(page.getByText(/Meera/)).toHaveCount(0)
+    await expect(page.getByText('Already hired', { exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Hire Ava' })).toHaveCount(0)
 
     // Going straight to the hire page: the attempt is refused with the reason.
@@ -195,7 +197,8 @@ test.describe('hiring Ava', () => {
     // /meet sends this account back to the marketplace.
     await page.goto('/meet')
     await expect(page).toHaveURL(/\/$/)
-    await expect(page.getByText('Ava works for Meera')).toBeVisible()
+    await expect(page.getByText('Ava is already working for someone')).toBeVisible()
+    await expect(page.getByText(/Meera/)).toHaveCount(0)
 
     const rows = await hires()
     expect(rows).toHaveLength(1)
@@ -235,7 +238,7 @@ test.describe('the whole introduction, as a person sees it', () => {
   // Ava types each line, with the animation on.
   test.use({ ownerState: 'hired', contextOptions: { reducedMotion: 'no-preference' } })
 
-  test('hello → about → people → urgent → reach → share → rules → connect → done → workspace, saved in the notebook and the database', async ({ page, owner }) => {
+  test('hello → about → people → urgent → reach → share → rules → connect → done → dashboard, saved in the notebook and the database', async ({ page, owner }) => {
     test.slow()
     const name = first(owner.name)
     const meet = new Meet(page)
@@ -306,8 +309,9 @@ test.describe('the whole introduction, as a person sees it', () => {
     await expect(meet.line(/^So far I know \d+ things about you and 2 people who matter to you\./)).toBeVisible()
     await expect(meet.line(/I'll interrupt you for: a family emergency, travel changes and anything about the series a\./i)).toBeVisible()
 
-    // The workspace (the dashboard, in newer builds), and the notebook shows what I said
+    // "Start working with Ava" opens the dashboard, and the notebook shows what I said
     await meet.startWorking().click()
+    await expect(page).toHaveURL(/\/dashboard$/)
     const notebook = await openNotebook(page)
     for (const fact of [
       `${owner.name} says: ${about}`,
@@ -460,7 +464,7 @@ test.describe('each step refuses what it should, and says why', () => {
   })
 
   test('people: Ava does not repeat a duplicated name back', async ({ page, api }) => {
-    test.fail(true, 'BUG: "Priya" entered twice is saved once, but Ava says "Got it: Priya and Priya."')
+    // I9, fixed: app/onboarding.py skips a name already given in the same answer, so Ava says it once.
     await api.answer('hello', { choice: 'Nice to meet you' })
     await api.answer('about', { mode: 'chat', text: 'I lead applied AI.' })
     const meet = new Meet(page)
@@ -473,7 +477,7 @@ test.describe('each step refuses what it should, and says why', () => {
   })
 
   test('people: a name containing % is its own person, not merged into someone else', async ({ page, api }) => {
-    test.fail(true, 'BUG: contact de-duplication uses ILIKE without escaping, so "A%" overwrites Arjun')
+    // I5, fixed: knowledge/store.py matches contacts by case-insensitive equality, not ILIKE.
     await api.answer('hello', { choice: 'Nice to meet you' })
     await api.answer('about', { mode: 'chat', text: 'I lead applied AI.' })
     const meet = new Meet(page)
@@ -540,7 +544,7 @@ test.describe('each step refuses what it should, and says why', () => {
   })
 
   test('urgent: the API does not split a topic sent as text into letters', async ({ api }) => {
-    test.fail(true, 'BUG: {"topics": "abc"} is saved as three urgent topics: a, b and c')
+    // I11, fixed: app/onboarding.py's _list() reads anything but a list as [].
     await api.answer('hello', { choice: 'Nice to meet you' })
     await api.answer('about', { mode: 'chat', text: 'I lead applied AI.' })
     await api.answer('people', { skip: true })
@@ -613,7 +617,12 @@ test.describe('each step refuses what it should, and says why', () => {
   })
 
   test('reach: an Indian time zone, which Chrome reports as Asia/Calcutta, is saved rather than swapped for Singapore', async ({ page, browser, api }) => {
-    test.fail(true, 'BUG: the API rejects legacy zone names (Asia/Calcutta) on servers without tzdata backward links and silently saves Asia/Singapore')
+    // Still open in the code (no alias mapping; tzdata is only a dependency on Windows). It passes
+    // only where the system zoneinfo has the legacy name (macOS does), so it is a known bug elsewhere.
+    test.fail(
+      !existsSync('/usr/share/zoneinfo/Asia/Calcutta'),
+      'BUG: the API rejects legacy zone names (Asia/Calcutta) on servers without tzdata backward links and silently saves Asia/Singapore',
+    )
     await api.answer('hello', { choice: 'Nice to meet you' })
     await api.answer('about', { mode: 'chat', text: 'I lead applied AI.' })
     await api.answer('people', { skip: true })
@@ -671,7 +680,7 @@ test.describe('each step refuses what it should, and says why', () => {
     expect((await preference())?.never_share).toBe(hostile)
     await api.answer('rules')
     await api.answer('connect', { choice: 'done' })
-    await page.goto('/workspace')
+    await page.goto('/dashboard')
     const notebook = await openNotebook(page)
     await expect(notebook.getByText(`asked that this is never shared with anyone: ${hostile}`)).toBeVisible()
     await expect(notebook.locator('img[src="x"], script, b')).toHaveCount(0)
@@ -734,7 +743,7 @@ test.describe('each step refuses what it should, and says why', () => {
   })
 
   test('answering again after the introduction is finished does not crash', async ({ api }) => {
-    test.fail(true, 'BUG: POST /app/onboarding {"step": "done"} after finishing returns 500 (IndexError past the last step)')
+    // I6, fixed: app/onboarding.py's answer() ignores a stale step or "done" before advancing.
     await api.completeIntroduction()
     const r = await api.post('/app/onboarding', { step: 'done', answer: {} })
     expect(r.status()).toBeLessThan(500)
@@ -885,15 +894,15 @@ test.describe('coming back to the introduction', () => {
     await other.close()
   })
 
-  test('the workspace sends you back to the introduction until it is finished', async ({ page, api }) => {
+  test('the dashboard sends you back to the introduction until it is finished', async ({ page, api }) => {
     const meet = new Meet(page)
-    await page.goto('/workspace')
+    await page.goto('/dashboard/chat')
     await expect(page).toHaveURL(/\/meet$/)
     await meet.expectStep('Hello')
 
     await api.answer('hello', { choice: 'Nice to meet you' })
     await api.answer('about', { mode: 'chat', text: 'I lead applied AI.' })
-    await page.goto('/workspace')
+    await page.goto('/dashboard/chat')
     await expect(page).toHaveURL(/\/meet$/)
     await meet.expectStep('Your people')
 
@@ -902,14 +911,17 @@ test.describe('coming back to the introduction', () => {
     await api.answer('reach', { quiet_start: '22:00', quiet_end: '07:00' })
     await api.answer('share', { shareable: [] })
     await api.answer('rules')
-    await page.goto('/workspace')
+    await page.goto('/dashboard/chat')
     await expect(page).toHaveURL(/\/meet$/)
     await meet.expectStep('Connect')
 
     await api.answer('connect', { choice: 'done' })
-    await page.goto('/workspace')
-    await expect(page).toHaveURL(/\/(workspace|dashboard)/)
+    await page.goto('/dashboard/chat')
+    await expect(page).toHaveURL(/\/dashboard\/chat$/)
     await expect(page.getByRole('heading', { name: /^Hello, \w+\. What shall we work on\?$/ })).toBeVisible()
+    // The old /workspace link goes to the same chat.
+    await page.goto('/workspace')
+    await expect(page).toHaveURL(/\/dashboard\/chat$/)
     // After finishing, /meet shows the finished introduction with the way on.
     await page.goto('/meet')
     await meet.expectDone()

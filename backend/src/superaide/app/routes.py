@@ -24,12 +24,23 @@ from superaide.app.catalog import catalog, find
 from superaide.app.onboarding import SHARE_LABELS, Onboarder, documents_view
 from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header
 from superaide.config import get_settings
-from superaide.db.models import AgentHire, ChannelIdentity, Context, Document, Event, MemoryItem, Person, UserAccount
+from superaide.db.models import (
+    AgentHire,
+    Approval,
+    ChannelIdentity,
+    Context,
+    Document,
+    Event,
+    MemoryItem,
+    Person,
+    UserAccount,
+)
 from superaide.db.session import require, session_scope
 from superaide.factory import uses_real_model
 from superaide.knowledge import extract
 from superaide.knowledge.ingest import ingest
 from superaide.knowledge.store import contacts_of, preferences_for, retire_document
+from superaide.policy.actions import ApprovalError, resolve
 from superaide.policy.killswitch import is_frozen
 
 
@@ -96,18 +107,18 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         "/agents",
         tags=["Marketplace & hiring"],
         summary="List agents",
-        description="The agents on offer, whether each is available, and who it works for if it has been hired.",
+        description="The agents on offer and whether each is available or already hired. Who hired it is never shown.",
     )
     def agents() -> list[dict[str, Any]]:
         settings = get_settings()
         with session_scope() as s:
-            owner = accounts.owner(s)
-            hired_by = owner.display_name.split()[0] if owner else None
+            # Whether Ava is taken, never by whom: the owner's name is private.
+            hired = accounts.owner(s) is not None
         result = []
         for a in catalog(settings):
             item = dict(a)
             if a["slug"] == "ava":
-                item["hired_by"] = hired_by
+                item["hired"] = hired
                 item["notice"] = accounts.NOTICE_TEXT
             result.append(item)
         return result
@@ -443,6 +454,52 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
 
             audit(s, "app", "memory_forgotten", memory_id=m.id, person_id=person_id)
         return {"status": "forgotten"}
+
+    @router.get(
+        "/approvals",
+        tags=["Owner: approvals"],
+        summary="Waiting for your OK",
+        description="Actions Ava was asked to take that need your yes first, newest first, plus recent decisions.",
+    )
+    def approvals(person_id: uuid.UUID = Depends(owner_person_id)) -> list[dict[str, Any]]:
+        with session_scope() as s:
+            rows = s.scalars(select(Approval).order_by(Approval.created_at.desc()).limit(50)).all()
+            names = {p.id: p.display_name for p in s.scalars(select(Person)).all()}
+            return [
+                {
+                    "id": str(a.id),
+                    "kind": a.kind,
+                    "summary": (a.payload or {}).get("summary", ""),
+                    "requested_by": names.get(a.requested_by_person_id) if a.requested_by_person_id else None,
+                    "status": a.status,
+                    "result": (a.payload or {}).get("result"),
+                    "at": a.created_at.isoformat(),
+                    "decided_at": a.decided_at.isoformat() if a.decided_at else None,
+                }
+                for a in rows
+            ]
+
+    @router.post(
+        "/approvals/{approval_id}/{verdict}",
+        tags=["Owner: approvals"],
+        summary="Approve or reject",
+        description="`verdict` is `approve` or `reject`. Each approval can be decided once.",
+    )
+    def decide_approval(
+        approval_id: uuid.UUID, verdict: str, person_id: uuid.UUID = Depends(owner_person_id)
+    ) -> dict[str, Any]:
+        if verdict not in {"approve", "reject"}:
+            raise HTTPException(404, "Not found")
+        with session_scope() as s:
+            approval = s.get(Approval, approval_id)
+            if approval is None:
+                raise HTTPException(404, "No such approval")
+            owner = require(s, Person, person_id)
+            try:
+                resolve(s, approval, approve=verdict == "approve", decided_by=owner.display_name)
+            except ApprovalError as exc:
+                raise HTTPException(exc.status, str(exc)) from exc
+            return {"status": approval.status, "result": (approval.payload or {}).get("result")}
 
     @router.post(
         "/channels/telegram",

@@ -16,7 +16,7 @@ export type AgentCard = {
   skills: string[]
   never: string[]
   channels: string[]
-  hired_by?: string | null
+  hired?: boolean
   notice?: string
 }
 
@@ -170,4 +170,15 @@ export const auth = {
   changePassword: (current: string, next: string) =>
     request<{ status: string }>('/auth/password', { method: 'POST', json: { current, new: next } }),
   logoutEverywhere: () => request<{ status: string }>('/auth/logout-everywhere', { method: 'POST' }),
+}
+
+export type ApprovalItem = {
+  id: string
+  kind: string
+  summary: string
+  requested_by: string | null
+  status: 'pending' | 'approved' | 'rejected'
+  result: string | null
+  at: string
+  decided_at: string | null
 }

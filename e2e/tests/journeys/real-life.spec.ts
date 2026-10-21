@@ -87,7 +87,8 @@ test.describe('someone else', () => {
     const ctx = await browser.newContext()
     const p2 = await ctx.newPage()
     await p2.goto('/agents/ava')
-    await expect(p2.getByText(`Ava already works for ${owner.name.split(' ')[0]}.`, { exact: false })).toBeVisible()
+    await expect(p2.getByText('Ava already works for someone.')).toBeVisible()
+    await expect(p2.getByText(owner.name.split(' ')[0])).toHaveCount(0)
     await expect(p2.getByRole('button', { name: 'Hire Ava' })).toHaveCount(0)
     // Going straight to the hire page doesn't work either.
     await p2.goto('/signup')

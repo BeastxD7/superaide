@@ -137,3 +137,16 @@ def test_operator_can_reset_a_password_from_the_terminal(client, browser):
         service.reset_password(s, EMAIL, "terminal reset passphrase")
     assert client.get("/auth/me").status_code == 401  # signed out everywhere
     assert login(browser(), password="terminal reset passphrase").status_code == 200
+
+
+def test_an_email_without_an_account_locks_the_same_way(client, browser, settings):
+    # Otherwise "Too many wrong passwords" would tell a stranger which emails are registered.
+    signup(client)
+    real, made_up = browser(), browser()
+    answers: dict[str, list[tuple[int, str]]] = {"real": [], "made_up": []}
+    for _ in range(settings.login_max_failures + 1):
+        for who, b, email in (("real", real, EMAIL), ("made_up", made_up, "nobody@example.com")):
+            r = login(b, email=email, password="wrong password guess")
+            answers[who].append((r.status_code, r.json()["detail"].split(" Try again")[0]))
+    assert answers["real"] == answers["made_up"]
+    assert answers["made_up"][-1][0] == 429

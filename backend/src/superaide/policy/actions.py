@@ -7,7 +7,9 @@ Infant stage nothing with side effects runs without your approval.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
@@ -60,6 +62,18 @@ def decide(session: Session, *, kind: str, summary: str, requester: Sender) -> D
             summary=summary[:300],
         )
         return Decision("refused", "only your manager can authorise this")
+    if requester.trust < rule.min_trust:
+        audit(
+            session,
+            "policy",
+            "action_refused",
+            kind=kind,
+            reason="identity not verified strongly enough",
+            requester=requester.name,
+            trust=requester.trust,
+            required_trust=rule.min_trust,
+        )
+        return Decision("refused", "this needs a stronger identity check; do it from the dashboard instead")
     approval = Approval(
         kind=kind,
         payload={"summary": summary, "trust_at_request": requester.trust, "required_trust": rule.min_trust},
@@ -69,3 +83,30 @@ def decide(session: Session, *, kind: str, summary: str, requester: Sender) -> D
     session.flush()
     audit(session, "policy", "approval_requested", kind=kind, approval_id=approval.id)
     return Decision("approval", "waiting for your approval", approval)
+
+
+class ApprovalError(Exception):
+    def __init__(self, status: int, message: str) -> None:
+        super().__init__(message)
+        self.status = status
+
+
+# What each approved action actually does. Nothing is wired yet at the Infant stage:
+# approving records your yes, and the action runs once a connector exists for it.
+EXECUTORS: dict[str, Callable[[Session, Approval], str]] = {}
+
+
+def resolve(session: Session, approval: Approval, *, approve: bool, decided_by: str) -> Approval:
+    """Record the owner's yes or no on a pending approval, then carry it out if it can be."""
+    if approval.status != "pending":
+        raise ApprovalError(409, f"This was already {approval.status}.")
+    approval.status = "approved" if approve else "rejected"
+    approval.decided_by = decided_by[:100]
+    approval.decided_at = datetime.now(UTC)
+    payload = dict(approval.payload or {})
+    if approve:
+        executor = EXECUTORS.get(approval.kind)
+        payload["result"] = executor(session, approval) if executor else "Approved. Nothing can carry this out yet."
+    approval.payload = payload
+    audit(session, "policy", f"approval_{approval.status}", kind=approval.kind, approval_id=approval.id, by=decided_by)
+    return approval

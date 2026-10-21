@@ -76,6 +76,21 @@ def _recent(session: Session, kind: str, since: timedelta, *, ip: str | None = N
     return session.scalar(q) or 0
 
 
+def _phantom_lock(session: Session, email: str, now: datetime) -> datetime | None:
+    """An email with no account locks exactly like a real one, so the lockout message
+    can't be used to find out whether an address is registered."""
+    settings = get_settings()
+    window = timedelta(minutes=settings.login_lock_minutes)
+    failures = session.scalars(
+        select(AuthEvent.created_at)
+        .where(AuthEvent.kind == "login_fail", AuthEvent.email_normalized == email, AuthEvent.created_at > now - window)
+        .order_by(AuthEvent.created_at.desc())
+    ).all()
+    if len(failures) < settings.login_max_failures:
+        return None
+    return failures[0] + window
+
+
 def find_user(session: Session, email: str) -> UserAccount | None:
     return session.scalar(
         select(UserAccount).where(
@@ -135,10 +150,11 @@ def login(session: Session, *, email: str, password: str, client: Client) -> tup
 
     user = find_user(session, normalized)
     now = _now()
-    if user is not None and user.locked_until and user.locked_until > now:
+    locked_until = user.locked_until if user is not None else _phantom_lock(session, normalized, now)
+    if locked_until and locked_until > now:
         verify_password(None, password)  # same work either way
-        minutes = max(1, int((user.locked_until - now).total_seconds() // 60) + 1)
-        _event(session, "login_locked", client, user_id=user.id, email=normalized)
+        minutes = max(1, int((locked_until - now).total_seconds() // 60) + 1)
+        _event(session, "login_locked", client, user_id=user.id if user else None, email=normalized)
         raise AuthError(429, f"Too many wrong passwords. Try again in {minutes} minutes.")
 
     ok, needs_rehash = verify_password(user.password_hash if user else None, password)

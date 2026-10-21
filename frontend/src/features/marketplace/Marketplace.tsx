@@ -87,7 +87,7 @@ export function Marketplace({ session, initialAgents = null }: { session: Sessio
                 <Orb hue="rose" size={40} mood="asleep" className="rounded-full ring-2 ring-white" />
               </div>
               <p className="text-2xl font-medium text-ink tight">
-                {ava?.hired_by ? `Ava works for ${ava.hired_by}` : 'Ava is ready to start'}
+                {ava?.hired ? (mine ? 'Ava works for you' : 'Ava is already working for someone') : 'Ava is ready to start'}
               </p>
             </div>
             <p className="mt-6 max-w-xs leading-relaxed text-body">
@@ -144,7 +144,7 @@ export function Marketplace({ session, initialAgents = null }: { session: Sessio
           </div>
           {error && <p className="mt-6 text-danger">{error}</p>}
           <div className="mt-10 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-            {ava && <FeaturedAgent agent={ava} mine={mine && Boolean(ava.hired_by)} />}
+            {ava && <FeaturedAgent agent={ava} mine={mine && Boolean(ava.hired)} />}
             <div className="grid gap-4">
               {agents
                 ?.filter((a) => a.status === 'coming_soon')
@@ -271,7 +271,7 @@ export function Marketplace({ session, initialAgents = null }: { session: Sessio
 }
 
 function FeaturedAgent({ agent, mine }: { agent: AgentCard; mine: boolean }) {
-  const taken = Boolean(agent.hired_by) && !mine
+  const taken = Boolean(agent.hired) && !mine
   return (
     <MotionLink
       href={`/agents/${agent.slug}`}
@@ -283,7 +283,7 @@ function FeaturedAgent({ agent, mine }: { agent: AgentCard; mine: boolean }) {
         <div>
           <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-medium text-ink">
             <span className={`size-1.5 rounded-full ${taken ? 'bg-warn' : 'bg-ok'}`} />
-            {mine ? 'Works for you' : taken ? `Works for ${agent.hired_by}` : 'Available now'}
+            {mine ? 'Works for you' : taken ? 'Already hired' : 'Available now'}
           </span>
           <h3 className="mt-5 text-5xl font-medium tight">{agent.name}</h3>
           <p className="mt-1 text-lg text-violet-700">{agent.role}</p>

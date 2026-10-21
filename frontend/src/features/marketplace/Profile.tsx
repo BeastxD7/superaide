@@ -45,7 +45,7 @@ export function Profile({ slug, session, initialAgents = null }: ProfileProps) {
 
   const available = agent.status === 'available'
   const mine = session.account?.hire?.agent === agent.slug
-  const taken = Boolean(agent.hired_by) && !mine
+  const taken = Boolean(agent.hired) && !mine
 
   return (
     <div className="min-h-dvh bg-canvas pb-16">
@@ -70,7 +70,7 @@ export function Profile({ slug, session, initialAgents = null }: ProfileProps) {
           <div className="mt-5 flex flex-wrap justify-center gap-2 text-xs font-medium">
             <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-ink">
               <span className={`size-1.5 rounded-full ${!available ? 'bg-muted' : taken ? 'bg-warn' : 'bg-ok'}`} />
-              {!available ? 'In training' : mine ? 'Works for you' : taken ? `Works for ${agent.hired_by}` : 'Available now'}
+              {!available ? 'In training' : mine ? 'Works for you' : taken ? 'Already hired' : 'Available now'}
             </span>
             <span className="rounded-full bg-white px-3 py-1.5 text-ink">{agent.stage} stage</span>
             <span className="rounded-full bg-white px-3 py-1.5 text-ink">{agent.price}</span>
@@ -85,7 +85,7 @@ export function Profile({ slug, session, initialAgents = null }: ProfileProps) {
               </Button>
             ) : taken ? (
               <p className="rounded-2xl bg-white/70 px-4 py-3 text-left text-sm text-body">
-                {agent.name} already works for {agent.hired_by}.{' '}
+                {agent.name} already works for someone.{' '}
                 {session.account ? (
                   <>You're signed in as {session.account.user.name}. </>
                 ) : (
