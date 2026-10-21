@@ -145,6 +145,7 @@ class Event(Scoped, Base):
             postgresql_where=text("direction = 'in' AND external_id IS NOT NULL"),
         ),
         Index("ix_event_context_thread", "context_id", "thread_id"),
+        Index("ix_event_fts", text("to_tsvector('english', content)"), postgresql_using="gin"),  # recall
     )
 
     context_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("context.id"), index=True)
@@ -170,6 +171,7 @@ class MemoryItem(Scoped, Base):
     """A remembered fact, tagged with the audience it may be shown to."""
 
     __tablename__ = "memory_item"
+    __table_args__ = (Index("ix_memory_item_fts", text("to_tsvector('english', content)"), postgresql_using="gin"),)
 
     content: Mapped[str] = mapped_column(Text)
     subject_person_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(UUID(as_uuid=True)), default=list)
