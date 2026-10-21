@@ -70,3 +70,8 @@ backend tests, lint, types, the frontend checks and the full browser suite pass.
   - The dev stack restarted after a startup race; live Telegram check OK.
   - Two new issues were assigned to the reliability agent: delivered reminders still listed as "open", and Ava doubting the verified owner on Telegram.
   - ADR 0010 (triage & escalation) proposed: decision rules → small classifier → policy, a stage-gated ladder with Acknowledge buttons, a feedback loop that makes the trust stages real. 10 open questions for the owner.
+- 03:35 IST heartbeat:
+  - Landed: identity links bound to the confirming bot/app (0a9ae99), the QA job-worker fix (06edd08) and the gitleaks PR fix.
+  - The Full CI run is in progress; the previous Full run failed, and QA is fixing forward.
+  - Agents: QA, identity (finishing), tenancy T6, reliability fixes, triage foundations (flag off).
+  - The dev checkout stays at its current version until the identity report arrives and Full is green.
