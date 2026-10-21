@@ -8,3 +8,8 @@ description = "Obviously fake tokens in the connection tests"
 condition = "AND"
 paths = ['''(^|/)tests/test_connections\.py$''']
 regexes = ['''^xox[bp]-1-abc-[a-z]+$''', '''^xapp-1-abc-[a-z]+$''']
+
+[[allowlists]]
+description = "Research reports quote example platform user IDs (not secrets)"
+targetRules = ["discord-client-id"]
+paths = ['''^docs/research/''']
