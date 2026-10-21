@@ -13,7 +13,8 @@ import uuid
 from collections.abc import Callable
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, Security
+from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -32,7 +33,16 @@ def client_of(request: Request) -> Client:
     )
 
 
-def require_csrf_header(request: Request) -> None:
+# Declared for /docs, so its Authorize dialog can send the header; the check below reads it itself.
+csrf_header = APIKeyHeader(
+    name="X-Requested-With",
+    scheme_name="X-Requested-With",
+    description="Any value. Required on every POST from a browser (CSRF protection).",
+    auto_error=False,
+)
+
+
+def require_csrf_header(request: Request, _: str | None = Security(csrf_header)) -> None:
     if request.method in UNSAFE and not request.headers.get("x-requested-with"):
         raise HTTPException(403, "Missing X-Requested-With header")
 
@@ -145,9 +155,17 @@ class PasswordBody(BaseModel):
 
 
 def make_router() -> APIRouter:
-    router = APIRouter(prefix="/auth", dependencies=[Depends(require_csrf_header), Depends(reject_nul_text)])
+    router = APIRouter(
+        prefix="/auth", tags=["Accounts"], dependencies=[Depends(require_csrf_header), Depends(reject_nul_text)]
+    )
 
-    @router.post("/signup")
+    @router.post(
+        "/signup",
+        summary="Sign up",
+        description=(
+            "Creates an account and signs it in (sets the session cookie). Passwords need at least 10 characters."
+        ),
+    )
     def signup(body: SignupBody, request: Request, response: Response) -> dict[str, Any]:
         client = client_of(request)
 
@@ -159,7 +177,14 @@ def make_router() -> APIRouter:
         set_session_cookie(response, token)
         return view
 
-    @router.post("/login")
+    @router.post(
+        "/login",
+        summary="Log in",
+        description=(
+            "Signs in and sets the session cookie. Five wrong passwords lock the account for 15 minutes; repeated "
+            "failures from one device are throttled."
+        ),
+    )
     def login(body: LoginBody, request: Request, response: Response) -> dict[str, Any]:
         client = client_of(request)
 
@@ -171,14 +196,14 @@ def make_router() -> APIRouter:
         set_session_cookie(response, token)
         return view
 
-    @router.post("/logout")
+    @router.post("/logout", summary="Log out", description="Ends this session and clears the cookie.")
     def logout(request: Request, response: Response) -> dict[str, str]:
         client = client_of(request)
         run(lambda s: service.logout(s, session_token(request), client))
         clear_session_cookie(response)
         return {"status": "logged out"}
 
-    @router.get("/me")
+    @router.get("/me", summary="Who is signed in", description="The signed-in account, or `401` when there is none.")
     def me(request: Request) -> dict[str, Any]:
         token = session_token(request)
         with session_scope() as s:
@@ -187,7 +212,9 @@ def make_router() -> APIRouter:
                 raise HTTPException(401, "Please log in.")
             return user_view(s, user)
 
-    @router.post("/password")
+    @router.post(
+        "/password", summary="Change password", description="Needs the current password. Other sessions are signed out."
+    )
     def change_password(
         body: PasswordBody, request: Request, user_id: uuid.UUID = Depends(current_user_id)
     ) -> dict[str, str]:
@@ -201,7 +228,11 @@ def make_router() -> APIRouter:
         run(go)
         return {"status": "password changed; other devices signed out"}
 
-    @router.post("/logout-everywhere")
+    @router.post(
+        "/logout-everywhere",
+        summary="Log out everywhere",
+        description="Ends every session of this account, on every device.",
+    )
     def logout_everywhere(
         request: Request, response: Response, user_id: uuid.UUID = Depends(current_user_id)
     ) -> dict[str, Any]:

@@ -92,7 +92,12 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         agent = get_agent()  # its settings include credentials connected in the app
         return Onboarder(agent, telegram_username(agent.settings.telegram_bot_token))
 
-    @router.get("/agents")
+    @router.get(
+        "/agents",
+        tags=["Marketplace & hiring"],
+        summary="List agents",
+        description="The agents on offer, whether each is available, and who it works for if it has been hired.",
+    )
     def agents() -> list[dict[str, Any]]:
         settings = get_settings()
         with session_scope() as s:
@@ -107,7 +112,15 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             result.append(item)
         return result
 
-    @router.post("/hire")
+    @router.post(
+        "/hire",
+        tags=["Marketplace & hiring"],
+        summary="Hire Ava",
+        description=(
+            "Hires the agent for the signed-in account after the notice is accepted. Refused if someone else already "
+            "hired it."
+        ),
+    )
     def hire(body: HireBody, user_id: uuid.UUID = Depends(current_user_id)) -> dict[str, Any]:
         settings = get_settings()
         listing = find(settings, body.agent)
@@ -128,7 +141,12 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         except IntegrityError as exc:  # someone else hired at the same moment
             raise HTTPException(409, f"{settings.agent_name} was just hired by someone else.") from exc
 
-    @router.get("/me")
+    @router.get(
+        "/me",
+        tags=["Owner: chat & notebook"],
+        summary="My agent and settings",
+        description="The owner's agent, growth stage, connected channels and introduction progress.",
+    )
     def me(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         settings = get_agent().settings
         with session_scope() as s:
@@ -149,7 +167,12 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 },
             }
 
-    @router.get("/onboarding")
+    @router.get(
+        "/onboarding",
+        tags=["Introduction"],
+        summary="Current introduction step",
+        description="Where the owner is in the eight steps, the conversation so far and the controls for the step.",
+    )
     def onboarding(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         ob = onboarder()
         with session_scope() as s:
@@ -157,7 +180,14 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             ob.ensure_started(s, person)
             return ob.view(s, person).as_dict()
 
-    @router.post("/onboarding")
+    @router.post(
+        "/onboarding",
+        tags=["Introduction"],
+        summary="Answer a step",
+        description=(
+            "Saves the answer to the current step and moves on. Each step's `answer` shape is in the step's `input`."
+        ),
+    )
     def onboarding_answer(body: AnswerBody, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         ob = onboarder()
         with session_scope() as s:
@@ -169,7 +199,15 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         with session_scope() as s:
             onboarder()._say(s, require(s, Person, person_id), [line])
 
-    @router.post("/intro/files")
+    @router.post(
+        "/intro/files",
+        tags=["Introduction"],
+        summary="Share a file",
+        description=(
+            "A resume or CV (PDF, Word, text; up to 10 MB). The text is kept and read into notebook facts; offline it"
+            " is read once Claude is connected."
+        ),
+    )
     async def intro_file(
         file: UploadFile = File(...), person_id: uuid.UUID = Depends(owner_person_id)
     ) -> dict[str, Any]:
@@ -184,7 +222,15 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             _said(person_id, result.message)
         return {**result.__dict__, "document_id": str(result.document_id), "warnings": list(extracted.warnings)}
 
-    @router.post("/intro/links")
+    @router.post(
+        "/intro/links",
+        tags=["Introduction"],
+        summary="Share a link",
+        description=(
+            "A website, GitHub profile or page about the owner. Private addresses are refused; LinkedIn is explained "
+            "(it blocks reading)."
+        ),
+    )
     def intro_link(body: LinkBody, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         try:
             extracted = extract.extract_url(body.url.strip())
@@ -196,12 +242,22 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             _said(person_id, result.message)
         return {**result.__dict__, "document_id": str(result.document_id), "warnings": list(extracted.warnings)}
 
-    @router.get("/intro/documents")
+    @router.get(
+        "/intro/documents",
+        tags=["Introduction"],
+        summary="Shared files and links",
+        description="Everything the owner shared, whether it has been read, and how many facts came from each.",
+    )
     def intro_documents(person_id: uuid.UUID = Depends(owner_person_id)) -> list[dict[str, Any]]:
         with session_scope() as s:
             return documents_view(s, require(s, Person, person_id))
 
-    @router.post("/intro/documents/{document_id}/remove")
+    @router.post(
+        "/intro/documents/{document_id}/remove",
+        tags=["Introduction"],
+        summary="Remove a file or link",
+        description="Removes it and everything Ava learned from it.",
+    )
     def remove_document(document_id: uuid.UUID, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         with session_scope() as s:
             doc = s.get(Document, document_id)
@@ -209,11 +265,21 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 raise HTTPException(404, "Not found")
             return {"status": "removed", "facts_removed": retire_document(s, doc)}
 
-    @router.get("/intro/call")
+    @router.get(
+        "/intro/call",
+        tags=["Introduction"],
+        summary="Start the video call",
+        description="The call's questions. The browser turns the owner's speech into text; nothing is recorded.",
+    )
     def call_start(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         return onboarder().call_start()
 
-    @router.post("/intro/call/answer")
+    @router.post(
+        "/intro/call/answer",
+        tags=["Introduction"],
+        summary="Answer a call question",
+        description="One transcribed answer; returns the next question.",
+    )
     def call_answer(body: CallAnswerBody, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         with session_scope() as s:
             try:
@@ -221,13 +287,23 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             except ValueError as exc:
                 raise HTTPException(422, str(exc)) from exc
 
-    @router.post("/intro/call/finish")
+    @router.post(
+        "/intro/call/finish",
+        tags=["Introduction"],
+        summary="Finish the call",
+        description="Ends the call and continues the introduction.",
+    )
     def call_finish(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, str]:
         with session_scope() as s:
             onboarder().call_finish(s, require(s, Person, person_id))
         return {"status": "ok"}
 
-    @router.get("/messages")
+    @router.get(
+        "/messages",
+        tags=["Owner: chat & notebook"],
+        summary="Conversation history",
+        description="The owner's conversation with Ava, oldest first (introduction included).",
+    )
     def messages(person_id: uuid.UUID = Depends(owner_person_id), limit: int = 200) -> list[dict[str, Any]]:
         limit = max(1, min(limit, 500))
         with session_scope() as s:
@@ -248,7 +324,12 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 for e in reversed(rows)
             ]
 
-    @router.post("/chat")
+    @router.post(
+        "/chat",
+        tags=["Owner: chat & notebook"],
+        summary="Send a message",
+        description="Sends a message to Ava and returns the reply. `remember that …` stores a private note.",
+    )
     def chat(body: ChatBody, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         text = body.text.strip()
         if not text:
@@ -259,7 +340,12 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         result = get_agent().handle(msg)
         return {"mode": result.mode, "reply": result.reply, "notes": result.notes}
 
-    @router.get("/notebook")
+    @router.get(
+        "/notebook",
+        tags=["Owner: chat & notebook"],
+        summary="Notebook",
+        description="Everything Ava currently knows about the owner, newest first, with its category and source.",
+    )
     def notebook(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         """Everything the agent currently knows about the owner, newest first, with where it came from."""
         with session_scope() as s:
@@ -286,7 +372,12 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 ]
             }
 
-    @router.get("/people")
+    @router.get(
+        "/people",
+        tags=["Owner: people & rules"],
+        summary="People who matter",
+        description="The owner's contacts and who can always get through.",
+    )
     def people(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         """The people who matter to the owner, VIPs first, and where Ava can recognise them."""
         with session_scope() as s:
@@ -313,7 +404,12 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 )
             return {"people": result}
 
-    @router.get("/preferences")
+    @router.get(
+        "/preferences",
+        tags=["Owner: people & rules"],
+        summary="Standing rules",
+        description="What counts as urgent, quiet hours, digest time and what may be shared.",
+    )
     def preferences(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         """The owner's standing rules: what's urgent, quiet hours, how to reach them, what may be shared."""
         with session_scope() as s:
@@ -330,7 +426,12 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 "never_share": pref.never_share,
             }
 
-    @router.post("/notebook/{memory_id}/forget")
+    @router.post(
+        "/notebook/{memory_id}/forget",
+        tags=["Owner: chat & notebook"],
+        summary="Forget a note",
+        description="Ava stops using this note.",
+    )
     def forget(memory_id: uuid.UUID, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, str]:
         with session_scope() as s:
             m = s.get(MemoryItem, memory_id)
@@ -343,7 +444,12 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             audit(s, "app", "memory_forgotten", memory_id=m.id, person_id=person_id)
         return {"status": "forgotten"}
 
-    @router.post("/channels/telegram")
+    @router.post(
+        "/channels/telegram",
+        tags=["Connections"],
+        summary="Link my Telegram",
+        description="A one-time `t.me` link (15 minutes) that links the owner's Telegram account to Ava.",
+    )
     def connect_telegram(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         settings = get_agent().settings
         username = telegram_username(settings.telegram_bot_token)

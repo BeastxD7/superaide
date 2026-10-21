@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from superaide import docs
 from superaide.api.admin import require_admin
 from superaide.api.admin import router as admin_router
 from superaide.audit import audit
@@ -41,7 +42,13 @@ class SimulatedMessage(BaseModel):
 
 def create_app(agent: Agent | None = None) -> FastAPI:
     settings = get_settings()
-    app = FastAPI(title="Superaide API", version="0.1.0")
+    app = FastAPI(
+        title="Superaide API",
+        version="0.1.0",
+        description=docs.DESCRIPTION,
+        openapi_tags=docs.TAGS,
+        swagger_ui_parameters=docs.SWAGGER_UI,
+    )
     app.add_middleware(
         CORSMiddleware,
         # The frontend may be opened as localhost or 127.0.0.1; allow both spellings.
@@ -111,7 +118,12 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     app.include_router(make_router(get_agent))
     app.include_router(make_connections_router(get_agent, apply_connections))
 
-    @app.get("/")
+    @app.get(
+        "/",
+        tags=["Health"],
+        summary="About this API",
+        description="Points to the docs. Handy as a first check that the server answers.",
+    )
     def index() -> dict[str, str]:
         return {
             "service": "superaide API",
@@ -119,11 +131,24 @@ def create_app(agent: Agent | None = None) -> FastAPI:
             "docs": "/docs",
         }
 
-    @app.get("/health")
+    @app.get(
+        "/health",
+        tags=["Health"],
+        summary="Health check",
+        description='Returns `{"status": "ok"}` while the API is up.',
+    )
     def health() -> dict[str, str]:
         return {"status": "ok"}
 
-    @app.post("/webhooks/telegram")
+    @app.post(
+        "/webhooks/telegram",
+        tags=["Webhooks"],
+        summary="Telegram webhook",
+        description=(
+            "Telegram delivers updates here when a webhook is set. Requests without the right `X-Telegram-Bot-Api-"
+            "Secret-Token` are dropped and audited. Local setups use polling instead."
+        ),
+    )
     async def telegram_webhook(request: Request, background: BackgroundTasks) -> dict[str, bool]:
         if not telegram.verify_secret(request.headers.get(telegram.SECRET_HEADER), settings.telegram_webhook_secret):
             with session_scope() as s:
@@ -134,7 +159,15 @@ def create_app(agent: Agent | None = None) -> FastAPI:
             background.add_task(get_agent().handle, msg)
         return {"ok": True}
 
-    @app.post("/webhooks/slack")
+    @app.post(
+        "/webhooks/slack",
+        tags=["Webhooks"],
+        summary="Slack events",
+        description=(
+            "Slack's Events API. The request signature and timestamp are checked; `url_verification` challenges are "
+            "answered. Local setups use Socket Mode instead."
+        ),
+    )
     async def slack_webhook(request: Request, background: BackgroundTasks) -> dict[str, Any]:
         body = await request.body()
         ok = slack.verify_signature(
@@ -155,7 +188,16 @@ def create_app(agent: Agent | None = None) -> FastAPI:
             background.add_task(get_agent().handle, msg)
         return {"ok": True}
 
-    @app.post("/api/simulate", dependencies=[Depends(require_admin)])
+    @app.post(
+        "/api/simulate",
+        dependencies=[Depends(require_admin)],
+        tags=["Simulator"],
+        summary="Send a simulated message",
+        description=(
+            "Runs a message through the full pipeline as if it came from the given account, and returns what Ava "
+            "would reply. Needs the admin token and `ENABLE_SIMULATOR=true`."
+        ),
+    )
     def simulate(body: SimulatedMessage) -> dict[str, Any]:
         """Dev only: pretend a message arrived, to try impostor scenarios from
         the dashboard. Replies and link codes are captured, not sent."""

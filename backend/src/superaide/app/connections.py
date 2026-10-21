@@ -83,7 +83,11 @@ def slack_manifest_url() -> str:
 
 
 def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool]]) -> APIRouter:
-    router = APIRouter(prefix="/app/connections", dependencies=[Depends(require_csrf_header), Depends(reject_nul_text)])
+    router = APIRouter(
+        prefix="/app/connections",
+        tags=["Connections"],
+        dependencies=[Depends(require_csrf_header), Depends(reject_nul_text)],
+    )
 
     def view() -> dict[str, Any]:
         settings = get_agent().settings
@@ -107,11 +111,22 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
         except check.CheckFailed as exc:
             raise HTTPException(400, str(exc)) from exc
 
-    @router.get("")
+    @router.get(
+        "",
+        summary="Connection status",
+        description="Which services are connected, how, and a masked hint of each credential.",
+    )
     def status(_: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         return view()
 
-    @router.post("/anthropic")
+    @router.post(
+        "/anthropic",
+        summary="Connect Claude",
+        description=(
+            "Checks the API key with Anthropic, stores it encrypted and switches the brain on. Files saved while "
+            "offline are then read."
+        ),
+    )
     def connect_anthropic(
         body: AnthropicBody,
         background: BackgroundTasks,
@@ -124,13 +139,21 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
         background.add_task(read_pending, get_agent(), owner_id)
         return result
 
-    @router.post("/telegram")
+    @router.post(
+        "/telegram",
+        summary="Connect Telegram",
+        description="Checks the bot token with Telegram, stores it encrypted and starts the listener.",
+    )
     def connect_telegram(
         body: TelegramBody, _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
     ) -> dict[str, Any]:
         return connect("telegram", checked_or_400(lambda: check.check_telegram(body.bot_token, http_client())), user_id)
 
-    @router.post("/slack")
+    @router.post(
+        "/slack",
+        summary="Connect Slack",
+        description="Checks the bot and app-level tokens with Slack, stores them encrypted and starts Socket Mode.",
+    )
     def connect_slack(
         body: SlackBody, _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
     ) -> dict[str, Any]:
@@ -138,7 +161,13 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
             "slack", checked_or_400(lambda: check.check_slack(body.bot_token, body.app_token, http_client())), user_id
         )
 
-    @router.post("/{provider}/disconnect")
+    @router.post(
+        "/{provider}/disconnect",
+        summary="Disconnect a service",
+        description=(
+            "Deletes the stored credential and stops its listener. `provider` is `anthropic`, `telegram` or `slack`."
+        ),
+    )
     def disconnect(
         provider: str, _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
     ) -> dict[str, Any]:

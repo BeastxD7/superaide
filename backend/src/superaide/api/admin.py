@@ -10,7 +10,8 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Security
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 from sqlalchemy import func, select
 
@@ -32,17 +33,19 @@ from superaide.factory import uses_real_model
 from superaide.identity.linking import operator_link, unlink
 from superaide.policy.killswitch import is_frozen, set_frozen
 
+admin_bearer = HTTPBearer(scheme_name="Admin token", description="`ADMIN_TOKEN` from `.env`.", auto_error=False)
 
-def require_admin(authorization: str | None = Header(default=None)) -> None:
+
+def require_admin(credentials: HTTPAuthorizationCredentials | None = Security(admin_bearer)) -> None:
     token = get_settings().admin_token
     if not token:
         raise HTTPException(503, "Set ADMIN_TOKEN in .env to use the admin API")
-    supplied = (authorization or "").removeprefix("Bearer ").strip()
+    supplied = credentials.credentials.strip() if credentials else ""
     if not hmac.compare_digest(supplied.encode(), token.encode()):
         raise HTTPException(401, "Bad admin token")
 
 
-router = APIRouter(prefix="/api", dependencies=[Depends(require_admin)])
+router = APIRouter(prefix="/api", tags=["Operator console"], dependencies=[Depends(require_admin)])
 
 
 def _iso(dt: datetime | None) -> str | None:
@@ -56,7 +59,11 @@ def _audit_count(s: Any, *actions: str) -> int:
     return int(s.scalar(select(func.count()).select_from(AuditLog).where(AuditLog.action.in_(actions))) or 0)
 
 
-@router.get("/overview")
+@router.get(
+    "/overview",
+    summary="Overview",
+    description="Growth stage, what is live (brain, channels), spend against the cap and the kill switch.",
+)
 def overview() -> dict[str, Any]:
     settings = get_settings()
     spend = BudgetGuard(settings.max_spend_usd).summary().as_dict()
@@ -136,7 +143,11 @@ def overview() -> dict[str, Any]:
         }
 
 
-@router.get("/people")
+@router.get(
+    "/people",
+    summary="People and trust",
+    description="Everyone Ava knows, their relation to the owner and each linked channel identity with its trust tier.",
+)
 def people() -> list[dict[str, Any]]:
     with session_scope() as s:
         persons = {p.id: p for p in s.scalars(select(Person).order_by(Person.created_at)).all()}
@@ -191,7 +202,7 @@ def people() -> list[dict[str, Any]]:
         return result
 
 
-@router.get("/conversations")
+@router.get("/conversations", summary="Conversations", description="Every chat Ava is in, with its audience.")
 def conversations() -> list[dict[str, Any]]:
     with session_scope() as s:
         rows = s.execute(
@@ -214,7 +225,9 @@ def conversations() -> list[dict[str, Any]]:
         ]
 
 
-@router.get("/events")
+@router.get(
+    "/events", summary="Messages", description="Recent messages, optionally for one conversation (`context_id`)."
+)
 def events(context_id: uuid.UUID | None = None, limit: int = 100) -> list[dict[str, Any]]:
     limit = max(1, min(limit, 500))
     with session_scope() as s:
@@ -238,7 +251,7 @@ def events(context_id: uuid.UUID | None = None, limit: int = 100) -> list[dict[s
         ]
 
 
-@router.get("/memories")
+@router.get("/memories", summary="Memories", description="Stored memories and who may see each one.")
 def memories() -> list[dict[str, Any]]:
     with session_scope() as s:
         names = {p.id: p.display_name for p in s.scalars(select(Person)).all()}
@@ -255,7 +268,7 @@ def memories() -> list[dict[str, Any]]:
         ]
 
 
-@router.get("/approvals")
+@router.get("/approvals", summary="Pending approvals", description="Actions waiting for the owner's yes.")
 def approvals() -> list[dict[str, Any]]:
     with session_scope() as s:
         names = {p.id: p.display_name for p in s.scalars(select(Person)).all()}
@@ -274,7 +287,9 @@ def approvals() -> list[dict[str, Any]]:
         ]
 
 
-@router.get("/audit")
+@router.get(
+    "/audit", summary="Safety log", description="The audit trail: identity checks, refusals, links, spend and sign-ins."
+)
 def audit_log(limit: int = 200) -> list[dict[str, Any]]:
     limit = max(1, min(limit, 1000))
     with session_scope() as s:
@@ -284,7 +299,7 @@ def audit_log(limit: int = 200) -> list[dict[str, Any]]:
         ]
 
 
-@router.get("/spend")
+@router.get("/spend", summary="Spend", description="Claude API spend against `MAX_SPEND_USD`, by purpose and model.")
 def spend() -> dict[str, Any]:
     settings = get_settings()
     summary = BudgetGuard(settings.max_spend_usd).summary().as_dict()
@@ -314,14 +329,20 @@ class KillBody(BaseModel):
     on: bool
 
 
-@router.post("/kill")
+@router.post(
+    "/kill", summary="Kill switch", description='`{"on": true}` stops all model calls and replies; `false` resumes.'
+)
 def kill(body: KillBody) -> dict[str, bool]:
     with session_scope() as s:
         set_frozen(s, body.on, actor="dashboard")
     return {"frozen": body.on}
 
 
-@router.post("/identities/{identity_id}/unlink")
+@router.post(
+    "/identities/{identity_id}/unlink",
+    summary="Unlink an identity",
+    description="Detaches a channel account from its person; it is treated as a stranger again.",
+)
 def unlink_identity(identity_id: uuid.UUID) -> dict[str, str]:
     with session_scope() as s:
         identity = s.get(ChannelIdentity, identity_id)
@@ -337,7 +358,11 @@ class LinkBody(BaseModel):
     person_id: uuid.UUID
 
 
-@router.post("/identities/{identity_id}/link")
+@router.post(
+    "/identities/{identity_id}/link",
+    summary="Link an identity",
+    description="Links a channel account to a person by hand (operator override).",
+)
 def link_identity(identity_id: uuid.UUID, body: LinkBody) -> dict[str, str]:
     """Operator action from your own dashboard: attach an unlinked account to a person."""
     with session_scope() as s:
