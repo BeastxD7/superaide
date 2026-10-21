@@ -16,7 +16,17 @@ The agent (called Ava by default) starts at the **Infant** stage: it watches, as
 - **Dashboard.** A React app showing the growth stage, people and trust tiers, conversations, a readable safety log, spend, and an impostor simulator.
 - **Tests.** 33 tests, including the five impostor scenarios in `tests/redteam/`. They use a fake model, so they cost nothing.
 
-## Quick start on your Mac
+## Try it in one command
+
+Paste this into Terminal:
+
+```bash
+bash ~/Desktop/agi-agent/start.command
+```
+
+It installs [uv](https://docs.astral.sh/uv/) if needed, starts a local Postgres (Docker if it is running, otherwise an embedded one in `.local-db/`), creates `.env` with an admin token, adds two demo people (Shashank as manager, Priya Tan as colleague), and opens the dashboard at http://127.0.0.1:8000 already signed in. It uses the offline fake model, so it costs nothing. Press Ctrl+C to stop; run it again any time. `bash start.command --reset` wipes the demo data.
+
+## Quick start on your Mac, step by step
 
 You need [Docker Desktop](https://www.docker.com/products/docker-desktop/), [uv](https://docs.astral.sh/uv/) (`brew install uv`) and Node 22 or later (`brew install node`).
 
