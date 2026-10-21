@@ -51,3 +51,6 @@ backend tests, lint, types, the frontend checks and the full browser suite pass.
 - Cross-channel memory (ADR 0008) is complete on main (6bab999). The dev DB is at 0015 (providers, tenancy T0/T9, embeddings) and the dev stack was restarted.
 - Live E2E: "what color do i hate?" in the app → "You dislike black. You said so on Telegram earlier… [1]" (US spelling + paraphrase + cross-channel + citation). FIXED.
 - The AI model page (/dashboard/models) works live; the providers agent will add real brand logos to the cards.
+- 02:20 IST: the owner linked a new bot (@Ava2xD_bot). Its first message (/start) was silently dropped as a "duplicate": Telegram numbers messages per chat *per bot*, so the new bot's #1 matched the old bot's #1. Fixed in 647af96 (message ids include the bot's public id; regression tests).
+- Live Telegram E2E via Telegram Web in Brave works: replies, a reminder delivered on Telegram, cross-channel recall "You dislike black… [1]".
+- Polish bugs assigned to a channel formatting agent: raw **Markdown** on Telegram, and "[1]" with no source list on chat channels.
