@@ -113,7 +113,7 @@ def test_defaults_are_installed_once_and_web_research_waits_for_consent():
 def test_only_installed_skills_give_ava_tools():
     with session_scope() as s:
         names = [t.get("name") for t in registry.tools_for(registry.active(s), web_allowed=True)]
-        assert names == ["recall", "create_reminder"]
+        assert names == ["recall", "create_reminder", "list_reminders", "update_reminder", "cancel_reminder"]
         registry.remove(s, "superaide/reminders")
         names = [t.get("name") for t in registry.tools_for(registry.active(s), web_allowed=True)]
         assert names == ["recall"]

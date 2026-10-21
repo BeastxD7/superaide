@@ -39,7 +39,15 @@ def _job_key(intention: Intention) -> str:
 
 def _schedule(session: Session, intention: Intention) -> None:
     payload = {"intention_id": str(intention.id)}
-    enqueue(session, JOB_KIND, payload, run_at=intention.due_at, dedupe_key=_job_key(intention))
+    key = _job_key(intention)
+    if enqueue(session, JOB_KIND, payload, run_at=intention.due_at, dedupe_key=key) is not None:
+        return
+    # Moved back to a time it had before: that job was cancelled, so bring it back.
+    job = session.scalar(select(Job).where(Job.dedupe_key == key))
+    if job is not None and job.status == "cancelled":
+        job.status, job.run_at, job.attempts = "queued", intention.due_at, 0
+        job.finished_at = job.locked_at = None
+        job.last_error = None
 
 
 def owner_zone(session: Session, owner: Person) -> str:
@@ -121,6 +129,44 @@ def snooze(session: Session, owner: Person, intention_id: uuid.UUID, *, minutes:
     intention.delivered_via = []
     _schedule(session, intention)
     audit(session, "intentions", "intention_snoozed", intention_id=intention.id, minutes=minutes)
+    return intention
+
+
+def change(
+    session: Session,
+    owner: Person,
+    intention_id: uuid.UUID,
+    *,
+    due_at: datetime | None = None,
+    text: str | None = None,
+) -> Intention:
+    """Move an open reminder to a new time and/or reword it. Moving reschedules its delivery."""
+    if due_at is None and text is None:
+        raise IntentionError(422, "Say what to change: the time, the task, or both.")
+    intention = _owned(session, owner, intention_id)
+    if intention.status != "open":
+        raise IntentionError(409, f"This reminder is already {intention.status}.")
+    if text is not None:
+        text = " ".join(text.split())[:MAX_TEXT]
+        if not text:
+            raise IntentionError(422, "What should I remind you about?")
+        intention.text = text
+    if due_at is not None:
+        if due_at.tzinfo is None:
+            raise IntentionError(422, "The time needs a time zone.")
+        if due_at <= datetime.now(UTC) - timedelta(minutes=1):
+            raise IntentionError(422, "That time has already passed.")
+        due_at = due_at.astimezone(UTC)
+        if due_at != intention.due_at:
+            cancel(session, _job_key(intention))
+            intention.due_at = due_at
+            intention.delivered_at = None
+            intention.delivered_via = []
+            _schedule(session, intention)
+    audit(
+        session, "intentions", "intention_changed", intention_id=intention.id, moved=due_at is not None,
+        reworded=text is not None,
+    )  # fmt: skip
     return intention
 
 

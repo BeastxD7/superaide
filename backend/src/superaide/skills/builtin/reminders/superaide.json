@@ -1,16 +1,34 @@
 {
   "$schema": "../../manifest.schema.json",
   "id": "superaide/reminders",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "publisher": "Superaide",
   "tier": "official",
   "title": "Reminders & follow-ups",
-  "summary": "\"Remind me to call Priya on Friday at 5\" — Ava brings it back on time, in the app and on Telegram.",
+  "summary": "\"Remind me to call Priya on Friday at 5\" — Ava brings it back on time, in the app and on Telegram, and can move or cancel it when plans change.",
   "tools": [
     {
       "name": "create_reminder",
-      "description": "Set a reminder or follow-up for the owner. Ava will bring it back at that time.",
+      "description": "Set a reminder or follow-up for the owner. Ava will bring it back at that time. The result includes the reminder's id.",
       "inputSchema": {"type": "object", "properties": {"task": {"type": "string", "description": "What to remind them about, e.g. 'Call Priya'"}, "when": {"type": "string", "description": "When, in words: 'tomorrow at 5pm', 'in 2 hours', 'Friday'"}}, "required": ["task", "when"], "additionalProperties": false},
+      "effect": "write_own"
+    },
+    {
+      "name": "list_reminders",
+      "description": "List the owner's open reminders and follow-ups, soonest first, with each one's id, task and time. It only reads reminders this skill made.",
+      "inputSchema": {"type": "object", "properties": {}, "additionalProperties": false},
+      "effect": "write_own"
+    },
+    {
+      "name": "update_reminder",
+      "description": "Move an open reminder to a new time and/or change its task. Give the id and at least one of when or task.",
+      "inputSchema": {"type": "object", "properties": {"id": {"type": "string", "description": "The reminder's id, from create_reminder or list_reminders. Never guess it."}, "when": {"type": "string", "description": "The new time, in words: 'tomorrow at 7pm', 'in 30 minutes'"}, "task": {"type": "string", "description": "The new task in a few words"}}, "required": ["id"], "additionalProperties": false},
+      "effect": "write_own"
+    },
+    {
+      "name": "cancel_reminder",
+      "description": "Cancel an open reminder so it is not delivered.",
+      "inputSchema": {"type": "object", "properties": {"id": {"type": "string", "description": "The reminder's id, from create_reminder or list_reminders. Never guess it."}}, "required": ["id"], "additionalProperties": false},
       "effect": "write_own"
     }
   ],
