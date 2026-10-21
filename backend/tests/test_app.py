@@ -57,7 +57,7 @@ def _answer(client, auth, step, **answer):
 def test_marketplace_lists_ava_as_available(client):
     agents = client.get("/app/agents").json()
     ava = next(a for a in agents if a["slug"] == "ava")
-    assert ava["status"] == "available" and ava["hired_by"] is None
+    assert ava["status"] == "available" and ava["hired"] is False and "hired_by" not in ava
     assert any(a["status"] == "coming_soon" for a in agents)
 
 
@@ -72,7 +72,9 @@ def test_hiring_needs_an_account_and_consent_and_happens_once(client, browser):
     _signup(other, "Priya Tan", "priya@example.com")
     assert other.post("/app/hire", json={"agent": "ava", "accepted_notice": True}).status_code == 409
     assert other.get("/app/me").status_code == 403  # and can't see Ava's workspace
-    assert client.get("/app/agents").json()[0]["hired_by"] == "Shashank"
+    ava = client.get("/app/agents").json()[0]
+    assert ava["hired"] is True and "hired_by" not in ava  # taken, but never by whom
+    assert "Shashank" not in client.get("/app/agents").text
 
 
 def test_app_needs_a_session(client):
@@ -241,3 +243,26 @@ def test_a_blank_chat_message_is_refused_instead_of_crashing(client):
     _hire(client)
     r = client.post("/app/chat", json={"text": "   "})
     assert r.status_code == 422 and r.json()["detail"] == "Type a message first."
+
+
+def test_remember_that_keeps_one_note_and_ignores_an_empty_one():
+    from superaide.memory.store import parse_remember
+
+    assert parse_remember("Remember that") is None
+    assert parse_remember("remember this.") is None
+    assert parse_remember("remember that my flight is Friday") == "my flight is Friday"
+
+
+def test_saying_the_same_thing_twice_keeps_one_note(agent, manager):
+    from sqlalchemy import func, select
+
+    from superaide.db.models import MemoryItem
+    from tests.conftest import MANAGER_TG, tg
+
+    agent.handle(tg(MANAGER_TG, "remember that my flight is on Friday"))
+    agent.handle(tg(MANAGER_TG, "Remember that  my flight is on friday."))
+    agent.handle(tg(MANAGER_TG, "Remember that"))
+    with session_scope() as s:
+        notes = s.scalars(select(MemoryItem.content)).all()
+        assert notes == ["my flight is on Friday"]
+        assert s.scalar(select(func.count()).select_from(MemoryItem)) == 1

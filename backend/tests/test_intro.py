@@ -202,3 +202,13 @@ def test_a_chat_introduction_carries_on_when_reading_fails(client, broken_brain)
     r = client.post("/app/onboarding", json={"step": "about", "answer": {"mode": "chat", "text": "I lead applied AI."}})
     assert r.status_code == 200, r.text
     assert r.json()["step"] == "people"
+
+
+def test_a_web_page_cannot_set_the_owners_rules(client, brain, agent, monkeypatch):
+    # Anyone can edit a web page, so its "facts" never become urgency, sharing or availability rules.
+    from superaide.knowledge import ingest
+
+    assert ingest.safe_category("urgency", "link") == "about"
+    assert ingest.safe_category("sharing", "link") == "about"
+    assert ingest.safe_category("work", "link") == "work"
+    assert ingest.safe_category("urgency", "document") == "urgency"  # the owner's own file may

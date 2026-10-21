@@ -12,10 +12,10 @@ import uuid
 from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from superaide.audit import audit
-from superaide.db.models import Document, Person
+from superaide.db.models import Document, MemoryItem, Person
 from superaide.db.session import require, session_scope
 from superaide.knowledge.extract import Extracted
 from superaide.knowledge.facts import extract_facts
@@ -50,6 +50,8 @@ def ingest(agent: Any, owner_id: uuid.UUID, extracted: Extracted, *, size_bytes:
             return IngestResult(existing.id, existing.title, 0, True, existing.status, "You've already shared this.")
         old = s.scalar(select(Document).where(Document.owner_person_id == owner_id, Document.sha256 == digest))
         if old is not None:  # shared before, then removed: bring it back fresh
+            # Its facts were retired when it was removed; erase them with it.
+            s.execute(delete(MemoryItem).where(MemoryItem.document_id == old.id))
             s.delete(old)
             s.flush()
         doc = Document(
@@ -81,7 +83,7 @@ def ingest(agent: Any, owner_id: uuid.UUID, extracted: Extracted, *, size_bytes:
                 s,
                 owner=owner,
                 content=f.content,
-                category=f.category,
+                category=safe_category(f.category, source_kind),
                 source=source_kind,
                 document=doc,
                 confidence=f.confidence,
@@ -99,6 +101,15 @@ def ingest(agent: Any, owner_id: uuid.UUID, extracted: Extracted, *, size_bytes:
         else:
             message = f"I've saved {title}. I'll read it properly once my Claude brain is connected."
         return IngestResult(doc_id, title, n, False, doc.status, message)
+
+
+# Rules about urgency, sharing and availability come from the owner, never from a web
+# page: a page anyone can edit must not be able to tell Ava what is urgent or shareable.
+RULE_CATEGORIES = {"preference", "urgency", "availability", "sharing"}
+
+
+def safe_category(category: str, source: str) -> str:
+    return "about" if source == "link" and category in RULE_CATEGORIES else category
 
 
 def read_pending(agent: Any, owner_id: uuid.UUID) -> int:
@@ -128,7 +139,7 @@ def read_pending(agent: Any, owner_id: uuid.UUID) -> int:
                     s,
                     owner=owner,
                     content=f.content,
-                    category=f.category,
+                    category=safe_category(f.category, "link" if kind in {"web", "github"} else "document"),
                     source="link" if kind in {"web", "github"} else "document",
                     document=doc,
                     confidence=f.confidence,

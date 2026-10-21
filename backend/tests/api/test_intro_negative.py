@@ -228,12 +228,6 @@ def test_a_removed_file_can_be_shared_again_offline(owner):
     assert [d["title"] for d in owner.get("/app/intro/documents").json()] == ["cv.txt"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="BUG: ingest() deletes the removed Document, but its retired MemoryItems still reference it "
-    "(memory_item.document_id FK), so sharing the same file again is an IntegrityError (500). "
-    "Not fixed here: knowledge/ingest.py is being changed in another session.",
-)
 def test_a_removed_file_can_be_shared_again_once_facts_were_read_from_it(owner, brain):
     """The facts from the first copy are retired but still point at it; sharing it again used to 500."""
     first = upload(owner, "cv.txt", b"Shashank builds agents at PebbleRoad.").json()

@@ -87,21 +87,42 @@ def recent_events(session: Session, context: Context, limit: int = 12) -> list[E
 
 def parse_remember(text: str) -> str | None:
     m = REMEMBER_RE.match(text)
-    return m.group(1).strip() if m else None
+    if not m:
+        return None
+    fact = m.group(1).strip()
+    # "Remember that" / "remember this" with nothing after it is not a fact.
+    return None if fact.lower().rstrip(".!:,") in {"", "that", "this", "it"} else fact
+
+
+def _same_fact(text: str) -> str:
+    return " ".join(text.lower().split()).rstrip(".!")
 
 
 def remember(
     session: Session, *, content: str, sender: Sender, context: Context, audience: Audience, source_event: Event
 ) -> MemoryItem:
-    """Store a fact visible only to the audience it was told in."""
+    """Store a fact visible only to the audience it was told in. Saying it again keeps one note."""
     assert sender.person is not None
+    audience_ids = sorted(audience.person_ids)
+    for existing in session.scalars(
+        select(MemoryItem).where(
+            MemoryItem.valid_to.is_(None),
+            MemoryItem.subject_person_ids.contains([sender.person.id]),
+            MemoryItem.allowed_kind == "persons",
+            MemoryItem.allowed_person_ids == audience_ids,
+        )
+    ):
+        if _same_fact(existing.content) == _same_fact(content):
+            existing.source_event_ids = [*(existing.source_event_ids or []), source_event.id]
+            audit(session, "memory", "remembered_again", memory_id=existing.id)
+            return existing
     item = MemoryItem(
         content=content,
         subject_person_ids=[sender.person.id],
         source_event_ids=[source_event.id],
         origin_context_id=context.id,
         allowed_kind="persons",
-        allowed_person_ids=sorted(audience.person_ids),
+        allowed_person_ids=audience_ids,
         min_trust=2,
     )
     session.add(item)
