@@ -609,7 +609,10 @@ class OwnerTurn:
         flagged: list[str],
     ) -> StepResult | None:
         """One extra step asking the model to drop or own up to the unsupported sentences.
-        None if it can't be had (spend cap) or the model reached for a tool instead."""
+        None if it can't be had (spend cap), the model reached for a tool instead, or the draft
+        holds a tool call (cut off at max_tokens): the API rejects a tool_use with no result after it."""
+        if any(b.get("type") in {"tool_use", "server_tool_use"} for b in last.content):
+            return None
         self._said = ""
         self.emit("retract", {})  # the draft already streamed to the chat is replaced
         self.emit("status", {"text": "Checking sources"})

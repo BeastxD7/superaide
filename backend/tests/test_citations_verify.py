@@ -185,3 +185,16 @@ def test_the_heuristic_on_its_own():
         "Friday at 7am. [1]",
         "Priya prefers mornings. [2] [1]",
     ]
+
+
+def test_a_draft_cut_off_inside_a_tool_call_is_not_sent_back_for_revision():
+    # Live API: a tool_use with no tool_result after it is a 400, so abstain instead.
+    with session_scope() as s:
+        script = Script(
+            {
+                "content": [{"type": "text", "text": GYM}, *tool_use("recall", {"query": "gy"})],
+                "stop_reason": "max_tokens",
+            }
+        )
+        result = turn_for(s, script).run([{"role": "user", "content": "x"}])
+    assert len(script.seen) == 1 and result.text.endswith(verify.ABSTAIN) and "verify:abstained" in result.notes
