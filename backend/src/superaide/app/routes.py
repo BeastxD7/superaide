@@ -249,9 +249,12 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
 
     @router.post("/chat")
     def chat(body: ChatBody, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        text = body.text.strip()
+        if not text:
+            raise HTTPException(422, "Type a message first.")
         with session_scope() as s:
             person = require(s, Person, person_id)
-            msg = accounts.web_message(person, body.text.strip())
+            msg = accounts.web_message(person, text)
         result = get_agent().handle(msg)
         return {"mode": result.mode, "reply": result.reply, "notes": result.notes}
 
