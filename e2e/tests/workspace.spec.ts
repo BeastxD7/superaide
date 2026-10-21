@@ -381,7 +381,7 @@ test.describe('workspace: notebook', () => {
     await expect(composer(page)).toBeFocused()
     await page.keyboard.type("my sister's birthday is 3 March")
     await page.keyboard.press('Enter')
-    await expect(page.getByText("Noted. I'll only bring that up with you, in private.")).toBeVisible()
+    await expect(page.getByText("Saved to your notebook. Only you can see it.")).toBeVisible()
     await goToDashboardPage(page, 'Notebook')
     await expect(page).toHaveURL(/\/dashboard\/notebook$/)
 
@@ -453,7 +453,7 @@ test.describe('workspace: notebook', () => {
     for (let n = 0; n < 2; n += 1) {
       await composer(page).fill('Remember that I never take calls before 9am')
       await composer(page).press('Enter')
-      await expect(page.getByText("Noted. I'll only bring that up with you, in private.").nth(n)).toBeVisible()
+      await expect(page.getByText("Saved to your notebook. Only you can see it.").nth(n)).toBeVisible()
     }
     await openNotebookPage(page)
     await expect(notebookFact(page, 'I never take calls before 9am')).toHaveCount(1)
@@ -503,7 +503,7 @@ test.describe('workspace: privacy between accounts', () => {
     await openChat(page)
     await composer(page).fill('Remember that the acquisition closes in May')
     await composer(page).press('Enter')
-    await expect(page.getByText("Noted. I'll only bring that up with you, in private.")).toBeVisible()
+    await expect(page.getByText("Saved to your notebook. Only you can see it.")).toBeVisible()
     const secret = (await memories()).find((m) => m.content === 'the acquisition closes in May')!
 
     const other = await newVisitor(browser)

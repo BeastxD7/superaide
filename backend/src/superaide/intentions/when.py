@@ -94,7 +94,8 @@ def when(text: str, now: datetime) -> tuple[datetime, str] | None:
             if word == "tonight":
                 hm = (20, 0)
         elif word in ("tomorrow", "tmrw"):
-            day = base + timedelta(days=1)
+            # Just after midnight, "tomorrow" means after you've slept: today's date.
+            day = base if now.hour < 4 else base + timedelta(days=1)
         else:
             target = WEEKDAYS.index(word)
             ahead = (target - now.weekday()) % 7 or 7  # "Friday" on a Friday means next week

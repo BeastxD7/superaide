@@ -25,7 +25,8 @@ test.describe('dashboard on a phone', () => {
     await composer(page).tap()
     await composer(page).fill('Remind me about the dentist on Friday')
     await sendButton(page).tap()
-    await expect(page.getByText('You said: "Remind me about the dentist on Friday"')).toBeVisible()
+    // This now really sets a reminder (it used to be echoed back offline).
+    await expect(page.getByText(/Got it\. I'll remind you .*: The dentist/)).toBeVisible()
     await expect(composer(page)).toHaveValue('')
     await expectNoSidewaysScroll(page)
   })
@@ -83,7 +84,7 @@ test.describe('dashboard on a phone', () => {
     await openChat(page)
     await composer(page).fill('Remember that I park on level B2')
     await sendButton(page).tap()
-    await expect(page.getByText("Noted. I'll only bring that up with you, in private.")).toBeVisible()
+    await expect(page.getByText("Saved to your notebook. Only you can see it.")).toBeVisible()
     await goToDashboardPage(page, 'Notebook')
     await expect(notebookFact(page, 'I park on level B2')).toContainText('from chat')
   })

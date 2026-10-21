@@ -12,7 +12,7 @@ test('install Web research after reading its permissions, then remove it', async
   await expect(memory.getByText('Always on')).toBeVisible()
 
   const web = skills.getByRole('listitem', { name: 'Web research' })
-  await expect(web.getByText(/About US\$0\.01/)).toBeVisible()
+  await expect(web.getByText("About US$0.01 each time it's used")).toBeVisible()
   await web.getByRole('button', { name: 'Install' }).click()
   const consent = web.getByRole('group', { name: 'Permissions for Web research' })
   await expect(consent.getByText('Read public information (the web)')).toBeVisible()

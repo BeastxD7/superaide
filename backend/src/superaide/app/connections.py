@@ -202,7 +202,7 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
             )  # fmt: skip
         return view()
 
-    @router.get(
+    @router.post(
         "/google/start",
         summary="Start Google sign-in",
         description="Returns the Google sign-in URL (OAuth 2.1 with PKCE). Open it in the browser.",

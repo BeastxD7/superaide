@@ -23,7 +23,7 @@ test.describe('workspace, day to day', () => {
     const box = page.getByRole('textbox', { name: 'Message Ava' })
     await box.fill('remember that my flight to Bangalore is on Friday')
     await box.press('Enter')
-    await expect(page.getByText(/I'll only bring that up with you/)).toBeVisible()
+    await expect(page.getByText('Saved to your notebook. Only you can see it.')).toBeVisible()
 
     await page.getByRole('link', { name: 'Notebook', exact: true }).click()
     const note = page.getByText('my flight to Bangalore is on Friday', { exact: true })

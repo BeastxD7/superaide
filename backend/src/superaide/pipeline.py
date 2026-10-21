@@ -47,6 +47,13 @@ def parse_start_code(text: str) -> str | None:
     return m.group(1) if m else None
 
 
+# "I need to …", "I have to …", "I must …", "I've got to …", "to …": something to do.
+OBLIGATION = re.compile(
+    r"^\s*(?:i\s+(?:really\s+)?(?:need|have|want|must|should|ought)(?:\s+to)?|i(?:'ve|\s+have)\s+got\s+to|i\s+gotta|to)\s+",
+    re.I,
+)
+
+
 def thread_of(msg: InboundMessage) -> str:
     """Where the conversation continues: the message's thread, or for an @-mention in a
     Slack channel a new thread under that message (so replies don't flood the channel)."""
@@ -128,8 +135,13 @@ class Agent:
 
             fact = parse_remember(msg.text)
             if fact is not None and ctx.kind == "dm":
+                # "Remember that I need to go to the gym at 12pm" means a reminder, not a note.
+                if self._is_owner(s, sender) and (set_reminder := self._remind_from_fact(s, sender, inbound, fact)):
+                    self._reply(s, ctx, aud, set_reminder, thread)
+                    return HandleResult("known", set_reminder, ["reminder"])
                 remember(s, content=fact, sender=sender, context=ctx, audience=aud, source_event=inbound)
-                reply = "Noted. I'll only bring that up with you, in private."
+                # Honest about what happened, without sending the private text back over a channel.
+                reply = "Saved to your notebook. Only you can see it."
                 self._reply(s, ctx, aud, reply, thread)
                 return HandleResult("known", reply, ["remembered"])
 
@@ -169,6 +181,34 @@ class Agent:
             intention = service.create(
                 s, sender.person, text=parsed.task, due_at=parsed.due, source="chat", source_event_id=inbound.id
             )
+        except service.IntentionError as exc:
+            return str(exc)
+        return f"Got it. I'll remind you {service.describe_due(intention.due_at, tz)}: {intention.text}"
+
+    def _remind_from_fact(self, s, sender: Sender, inbound, fact: str) -> str | None:
+        """A reminder if the fact names a moment; None if it's just something to know."""
+        from datetime import UTC, datetime
+
+        from superaide.intentions import service
+        from superaide.intentions.when import clean_task, find_moment, zone
+
+        assert sender.person is not None
+        duty = OBLIGATION.match(fact)
+        if duty is None:
+            return None  # "my flight is on Friday" is something to know, not something to do
+        tz = service.owner_zone(s, sender.person)
+        found = find_moment(fact[duty.end() :], datetime.now(UTC).astimezone(zone(tz)))
+        if found is None:
+            return None
+        due, rest = found
+        task = clean_task(rest)
+        if not task:
+            return None
+        try:
+            intention = service.create(
+                s, sender.person, text=task[:1].upper() + task[1:], due_at=due, source="chat",
+                source_event_id=inbound.id,
+            )  # fmt: skip
         except service.IntentionError as exc:
             return str(exc)
         return f"Got it. I'll remind you {service.describe_due(intention.due_at, tz)}: {intention.text}"

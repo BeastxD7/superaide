@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -85,9 +86,9 @@ def deliver_due(at: datetime) -> int:
 
 def test_saying_remind_me_in_chat_creates_one_and_confirms_when(owner):
     r = owner.post("/app/chat", json={"text": "remind me to call Priya tomorrow at 5pm"})
-    assert r.status_code == 200 and r.json()["reply"].startswith(
-        "Got it. I'll remind you tomorrow at 5:00 pm: Call Priya"
-    )
+    # Before 4am, "tomorrow" means after you sleep, so either word is right depending on when this runs.
+    assert r.status_code == 200
+    assert re.match(r"Got it\. I'll remind you (today|tomorrow) at 5:00 pm: Call Priya", r.json()["reply"])
     [i] = intentions()
     assert (i.text, i.status, i.source, i.timezone) == ("Call Priya", "open", "chat", "Asia/Singapore")
     with session_scope() as s:
@@ -134,7 +135,7 @@ def test_dashboard_add_list_snooze_and_finish(owner):
     added = owner.post("/app/reminders", json={"text": "Call the bank tomorrow at 10am"})
     assert added.status_code == 200, added.text
     body = added.json()
-    assert body["text"] == "Call the bank" and body["due_text"].startswith("tomorrow at 10:00 am")
+    assert body["text"] == "Call the bank" and re.match(r"(today|tomorrow) at 10:00 am", body["due_text"])
 
     exact = (datetime.now(UTC) + timedelta(days=3)).replace(microsecond=0)
     owner.post("/app/reminders", json={"text": "Renew insurance", "due_at": exact.isoformat()})
@@ -199,3 +200,27 @@ def test_explicit_dates_work_on_the_dashboard_too(owner):
     r = owner.post("/app/reminders", json={"text": "Renew passport on 3 Dec"})
     assert r.status_code == 200, r.text
     assert r.json()["text"] == "Renew passport" and "Dec at 9:00 am" in r.json()["due_text"]
+
+
+def test_remember_that_with_a_time_and_a_duty_sets_a_reminder_not_a_note(owner):
+    # What actually happened on 22 Oct: a canned "Noted." and no reminder.
+    r = owner.post("/app/chat", json={"text": "Remember that i need to go to gym at 11:59pm"})
+    reply = r.json()["reply"]
+    assert reply.startswith("Got it. I'll remind you") and "Go to gym" in reply
+    assert "Noted" not in reply
+    [i] = intentions()
+    assert i.text == "Go to gym"
+
+
+def test_remember_that_with_a_plain_fact_is_saved_and_says_exactly_what(owner):
+    r = owner.post("/app/chat", json={"text": "remember that my flight is on Friday"})
+    assert r.json()["reply"] == "Saved to your notebook. Only you can see it."
+    assert intentions() == []
+
+
+def test_tomorrow_just_after_midnight_means_after_you_sleep():
+    from superaide.intentions.when import parse_reminder
+
+    late = datetime(2026, 10, 22, 0, 23, tzinfo=SG)  # Thursday, 00:23
+    parsed = parse_reminder("remind me to call mum tomorrow evening", late)
+    assert parsed is not None and parsed.due.strftime("%a %H:%M") == "Thu 18:00"

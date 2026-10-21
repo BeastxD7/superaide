@@ -138,11 +138,15 @@ def render(content: list[dict[str, Any]]) -> tuple[str, list[Cited]]:
             if n not in marks:
                 marks.append(n)
         if marks and parts and _is_quote(text, block.get("citations") or []):
-            # Some models put the quoted source itself in the cited block; the claim was
-            # already said in the block before, so mark that one instead of repeating it.
             prev = parts[-1]
             stripped = prev.rstrip()
-            parts[-1] = stripped + "".join(f" [{n}]" for n in marks) + prev[len(stripped) :]
+            mark = "".join(f" [{n}]" for n in marks)
+            if stripped.endswith(":"):
+                # The sentence introduces the quote ("your note says:"): show it, quoted.
+                parts[-1] = f"{stripped} \u201c{text.strip()}\u201d{mark}"
+            else:
+                # The model repeated its source after making the claim: mark the claim instead.
+                parts[-1] = stripped + mark + prev[len(stripped) :]
             continue
         if marks:
             stripped = text.rstrip()
@@ -204,6 +208,16 @@ class OwnerTurn:
         who = (
             f"You are talking to your owner, {self.sender.name}, privately. "
             f"It is {now:%A %d %B %Y, %H:%M} in their time zone ({tz})."
+        )
+        from superaide.knowledge.store import preferences_for
+        from superaide.proactive.notify import telegram_identity
+
+        telegram = telegram_identity(self.s, self.sender.person) is not None
+        on_telegram = telegram and preferences_for(self.s, self.sender.person).interrupt_channel == "telegram"
+        who += (
+            " Reminders and your daily briefing arrive in the Superaide app chat at the time they're due"
+            + (", and on Telegram too." if on_telegram else ".")
+            + ("" if telegram else " Telegram isn't linked yet; they can link it under Connections.")
         )
         skills = registry.instructions_for(self.skills())
         return [

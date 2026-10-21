@@ -99,7 +99,7 @@ def test_before_anyone_hires_every_owner_endpoint_is_403(app, browser):
 
 def test_the_owner_can_read_every_owner_page(app, owner_data, owner):
     for method, path in owner_routes(app):
-        if method == "GET":
+        if method == "GET" and not path.endswith("/callback"):  # OAuth callbacks are redirects, not pages
             assert owner.get(fill_path(path)).status_code == 200, path
 
 

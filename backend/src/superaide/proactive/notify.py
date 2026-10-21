@@ -17,7 +17,7 @@ from superaide.memory.store import get_or_create_context, log_event
 log = logging.getLogger(__name__)
 
 
-def _telegram_identity(session: Session, owner: Person) -> ChannelIdentity | None:
+def telegram_identity(session: Session, owner: Person) -> ChannelIdentity | None:
     return session.scalar(
         select(ChannelIdentity).where(
             ChannelIdentity.person_id == owner.id,
@@ -45,7 +45,7 @@ def notify_owner(session: Session, owner: Person, text: str, meta: dict[str, Any
         session, context=ctx, direction="out", content=text, audience=Audience(person_ids={owner.id}), meta=meta or {}
     )
     via = ["app"]
-    identity = _telegram_identity(session, owner)
+    identity = telegram_identity(session, owner)
     if identity is not None and preferences_for(session, owner).interrupt_channel == "telegram":
         try:
             if send_telegram(identity, text):

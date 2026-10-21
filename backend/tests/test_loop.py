@@ -328,3 +328,15 @@ def test_a_cited_block_that_only_repeats_the_quote_is_folded_into_the_sentence_b
     )
     assert text == "Your flight is Friday at 7:10am. [1]\n\nArjun is picking you up."
     assert [s.uri for s in sources] == ["ava://memory/aaa"]
+
+
+def test_a_quote_the_sentence_introduces_stays_quoted_without_a_stray_full_stop():
+    cite = {"type": "search_result_location", "source": "ava://msg/web/1", "title": "You", "cited_text": "gym at 12pm"}
+    text, _ = render(
+        [
+            {"type": "text", "text": "Your note from 21 Oct: "},
+            {"type": "text", "text": "gym at 12pm", "citations": [cite]},
+            {"type": "text", "text": "."},
+        ]
+    )
+    assert text == "Your note from 21 Oct: “gym at 12pm” [1]."
