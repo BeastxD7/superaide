@@ -31,6 +31,29 @@ Product questions raised:
 - The 404 page keeps the site's default title.
 - The "Can't reach Superaide… start.command" error wording is aimed at a developer, not a hosted user.
 
+## Files, links and the video call (`e2e/tests/intro-sources*.spec.ts`)
+
+| # | Severity | Bug | Test |
+|---|---|---|---|
+| F1 | Medium | A "partly readable" warning for a PDF with little text vanishes when Ava's reply re-mounts the panel. The file list never shows a document's warnings. | files › a warning about a partly readable file stays on screen |
+| F2 | Medium | A refused file or link isn't announced to screen readers: `Notice` has no `role="alert"`. This is the same root cause as A2. | files › a refused file is announced to screen readers |
+| F3 | Low–medium | Removing a file that's already gone fails silently. `remove()` in `steps.tsx` has no catch, so the row stays until a reload. | files › removing a file that was already removed elsewhere leaves a sane list |
+| F4 | Low | A 500 with a non-JSON body shows "Request failed with status code 500". This is axios's fallback in `lib/http.ts`, and the same as A5. | files › a server error while uploading shows a message a person can act on |
+| F5 | Low | A link over 2048 characters shows the validator's message instead of "That link is too long." | links › an over-long link gets a plain-language message |
+| F6 | Low | Finishing the call twice posts two identical "Thanks for the call…" lines. | video call › finishing the call twice posts one summary, not two |
+| F7 | Low | Ava's summary says "1 things": `_learned_summary` always uses the plural. | video call › after one answer, the summary says '1 thing' |
+| F8 | Low | A file row says "1 facts". | files › a file that has been read shows how many facts came from it, in plain English |
+| F9 | Low | The intro tabs don't follow the ARIA tabs pattern: no arrow keys, no roving tabindex, no `tabpanel`. | keyboard › the intro tabs follow the ARIA tabs pattern |
+| F10 | Low | Tab labels are cut off at 412px. Commit `4d1b3f6` (short labels on phones) may already fix this. | mobile › the intro tab labels are readable in full on a phone |
+
+Product questions raised:
+- Restarting the call begins again at question 1 and adds duplicate facts.
+- Leaving mid-call posts no acknowledgement.
+- The call endpoints accept answers at any step and in any order.
+- If speech recognition never starts, the call waits until the person clicks "Type instead".
+- Dropping several files keeps only the first, without saying so.
+- Offline, the summary reads "0 things … from 1 document".
+
 ## Fixed by the API test agent (`backend/tests/api/`)
 
 These came with their fixes:
