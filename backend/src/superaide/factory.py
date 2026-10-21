@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Any
 
 from pydantic import BaseModel
@@ -15,6 +16,7 @@ from superaide.channels.base import FakeMessenger, Messenger, WebMessenger
 from superaide.config import Settings, get_settings
 from superaide.db.session import session_scope
 from superaide.pipeline import Agent
+from superaide.tools.web import WebTools
 
 
 def demo_responder(
@@ -88,6 +90,9 @@ def build_llm(settings: Settings) -> LLM:
     from superaide.brain.providers.presets import PRESETS
 
     guard = BudgetGuard(settings.max_spend_usd, limits=Limits.from_settings(settings), prices=load_prices(settings))
+    web = WebTools(
+        guard, search_key=settings.brave_search_api_key, search_usd=Decimal(str(settings.web_search_usd_per_call))
+    )
     routes: dict[str, LLM] = {}
     if settings.anthropic_api_key:
         routes["anthropic"] = ClaudeLLM(guard, api_key=settings.anthropic_api_key)
@@ -96,7 +101,7 @@ def build_llm(settings: Settings) -> LLM:
             provider = OpenAICompatProvider(
                 guard, PRESETS[preset], api_key=cfg.get("api_key", ""), base_url=cfg.get("base_url", ""), id=preset
             )
-            routes[preset] = ProviderLLM(provider)
+            routes[preset] = ProviderLLM(provider, web=web)
     roles = {split(m)[0] for m in (settings.model_chat, settings.model_triage, settings.model_deep)}
     if set(routes) == {"anthropic"} and roles == {"anthropic"}:
         return routes["anthropic"]

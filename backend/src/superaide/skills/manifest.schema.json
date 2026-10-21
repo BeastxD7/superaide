@@ -87,6 +87,22 @@
           "default": null,
           "title": "Inputschema"
         },
+        "hosted": {
+          "anyOf": [
+            {
+              "enum": [
+                "web_search",
+                "web_fetch"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hosted"
+        },
         "server_tool": {
           "anyOf": [
             {
@@ -97,6 +113,7 @@
             }
           ],
           "default": null,
+          "description": "Deprecated: use hosted",
           "title": "Server Tool"
         },
         "mcp_server": {

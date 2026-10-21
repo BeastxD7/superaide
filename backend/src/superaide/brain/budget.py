@@ -192,17 +192,22 @@ class BudgetGuard:
         entry_id: uuid.UUID,
         *,
         model: str,
-        usage: UsageCounts,
+        usage: UsageCounts | None,
         request_id: str | None,
         batch: bool = False,
         provider: str = "anthropic",
         reported_cost_usd: Decimal | None = None,
         known: bool = True,
+        fixed_cost_usd: Decimal | None = None,
     ) -> Decimal:
         """Settle at the real price. With no usage from the provider (`known=False`) the call is
         settled at its reservation, never at 0. When the provider reports what it charged, the
         higher of that and our own figure counts, and a gap of more than 5% is audited."""
-        computed = cost_usd(model, usage, batch=batch, provider=provider, prices=self.prices) if known else None
+        usage = usage or UsageCounts()
+        if fixed_cost_usd is not None:  # a flat-priced call, e.g. one web search
+            computed: Decimal | None = fixed_cost_usd
+        else:
+            computed = cost_usd(model, usage, batch=batch, provider=provider, prices=self.prices) if known else None
         with session_scope(self.db_url) as s:
             entry = s.get(SpendEntry, entry_id)
             assert entry is not None

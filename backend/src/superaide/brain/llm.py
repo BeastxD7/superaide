@@ -129,9 +129,13 @@ class ProviderLLM:
     Conversation dicts are read into neutral messages; the provider's parts come back as the
     same block shapes the loop already understands, citations included."""
 
-    def __init__(self, provider: Any) -> None:
+    def __init__(self, provider: Any, web: Any = None) -> None:
         self.provider = provider
         self.guard = getattr(provider, "guard", None)
+        self.web = web  # Superaide's own web tools (tools/web.py), standing in for provider-run ones
+
+    def run_substitute(self, name: str, args: dict[str, Any]) -> tuple[Any, bool] | None:
+        return self.web.run(name, args) if self.web is not None else None
 
     def step(
         self,
@@ -150,7 +154,15 @@ class ProviderLLM:
         from superaide.brain.providers.anthropic import messages_from_wire, part_to_wire, tools_from_wire
 
         caps = self.provider.capabilities(model)
-        neutral_tools = [x for x in tools_from_wire(tools) if not isinstance(x, t.HostedTool) or caps.server_web_search]
+        native = {"web_search": caps.server_web_search, "web_fetch": caps.server_web_fetch}
+        own = self.web.specs() if self.web is not None else {}
+        neutral_tools: list[t.Tool] = []
+        for x in tools_from_wire(tools):
+            if not isinstance(x, t.HostedTool) or native[x.kind]:
+                neutral_tools.append(x)
+            elif x.kind in own:  # the provider can't search or read the web itself: use ours
+                spec = own[x.kind]
+                neutral_tools.append(t.ToolSpec(spec["name"], spec["description"], spec["input_schema"]))
 
         def relay(event: t.StreamEvent) -> None:
             assert on_event is not None
@@ -213,6 +225,13 @@ class RoutedLLM:
         if llm is None:
             raise RuntimeError(f"The model provider {provider!r} isn't connected")
         return llm, name
+
+    def run_substitute(self, name: str, args: dict[str, Any]) -> tuple[Any, bool] | None:
+        for llm in self.routes.values():
+            run = getattr(llm, "run_substitute", None)
+            if run is not None and (out := run(name, args)) is not None:
+                return out
+        return None
 
     def step(self, *, model: str, **kwargs: Any) -> StepResult:
         llm, name = self._route(model)

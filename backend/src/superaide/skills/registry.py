@@ -94,12 +94,14 @@ def tools_for(skills: list[Skill], *, web_allowed: bool) -> list[dict[str, Any]]
     tools: list[dict[str, Any]] = []
     for skill in skills:
         for tool in skill.manifest.tools:
-            if tool.server_tool:
+            if tool.hosted:
                 if not web_allowed:
                     continue
-                spec: dict[str, Any] = {"type": tool.server_tool, "name": tool.name}
-                spec["max_uses"] = WEB_SEARCHES_PER_STEP if tool.name == "web_search" else 3
-                if tool.name == "web_fetch":
+                from superaide.brain.providers.anthropic import HOSTED_TYPES
+
+                spec: dict[str, Any] = {"type": HOSTED_TYPES[tool.hosted], "name": tool.name}
+                spec["max_uses"] = WEB_SEARCHES_PER_STEP if tool.hosted == "web_search" else 3
+                if tool.hosted == "web_fetch":
                     spec["citations"] = {"enabled": True}
                 tools.append(spec)
             else:

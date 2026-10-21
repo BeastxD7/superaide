@@ -60,6 +60,10 @@ class Settings(BaseSettings):
     embed_monthly_usd: float = 1.00  # cap on Voyage spend in any 30 days (local costs nothing)
     # Let Ava search and read the web for the owner (costs US$0.01 a search, from the research budget)
     web_tools_enabled: bool = True
+    # Web search for models without a built-in one (Brave Search API). What one search costs on your
+    # plan, charged against the cap before each search.
+    brave_search_api_key: str = ""
+    web_search_usd_per_call: float = 0.01
 
     # Telegram
     telegram_bot_token: str = ""

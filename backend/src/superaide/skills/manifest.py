@@ -39,14 +39,23 @@ class Tool(BaseModel):
     name: str = Field(pattern=r"^[a-zA-Z0-9_-]{1,64}$")
     description: str = Field(min_length=1, max_length=1024)
     input_schema: dict[str, Any] | None = Field(default=None, alias="inputSchema")
-    server_tool: str | None = None  # an Anthropic server tool type, e.g. web_search_20250305
+    # A tool the model provider may run itself (ADR 0007, amending 0006); Superaide runs its own
+    # stand-in for providers that can't. Replaces `server_tool` (an Anthropic type string).
+    hosted: Literal["web_search", "web_fetch"] | None = None
+    server_tool: str | None = Field(default=None, description="Deprecated: use hosted")
     mcp_server: str | None = None  # or a tool served by this MCP server (a key in `connectors`)
     effect: Effect
 
     @model_validator(mode="after")
     def one_source(self) -> Tool:
-        if self.server_tool is None and self.input_schema is None:
-            raise ValueError("a tool needs an inputSchema (or is a server_tool)")
+        if self.server_tool is not None and self.hosted is None:  # accepted for one release
+            kind = self.server_tool.rsplit("_", 1)[0]
+            if kind not in {"web_search", "web_fetch"}:
+                raise ValueError(f"unknown server_tool {self.server_tool!r}; use hosted")
+            self.hosted = kind  # type: ignore[assignment]
+            self.server_tool = None
+        if self.hosted is None and self.input_schema is None:
+            raise ValueError("a tool needs an inputSchema (or is hosted)")
         return self
 
 
@@ -94,8 +103,8 @@ class Manifest(BaseModel):
     @model_validator(mode="after")
     def community_limits(self) -> Manifest:
         if self.tier == "community":
-            if any(t.server_tool for t in self.tools):
-                raise ValueError("community skills can't use Superaide's server tools")
+            if any(t.hosted for t in self.tools):
+                raise ValueError("community skills can't use hosted tools")
             if any(t.effect in {"send", "spend"} for t in self.tools):
                 raise ValueError("community skills can't send or spend until reviewed")
         return self

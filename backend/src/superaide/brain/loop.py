@@ -410,6 +410,13 @@ class OwnerTurn:
             assert self.sender.person is not None
             self.notes.append("calendar")
             return calendar_events(self.s, self.sender.person, args)
+        # Tools Superaide runs for models that can't (ADR 0007): web search and fetch.
+        run = getattr(self.llm, "run_substitute", None)
+        if run is not None and (out := run(name, args)) is not None:
+            if name in {"web_search", "web_fetch"}:
+                self.tainted = True  # web text entered the turn
+                self.notes.append(name)
+            return out
         return f"Unknown tool {name!r}.", True
 
     def _moment(self, moment: str) -> tuple[datetime, str] | str:

@@ -7,8 +7,8 @@
   "title": "Web research",
   "summary": "Ava searches and reads the web for you and cites every page she uses. About US$0.01 a search.",
   "tools": [
-    {"name": "web_search", "description": "Anthropic web search (server tool).", "server_tool": "web_search_20250305", "effect": "read_public"},
-    {"name": "web_fetch", "description": "Anthropic web fetch (server tool).", "server_tool": "web_fetch_20250910", "effect": "read_public"}
+    {"name": "web_search", "description": "Search the web (the model provider's, or Superaide's own).", "hosted": "web_search", "effect": "read_public"},
+    {"name": "web_fetch", "description": "Read a web page (the model provider's, or Superaide's own).", "hosted": "web_fetch", "effect": "read_public"}
   ],
   "network": ["*"],
   "budget": {"bucket": "research", "per_use_usd": 0.01},

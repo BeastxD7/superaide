@@ -86,7 +86,7 @@ def test_a_valid_community_skill_loads(tmp_path):
                 ]
             },
             None,
-            "server tools",
+            "hosted tools",
         ),
     ],
 )

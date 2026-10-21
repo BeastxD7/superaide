@@ -23,6 +23,7 @@ from superaide.vault.crypto import decrypt, encrypt, mask
 # Which stored credential fills which setting.
 FIELDS: dict[tuple[str, str], str] = {
     ("anthropic", "api_key"): "anthropic_api_key",
+    ("brave", "api_key"): "brave_search_api_key",
     ("telegram", "bot_token"): "telegram_bot_token",
     ("slack", "bot_token"): "slack_bot_token",
     ("slack", "app_token"): "slack_app_token",

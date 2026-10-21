@@ -1,0 +1,1 @@
+"""Tools Superaide runs itself."""
