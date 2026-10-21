@@ -11,6 +11,8 @@ import logging
 import re
 from dataclasses import dataclass, field
 
+from sqlalchemy.exc import IntegrityError
+
 from superaide.audit import audit
 from superaide.brain.budget import AgentFrozen, BudgetExceeded
 from superaide.brain.llm import LLM
@@ -23,7 +25,14 @@ from superaide.db.session import session_scope
 from superaide.identity import linking
 from superaide.identity.resolver import Sender, resolve
 from superaide.knowledge.profile import owner_brief
-from superaide.memory.store import get_or_create_context, log_event, parse_remember, recent_events, remember
+from superaide.memory.store import (
+    get_or_create_context,
+    log_event,
+    parse_remember,
+    recent_events,
+    remember,
+    seen_before,
+)
 from superaide.policy.actions import decide
 from superaide.policy.killswitch import is_frozen
 
@@ -37,9 +46,19 @@ def parse_start_code(text: str) -> str | None:
     return m.group(1) if m else None
 
 
+def thread_of(msg: InboundMessage) -> str:
+    """Where the conversation continues: the message's thread, or for an @-mention in a
+    Slack channel a new thread under that message (so replies don't flood the channel)."""
+    if msg.thread_id:
+        return msg.thread_id
+    if msg.provider == "slack" and msg.chat_kind == "group":
+        return msg.message_id
+    return ""
+
+
 @dataclass
 class HandleResult:
-    mode: str  # dropped | frozen | stranger | known
+    mode: str  # dropped | duplicate | frozen | stranger | known
     reply: str | None = None
     notes: list[str] = field(default_factory=list)
 
@@ -63,7 +82,18 @@ class Agent:
             sender = resolve(s, msg)
             ctx = get_or_create_context(s, msg)
             aud = audience_for(ctx, sender)
-            inbound = log_event(s, context=ctx, direction="in", content=msg.text, audience=aud, sender=sender)
+            if seen_before(s, ctx, msg.message_id):
+                audit(s, "pipeline", "duplicate_dropped", provider=msg.provider, message_id=msg.message_id[:120])
+                return HandleResult("duplicate")
+            thread = thread_of(msg)
+            try:
+                with s.begin_nested():  # two deliveries racing: the unique index lets only one through
+                    inbound = log_event(
+                        s, context=ctx, direction="in", content=msg.text, audience=aud, sender=sender,
+                        external_id=msg.message_id, thread_id=msg.thread_id,
+                    )  # fmt: skip
+            except IntegrityError:
+                return HandleResult("duplicate")
 
             if is_frozen(s):
                 audit(s, "pipeline", "frozen_no_reply", event_id=inbound.id)
@@ -82,23 +112,23 @@ class Agent:
                         if person
                         else "That link has expired or was already used. Make a new one in the app."
                     )
-                self._reply(s, ctx, aud, reply)
+                self._reply(s, ctx, aud, reply, thread)
                 return HandleResult("known" if sender.known else "stranger", reply, ["invite"])
 
             if not sender.known:
                 reply = self._stranger(s, sender, msg)
-                self._reply(s, ctx, aud, reply)
+                self._reply(s, ctx, aud, reply, thread)
                 return HandleResult("stranger", reply)
 
             fact = parse_remember(msg.text)
             if fact is not None and ctx.kind == "dm":
                 remember(s, content=fact, sender=sender, context=ctx, audience=aud, source_event=inbound)
                 reply = "Noted. I'll only bring that up with you, in private."
-                self._reply(s, ctx, aud, reply)
+                self._reply(s, ctx, aud, reply, thread)
                 return HandleResult("known", reply, ["remembered"])
 
             reply, notes = self._think(s, sender, ctx, aud, msg)
-            self._reply(s, ctx, aud, reply)
+            self._reply(s, ctx, aud, reply, thread)
             return HandleResult("known", reply, notes)
 
     # --- strangers -------------------------------------------------------------
@@ -152,7 +182,7 @@ class Agent:
         is_owner = sender.relation == "manager" and aud.person_ids == {sender.person.id} if sender.person else False
         memories = visible_memories(s, aud, limit=30 if is_owner else 5)
         system = build_system(self.name, sender, aud, memories, brief=owner_brief(s, sender, aud))
-        messages = build_messages(recent_events(s, ctx), msg.text)
+        messages = build_messages(recent_events(s, ctx, thread_id=thread_of(msg)), msg.text)
         try:
             result = self.llm.complete(
                 purpose="chat_turn",
@@ -197,10 +227,10 @@ class Agent:
 
     # --- output ------------------------------------------------------------------
 
-    def _reply(self, s, ctx: Context, aud: Audience, text: str) -> None:
+    def _reply(self, s, ctx: Context, aud: Audience, text: str, thread: str = "") -> None:
         messenger = self.messengers.get(ctx.provider)
         if messenger is None:
             audit(s, "pipeline", "no_messenger", provider=ctx.provider)
             return
-        messenger.send_to_context(ctx, text)
-        log_event(s, context=ctx, direction="out", content=text, audience=aud)
+        messenger.send_to_context(ctx, text, thread)
+        log_event(s, context=ctx, direction="out", content=text, audience=aud, thread_id=thread)

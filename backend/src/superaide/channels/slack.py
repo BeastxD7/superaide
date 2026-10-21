@@ -63,6 +63,7 @@ def parse_event(payload: dict[str, Any], *, our_team_id: str, verified: bool) ->
         text=text,
         verified=verified,
         message_id=event.get("ts", ""),
+        thread_id=event.get("thread_ts", "") if event.get("thread_ts") != event.get("ts") else "",
         external_sender=external,
         raw=payload,
     )
@@ -80,8 +81,11 @@ class SlackMessenger:
         opened = self.client.conversations_open(users=identity.stable_key)
         self.client.chat_postMessage(channel=opened["channel"]["id"], text=text)
 
-    def send_to_context(self, context: Context, text: str) -> None:
-        self.client.chat_postMessage(channel=context.external_id, text=text)
+    def send_to_context(self, context: Context, text: str, thread_id: str = "") -> None:
+        if thread_id:
+            self.client.chat_postMessage(channel=context.external_id, text=text, thread_ts=thread_id)
+        else:
+            self.client.chat_postMessage(channel=context.external_id, text=text)
 
 
 def run_socket_mode(bot_token: str, app_token: str, our_team_id: str, handle: Callable[[InboundMessage], Any]) -> None:

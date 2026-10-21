@@ -19,7 +19,8 @@ class InboundMessage:
     verified: bool  # webhook signature / secret checked, or authenticated socket
     sender_display: str = ""  # display only, never used to decide anything
     sender_username: str = ""
-    message_id: str = ""
+    message_id: str = ""  # the platform's id for this message, used to drop redeliveries
+    thread_id: str = ""  # Slack thread_ts or Telegram topic; "" for the main conversation
     external_sender: bool = False  # e.g. Slack Connect user from another company
     chat_title: str = ""
     raw: dict[str, Any] = field(default_factory=dict)
@@ -28,7 +29,7 @@ class InboundMessage:
 class Messenger(Protocol):
     def send_dm(self, identity: ChannelIdentity, text: str) -> None: ...
 
-    def send_to_context(self, context: Context, text: str) -> None: ...
+    def send_to_context(self, context: Context, text: str, thread_id: str = "") -> None: ...
 
 
 @dataclass
@@ -40,8 +41,8 @@ class FakeMessenger:
     def send_dm(self, identity: ChannelIdentity, text: str) -> None:
         self.sent.append({"to_identity": str(identity.id), "stable_key": identity.stable_key, "text": text})
 
-    def send_to_context(self, context: Context, text: str) -> None:
-        self.sent.append({"to_context": context.external_id, "text": text})
+    def send_to_context(self, context: Context, text: str, thread_id: str = "") -> None:
+        self.sent.append({"to_context": context.external_id, "text": text, "thread_id": thread_id})
 
 
 class WebMessenger:
@@ -51,5 +52,5 @@ class WebMessenger:
     def send_dm(self, identity: ChannelIdentity, text: str) -> None:
         return None
 
-    def send_to_context(self, context: Context, text: str) -> None:
+    def send_to_context(self, context: Context, text: str, thread_id: str = "") -> None:
         return None

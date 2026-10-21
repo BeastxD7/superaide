@@ -50,6 +50,7 @@ def parse_update(update: dict[str, Any], *, verified: bool) -> InboundMessage | 
         sender_display=f"{first} {last}".strip(),
         sender_username=sender.get("username", ""),
         message_id=str(message.get("message_id", "")),
+        thread_id=str(message.get("message_thread_id") or "") if message.get("is_topic_message") else "",
         chat_title=chat.get("title", ""),
         raw=update,
     )
@@ -60,8 +61,11 @@ class TelegramMessenger:
         self.base = f"https://api.telegram.org/bot{token}"
         self.http = client or httpx.Client(timeout=15)
 
-    def _send(self, chat_id: str, text: str) -> None:
-        r = self.http.post(f"{self.base}/sendMessage", json={"chat_id": chat_id, "text": text})
+    def _send(self, chat_id: str, text: str, thread_id: str = "") -> None:
+        body: dict[str, Any] = {"chat_id": chat_id, "text": text}
+        if thread_id.isdigit():  # a forum topic
+            body["message_thread_id"] = int(thread_id)
+        r = self.http.post(f"{self.base}/sendMessage", json=body)
         if r.status_code != 200:
             log.warning("telegram send failed: %s %s", r.status_code, r.text[:200])
 
@@ -70,8 +74,8 @@ class TelegramMessenger:
         # started the bot once, or Telegram refuses the message.
         self._send(identity.stable_key, text)
 
-    def send_to_context(self, context: Context, text: str) -> None:
-        self._send(context.external_id, text)
+    def send_to_context(self, context: Context, text: str, thread_id: str = "") -> None:
+        self._send(context.external_id, text, thread_id)
 
 
 def poll_forever(token: str, handle: Callable[[InboundMessage], Any], stop: threading.Event | None = None) -> None:

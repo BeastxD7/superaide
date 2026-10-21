@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from superaide.audit import audit
@@ -60,8 +60,12 @@ def log_event(
     sender: Sender | None = None,
     verified: bool = True,
     meta: dict | None = None,
+    external_id: str = "",
+    thread_id: str = "",
 ) -> Event:
     event = Event(
+        external_id=external_id or None,
+        thread_id=thread_id or None,
         context_id=context.id,
         direction=direction,
         sender_identity_id=sender.identity.id if sender else None,
@@ -78,9 +82,32 @@ def log_event(
     return event
 
 
-def recent_events(session: Session, context: Context, limit: int = 12) -> list[Event]:
+def seen_before(session: Session, context: Context, external_id: str) -> bool:
+    """Whether this inbound message was already logged (a platform redelivery)."""
+    if not external_id:
+        return False
+    return (
+        session.scalar(
+            select(Event.id).where(
+                Event.context_id == context.id, Event.direction == "in", Event.external_id == external_id
+            )
+        )
+        is not None
+    )
+
+
+def recent_events(session: Session, context: Context, limit: int = 12, thread_id: str = "") -> list[Event]:
+    """The latest messages of this conversation: one thread, or the main conversation outside threads."""
+    in_thread = (
+        or_(Event.thread_id == thread_id, Event.external_id == thread_id)  # the thread's first message
+        if thread_id
+        else Event.thread_id.is_(None)
+    )
     rows = session.scalars(
-        select(Event).where(Event.context_id == context.id).order_by(Event.created_at.desc(), Event.id).limit(limit)
+        select(Event)
+        .where(Event.context_id == context.id, in_thread)
+        .order_by(Event.created_at.desc(), Event.id)
+        .limit(limit)
     ).all()
     return list(reversed(rows))
 

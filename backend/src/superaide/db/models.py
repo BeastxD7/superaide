@@ -136,6 +136,16 @@ class Event(Scoped, Base):
     """Every message in and out: the raw episodic log. Append-only."""
 
     __tablename__ = "event"
+    __table_args__ = (
+        Index(
+            "uq_event_inbound_external_id",
+            "context_id",
+            "external_id",
+            unique=True,
+            postgresql_where=text("direction = 'in' AND external_id IS NOT NULL"),
+        ),
+        Index("ix_event_context_thread", "context_id", "thread_id"),
+    )
 
     context_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("context.id"), index=True)
     direction: Mapped[str] = mapped_column(String(10))  # in | out
@@ -147,6 +157,10 @@ class Event(Scoped, Base):
     content: Mapped[str] = mapped_column(Text)
     meta: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     webhook_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    # The platform's own ids: a redelivered message (Slack retry, Telegram re-poll)
+    # hits the unique index below and is dropped; threads keep their own history.
+    external_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    thread_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
 
 
 # --- Memory ------------------------------------------------------------------------
