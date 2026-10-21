@@ -13,8 +13,9 @@ const nextConfig: NextConfig = {
   output: process.env.NEXT_OUTPUT === 'standalone' ? 'standalone' : undefined,
   poweredByHeader: false,
   // Next's dev server blocks its own scripts for other host names; start.command
-  // users may open the app as 127.0.0.1 as well as localhost.
-  allowedDevOrigins: ['127.0.0.1'],
+  // users may open the app as 127.0.0.1 as well as localhost, and DEV_ORIGINS adds
+  // more (comma-separated), e.g. the Mac's Wi-Fi address to try it on a phone.
+  allowedDevOrigins: ['127.0.0.1', ...(process.env.DEV_ORIGINS ?? '').split(',').map((h) => h.trim()).filter(Boolean)],
   // Keep Next's dev badge clear of the dashboard's account button (bottom left).
   devIndicators: { position: 'bottom-right' },
   reactStrictMode: true,

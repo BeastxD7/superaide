@@ -191,6 +191,12 @@ if [ ! -d frontend/node_modules ] || [ frontend/package-lock.json -nt frontend/n
   (cd frontend && npm ci --no-audit --no-fund --loglevel=error)
 fi
 bold "Starting the frontend (Next.js) on http://localhost:$WEB_PORT …"
+# On the same Wi-Fi, a phone can open the app at the Mac's address (dev only, plain http).
+LAN_IP="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)"
+if [ -n "$LAN_IP" ]; then
+  export DEV_ORIGINS="${DEV_ORIGINS:+$DEV_ORIGINS,}$LAN_IP"
+  echo "On your phone (same Wi-Fi): http://$LAN_IP:$WEB_PORT"
+fi
 (cd frontend && API_INTERNAL_URL="http://127.0.0.1:$API_PORT" exec ./node_modules/.bin/next dev --port "$WEB_PORT") &
 PIDS+=($!)
 
