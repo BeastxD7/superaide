@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { api, type Connection, type PersonRow } from '@/features/console/api'
+import { BrandIcon } from '@/components/BrandIcon'
+import { isBrand } from '@/components/brands/marks'
 import { TrustTier } from '@/features/console/components/TrustTier'
 import { ago, METHOD_NAMES } from '@/features/console/format'
 import { useApi } from '@/features/console/useApi'
@@ -80,7 +82,10 @@ export function People({ conn }: { conn: Connection }) {
               {p.identities.map((i) => (
                 <tr key={i.id}>
                   <td>
-                    <span className="provider">{i.provider}</span>
+                    <span className="provider brand-label">
+                      {isBrand(i.provider) && <BrandIcon brand={i.provider} size={14} decorative />}
+                      {i.provider}
+                    </span>
                     {i.display_name && <span className="quiet"> shows as "{i.display_name}"</span>}
                     {i.risk_flags.includes('external') && <span className="badge refused">Outside company</span>}
                   </td>

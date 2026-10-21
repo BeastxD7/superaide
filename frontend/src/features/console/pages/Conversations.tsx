@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import type { Connection, Conversation, EventRow } from '@/features/console/api'
+import { BrandIcon } from '@/components/BrandIcon'
+import { isBrand } from '@/components/brands/marks'
 import { TrustTier } from '@/features/console/components/TrustTier'
 import { AUDIENCE_NAMES, ago } from '@/features/console/format'
 import { useApi } from '@/features/console/useApi'
@@ -31,7 +33,8 @@ export function Conversations({ conn }: { conn: Connection }) {
             aria-current={c.id === active}
             onClick={() => setSelected(c.id)}
           >
-            <span className="conv-title">
+            <span className="conv-title brand-label">
+              {isBrand(c.provider) && <BrandIcon brand={c.provider} size={14} decorative />}
               {c.provider} {c.kind === 'dm' ? 'DM' : 'group'}
             </span>
             <span className={`audience audience-${c.audience_class}`}>{AUDIENCE_NAMES[c.audience_class] ?? c.audience_class}</span>

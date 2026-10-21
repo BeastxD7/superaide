@@ -17,7 +17,6 @@ import {
   Paperclip,
   Phone,
   Plus,
-  Send,
   ShieldCheck,
   Sparkles,
   Trash2,
@@ -29,6 +28,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from 'react'
 import { AppError, call, upload, type IngestResult, type Me, type SharedDoc, type StepInput } from '@/lib/api'
 import { Connections } from '@/features/workspace/Connections'
+import { BrandIcon } from '@/components/BrandIcon'
 import { Button, Notice } from '@/components/site'
 
 // The answer panel for each step of the introduction. Each control calls
@@ -386,10 +386,14 @@ function FilesAndLinks({ documents, reload, onContinue }: { documents: SharedDoc
       {documents.length > 0 && (
         <ul className="space-y-1.5">
           {documents.map((d) => {
-            const Icon = d.kind === 'web' || d.kind === 'github' ? Globe : FileText
+            const Icon = d.kind === 'web' ? Globe : FileText
             return (
               <li key={d.id} className="flex items-center gap-3 rounded-xl bg-white px-3 py-2 text-sm">
-                <Icon className="size-4 shrink-0 text-violet-600" />
+                {d.kind === 'github' ? (
+                  <BrandIcon brand="github" size={16} label="GitHub" className="text-ink" />
+                ) : (
+                  <Icon className="size-4 shrink-0 text-violet-600" />
+                )}
                 <span className="min-w-0 flex-1 truncate text-ink" title={d.source}>
                   {d.title}
                 </span>
@@ -523,13 +527,14 @@ function ReachPicker({ input, onAnswer }: { input: Extract<StepInput, { kind: 'r
   const [start, setStart] = useState(input.quiet_start)
   const [end, setEnd] = useState(input.quiet_end)
   const [vip, setVip] = useState(input.vip_breaks_quiet)
-  const icons: Record<string, typeof Send> = { app: MessageCircle, telegram: Send, call: Phone }
+  const icons: Record<string, typeof Phone> = { app: MessageCircle, call: Phone }
   return (
     <div>
       <div className="grid gap-2 sm:grid-cols-3">
         {input.channels.map((c) => {
           const Icon = icons[c.value] ?? MessageCircle
           const on = channel === c.value
+          const brand = c.value === 'telegram' ? 'telegram' : c.value === 'slack' ? 'slack' : null
           return (
             <button
               key={c.value}
@@ -540,7 +545,7 @@ function ReachPicker({ input, onAnswer }: { input: Extract<StepInput, { kind: 'r
                 on ? 'border-violet-500 bg-lilac-50' : 'border-transparent bg-white hover:border-lilac-200'
               }`}
             >
-              <Icon className="size-5 text-violet-600" />
+              {brand ? <BrandIcon brand={brand} size={20} decorative /> : <Icon className="size-5 text-violet-600" />}
               <span className="mt-2 block text-sm font-medium text-ink">{c.label}</span>
               {c.note && <span className="block text-xs text-muted">{c.note}</span>}
             </button>

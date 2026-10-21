@@ -2,6 +2,7 @@
 
 import { BadgeCheck, Puzzle, ShieldCheck } from 'lucide-react'
 import { useState } from 'react'
+import { BrandIcon, type Brand } from '@/components/BrandIcon'
 import { Notice } from '@/components/site'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -9,6 +10,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useAppData } from '@/features/dashboard/data'
 import { AppError, call, type SkillCard } from '@/lib/api'
 import { useSession } from '@/lib/session-context'
+
+// Skills that wrap a branded service show that service's logo; the rest keep the generic piece.
+const SKILL_BRAND: Record<string, Brand> = {
+  'superaide/google-calendar': 'googlecalendar',
+}
 
 export function SkillsPage() {
   const { me } = useSession()
@@ -59,9 +65,15 @@ export function SkillsPage() {
             return (
               <li key={s.id} className="flex flex-col rounded-xl border border-line bg-white p-4" aria-label={s.title}>
                 <div className="flex items-start gap-3">
-                  <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-lilac-100 text-violet-600">
-                    <Puzzle className="size-4.5" aria-hidden />
-                  </span>
+                  {SKILL_BRAND[s.id] ? (
+                    <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-line bg-white">
+                      <BrandIcon brand={SKILL_BRAND[s.id]} size={20} decorative />
+                    </span>
+                  ) : (
+                    <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-lilac-100 text-violet-600">
+                      <Puzzle className="size-4.5" aria-hidden />
+                    </span>
+                  )}
                   <div className="min-w-0 flex-1">
                     <p className="flex flex-wrap items-center gap-1.5 font-medium text-ink">
                       {s.title}

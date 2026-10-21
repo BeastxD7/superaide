@@ -1,6 +1,7 @@
 'use client'
 
 import type { Overview as OverviewData } from '@/features/console/api'
+import { BrandIcon } from '@/components/BrandIcon'
 import { GrowthTrack } from '@/features/console/components/GrowthTrack'
 import { usd } from '@/features/console/format'
 
@@ -19,23 +20,26 @@ export function Overview({ data }: { data: OverviewData }) {
   const status = [
     {
       name: 'Brain',
+      brand: 'claude',
       ok: real,
       on: 'Real Claude replies, inside the spend cap.',
       off: 'Offline: replies are echoes. Put your key in ANTHROPIC_API_KEY in .env and restart.',
     },
     {
       name: 'Telegram',
+      brand: 'telegram',
       ok: data.channels.telegram,
       on: 'Connected. Message your bot from your phone.',
       off: 'Not connected. Create a bot with @BotFather, put its token in TELEGRAM_BOT_TOKEN in .env, restart.',
     },
     {
       name: 'Slack',
+      brand: 'slack',
       ok: data.channels.slack,
       on: 'Connected over Socket Mode.',
       off: 'Not connected (optional). Connect Slack in the app under Connections.',
     },
-  ]
+  ] as const
 
   return (
     <div className="overview">
@@ -45,7 +49,10 @@ export function Overview({ data }: { data: OverviewData }) {
           {status.map((s) => (
             <li key={s.name} className={s.ok ? 'live-row ok' : 'live-row off'}>
               <span className="live-dot" aria-hidden="true" />
-              <span className="live-name">{s.name}</span>
+              <span className="live-name brand-label">
+                <BrandIcon brand={s.brand} size={14} decorative />
+                {s.name}
+              </span>
               <span className="live-text">{s.ok ? s.on : s.off}</span>
             </li>
           ))}

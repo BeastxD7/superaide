@@ -1,9 +1,10 @@
 'use client'
 
-import { Check, ChevronDown, ExternalLink, Hash, KeyRound, MessageCircle, Send, Sparkles } from 'lucide-react'
+import { Check, ChevronDown, ExternalLink, KeyRound } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { AppError, call, type Me } from '@/lib/api'
+import { BrandIcon } from '@/components/BrandIcon'
 import { Button, Notice } from '@/components/site'
 import { GoogleCalendarRow, type GoogleGuide, type GoogleService } from '@/features/workspace/GoogleCalendar'
 
@@ -71,15 +72,15 @@ export function Connections({ agentName, me, refreshMe }: { agentName: string; m
   if (!status) return error ? <Notice tone="error">{error}</Notice> : <p className="text-sm text-muted">Checking connections…</p>
 
   const rows = [
-    { key: 'anthropic', icon: Sparkles, name: `Claude, ${agentName}'s brain`, why: 'Real replies and reading your files' },
-    { key: 'telegram', icon: Send, name: 'Telegram', why: 'Message me from your phone' },
-    { key: 'slack', icon: Hash, name: 'Slack', why: 'Your team can reach me in Slack' },
+    { key: 'anthropic', brand: 'claude', name: `Claude, ${agentName}'s brain`, why: 'Real replies and reading your files' },
+    { key: 'telegram', brand: 'telegram', name: 'Telegram', why: 'Message me from your phone' },
+    { key: 'slack', brand: 'slack', name: 'Slack', why: 'Your team can reach me in Slack' },
   ] as const
   const where = status.keys_kept_in === 'keychain' ? 'your Mac’s Keychain' : status.keys_kept_in
 
   return (
     <div className="space-y-2">
-      {rows.map(({ key, icon: Icon, name, why }) => {
+      {rows.map(({ key, brand, name, why }) => {
         const s = status.services[key]
         const expanded = open === key
         return (
@@ -89,8 +90,8 @@ export function Connections({ agentName, me, refreshMe }: { agentName: string; m
               aria-expanded={expanded}
               className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-lilac-50"
             >
-              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-lilac-100 text-violet-600">
-                <Icon className="size-4" />
+              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-lilac-100">
+                <BrandIcon brand={brand} size={18} decorative />
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-medium text-ink">{name}</span>
@@ -151,8 +152,8 @@ export function Connections({ agentName, me, refreshMe }: { agentName: string; m
         }}
       />
       <div className="flex items-center gap-3 rounded-2xl bg-white/60 px-4 py-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-mist text-muted">
-          <MessageCircle className="size-4" />
+        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-mist">
+          <BrandIcon brand="whatsapp" size={18} decorative />
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-medium text-ink">WhatsApp</span>

@@ -3,6 +3,8 @@
 import { AlarmClock, ArrowRight, BookOpen, Check, Clock, MessageCircle, Plug, ShieldCheck, Star, Users } from 'lucide-react'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
+import { BrandIcon } from '@/components/BrandIcon'
+import { isBrand } from '@/components/brands/marks'
 import { Orb } from '@/components/Orb'
 import { ApprovalsCard } from '@/features/dashboard/Approvals'
 import { STAGES } from '@/components/site'
@@ -149,11 +151,18 @@ function ReachCard({ me }: { me: Me }) {
         <ul className="space-y-2.5">
           {rows.map((r) => (
             <li key={r.key} className="flex items-center gap-3 text-sm">
-              <span className={`grid size-6 place-items-center rounded-full ${r.on ? 'bg-lilac-100 text-violet-700' : 'bg-mist text-muted'}`}>
-                {r.on ? <Check className="size-3.5" /> : <Plug className="size-3.5" />}
+              <span className="grid size-6 place-items-center">
+                {isBrand(r.key) ? (
+                  <BrandIcon brand={r.key} size={18} decorative />
+                ) : (
+                  <MessageCircle className="size-4 text-violet-600" aria-hidden />
+                )}
               </span>
               <span className="font-medium text-ink">{CHANNEL_LABEL[r.key]}</span>
-              <span className="ml-auto text-muted">{r.note}</span>
+              <span className={`ml-auto inline-flex items-center gap-1 ${r.on ? 'text-ok' : 'text-muted'}`}>
+                {r.on ? <Check className="size-3.5" aria-hidden /> : <Plug className="size-3.5" aria-hidden />}
+                {r.note}
+              </span>
             </li>
           ))}
         </ul>

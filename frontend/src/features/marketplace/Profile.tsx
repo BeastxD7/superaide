@@ -2,16 +2,17 @@
 
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Check, ChevronLeft, MessageCircle, Send, ShieldCheck, Hash } from 'lucide-react'
+import { Check, ChevronLeft, MessageCircle, ShieldCheck } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { call, type AgentCard } from '@/lib/api'
 import type { Session } from '@/lib/session-context'
+import { BrandIcon, type Brand } from '@/components/BrandIcon'
 import { Orb } from '@/components/Orb'
 import { homeFor } from '@/lib/session'
 import { Button, NavBar, STAGES } from '@/components/site'
 
-const CHANNEL_ICONS: Record<string, typeof Send> = { 'In the app': MessageCircle, Telegram: Send, Slack: Hash }
+const CHANNEL_BRANDS: Record<string, Brand> = { Telegram: 'telegram', Slack: 'slack', WhatsApp: 'whatsapp', Discord: 'discord' }
 
 type ProfileProps = { slug: string; session: Session; initialAgents?: AgentCard[] | null }
 
@@ -178,10 +179,15 @@ export function Profile({ slug, session, initialAgents = null }: ProfileProps) {
               <h2 className="text-xl font-medium tight">Where you can talk to {agent.name}</h2>
               <ul className="mt-5 flex flex-wrap gap-2">
                 {agent.channels.map((c) => {
-                  const Icon = CHANNEL_ICONS[c] ?? MessageCircle
+                  const brand = CHANNEL_BRANDS[c]
                   return (
                     <li key={c} className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm text-ink">
-                      <Icon className="size-4 text-violet-600" /> {c}
+                      {brand ? (
+                        <BrandIcon brand={brand} size={16} decorative />
+                      ) : (
+                        <MessageCircle className="size-4 text-violet-600" aria-hidden />
+                      )}{' '}
+                      {c}
                     </li>
                   )
                 })}

@@ -1,6 +1,8 @@
 'use client'
 
 import { Star } from 'lucide-react'
+import { BrandIcon } from '@/components/BrandIcon'
+import { isBrand } from '@/components/brands/marks'
 import { Notice } from '@/components/site'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -60,7 +62,16 @@ export function PeoplePage() {
                   </td>
                   <td className="px-4 py-3 text-body">{capitalise(p.relationship)}</td>
                   <td className="hidden px-4 py-3 text-body sm:table-cell">
-                    {p.channels.length ? p.channels.map((c) => CHANNEL_LABEL[c] ?? capitalise(c)).join(', ') : (
+                    {p.channels.length ? (
+                      <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        {p.channels.map((c) => (
+                          <span key={c} className="inline-flex items-center gap-1.5">
+                            {isBrand(c) && <BrandIcon brand={c} size={14} decorative />}
+                            {CHANNEL_LABEL[c] ?? capitalise(c)}
+                          </span>
+                        ))}
+                      </span>
+                    ) : (
                       <span className="text-muted">Not linked yet</span>
                     )}
                   </td>

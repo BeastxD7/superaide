@@ -4,7 +4,6 @@ import {
   BadgeCheck,
   Bell,
   Brain,
-  CalendarDays,
   Check,
   ChevronRight,
   FileText,
@@ -18,17 +17,19 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
+import { BrandIcon, type Brand } from '@/components/BrandIcon'
 import type { WorkStep } from '@/lib/api'
 
 const TOOL_ICON: Record<string, LucideIcon> = {
   recall: Search,
   create_reminder: Bell,
-  calendar_events: CalendarDays,
   web_search: Globe,
   web_fetch: FileText,
   propose_action: ShieldCheck,
   verify: BadgeCheck,
 }
+// Tools that talk to a branded service show its logo instead.
+const TOOL_BRAND: Record<string, Brand> = { calendar_events: 'googlecalendar' }
 
 // What Ava did while answering: each tool or skill call with how it went, the lines where
 // she says what she's doing, and her reasoning. Live while she works, folded away after.
@@ -87,6 +88,7 @@ function Step({ step }: { step: WorkStep }) {
     )
   }
   const Icon = TOOL_ICON[step.name ?? ''] ?? Wrench
+  const brand = TOOL_BRAND[step.name ?? '']
   const state = step.state ?? 'done'
   return (
     <motion.li
@@ -96,7 +98,11 @@ function Step({ step }: { step: WorkStep }) {
       data-state={state}
       data-tool={step.name}
     >
-      <Icon className="mt-0.5 size-3.5 shrink-0 text-violet-600" aria-hidden />
+      {brand ? (
+        <BrandIcon brand={brand} size={14} decorative className="mt-0.5" />
+      ) : (
+        <Icon className="mt-0.5 size-3.5 shrink-0 text-violet-600" aria-hidden />
+      )}
       <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
         <span className="text-ink">{step.label}</span>
         {step.detail && <span className="text-muted"> · {step.detail}</span>}

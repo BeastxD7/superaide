@@ -2,9 +2,10 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { BookOpen, Check, Hash, Lock, MessageCircle, Send, ShieldCheck, Smartphone } from 'lucide-react'
+import { BookOpen, Check, Lock, MessageCircle, ShieldCheck, Smartphone } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useEffect, useState } from 'react'
+import { BrandIcon } from '@/components/BrandIcon'
 import { call, type AgentCard } from '@/lib/api'
 import type { Session } from '@/lib/session-context'
 import { Orb, huePanel } from '@/components/Orb'
@@ -197,12 +198,12 @@ export function Marketplace({ session, initialAgents = null }: { session: Sessio
             <Bento tone="bg-lilac-100" title="Knows it's you, on any app" text="Talk in the app, on Telegram or in Slack. A new account only counts as you after a one-time code from one Ava already trusts.">
               <div className="flex flex-wrap gap-2">
                 {[
-                  { icon: MessageCircle, label: 'In the app' },
-                  { icon: Send, label: 'Telegram' },
-                  { icon: Hash, label: 'Slack' },
-                ].map(({ icon: Icon, label }) => (
+                  { icon: <MessageCircle className="size-4 text-violet-600" aria-hidden />, label: 'In the app' },
+                  { icon: <BrandIcon brand="telegram" size={16} decorative />, label: 'Telegram' },
+                  { icon: <BrandIcon brand="slack" size={16} decorative />, label: 'Slack' },
+                ].map(({ icon, label }) => (
                   <span key={label} className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-sm text-ink">
-                    <Icon className="size-4 text-violet-600" /> {label}
+                    {icon} {label}
                     <Check className="size-3.5 text-ok" />
                   </span>
                 ))}

@@ -323,7 +323,7 @@ textarea {
 
 .live-row {
   display: grid;
-  grid-template-columns: 12px 90px 1fr;
+  grid-template-columns: 12px 110px 1fr;
   gap: 10px;
   align-items: baseline;
 }
@@ -574,6 +574,13 @@ td {
 .provider {
   font-weight: 600;
   text-transform: capitalize;
+}
+
+/* A service name with its logo in front. */
+.brand-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .badge {
