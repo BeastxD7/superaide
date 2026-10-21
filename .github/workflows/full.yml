@@ -1,0 +1,34 @@
+name: Full
+
+# The whole CI pipeline (backend, frontend, e2e, images, secret scan) on the latest main,
+# every two hours and on demand. Pushes to main arrive faster than CI finishes, and CI
+# cancels a run when a newer push lands, so this run gives a verdict that isn't cancelled.
+on:
+  schedule:
+    - cron: "23 */2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Never cancelled; a run that starts while one is going waits for it.
+concurrency:
+  group: full-main
+  cancel-in-progress: false
+
+jobs:
+  commit:
+    name: Commit under test
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Report the commit
+        run: |
+          echo "Testing ${GITHUB_SHA} on ${GITHUB_REF_NAME}"
+          echo "Full run on \`${GITHUB_SHA}\` (${GITHUB_REF_NAME}), triggered by ${GITHUB_EVENT_NAME}." >> "$GITHUB_STEP_SUMMARY"
+
+  ci:
+    name: CI
+    # Every job checks out github.sha, the commit reported above.
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
