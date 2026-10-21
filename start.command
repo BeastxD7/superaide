@@ -26,14 +26,35 @@ for arg in "$@"; do
   esac
 done
 
-# 0. Stop a copy that is already running (this one, or the older agi-agent folder).
-OURS="(superaide|agi-agent) (serve|telegram-poll|slack-socket)|node_modules/.bin/(vite|next) .*--port $WEB_PORT|next-server|http.server $WEB_PORT"
-if pgrep -f "$OURS" >/dev/null 2>&1; then
-  bold "Stopping the copy of the agent that was already running…"
-  pkill -f "$OURS" 2>/dev/null || true
-  sleep 2
-fi
+# 0. Stop a copy that is already running: this folder's, or the older agi-agent
+#    folder's. Only processes on our ports that belong to those folders are
+#    stopped; anything else on the ports is reported, never killed.
+ours() {
+  local pid="$1" cmd cwd
+  cmd="$(ps -o command= -p "$pid" 2>/dev/null || true)"
+  cwd="$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p' | head -1)"
+  case "$cmd" in *"superaide serve"*|*"agi-agent serve"*|*"$ROOT/"*) return 0 ;; esac
+  case "$cwd" in "$ROOT"|"$ROOT/"*|*/agi-agent|*/agi-agent/*) return 0 ;; esac
+  return 1
+}
+# Channel listeners from the old copy don't hold a port; match them exactly.
+pkill -f "agi-agent (telegram-poll|slack-socket)" 2>/dev/null || true
 if command -v lsof >/dev/null 2>&1; then
+  STOPPED=0
+  for port in "$API_PORT" "$WEB_PORT"; do
+    for pid in $(lsof -t -iTCP:"$port" -sTCP:LISTEN 2>/dev/null); do
+      if ours "$pid"; then
+        parent="$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ')"
+        kill "$pid" 2>/dev/null || true
+        if [ -n "$parent" ] && [ "$parent" != 1 ] && ours "$parent"; then kill "$parent" 2>/dev/null || true; fi
+        STOPPED=1
+      fi
+    done
+  done
+  if [ "$STOPPED" = 1 ]; then
+    bold "Stopped the copy that was already running."
+    sleep 2
+  fi
   for port in "$API_PORT" "$WEB_PORT"; do
     if lsof -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
       bold "Port $port is in use by another program."
