@@ -29,6 +29,11 @@ SHARE_LABELS = {
 }
 
 
+def in_quiet_hours(pref: OwnerPreference, now: datetime) -> bool:
+    """Whether `now` falls inside the owner's quiet hours, in their time zone."""
+    return _in_quiet_hours(pref, now)[0]
+
+
 def _in_quiet_hours(pref: OwnerPreference, now: datetime) -> tuple[bool, str]:
     try:
         local = now.astimezone(ZoneInfo(pref.timezone))

@@ -3,26 +3,35 @@
 Built by code from what Ava already knows — no model call, so it costs nothing. Sent at
 the owner's digest time (08:00 and/or 18:00 in their time zone); if there's nothing worth
 saying, nothing is sent. Each send schedules the next one.
+
+With the Google Calendar skill on and connected, the day's events lead the digest and each
+one gets a pre-meeting prep job (see `prep`). Without it, or if Google is unreachable, the
+calendar part is left out quietly.
 """
 
 from __future__ import annotations
 
 import re
+import uuid
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
+from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from superaide.app.accounts import owner as hired_owner
 from superaide.audit import audit
+from superaide.connectors.google import event_text
 from superaide.context.audience import Audience, memory_filter
 from superaide.db.models import Approval, Intention, Job, MemoryItem, Person
 from superaide.intentions.service import owner_zone
 from superaide.intentions.when import zone
 from superaide.jobs.queue import enqueue, handler
 from superaide.knowledge.store import preferences_for
+from superaide.proactive import prep
 from superaide.proactive.notify import notify_owner
+from superaide.skills import calendar
 
 JOB_KIND = "send_digest"
 SLOTS = {"morning": time(8, 0), "evening": time(18, 0)}
@@ -86,14 +95,45 @@ def upcoming_dates(notes: list[MemoryItem], today: date) -> list[Upcoming]:
     return sorted(out.values(), key=lambda u: u.when)
 
 
-def compose(session: Session, owner: Person, now: datetime, slot: str) -> str | None:
-    """The digest text, or None when there's nothing worth sending."""
+def day_window(session: Session, owner: Person, now: datetime, slot: str) -> tuple[datetime, datetime]:
+    """The day a digest covers: today for the morning one, tomorrow for the evening one."""
+    tz = zone(owner_zone(session, owner))
+    local = now.astimezone(tz)
+    day = local.date() if slot == "morning" else local.date() + timedelta(days=1)
+    start = datetime.combine(day, time.min, tz)
+    return start, start + timedelta(days=1)
+
+
+def event_line(event: dict[str, Any], tz: Any) -> str:
+    title = event_text(event, tz)[0]
+    start, end = event.get("start") or {}, event.get("end") or {}
+    if "dateTime" not in start:
+        return f"- All day: {title}"
+    try:
+        s = datetime.fromisoformat(start["dateTime"]).astimezone(tz)
+        e = datetime.fromisoformat(end.get("dateTime", start["dateTime"])).astimezone(tz)
+    except ValueError:
+        return f"- {title}"
+    names = prep.attendee_names(event)
+    return f"- {s:%H:%M}–{e:%H:%M} {title}" + (f" (with {', '.join(names[:4])})" if names else "")
+
+
+def compose(
+    session: Session, owner: Person, now: datetime, slot: str, events: list[dict[str, Any]] | None = None
+) -> str | None:
+    """The digest text, or None when there's nothing worth sending. `events` are the day's
+    calendar events; when not given they're read from the calendar (if connected)."""
     tz = owner_zone(session, owner)
     local = now.astimezone(zone(tz))
-    day = local.date() if slot == "morning" else local.date() + timedelta(days=1)
-    start = datetime.combine(day, time.min, zone(tz))
-    end = start + timedelta(days=1)
+    start, end = day_window(session, owner, now, slot)
     lines: list[str] = []
+
+    if events is None:
+        events = calendar.events_between(session, owner, start, end)
+    shown = [e for e in events if e.get("status") != "cancelled"]
+    if shown:
+        lines.append("**Calendar**" if slot == "morning" else "**Calendar tomorrow**")
+        lines += [event_line(e, zone(tz)) for e in shown]
 
     due = session.scalars(
         select(Intention)
@@ -169,19 +209,21 @@ def ensure_scheduled(session: Session) -> None:
     owner = hired_owner(session)
     if owner is not None:
         schedule(session, owner)
+        prep.schedule_scan(session, owner)
 
 
 @handler(JOB_KIND)
 def send(session: Session, job: Job) -> None:
-    import uuid
-
     owner = session.get(Person, uuid.UUID(job.payload["owner_id"]))
     if owner is None:
         return
     slot = str(job.payload.get("slot", "morning"))
     now = max(datetime.now(UTC), job.run_at)  # never schedule the next one before this one's own time
     if slot in slots_for(preferences_for(session, owner).digest):  # they may have changed their mind
-        text = compose(session, owner, now, slot)
+        start, end = day_window(session, owner, now, slot)
+        events = calendar.events_between(session, owner, start, end)
+        prep.schedule_preps(session, owner, events, now)
+        text = compose(session, owner, now, slot, events)
         if text:
             via = notify_owner(session, owner, text, {"kind": "digest", "slot": slot})
             audit(session, "proactive", "digest_sent", slot=slot, via=via)
