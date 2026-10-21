@@ -56,11 +56,45 @@ def zone(name: str | None) -> ZoneInfo:
         return ZoneInfo("UTC")
 
 
+def names_a_day(text: str) -> bool:
+    """Whether the words pick a day ("tomorrow", "Friday", "24 Oct", "in 2 days"), not just a time."""
+    return bool(_DAY.search(text) or _DATE.search(text) or _IN.search(text))
+
+
+# Where to deliver is not part of the task: "remind me in telegram that …".
+_CHANNEL = re.compile(r"\s*\b(?:in|on|via|over|through)\s+(?:telegram|slack|the\s+app)\b", re.I)
+_LEAD = re.compile(
+    r"^(?:(?:to|about|th?at+|tht)\s+)?"  # "that", typos like "thatt"
+    r"(?:i\s+(?:really\s+)?(?:need|have|want|must|should|ought)(?:\s+to)?|i\s+gotta|i(?:'ve|\s+have)\s+got\s+to)?\s*"
+    r"(?:to\s+)?",
+    re.I,
+)
+# Verbs reminders usually start with, for fixing a misspelt first word ("deinnk" → "drink").
+TASK_VERBS = (
+    "drink", "call", "take", "buy", "pay", "send", "check", "email", "book", "pick", "meet", "eat", "clean",
+    "submit", "finish", "write", "read", "water", "walk", "stretch", "leave", "renew", "cancel", "order",
+    "reply", "text", "message", "review", "prepare", "bring", "collect", "charge", "feed", "wash",
+)  # fmt: skip
+
+
+def _fix_first_word(task: str) -> str:
+    from difflib import get_close_matches
+
+    first, _, rest = task.partition(" ")
+    word = first.lower()
+    if len(word) < 4 or word in TASK_VERBS:
+        return task
+    near = [v for v in TASK_VERBS if v[0] == word[0] and abs(len(v) - len(word)) <= 1]  # "meeting" stays
+    match = get_close_matches(word, near, n=1, cutoff=0.72)
+    return f"{match[0]} {rest}".strip() if match else task
+
+
 def clean_task(task: str) -> str:
     task = re.sub(r"\s+", " ", task).strip(" ,.;:-")
-    task = re.sub(r"^(?:to|about|that)\s+", "", task, flags=re.I)
+    task = _CHANNEL.sub("", task).strip(" ,.;:-")
+    task = _LEAD.sub("", task, count=1)
     task = re.sub(r"\s+(?:on|at|by|this|next|in|the)$", "", task, flags=re.I).strip(" ,.;:-")
-    return task
+    return _fix_first_word(task)
 
 
 def when(text: str, now: datetime) -> tuple[datetime, str] | None:

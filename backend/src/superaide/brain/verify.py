@@ -169,6 +169,37 @@ def unsupported(text: str, *, grounding: str, recall_found: bool) -> list[str]:
     return flagged
 
 
+_STOP = {
+    "the", "and", "for", "that", "this", "with", "from", "your", "you", "are", "was", "has", "have", "his", "her",
+    "their", "they", "not", "but", "its", "into", "about", "who", "what", "when", "where", "which",
+}  # fmt: skip
+
+
+def _content_words(text: str) -> set[str]:
+    return {w for w in re.findall(r"[a-z0-9]{3,}", text.lower().replace("’", "'")) if w not in _STOP}
+
+
+def restates(sentence: str, source_text: str) -> bool:
+    """The sentence says what the source says: at least two of the source's content words, and
+    most of them (a short note), appear in it. Chit-chat shares nothing with a note."""
+    src = _content_words(source_text)
+    common = src & _content_words(sentence)
+    return len(common) >= 2 and len(common) >= 0.6 * len(src)
+
+
+def uncited_restatements(text: str, sources: list[str]) -> list[tuple[str, int]]:
+    """Uncited sentences that restate one of this turn's sources, with that source's index."""
+    out: list[tuple[str, int]] = []
+    for sentence in sentences(text):
+        if _MARK.search(sentence) or HONEST.search(sentence):
+            continue
+        for i, src in enumerate(sources):
+            if restates(sentence, src):
+                out.append((sentence, i))
+                break
+    return out
+
+
 def revision_request(flagged: list[str]) -> str:
     lines = "\n".join(f"- {s}" for s in flagged)
     return (

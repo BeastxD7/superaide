@@ -69,6 +69,25 @@ def thread_of(msg: InboundMessage) -> str:
     return ""
 
 
+SET_PREFIX = "Got it. I'll remind you "
+
+
+def reminder_meta(reply: str) -> dict | None:
+    """The code-only reminder reader's reply, recorded as the tool it stands in for, so the next
+    turn's "[Tools used …]" line shows the reminder really was set (brain/turn.py tools_used)."""
+    if not reply.startswith(SET_PREFIX):
+        return None  # it asked when, or the time had passed: nothing was set
+    when, _, task = reply[len(SET_PREFIX) :].partition(": ")
+    activity = {
+        "kind": "tool",
+        "name": "create_reminder",
+        "state": "done",
+        "label": f"Setting a reminder: {task}, {when}",
+        "detail": f"Reminder set: {task}, {when}.",
+    }
+    return {"activity": [activity]}
+
+
 @dataclass
 class HandleResult:
     mode: str  # dropped | duplicate | frozen | stranger | unconfirmed | known
@@ -156,14 +175,14 @@ class Agent:
             ava_decides = ctx.kind == "dm" and self._is_owner(s, sender) and self._brain_ready()
             if ctx.kind == "dm" and is_reminder_request(msg.text) and self._is_owner(s, sender) and not ava_decides:
                 reply = self._remind(s, sender, inbound)
-                self._reply(s, ctx, aud, reply, thread)
+                self._reply(s, ctx, aud, reply, thread, meta=reminder_meta(reply))
                 return HandleResult("known", reply, ["reminder"])
 
             fact = parse_remember(msg.text)
             if fact is not None and ctx.kind == "dm" and not (ava_decides and OBLIGATION.match(fact)):
                 # "Remember that I need to go to the gym at 12pm" means a reminder, not a note.
                 if self._is_owner(s, sender) and (set_reminder := self._remind_from_fact(s, sender, inbound, fact)):
-                    self._reply(s, ctx, aud, set_reminder, thread)
+                    self._reply(s, ctx, aud, set_reminder, thread, meta=reminder_meta(set_reminder))
                     return HandleResult("known", set_reminder, ["reminder"])
                 remember(s, content=fact, sender=sender, context=ctx, audience=aud, source_event=inbound)
                 # Honest about what happened, without sending the private text back over a channel.
@@ -209,7 +228,7 @@ class Agent:
             )
         except service.IntentionError as exc:
             return str(exc)
-        return f"Got it. I'll remind you {service.describe_due(intention.due_at, tz)}: {intention.text}"
+        return f"{SET_PREFIX}{service.describe_due(intention.due_at, tz)}: {intention.text}"
 
     def _brain_ready(self) -> bool:
         from superaide.factory import brain_ready
@@ -242,7 +261,7 @@ class Agent:
             )  # fmt: skip
         except service.IntentionError as exc:
             return str(exc)
-        return f"Got it. I'll remind you {service.describe_due(intention.due_at, tz)}: {intention.text}"
+        return f"{SET_PREFIX}{service.describe_due(intention.due_at, tz)}: {intention.text}"
 
     # --- linked accounts on an unconfirmed endpoint ------------------------------
 

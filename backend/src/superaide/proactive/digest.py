@@ -66,6 +66,14 @@ def _month(name: str) -> int | None:
     return None
 
 
+def _first_name(phrase: str) -> str:
+    """The person a date belongs to: "Priya Tan" → "Priya", "my sister Anya" → "Anya", "mum" → "mum"."""
+    names = re.findall(r"\b[A-Z][\w-]*(?:\s+[A-Z][\w-]*)*", phrase)
+    if names:
+        return names[-1].split()[0]
+    return phrase.split()[-1] if phrase.split() else ""
+
+
 def upcoming_dates(notes: list[MemoryItem], today: date) -> list[Upcoming]:
     out: dict[tuple[date, str], Upcoming] = {}
     for note in notes:
@@ -85,7 +93,7 @@ def upcoming_dates(notes: list[MemoryItem], today: date) -> list[Upcoming]:
         if when - today > DATES_AHEAD:
             continue
         who = re.sub(r"(?:'s|’s)$", "", (m.group("who") or "").strip()).strip()
-        who = who.split()[-1] if who else ""
+        who = _first_name(who)
         label = (
             f"{who}'s {m.group('what').lower()}"
             if who and who.lower() not in {"my", "our"}

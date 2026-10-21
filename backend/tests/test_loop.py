@@ -340,3 +340,63 @@ def test_a_quote_the_sentence_introduces_stays_quoted_without_a_stray_full_stop(
         ]
     )
     assert text == "Your note from 21 Oct: “gym at 12pm” [1]."
+
+
+def test_a_quote_after_an_unpunctuated_introduction_is_kept_not_dropped():
+    # Live eval 2026-10-22: "Your notebook lists [1] The note has no date…" with the answer gone.
+    cite = {
+        "type": "search_result_location",
+        "source": "ava://memory/bbb",
+        "title": "Note",
+        "cited_text": "Shashank's manager is Arjun Mehta.",
+    }
+    text, _ = render(
+        [
+            {"type": "text", "text": "Your notebook lists "},
+            {"type": "text", "text": "Shashank's manager is Arjun Mehta.", "citations": [cite]},
+            {"type": "text", "text": " The note has no date."},
+        ]
+    )
+    assert "Arjun Mehta" in text
+    assert text.startswith("Your notebook lists “Shashank's manager is Arjun Mehta.” [1]")
+
+
+def test_a_tools_used_line_the_model_copied_is_removed_from_the_reply():
+    # Live eval 2026-10-22: the model began its reply with the app's own record line.
+    text, _ = render(
+        [{"type": "text", "text": "[Tools used for this reply: create_reminder]\nDone. Call mom tomorrow at 7:00 pm."}]
+    )
+    assert text == "Done. Call mom tomorrow at 7:00 pm."
+    text, _ = render([{"type": "text", "text": "[On Telegram · Wed 19:13] You said hi."}])
+    assert text == "You said hi."
+
+
+def test_email_requests_are_named_as_approvals_in_the_prompt_and_tool():
+    from superaide.brain.loop import ACTION_TOOL, LEARNS, OWNER_RULES
+
+    assert "email" in ACTION_TOOL["description"] and "message_someone_else" in ACTION_TOOL["description"]
+    assert "emails" in OWNER_RULES and '"email X"' in OWNER_RULES
+    assert "forget it by your next conversation" in LEARNS
+
+
+def test_an_uncited_answer_from_a_found_note_gets_the_citation_in_code(owner_client):
+    # Live eval 2026-10-22: "Your manager is Arjun Mehta." with no [n], from a pre-recalled note.
+    with session_scope() as s:
+        person = hired_owner(s)
+        assert person is not None
+        m = note(s, person.id, "Shashank's manager is Arjun Mehta.")
+        script = Script("Your manager is Arjun Mehta. Anything else?")
+        result = turn_for(s, script, text="who is my manager?").run([{"role": "user", "content": "who is my manager?"}])
+    assert result.text == "Your manager is Arjun Mehta. [1] Anything else?"
+    assert [c.uri for c in result.sources] == [f"ava://memory/{m.id}"]
+    assert "cite_added:1" in result.notes
+
+
+def test_chit_chat_next_to_a_found_note_is_not_cited():
+    from superaide.brain.verify import uncited_restatements
+
+    notes = ["Shashank's manager is Arjun Mehta."]
+    assert uncited_restatements("Thanks! Have a great day.", notes) == []
+    assert uncited_restatements("You're welcome, Shashank.", notes) == []
+    assert uncited_restatements("Arjun Mehta is your manager.", notes) == [("Arjun Mehta is your manager.", 0)]
+    assert uncited_restatements("Arjun Mehta is your manager. [1]", notes) == []

@@ -326,3 +326,26 @@ def test_channel_labels():
     assert narrate("create_reminder", {"task": "Gym", "when": "at 7pm", "channel": "app"}) == (
         "Setting a reminder in the app: Gym, at 7pm"
     )
+
+
+def test_moving_to_a_bare_time_keeps_the_reminders_day():
+    # Live eval 2026-10-22: "move my dentist reminder to 3pm" moved it from tomorrow to today.
+    from superaide.intentions.when import zone
+
+    with session_scope() as s:
+        owner = hired_owner(s)
+        assert owner is not None
+        tz = zone(intentions.owner_zone(s, owner))
+        day = (datetime.now(UTC).astimezone(tz) + timedelta(days=2)).date()
+        due = datetime(day.year, day.month, day.day, 11, 0, tzinfo=tz)
+        r = intentions.create(s, owner, text="Dentist", due_at=due)
+        script = Script(tool_use("update_reminder", {"id": str(r.id), "when": "3pm"}), "Moved.")
+        turn_for(s, script, "move my dentist reminder to 3pm").run(ASK)
+        s.refresh(r)
+        assert r.due_at.astimezone(tz) == datetime(day.year, day.month, day.day, 15, 0, tzinfo=tz)
+        # A moment that names a day still means that day.
+        script = Script(tool_use("update_reminder", {"id": str(r.id), "when": "tomorrow at 9am"}), "Moved.")
+        turn_for(s, script, "move it to tomorrow 9am").run(ASK)
+        s.refresh(r)
+        tomorrow = (datetime.now(UTC).astimezone(tz) + timedelta(days=1)).date()
+        assert r.due_at.astimezone(tz).date() == tomorrow and r.due_at.astimezone(tz).hour == 9

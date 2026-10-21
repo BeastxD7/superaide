@@ -111,3 +111,19 @@ def test_the_digest_job_sends_once_and_schedules_the_next(owner):
         queued = s.scalars(select(Job).where(Job.kind == "send_digest", Job.status == "queued")).all()
         assert len(queued) == 1 and queued[0].run_at > run_at  # tomorrow's
         assert s.scalar(select(Event).where(Event.meta["kind"].astext == "digest")) is not None
+
+
+@pytest.mark.parametrize(
+    ("text", "label"),
+    [
+        ("Priya Tan's birthday is on 14 November.", "Priya's birthday"),  # live eval: was "Tan's birthday"
+        ("My sister Anya's birthday is 14 November", "Anya's birthday"),
+        ("Shashank's sister Anya's birthday is 14 November", "Anya's birthday"),
+        ("mum's birthday is 14 November", "mum's birthday"),
+    ],
+)
+def test_a_birthday_is_labelled_with_the_persons_first_name(text: str, label: str):
+    from superaide.proactive import digest
+
+    found = digest.upcoming_dates([MemoryItem(content=text)], date(2026, 11, 10))
+    assert [u.label for u in found] == [label]

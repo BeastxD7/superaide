@@ -225,3 +225,41 @@ def test_tomorrow_just_after_midnight_means_after_you_sleep():
     late = datetime(2026, 10, 22, 0, 23, tzinfo=SG)  # Thursday, 00:23
     parsed = parse_reminder("remind me to call mum tomorrow evening", late)
     assert parsed is not None and parsed.due.strftime("%a %H:%M") == "Thu 18:00"
+
+
+@pytest.mark.parametrize(
+    ("text", "task", "minutes"),
+    [
+        # The owner's live session, 2026-10-22, read by the code-only path (no model connected).
+        ("please remind me thatt i need to deinnk water in 2mins", "Drink water", 2),
+        ("remind me in telegram that i need to go to washroom in 1min", "Go to washroom", 1),
+        ("remind me that I have to calll mom in 30 minutes", "Call mom", 30),
+        ("remind me about the meeting with Arjun in 2 hours", "The meeting with Arjun", 120),
+    ],
+)
+def test_the_code_only_reader_cleans_the_task(text: str, task: str, minutes: int):
+    from datetime import UTC, datetime, timedelta
+
+    from superaide.intentions.when import parse_reminder
+
+    now = datetime(2026, 10, 22, 11, 0, tzinfo=UTC)
+    parsed = parse_reminder(text, now)
+    assert parsed is not None
+    assert parsed.task == task
+    assert parsed.due == now + timedelta(minutes=minutes)
+
+
+def test_a_reminder_set_without_the_model_is_on_record_for_the_next_turn(owner):
+    # Live eval: after the code-only reader set a reminder, the model saw no tool record and doubted it.
+    from superaide.brain.turn import tools_used
+    from superaide.db.models import Event
+
+    owner.post("/app/chat", json={"text": "remind me to stretch at 5pm"})
+    with session_scope() as s:
+        out = s.scalar(select(Event).where(Event.direction == "out").order_by(Event.created_at.desc()))
+        assert out is not None
+        assert tools_used(out).startswith("[Tools used for this reply: Setting a reminder: Stretch, ")
+    owner.post("/app/chat", json={"text": "remind me to stretch"})  # asks when: nothing on record
+    with session_scope() as s:
+        out = s.scalar(select(Event).where(Event.direction == "out").order_by(Event.created_at.desc()))
+        assert out is not None and tools_used(out) == ""

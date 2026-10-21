@@ -60,7 +60,7 @@
     - say: "remind me in telegram that i need to go to washroom in 1min"
     - advance: "+3m"
   checks:
-    - reminder: {text_any: ["washroom"], text_is: "Go to the washroom", status: null}
+    - reminder: {text_any: ["^Go to (the )?washroom$"], status: null}
     - delivered: {text_any: ["washroom"], via: telegram}
 
 - id: rem-delete-it-typo
