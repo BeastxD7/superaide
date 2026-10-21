@@ -1,0 +1,10 @@
+# Secret scanning rules (gitleaks): the defaults, plus fake values used in tests.
+# Keep the allowlist narrow: exact fake values, only in test files.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Obviously fake tokens in the connection tests"
+condition = "AND"
+paths = ['''(^|/)tests/test_connections\.py$''']
+regexes = ['''^xox[bp]-1-abc-[a-z]+$''', '''^xapp-1-abc-[a-z]+$''']
