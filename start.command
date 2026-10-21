@@ -93,6 +93,12 @@ if [ "$USE_DOCKER" = 1 ]; then
       exit 1
     fi
   fi
+  # The older agi-agent copy ran its own database on the same port: stop it (its data stays).
+  OLD_DB="$(docker ps -q --filter label=com.docker.compose.project=agi-agent 2>/dev/null || true)"
+  if [ -n "$OLD_DB" ]; then
+    bold "Stopping the older agi-agent database so this one can use port 5432 (its data is kept)…"
+    docker stop $OLD_DB >/dev/null
+  fi
   bold "Starting Postgres in Docker…"
   docker compose up -d --wait db
   export DATABASE_URL="postgresql+psycopg://agent:agent@localhost:5432/agent"
