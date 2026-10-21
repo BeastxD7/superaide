@@ -162,8 +162,12 @@ class Agent:
                 max_tokens=4000,  # room for thinking before the reply
                 output_model=TurnOutput,
             )
-        except BudgetExceeded:
-            audit(s, "pipeline", "budget_cap_reached")
+        except BudgetExceeded as exc:
+            audit(s, "pipeline", "budget_cap_reached", period=exc.period)
+            if exc.period in {"day", "bucket"}:
+                return ("I've used today's thinking budget, so I'll pick this up again tomorrow.", ["budget"])
+            if exc.period == "month":
+                return ("I've used this month's budget, so I'm pausing until it frees up.", ["budget"])
             return (f"I've reached my US${self.settings.max_spend_usd:.0f} spending cap, so I'm paused.", ["budget"])
         except AgentFrozen:
             return ("I'm paused right now.", ["frozen"])

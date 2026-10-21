@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from superaide.brain.budget import BudgetGuard
+from superaide.brain.budget import BudgetGuard, Limits
 from superaide.brain.llm import LLM, ClaudeLLM, FakeLLM, SystemBlock
 from superaide.brain.turn import Prediction, RequestedAction, TurnOutput
 from superaide.channels.base import FakeMessenger, Messenger, WebMessenger
@@ -38,7 +38,8 @@ def uses_real_model(settings: Settings) -> bool:
 def build_llm(settings: Settings) -> LLM:
     if not uses_real_model(settings):
         return FakeLLM(demo_responder)
-    return ClaudeLLM(BudgetGuard(settings.max_spend_usd), api_key=settings.anthropic_api_key)
+    guard = BudgetGuard(settings.max_spend_usd, limits=Limits.from_settings(settings))
+    return ClaudeLLM(guard, api_key=settings.anthropic_api_key)
 
 
 def build_messengers(settings: Settings) -> dict[str, Messenger]:

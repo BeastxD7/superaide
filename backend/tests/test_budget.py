@@ -1,13 +1,14 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, update
 
-from superaide.brain.budget import AgentFrozen, BudgetExceeded, BudgetGuard
+from superaide.brain.budget import AgentFrozen, BudgetExceeded, BudgetGuard, Limits
 from superaide.brain.llm import ClaudeLLM, SystemBlock
 from superaide.brain.pricing import UnknownModelPrice, UsageCounts, cost_usd
 from superaide.db.models import AuditLog, SpendEntry
@@ -210,3 +211,77 @@ def test_extraction_leaves_room_for_thinking(agent, monkeypatch):
     monkeypatch.setattr(agent.llm, "complete", complete)
     assert facts.extract_facts(agent, owner_name="Shashank", text="a resume", source="cv.pdf") == []
     assert seen["max_tokens"] >= 4000 and seen["effort"] == "low"
+
+
+# --- rolling limits inside the lifetime cap -------------------------------------------
+
+
+def _reserve(guard, purpose="chat_turn", usd="0.10"):
+    return guard.reserve(purpose=purpose, model="claude-haiku-5-5", worst_case_usd=Decimal(usd))
+
+
+def _age(days: float) -> None:
+    """Move every ledger entry back in time."""
+    with session_scope() as s:
+        s.execute(update(SpendEntry).values(created_at=datetime.now(UTC) - timedelta(days=days)))
+
+
+def test_the_daily_limit_refuses_a_call_that_would_pass_it_and_names_the_period():
+    guard = BudgetGuard(10, limits=Limits(daily_usd=Decimal("0.25")))
+    _reserve(guard, usd="0.10")
+    _reserve(guard, usd="0.10")
+    with pytest.raises(BudgetExceeded) as exc:
+        _reserve(guard, usd="0.10")
+    assert exc.value.period == "day"
+    with session_scope() as s:
+        refusal = s.scalar(select(AuditLog).where(AuditLog.action == "llm_call_refused"))
+        assert refusal is not None and refusal.detail["reason"] == "day"
+
+
+def test_spend_older_than_the_window_stops_counting():
+    guard = BudgetGuard(10, limits=Limits(daily_usd=Decimal("0.25"), monthly_usd=Decimal("0.35")))
+    _reserve(guard, usd="0.20")
+    _age(days=2)  # yesterday's spend no longer counts for today...
+    _reserve(guard, usd="0.10")
+    with pytest.raises(BudgetExceeded) as exc:  # ...but still counts for the month
+        _reserve(guard, usd="0.10")
+    assert exc.value.period == "month"
+    _age(days=31)
+    _reserve(guard, usd="0.20")  # a new month
+
+
+def test_each_bucket_has_its_own_daily_limit():
+    guard = BudgetGuard(10, limits=Limits(daily_by_bucket={"research": Decimal("0.05"), "chat": Decimal("1")}))
+    _reserve(guard, purpose="web_research", usd="0.04")
+    with pytest.raises(BudgetExceeded) as exc:
+        _reserve(guard, purpose="web_research", usd="0.04")
+    assert exc.value.period == "bucket"
+    _reserve(guard, purpose="chat_turn", usd="0.50")  # research being spent doesn't stop chat
+
+
+def test_the_lifetime_cap_still_comes_first():
+    guard = BudgetGuard(0.15, limits=Limits(daily_usd=Decimal("5")))
+    _reserve(guard, usd="0.10")
+    with pytest.raises(BudgetExceeded) as exc:
+        _reserve(guard, usd="0.10")
+    assert exc.value.period == "lifetime"
+
+
+def test_limits_come_from_settings_and_zero_means_no_limit(settings, monkeypatch):
+    monkeypatch.setattr(settings, "budget_daily_usd", 0)
+    monkeypatch.setattr(settings, "budget_monthly_usd", 3)
+    monkeypatch.setattr(settings, "budget_daily_by_bucket", {"chat": 0.4, "memory": 0})
+    limits = Limits.from_settings(settings)
+    assert limits.daily_usd is None and limits.monthly_usd == Decimal("3")
+    assert limits.daily_by_bucket == {"chat": Decimal("0.4")}
+
+
+def test_ava_says_which_limit_she_hit(agent, manager, monkeypatch):
+    from tests.conftest import MANAGER_TG, tg
+
+    def over_today(**_):
+        raise BudgetExceeded("today's limit", "day")
+
+    monkeypatch.setattr(agent.llm, "complete", over_today)
+    result = agent.handle(tg(MANAGER_TG, "what's on today?"))
+    assert "today's thinking budget" in (result.reply or "") and "budget" in result.notes

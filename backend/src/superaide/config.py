@@ -32,6 +32,13 @@ class Settings(BaseSettings):
     model_deep: str = "claude-opus-5-5"
     # Hard ceiling on total Claude API spend, in US dollars, across the whole build.
     max_spend_usd: float = 10.0
+    # Rolling limits inside the lifetime cap, so one busy day or one feature can't spend it all.
+    budget_daily_usd: float = 0.50  # any 24 hours
+    budget_monthly_usd: float = 5.00  # any 30 days
+    # Per purpose bucket, any 24 hours (chat replies, memory reading, web research).
+    budget_daily_by_bucket: dict[str, float] = Field(
+        default_factory=lambda: {"chat": 0.40, "memory": 0.15, "research": 0.25}
+    )
     # Use a scripted fake model instead of the real API (tests, offline demos).
     fake_llm: bool = False
 

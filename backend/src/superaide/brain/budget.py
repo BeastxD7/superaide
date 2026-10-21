@@ -11,10 +11,10 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-from sqlalchemy import func, select, text
+from sqlalchemy import case, func, select, text
 
 from superaide.audit import audit
 from superaide.brain.pricing import UsageCounts, cost_usd
@@ -26,7 +26,36 @@ _LOCK_KEY = 784_221_001  # pg advisory lock id for the ledger
 
 
 class BudgetExceeded(RuntimeError):
-    pass
+    def __init__(self, message: str, period: str = "lifetime") -> None:
+        super().__init__(message)
+        self.period = period  # lifetime | day | month | bucket
+
+
+# Which daily bucket each kind of model call draws from.
+BUCKETS = {"chat_turn": "chat", "intro_facts": "memory", "web_research": "research"}
+
+
+def bucket_for(purpose: str) -> str:
+    return BUCKETS.get(purpose, "other")
+
+
+@dataclass(frozen=True)
+class Limits:
+    daily_usd: Decimal | None = None
+    monthly_usd: Decimal | None = None
+    daily_by_bucket: dict[str, Decimal] | None = None
+
+    @classmethod
+    def from_settings(cls, settings: object) -> Limits:
+        def dec(v: float | None) -> Decimal | None:
+            return None if v is None or v <= 0 else Decimal(str(v))
+
+        by_bucket = getattr(settings, "budget_daily_by_bucket", {}) or {}
+        return cls(
+            daily_usd=dec(getattr(settings, "budget_daily_usd", None)),
+            monthly_usd=dec(getattr(settings, "budget_monthly_usd", None)),
+            daily_by_bucket={k: Decimal(str(v)) for k, v in by_bucket.items() if v and v > 0},
+        )
 
 
 class AgentFrozen(RuntimeError):
@@ -55,9 +84,46 @@ class SpendSummary:
 
 
 class BudgetGuard:
-    def __init__(self, cap_usd: float, db_url: str | None = None) -> None:
+    def __init__(self, cap_usd: float, db_url: str | None = None, limits: Limits | None = None) -> None:
         self.cap = Decimal(str(cap_usd))
         self.db_url = db_url
+        self.limits = limits or Limits()
+
+    @staticmethod
+    def _committed(s, since: datetime | None = None, purposes: list[str] | None = None) -> Decimal:
+        """Settled cost plus open reservations, optionally within a window or for some purposes."""
+        amount = case(
+            (SpendEntry.status == "settled", SpendEntry.cost_usd),
+            (SpendEntry.status == "reserved", SpendEntry.reserved_usd),
+            else_=0,
+        )
+        q = select(func.coalesce(func.sum(amount), 0))
+        if since is not None:
+            q = q.where(SpendEntry.created_at >= since)
+        if purposes is not None:
+            q = q.where(SpendEntry.purpose.in_(purposes))
+        return Decimal(s.scalar(q) or 0)
+
+    def _period_refusal(self, s, purpose: str, worst: Decimal) -> BudgetExceeded | None:
+        now = datetime.now(UTC)
+        day, month = now - timedelta(hours=24), now - timedelta(days=30)
+        checks: list[tuple[str, Decimal | None, Decimal, str]] = [
+            ("day", self.limits.daily_usd, self._committed(s, day), "today's"),
+            ("month", self.limits.monthly_usd, self._committed(s, month), "this month's"),
+        ]
+        bucket = bucket_for(purpose)
+        bucket_cap = (self.limits.daily_by_bucket or {}).get(bucket)
+        if bucket_cap is not None:
+            members = [p for p, b in BUCKETS.items() if b == bucket] or [purpose]
+            checks.append(("bucket", bucket_cap, self._committed(s, day, members), f"today's {bucket}"))
+        for period, cap, used, label in checks:
+            if cap is not None and used + worst > cap:
+                audit(
+                    s, "budget", "llm_call_refused", reason=period, purpose=purpose, bucket=bucket,
+                    committed_usd=float(used), request_usd=float(worst), cap_usd=float(cap),
+                )  # fmt: skip
+                return BudgetExceeded(f"{label} limit of US${cap} would be passed", period)
+        return None
 
     def summary(self) -> SpendSummary:
         with session_scope(self.db_url) as s:
@@ -100,6 +166,8 @@ class BudgetGuard:
                         f"Spend cap US${self.cap} would be passed: committed US${committed:.4f}, "
                         f"this call up to US${worst_case_usd:.4f}"
                     )
+                elif (period_refusal := self._period_refusal(s, purpose, worst_case_usd)) is not None:
+                    refusal = period_refusal
                 else:
                     entry = SpendEntry(purpose=purpose, model=model, status="reserved", reserved_usd=worst_case_usd)
                     s.add(entry)
