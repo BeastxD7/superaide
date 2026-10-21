@@ -65,7 +65,8 @@ def owner(browser):
     c = browser()
     assert (
         c.post(
-            "/auth/signup", json={"name": "Shashank Rao", "email": "s@example.com", "password": PASSWORD}
+            "/auth/signup",
+            json={"name": "Shashank Rao", "email": "s@example.com", "password": PASSWORD, "timezone": "Asia/Singapore"},
         ).status_code
         == 200
     )

@@ -15,7 +15,7 @@ from sqlalchemy import Float, and_, func, literal, select, update
 from sqlalchemy.orm import Session
 
 from superaide.audit import audit
-from superaide.db.models import Contact, Document, MemoryItem, OwnerPreference, Person
+from superaide.db.models import Contact, Document, MemoryItem, OwnerPreference, Person, UserAccount
 from superaide.db.session import rows_affected
 
 CATEGORIES = ("about", "work", "person", "preference", "urgency", "availability", "sharing", "other")
@@ -113,7 +113,9 @@ def retire_document(session: Session, document: Document) -> int:
 def preferences_for(session: Session, person: Person) -> OwnerPreference:
     pref = session.scalar(select(OwnerPreference).where(OwnerPreference.person_id == person.id))
     if pref is None:
-        pref = OwnerPreference(person_id=person.id)
+        # Start in the time zone the browser reported at sign-up, until the owner says otherwise.
+        account_tz = session.scalar(select(UserAccount.timezone).where(UserAccount.person_id == person.id))
+        pref = OwnerPreference(person_id=person.id, timezone=account_tz or "UTC")
         session.add(pref)
         session.flush()
     return pref

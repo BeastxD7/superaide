@@ -122,13 +122,13 @@ class Agent:
                     reply = (
                         f"Linked. Hi {person.display_name}, it's {self.name}. I'll recognise you here from now on."
                         if person
-                        else "That link has expired or was already used. Make a new one in the app."
+                        else self._ai_notice("That link has expired or was already used. Make a new one in the app.")
                     )
                 self._reply(s, ctx, aud, reply, thread)
                 return HandleResult("known" if sender.known else "stranger", reply, ["invite"])
 
             if not sender.known:
-                reply = self._stranger(s, sender, msg)
+                reply = self._ai_notice(self._stranger(s, sender, msg))
                 self._reply(s, ctx, aud, reply, thread)
                 return HandleResult("stranger", reply)
 
@@ -227,6 +227,12 @@ class Agent:
         return f"Got it. I'll remind you {service.describe_due(intention.due_at, tz)}: {intention.text}"
 
     # --- strangers -------------------------------------------------------------
+
+    def _ai_notice(self, reply: str) -> str:
+        """Anyone Ava doesn't know is told they're talking to an AI, in every reply (EU AI Act Art. 50)."""
+        if "AI assistant" in reply:
+            return reply
+        return f"(I'm {self.name}, an AI assistant.) {reply}"
 
     def _stranger(self, s, sender: Sender, msg: InboundMessage) -> str:
         """No model call, no memory, no actions. The same reply whether or not a

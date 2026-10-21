@@ -102,6 +102,22 @@ class Settings(BaseSettings):
     login_lock_minutes: int = 15
     login_failures_per_ip: int = 20  # per 15 minutes
     signups_per_ip_per_hour: int = 10
+    # Hiring needs a verified email address. Off by default until an email provider is chosen.
+    require_verified_email: bool = False
+    verify_link_hours: int = 48
+    reset_link_minutes: int = 30
+    email_links_per_account_per_hour: int = 5
+
+    # Email (verification and password-reset links). "log" writes each email to the server log
+    # (development); "smtp" sends through any SMTP server or provider.
+    mail_backend: str = "log"  # log | smtp
+    mail_from: str = "Superaide <no-reply@localhost>"
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_security: str = "starttls"  # starttls | ssl | none
+    smtp_timeout_seconds: float = 15.0
 
     # Identity linking
     link_code_ttl_minutes: int = 10

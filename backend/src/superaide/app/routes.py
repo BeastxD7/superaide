@@ -163,6 +163,8 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         try:
             with session_scope() as s:
                 user = require(s, UserAccount, user_id)
+                if settings.require_verified_email and user.email_verified_at is None:
+                    raise HTTPException(403, "Please confirm your email address first: open the link we emailed you.")
                 try:
                     person = accounts.hire(s, user, body.agent)
                 except accounts.AlreadyHired as exc:

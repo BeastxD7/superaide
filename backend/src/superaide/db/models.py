@@ -245,7 +245,7 @@ class OwnerPreference(Scoped, Base):
     quiet_start: Mapped[str] = mapped_column(String(5), default="22:00")  # HH:MM, owner's timezone
     quiet_end: Mapped[str] = mapped_column(String(5), default="07:00")
     vip_breaks_quiet: Mapped[bool] = mapped_column(Boolean, default=True)
-    timezone: Mapped[str] = mapped_column(String(64), default="Asia/Singapore")
+    timezone: Mapped[str] = mapped_column(String(64), default="UTC")  # set from the browser at sign-up
     shareable: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)  # what may be told to others
     never_share: Mapped[str] = mapped_column(Text, default="")
     updated_at: Mapped[datetime] = mapped_column(
@@ -377,7 +377,7 @@ class UserAccount(TenantScoped, Base):
     person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), unique=True)
     role: Mapped[str] = mapped_column(String(20), default="user")  # user | admin
     status: Mapped[str] = mapped_column(String(20), default="active")  # active | disabled
-    timezone: Mapped[str] = mapped_column(String(64), default="Asia/Singapore")
+    timezone: Mapped[str] = mapped_column(String(64), default="UTC")  # set from the browser at sign-up
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     failed_logins: Mapped[int] = mapped_column(Integer, default=0)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -53,6 +53,7 @@ def browser(app) -> Browser:
 
 def signup(client: TestClient, **fields: Any) -> httpx.Response:
     body = {k: fields.get(k, OWNER[k]) for k in ("name", "email", "password")}
+    body["timezone"] = fields.get("timezone", "Asia/Singapore")  # what the browser reports
     return client.post("/auth/signup", json=body)
 
 

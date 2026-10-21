@@ -162,7 +162,7 @@ export type Preferences = {
 // The signed-in account, from /auth/me. The session itself is an httpOnly cookie
 // the browser sends automatically; page code never sees it.
 export type Account = {
-  user: { id: string; email: string; name: string; timezone: string; created_at: string }
+  user: { id: string; email: string; name: string; timezone: string; email_verified?: boolean; created_at: string }
   hire: { agent: string; since: string; onboarding_done: boolean } | null
 }
 
@@ -235,12 +235,27 @@ export async function upload<T>(path: string, file: File): Promise<T> {
 export const auth = {
   me: () => request<Account>('/auth/me'),
   signup: (name: string, email: string, password: string) =>
-    request<Account>('/auth/signup', { method: 'POST', json: { name, email, password } }),
+    request<Account>('/auth/signup', { method: 'POST', json: { name, email, password, timezone: browserTimeZone() } }),
   login: (email: string, password: string) => request<Account>('/auth/login', { method: 'POST', json: { email, password } }),
   logout: () => request<{ status: string }>('/auth/logout', { method: 'POST' }),
   changePassword: (current: string, next: string) =>
     request<{ status: string }>('/auth/password', { method: 'POST', json: { current, new: next } }),
   logoutEverywhere: () => request<{ status: string }>('/auth/logout-everywhere', { method: 'POST' }),
+  sendVerification: () => request<{ status: string }>('/auth/verify-email/send', { method: 'POST' }),
+  verifyEmail: (token: string) => request<{ status: string }>('/auth/verify-email', { method: 'POST', json: { token } }),
+  requestReset: (email: string) =>
+    request<{ status: string }>('/auth/password-reset/request', { method: 'POST', json: { email } }),
+  resetPassword: (token: string, password: string) =>
+    request<{ status: string }>('/auth/password-reset', { method: 'POST', json: { token, password } }),
+}
+
+// The IANA time zone the browser is set to, e.g. "Asia/Kolkata". The server falls back to UTC.
+export function browserTimeZone(): string | undefined {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined
+  } catch {
+    return undefined
+  }
 }
 
 export type ApprovalItem = {

@@ -8,21 +8,25 @@ origin passes. That is the CSRF protection for cookie-authenticated calls.
 
 from __future__ import annotations
 
+import logging
 import re
 import uuid
 from collections.abc import Callable
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, Security
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, Security
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from superaide.auth import service
+from superaide.auth import emails, service
 from superaide.auth.service import AuthError, Client
 from superaide.config import get_settings
 from superaide.db.models import AgentHire, Onboarding, UserAccount
 from superaide.db.session import session_scope
+from superaide.mail import Mail, MailError, get_mailer
+
+log = logging.getLogger(__name__)
 
 UNSAFE = {"POST", "PUT", "PATCH", "DELETE"}
 
@@ -126,6 +130,7 @@ def user_view(s: Any, user: UserAccount) -> dict[str, Any]:
             "email": user.email,
             "name": user.display_name,
             "timezone": user.timezone,
+            "email_verified": user.email_verified_at is not None,
             "created_at": user.created_at.isoformat(),
         },
         "hire": None
@@ -142,6 +147,31 @@ class SignupBody(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     email: str = Field(min_length=3, max_length=320)
     password: str = Field(min_length=1, max_length=1024)
+    # The browser's IANA time zone (Intl.DateTimeFormat().resolvedOptions().timeZone); UTC if absent or unknown.
+    timezone: str | None = Field(default=None, max_length=64)
+
+
+class TokenBody(BaseModel):
+    token: str = Field(min_length=16, max_length=200)
+
+
+class ResetRequestBody(BaseModel):
+    email: str = Field(min_length=1, max_length=320)
+
+
+class ResetBody(BaseModel):
+    token: str = Field(min_length=16, max_length=200)
+    password: str = Field(min_length=1, max_length=1024)
+
+
+def deliver(mail: Mail | None) -> None:
+    """Send after the transaction committed. A failure is logged, never shown: the person can ask again."""
+    if mail is None:
+        return
+    try:
+        get_mailer().send(mail)
+    except MailError:
+        log.exception("couldn't send %r", mail.subject)
 
 
 class LoginBody(BaseModel):
@@ -166,14 +196,17 @@ def make_router() -> APIRouter:
             "Creates an account and signs it in (sets the session cookie). Passwords need at least 10 characters."
         ),
     )
-    def signup(body: SignupBody, request: Request, response: Response) -> dict[str, Any]:
+    def signup(body: SignupBody, request: Request, response: Response, background: BackgroundTasks) -> dict[str, Any]:
         client = client_of(request)
 
-        def go(s: Any) -> tuple[str, dict[str, Any]]:
-            user, token = service.signup(s, email=body.email, password=body.password, name=body.name, client=client)
-            return token, user_view(s, user)
+        def go(s: Any) -> tuple[str, dict[str, Any], Mail | None]:
+            user, token = service.signup(
+                s, email=body.email, password=body.password, name=body.name, client=client, timezone=body.timezone
+            )
+            return token, user_view(s, user), emails.start_verification(s, user)
 
-        token, view = run(go)
+        token, view, mail = run(go)
+        background.add_task(deliver, mail)
         set_session_cookie(response, token)
         return view
 
@@ -239,5 +272,49 @@ def make_router() -> APIRouter:
         n = run(lambda s: service.revoke_all(s, s.get(UserAccount, user_id)))
         clear_session_cookie(response)
         return {"status": "signed out everywhere", "sessions": n}
+
+    @router.post(
+        "/verify-email/send",
+        summary="Send the verification email again",
+        description="Emails a new link that confirms the signed-in account's address. At most a few an hour.",
+    )
+    def send_verification(background: BackgroundTasks, user_id: uuid.UUID = Depends(current_user_id)) -> dict[str, str]:
+        mail = run(lambda s: emails.start_verification(s, s.get(UserAccount, user_id)))
+        background.add_task(deliver, mail)
+        return {"status": "sent" if mail else "already verified"}
+
+    @router.post(
+        "/verify-email",
+        summary="Verify an email address",
+        description="Uses the token from the emailed link. Works without being signed in; each link works once.",
+    )
+    def verify_email(body: TokenBody, request: Request) -> dict[str, str]:
+        client = client_of(request)
+        run(lambda s: emails.verify_email(s, body.token, client))
+        return {"status": "verified"}
+
+    @router.post(
+        "/password-reset/request",
+        summary="Forgot password",
+        description=(
+            "Emails a reset link if the address has an account. The answer is the same either way, so it can't be "
+            "used to find out who has signed up."
+        ),
+    )
+    def request_reset(body: ResetRequestBody, request: Request, background: BackgroundTasks) -> dict[str, str]:
+        client = client_of(request)
+        mail = run(lambda s: emails.request_reset(s, body.email, client))
+        background.add_task(deliver, mail)
+        return {"status": "If that address has an account, we've emailed a link to reset the password."}
+
+    @router.post(
+        "/password-reset",
+        summary="Reset password",
+        description="Sets a new password with the token from the emailed link and signs out every device.",
+    )
+    def reset_password(body: ResetBody, request: Request) -> dict[str, str]:
+        client = client_of(request)
+        run(lambda s: emails.reset_password(s, body.token, body.password, client))
+        return {"status": "password reset; log in with the new password"}
 
     return router

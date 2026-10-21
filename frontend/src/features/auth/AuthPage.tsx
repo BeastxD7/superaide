@@ -158,6 +158,11 @@ export function AuthPage({ mode, next, session }: { mode: Mode; next: string | n
                 </span>
               )}
               {fieldError('password')}
+              {mode === 'login' && (
+                <Link href="/forgot-password" className="mt-2 inline-block text-sm font-medium text-violet-700 hover:underline">
+                  Forgot your password?
+                </Link>
+              )}
             </div>
             {error && !error.field && <Notice tone="error">{error.message}</Notice>}
           </div>

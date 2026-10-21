@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+import pytest
 from sqlalchemy import select
 
 from superaide.db.models import ChannelIdentity, IdentityLinkEvent, LinkChallenge
@@ -111,3 +112,14 @@ def test_slack_users_are_keyed_by_team_and_id(agent, manager):
     # Same user ID in a different team is a different identity.
     result = agent.handle(sl("U_MGR", "hi", team="T_OTHER", external=True))
     assert result.mode == "stranger"
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["hello?", "it's Shashank, new number", "123456", "/start not-a-real-invite-code"],
+)
+def test_every_reply_to_a_stranger_says_it_is_an_ai(agent, text):
+    """EU AI Act Art. 50: people talking to Ava are told it's an AI, whatever they send first."""
+    result = agent.handle(tg("999999", text))
+    assert result.mode == "stranger"
+    assert "AI assistant" in (result.reply or ""), result.reply

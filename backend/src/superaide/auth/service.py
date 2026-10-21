@@ -13,6 +13,7 @@ import hashlib
 import secrets
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from email_validator import EmailNotValidError, validate_email
 from sqlalchemy import func, select, update
@@ -102,7 +103,21 @@ def find_user(session: Session, email: str) -> UserAccount | None:
 # --- sign-up and login -------------------------------------------------------------
 
 
-def signup(session: Session, *, email: str, password: str, name: str, client: Client) -> tuple[UserAccount, str]:
+def valid_timezone(name: str | None) -> str:
+    """An IANA time zone name the server knows, or UTC."""
+    name = (name or "").strip()
+    if not name or len(name) > 64:
+        return "UTC"
+    try:
+        ZoneInfo(name)
+    except ZoneInfoNotFoundError, ValueError:
+        return "UTC"
+    return name
+
+
+def signup(
+    session: Session, *, email: str, password: str, name: str, client: Client, timezone: str | None = None
+) -> tuple[UserAccount, str]:
     settings = get_settings()
     name = " ".join(name.split())[:120]
     if not name:
@@ -129,6 +144,7 @@ def signup(session: Session, *, email: str, password: str, name: str, client: Cl
         password_hash=hash_password(password),
         display_name=name,
         person_id=person.id,
+        timezone=valid_timezone(timezone),
         password_changed_at=now,
         last_login_at=now,
     )
