@@ -21,7 +21,10 @@ def demo_responder(
     purpose: str, system: list[SystemBlock], messages: list[dict[str, Any]], output_model: type[BaseModel] | None
 ) -> Any:
     """Offline stand-in used when no Claude API key is set. Costs nothing."""
-    lines = messages[-1]["content"].splitlines() if messages else []
+    body = messages[-1]["content"] if messages else ""
+    if isinstance(body, list):  # text blocks (with sources attached): the owner's words come last
+        body = next((b.get("text", "") for b in reversed(body) if b.get("type") == "text"), "")
+    lines = body.splitlines()
     last = lines[-1] if lines else ""
     return TurnOutput(
         reply=(

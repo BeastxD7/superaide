@@ -9,6 +9,7 @@ candidate/verify tier the research describes before they can teach Ava anything.
 from __future__ import annotations
 
 import logging
+import re
 import uuid
 from types import SimpleNamespace
 
@@ -26,13 +27,28 @@ JOB_KIND = "learn_from_turn"
 MIN_CHARS = 25  # "ok", "thanks", "what's on today?" teach nothing
 
 
+# A short first-person stance is worth reading however short: "I hate black.", "I'm vegetarian",
+# "no beige, ever", "call me Shash", "my daughter is Asha".
+STANCE = re.compile(
+    r"^\s*(?:(?:btw|fyi|also|and|oh|honestly|actually)[,\s]+)*"
+    r"(?:i\s+(?:(?:really|do|don'?t|do\s+not|never|always|can'?t|cannot|absolutely|kind\s+of|kinda)\s+)*"
+    r"(?:like|love|hate|dislike|prefer|enjoy|stand|avoid|eat|drink|wear|use|want|need|work|live|am|have|go)\b"
+    r"|i'?m\s+\w+|i\s+am\s+\w+|my\s+\w+(?:'s)?\s+(?:is|are|was)\b|call\s+me\b|no\s+\w+.*\b(?:ever|please|thanks)\b"
+    r")",
+    re.I,
+)
+SMALL_TALK = re.compile(r"^\s*i(?:'?m|\s+am)\s+(?:fine|ok|okay|good|great|here|back|done|in|on|sure|busy|home)\b", re.I)
+
+
 def worth_reading(text: str) -> bool:
     from superaide.intentions.when import is_reminder_request
     from superaide.memory.store import parse_remember
 
     t = text.strip()
-    if len(t) < MIN_CHARS or t.endswith("?") and len(t) < 80:
+    if t.endswith("?") and len(t) < 80:
         return False  # short questions are requests, not facts
+    if len(t) < MIN_CHARS and (not STANCE.match(t) or SMALL_TALK.match(t)):
+        return False  # "ok", "thanks", "sounds good" teach nothing
     return parse_remember(t) is None and not is_reminder_request(t)  # those are stored already
 
 

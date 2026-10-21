@@ -156,7 +156,6 @@ def test_a_learned_preference_is_pinned_into_the_owner_brief(scenario):
         assert "colour black" in owner_brief(s, sender, aud)
 
 
-@pytest.mark.xfail(strict=True, reason="WP4: Ava isn't told she learns from chat, so she says she can't keep it")
 def test_the_owner_turn_tells_ava_that_what_the_owner_says_is_kept(scenario):
     client, rec = scenario
     rec.chat_systems.clear()
@@ -164,7 +163,6 @@ def test_the_owner_turn_tells_ava_that_what_the_owner_says_is_kept(scenario):
     assert "learn from what your owner tells you" in rec.chat_systems[0]
 
 
-@pytest.mark.xfail(strict=True, reason="WP4: messages under 25 characters are never read for facts")
 @pytest.mark.parametrize("text", ["I hate black.", "no beige, ever", "I'm vegetarian"])
 def test_a_short_statement_of_preference_is_worth_learning(text):
     assert worth_reading(text)
@@ -186,3 +184,27 @@ def test_the_same_preference_said_again_in_other_words_is_kept_once(scenario, ag
     with session_scope() as s:
         live = s.scalars(select(MemoryItem).where(MemoryItem.category == "preference", MemoryItem.valid_to.is_(None)))
         assert len(live.all()) == 1
+
+
+def test_a_matching_note_is_attached_to_the_message_before_the_model_runs(scenario):
+    client, rec = scenario
+    rec.chat_messages.clear()
+    client.post("/app/chat", json={"text": "what colors do I hate?"})
+    first = rec.chat_messages[0][-1]["content"]
+    blocks = [b for b in first if b.get("type") == "search_result"]
+    assert [b["content"][0]["text"] for b in blocks] == [LEARNED]
+    assert blocks[0]["title"] == "Note · preference · from Telegram"
+    assert first[-1] == {"type": "text", "text": "what colors do I hate?"}
+
+
+def test_offline_ava_makes_no_claim_about_learning(agent, model):
+    client = TestClient(create_app(agent), headers={"X-Requested-With": "superaide"})
+    client.post("/auth/signup", json={"name": "Shashank Rao", "email": "s@example.com", "password": PASSWORD})
+    client.post("/app/hire", json={"agent": "ava", "accepted_notice": True})
+    client.post("/app/chat", json={"text": "hello"})
+    assert model.systems and "learn from what your owner tells you" not in model.systems[-1]
+
+
+@pytest.mark.parametrize("text", ["ok", "thanks", "sounds good", "I'm fine thanks", "never mind", "what's up?"])
+def test_small_talk_is_still_not_worth_learning(text):
+    assert not worth_reading(text)

@@ -292,6 +292,7 @@ class Agent:
             inbound=inbound,
             web=brain_ready(self.settings) and self.settings.web_tools_enabled,
             emit=emit,
+            learns=uses_real_model(self.settings),
         )
         try:
             result = turn.run(build_messages(history, msg.text))

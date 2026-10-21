@@ -26,7 +26,7 @@ from superaide.brain.budget import BudgetExceeded
 from superaide.brain.llm import LLM, StepResult, SystemBlock
 from superaide.brain.turn import load_charter
 from superaide.context.audience import Audience
-from superaide.context.recall import Source, recall
+from superaide.context.recall import Source, pre_recall, recall
 from superaide.db.models import Event
 from superaide.identity.resolver import Sender
 from superaide.intentions import service as intentions
@@ -40,6 +40,12 @@ from superaide.skills.registry import WEB_SEARCHES_PER_STEP
 log = logging.getLogger(__name__)
 
 MAX_STEPS = 6
+PRE_RECALL = 4  # notes code looks up before the model runs
+LEARNS = (
+    "You learn from what your owner tells you: after you reply, anything worth keeping is saved to their "
+    "notebook, whichever channel they said it on, and you can recall it anywhere. So don't tell them you can't "
+    "remember or save something they just told you."
+)
 MAX_TOKENS = 1200
 MAX_REASONING_CHARS = 4000
 
@@ -56,6 +62,7 @@ OWNER_RULES = """How you work with your owner:
 - Be brief. Plain sentences; light Markdown (bold, short lists) only when it helps.
 - Use metric units (°C, km) and the owner's time zone unless they ask otherwise.
 - Your earlier replies may start with a "[Tools used for this reply: …]" line. The app added it and it is a true record of what you did then (a reminder listed there was set). Never write such a line yourself.
+- You are one assistant on every channel (the app, Telegram, Slack). Sources and earlier turns show where something was said; when you use something the owner told you on another channel, say where, briefly ("you mentioned on Telegram earlier").
 - Channel linking is handled by the app, not by you: a new account is linked by opening a one-time link from Connections, or by typing a code sent to a channel the owner already linked. Replies sent before an account was linked were fixed messages, not yours; don't apologise for or reinterpret them."""
 
 ACTION_TOOL = {
@@ -232,6 +239,7 @@ class OwnerTurn:
         inbound: Event,
         web: bool,
         emit: Emit | None = None,
+        learns: bool = False,
     ) -> None:
         self.llm, self.model, self.agent_name = llm, model, agent_name
         self.s, self.sender, self.aud, self.brief, self.inbound, self.web = (
@@ -242,6 +250,7 @@ class OwnerTurn:
             inbound,
             web,
         )
+        self.learns = learns  # facts are learned from this turn after the reply (a real model is connected)
         self.notes: list[str] = []
         self.tainted = False
         self._skills: list[Skill] | None = None
@@ -331,6 +340,8 @@ class OwnerTurn:
             + (", and on Telegram too." if on_telegram else ".")
             + ("" if telegram else " Telegram isn't linked yet; they can link it under Connections.")
         )
+        if self.learns:
+            who += f" {LEARNS}"
         skills = registry.instructions_for(self.skills())
         self._known = who + ("\n\n" + self.brief if self.brief else "")  # facts Ava was told, for the source check
         return [
@@ -490,9 +501,26 @@ class OwnerTurn:
 
     # --- the loop ---------------------------------------------------------------
 
+    def _with_notes(self, msgs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Notes matching the owner's message, attached to it as citable sources before the first
+        step, so finding a fact never depends on the model choosing to search for it."""
+        if not msgs or msgs[-1].get("role") != "user":
+            return msgs
+        found = pre_recall(self.s, self.aud, self.inbound.content, limit=PRE_RECALL)
+        if not found:
+            return msgs
+        blocks = search_results(found)
+        self.returned_uris |= verify.returned_uris(blocks)
+        self.recall_hits += len(found)
+        self.notes.append(f"pre_recall:{len(found)}")
+        body = msgs[-1]["content"]
+        said = [{"type": "text", "text": body}] if isinstance(body, str) else list(body)
+        lead = {"type": "text", "text": "(Notes from your notebook that may be relevant, found automatically:)"}
+        return [*msgs[:-1], {"role": "user", "content": [lead, *blocks, *said]}]
+
     def run(self, messages: list[dict[str, Any]]) -> LoopResult:
         system, tools = self.system(), self.tools()
-        msgs = list(messages)
+        msgs = self._with_notes(list(messages))
         last: StepResult | None = None
         streaming = self._emit is not None
         for step in range(MAX_STEPS):
