@@ -240,7 +240,10 @@ function ConnectForm({
           <Notice tone="warn">
             {provider === 'telegram' ? 'Telegram' : 'Slack'} rejected the saved token
             {service.health?.since ? ` (since ${new Date(service.health.since).toLocaleString()})` : ''}, so nothing reaches you there.
-            It was probably revoked or regenerated. Paste a new one below to reconnect.
+            It was probably revoked or regenerated.{' '}
+            {provider === 'telegram'
+              ? 'In BotFather, send /token and pick your bot to get its current token, then paste it below.'
+              : 'Reinstall your Slack app (OAuth & Permissions) and paste the new tokens below.'}
           </Notice>
         </div>
       )}

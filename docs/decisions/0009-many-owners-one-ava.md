@@ -123,6 +123,9 @@ one advisory lock (`_LOCK_KEY = 784_221_001`). `db/models.py:303` owner prices a
 `agent_id`.
 
 **Policy**: `policy/killswitch.py:15-50` per agent from settings; no platform-wide or per-account freeze.
+`channels/health.py` (keys `channel_health:<provider>`) and `proactive/notify.py` (`channel_failure_noted:<provider>`)
+store channel health and the failed-delivery note's rate limit in `agent_state` under the settings agent, the same
+way; they need the instance's `agent_id` passed in once credentials are per instance.
 `policy/actions.py:53` approvals by `relation == "manager"`, which is global on `Person`.
 `app/connections.py:231-254` keeps the Google OAuth pending state in `agent_state` under the settings
 agent, and the callback has no session, so the state must name the instance.

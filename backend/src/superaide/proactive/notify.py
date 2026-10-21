@@ -56,12 +56,6 @@ def rejected_channels(session: Session) -> list[str]:
     return [p for p in EXTERNAL if health.rejected(session, p)]
 
 
-def available_channels(session: Session, owner: Person) -> list[str]:
-    """Where a message to the owner can actually go right now."""
-    bad = set(rejected_channels(session))
-    return [c for c in linked_channels(session, owner) if c not in bad]
-
-
 def messenger_for(provider: str) -> Any:
     """A sender for Telegram or Slack with the bot token saved in the app, or None without one."""
     from superaide.vault.store import runtime_settings
@@ -141,7 +135,7 @@ def notify_owner(
     if channel in EXTERNAL:
         identity = identity_for(session, owner, channel)
         if identity is None:
-            why = f"your {CHANNEL_NAMES[channel]} account isn't linked any more. Link it under Connections."
+            why = f"your {CHANNEL_NAMES[channel]} account isn't linked. Link it under Connections."
             _note_failure(session, owner, ctx, channel, why, meta or {})
             return via
         # Try even when the channel is marked unhealthy: a send that works is what heals it.
