@@ -650,9 +650,11 @@ test.describe('each step refuses what it should, and says why', () => {
     await api.answer('about', { mode: 'chat', text: 'I lead applied AI.' })
     await api.answer('people', { skip: true })
     await api.answer('urgent', { topics: ['A family emergency'] })
+    // An unknown zone keeps the one already stored (the browser's zone from sign-up, UTC if none).
+    const timezone = (await preference())?.timezone
     const v = await api.answer('reach', { channel: 'telegram', quiet_start: '21:00', quiet_end: '06:00', timezone: 'Mars/Olympus_Mons' })
     expect(v.step).toBe('share')
-    expect(await preference()).toMatchObject({ interrupt_channel: 'app', timezone: 'Asia/Singapore', quiet_start: '21:00' })
+    expect(await preference()).toMatchObject({ interrupt_channel: 'app', timezone, quiet_start: '21:00' })
   })
 
   test('share: never-share text with HTML or a script is shown as text and never runs', async ({ page, api }) => {
