@@ -1,15 +1,13 @@
-"""FastAPI app: channel webhooks, admin API and the dev simulator."""
+"""The backend: a JSON API only. The React frontend (web/) runs separately on port 3000."""
 
 from __future__ import annotations
 
 import json
 import logging
-from pathlib import Path
 from typing import Any
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from agi_agent.api.admin import require_admin
@@ -40,12 +38,12 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     app = FastAPI(title="agi-agent", version="0.1.0")
     app.add_middleware(
         CORSMiddleware,
-        # The dashboard may be opened as localhost or 127.0.0.1; allow both spellings.
+        # The frontend may be opened as localhost or 127.0.0.1; allow both spellings.
         allow_origins=sorted(
             {
-                settings.dashboard_origin,
-                settings.dashboard_origin.replace("localhost", "127.0.0.1"),
-                settings.dashboard_origin.replace("127.0.0.1", "localhost"),
+                settings.frontend_origin,
+                settings.frontend_origin.replace("localhost", "127.0.0.1"),
+                settings.frontend_origin.replace("127.0.0.1", "localhost"),
             }
         ),
         allow_methods=["GET", "POST"],
@@ -64,6 +62,14 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     from agi_agent.app.routes import make_router
 
     app.include_router(make_router(get_agent))
+
+    @app.get("/")
+    def index() -> dict[str, str]:
+        return {
+            "service": "agi-agent API",
+            "frontend": settings.frontend_origin,
+            "docs": "/docs",
+        }
 
     @app.get("/health")
     def health() -> dict[str, str]:
@@ -126,12 +132,6 @@ def create_app(agent: Agent | None = None) -> FastAPI:
         with session_scope() as s:
             audit(s, "dashboard", "simulated_message", provider=body.provider, mode=result.mode)
         return {"mode": result.mode, "reply": result.reply, "notes": result.notes, "outbox": outbox.sent}
-
-    # Serve the prebuilt dashboard (web/dist) from the same address, so trying
-    # the agent needs no Node and no CORS. API routes above take precedence.
-    dist = Path(__file__).resolve().parents[2] / "web" / "dist"
-    if (dist / "index.html").exists():
-        app.mount("/", StaticFiles(directory=dist, html=True), name="dashboard")
 
     return app
 

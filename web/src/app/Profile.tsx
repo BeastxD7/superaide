@@ -109,12 +109,12 @@ export function Profile({ slug, session }: { slug: string; session: Session }) {
           )}
 
           {agent.never.length > 0 && (
-            <section className="rounded-[28px] bg-sage-100 p-7 sm:p-9">
+            <section className="rounded-[28px] bg-haze-100 p-7 sm:p-9">
               <h2 className="text-xl font-medium tight">What {agent.name} never does</h2>
               <ul className="mt-5 space-y-3">
                 {agent.never.map((s) => (
                   <li key={s} className="flex items-center gap-3 text-ink">
-                    <ShieldCheck className="size-5 shrink-0 text-forest-600" />
+                    <ShieldCheck className="size-5 shrink-0 text-violet-600" />
                     {s}
                   </li>
                 ))}

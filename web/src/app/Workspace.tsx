@@ -99,7 +99,7 @@ export function Workspace({ session }: { session: Session }) {
       <header className="px-3 pt-3 sm:px-4">
         <div className="glass mx-auto flex max-w-7xl items-center gap-3 rounded-full border border-white/70 py-1.5 pr-1.5 pl-4 shadow-[0_8px_30px_-20px_rgba(15,42,35,0.5)]">
           <a href="#/" className="flex items-center gap-2 font-semibold text-ink tight">
-            <Sparkle className="size-5 text-forest-800" />
+            <Sparkle className="size-5 text-violet-600" />
             <span className="hidden sm:inline">{PRODUCT}</span>
           </a>
           <div className="mx-auto flex items-center gap-1 rounded-full bg-mist p-1 text-sm lg:hidden">

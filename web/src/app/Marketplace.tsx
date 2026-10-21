@@ -80,8 +80,8 @@ export function Marketplace({ session, section }: { session: Session; section: s
             <div className="flex items-center gap-3">
               <div className="flex -space-x-3">
                 <Orb hue="indigo" size={40} className="rounded-full ring-2 ring-white" />
-                <Orb hue="teal" size={40} mood="asleep" className="rounded-full ring-2 ring-white" />
-                <Orb hue="amber" size={40} mood="asleep" className="rounded-full ring-2 ring-white" />
+                <Orb hue="sky" size={40} mood="asleep" className="rounded-full ring-2 ring-white" />
+                <Orb hue="rose" size={40} mood="asleep" className="rounded-full ring-2 ring-white" />
               </div>
               <p className="text-2xl font-medium text-ink tight">
                 {ava?.hired_by ? `Ava works for ${ava.hired_by}` : 'Ava is ready to start'}
@@ -101,7 +101,7 @@ export function Marketplace({ session, section }: { session: Session; section: s
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.35, duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-          className="mx-auto max-w-6xl overflow-hidden rounded-[28px] bg-gradient-to-b from-forest-800 to-ink pt-12 text-white lg:pt-28"
+          className="mx-auto max-w-6xl overflow-hidden rounded-[28px] bg-[radial-gradient(90%_70%_at_50%_0%,#5b4bc4_0%,transparent_60%),linear-gradient(180deg,#2a2160,#120e2a)] pt-12 text-white lg:pt-28"
         >
           <p
             aria-hidden
@@ -117,7 +117,7 @@ export function Marketplace({ session, section }: { session: Session; section: s
                 <li key={s.name} className="relative">
                   <span
                     className={`relative block size-[15px] rounded-full border-2 ${
-                      i === 0 ? 'border-violet-400 bg-violet-400 shadow-[0_0_0_6px_rgba(154,130,255,0.25)]' : 'border-white/30 bg-ink'
+                      i === 0 ? 'border-violet-400 bg-violet-400 shadow-[0_0_0_6px_rgba(154,130,255,0.25)]' : 'border-white/30 bg-night-900'
                     }`}
                   />
                   <p className="mt-4 text-lg font-medium text-white">
@@ -172,12 +172,12 @@ export function Marketplace({ session, section }: { session: Session; section: s
           <div className="relative mt-10 grid gap-4 md:grid-cols-[1.5fr_1fr]">
             <span
               aria-hidden
-              className="absolute top-1/2 left-[60%] z-10 hidden size-12 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white text-forest-800 md:grid"
+              className="absolute top-1/2 left-[60%] z-10 hidden size-12 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white text-violet-600 md:grid"
             >
               <Sparkle className="size-7" />
             </span>
 
-            <Bento tone="bg-sage-100" title="A notebook you can read" text="Everything Ava remembers about you is written down. Read it any time and remove anything.">
+            <Bento tone="bg-haze-100" title="A notebook you can read" text="Everything Ava remembers about you is written down. Read it any time and remove anything.">
               <div className="rounded-2xl bg-white p-4 shadow-[0_20px_40px_-28px_rgba(15,42,35,0.5)]">
                 <p className="flex items-center gap-2 text-sm font-medium text-ink">
                   <BookOpen className="size-4" /> Ava's notebook
@@ -219,7 +219,7 @@ export function Marketplace({ session, section }: { session: Session; section: s
               </div>
             </Bento>
 
-            <Bento tone="bg-peach-100" title="Private stays private" text="What you say one to one is never repeated in a group or to anyone else. And Ava always says it's an AI.">
+            <Bento tone="bg-rose-100" title="Private stays private" text="What you say one to one is never repeated in a group or to anyone else. And Ava always says it's an AI.">
               <div className="flex gap-3 text-ink">
                 <span className="grid size-11 place-items-center rounded-full bg-white">
                   <Lock className="size-5" />

@@ -1,7 +1,8 @@
-// The person-facing API under /app. Signed-in calls send the session token
-// that /app/hire (or the owner-link command) gave this browser.
+// The person-facing API under /app on the backend. Signed-in calls send the
+// session token that /app/hire (or the owner-link command) gave this browser.
+import { API_URL, ApiError, createClient } from '../http'
 
-export type Hue = 'indigo' | 'teal' | 'amber'
+export type Hue = 'indigo' | 'sky' | 'rose'
 
 export type AgentCard = {
   slug: string
@@ -54,11 +55,6 @@ export type Memory = { id: string; text: string; private: boolean; at: string }
 
 const SESSION_KEY = 'understudy.session'
 
-export function base(): string {
-  // Vite's dev server runs on 5173; the agent serves this page itself otherwise.
-  return window.location.port === '5173' ? 'http://127.0.0.1:8000' : window.location.origin
-}
-
 export function getSession(): string | null {
   try {
     return localStorage.getItem(SESSION_KEY)
@@ -79,38 +75,17 @@ export function setSession(token: string | null): void {
   }
 }
 
-export class AppError extends Error {
-  status: number
-  constructor(status: number, message: string) {
-    super(message)
-    this.status = status
-  }
-}
+export { ApiError as AppError }
 
-export async function call<T>(path: string, init?: RequestInit & { json?: unknown }): Promise<T> {
-  const token = getSession()
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (token) headers.Authorization = `Bearer ${token}`
-  let res: Response
+// Axios client for the app's endpoints on the backend (/app/...), signed in with this browser's session.
+const client = createClient(`${API_URL}/app`, getSession)
+
+export async function call<T>(path: string, init?: { method?: 'GET' | 'POST'; json?: unknown }): Promise<T> {
   try {
-    res = await fetch(`${base()}/app${path}`, {
-      ...init,
-      body: init?.json !== undefined ? JSON.stringify(init.json) : init?.body,
-      headers: { ...headers, ...(init?.headers as Record<string, string> | undefined) },
-    })
-  } catch {
-    throw new AppError(0, "Can't reach the agent on this computer. Is start.command still running?")
+    const res = await client.request<T>({ url: path, method: init?.method ?? 'GET', data: init?.json })
+    return res.data
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 401) setSession(null)
+    throw e
   }
-  if (!res.ok) {
-    let detail = res.statusText
-    try {
-      const body = await res.json()
-      if (typeof body.detail === 'string') detail = body.detail
-    } catch {
-      // keep the status text
-    }
-    if (res.status === 401) setSession(null)
-    throw new AppError(res.status, detail)
-  }
-  return (await res.json()) as T
 }

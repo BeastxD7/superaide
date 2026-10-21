@@ -17,6 +17,18 @@ The agent (called Ava by default) starts at the **Infant** stage: it watches, as
 - **Operator console.** At `#/console`: growth stage, people and trust tiers, conversations, a readable safety log, spend, the pause switch and an impostor simulator.
 - **Tests.** 43 tests, including the five impostor scenarios in `tests/redteam/`. They use a fake model, so they cost nothing.
 
+## How it fits together
+
+Three separate parts, the usual way:
+
+| Part | What | Where |
+| --- | --- | --- |
+| Frontend | React 19 + Vite 8 + Tailwind CSS 4 + Motion, in `web/` | http://localhost:3000 |
+| Backend | FastAPI, a JSON API only (no pages), in `src/agi_agent/` | http://127.0.0.1:8000 (docs at `/docs`) |
+| Database | Postgres 17 with pgvector, in Docker | localhost:5432 |
+
+The frontend calls the backend over HTTP with Axios (`web/src/http.ts`). The API address comes from `VITE_API_URL` (default `http://127.0.0.1:8000`; copy `web/.env.example` to `web/.env.local` to change it). The backend only accepts browser requests from the frontend's address (`FRONTEND_ORIGIN`, default `http://localhost:3000`). Telegram and Slack talk to the backend directly.
+
 ## Try it in one command
 
 You need [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed (`brew install --cask docker`) and opened once. Then paste this into Terminal:
@@ -25,10 +37,10 @@ You need [Docker Desktop](https://www.docker.com/products/docker-desktop/) insta
 bash ~/Desktop/agi-agent/start.command
 ```
 
-It installs [uv](https://docs.astral.sh/uv/) if needed, starts Docker Desktop if it is closed, runs Postgres 17 in Docker, creates `.env` with an admin token, and opens http://127.0.0.1:8000. You land on the marketplace as a new visitor: open Ava's card, hire it, and Ava onboards you. Without an API key the brain runs in offline mode, so this costs nothing. The terminal also prints the operator console link. Press Ctrl+C to stop; run it again any time and you pick up where you left off.
+It installs [uv](https://docs.astral.sh/uv/) if needed, stops any copy that is already running, starts Postgres (in Docker, or a built-in Postgres if Docker Desktop isn't installed), creates `.env` with an admin token, starts the backend API on port 8000 and the frontend on port 3000, and opens http://localhost:3000. With Node 20+ installed the frontend runs on Vite's dev server; without Node it serves the prebuilt files in `web/dist`. You land on the marketplace as a new visitor: open Ava's card, hire it, and Ava onboards you. Without an API key the brain runs in offline mode, so this costs nothing. The terminal also prints the API docs and operator console links. Press Ctrl+C to stop everything; run it again any time and you pick up where you left off.
 
 - `bash start.command --reset` wipes the data first, so you can hire Ava again from scratch.
-- Signed out of the app? `uv run agi-agent owner-link --port 8000` prints a one-time sign-in link for the person who hired Ava.
+- Signed out of the app? `uv run agi-agent owner-link` prints a one-time sign-in link for the person who hired Ava.
 - `bash start.command --no-docker` uses an embedded Postgres in `.local-db/` instead of Docker.
 
 ## Quick start on your Mac, step by step
@@ -47,12 +59,12 @@ uv run pytest                     # 43 tests, offline, free
 ### Try it with no API key and no channels
 
 ```bash
-uv run agi-agent serve            # API on http://127.0.0.1:8000 (keep this running)
+uv run agi-agent serve            # backend API on http://127.0.0.1:8000 (keep this running)
 # in a second terminal:
-cd web && npm install && npm run dev   # the app on http://localhost:5173 (console at #/console)
+cd web && npm install && npm run dev   # frontend on http://localhost:3000 (console at #/console)
 ```
 
-Open http://localhost:5173/#/console, paste your `ADMIN_TOKEN`, then add yourself in a third terminal so the scenarios have someone to protect:
+Open http://localhost:3000/#/console, paste your `ADMIN_TOKEN`, then add yourself in a third terminal so the scenarios have someone to protect:
 
 ```bash
 uv run agi-agent add-manager --name "Shashank" --telegram-id 1001
@@ -88,7 +100,7 @@ Replies to known people use Sonnet 5.5. My estimate is about a cent per reply wi
 
 | Command | What it does |
 | --- | --- |
-| `uv run agi-agent serve` | The app, the console, webhooks and their APIs, on 127.0.0.1:8000 |
+| `uv run agi-agent serve` | The backend API (app, console and webhooks) on 127.0.0.1:8000 |
 | `uv run agi-agent owner-link` | A one-time sign-in link for the person who hired Ava |
 | `uv run agi-agent telegram-poll` | Receive Telegram messages without a public URL |
 | `uv run agi-agent slack-socket` | Receive Slack messages over Socket Mode |
@@ -114,7 +126,8 @@ src/agi_agent/
   db/                SQLAlchemy models (migrations in alembic/)
 skills/charter.md    who the agent is and its hard limits (cached in every prompt)
 tests/redteam/       the five impostor scenarios
-web/                 React + Vite: the app (src/app) and the operator console
+web/                 the frontend: React + Vite on :3000, Axios client in src/http.ts,
+                     the app in src/app and the operator console
 ```
 
 ## Safety notes

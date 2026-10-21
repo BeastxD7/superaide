@@ -28,8 +28,8 @@ type ButtonProps = {
 } & Omit<ComponentProps<typeof motion.button>, 'children'>
 
 const TONES = {
-  dark: 'bg-ink text-white hover:bg-forest-800',
-  light: 'bg-sage-100 text-ink hover:bg-[#e3e9e5]',
+  dark: 'bg-ink text-white hover:bg-night-800',
+  light: 'bg-haze-100 text-ink hover:bg-[#e9e6f5]',
   violet:
     'bg-gradient-to-r from-violet-500 to-violet-600 text-white shadow-[0_10px_30px_-10px_rgba(103,71,238,0.7)] hover:from-violet-600 hover:to-violet-700',
   ghost: 'bg-transparent text-ink hover:bg-mist',
@@ -62,7 +62,7 @@ export function NavBar({ session, links = true, cta = true }: { session: Session
     <header className="sticky top-0 z-30 px-4 pt-4 sm:px-6">
       <nav className="glass mx-auto flex max-w-6xl items-center justify-between gap-4 rounded-full border border-white/60 py-2 pr-2 pl-5 shadow-[0_8px_30px_-18px_rgba(15,42,35,0.45)]">
         <a href="#/" className="flex items-center gap-2 font-semibold text-ink tight">
-          <Sparkle className="size-5 text-forest-800" />
+          <Sparkle className="size-5 text-violet-600" />
           <span className="text-lg">{PRODUCT}</span>
         </a>
         {links && (
@@ -107,7 +107,7 @@ export function NavBar({ session, links = true, cta = true }: { session: Session
 export function Footer() {
   return (
     <footer className="px-4 pb-6 sm:px-6">
-      <div className="mx-auto max-w-6xl overflow-hidden rounded-[28px] bg-ink text-white">
+      <div className="mx-auto max-w-6xl overflow-hidden rounded-[28px] bg-[linear-gradient(180deg,#2a2160,#120e2a)] text-white">
         <div className="flex flex-col gap-6 px-8 pt-10 sm:flex-row sm:items-start sm:justify-between">
           <p className="max-w-sm text-lg text-white/80">AI teammates that start as beginners and grow up by working with you.</p>
           <div className="flex gap-8 text-sm text-white/60">
@@ -136,7 +136,7 @@ export function Footer() {
 export function Notice({ tone = 'info', children }: { tone?: 'info' | 'warn' | 'error'; children: ReactNode }) {
   const styles = {
     info: 'bg-sky-100 text-ink',
-    warn: 'bg-peach-100 text-[#6b3d06]',
+    warn: 'bg-rose-100 text-[#6b3d06]',
     error: 'bg-[#fbe8ea] text-danger',
   }[tone]
   return <div className={`rounded-2xl px-4 py-3 text-sm ${styles}`}>{children}</div>

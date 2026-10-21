@@ -1,4 +1,5 @@
-// Talks to the agent's admin API (FastAPI on 127.0.0.1:8000 by default).
+// Talks to the agent's admin API (FastAPI on 127.0.0.1:8000 by default) through Axios.
+import { API_URL, ApiError, createClient } from './http'
 
 export type Gate = { label: string; status: 'met' | 'unmet' | 'later'; detail: string }
 
@@ -109,10 +110,9 @@ const STORE_KEY = 'agi-agent-dashboard'
 
 export type Connection = { base: string; token: string }
 
-// When the dashboard is served by the agent itself, the API is on the same
-// address. The Vite dev server (port 5173) talks to the agent on port 8000.
+// The console talks to the backend API (port 8000 by default) like the rest of the frontend.
 export function defaultBase(): string {
-  return window.location.port === '5173' ? 'http://127.0.0.1:8000' : window.location.origin
+  return API_URL
 }
 
 export function loadConnection(): Connection | null {
@@ -143,32 +143,11 @@ export function saveConnection(c: Connection | null): void {
   }
 }
 
-export class ApiError extends Error {
-  status: number
-  constructor(status: number, message: string) {
-    super(message)
-    this.status = status
-  }
-}
+export { ApiError }
 
-export async function api<T>(conn: Connection, path: string, init?: RequestInit): Promise<T> {
-  let res: Response
-  try {
-    res = await fetch(`${conn.base.replace(/\/$/, '')}${path}`, {
-      ...init,
-      headers: { Authorization: `Bearer ${conn.token}`, 'Content-Type': 'application/json', ...init?.headers },
-    })
-  } catch {
-    throw new ApiError(0, `Can't reach the agent at ${conn.base}. Is "uv run agi-agent serve" running?`)
-  }
-  if (!res.ok) {
-    let detail = res.statusText
-    try {
-      detail = (await res.json()).detail ?? detail
-    } catch {
-      // keep statusText
-    }
-    throw new ApiError(res.status, detail)
-  }
-  return (await res.json()) as T
+// Same Axios client as the app, authorised with the operator's ADMIN_TOKEN.
+export async function api<T>(conn: Connection, path: string, init?: { method?: 'GET' | 'POST'; body?: string }): Promise<T> {
+  const client = createClient(conn.base.replace(/\/$/, ''), () => conn.token)
+  const res = await client.request<T>({ url: path, method: init?.method ?? 'GET', data: init?.body })
+  return res.data
 }

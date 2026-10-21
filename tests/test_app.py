@@ -138,3 +138,34 @@ def test_sign_out_ends_the_session(client):
     auth = _hire(client)
     assert client.post("/app/signout", headers=auth).status_code == 200
     assert client.get("/app/me", headers=auth).status_code == 401
+
+
+def test_a_manager_added_outside_the_app_still_gets_introductions(client, manager):
+    """Someone made manager from the command line signs in with owner-link and
+    Ava introduces itself the first time they open the app."""
+    with session_scope() as s:
+        person = s.scalar(select(Person).where(Person.relation == "manager"))
+        token = accounts.new_session(s, person)
+    auth = {"Authorization": f"Bearer {token}"}
+    assert client.get("/app/onboarding", headers=auth).json()["step"] == "hello"
+    first = client.get("/app/messages", headers=auth).json()
+    assert first and first[0]["from"] == "agent" and "I'm Ava" in first[0]["text"]
+    client.get("/app/onboarding", headers=auth)  # opening it again doesn't repeat itself
+    assert len(client.get("/app/messages", headers=auth).json()) == len(first)
+
+
+def test_backend_is_an_api_for_the_frontend_on_port_3000(client):
+    """The backend serves JSON only; the React app on :3000 calls it across origins."""
+    assert client.get("/").json()["service"] == "agi-agent API"
+    for origin in ("http://localhost:3000", "http://127.0.0.1:3000"):
+        r = client.options(
+            "/app/agents",
+            headers={
+                "Origin": origin,
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "authorization",
+            },
+        )
+        assert r.status_code == 200 and r.headers["access-control-allow-origin"] == origin
+    r = client.options("/app/agents", headers={"Origin": "http://evil.example", "Access-Control-Request-Method": "GET"})
+    assert "access-control-allow-origin" not in r.headers

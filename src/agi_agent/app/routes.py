@@ -130,8 +130,11 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
 
     @router.get("/onboarding")
     def onboarding(person_id: uuid.UUID = Depends(current_person_id)) -> dict[str, Any]:
+        ob = onboarder()
         with session_scope() as s:
-            return onboarder().view(s, s.get(Person, person_id)).as_dict()
+            person = s.get(Person, person_id)
+            ob.ensure_started(s, person)
+            return ob.view(s, person).as_dict()
 
     @router.post("/onboarding")
     def onboarding_answer(body: AnswerBody, person_id: uuid.UUID = Depends(current_person_id)) -> dict[str, Any]:

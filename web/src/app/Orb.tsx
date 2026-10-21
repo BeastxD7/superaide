@@ -9,8 +9,8 @@ export type Mood = 'idle' | 'thinking' | 'happy' | 'asleep'
 
 const PALETTES: Record<Hue, string[]> = {
   indigo: ['#b9a6ff', '#f3b6f5', '#9cc7ff', '#d9c9ff', '#b9a6ff'],
-  teal: ['#8ee3cf', '#a7d8ff', '#c8f2e2', '#6fd0bd', '#8ee3cf'],
-  amber: ['#ffc98f', '#ffb3c1', '#ffe3a6', '#f7b27a', '#ffc98f'],
+  sky: ['#9cc7ff', '#c7d2fe', '#a5b8ff', '#b9a6ff', '#9cc7ff'],
+  rose: ['#f9a8d4', '#fbcfe8', '#f0abfc', '#fda4c8', '#f9a8d4'],
 }
 
 type Props = {
@@ -145,9 +145,9 @@ export function Orb({ hue, size = 120, mood = 'idle', track = false, className =
 }
 
 export function hueText(hue: Hue): string {
-  return hue === 'teal' ? 'text-kai' : hue === 'amber' ? 'text-rhea' : 'text-violet-600'
+  return hue === 'sky' ? 'text-kai' : hue === 'rose' ? 'text-rhea' : 'text-violet-600'
 }
 
 export function huePanel(hue: Hue): string {
-  return hue === 'teal' ? 'bg-sage-100' : hue === 'amber' ? 'bg-peach-100' : 'bg-lilac-100'
+  return hue === 'sky' ? 'bg-sky-100' : hue === 'rose' ? 'bg-rose-100' : 'bg-lilac-100'
 }

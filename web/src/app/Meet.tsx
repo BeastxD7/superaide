@@ -444,7 +444,7 @@ function ChannelPicker({
       <div className="space-y-3">
         {linked ? (
           <div className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-ink">
-            <span className="grid size-8 place-items-center rounded-full bg-[#e3f3ea] text-ok">
+            <span className="grid size-8 place-items-center rounded-full bg-sky-100 text-ok">
               <Check className="size-4" />
             </span>
             Telegram is connected. {agentName} knows it's you there.

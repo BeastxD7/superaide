@@ -67,7 +67,7 @@ export function Hire({ slug, session }: { slug: string; session: Session }) {
             <ChevronLeft className="size-5" />
           </button>
         ) : (
-          <span className="grid size-10 shrink-0 place-items-center text-forest-800">
+          <span className="grid size-10 shrink-0 place-items-center text-violet-600">
             <Sparkle />
           </span>
         )}

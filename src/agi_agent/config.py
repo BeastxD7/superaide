@@ -47,7 +47,8 @@ class Settings(BaseSettings):
 
     # Admin API used by the dashboard
     admin_token: str = Field(default="", description="Bearer token for /api/*")
-    dashboard_origin: str = "http://localhost:5173"
+    # The React frontend (web/) runs on its own dev server and calls this API from the browser.
+    frontend_origin: str = "http://localhost:3000"
     # Dev only: lets the dashboard inject fake messages to try impostor scenarios.
     enable_simulator: bool = False
 

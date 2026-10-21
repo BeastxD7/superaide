@@ -18,7 +18,7 @@ from agi_agent.app.accounts import linked_providers, web_message
 from agi_agent.audit import audit
 from agi_agent.brain.llm import SystemBlock
 from agi_agent.context.audience import Audience
-from agi_agent.db.models import MemoryItem, Onboarding, Person
+from agi_agent.db.models import Event, MemoryItem, Onboarding, Person
 from agi_agent.identity.resolver import resolve
 from agi_agent.memory.store import get_or_create_context, log_event
 
@@ -175,6 +175,16 @@ class Onboarder:
     def start(self, session: Session, person: Person) -> None:
         """Called once at hire: Ava's first lines go into the conversation."""
         self._say(session, person, lines_for("hello", person, self.settings.agent_name, {}))
+
+    def ensure_started(self, session: Session, person: Person) -> None:
+        """A manager who never went through hiring in the app (added from the command
+        line, say) still gets Ava's introduction the first time they open it."""
+        if state_for(session, person).step != "hello":
+            return
+        _, ctx, _ = self._context(session, person)
+        said_anything = session.scalar(select(Event.id).where(Event.context_id == ctx.id).limit(1))
+        if said_anything is None:
+            self.start(session, person)
 
     # --- answers -------------------------------------------------------------------
 

@@ -1,37 +1,39 @@
 @import 'tailwindcss';
 
-/* Understudy: white canvas, deep forest ink, lilac and pastel panels, and each
-   agent's own iridescent colour. Drawn from the Stellar landing page and the
+/* Understudy: white canvas, deep violet ink, lilac and pastel panels, and each
+   agent's own iridescent colour. Layout patterns from the landing-page and
    assistant-onboarding references the user shared. */
 @theme {
   --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
 
-  --color-ink: #0f2a23;
-  --color-forest-800: #1b4135;
-  --color-forest-600: #2e5e4f;
-  --color-body: #33443e;
-  --color-muted: #66756f;
-  --color-line: #e4e8e5;
+  /* One family: deep violet ink, lilac, periwinkle and rose, all drawn from Ava's orb. */
+  --color-ink: #1b1638;
+  --color-night-900: #120e2a;
+  --color-night-800: #2a2160;
+  --color-night-600: #4b3f9e;
+  --color-body: #4a4566;
+  --color-muted: #77729a;
+  --color-line: #e7e4f3;
   --color-canvas: #ffffff;
-  --color-mist: #f6f7f5;
+  --color-mist: #f7f6fc;
 
-  --color-lilac-50: #fbf7ff;
-  --color-lilac-100: #f4eafe;
-  --color-lilac-200: #e9d7fc;
-  --color-violet-400: #9a82ff;
+  --color-lilac-50: #fbf8ff;
+  --color-lilac-100: #f3edff;
+  --color-lilac-200: #e6dcff;
+  --color-violet-400: #9b84ff;
   --color-violet-500: #7c5cfa;
   --color-violet-600: #6747ee;
   --color-violet-700: #5232d4;
 
-  --color-sage-100: #edf1ee;
-  --color-sky-100: #e9eefc;
-  --color-peach-100: #fcefe7;
-  --color-kai: #14806f;
-  --color-rhea: #c26a1f;
+  --color-haze-100: #f2f1f8;
+  --color-sky-100: #eaefff;
+  --color-rose-100: #fcebf5;
+  --color-kai: #3d6fe0;
+  --color-rhea: #c2448f;
 
-  --color-ok: #1f7a4d;
-  --color-warn: #a35f0b;
-  --color-danger: #b4323f;
+  --color-ok: #4a6fe3;
+  --color-warn: #b06a12;
+  --color-danger: #c03a5b;
 
   --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -68,7 +70,7 @@
   background:
     radial-gradient(60% 50% at 15% 10%, #f6e8ff 0%, transparent 70%),
     radial-gradient(50% 45% at 90% 20%, #e7efff 0%, transparent 70%),
-    radial-gradient(60% 50% at 70% 100%, #fdf0e8 0%, transparent 70%),
+    radial-gradient(60% 50% at 70% 100%, #fcebf5 0%, transparent 70%),
     #fbfaff;
 }
 
