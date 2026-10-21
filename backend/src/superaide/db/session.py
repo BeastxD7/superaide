@@ -34,6 +34,12 @@ def _scope_transaction(session: Session, transaction: SessionTransaction, connec
     connection.execute(text(set_scope_sql()), {"agent": str(scope.agent_id), "tenant": str(scope.tenant_id)})
 
 
+def rescope(session: Session) -> None:
+    """Re-tell Postgres the instance in scope, after switching instances inside one transaction."""
+    scope = scope_or_default()
+    session.execute(text(set_scope_sql()), {"agent": str(scope.agent_id), "tenant": str(scope.tenant_id)})
+
+
 @contextmanager
 def session_scope(url: str | None = None) -> Iterator[Session]:
     """A transaction: commits on success, rolls back on error."""

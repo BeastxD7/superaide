@@ -7,6 +7,7 @@ the reply is saved, so reloading the chat shows it.
 
 from __future__ import annotations
 
+import contextvars
 import json
 import logging
 import queue
@@ -42,7 +43,9 @@ def stream_turn(run: Callable[[OnEvent], HandleResult]) -> Iterator[str]:
         finally:
             events.put(None)
 
-    threading.Thread(target=work, name="chat-turn", daemon=True).start()
+    # The turn runs in its own thread with the request's context (the agent instance in scope).
+    context = contextvars.copy_context()
+    threading.Thread(target=context.run, args=(work,), name="chat-turn", daemon=True).start()
     yield ": open\n\n"
     while True:
         try:

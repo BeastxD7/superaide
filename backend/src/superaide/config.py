@@ -119,6 +119,10 @@ class Settings(BaseSettings):
     login_lock_minutes: int = 15
     login_failures_per_ip: int = 20  # per 15 minutes
     signups_per_ip_per_hour: int = 10
+    # Let more than one account hire Ava, each getting their own instance (ADR 0009). Off until the
+    # per-instance runtime, channels, jobs and memory scoping (T3-T7) are in: with it on before then,
+    # owners would share one set of connections.
+    allow_many_owners: bool = False
     # Hiring needs a verified email address. Off by default until an email provider is chosen.
     require_verified_email: bool = False
     verify_link_hours: int = 48

@@ -93,11 +93,7 @@ def _phantom_lock(session: Session, email: str, now: datetime) -> datetime | Non
 
 
 def find_user(session: Session, email: str) -> UserAccount | None:
-    return session.scalar(
-        select(UserAccount).where(
-            UserAccount.tenant_id == get_settings().tenant_id, UserAccount.email_normalized == email
-        )
-    )
+    return session.scalar(select(UserAccount).where(UserAccount.email_normalized == email))
 
 
 # --- sign-up and login -------------------------------------------------------------

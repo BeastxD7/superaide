@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import secrets
+import uuid
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
@@ -25,7 +26,6 @@ from superaide.db.models import (
     Person,
     UserAccount,
 )
-from superaide.db.session import require
 from superaide.identity.trust import Trust
 
 INVITE_TTL_MINUTES = 15
@@ -48,30 +48,78 @@ def _hash(token: str) -> str:
 
 
 def active_hire(session: Session, agent_slug: str = "ava") -> AgentHire | None:
-    return session.scalar(select(AgentHire).where(AgentHire.agent_slug == agent_slug, AgentHire.status == "active"))
+    """The hire behind the instance in scope."""
+    found = owner_account(session, agent_slug)
+    if found is None:
+        return None
+    return session.scalar(
+        select(AgentHire).where(
+            AgentHire.agent_slug == agent_slug, AgentHire.owner_user_id == found.id, AgentHire.status == "active"
+        )
+    )
 
 
 def owner_account(session: Session, agent_slug: str = "ava") -> UserAccount | None:
-    hire = active_hire(session, agent_slug)
-    return session.get(UserAccount, hire.owner_user_id) if hire else None
+    """The account that hired the agent instance in scope (ADR 0009), if anyone has."""
+    from superaide.tenancy.service import instance_owner
+
+    found = instance_owner(session)
+    return found[0] if found else None
 
 
 def owner(session: Session, agent_slug: str = "ava") -> Person | None:
-    """The Person who hired the agent, if anyone has."""
-    account = owner_account(session, agent_slug)
-    return session.get(Person, account.person_id) if account else None
+    """The Person who hired the agent instance in scope, if anyone has: its owner, as seen inside it."""
+    from superaide.tenancy.service import instance_owner
+
+    found = instance_owner(session)
+    return found[1] if found else None
+
+
+def anyone_hired(session: Session, agent_slug: str = "ava") -> bool:
+    """Whether any account has hired this agent, on the whole server."""
+    from superaide.tenancy.models import AgentInstance
+
+    return (
+        session.scalar(
+            select(AgentInstance.id).where(AgentInstance.agent_slug == agent_slug, AgentInstance.status == "active")
+        )
+        is not None
+    )
 
 
 def hire(session: Session, user: UserAccount, agent_slug: str = "ava") -> Person:
-    existing = owner_account(session, agent_slug)
+    """Hire the agent for this account: its own instance (ADR 0009), with the account's Person
+    inside it as the manager. Hiring again returns the same Person."""
+    from superaide.db.session import rescope
+    from superaide.tenancy.context import use_instance
+    from superaide.tenancy.service import AlreadyTaken, place_hire
+
+    try:
+        scope = place_hire(session, user, agent_slug)
+    except AlreadyTaken as exc:
+        raise AlreadyHired(exc.owner_name) from exc
+    with use_instance(scope):
+        rescope(session)
+        person = _hire_inside(session, user, agent_slug)
+    rescope(session)
+    return person
+
+
+def _hire_inside(session: Session, user: UserAccount, agent_slug: str) -> Person:
+    from superaide.tenancy.context import require_scope
+    from superaide.tenancy.service import join_as_owner
+
+    existing = session.scalar(
+        select(AgentHire).where(
+            AgentHire.agent_slug == agent_slug, AgentHire.owner_user_id == user.id, AgentHire.status == "active"
+        )
+    )
+    person = join_as_owner(session, user, require_scope())
     if existing is not None:
-        if existing.id == user.id:
-            return require(session, Person, user.person_id)
-        raise AlreadyHired(existing.display_name)
+        return person
     now = datetime.now(UTC)
     notice = {"kind": "consent_at_hire", "version": NOTICE_VERSION, "text": NOTICE_TEXT, "at": now.isoformat()}
     session.add(AgentHire(agent_slug=agent_slug, owner_user_id=user.id, notice=notice))
-    person = require(session, Person, user.person_id)
     person.relation = "manager"
     person.notice_basis = notice
     session.flush()
@@ -100,13 +148,18 @@ def hire(session: Session, user: UserAccount, agent_slug: str = "ava") -> Person
                 actor="app",
             )
         )
-    from superaide.tenancy.service import ensure_instance_for_hire
-
-    ensure_instance_for_hire(session, user, person, agent_slug)  # the instance record behind this hire (ADR 0009)
     if session.scalar(select(Onboarding).where(Onboarding.person_id == person.id)) is None:
         session.add(Onboarding(person_id=person.id, step="hello", answers={}))
     audit(session, "app", "hired", person_id=person.id, user_id=user.id, agent=agent_slug)
     return person
+
+
+def instance_of(session: Session, user_id: uuid.UUID, agent_slug: str = "ava"):
+    """(scope, person_id) of the account's hired instance of this agent, or None."""
+    from superaide.tenancy.service import membership, scope_of
+
+    found = membership(session, user_id, agent_slug)
+    return (scope_of(found[0]), found[1].person_id) if found else None
 
 
 def web_message(person: Person, text: str) -> InboundMessage:

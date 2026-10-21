@@ -32,15 +32,19 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-from superaide.config import get_settings
-
 
 def _tenant() -> uuid.UUID:
-    return get_settings().tenant_id
+    """The customer of the agent instance in scope (ADR 0009); the dev instance when none is."""
+    from superaide.tenancy.context import scope_or_default
+
+    return scope_or_default().tenant_id
 
 
 def _agent() -> uuid.UUID:
-    return get_settings().agent_id
+    """The agent instance in scope: new rows belong to it (and Row-Level Security checks that they do)."""
+    from superaide.tenancy.context import scope_or_default
+
+    return scope_or_default().agent_id
 
 
 class Base(DeclarativeBase):
@@ -377,7 +381,8 @@ class UserAccount(TenantScoped, Base):
     """
 
     __tablename__ = "user_account"
-    __table_args__ = (UniqueConstraint("tenant_id", "email_normalized", name="uq_user_email"),)
+    # Accounts are platform-wide: one sign-in for every agent the person hires (ADR 0009).
+    __table_args__ = (UniqueConstraint("email_normalized", name="uq_user_email"),)
 
     email: Mapped[str] = mapped_column(String(320))
     email_normalized: Mapped[str] = mapped_column(String(320))

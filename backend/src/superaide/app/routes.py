@@ -9,12 +9,13 @@ separate ADMIN_TOKEN.
 from __future__ import annotations
 
 import uuid
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
 from datetime import UTC, datetime
 from functools import lru_cache
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -27,7 +28,6 @@ from superaide.app.stream import stream_turn
 from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header
 from superaide.config import get_settings
 from superaide.db.models import (
-    AgentHire,
     Approval,
     ChannelIdentity,
     Context,
@@ -38,7 +38,7 @@ from superaide.db.models import (
     Person,
     UserAccount,
 )
-from superaide.db.session import require, session_scope
+from superaide.db.session import require, rescope, session_scope
 from superaide.factory import brain_ready, brain_status
 from superaide.intentions import service as intentions
 from superaide.intentions.when import clean_task, find_moment, zone
@@ -48,6 +48,7 @@ from superaide.knowledge.store import contacts_of, preferences_for, retire_docum
 from superaide.policy.actions import ApprovalError, resolve
 from superaide.policy.killswitch import is_frozen
 from superaide.skills import registry as skill_registry
+from superaide.tenancy.context import InstanceScope, use_instance
 
 
 @lru_cache
@@ -70,13 +71,24 @@ def _require_text(extracted: extract.Extracted) -> None:
         raise HTTPException(422, " ".join(extracted.warnings) or "I couldn't find any text in that.")
 
 
-def owner_person_id(user_id: uuid.UUID = Depends(current_user_id)) -> uuid.UUID:
-    """The signed-in account's Person, if that account hired the agent; otherwise 403."""
+def _hired_instance(user_id: uuid.UUID) -> tuple[InstanceScope, uuid.UUID] | None:
     with session_scope() as s:
-        hire = s.scalar(select(AgentHire).where(AgentHire.owner_user_id == user_id, AgentHire.status == "active"))
-        if hire is None:
-            raise HTTPException(403, "Hire Ava first.")
-        return require(s, UserAccount, user_id).person_id
+        return accounts.instance_of(s, user_id)
+
+
+async def owner_person_id(user_id: uuid.UUID = Depends(current_user_id)) -> AsyncIterator[uuid.UUID]:
+    """The signed-in account's Person in the agent instance it hired, or 403.
+
+    Also puts that instance in scope for the rest of the request (ADR 0009): everything the
+    endpoint writes belongs to it, and Row-Level Security shows only its rows. An async
+    dependency, so the scope it sets is the one the endpoint's thread runs with.
+    """
+    found = await run_in_threadpool(_hired_instance, user_id)
+    if found is None:
+        raise HTTPException(403, "Hire Ava first.")
+    scope, person_id = found
+    with use_instance(scope):
+        yield person_id
 
 
 class HireBody(BaseModel):
@@ -133,8 +145,9 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
     def agents() -> list[dict[str, Any]]:
         settings = get_settings()
         with session_scope() as s:
-            # Whether Ava is taken, never by whom: the owner's name is private.
-            hired = accounts.owner(s) is not None
+            # Whether Ava is taken, never by whom: the owner's name is private. With many owners,
+            # never: everyone can hire their own.
+            hired = not settings.allow_many_owners and accounts.anyone_hired(s)
         result = []
         for a in catalog(settings):
             item = dict(a)
@@ -170,7 +183,11 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 except accounts.AlreadyHired as exc:
                     # Not the owner's name: any signed-up account can ask, and it's not theirs to know.
                     raise HTTPException(409, f"{settings.agent_name} already works for someone else.") from exc
-                onboarder().ensure_started(s, person)
+                found = accounts.instance_of(s, user.id, body.agent)
+                assert found is not None
+                with use_instance(found[0]):  # the introduction starts inside the new instance
+                    rescope(s)
+                    onboarder().ensure_started(s, person)
                 return {"hired": body.agent, "person": {"id": str(person.id), "name": person.display_name}}
         except IntegrityError as exc:  # someone else hired at the same moment
             raise HTTPException(409, f"{settings.agent_name} was just hired by someone else.") from exc
