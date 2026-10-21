@@ -75,3 +75,6 @@ backend tests, lint, types, the frontend checks and the full browser suite pass.
   - The Full CI run is in progress; the previous Full run failed, and QA is fixing forward.
   - Agents: QA, identity (finishing), tenancy T6, reliability fixes, triage foundations (flag off).
   - The dev checkout stays at its current version until the identity report arrives and Full is green.
+- 03:45 IST: identity binding (0a9ae99) landed. Dev migrated to 0018; the owner's Telegram link is backfilled to the current bot (@Ava2xD_bot) and the dev stack restarted cleanly.
+  - Live Telegram check OK: owner recognised; the reply is formatted (no raw **), with a "Sources: [1] Note · preference · from Telegram" footer.
+  - Identity follow-ups in progress: restrict confirm/unlink to the owner's own chat identities; don't let unconfirmed bots refresh last-seen.
