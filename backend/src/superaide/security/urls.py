@@ -34,8 +34,17 @@ def resolve(host: str) -> list[ipaddress.IPv4Address | ipaddress.IPv6Address]:
     return out
 
 
-def check_base_url(url: str, *, allow_private: bool) -> str:
-    """Return the address, cleaned, or raise UnsafeURL. `allow_private` is for local model servers."""
+def hosted() -> bool:
+    from superaide.config import get_settings
+
+    return get_settings().deploy_mode == "hosted"
+
+
+def check_base_url(url: str, *, allow_private: bool, hosted_mode: bool | None = None) -> str:
+    """Return the address, cleaned, or raise UnsafeURL. `allow_private` is for local model servers
+    on a self-hosted install; when hosted (many owners on our servers) nothing private is reachable."""
+    if hosted_mode if hosted_mode is not None else hosted():
+        allow_private = False
     url = url.strip()
     parts = urlsplit(url)
     if parts.scheme not in {"http", "https"} or not parts.hostname:
@@ -55,7 +64,9 @@ def check_base_url(url: str, *, allow_private: bool) -> str:
         ):
             raise UnsafeURL("That address isn't allowed.")
         if (ip.is_private or ip.is_loopback) and not allow_private:
-            raise UnsafeURL("That address is on a private network. Only local model servers may use one.")
+            raise UnsafeURL(
+                "That address is on a private network. Only a local model server on your own install may use one."
+            )
     if parts.scheme == "http" and not all(ip.is_loopback or ip.is_private for ip in ips):
         raise UnsafeURL("Use https:// for a service on the internet, so your key isn't sent in the clear.")
     return url.rstrip("/")

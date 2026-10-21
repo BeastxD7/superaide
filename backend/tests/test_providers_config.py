@@ -165,3 +165,25 @@ def test_only_the_owner_can_change_models(agent):
     assert c.post("/app/providers/openrouter", json={"api_key": KEY}).status_code == 403
     bare = TestClient(create_app(agent))
     assert bare.post("/app/providers/openrouter", json={"api_key": KEY}).status_code in (401, 403)
+
+
+@pytest.mark.parametrize(
+    "url",
+    ["http://localhost:11434/v1", "http://10.0.0.5:11434/v1", "http://192.168.1.2/v1", "http://[::1]:8000/v1",
+     "http://169.254.169.254/latest"],
+)  # fmt: skip
+def test_hosted_mode_refuses_every_internal_address_even_for_local_servers(url):
+    with pytest.raises(UnsafeURL):
+        check_base_url(url, allow_private=True, hosted_mode=True)
+    assert check_base_url("https://8.8.8.8/v1", allow_private=True, hosted_mode=True) == "https://8.8.8.8/v1"
+
+
+def test_hosted_mode_refuses_a_local_server_in_the_app_and_never_prices_it_free(owner_client, service, monkeypatch):  # noqa: F811
+    from superaide.brain.pricing import PriceRegistry, UnknownModelPrice
+    from superaide.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "deploy_mode", "hosted")
+    r = owner_client.post("/app/providers/ollama", json={"base_url": "http://localhost:11434/v1"})
+    assert r.status_code == 400 and "private network" in r.text and service.seen == []
+    with pytest.raises(UnknownModelPrice):
+        PriceRegistry(base_urls={"ollama": "http://localhost:11434/v1"}).price_for("llama3.2", "ollama")

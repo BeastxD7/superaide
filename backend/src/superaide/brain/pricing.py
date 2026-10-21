@@ -98,7 +98,10 @@ def is_local_url(base_url: str | None) -> bool:
     """True only if every address the host resolves to is loopback or private (this machine or the LAN)."""
     if not base_url:
         return False
-    from superaide.security.urls import UnsafeURL, resolve
+    from superaide.security.urls import UnsafeURL, hosted, resolve
+
+    if hosted():
+        return False  # nothing on our servers is the owner's own machine
 
     host = urlsplit(base_url).hostname
     if not host:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -19,6 +20,10 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = "postgresql+psycopg://agent:agent@localhost:5432/agent"
+
+    # self_hosted: one owner's own machine (local model servers allowed). hosted: many owners on our
+    # servers, so no owner-typed address may reach private, loopback, link-local or metadata ranges.
+    deploy_mode: Literal["self_hosted", "hosted"] = "self_hosted"
 
     # Tenancy
     tenant_id: uuid.UUID = DEFAULT_TENANT_ID
