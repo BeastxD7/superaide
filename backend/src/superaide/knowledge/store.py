@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import func, select, update
+from sqlalchemy import Float, and_, func, literal, select, update
 from sqlalchemy.orm import Session
 
 from superaide.audit import audit
@@ -20,6 +20,39 @@ from superaide.db.session import rows_affected
 
 CATEGORIES = ("about", "work", "person", "preference", "urgency", "availability", "sharing", "other")
 SOURCES = ("chat", "intro_chat", "intro_call", "document", "link", "telegram", "slack", "owner_edit")
+
+
+DUPLICATE_SIMILARITY = 0.8  # pg_trgm similarity at which two of the owner's facts are one
+
+
+def find_same_fact(
+    session: Session, owner: Person, content: str, *, similarity: float | None = DUPLICATE_SIMILARITY
+) -> MemoryItem | None:
+    """A live fact about the owner that says the same thing: equal once normalised (case,
+    punctuation, en-GB/en-US spelling) or, with `similarity`, at least that close by trigrams.
+    Any audience: a caller that merges into it must check the audiences match."""
+    from superaide.context.lexicon import normalise
+    from superaide.context.recall import _has_trgm
+
+    norm = normalise(content)
+    live = and_(
+        MemoryItem.valid_to.is_(None),
+        MemoryItem.agent_id == owner.agent_id,
+        MemoryItem.subject_person_ids.contains([owner.id]),
+    )
+    if _has_trgm(session):
+        score = func.similarity(MemoryItem.content, content)
+        rows = session.execute(
+            select(MemoryItem, score).where(live, score >= 0.5).order_by(score.desc()).limit(20)
+        ).all()  # normalised-equal texts score well above 0.5
+    else:
+        rows = session.execute(
+            select(MemoryItem, literal(0.0, Float)).where(live).order_by(MemoryItem.created_at.desc()).limit(500)
+        ).all()
+    for row, sc in rows:
+        if normalise(row.content) == norm or (similarity is not None and sc >= similarity):
+            return row
+    return None
 
 
 def remember_fact(
@@ -39,14 +72,7 @@ def remember_fact(
     if not content:
         return None
     category = category if category in CATEGORIES else "other"
-    existing = session.scalar(
-        select(MemoryItem.id).where(
-            MemoryItem.content == content,
-            MemoryItem.valid_to.is_(None),
-            MemoryItem.subject_person_ids.contains([owner.id]),
-        )
-    )
-    if existing is not None:
+    if find_same_fact(session, owner, content, similarity=None) is not None:
         return None
     item = MemoryItem(
         content=content,

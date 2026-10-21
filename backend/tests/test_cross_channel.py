@@ -166,22 +166,73 @@ def test_a_short_statement_of_preference_is_worth_learning(text):
     assert worth_reading(text)
 
 
-@pytest.mark.xfail(strict=True, reason="WP5: dedupe is exact string match; a reworded fact is stored twice")
-def test_the_same_preference_said_again_in_other_words_is_kept_once(scenario, agent, monkeypatch):
-    class Reworded(Recorder):
-        def __call__(self, purpose, system, messages, output_model):
-            if purpose == "intro_facts":
-                reworded = Fact(content="Shashank dislikes the color black.", category="preference", confidence=1)
-                return FactList(facts=[reworded])
-            return "Noted."
+class Reader(Recorder):
+    """The extractor: answers with `fact`, pointing at the known fact that contains `points_at`."""
 
-    monkeypatch.setattr("superaide.factory.build_llm", lambda settings: FakeLLM(Reworded()))
+    def __init__(self, fact: str, relation: str, points_at: str = "colour black") -> None:
+        super().__init__()
+        self.fact, self.relation, self.points_at, self.known = fact, relation, points_at, ""
+
+    def __call__(self, purpose, system, messages, output_model):
+        if purpose != "intro_facts":
+            return "Noted."
+        self.known = messages[0]["content"]
+        line = next((ln for ln in self.known.splitlines() if self.points_at in ln and ":" in ln[:3]), "")
+        ref = int(line.split(":", 1)[0]) if line else None
+        return FactList(facts=[Fact(content=self.fact, category="preference", confidence=1, **{self.relation: ref})])
+
+
+def _live_preferences():
+    with session_scope() as s:
+        rows = s.scalars(select(MemoryItem).where(MemoryItem.category == "preference", MemoryItem.valid_to.is_(None)))
+        return [(m.content, len(m.source_event_ids)) for m in rows]
+
+
+def test_the_same_preference_said_again_in_other_words_is_kept_once(scenario, monkeypatch):
+    reader = Reader("Shashank dislikes the color black.", "same_as")
+    monkeypatch.setattr("superaide.factory.build_llm", lambda settings: FakeLLM(reader))
+    client, _ = scenario
+    client.post("/app/chat", json={"text": "I really can't stand black as a colour, honestly"})
+    run_due()
+    assert f"1: {LEARNED}" in reader.known  # the extractor was shown what Ava already knew
+    assert _live_preferences() == [(LEARNED, 2)]  # one fact, learned from both messages
+
+
+def test_the_same_fact_in_other_spelling_is_kept_once_even_unflagged(scenario, monkeypatch):
+    reader = Reader("Shashank does not like the color black", "same_as", points_at="nothing matches this")
+    monkeypatch.setattr("superaide.factory.build_llm", lambda settings: FakeLLM(reader))
+    client, _ = scenario
+    client.post("/app/chat", json={"text": "Just so you know: I do not like black, the color, at all"})
+    run_due()
+    assert _live_preferences() == [(LEARNED, 2)]
+
+
+def test_changing_your_mind_retires_the_old_fact(scenario, monkeypatch):
+    reader = Reader("Shashank likes the colour black now.", "replaces")
+    monkeypatch.setattr("superaide.factory.build_llm", lambda settings: FakeLLM(reader))
+    client, _ = scenario
+    client.post("/app/chat", json={"text": "Actually I've come round to black, I like it now"})
+    run_due()
+    assert _live_preferences() == [("Shashank likes the colour black now.", 1)]
+    with session_scope() as s:
+        old = s.scalar(select(MemoryItem).where(MemoryItem.content == LEARNED))
+        assert old is not None and old.valid_to is not None  # kept for history, no longer current
+
+
+def test_a_fact_never_merges_into_one_with_a_different_audience(scenario, monkeypatch):
+    with session_scope() as s:
+        fact = s.scalar(select(MemoryItem).where(MemoryItem.content == LEARNED))
+        fact.allowed_kind, fact.allowed_person_ids, fact.min_trust = "public", [], 0  # shared on purpose
+    reader = Reader("Shashank dislikes the color black.", "same_as")
+    monkeypatch.setattr("superaide.factory.build_llm", lambda settings: FakeLLM(reader))
     client, _ = scenario
     client.post("/app/chat", json={"text": "I really can't stand black as a colour, honestly"})
     run_due()
     with session_scope() as s:
-        live = s.scalars(select(MemoryItem).where(MemoryItem.category == "preference", MemoryItem.valid_to.is_(None)))
-        assert len(live.all()) == 1
+        shared = s.scalar(select(MemoryItem).where(MemoryItem.content == LEARNED))
+        assert len(shared.source_event_ids) == 1  # the public note didn't absorb a private message
+        private = s.scalar(select(MemoryItem).where(MemoryItem.content == "Shashank dislikes the color black."))
+        assert private is not None and private.allowed_person_ids != []
 
 
 def test_a_matching_note_is_attached_to_the_message_before_the_model_runs(scenario):

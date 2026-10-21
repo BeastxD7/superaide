@@ -26,6 +26,14 @@ class Fact(BaseModel):
     content: str = Field(description="One self-contained fact, written in the third person about the owner by name.")
     category: Category
     confidence: float = Field(ge=0, le=1, description="How clearly the source states this (1 = stated outright).")
+    same_as: int | None = Field(
+        default=None,
+        description="The id of a known fact that says the same thing, if any (then it isn't stored again).",
+    )
+    replaces: int | None = Field(
+        default=None,
+        description="The id of a known fact this one makes untrue (the owner changed their mind or moved on), if any.",
+    )
 
 
 class FactList(BaseModel):
@@ -46,7 +54,16 @@ SYSTEM = (
 )
 
 
-def extract_facts(agent: Any, *, owner_name: str, text: str, source: str, today: str = "") -> list[Fact] | None:
+KNOWN_RULE = (
+    " Known facts about the owner are listed with ids. If a fact you list says the same as a known fact, set "
+    "same_as to its id. If it makes a known fact untrue (they changed their mind, moved, left a job), set "
+    "replaces to its id. Otherwise leave both empty."
+)
+
+
+def extract_facts(
+    agent: Any, *, owner_name: str, text: str, source: str, today: str = "", known: list[str] | None = None
+) -> list[Fact] | None:
     """Facts from `text`. [] when there is nothing to read or in offline mode; None when reading
     failed (budget cap, kill switch, API error, an answer cut off), so the caller can keep the
     text and try again instead of treating it as read."""
@@ -58,12 +75,17 @@ def extract_facts(agent: Any, *, owner_name: str, text: str, source: str, today:
         result = agent.llm.complete(
             purpose="intro_facts",
             model=agent.settings.model_triage,
-            system=[SystemBlock(SYSTEM)],
+            system=[SystemBlock(SYSTEM + (KNOWN_RULE if known else ""))],
             messages=[
                 {
                     "role": "user",
                     "content": f"Owner's name: {owner_name}\nSource: {source}\n"
                     + (f"Today is {today}.\n" if today else "")
+                    + (
+                        "Known facts:\n" + "\n".join(f"{i}: {k}" for i, k in enumerate(known, 1)) + "\n"
+                        if known
+                        else ""
+                    )
                     + "\n<shared_text>\n"
                     f"{text[:MAX_INPUT_CHARS]}\n</shared_text>",
                 }

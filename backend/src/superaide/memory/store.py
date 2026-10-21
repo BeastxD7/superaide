@@ -195,7 +195,9 @@ def parse_remember(text: str) -> str | None:
 
 
 def _same_fact(text: str) -> str:
-    return " ".join(text.lower().split()).rstrip(".!")
+    from superaide.context.lexicon import normalise  # one normaliser for every fact writer
+
+    return normalise(text)
 
 
 def remember(

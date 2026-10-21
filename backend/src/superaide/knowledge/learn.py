@@ -11,15 +11,17 @@ from __future__ import annotations
 import logging
 import re
 import uuid
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.audit import audit
-from superaide.db.models import Event, Job, Person
+from superaide.db.models import Event, Job, MemoryItem, Person
 from superaide.jobs.queue import enqueue, handler
 from superaide.knowledge.facts import extract_facts
-from superaide.knowledge.store import remember_fact
+from superaide.knowledge.store import find_same_fact, remember_fact
 
 log = logging.getLogger(__name__)
 
@@ -77,22 +79,54 @@ def learn(session: Session, job: Job) -> None:
     from superaide.intentions.when import zone
 
     local = event.created_at.astimezone(zone(owner_zone(session, owner)))
+    neighbours = _neighbours(session, owner, event.content)
     facts = extract_facts(
         agent,
         owner_name=owner.display_name,
         text=event.content,
         source="the owner, in a chat message to Ava",
         today=f"{local:%A %d %B %Y}",
+        known=[m.content for m in neighbours],
     )
     if facts is None:
         raise RuntimeError("couldn't read the message just now")  # the job retries later
-    kept = 0
+    by_id = dict(enumerate(neighbours, 1))
+    kept = merged = superseded = 0
     for f in facts:
+        same = by_id.get(f.same_as or 0) or find_same_fact(session, owner, f.content)
+        if same is not None and _owner_only(same, owner):
+            if event.id not in (same.source_event_ids or []):  # said again: one fact, both sources
+                same.source_event_ids = [*(same.source_event_ids or []), event.id]
+            merged += 1
+            continue
         item = remember_fact(
             session, owner=owner, content=f.content, category=f.category, source="chat",
             confidence=f.confidence, origin_context_id=event.context_id,
         )  # fmt: skip
-        if item is not None:
-            item.source_event_ids = [event.id]
-            kept += 1
-    audit(session, "memory", "learned_from_chat", event_id=event.id, facts=kept)
+        if item is None:
+            continue
+        item.source_event_ids = [event.id]
+        kept += 1
+        old = by_id.get(f.replaces or 0)
+        if old is not None and old.valid_to is None:
+            old.valid_to = datetime.now(UTC)  # the owner changed their mind: the old fact retires
+            superseded += 1
+            audit(session, "memory", "superseded", memory_id=old.id, by=item.id)
+    audit(session, "memory", "learned_from_chat", event_id=event.id, facts=kept, merged=merged, superseded=superseded)
+
+
+def _owner_only(item: MemoryItem, owner: Person) -> bool:
+    """A learned fact is owner-only; it may merge only into a fact with that same audience, so
+    a merge never widens (or narrows) who can see what."""
+    return item.allowed_kind == "persons" and list(item.allowed_person_ids or []) == [owner.id]
+
+
+def _neighbours(session: Session, owner: Person, text: str, limit: int = 5) -> list[MemoryItem]:
+    """The owner's known facts closest to this message, for the extractor to compare against."""
+    from superaide.context.audience import Audience
+    from superaide.context.recall import recall_memories
+
+    found = recall_memories(session, Audience(person_ids={owner.id}, min_trust=2), text, limit=limit)
+    ids = [uuid.UUID(src.uri.rsplit("/", 1)[1]) for src in found]
+    rows = {m.id: m for m in session.scalars(select(MemoryItem).where(MemoryItem.id.in_(ids)))} if ids else {}
+    return [rows[i] for i in ids if i in rows and rows[i].agent_id == owner.agent_id]
