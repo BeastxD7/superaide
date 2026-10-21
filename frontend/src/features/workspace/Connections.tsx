@@ -76,7 +76,13 @@ export function Connections({ agentName, me, refreshMe }: { agentName: string; m
     { key: 'telegram', brand: 'telegram', name: 'Telegram', why: 'Message me from your phone' },
     { key: 'slack', brand: 'slack', name: 'Slack', why: 'Your team can reach me in Slack' },
   ] as const
-  const where = status.keys_kept_in === 'keychain' ? 'your Mac’s Keychain' : status.keys_kept_in
+  // Where the vault's master key lives (backend vault/crypto.py): the Keychain on a Mac, settings on a server.
+  const KEY_PLACES: Record<string, string> = {
+    keychain: 'your Mac’s Keychain',
+    environment: 'the server’s vault',
+    'secret file': 'the server’s vault',
+  }
+  const where = KEY_PLACES[status.keys_kept_in] ?? 'a private key file'
 
   return (
     <div className="space-y-2">
@@ -162,7 +168,7 @@ export function Connections({ agentName, me, refreshMe }: { agentName: string; m
         <span className="rounded-full bg-mist px-2.5 py-1 text-xs text-muted">Not available</span>
       </div>
       <p className="flex items-center gap-1.5 px-1 pt-1 text-xs text-muted">
-        <KeyRound className="size-3.5" /> Keys are checked with each service, then kept encrypted on this computer ({where}). They're never shown
+        <KeyRound className="size-3.5" /> Keys are checked with each service, then kept encrypted ({where}). They're never shown
         again.
       </p>
     </div>
