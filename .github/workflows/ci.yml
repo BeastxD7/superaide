@@ -219,6 +219,9 @@ jobs:
     name: Secret scan
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read # on a pull request, gitleaks-action lists its commits
     steps:
       - uses: actions/checkout@v7
         with:
