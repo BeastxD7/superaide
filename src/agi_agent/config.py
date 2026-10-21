@@ -52,6 +52,15 @@ class Settings(BaseSettings):
     # Dev only: lets the dashboard inject fake messages to try impostor scenarios.
     enable_simulator: bool = False
 
+    # User accounts and sessions
+    session_cookie_name: str = "agi_session"
+    session_cookie_secure: bool = False  # set true when served over HTTPS
+    session_days: int = 30  # sliding: counted from the last time the session was used
+    login_max_failures: int = 5  # per account, then locked
+    login_lock_minutes: int = 15
+    login_failures_per_ip: int = 20  # per 15 minutes
+    signups_per_ip_per_hour: int = 10
+
     # Identity linking
     link_code_ttl_minutes: int = 10
     link_code_max_attempts: int = 5

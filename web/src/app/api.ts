@@ -53,39 +53,35 @@ export type StepView = {
 export type Message = { id: string; from: 'you' | 'agent'; text: string; at: string; kind?: 'onboarding' | 'chat' }
 export type Memory = { id: string; text: string; private: boolean; at: string }
 
-const SESSION_KEY = 'understudy.session'
-
-export function getSession(): string | null {
-  try {
-    return localStorage.getItem(SESSION_KEY)
-  } catch {
-    return memorySession
-  }
-}
-
-let memorySession: string | null = null
-
-export function setSession(token: string | null): void {
-  memorySession = token
-  try {
-    if (token) localStorage.setItem(SESSION_KEY, token)
-    else localStorage.removeItem(SESSION_KEY)
-  } catch {
-    // Private mode: the session lasts until the tab closes.
-  }
+// The signed-in account, from /auth/me. The session itself is an httpOnly cookie
+// the browser sends automatically; page code never sees it.
+export type Account = {
+  user: { id: string; email: string; name: string; timezone: string; created_at: string }
+  hire: { agent: string; since: string; onboarding_done: boolean } | null
 }
 
 export { ApiError as AppError }
 
-// Axios client for the app's endpoints on the backend (/app/...), signed in with this browser's session.
-const client = createClient(`${API_URL}/app`, getSession)
+// Axios client for the backend, sending the session cookie with each request.
+const client = createClient(API_URL, { withCredentials: true })
 
-export async function call<T>(path: string, init?: { method?: 'GET' | 'POST'; json?: unknown }): Promise<T> {
-  try {
-    const res = await client.request<T>({ url: path, method: init?.method ?? 'GET', data: init?.json })
-    return res.data
-  } catch (e) {
-    if (e instanceof ApiError && e.status === 401) setSession(null)
-    throw e
-  }
+type Init = { method?: 'GET' | 'POST'; json?: unknown }
+
+async function request<T>(url: string, init?: Init): Promise<T> {
+  const res = await client.request<T>({ url, method: init?.method ?? 'GET', data: init?.json })
+  return res.data
+}
+
+// The app's endpoints (/app/...).
+export function call<T>(path: string, init?: Init): Promise<T> {
+  return request<T>(`/app${path}`, init)
+}
+
+// Accounts (/auth/...).
+export const auth = {
+  me: () => request<Account>('/auth/me'),
+  signup: (name: string, email: string, password: string) =>
+    request<Account>('/auth/signup', { method: 'POST', json: { name, email, password } }),
+  login: (email: string, password: string) => request<Account>('/auth/login', { method: 'POST', json: { email, password } }),
+  logout: () => request<{ status: string }>('/auth/logout', { method: 'POST' }),
 }

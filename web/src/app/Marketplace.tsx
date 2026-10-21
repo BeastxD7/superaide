@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { call, type AgentCard } from './api'
 import type { Session } from './AppRoot'
 import { Orb, huePanel } from './Orb'
+import { homeFor } from './session'
 import { Button, Footer, NavBar, Sparkle, STAGES } from './ui'
 
 const rise = {
@@ -33,7 +34,7 @@ export function Marketplace({ session, section }: { session: Session; section: s
   }, [section])
 
   const ava = agents?.find((a) => a.slug === 'ava')
-  const mine = Boolean(session.me)
+  const mine = Boolean(session.account?.hire)
 
   return (
     <div className="min-h-dvh bg-canvas">
@@ -255,8 +256,8 @@ export function Marketplace({ session, section }: { session: Session; section: s
             ))}
           </ol>
           <div className="mt-10">
-            <Button tone="dark" icon onClick={() => (window.location.hash = mine ? (session.me?.onboarding.done ? '/workspace' : '/meet') : '/agents/ava')}>
-              {mine ? `Go to ${session.me?.agent.name ?? 'Ava'}` : 'Meet Ava'}
+            <Button tone="dark" icon onClick={() => (window.location.hash = mine ? homeFor(session.account) : '/agents/ava')}>
+              {mine ? 'Go to Ava' : 'Meet Ava'}
             </Button>
           </div>
         </div>

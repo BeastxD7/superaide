@@ -168,7 +168,7 @@ bold "Ready."
 echo "  App (frontend):    $APP_URL"
 echo "  API (backend):     http://127.0.0.1:$API_PORT   (interactive docs: http://127.0.0.1:$API_PORT/docs)"
 echo "  Operator console:  http://localhost:$WEB_PORT/#/console?token=$TOKEN"
-echo "  Signed out after hiring Ava? Run: uv run agi-agent owner-link"
+echo "  Forgot your password? Run: uv run agi-agent reset-password --email you@example.com"
 echo "  Hire from scratch? Press Ctrl+C, then run: bash start.command --reset"
 echo "Keep this window open. Ctrl+C stops everything."
 open "$APP_URL" 2>/dev/null || xdg-open "$APP_URL" 2>/dev/null || true

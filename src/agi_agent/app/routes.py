@@ -1,7 +1,9 @@
 """The person-facing app API: marketplace, hiring, onboarding, chat, notebook.
 
-Signed-in requests carry `Authorization: Bearer <session token>` from /app/hire.
-This is separate from the operator's ADMIN_TOKEN used by the console.
+Signed-in requests carry the session cookie set by /auth (see agi_agent.auth).
+Everything except the marketplace needs an account; everything after hiring
+needs to be the account that hired the agent. The operator console uses the
+separate ADMIN_TOKEN.
 """
 
 from __future__ import annotations
@@ -12,16 +14,18 @@ from datetime import UTC, datetime
 from functools import lru_cache
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from agi_agent.app import accounts
 from agi_agent.app.catalog import catalog, find
 from agi_agent.app.onboarding import Onboarder, state_for
+from agi_agent.auth.routes import current_user_id, require_csrf_header
 from agi_agent.config import get_settings
 from agi_agent.context.audience import Audience, visible_memories
-from agi_agent.db.models import Context, Event, MemoryItem, Person
+from agi_agent.db.models import AgentHire, Context, Event, MemoryItem, Person, UserAccount
 from agi_agent.db.session import session_scope
 from agi_agent.factory import uses_real_model
 from agi_agent.policy.killswitch import is_frozen
@@ -41,21 +45,17 @@ def telegram_username(token: str) -> str | None:
         return None
 
 
-def _token(authorization: str | None = Header(default=None)) -> str:
-    return (authorization or "").removeprefix("Bearer ").strip()
-
-
-def current_person_id(token: str = Depends(_token)) -> uuid.UUID:
+def owner_person_id(user_id: uuid.UUID = Depends(current_user_id)) -> uuid.UUID:
+    """The signed-in account's Person, if that account hired the agent; otherwise 403."""
     with session_scope() as s:
-        person = accounts.person_for_token(s, token)
-        if person is None:
-            raise HTTPException(401, "Please sign in again")
-        return person.id
+        hire = s.scalar(select(AgentHire).where(AgentHire.owner_user_id == user_id, AgentHire.status == "active"))
+        if hire is None:
+            raise HTTPException(403, "Hire Ava first.")
+        return s.get(UserAccount, user_id).person_id
 
 
 class HireBody(BaseModel):
     agent: str = "ava"
-    name: str = Field(min_length=1, max_length=80)
     accepted_notice: bool
 
 
@@ -69,7 +69,7 @@ class ChatBody(BaseModel):
 
 
 def make_router(get_agent: Callable[[], Any]) -> APIRouter:
-    router = APIRouter(prefix="/app")
+    router = APIRouter(prefix="/app", dependencies=[Depends(require_csrf_header)])
 
     def onboarder() -> Onboarder:
         settings = get_settings()
@@ -91,24 +91,26 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         return result
 
     @router.post("/hire")
-    def hire(body: HireBody) -> dict[str, Any]:
+    def hire(body: HireBody, user_id: uuid.UUID = Depends(current_user_id)) -> dict[str, Any]:
         settings = get_settings()
         if find(settings, body.agent) is None or find(settings, body.agent)["status"] != "available":
             raise HTTPException(404, "That agent can't be hired yet")
         if not body.accepted_notice:
             raise HTTPException(400, "Please read and accept how the agent handles what you tell it")
-        with session_scope() as s:
-            try:
-                person, token = accounts.hire(s, name=body.name)
-            except accounts.AlreadyHired as exc:
-                raise HTTPException(
-                    409, f"{settings.agent_name} already works for {exc.owner}. Ask them to sign you in."
-                ) from exc
-            onboarder().start(s, person)
-            return {"token": token, "person": {"id": str(person.id), "name": person.display_name}}
+        try:
+            with session_scope() as s:
+                user = s.get(UserAccount, user_id)
+                try:
+                    person = accounts.hire(s, user, body.agent)
+                except accounts.AlreadyHired as exc:
+                    raise HTTPException(409, f"{settings.agent_name} already works for {exc.owner}.") from exc
+                onboarder().ensure_started(s, person)
+                return {"hired": body.agent, "person": {"id": str(person.id), "name": person.display_name}}
+        except IntegrityError as exc:  # someone else hired at the same moment
+            raise HTTPException(409, f"{settings.agent_name} was just hired by someone else.") from exc
 
     @router.get("/me")
-    def me(person_id: uuid.UUID = Depends(current_person_id)) -> dict[str, Any]:
+    def me(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         settings = get_settings()
         with session_scope() as s:
             person = s.get(Person, person_id)
@@ -129,7 +131,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             }
 
     @router.get("/onboarding")
-    def onboarding(person_id: uuid.UUID = Depends(current_person_id)) -> dict[str, Any]:
+    def onboarding(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         ob = onboarder()
         with session_scope() as s:
             person = s.get(Person, person_id)
@@ -137,7 +139,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             return ob.view(s, person).as_dict()
 
     @router.post("/onboarding")
-    def onboarding_answer(body: AnswerBody, person_id: uuid.UUID = Depends(current_person_id)) -> dict[str, Any]:
+    def onboarding_answer(body: AnswerBody, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         ob = onboarder()
         with session_scope() as s:
             view, draft_topic = ob.answer(s, s.get(Person, person_id), body.step, body.answer)
@@ -147,7 +149,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         return result
 
     @router.get("/messages")
-    def messages(person_id: uuid.UUID = Depends(current_person_id), limit: int = 200) -> list[dict[str, Any]]:
+    def messages(person_id: uuid.UUID = Depends(owner_person_id), limit: int = 200) -> list[dict[str, Any]]:
         limit = max(1, min(limit, 500))
         with session_scope() as s:
             ctx = s.scalar(select(Context).where(Context.provider == "web", Context.external_id == f"web:{person_id}"))
@@ -168,7 +170,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             ]
 
     @router.post("/chat")
-    def chat(body: ChatBody, person_id: uuid.UUID = Depends(current_person_id)) -> dict[str, Any]:
+    def chat(body: ChatBody, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         with session_scope() as s:
             person = s.get(Person, person_id)
             msg = accounts.web_message(person, body.text.strip())
@@ -176,7 +178,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         return {"mode": result.mode, "reply": result.reply, "notes": result.notes}
 
     @router.get("/notebook")
-    def notebook(person_id: uuid.UUID = Depends(current_person_id)) -> dict[str, Any]:
+    def notebook(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         with session_scope() as s:
             aud = Audience(person_ids={person_id}, has_unknown=False, min_trust=2, all_internal=True)
             items = visible_memories(s, aud, limit=100)
@@ -193,7 +195,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             }
 
     @router.post("/notebook/{memory_id}/forget")
-    def forget(memory_id: uuid.UUID, person_id: uuid.UUID = Depends(current_person_id)) -> dict[str, str]:
+    def forget(memory_id: uuid.UUID, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, str]:
         with session_scope() as s:
             m = s.get(MemoryItem, memory_id)
             # You can remove what Ava remembers about you, and only that.
@@ -210,7 +212,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         return {"status": "forgotten"}
 
     @router.post("/channels/telegram")
-    def connect_telegram(person_id: uuid.UUID = Depends(current_person_id)) -> dict[str, Any]:
+    def connect_telegram(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         settings = get_settings()
         username = telegram_username(settings.telegram_bot_token)
         if not username:
@@ -218,11 +220,5 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         with session_scope() as s:
             code = accounts.create_invite(s, s.get(Person, person_id), "telegram")
         return {"available": True, "url": f"https://t.me/{username}?start={code}", "expires_minutes": 15}
-
-    @router.post("/signout")
-    def signout(token: str = Depends(_token)) -> dict[str, str]:
-        with session_scope() as s:
-            accounts.sign_out(s, token)
-        return {"status": "signed out"}
 
     return router

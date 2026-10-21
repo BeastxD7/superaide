@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from agi_agent.api.admin import require_admin
 from agi_agent.api.admin import router as admin_router
 from agi_agent.audit import audit
+from agi_agent.auth.routes import make_router as make_auth_router
 from agi_agent.channels import slack, telegram
 from agi_agent.channels.base import FakeMessenger, InboundMessage
 from agi_agent.config import get_settings
@@ -46,10 +47,12 @@ def create_app(agent: Agent | None = None) -> FastAPI:
                 settings.frontend_origin.replace("127.0.0.1", "localhost"),
             }
         ),
+        allow_credentials=True,  # the session cookie travels with the frontend's requests
         allow_methods=["GET", "POST"],
-        allow_headers=["Authorization", "Content-Type"],
+        allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
     )
     app.include_router(admin_router)
+    app.include_router(make_auth_router())
 
     def get_agent() -> Agent:
         nonlocal agent

@@ -2,6 +2,7 @@ import { ArrowUpRight, LogOut } from 'lucide-react'
 import { motion } from 'motion/react'
 import type { ComponentProps, ReactNode } from 'react'
 import type { Session } from './AppRoot'
+import { homeFor } from './session'
 
 export const PRODUCT = 'Understudy'
 
@@ -57,10 +58,11 @@ export function Button({ tone = 'dark', icon = false, children, className = '', 
 }
 
 export function NavBar({ session, links = true, cta = true }: { session: Session; links?: boolean; cta?: boolean }) {
-  const me = session.me
+  const account = session.account
+  const hire = account?.hire
   return (
     <header className="sticky top-0 z-30 px-4 pt-4 sm:px-6">
-      <nav className="glass mx-auto flex max-w-6xl items-center justify-between gap-4 rounded-full border border-white/60 py-2 pr-2 pl-5 shadow-[0_8px_30px_-18px_rgba(15,42,35,0.45)]">
+      <nav className="glass mx-auto flex max-w-6xl items-center justify-between gap-4 rounded-full border border-white/60 py-2 pr-2 pl-5 shadow-[0_8px_30px_-18px_rgba(27,22,56,0.45)]">
         <a href="#/" className="flex items-center gap-2 font-semibold text-ink tight">
           <Sparkle className="size-5 text-violet-600" />
           <span className="text-lg">{PRODUCT}</span>
@@ -79,25 +81,45 @@ export function NavBar({ session, links = true, cta = true }: { session: Session
           </div>
         )}
         <div className="flex items-center gap-2">
-          {me ? (
+          {account ? (
             <>
-              <Button tone="dark" icon onClick={() => (window.location.hash = me.onboarding.done ? '/workspace' : '/meet')}>
-                {me.onboarding.done ? `Open ${me.agent.name}` : `Continue with ${me.agent.name}`}
-              </Button>
+              {hire ? (
+                <Button tone="dark" icon onClick={() => (window.location.hash = homeFor(account))}>
+                  {hire.onboarding_done ? 'Open Ava' : 'Continue with Ava'}
+                </Button>
+              ) : cta ? (
+                <Button tone="dark" icon onClick={() => (window.location.hash = '/agents/ava')}>
+                  Meet Ava
+                </Button>
+              ) : null}
+              <span
+                className="hidden size-10 place-items-center rounded-full bg-lilac-100 text-sm font-semibold text-violet-700 sm:grid"
+                title={`${account.user.name} (${account.user.email})`}
+                aria-label={`Signed in as ${account.user.name}`}
+              >
+                {account.user.name.charAt(0).toUpperCase()}
+              </span>
               <button
-                onClick={() => void session.signOut()}
-                className="grid size-11 place-items-center rounded-full text-muted hover:bg-mist hover:text-ink"
-                aria-label="Sign out"
-                title="Sign out"
+                onClick={() => void session.logOut()}
+                className="grid size-10 place-items-center rounded-full text-muted hover:bg-mist hover:text-ink"
+                aria-label="Log out"
+                title="Log out"
               >
                 <LogOut className="size-4" />
               </button>
             </>
-          ) : cta ? (
-            <Button tone="dark" icon onClick={() => (window.location.hash = '/agents/ava')}>
-              Meet Ava
-            </Button>
-          ) : null}
+          ) : (
+            <>
+              <a href="#/login" className="rounded-full px-4 py-2.5 text-sm font-medium text-ink hover:bg-mist">
+                Log in
+              </a>
+              {cta && (
+                <Button tone="dark" icon onClick={() => (window.location.hash = '/agents/ava')}>
+                  Meet Ava
+                </Button>
+              )}
+            </>
+          )}
         </div>
       </nav>
     </header>

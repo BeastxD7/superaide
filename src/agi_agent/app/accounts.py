@@ -1,8 +1,8 @@
-"""Hiring the agent, app sign-in sessions and channel invites.
+"""Hiring the agent, and connecting the owner's other channels.
 
-The person who hires the agent becomes its manager. Their browser gets a
-session token (only its hash is stored). The in-app chat is a channel like
-Telegram or Slack, keyed on the person's own ID, which only the server can mint.
+Hiring needs a signed-in account (see agi_agent.auth). The account's Person
+becomes the agent's manager. The in-app chat is a channel like Telegram or
+Slack, keyed on the person's own ID, which only the server can mint.
 """
 
 from __future__ import annotations
@@ -16,7 +16,15 @@ from sqlalchemy.orm import Session
 
 from agi_agent.audit import audit
 from agi_agent.channels.base import InboundMessage
-from agi_agent.db.models import AppSession, ChannelIdentity, ChannelInvite, IdentityLinkEvent, Onboarding, Person
+from agi_agent.db.models import (
+    AgentHire,
+    ChannelIdentity,
+    ChannelInvite,
+    IdentityLinkEvent,
+    Onboarding,
+    Person,
+    UserAccount,
+)
 from agi_agent.identity.trust import Trust
 
 INVITE_TTL_MINUTES = 15
@@ -37,73 +45,63 @@ def _hash(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-def owner(session: Session) -> Person | None:
-    return session.scalar(
-        select(Person).where(Person.relation == "manager", Person.status == "active").order_by(Person.created_at)
-    )
+def active_hire(session: Session, agent_slug: str = "ava") -> AgentHire | None:
+    return session.scalar(select(AgentHire).where(AgentHire.agent_slug == agent_slug, AgentHire.status == "active"))
 
 
-def hire(session: Session, *, name: str) -> tuple[Person, str]:
-    existing = owner(session)
+def owner_account(session: Session, agent_slug: str = "ava") -> UserAccount | None:
+    hire = active_hire(session, agent_slug)
+    return session.get(UserAccount, hire.owner_user_id) if hire else None
+
+
+def owner(session: Session, agent_slug: str = "ava") -> Person | None:
+    """The Person who hired the agent, if anyone has."""
+    account = owner_account(session, agent_slug)
+    return session.get(Person, account.person_id) if account else None
+
+
+def hire(session: Session, user: UserAccount, agent_slug: str = "ava") -> Person:
+    existing = owner_account(session, agent_slug)
     if existing is not None:
+        if existing.id == user.id:
+            return session.get(Person, user.person_id)
         raise AlreadyHired(existing.display_name)
     now = datetime.now(UTC)
-    person = Person(
-        display_name=name.strip()[:80],
-        relation="manager",
-        notice_basis={"kind": "consent_at_hire", "version": NOTICE_VERSION, "text": NOTICE_TEXT, "at": now.isoformat()},
-        channel_prefs={"routine": "web"},
-    )
-    session.add(person)
+    notice = {"kind": "consent_at_hire", "version": NOTICE_VERSION, "text": NOTICE_TEXT, "at": now.isoformat()}
+    session.add(AgentHire(agent_slug=agent_slug, owner_user_id=user.id, notice=notice))
+    person = session.get(Person, user.person_id)
+    person.relation = "manager"
+    person.notice_basis = notice
     session.flush()
-    identity = ChannelIdentity(
-        person_id=person.id,
-        provider="web",
-        tenant_scope="",
-        stable_key=str(person.id),
-        trust_level=int(Trust.LINKED),
-        verification={"method": "account_created_at_hire", "verified_at": now.isoformat()},
-        aux_handles={"display_name": person.display_name},
-        last_seen_at=now,
+    identity = session.scalar(
+        select(ChannelIdentity).where(ChannelIdentity.provider == "web", ChannelIdentity.stable_key == str(person.id))
     )
-    session.add(identity)
-    session.flush()
-    session.add(
-        IdentityLinkEvent(
-            identity_id=identity.id,
+    if identity is None:
+        identity = ChannelIdentity(
             person_id=person.id,
-            action="link",
-            method="account_created_at_hire",
-            actor="app",
+            provider="web",
+            tenant_scope="",
+            stable_key=str(person.id),
+            trust_level=int(Trust.LINKED),
+            verification={"method": "account_signed_in", "verified_at": now.isoformat()},
+            aux_handles={"display_name": person.display_name},
+            last_seen_at=now,
         )
-    )
-    session.add(Onboarding(person_id=person.id, step="hello", answers={}))
-    token = new_session(session, person)
-    audit(session, "app", "hired", person_id=person.id)
-    return person, token
-
-
-def new_session(session: Session, person: Person) -> str:
-    token = secrets.token_urlsafe(32)
-    session.add(AppSession(person_id=person.id, token_hash=_hash(token)))
-    return token
-
-
-def person_for_token(session: Session, token: str) -> Person | None:
-    if not token:
-        return None
-    row = session.scalar(select(AppSession).where(AppSession.token_hash == _hash(token), AppSession.revoked.is_(False)))
-    if row is None:
-        return None
-    row.last_used_at = datetime.now(UTC)
-    person = session.get(Person, row.person_id)
-    return person if person is not None and person.status == "active" else None
-
-
-def sign_out(session: Session, token: str) -> None:
-    row = session.scalar(select(AppSession).where(AppSession.token_hash == _hash(token)))
-    if row is not None:
-        row.revoked = True
+        session.add(identity)
+        session.flush()
+        session.add(
+            IdentityLinkEvent(
+                identity_id=identity.id,
+                person_id=person.id,
+                action="link",
+                method="account_signed_in",
+                actor="app",
+            )
+        )
+    if session.scalar(select(Onboarding).where(Onboarding.person_id == person.id)) is None:
+        session.add(Onboarding(person_id=person.id, step="hello", answers={}))
+    audit(session, "app", "hired", person_id=person.id, user_id=user.id, agent=agent_slug)
+    return person
 
 
 def web_message(person: Person, text: str) -> InboundMessage:

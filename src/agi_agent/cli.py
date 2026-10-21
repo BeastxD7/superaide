@@ -146,18 +146,23 @@ def _seed_demo(_: argparse.Namespace) -> None:
     print("Added demo people: Shashank (manager) and Priya Tan (colleague).")
 
 
-def _owner_link(_args: argparse.Namespace) -> None:
-    """Print a sign-in link for the person who hired the agent (new browser, cleared storage)."""
-    from agi_agent.app.accounts import new_session, owner
+def _reset_password(args: argparse.Namespace) -> None:
+    """Set a new password for an account from the terminal (there's no email reset yet)."""
+    import getpass
+
+    from agi_agent.auth.service import AuthError, reset_password
     from agi_agent.db.session import session_scope
 
-    with session_scope() as s:
-        person = owner(s)
-        if person is None:
-            sys.exit("Nobody has hired the agent yet. Open the app and hire it first.")
-        token = new_session(s, person)
-    frontend = get_settings().frontend_origin.rstrip("/")
-    print(f"Sign in as {person.display_name}: {frontend}/#/signin?session={token}")
+    first = getpass.getpass("New password (10+ characters): ")
+    if getpass.getpass("Type it again: ") != first:
+        sys.exit("The two passwords don't match. Nothing changed.")
+    try:
+        with session_scope() as s:
+            user = reset_password(s, args.email, first)
+            name = user.display_name
+    except AuthError as exc:
+        sys.exit(exc.message)
+    print(f"Password changed for {name}. They've been signed out everywhere; log in again at the app.")
 
 
 def _reset_db(args: argparse.Namespace) -> None:
@@ -210,7 +215,9 @@ def main() -> None:
 
     sub.add_parser("hello", help="one tiny real Claude call to test the key").set_defaults(func=_hello)
     sub.add_parser("seed-demo", help="add demo people if none exist").set_defaults(func=_seed_demo)
-    sub.add_parser("owner-link", help="print a sign-in link for whoever hired the agent").set_defaults(func=_owner_link)
+    p = sub.add_parser("reset-password", help="set a new password for an app account")
+    p.add_argument("--email", required=True)
+    p.set_defaults(func=_reset_password)
     p = sub.add_parser("reset-db", help="delete all data")
     p.add_argument("--yes", action="store_true")
     p.set_defaults(func=_reset_db)

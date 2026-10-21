@@ -2,30 +2,32 @@ import '@fontsource-variable/geist'
 import './app.css'
 import { MotionConfig } from 'motion/react'
 import { useCallback, useEffect, useState } from 'react'
-import { call, getSession, setSession, type Me } from './api'
+import { auth, call, type Account, type Me } from './api'
+import { AuthPage } from './Auth'
 import { Hire } from './Hire'
 import { Marketplace } from './Marketplace'
 import { Meet } from './Meet'
 import { Profile } from './Profile'
-import { go, useRoute } from './router'
+import { useRoute } from './router'
 import { Workspace } from './Workspace'
 
 export type Session = {
-  me: Me | null
+  account: Account | null // who is signed in (null when logged out)
+  me: Me | null // the hired agent's workspace state, when this account hired one
   loading: boolean
   refresh: () => Promise<Me | null>
-  signOut: () => Promise<void>
-  signedIn: (token: string) => Promise<Me | null>
+  signedIn: (account: Account) => Promise<void>
+  logOut: () => Promise<void>
 }
 
 function useSession(): Session {
+  const [account, setAccount] = useState<Account | null>(null)
   const [me, setMe] = useState<Me | null>(null)
-  const [loading, setLoading] = useState(() => Boolean(getSession()))
+  const [loading, setLoading] = useState(true)
 
-  const refresh = useCallback(async () => {
-    if (!getSession()) {
+  const loadAgent = useCallback(async (acc: Account | null) => {
+    if (!acc?.hire) {
       setMe(null)
-      setLoading(false)
       return null
     }
     try {
@@ -35,56 +37,58 @@ function useSession(): Session {
     } catch {
       setMe(null)
       return null
-    } finally {
-      setLoading(false)
     }
   }, [])
+
+  // Re-read both the account and the agent state from the server.
+  const refresh = useCallback(async () => {
+    let acc: Account | null = null
+    try {
+      acc = await auth.me()
+    } catch {
+      acc = null
+    }
+    setAccount(acc)
+    const m = await loadAgent(acc)
+    setLoading(false)
+    return m
+  }, [loadAgent])
 
   useEffect(() => {
     void refresh()
   }, [refresh])
 
-  const signOut = useCallback(async () => {
-    try {
-      await call('/signout', { method: 'POST' })
-    } catch {
-      // Signing out locally is what matters.
-    }
-    setSession(null)
-    setMe(null)
-    go('/')
-  }, [])
-
   const signedIn = useCallback(
-    async (token: string) => {
-      setSession(token)
-      return refresh()
+    async (acc: Account) => {
+      setAccount(acc)
+      await loadAgent(acc)
     },
-    [refresh],
+    [loadAgent],
   )
 
-  return { me, loading, refresh, signOut, signedIn }
+  const logOut = useCallback(async () => {
+    try {
+      await auth.logout()
+    } catch {
+      // Already signed out on the server; clear the page either way.
+    }
+    setAccount(null)
+    setMe(null)
+    window.location.hash = '/'
+  }, [])
+
+  return { account, me, loading, refresh, signedIn, logOut }
 }
 
 export default function AppRoot() {
   const route = useRoute()
   const session = useSession()
   const [first, second] = route.path
-  const { signedIn } = session
-
-  // The owner-link command opens #/signin?session=... on this computer.
-  useEffect(() => {
-    if (first !== 'signin') return
-    const token = route.query.get('session')
-    if (!token) {
-      go('/', true)
-      return
-    }
-    void signedIn(token).then((m) => go(m ? (m.onboarding.done ? '/workspace' : '/meet') : '/', true))
-  }, [first, route.query, signedIn])
 
   let page
-  if (first === 'signin' || session.loading) page = <div className="min-h-dvh mesh" aria-busy="true" />
+  if (session.loading) page = <div className="min-h-dvh mesh" aria-busy="true" />
+  else if (first === 'signup' || first === 'login')
+    page = <AuthPage mode={first} next={route.query.get('next')} session={session} />
   else if (first === 'agents' && second) page = <Profile slug={second} session={session} />
   else if (first === 'hire' && second) page = <Hire slug={second} session={session} />
   else if (first === 'meet') page = <Meet session={session} />

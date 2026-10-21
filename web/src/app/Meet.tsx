@@ -59,7 +59,7 @@ export function Meet({ session }: { session: Session }) {
 
   useEffect(() => {
     if (!me) {
-      window.location.hash = '/'
+      window.location.hash = session.account ? '/' : `/login?next=${encodeURIComponent('/meet')}`
       return
     }
     Promise.all([call<StepView>('/onboarding'), call<Message[]>('/messages')])

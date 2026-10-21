@@ -147,7 +147,7 @@ export { ApiError }
 
 // Same Axios client as the app, authorised with the operator's ADMIN_TOKEN.
 export async function api<T>(conn: Connection, path: string, init?: { method?: 'GET' | 'POST'; body?: string }): Promise<T> {
-  const client = createClient(conn.base.replace(/\/$/, ''), () => conn.token)
+  const client = createClient(conn.base.replace(/\/$/, ''), { token: () => conn.token })
   const res = await client.request<T>({ url: path, method: init?.method ?? 'GET', data: init?.body })
   return res.data
 }

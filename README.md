@@ -40,7 +40,7 @@ bash ~/Desktop/agi-agent/start.command
 It installs [uv](https://docs.astral.sh/uv/) if needed, stops any copy that is already running, starts Postgres (in Docker, or a built-in Postgres if Docker Desktop isn't installed), creates `.env` with an admin token, starts the backend API on port 8000 and the frontend on port 3000, and opens http://localhost:3000. With Node 20+ installed the frontend runs on Vite's dev server; without Node it serves the prebuilt files in `web/dist`. You land on the marketplace as a new visitor: open Ava's card, hire it, and Ava onboards you. Without an API key the brain runs in offline mode, so this costs nothing. The terminal also prints the API docs and operator console links. Press Ctrl+C to stop everything; run it again any time and you pick up where you left off.
 
 - `bash start.command --reset` wipes the data first, so you can hire Ava again from scratch.
-- Signed out of the app? `uv run agi-agent owner-link` prints a one-time sign-in link for the person who hired Ava.
+- Forgot your password? `uv run agi-agent reset-password --email you@example.com` sets a new one and signs that account out everywhere.
 - `bash start.command --no-docker` uses an embedded Postgres in `.local-db/` instead of Docker.
 
 ## Quick start on your Mac, step by step
@@ -101,7 +101,7 @@ Replies to known people use Sonnet 5.5. My estimate is about a cent per reply wi
 | Command | What it does |
 | --- | --- |
 | `uv run agi-agent serve` | The backend API (app, console and webhooks) on 127.0.0.1:8000 |
-| `uv run agi-agent owner-link` | A one-time sign-in link for the person who hired Ava |
+| `uv run agi-agent reset-password --email …` | Set a new password for an app account (signs it out everywhere) |
 | `uv run agi-agent telegram-poll` | Receive Telegram messages without a public URL |
 | `uv run agi-agent slack-socket` | Receive Slack messages over Socket Mode |
 | `uv run agi-agent add-manager` / `add-colleague` | Register a person and their first channels |

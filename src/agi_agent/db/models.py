@@ -1,5 +1,5 @@
-"""Database tables for phase 1: identity, conversations, audience-gated memory,
-approvals, audit and the spend ledger.
+"""Database tables: identity, conversations, audience-gated memory, approvals,
+audit, the spend ledger, and user accounts for the app.
 
 Rules baked into the schema:
 - Every row carries tenant_id and agent_id.
@@ -19,12 +19,14 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -208,18 +210,88 @@ class SpendEntry(Scoped, Base):
     settled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
-# --- App accounts ----------------------------------------------------------------
+# --- User accounts and sessions ----------------------------------------------------
 
 
-class AppSession(Scoped, Base):
-    """A signed-in browser for the person who hired the agent. Only a hash is stored."""
+class TenantScoped:
+    """Columns for tables that belong to the tenant rather than to one agent."""
 
-    __tablename__ = "app_session"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), default=_tenant, index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now()
+    )
 
-    person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), index=True)
+
+class UserAccount(TenantScoped, Base):
+    """Someone who can sign in to the app. Passwords are stored only as Argon2id hashes.
+
+    Each account is tied to one Person: the same human as seen by the agents, so
+    the app, Telegram and Slack all resolve to one record.
+    """
+
+    __tablename__ = "user_account"
+    __table_args__ = (UniqueConstraint("tenant_id", "email_normalized", name="uq_user_email"),)
+
+    email: Mapped[str] = mapped_column(String(320))
+    email_normalized: Mapped[str] = mapped_column(String(320))
+    password_hash: Mapped[str] = mapped_column(String(255))
+    display_name: Mapped[str] = mapped_column(String(120))
+    person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), unique=True)
+    role: Mapped[str] = mapped_column(String(20), default="user")  # user | admin
+    status: Mapped[str] = mapped_column(String(20), default="active")  # active | disabled
+    timezone: Mapped[str] = mapped_column(String(64), default="Asia/Singapore")
+    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    failed_logins: Mapped[int] = mapped_column(Integer, default=0)
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    password_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
+    )
+
+
+class UserSession(TenantScoped, Base):
+    """One signed-in browser. The cookie holds a random token; only its SHA-256 is stored."""
+
+    __tablename__ = "user_session"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("user_account.id"), index=True)
     token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    revoked: Mapped[bool] = mapped_column(Boolean, default=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    user_agent: Mapped[str] = mapped_column(String(300), default="")
+    ip: Mapped[str] = mapped_column(String(64), default="")
+
+
+class AuthEvent(TenantScoped, Base):
+    """Append-only record of sign-ups, logins, failures and logouts (rate limits read it)."""
+
+    __tablename__ = "auth_event"
+
+    kind: Mapped[str] = mapped_column(String(30), index=True)  # signup | login_ok | login_fail | logout | ...
+    user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user_account.id"), nullable=True)
+    email_normalized: Mapped[str] = mapped_column(String(320), default="", index=True)
+    ip: Mapped[str] = mapped_column(String(64), default="", index=True)
+    user_agent: Mapped[str] = mapped_column(String(300), default="")
+
+
+class AgentHire(TenantScoped, Base):
+    """Which account hired which agent, and the notice they agreed to. One active hire per agent."""
+
+    __tablename__ = "agent_hire"
+    __table_args__ = (
+        Index(
+            "uq_agent_hire_active", "tenant_id", "agent_slug", unique=True, postgresql_where=text("status = 'active'")
+        ),
+    )
+
+    agent_slug: Mapped[str] = mapped_column(String(40))
+    owner_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("user_account.id"), index=True)
+    status: Mapped[str] = mapped_column(String(20), default="active")  # active | ended
+    notice: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Onboarding(Scoped, Base):

@@ -43,7 +43,7 @@ export function Workspace({ session }: { session: Session }) {
 
   useEffect(() => {
     if (!me) {
-      window.location.hash = '/'
+      window.location.hash = session.account ? '/' : `/login?next=${encodeURIComponent('/workspace')}`
       return
     }
     if (!me.onboarding.done) {
@@ -118,10 +118,10 @@ export function Workspace({ session }: { session: Session }) {
             {me.paused ? `${agentName} is paused` : me.brain === 'claude' ? `${agentName} is online` : `${agentName} is in offline mode`}
           </span>
           <button
-            onClick={() => void session.signOut()}
+            onClick={() => void session.logOut()}
             className="grid size-10 place-items-center rounded-full text-muted hover:bg-white hover:text-ink"
-            aria-label="Sign out"
-            title="Sign out"
+            aria-label="Log out"
+            title="Log out"
           >
             <LogOut className="size-4" />
           </button>

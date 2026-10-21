@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { call, type AgentCard } from './api'
 import type { Session } from './AppRoot'
 import { Orb } from './Orb'
+import { homeFor } from './session'
 import { Button, NavBar, STAGES } from './ui'
 
 const CHANNEL_ICONS: Record<string, typeof Send> = { 'In the app': MessageCircle, Telegram: Send, Slack: Hash }
@@ -34,7 +35,7 @@ export function Profile({ slug, session }: { slug: string; session: Session }) {
   if (!agent) return <div className="min-h-dvh mesh" aria-busy="true" />
 
   const available = agent.status === 'available'
-  const mine = Boolean(session.me) && Boolean(agent.hired_by)
+  const mine = session.account?.hire?.agent === agent.slug
   const taken = Boolean(agent.hired_by) && !mine
 
   return (
@@ -70,16 +71,30 @@ export function Profile({ slug, session }: { slug: string; session: Session }) {
             {!available ? (
               <p className="rounded-2xl bg-white/70 px-4 py-3 text-sm text-muted">{agent.name} is still in training. Ava is ready now.</p>
             ) : mine ? (
-              <Button tone="dark" icon className="w-full justify-between" onClick={() => (window.location.hash = session.me?.onboarding.done ? '/workspace' : '/meet')}>
+              <Button tone="dark" icon className="w-full justify-between" onClick={() => (window.location.hash = homeFor(session.account))}>
                 Open {agent.name}
               </Button>
             ) : taken ? (
               <p className="rounded-2xl bg-white/70 px-4 py-3 text-left text-sm text-body">
-                {agent.name} already works for {agent.hired_by} on this computer. If that's you, sign in with the link from{' '}
-                <code className="rounded bg-mist px-1">uv run agi-agent owner-link</code>.
+                {agent.name} already works for {agent.hired_by}.{' '}
+                {session.account ? (
+                  <>You're signed in as {session.account.user.name}. </>
+                ) : (
+                  <>
+                    If that's you,{' '}
+                    <a className="font-medium text-violet-700 underline" href={`#/login?next=${encodeURIComponent('/meet')}`}>
+                      log in
+                    </a>
+                    .
+                  </>
+                )}
               </p>
             ) : (
-              <Button tone="violet" icon className="w-full justify-between" onClick={() => (window.location.hash = `/hire/${agent.slug}`)}>
+              <Button tone="violet" icon className="w-full justify-between" onClick={() =>
+                  (window.location.hash = session.account
+                    ? `/hire/${agent.slug}`
+                    : `/signup?next=${encodeURIComponent(`/hire/${agent.slug}`)}`)
+                }>
                 Hire {agent.name}
               </Button>
             )}
