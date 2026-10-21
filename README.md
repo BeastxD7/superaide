@@ -34,7 +34,7 @@ The browser only ever talks to the Next.js server. Pages that should be public (
 - `bash start.command --reset` wipes the data first, to hire Ava from scratch.
 - `bash start.command --no-docker` always uses the embedded Postgres in `.local-db/`.
 
-**For development** you need [uv](https://docs.astral.sh/uv/), Node 22+ and Docker.
+**For development** you need [uv](https://docs.astral.sh/uv/), Node 24 (Active LTS; 22 also works) and Docker.
 
 ```bash
 make setup                         # backend and frontend dependencies, git hooks

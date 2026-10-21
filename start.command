@@ -165,17 +165,17 @@ if grep -Eq '^SLACK_BOT_TOKEN=.+' "$ENV_FILE"; then bold "Slack: connected from 
 node_ok() { command -v node >/dev/null 2>&1 && node -e 'const [a,b]=process.versions.node.split(".").map(Number);process.exit(a>20||(a===20&&b>=9)?0:1)' 2>/dev/null; }
 if ! node_ok && [ -x "$ROOT/.tools/node/bin/node" ]; then export PATH="$ROOT/.tools/node/bin:$PATH"; fi
 if ! node_ok; then
-  bold "Installing Node.js 22 for the frontend (one time, into .tools/)…"
+  bold "Installing Node.js 24 for the frontend (one time, into .tools/)…"
   case "$(uname -s)-$(uname -m)" in
     Darwin-arm64) PLATFORM=darwin-arm64 ;;
     Darwin-x86_64) PLATFORM=darwin-x64 ;;
     Linux-x86_64) PLATFORM=linux-x64 ;;
     Linux-aarch64) PLATFORM=linux-arm64 ;;
-    *) echo "Install Node.js 22 from https://nodejs.org and run this again."; exit 1 ;;
+    *) echo "Install Node.js 24 from https://nodejs.org and run this again."; exit 1 ;;
   esac
-  DIST=https://nodejs.org/dist/latest-v22.x
+  DIST=https://nodejs.org/dist/latest-v24.x
   SUMS="$(curl -fsSL "$DIST/SHASUMS256.txt")"
-  FILE="$(printf '%s\n' "$SUMS" | awk '{print $2}' | grep -E "^node-v22\.[0-9.]+-$PLATFORM\.tar\.gz$" | head -1)"
+  FILE="$(printf '%s\n' "$SUMS" | awk '{print $2}' | grep -E "^node-v24\.[0-9.]+-$PLATFORM\.tar\.gz$" | head -1)"
   [ -n "$FILE" ] || { echo "Couldn't find Node for $PLATFORM. Install it from https://nodejs.org."; exit 1; }
   TMP="$(mktemp -d)"
   curl -fsSL "$DIST/$FILE" -o "$TMP/$FILE"
