@@ -495,3 +495,27 @@ def test_preflight_for_methods_or_headers_we_dont_use_is_refused(browser):
             },
         )
         assert r.status_code == 400, (method, headers)
+
+
+SECRET_PASSWORD = "my-very-secret-passphrase"
+
+
+@pytest.mark.parametrize(
+    ("path", "body"),
+    [
+        ("/auth/signup", {"name": "Shashank Rao", "email": "s@example.com", "password": SECRET_PASSWORD * 50}),
+        ("/auth/signup", {"name": "", "email": "s@example.com", "password": SECRET_PASSWORD}),
+        ("/auth/login", {"password": SECRET_PASSWORD}),  # a missing field's "input" is the whole body
+        ("/auth/login", {"email": ["s@example.com"], "password": SECRET_PASSWORD}),
+        ("/auth/password", {"current": SECRET_PASSWORD}),
+    ],
+    ids=["signup-too-long", "signup-no-name", "login-no-email", "login-bad-email", "change-no-new"],
+)
+def test_validation_errors_never_echo_a_password(browser, path, body):
+    c = browser()
+    signup(c, email="other@example.com")
+    r = c.post(path, json=body)
+    assert r.status_code == 422
+    assert SECRET_PASSWORD not in r.text
+    first = r.json()["detail"][0]
+    assert first["loc"] and first["msg"]  # still says what's wrong, for the form
