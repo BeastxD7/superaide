@@ -171,7 +171,7 @@ export { ApiError as AppError }
 // Axios client for the backend, sending the session cookie with each request.
 const client = createClient(API_URL, { withCredentials: true })
 
-type Init = { method?: 'GET' | 'POST'; json?: unknown }
+type Init = { method?: 'GET' | 'POST' | 'PUT'; json?: unknown }
 
 async function request<T>(url: string, init?: Init): Promise<T> {
   const res = await client.request<T>({ url, method: init?.method ?? 'GET', data: init?.json })
@@ -279,3 +279,38 @@ export type SkillCard = {
   tools: string[]
   cost: string | null
 }
+
+// /app/providers: which AI model Ava thinks with (ADR 0007). Keys never come back, only a hint.
+export type ProviderPreset = {
+  id: string
+  label: string
+  base_url: string
+  key_required: boolean
+  key_hint: string
+  guide_url: string
+  local: boolean
+  note: string
+  warnings: string[]
+}
+
+export type ConnectedProvider = {
+  preset: string
+  base_url: string
+  enabled: boolean
+  key_hint: string
+  models: string[]
+  checked_at: string | null
+}
+
+export type RoleName = 'chat' | 'triage' | 'deep'
+
+export type ModelSettings = {
+  presets: ProviderPreset[]
+  claude: { connected: boolean; via: 'app' | 'env' | null; key_hint: string }
+  providers: ConnectedProvider[]
+  roles: Record<RoleName, { provider: string; model: string }>
+  brain: { ready: boolean; provider: string | null }
+  priced: Record<string, string[]>
+}
+
+export type ConnectionTest = { ok: boolean; message: string; models: string[] }

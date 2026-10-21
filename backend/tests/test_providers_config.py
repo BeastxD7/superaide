@@ -111,6 +111,7 @@ def test_connect_choose_price_and_disconnect(owner_client, service):  # noqa: F8
         json={"provider": "openrouter", "model": "acme/fast", "input_usd_per_mtok": 1, "output_usd_per_mtok": 4},
     )
     assert priced.status_code == 200
+    assert priced.json()["priced"]["openrouter"] == ["acme/fast"]
     chosen = owner_client.put("/app/providers/roles", json=choice)
     assert chosen.status_code == 200 and chosen.json()["roles"]["chat"] == choice["chat"]
 

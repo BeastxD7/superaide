@@ -120,7 +120,7 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], Any]) -> APIRo
     )
 
     def view() -> dict[str, Any]:
-        from superaide.factory import brain_status
+        from superaide.factory import brain_status, load_prices
 
         settings = runtime_settings()
         with session_scope() as s:
@@ -134,6 +134,23 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], Any]) -> APIRo
             for role, field in config.ROLE_FIELDS.items()
         }
         status = brain_status(settings)
+        prices = load_prices(settings)
+
+        def priced(provider: str, models: list[str]) -> list[str]:
+            out = []
+            for m in models:
+                try:
+                    prices.price_for(m, provider)
+                    out.append(m)
+                except UnknownModelPrice:
+                    pass
+            return out
+
+        known = {"anthropic": sorted(PRICES)}
+        known.update({p["preset"]: priced(p["preset"], p["models"]) for p in mine["providers"]})
+        for role in roles.values():  # a model typed in by hand, already chosen
+            if role["model"] not in known.get(role["provider"], []):
+                known.setdefault(role["provider"], []).extend(priced(role["provider"], [role["model"]]))
         return {
             "presets": [ANTHROPIC, *(preset_view(p) for p in PRESETS.values())],
             "claude": {
@@ -144,6 +161,7 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], Any]) -> APIRo
             "providers": mine["providers"],
             "roles": roles,
             "brain": {"ready": status.ready, "provider": status.provider},
+            "priced": known,  # models whose price Superaide knows, per provider
         }
 
     def resolve(preset: str, body: ProviderBody) -> tuple[str, str]:
