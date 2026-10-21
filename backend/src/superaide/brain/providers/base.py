@@ -58,6 +58,8 @@ class CheckReport:
     ok: bool
     message: str
     models: list[str] = field(default_factory=list)
+    # Prices the service lists for its models, US$ per million tokens: {model: {"input", "output", "cache_read"}}
+    prices: dict[str, dict[str, str]] = field(default_factory=dict)
 
 
 class LLMProvider(Protocol):

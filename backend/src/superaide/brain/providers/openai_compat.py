@@ -169,6 +169,30 @@ def neutral_usage(p: Priced, raw: Any) -> Usage:
     )
 
 
+def listed_prices(models: list[Any]) -> dict[str, dict[str, str]]:
+    """Per-model prices from an OpenRouter-style models list (US$ per token, as strings), turned into
+    US$ per million tokens. Variable or missing prices (negative, empty) are skipped."""
+    out: dict[str, dict[str, str]] = {}
+    for m in models:
+        pricing = _get(m, "pricing") or (getattr(m, "model_extra", None) or {}).get("pricing")
+        try:
+            inp = Decimal(str(_get(pricing, "prompt")))
+            outp = Decimal(str(_get(pricing, "completion")))
+        except ArithmeticError, ValueError, TypeError:
+            continue
+        if inp < 0 or outp < 0:
+            continue
+        price = {"input": str(inp * 1_000_000), "output": str(outp * 1_000_000)}
+        read = _get(pricing, "input_cache_read")
+        if read not in (None, "", "0") and inp > 0:
+            try:
+                price["cache_read"] = str(Decimal(str(read)) * 1_000_000)
+            except ArithmeticError, ValueError:
+                pass
+        out[str(_get(m, "id"))] = price
+    return out
+
+
 def parse_args(raw: str) -> dict[str, Any]:
     try:
         args = json.loads(raw or "{}")
@@ -275,8 +299,10 @@ class OpenAICompatProvider:
                     False, "That address answered, but not like an OpenAI-compatible API. Check the base URL."
                 )
             return CheckReport(False, f"Couldn't reach {self.preset.label} ({type(exc).__name__}). Check the address.")
-        models = sorted(str(_get(m, "id")) for m in (_get(page, "data") or []))
-        return CheckReport(True, f"Connected to {self.preset.label}", models)
+        data = _get(page, "data") or []
+        models = sorted(str(_get(m, "id")) for m in data)
+        prices = listed_prices(data) if self.preset.reports_cost else {}
+        return CheckReport(True, f"Connected to {self.preset.label}", models, prices)
 
     # --- calls ---
 

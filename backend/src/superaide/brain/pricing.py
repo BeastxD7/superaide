@@ -120,14 +120,23 @@ class PriceRegistry:
     owner: dict[tuple[str, str], ModelPrice] = field(default_factory=dict)
     # Where each configured local server lives, so its models are free only at a local address.
     base_urls: dict[str, str] = field(default_factory=dict)
+    # Prices a provider lists for its own models (OpenRouter's models API), read when it was connected.
+    listed: dict[tuple[str, str], ModelPrice] = field(default_factory=dict)
 
     def price_for(self, model: str, provider: str = "anthropic", *, base_url: str | None = None) -> ModelPrice:
+        """The owner's price first, then the provider's listed price, then the built-in tables."""
+        from superaide.brain.price_tables import lookup
+
         base_url = base_url or self.base_urls.get(provider)
         key = (provider, model)
         if key in self.owner:
             return self.owner[key]
+        if key in self.listed:
+            return self.listed[key]
         if key in BUILTIN:
             return BUILTIN[key]
+        if (table_price := lookup(provider, model)) is not None:
+            return table_price
         if provider in LOCAL_KINDS and is_local_url(base_url):
             return FREE
         raise UnknownModelPrice(f"No price for {provider} model {model!r}; set one in the app or add it to pricing.py")

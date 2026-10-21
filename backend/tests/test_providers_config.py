@@ -225,3 +225,22 @@ def test_web_search_key_is_tested_charged_stored_masked_and_removable(owner_clie
     gone = owner_client.post("/app/providers/web-search/remove")
     assert gone.status_code == 200 and gone.json()["web_search"]["connected"] is False
     assert runtime_settings().brave_search_api_key == ""
+
+
+def test_openrouter_models_are_priced_from_its_list_without_asking(owner_client, monkeypatch):  # noqa: F811
+    listed = {"acme/fast": {"input": "1.000000", "output": "4.000000"}}
+
+    def fake(preset, api_key, base_url):
+        class P:
+            def check(self):
+                return CheckReport(True, "Connected", ["acme/fast", "acme/unpriced"], listed)
+
+        return P()
+
+    monkeypatch.setattr("superaide.app.providers.build_provider", fake)
+    r = owner_client.post("/app/providers/openrouter", json={"api_key": KEY})
+    assert r.status_code == 200 and r.json()["priced"]["openrouter"] == ["acme/fast"]
+    ok = owner_client.put("/app/providers/roles", json={"chat": {"provider": "openrouter", "model": "acme/fast"}})
+    assert ok.status_code == 200
+    asks = owner_client.put("/app/providers/roles", json={"chat": {"provider": "openrouter", "model": "acme/unpriced"}})
+    assert asks.status_code == 409

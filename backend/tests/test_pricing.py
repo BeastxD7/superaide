@@ -120,3 +120,41 @@ def test_an_owner_price_for_a_new_claude_model_still_counts_cache_writes_and_sea
     usage = UsageCounts(cache_write_1h_tokens=1_000_000, web_search_requests=2)
     assert cost_usd("claude-new-6", usage, prices=prices) == Decimal("2.02")  # 2x input, plus $0.01 a search
     assert worst_case_cost("claude-new-6", 0, 0, prices=prices) == Decimal("0.004")  # 2,000 overhead tokens at 2x
+
+
+def test_built_in_tables_price_openai_xai_and_gemini_and_unknown_models_still_ask():
+    from datetime import date
+
+    from superaide.brain.price_tables import GEMINI, Scheduled
+
+    registry = PriceRegistry()
+    assert cost_usd("gpt-5.4-mini", UsageCounts(input_tokens=1_000_000, output_tokens=1_000_000), provider="openai",
+                    prices=registry) == Decimal("5.25")  # fmt: skip
+    # Above 272K input tokens the flagship long-context rates apply.
+    assert cost_usd("gpt-6-astra", UsageCounts(input_tokens=300_000), provider="openai") == Decimal("6")
+    assert cost_usd("grok-4.7", UsageCounts(input_tokens=200_000), provider="xai") == Decimal("0.8")  # >=200K: $4/M
+    assert cost_usd("grok-4.7", UsageCounts(cache_read_tokens=100_000), provider="xai") == Decimal("0.05")
+    assert registry.price_for("models/gemini-2.5-flash", "gemini").input == Decimal("0.30")
+    argon = GEMINI["gemini-4-argon"]
+    assert isinstance(argon, Scheduled)
+    assert argon.current(date(2026, 11, 30)).input == Decimal("2.00") and argon.current(
+        date(2026, 12, 1)
+    ).input == Decimal("4.00")
+    for provider, model in [("openai", "gpt-made-up"), ("xai", "grok-9"), ("gemini", "gemini-9"), ("azure", "gpt-5.4")]:
+        with pytest.raises(UnknownModelPrice):
+            registry.price_for(model, provider)
+
+
+def test_openrouter_listed_prices_are_read_from_its_models_list():
+    from superaide.brain.providers.openai_compat import listed_prices
+
+    models = [
+        {
+            "id": "acme/fast",
+            "pricing": {"prompt": "0.000001", "completion": "0.000004", "input_cache_read": "0.0000001"},
+        },
+        {"id": "openrouter/auto", "pricing": {"prompt": "-1", "completion": "-1"}},
+        {"id": "broken", "pricing": {"prompt": "n/a"}},
+    ]
+    prices = listed_prices(models)
+    assert prices == {"acme/fast": {"input": "1.000000", "output": "4.000000", "cache_read": "0.1000000"}}

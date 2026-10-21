@@ -76,10 +76,13 @@ def brain_ready(settings: Settings) -> bool:
 
 def load_prices(settings: Settings | None = None) -> PriceRegistry:
     """Built-in prices, any the owner set in the app, and where local model servers live."""
+    from superaide.brain.providers.config import listed_prices
+
     with session_scope() as s:
         prices = owner_prices(s)
+        listed = listed_prices(s)
     urls = {p: cfg.get("base_url", "") for p, cfg in (settings.llm_providers if settings else {}).items()}
-    return PriceRegistry(prices.owner, base_urls={p: u for p, u in urls.items() if u})
+    return PriceRegistry(prices.owner, base_urls={p: u for p, u in urls.items() if u}, listed=listed)
 
 
 def build_llm(settings: Settings) -> LLM:

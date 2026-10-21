@@ -321,7 +321,7 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], Any]) -> APIRo
                 api_key, base_url = resolve(preset, body)
                 config.save_provider(
                     s, preset, base_url=base_url, api_key=api_key if body.api_key is not None else None,
-                    user_id=user_id, models=report.models,
+                    user_id=user_id, models=report.models, prices=report.prices,
                 )  # fmt: skip
         apply()
         return view()

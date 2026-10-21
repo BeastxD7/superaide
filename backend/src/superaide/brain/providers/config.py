@@ -56,7 +56,14 @@ def key_for(session: Session, preset: str) -> str:
 
 
 def save_provider(
-    session: Session, preset: str, *, base_url: str, api_key: str | None, user_id: uuid.UUID | None, models: list[str]
+    session: Session,
+    preset: str,
+    *,
+    base_url: str,
+    api_key: str | None,
+    user_id: uuid.UUID | None,
+    models: list[str],
+    prices: dict[str, dict[str, str]] | None = None,
 ) -> LlmProvider:
     """Create or update a provider. `api_key=None` keeps the stored key."""
     if preset not in PRESETS:
@@ -67,7 +74,9 @@ def save_provider(
         row = LlmProvider(preset=preset)
         session.add(row)
     row.base_url, row.enabled, row.set_by_user_id, row.updated_at = base_url, True, user_id, now
-    row.meta = {"models": models[:500], "checked_at": now.isoformat()}
+    row.meta = {"models": models[:1000], "checked_at": now.isoformat()}
+    if prices:
+        row.meta["prices"] = {m: p for m, p in prices.items() if m in set(models[:1000])}
     if api_key is not None:
         secret = _secret(session, preset)
         if api_key == "":
@@ -138,3 +147,18 @@ def view(session: Session) -> dict[str, Any]:
         )
     roles = {r.role: {"provider": r.provider, "model": r.model} for r in session.scalars(select(ModelRole))}
     return {"providers": providers, "roles": roles}
+
+
+def listed_prices(session: Session) -> dict[tuple[str, str], Any]:
+    """Prices providers listed for their models when they were connected (OpenRouter)."""
+    from decimal import Decimal
+
+    from superaide.brain.pricing import ModelPrice
+
+    out: dict[tuple[str, str], Any] = {}
+    for row in session.scalars(select(LlmProvider)):
+        for model, p in ((row.meta or {}).get("prices") or {}).items():
+            inp, outp = Decimal(p["input"]), Decimal(p["output"])
+            read = Decimal(p["cache_read"]) / inp if p.get("cache_read") and inp else Decimal(1)
+            out[(row.preset, model)] = ModelPrice(inp, outp, read)
+    return out
