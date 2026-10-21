@@ -9,7 +9,8 @@ const securityHeaders = [
 ]
 
 const nextConfig: NextConfig = {
-  output: 'standalone', // a self-contained server for the Docker image
+  // The Docker image builds a self-contained server; `next start` and `next dev` don't need it.
+  output: process.env.NEXT_OUTPUT === 'standalone' ? 'standalone' : undefined,
   poweredByHeader: false,
   reactStrictMode: true,
   async headers() {
