@@ -154,7 +154,7 @@ else
   bold "Brain: offline until you connect Claude in the app (Connections)."
 fi
 bold "Starting the backend API on http://127.0.0.1:$API_PORT …"
-(cd "$ROOT/backend" && exec uv run --quiet superaide serve --port "$API_PORT") &
+(cd "$ROOT/backend" && exec uv run --quiet superaide serve --port "$API_PORT" --reload) &
 PIDS+=($!)
 # Telegram and Slack listeners run inside the API, for tokens in .env or connected in the app.
 if grep -Eq '^TELEGRAM_BOT_TOKEN=.+' "$ENV_FILE"; then bold "Telegram: connected from backend/.env"; fi

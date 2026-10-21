@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
   // The Docker image builds a self-contained server; `next start` and `next dev` don't need it.
   output: process.env.NEXT_OUTPUT === 'standalone' ? 'standalone' : undefined,
   poweredByHeader: false,
+  // Next's dev server blocks its own scripts for other host names; start.command
+  // users may open the app as 127.0.0.1 as well as localhost.
+  allowedDevOrigins: ['127.0.0.1'],
   reactStrictMode: true,
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }]
