@@ -54,3 +54,7 @@ backend tests, lint, types, the frontend checks and the full browser suite pass.
 - 02:20 IST: the owner linked a new bot (@Ava2xD_bot). Its first message (/start) was silently dropped as a "duplicate": Telegram numbers messages per chat *per bot*, so the new bot's #1 matched the old bot's #1. Fixed in 647af96 (message ids include the bot's public id; regression tests).
 - Live Telegram E2E via Telegram Web in Brave works: replies, a reminder delivered on Telegram, cross-channel recall "You dislike black… [1]".
 - Polish bugs assigned to a channel formatting agent: raw **Markdown** on Telegram, and "[1]" with no source list on chat channels.
+- 02:32 IST heartbeat: 8 agents busy (QA, providers follow-ups, tenancy T0–T12-now, identity re-link security, channel health, Telegram formatting, deps, reliability).
+  - Providers (ADR 0007) landed: the AI model page, OpenAI-compatible adapter, prices, hosted-mode SSRF guard, DNS-rebinding fix.
+  - New non-cancelling "Full" CI workflow is running.
+  - Dev spend tonight: US$0.049 (64 calls); lifetime dev US$0.07.
