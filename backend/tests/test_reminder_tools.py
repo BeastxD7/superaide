@@ -12,9 +12,10 @@ from sqlalchemy import select
 
 from superaide.app.accounts import owner as hired_owner
 from superaide.brain.loop import narrate
-from superaide.db.models import Intention, Job, Person
+from superaide.db.models import ChannelIdentity, Intention, Job, OwnerPreference, Person
 from superaide.db.session import session_scope
 from superaide.intentions import service as intentions
+from superaide.jobs.queue import run_due
 from tests.test_loop import Script, owner_client, tool_use, turn_for  # noqa: F401  (fixture re-export)
 
 pytestmark = pytest.mark.usefixtures("owner_client")  # a signed-up owner who hired Ava
@@ -179,3 +180,149 @@ def test_narrate_labels():
     )
     assert narrate("cancel_reminder", {"current": "Gym"}) == "Cancelling your reminder: Gym"
     assert narrate("cancel_reminder", {}) == "Cancelling your reminder: a reminder"
+
+
+# --- choosing the channel ------------------------------------------------------------
+
+
+@pytest.fixture
+def pushed(monkeypatch, outbox):
+    """Telegram and Slack sends land in the fake messengers instead of the network."""
+    monkeypatch.setattr("superaide.proactive.notify.messenger_for", lambda provider: outbox.get(provider))
+    return outbox
+
+
+def link(s, provider: str, key: str = "1001") -> None:
+    owner = hired_owner(s)
+    assert owner is not None
+    s.add(ChannelIdentity(provider=provider, stable_key=key, person_id=owner.id, lifecycle="active"))
+    s.flush()
+
+
+def due_now(intention_id: uuid.UUID) -> None:
+    with session_scope() as s:
+        r = s.get(Intention, intention_id)
+        assert r is not None
+        due = r.due_at
+    run_due(due + timedelta(seconds=1))
+
+
+def test_a_reminder_on_telegram_arrives_in_the_app_and_on_telegram(pushed):
+    with session_scope() as s:
+        link(s, "telegram")
+        script = Script(
+            tool_use("create_reminder", {"task": "Go to the washroom", "when": "in 1 minute", "channel": "telegram"}),
+            "Set.",
+        )
+        turn = turn_for(s, script, "remind me on telegram")
+        turn.run(ASK)
+        assert "arriving in the app and on Telegram" in result_of(script)["content"]
+        assert turn.activity[0]["label"] == "Setting a reminder on Telegram: Go to the washroom, in 1 minute"
+        r = s.scalar(select(Intention))
+        assert r is not None and r.channel == "telegram"
+        rid = r.id
+    due_now(rid)
+    assert [m["text"] for m in pushed["telegram"].sent] == ["⏰ Reminder: Go to the washroom"]
+    assert pushed["slack"].sent == []
+    with session_scope() as s:
+        r = s.get(Intention, rid)
+        assert r is not None and r.delivered_via == ["app", "telegram"]
+
+
+def test_a_channel_that_isnt_linked_is_an_error_that_says_how_to_link_it(pushed):
+    with session_scope() as s:
+        script = Script(
+            tool_use("create_reminder", {"task": "Stretch", "when": "in 1 hour", "channel": "telegram"}), "Sorry."
+        )
+        turn_for(s, script).run(ASK)
+        out = result_of(script)
+        assert out.get("is_error") is True
+        assert "Telegram isn't linked" in out["content"] and "Connections" in out["content"]
+        assert s.scalar(select(Intention)) is None
+
+
+def test_moving_a_reminder_to_slack_after_it_was_set(pushed):
+    """'I mean text me on Slack' after the reminder was set."""
+    with session_scope() as s:
+        link(s, "slack", "U123")
+        r = make(s, "Gym")
+        key = intentions._job_key(r)
+        script = Script(tool_use("update_reminder", {"id": str(r.id), "channel": "slack"}), "Done.")
+        turn = turn_for(s, script)
+        turn.run(ASK)
+        assert "arriving in the app and on Slack" in result_of(script)["content"]
+        assert turn.activity[0]["label"] == "Moving your reminder: Gym → on Slack"
+        s.flush()
+        s.refresh(r)
+        assert r.channel == "slack" and jobs(s, r) == {key: "queued"}
+        rid = r.id
+    due_now(rid)
+    assert [m["stable_key"] for m in pushed["slack"].sent] == ["U123"]
+    assert pushed["telegram"].sent == []
+
+
+def test_a_refused_channel_change_leaves_the_reminder_as_it_was(pushed):
+    with session_scope() as s:
+        r = make(s, "Gym")
+        due = r.due_at
+        script = Script(
+            tool_use("update_reminder", {"id": str(r.id), "when": "in 9 hours", "task": "Run", "channel": "slack"}),
+            "Sorry.",
+        )
+        turn_for(s, script).run(ASK)
+        assert result_of(script).get("is_error") is True
+        s.flush()
+        s.refresh(r)
+        assert (r.text, r.due_at, r.channel) == ("Gym", due, "default")
+
+
+def test_default_still_follows_the_interruption_choice_and_app_stays_in_the_app(pushed):
+    with session_scope() as s:
+        link(s, "telegram")
+        owner = hired_owner(s)
+        assert owner is not None
+        default = make(s, "Default one", hours=1)
+        app_only = intentions.create(
+            s, owner, text="App only", due_at=datetime.now(UTC) + timedelta(hours=2), channel="app"
+        )
+        ids = default.id, app_only.id
+    due_now(ids[0])
+    assert pushed["telegram"].sent == []  # the owner hasn't chosen Telegram for interruptions
+    with session_scope() as s:
+        owner = hired_owner(s)
+        assert owner is not None
+        pref = s.scalar(select(OwnerPreference).where(OwnerPreference.person_id == owner.id))
+        assert pref is not None
+        pref.interrupt_channel = "telegram"
+    due_now(ids[1])
+    assert pushed["telegram"].sent == []  # "app" means the app only, whatever the default
+    with session_scope() as s:
+        later = make(s, "Default again", hours=3)
+        lid = later.id
+    due_now(lid)
+    assert [m["text"] for m in pushed["telegram"].sent] == ["⏰ Reminder: Default again"]
+
+
+def test_ava_is_told_which_channels_are_linked_and_list_shows_each_channel(pushed):
+    with session_scope() as s:
+        link(s, "telegram")
+        owner = hired_owner(s)
+        assert owner is not None
+        intentions.create(s, owner, text="Tg one", due_at=datetime.now(UTC) + timedelta(hours=1), channel="telegram")
+        make(s, "Plain one", hours=2)
+        script = Script(tool_use("list_reminders", {}), "Here.")
+        turn = turn_for(s, script)
+        prompt = turn.system()[1].text
+        assert "Channels linked for delivery right now: the app, Telegram." in prompt
+        assert "Not linked: Slack" in prompt and "Connections" in prompt
+        turn.run(ASK)
+        text = result_of(script)["content"]
+        assert "Tg one" in text and "arrives in the app and on Telegram (channel: telegram)" in text
+        assert "Plain one" in text and "arrives in the app" in text
+
+
+def test_channel_labels():
+    assert narrate("create_reminder", {"task": "Gym", "when": "at 7pm"}) == "Setting a reminder: Gym, at 7pm"
+    assert narrate("create_reminder", {"task": "Gym", "when": "at 7pm", "channel": "app"}) == (
+        "Setting a reminder in the app: Gym, at 7pm"
+    )

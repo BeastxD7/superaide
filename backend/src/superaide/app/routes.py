@@ -555,6 +555,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             "status": i.status,
             "delivered_at": i.delivered_at.isoformat() if i.delivered_at else None,
             "source": i.source,
+            "channel": i.channel,
         }
 
     @router.get(

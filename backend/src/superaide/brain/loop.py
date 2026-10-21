@@ -33,6 +33,7 @@ from superaide.intentions import service as intentions
 from superaide.intentions.when import clean_task, find_moment, zone
 from superaide.policy.actions import RULES as ACTION_RULES
 from superaide.policy.actions import decide
+from superaide.proactive.notify import CHANNEL_NAMES, EXTERNAL
 from superaide.skills import registry
 from superaide.skills.manifest import Skill
 from superaide.skills.registry import WEB_SEARCHES_PER_STEP
@@ -108,15 +109,18 @@ def narrate(name: str, args: dict[str, Any]) -> str:
     if name == "recall":
         return f"Searching your notes and messages for \u201c{str(args.get('query', ''))[:80]}\u201d"
     if name == "create_reminder":
-        return f"Setting a reminder: {str(args.get('task', ''))[:80]}, {str(args.get('when', ''))[:40]}"
+        where = _on(args.get("channel"))
+        return f"Setting a reminder{where}: {str(args.get('task', ''))[:80]}, {str(args.get('when', ''))[:40]}"
     if name == "list_reminders":
         return "Checking your reminders"
     if name == "update_reminder":
         current = str(args.get("current") or args.get("task") or "a reminder")[:80]
         changes = [str(args[k])[:40] for k in ("when",) if args.get(k)]
+        if _on(args.get("channel")):
+            changes.append(_on(args.get("channel")).strip())
         if args.get("task") and args.get("current") and args["task"] != args["current"]:
             changes.insert(0, f"\u201c{str(args['task'])[:60]}\u201d")
-        verb = "Moving" if args.get("when") else "Editing"
+        verb = "Moving" if args.get("when") or _on(args.get("channel")) else "Editing"
         return f"{verb} your reminder: {current}" + (f" \u2192 {', '.join(changes)}" if changes else "")
     if name == "cancel_reminder":
         return f"Cancelling your reminder: {str(args.get('current') or 'a reminder')[:80]}"
@@ -129,6 +133,14 @@ def narrate(name: str, args: dict[str, Any]) -> str:
     if name == "web_fetch":
         return f"Reading {str(args.get('url', ''))[:120]}"
     return f"Using {name}"
+
+
+def _on(channel: Any) -> str:
+    """ " on Telegram" for a reminder that names its channel; "" for the default."""
+    channel = str(channel or "").lower()
+    if channel == "app":
+        return " in the app"
+    return f" on {CHANNEL_NAMES[channel]}" if channel in EXTERNAL else ""
 
 
 def outcome(name: str, content: Any, is_error: bool) -> str:
@@ -331,14 +343,26 @@ class OwnerTurn:
             f"It is {now:%A %d %B %Y, %H:%M} in their time zone ({tz})."
         )
         from superaide.knowledge.store import preferences_for
-        from superaide.proactive.notify import telegram_identity
+        from superaide.proactive.notify import linked_channels
 
-        telegram = telegram_identity(self.s, self.sender.person) is not None
-        on_telegram = telegram and preferences_for(self.s, self.sender.person).interrupt_channel == "telegram"
+        linked = linked_channels(self.s, self.sender.person)
+        on_telegram = (
+            "telegram" in linked and preferences_for(self.s, self.sender.person).interrupt_channel == "telegram"
+        )
+        missing = [CHANNEL_NAMES[c] for c in EXTERNAL if c not in linked]
         who += (
             " Reminders and your daily briefing arrive in the Superaide app chat at the time they're due"
             + (", and on Telegram too." if on_telegram else ".")
-            + ("" if telegram else " Telegram isn't linked yet; they can link it under Connections.")
+            + " Channels linked for delivery right now: "
+            + ", ".join(CHANNEL_NAMES[c] for c in linked)
+            + ". A reminder can be sent to any of these as well as the app: pass channel to create_reminder or "
+            "update_reminder when the owner says where."
+            + (
+                f" Not linked: {' and '.join(missing)}; the owner can link {'it' if len(missing) == 1 else 'them'} "
+                "under Connections."
+                if missing
+                else ""
+            )
         )
         if self.learns:
             who += f" {LEARNS}"
@@ -368,7 +392,9 @@ class OwnerTurn:
                 return "Nothing in your notes or messages matches that.", False
             return search_results(found), False
         if name == "create_reminder":
-            return self._reminder(str(args.get("task", "")), str(args.get("when", "")))
+            return self._reminder(
+                str(args.get("task", "")), str(args.get("when", "")), str(args.get("channel") or "default")
+            )
         if name == "list_reminders":
             return self._list_reminders()
         if name == "update_reminder":
@@ -429,7 +455,12 @@ class OwnerTurn:
         self.notes.append(f"reminders:{len(found)}")
         if not found:
             return "No open reminders.", False
-        lines = [f"- id {r.id}: {r.text}, {intentions.describe_due(r.due_at, tz)}" for r in found]
+        lines = [
+            f"- id {r.id}: {r.text}, {intentions.describe_due(r.due_at, tz)}, "
+            f"arrives {intentions.describe_channel(self.s, self.sender.person, r.channel)}"
+            + ("" if r.channel == "default" else f" (channel: {r.channel})")
+            for r in found
+        ]
         return f"{len(found)} open reminder{'s' if len(found) != 1 else ''}:\n" + "\n".join(lines), False
 
     def _update_reminder(self, args: dict[str, Any]) -> tuple[str, bool]:
@@ -446,15 +477,18 @@ class OwnerTurn:
             if isinstance(parsed, str):
                 return parsed, True
             due = parsed[0]
+        channel = str(args.get("channel") or "").strip() or None
         try:
             intention = intentions.change(
-                self.s, self.sender.person, target.id, due_at=due, text=(clean_task(task) or task) if task else None
-            )
+                self.s, self.sender.person, target.id, due_at=due, text=(clean_task(task) or task) if task else None,
+                channel=channel,
+            )  # fmt: skip
         except intentions.IntentionError as exc:
             return str(exc), True
         self.notes.append("reminder_changed")
         done = (
-            f"Reminder updated (id {intention.id}): {intention.text}, {intentions.describe_due(intention.due_at, tz)}."
+            f"Reminder updated (id {intention.id}): {intention.text}, {intentions.describe_due(intention.due_at, tz)}, "
+            f"arriving {intentions.describe_channel(self.s, self.sender.person, intention.channel)}."
         )
         return done + (self._after_midnight(moment, intention.due_at, tz) if moment else ""), False
 
@@ -470,7 +504,7 @@ class OwnerTurn:
         self.notes.append("reminder_cancelled")
         return f"Reminder cancelled: {intention.text}.", False
 
-    def _reminder(self, task: str, moment: str) -> tuple[str, bool]:
+    def _reminder(self, task: str, moment: str, channel: str = "default") -> tuple[str, bool]:
         assert self.sender.person is not None
         parsed = self._moment(moment)
         if isinstance(parsed, str):
@@ -479,12 +513,15 @@ class OwnerTurn:
         try:
             intention = intentions.create(
                 self.s, self.sender.person, text=clean_task(task) or task, due_at=due, source="chat",
-                source_event_id=self.inbound.id,
+                source_event_id=self.inbound.id, channel=channel,
             )  # fmt: skip
         except intentions.IntentionError as exc:
             return str(exc), True
         self.notes.append("reminder")
-        done = f"Reminder set (id {intention.id}): {intention.text}, {intentions.describe_due(intention.due_at, tz)}."
+        done = (
+            f"Reminder set (id {intention.id}): {intention.text}, {intentions.describe_due(intention.due_at, tz)}, "
+            f"arriving {intentions.describe_channel(self.s, self.sender.person, intention.channel)}."
+        )
         return done + self._after_midnight(moment, intention.due_at, tz), False
 
     def _propose(self, args: dict[str, Any]) -> tuple[str, bool]:

@@ -1,7 +1,7 @@
 {
   "$schema": "../../manifest.schema.json",
   "id": "superaide/reminders",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "publisher": "Superaide",
   "tier": "official",
   "title": "Reminders & follow-ups",
@@ -9,20 +9,20 @@
   "tools": [
     {
       "name": "create_reminder",
-      "description": "Set a reminder or follow-up for the owner. Ava will bring it back at that time. The result includes the reminder's id.",
-      "inputSchema": {"type": "object", "properties": {"task": {"type": "string", "description": "What to remind them about, as a short clean phrase in plain words: fix typos and drop filler ('remind me that I need to deinnk water' becomes 'Drink water'). E.g. 'Call Priya'"}, "when": {"type": "string", "description": "When, in words: 'tomorrow at 5pm', 'in 2 hours', 'Friday'"}}, "required": ["task", "when"], "additionalProperties": false},
+      "description": "Set a reminder or follow-up for the owner. It always shows in the app chat at that time, and also on Telegram or Slack when channel names one the owner linked. The result includes the reminder's id and where it will arrive.",
+      "inputSchema": {"type": "object", "properties": {"task": {"type": "string", "description": "What to remind them about, as a short clean phrase in plain words: fix typos and drop filler ('remind me that I need to deinnk water' becomes 'Drink water'). E.g. 'Call Priya'"}, "when": {"type": "string", "description": "When, in words: 'tomorrow at 5pm', 'in 2 hours', 'Friday'"}, "channel": {"type": "string", "enum": ["default", "app", "telegram", "slack"], "description": "Where it arrives besides the app chat: telegram or slack (must be linked), app for the app only, or default (the owner's usual choice). Use it when the owner says where, e.g. 'text me on Telegram'."}}, "required": ["task", "when"], "additionalProperties": false},
       "effect": "write_own"
     },
     {
       "name": "list_reminders",
-      "description": "List the owner's open reminders and follow-ups, soonest first, with each one's id, task and time. It only reads reminders this skill made.",
+      "description": "List the owner's open reminders and follow-ups, soonest first, with each one's id, task, time and where it arrives. It only reads reminders this skill made.",
       "inputSchema": {"type": "object", "properties": {}, "additionalProperties": false},
       "effect": "write_own"
     },
     {
       "name": "update_reminder",
-      "description": "Move an open reminder to a new time and/or change its task. Give the id and at least one of when or task.",
-      "inputSchema": {"type": "object", "properties": {"id": {"type": "string", "description": "The reminder's id, from create_reminder or list_reminders. Never guess it."}, "when": {"type": "string", "description": "The new time, in words: 'tomorrow at 7pm', 'in 30 minutes'"}, "task": {"type": "string", "description": "The new task in a few words"}}, "required": ["id"], "additionalProperties": false},
+      "description": "Move an open reminder to a new time, change its task and/or where it arrives. Give the id and at least one of when, task or channel.",
+      "inputSchema": {"type": "object", "properties": {"id": {"type": "string", "description": "The reminder's id, from create_reminder or list_reminders. Never guess it."}, "when": {"type": "string", "description": "The new time, in words: 'tomorrow at 7pm', 'in 30 minutes'"}, "task": {"type": "string", "description": "The new task in a few words"}, "channel": {"type": "string", "enum": ["default", "app", "telegram", "slack"], "description": "Change where it arrives besides the app chat: telegram, slack, app or default"}}, "required": ["id"], "additionalProperties": false},
       "effect": "write_own"
     },
     {

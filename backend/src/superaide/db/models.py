@@ -497,6 +497,8 @@ class Intention(Scoped, Base):
     status: Mapped[str] = mapped_column(String(12), default="open")  # open | done | cancelled
     source: Mapped[str] = mapped_column(String(20), default="chat")  # chat | dashboard
     source_event_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("event.id"), nullable=True)
+    # Where it is delivered besides the app: default (the owner's interruption choice) | app | telegram | slack
+    channel: Mapped[str] = mapped_column(String(12), default="default", server_default="default")
     delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     delivered_via: Mapped[list[str]] = mapped_column(ARRAY(String(20)), default=list)
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
