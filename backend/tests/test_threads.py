@@ -121,3 +121,29 @@ def test_telegram_replies_go_to_the_same_forum_topic():
     messenger.send_to_context(Context(external_id="-100"), "hello", "12")
     messenger.send_to_context(Context(external_id="-100"), "hello")
     assert sent[0]["message_thread_id"] == 12 and "message_thread_id" not in sent[1]
+
+
+def test_a_new_bot_starts_numbering_again_and_is_not_mistaken_for_a_repeat(agent, manager, outbox):
+    def update(text: str, message_id: int) -> dict:
+        return {
+            "update_id": message_id,
+            "message": {
+                "message_id": message_id,
+                "chat": {"id": int(MANAGER_TG), "type": "private"},
+                "from": {"id": int(MANAGER_TG), "first_name": "M"},
+                "text": text,
+            },
+        }
+
+    old = telegram.parse_update(update("hello", 1), verified=True, bot=telegram.bot_id("111:old-secret"))
+    new = telegram.parse_update(update("/start", 1), verified=True, bot=telegram.bot_id("222:new-secret"))
+    assert old is not None and new is not None
+    assert old.message_id == "111:1" and new.message_id == "222:1"
+    assert agent.handle(old).mode == "known"
+    assert agent.handle(new).mode != "duplicate"  # the owner replaced their bot; Telegram restarted at 1
+    assert agent.handle(new).mode == "duplicate"  # a real redelivery from the same bot still is one
+
+
+def test_the_bot_id_is_the_public_part_of_the_token():
+    assert telegram.bot_id("8307766337:AAE-secret-part") == "8307766337"
+    assert telegram.bot_id("") == ""

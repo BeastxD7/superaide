@@ -174,7 +174,9 @@ def create_app(agent: Agent | None = None) -> FastAPI:
             with session_scope() as s:
                 audit(s, "webhook", "rejected", provider="telegram", reason="bad secret")
             raise HTTPException(401, "bad secret")
-        msg = telegram.parse_update(await request.json(), verified=True)
+        msg = telegram.parse_update(
+            await request.json(), verified=True, bot=telegram.bot_id(get_agent().settings.telegram_bot_token)
+        )
         if msg is not None:
             background.add_task(get_agent().handle, msg)
         return {"ok": True}

@@ -27,7 +27,12 @@ def verify_secret(received: str | None, expected: str) -> bool:
     return hmac.compare_digest(received.encode(), expected.encode())
 
 
-def parse_update(update: dict[str, Any], *, verified: bool) -> InboundMessage | None:
+def bot_id(token: str) -> str:
+    """The bot's public numeric id (the part of the token before the colon; not secret)."""
+    return token.split(":", 1)[0] if ":" in token else ""
+
+
+def parse_update(update: dict[str, Any], *, verified: bool, bot: str = "") -> InboundMessage | None:
     message = update.get("message")
     if not isinstance(message, dict):
         return None
@@ -49,7 +54,9 @@ def parse_update(update: dict[str, Any], *, verified: bool) -> InboundMessage | 
         verified=verified,
         sender_display=f"{first} {last}".strip(),
         sender_username=sender.get("username", ""),
-        message_id=str(message.get("message_id", "")),
+        # Telegram numbers messages per chat *per bot*: a new bot starts again at 1, so the
+        # bot's id is part of the key, or the first messages to a new bot look like repeats.
+        message_id=f"{bot}:{message.get('message_id', '')}" if bot else str(message.get("message_id", "")),
         thread_id=str(message.get("message_thread_id") or "") if message.get("is_topic_message") else "",
         chat_title=chat.get("title", ""),
         raw=update,
@@ -114,7 +121,7 @@ def poll_forever(token: str, handle: Callable[[InboundMessage], Any], stop: thre
             if isinstance(update.get("update_id"), int):
                 offset = max(offset, update["update_id"] + 1)
             try:
-                msg = parse_update(update, verified=True)
+                msg = parse_update(update, verified=True, bot=bot_id(token))
                 if msg is not None:
                     handle(msg)
             except Exception:  # keep polling even if one update is malformed or fails
