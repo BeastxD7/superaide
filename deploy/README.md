@@ -177,8 +177,13 @@ docker compose -f docker-compose.prod.yml up -d --build --wait
 docker image prune -f      # reclaim space from old builds
 ```
 
-The API applies new database migrations on every start, before it serves. Take a backup first
-if the update notes mention a migration (`deploy/backup.sh`).
+On every start the one-shot `migrate` service applies new database migrations as the database
+owner and refreshes the app's own role (`superaide_app`); the API waits for it, then serves. Take a
+backup first if the update notes mention a migration (`deploy/backup.sh`).
+
+Installs made before October 2026 have no `APP_DB_PASSWORD` in `.env`, so the app's role uses the
+`POSTGRES_PASSWORD` value. To give it its own, add `APP_DB_PASSWORD=$(openssl rand -hex 24)` to `.env`
+and run the update command again.
 
 ## Backups
 
@@ -226,6 +231,7 @@ To move to a new server:
 | --- | --- |
 | `ADMIN_TOKEN` | Put a new value (`openssl rand -hex 32`) in `.env`, then run `dc up -d`. |
 | `POSTGRES_PASSWORD` | Run `dc exec db psql -U agent -c "ALTER USER agent PASSWORD 'NEW'"`, put the same value in `.env`, then run `dc up -d`. |
+| `APP_DB_PASSWORD` | Put the new value in `.env`, then run `dc up -d`: the `migrate` service sets it on the `superaide_app` role before the API starts. |
 | Claude / Telegram / Slack keys | Reconnect them in the app (Workspace → Connections). Revoke the old one at the service. |
 | `SECRETS_MASTER_KEY` | There's no re-encryption yet. Changing it makes every saved connection unreadable. Change it, run `dc up -d`, then reconnect each service in the app. Only do this if the key leaked. |
 | Everyone's sessions | Run `dc exec db psql -U agent agent -c "DELETE FROM user_session"`. |
@@ -252,6 +258,9 @@ The compose file requires option 1, so a server never silently falls through to 
   - All four containers run as non-root users.
   - API, web and Caddy have read-only filesystems, no Linux capabilities and `no-new-privileges`.
   - Postgres sits on an internal network with no route out and no published port.
+- **Database:**
+  - The API connects as `superaide_app`, a role that can read and write rows but can't change the schema, turn security off or bypass it. Migrations run as the owner, in the separate `migrate` container.
+  - Row-Level Security in Postgres keeps each hired Ava's rows apart, as a second line behind the app's own checks (ADR 0009).
 - **Secrets:**
   - Secrets live only in `.env` (mode 600). The images contain none.
   - The API doesn't log request lines or echo credentials in errors.

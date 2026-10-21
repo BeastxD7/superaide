@@ -14,7 +14,11 @@ x-backend: &backend
     - path: ./backend/.env
       required: false
   environment:
-    DATABASE_URL: postgresql+psycopg://agent:agent@db:5432/agent
+    # The app's own role (no superuser, no BYPASSRLS), so Row-Level Security applies; the
+    # owner runs migrations. `migrate` creates the role (ADR 0009).
+    DATABASE_URL: postgresql+psycopg://superaide_app:superaide-app-dev-password@db:5432/agent
+    MIGRATION_DATABASE_URL: postgresql+psycopg://agent:agent@db:5432/agent
+    APP_DB_PASSWORD: superaide-app-dev-password
     FRONTEND_ORIGIN: http://localhost:3000
     # Requests arrive through the web container's /api proxy; trust its client address.
     FORWARDED_ALLOW_IPS: "*"
@@ -41,7 +45,7 @@ services:
   migrate:
     <<: *backend
     profiles: [app]
-    command: ["alembic", "upgrade", "head"]
+    command: ["sh", "-c", "alembic upgrade head && superaide db-app-role"]
     depends_on:
       db:
         condition: service_healthy

@@ -7,10 +7,12 @@ from contextlib import contextmanager
 from functools import lru_cache
 from typing import Any, cast
 
-from sqlalchemy import CursorResult, Engine, Result, create_engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import Connection, CursorResult, Engine, Result, create_engine, event, text
+from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
 from superaide.config import get_settings
+from superaide.db.rls import set_scope_sql
+from superaide.tenancy.context import scope_or_default
 
 
 @lru_cache
@@ -21,6 +23,15 @@ def get_engine(url: str | None = None) -> Engine:
 @lru_cache
 def _factory(url: str | None = None) -> sessionmaker[Session]:
     return sessionmaker(bind=get_engine(url), expire_on_commit=False)
+
+
+@event.listens_for(Session, "after_begin")
+def _scope_transaction(session: Session, transaction: SessionTransaction, connection: Connection) -> None:
+    """Tell Postgres which agent instance this transaction is for, so Row-Level Security
+    (db/rls.py) shows only that instance's rows. Transaction-local: a pooled connection
+    never carries one request's instance into the next."""
+    scope = scope_or_default()  # T2 onwards: every entry point sets the scope; until then, the dev instance
+    connection.execute(text(set_scope_sql()), {"agent": str(scope.agent_id), "tenant": str(scope.tenant_id)})
 
 
 @contextmanager

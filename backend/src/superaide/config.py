@@ -20,6 +20,13 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = "postgresql+psycopg://agent:agent@localhost:5432/agent"
+    # The schema owner, for migrations and `superaide db-app-role` (ADR 0009). When set, DATABASE_URL
+    # should be the app's own role (no superuser, no BYPASSRLS), so Row-Level Security applies.
+    migration_database_url: str = ""
+
+    @property
+    def owner_database_url(self) -> str:
+        return self.migration_database_url or self.database_url
 
     # self_hosted: one owner's own machine (local model servers allowed). hosted: many owners on our
     # servers, so no owner-typed address may reach private, loopback, link-local or metadata ranges.

@@ -4,8 +4,10 @@
 #   docker compose -f docker-compose.prod.yml up -d --build
 #
 # Only Caddy is reachable from outside (ports 80 and 443). Postgres, the API and
-# the web app talk on private Docker networks. The API applies database
-# migrations every time it starts, then serves.
+# the web app talk on private Docker networks. On every start the one-shot
+# `migrate` service applies database migrations as the database owner and
+# refreshes the app's own role; then the API serves, connected as that role
+# (not a superuser), so Postgres Row-Level Security applies (ADR 0009).
 name: superaide
 
 x-hardened: &hardened
@@ -37,13 +39,30 @@ services:
       timeout: 3s
       retries: 20
 
+  migrate:
+    <<: *hardened
+    restart: "no"
+    build: ./backend
+    image: superaide-api:prod
+    environment:
+      DATABASE_URL: postgresql+psycopg://agent:${POSTGRES_PASSWORD}@db:5432/agent
+      # Older installs have no APP_DB_PASSWORD yet; bootstrap.sh makes a separate one for new ones.
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:-${POSTGRES_PASSWORD}}
+    command: ["sh", "-c", "alembic upgrade head && superaide db-app-role"]
+    tmpfs: [/tmp]
+    networks: [data]
+    depends_on:
+      db: { condition: service_healthy }
+
   api:
     <<: *hardened
     build: ./backend
     image: superaide-api:prod
     env_file: .env
     environment:
-      DATABASE_URL: postgresql+psycopg://agent:${POSTGRES_PASSWORD}@db:5432/agent
+      # The app's own role: it can read and write rows, but not change the schema or bypass RLS.
+      DATABASE_URL: postgresql+psycopg://superaide_app:${APP_DB_PASSWORD:-${POSTGRES_PASSWORD}}@db:5432/agent
+      MIGRATION_DATABASE_URL: ""
       SECRETS_MASTER_KEY: ${SECRETS_MASTER_KEY:?Set SECRETS_MASTER_KEY in .env (openssl rand -base64 32)}
       ADMIN_TOKEN: ${ADMIN_TOKEN:?Set ADMIN_TOKEN in .env}
       FRONTEND_ORIGIN: ${PUBLIC_URL:-https://${DOMAIN:?Set DOMAIN in .env}}
@@ -59,13 +78,13 @@ services:
       - sh
       - -c
       - >-
-        alembic upgrade head &&
         exec uvicorn superaide.main:app --host 0.0.0.0 --port 8000 --workers 1
         --proxy-headers --forwarded-allow-ips '*' --no-server-header --no-access-log
     tmpfs: [/tmp]
     networks: [data, app]
     depends_on:
       db: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"]
       interval: 10s

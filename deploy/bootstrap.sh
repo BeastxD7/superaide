@@ -112,6 +112,7 @@ put DOMAIN "$domain"
 echo "    DOMAIN=$domain"
 
 ensure_secret POSTGRES_PASSWORD "$(openssl rand -hex 24)"
+ensure_secret APP_DB_PASSWORD "$(openssl rand -hex 24)"
 ensure_secret SECRETS_MASTER_KEY "$(openssl rand -base64 32)"
 ensure_secret ADMIN_TOKEN "$(openssl rand -hex 32)"
 

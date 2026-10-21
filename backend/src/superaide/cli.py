@@ -16,10 +16,29 @@ def _init_db(_: argparse.Namespace) -> None:
     from superaide.db.models import Base
     from superaide.db.session import ensure_extensions, get_engine
 
-    ensure_extensions(get_engine())
-    Base.metadata.create_all(get_engine())
-    ensure_vector_store(get_engine())
+    engine = get_engine(get_settings().owner_database_url)
+    ensure_extensions(engine)
+    Base.metadata.create_all(engine)
+    ensure_vector_store(engine)
     print("Tables created.")
+
+
+def _db_app_role(args: argparse.Namespace) -> None:
+    """Create or update the app's own database role (no superuser, no BYPASSRLS). Run as the owner."""
+    import os
+
+    from superaide.db.roles import RoleError, ensure_app_role
+    from superaide.db.session import get_engine
+
+    password = os.environ.get(args.password_env, "")
+    if not password:
+        sys.exit(f"Set {args.password_env} to the password the app will use.")
+    try:
+        with get_engine(get_settings().owner_database_url).begin() as conn:
+            ensure_app_role(conn, name=args.name, password=password)
+    except RoleError as exc:
+        sys.exit(str(exc))
+    print(f"Role {args.name} is ready. Point DATABASE_URL at it, and MIGRATION_DATABASE_URL at the owner.")
 
 
 def _add_person(args: argparse.Namespace) -> None:
@@ -195,7 +214,7 @@ def _reset_db(args: argparse.Namespace) -> None:
 
     if not args.yes:
         sys.exit("This deletes all data. Run again with --yes to confirm.")
-    engine = get_engine()
+    engine = get_engine(get_settings().owner_database_url)
     with engine.begin() as conn:
         conn.execute(text("DROP TABLE IF EXISTS memory_embedding"))  # outside the ORM metadata
     Base.metadata.drop_all(engine)
@@ -210,6 +229,10 @@ def main() -> None:
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     sub.add_parser("init-db", help="create tables").set_defaults(func=_init_db)
+    p = sub.add_parser("db-app-role", help="create or update the app's own database role (run after migrations)")
+    p.add_argument("--name", default="superaide_app")
+    p.add_argument("--password-env", default="APP_DB_PASSWORD", help="environment variable holding its password")
+    p.set_defaults(func=_db_app_role)
 
     for name, relation in (("add-manager", "manager"), ("add-colleague", "colleague")):
         p = sub.add_parser(name, help=f"register a {relation} and their first channels")
