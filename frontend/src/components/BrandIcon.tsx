@@ -23,7 +23,7 @@ export function BrandIcon({
   label?: string
   className?: string
 }) {
-  const uid = useId().replace(/:/g, '')
+  const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '')
   const mark = MARKS[brand]
   const drawing = mono && mark.mono ? mark.mono : mark.colour
   const a11y = decorative
