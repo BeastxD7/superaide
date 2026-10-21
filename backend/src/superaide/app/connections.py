@@ -7,22 +7,31 @@ a credential, only a masked hint.
 
 from __future__ import annotations
 
+import secrets
 import uuid
 from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
 import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 
 from superaide.app.routes import owner_person_id, telegram_username
 from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header
+from superaide.config import get_settings
+from superaide.connectors import google
 from superaide.db.session import session_scope
 from superaide.knowledge.ingest import read_pending
+from superaide.policy.killswitch import get_state, set_state
 from superaide.vault import check, store
 from superaide.vault.crypto import master_key
+from superaide.vault.store import runtime_settings
+
+GOOGLE_PENDING = "google_oauth_pending"
 
 
 def http_client() -> httpx.Client:
@@ -36,6 +45,11 @@ class AnthropicBody(BaseModel):
 
 class TelegramBody(BaseModel):
     bot_token: str = Field(min_length=10, max_length=100)
+
+
+class GoogleClientBody(BaseModel):
+    client_id: str = Field(min_length=10, max_length=200)
+    client_secret: str = Field(min_length=10, max_length=200)
 
 
 class SlackBody(BaseModel):
@@ -161,6 +175,87 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
             "slack", checked_or_400(lambda: check.check_slack(body.bot_token, body.app_token, http_client())), user_id
         )
 
+    def google_redirect_uri() -> str:
+        # The browser comes back through the web app's /api proxy, so the session cookie is sent.
+        return f"{get_settings().frontend_origin.rstrip('/')}/api/app/connections/google/callback"
+
+    @router.post(
+        "/google",
+        summary="Save your Google OAuth client",
+        description=(
+            "The client ID and secret of the OAuth client you made in Google Cloud (Desktop or Web app). "
+            "Stored encrypted. Then use Connect to sign in."
+        ),
+    )
+    def google_client(
+        body: GoogleClientBody, _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
+    ) -> dict[str, Any]:
+        client_id = body.client_id.strip()
+        if not client_id.endswith(".apps.googleusercontent.com"):
+            raise HTTPException(
+                400, "That doesn't look like a Google client ID (it ends in .apps.googleusercontent.com)."
+            )
+        with session_scope() as s:
+            store.save(
+                s, "google", {"client_id": client_id, "client_secret": body.client_secret.strip()},
+                user_id=user_id, meta={"redirect_uri": google_redirect_uri()},
+            )  # fmt: skip
+        return view()
+
+    @router.get(
+        "/google/start",
+        summary="Start Google sign-in",
+        description="Returns the Google sign-in URL (OAuth 2.1 with PKCE). Open it in the browser.",
+    )
+    def google_start(_: uuid.UUID = Depends(owner_person_id)) -> dict[str, str]:
+        settings = runtime_settings()
+        if not (settings.google_client_id and settings.google_client_secret):
+            raise HTTPException(409, "Save your Google OAuth client first.")
+        verifier, challenge = google.pkce_pair()
+        state = secrets.token_urlsafe(24)
+        with session_scope() as s:
+            set_state(s, GOOGLE_PENDING, {"state": state, "verifier": verifier, "at": datetime.now(UTC).isoformat()})
+        return {"url": google.auth_url(settings.google_client_id, google_redirect_uri(), state, challenge)}
+
+    @router.get(
+        "/google/callback",
+        summary="Google sign-in callback",
+        description="Google sends the browser here. Checks the one-time state, then stores the refresh token.",
+        include_in_schema=False,
+    )
+    def google_callback(
+        code: str = "",
+        state: str = "",
+        error: str = "",
+        _: uuid.UUID = Depends(owner_person_id),
+        user_id: uuid.UUID = Depends(current_user_id),
+    ) -> RedirectResponse:
+        back = f"{get_settings().frontend_origin.rstrip('/')}/dashboard/connections"
+        with session_scope() as s:
+            pending = get_state(s, GOOGLE_PENDING)
+            set_state(s, GOOGLE_PENDING, {})  # one use only
+        fresh = (
+            bool(pending.get("at")) and datetime.now(UTC) - datetime.fromisoformat(pending["at"]) < google.PENDING_TTL
+        )
+        if error or not code:
+            return RedirectResponse(f"{back}?google=cancelled", status_code=303)
+        if not fresh or not secrets.compare_digest(str(pending.get("state", "")), state):
+            return RedirectResponse(f"{back}?google=expired", status_code=303)
+        settings = runtime_settings()
+        try:
+            tokens = google.exchange_code(
+                client_id=settings.google_client_id, client_secret=settings.google_client_secret, code=code,
+                verifier=str(pending["verifier"]), redirect_uri=google_redirect_uri(), client=http_client(),
+            )  # fmt: skip
+        except google.GoogleError:
+            return RedirectResponse(f"{back}?google=failed", status_code=303)
+        with session_scope() as s:
+            store.save(
+                s, "google", {"refresh_token": str(tokens["refresh_token"])}, user_id=user_id,
+                meta={"scopes": google.SCOPES},
+            )  # fmt: skip
+        return RedirectResponse(f"{back}?google=connected", status_code=303)
+
     @router.post(
         "/{provider}/disconnect",
         summary="Disconnect a service",
@@ -171,7 +266,7 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
     def disconnect(
         provider: str, _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
     ) -> dict[str, Any]:
-        if provider not in {"anthropic", "telegram", "slack"}:
+        if provider not in {"anthropic", "telegram", "slack", "google"}:
             raise HTTPException(404, "Unknown connection")
         with session_scope() as s:
             store.remove(s, provider, user_id=user_id)

@@ -32,3 +32,19 @@ def set_frozen(session: Session, on: bool, *, actor: str) -> None:
         session.add(row)
     row.value = {"on": on}
     audit(session, actor, "kill_switch", on=on)
+
+
+def get_state(session: Session, key: str) -> dict:
+    """A small JSON value stored for this agent (pending sign-ins and similar)."""
+    settings = get_settings()
+    row = session.get(AgentState, (settings.tenant_id, settings.agent_id, key))
+    return dict(row.value) if row else {}
+
+
+def set_state(session: Session, key: str, value: dict) -> None:
+    settings = get_settings()
+    row = session.get(AgentState, (settings.tenant_id, settings.agent_id, key))
+    if row is None:
+        row = AgentState(tenant_id=settings.tenant_id, agent_id=settings.agent_id, key=key, value={})
+        session.add(row)
+    row.value = value

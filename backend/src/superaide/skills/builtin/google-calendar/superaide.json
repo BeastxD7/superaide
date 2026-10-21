@@ -1,0 +1,30 @@
+{
+  "$schema": "../../manifest.schema.json",
+  "id": "superaide/google-calendar",
+  "version": "1.0.0",
+  "publisher": "Superaide",
+  "tier": "official",
+  "title": "Google Calendar",
+  "summary": "Ava reads your calendar to answer what's on, when you're free and who you're meeting. Read-only.",
+  "tools": [
+    {
+      "name": "calendar_events",
+      "description": "List the owner's Google Calendar events for a day or range. Returns events you can cite.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "from": {"type": "string", "description": "First day, in words: 'today', 'tomorrow', 'Friday', '24 Oct'"},
+          "days": {"type": "integer", "description": "How many days to cover (1 to 14)", "minimum": 1, "maximum": 14},
+          "query": {"type": "string", "description": "Optional keyword: a person, meeting name or place"}
+        },
+        "required": ["from"],
+        "additionalProperties": false
+      },
+      "effect": "read_private"
+    }
+  ],
+  "connectors": [{"provider": "google", "scopes": ["https://www.googleapis.com/auth/calendar.readonly"]}],
+  "network": ["oauth2.googleapis.com", "www.googleapis.com"],
+  "default_installed": false,
+  "removable": true
+}

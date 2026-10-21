@@ -48,6 +48,11 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     telegram_webhook_secret: str = ""
 
+    # Google (Calendar): the owner's own OAuth client, and the refresh token from signing in
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    google_refresh_token: str = ""
+
     # Slack
     slack_bot_token: str = ""
     slack_app_token: str = ""

@@ -101,7 +101,13 @@ def _cited_from(citation: dict[str, Any]) -> Cited | None:
     if kind == "search_result_location":
         uri = str(citation.get("source", ""))
         src_kind = (
-            "memory" if uri.startswith("ava://memory/") else "message" if uri.startswith("ava://msg/") else "other"
+            "memory"
+            if uri.startswith("ava://memory/")
+            else "message"
+            if uri.startswith("ava://msg/")
+            else "calendar"
+            if uri.startswith("ava://cal/")
+            else "other"
         )
         return Cited(uri, src_kind, str(citation.get("title") or ""), str(citation.get("cited_text") or ""))
     if kind == "web_search_result_location" or (kind == "char_location" and citation.get("url")):
@@ -223,6 +229,12 @@ class OwnerTurn:
             return self._reminder(str(args.get("task", "")), str(args.get("when", "")))
         if name == "propose_action":
             return self._propose(args)
+        if name == "calendar_events":
+            from superaide.skills.calendar import calendar_events
+
+            assert self.sender.person is not None
+            self.notes.append("calendar")
+            return calendar_events(self.s, self.sender.person, args)
         return f"Unknown tool {name!r}.", True
 
     def _reminder(self, task: str, moment: str) -> tuple[str, bool]:

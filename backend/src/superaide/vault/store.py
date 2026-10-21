@@ -27,8 +27,11 @@ FIELDS: dict[tuple[str, str], str] = {
     ("slack", "bot_token"): "slack_bot_token",
     ("slack", "app_token"): "slack_app_token",
     ("slack", "team_id"): "slack_team_id",
+    ("google", "client_id"): "google_client_id",
+    ("google", "client_secret"): "google_client_secret",
+    ("google", "refresh_token"): "google_refresh_token",
 }
-SECRET_NAMES = {"api_key", "bot_token", "app_token"}  # team_id is an identifier, not a secret
+SECRET_NAMES = {"api_key", "bot_token", "app_token", "client_secret", "refresh_token"}  # ids aren't secrets
 
 
 def slot(provider: str, name: str) -> str:
@@ -113,6 +116,11 @@ def status(session: Session, settings: Settings) -> dict[str, Any]:
         "anthropic": entry("anthropic", ["api_key"]),
         "telegram": entry("telegram", ["bot_token"]),
         "slack": entry("slack", ["bot_token", "app_token"]),
+        # Google needs the owner's OAuth client first, then their sign-in (the refresh token).
+        "google": {
+            **entry("google", ["client_id", "client_secret", "refresh_token"]),
+            "client_ready": entry("google", ["client_id", "client_secret"])["connected"],
+        },
         "whatsapp": {
             "connected": False,
             "available": False,
