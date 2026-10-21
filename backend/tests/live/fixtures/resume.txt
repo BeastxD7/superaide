@@ -1,0 +1,108 @@
+MARISOL QUENTARA-VEY
+Chief Executive Officer, Lanternfish Analytics
+Lisbon, Portugal | marisol@lanternfish.example | lanternfish.example
+
+(Fictional resume written for automated tests. Every person, company and detail below is invented.)
+
+PROFILE
+Operator and founder with eighteen years in data products for shipping and logistics. I built
+Lanternfish Analytics from a two-person consultancy into a 140-person software company that helps
+port authorities and freight forwarders predict berth congestion. I like small teams, written
+proposals over meetings, and decisions made close to the customer. I split my week between our
+Lisbon headquarters and our engineering office in Rotterdam.
+
+EXPERIENCE
+
+Lanternfish Analytics, Lisbon / Rotterdam
+Co-founder and Chief Executive Officer, 2016 to present
+- Co-founded the company with Teodor Brannick (now CTO) after we left Halvard Maritime together.
+- Grew annual recurring revenue from zero to EUR 31 million across 46 port and terminal customers in
+  eleven countries, with net revenue retention above 120 percent for four consecutive years.
+- Raised a EUR 9 million Series A led by Northgale Ventures in 2019 and a EUR 38 million Series B led
+  by Ostrander Capital in 2023. I sit on the board with two investor directors and one independent.
+- Launched BerthCast, our congestion forecasting product, in 2018; it now forecasts arrivals for over
+  2,000 vessels a day and is the company's main revenue line.
+- Opened the Rotterdam engineering office in 2020 and hired its first fifty engineers. Ines Okafor-Lind
+  runs it as VP Engineering and reports to the CTO.
+- Set up a quarterly customer council of twelve port operators that shapes the product roadmap.
+- Leads hiring for every director-level role personally and interviews all senior candidates.
+- Direct reports: Teodor Brannick (CTO), Priyanka Serrao (CFO), Joel Amadu-Strand (Chief Revenue
+  Officer), Hana Lisowski (VP People) and my chief of staff, Ruben Ferreira-Moss.
+
+Halvard Maritime Systems, Hamburg
+Director of Data Products, 2011 to 2016
+- Led a team of 22 building vessel-tracking dashboards for container lines.
+- Took the analytics suite from pilot to 300 paying customers and roughly EUR 12 million in revenue.
+- Ran the partnership with the Port of Antwerp-Bruges data exchange programme.
+- Managed Teodor Brannick, who led the forecasting team.
+
+Corvane Consulting, London
+Senior Consultant, then Manager, Operations Practice, 2007 to 2011
+- Advised freight and rail clients on network planning and capacity models.
+- Built the practice's first simulation toolkit for intermodal terminals, later used on 30 engagements.
+- Promoted to Manager in 2009; managed teams of four to eight consultants.
+
+Instituto de Transportes do Porto
+Research Assistant, 2005 to 2007
+- Modelled container dwell times at Leixoes; co-authored two conference papers on queueing models for
+  port gates.
+
+EDUCATION
+- MSc Operations Research, London School of Applied Economics (fictional), 2007, with distinction.
+- BSc Applied Mathematics, Universidade do Douro (fictional), 2005.
+- Executive programme in Scaling Software Companies, Ardenne Business School (fictional), 2021.
+
+SKILLS
+- Forecasting and optimisation for logistics: queueing models, discrete-event simulation, demand
+  forecasting, berth and yard planning.
+- Company building: fundraising, board management, pricing for enterprise software, building sales
+  teams for public-sector buyers.
+- Languages: Portuguese (native), English (fluent), German (professional), Spanish (conversational).
+- Tools she still uses herself: Python, SQL, and a lot of spreadsheets.
+
+BOARDS AND ADVISORY
+- Independent board member, Tidewater Freight Cooperative (fictional), 2022 to present.
+- Mentor, Atlantic Founders Programme (fictional), helping first-time founders in logistics and
+  climate software, 2019 to present.
+- Advisory council member, European Smart Ports Forum (fictional), 2021 to present.
+
+SPEAKING AND WRITING
+- Keynote, Harbour Data Summit (fictional) 2024: "Forecasts people actually use."
+- Writes a monthly letter to customers about congestion trends; the archive is public on the company
+  blog.
+- Guest lecturer on port operations at her MSc programme every spring.
+
+WORKING STYLE AND PREFERENCES
+- Prefers written updates over status meetings; a one-page memo before any decision meeting.
+- Keeps Monday mornings free of meetings for planning and Friday afternoons for customer calls.
+- Mornings before 9:00 Lisbon time are for her two children's school run; do not book calls then.
+- Investor and board matters go through Ruben Ferreira-Moss, her chief of staff, who keeps the board
+  calendar.
+- Wants to hear immediately about outages affecting BerthCast customers or anything from the Port of
+  Valdemar authority, the largest customer.
+- Happy for the team to share her public talks, blog posts and company bio with anyone who asks.
+- Does not discuss fundraising plans, company valuation or individual compensation with anyone outside
+  the board and leadership team.
+- Travels to Rotterdam most second weeks of the month and to customer sites about once a month.
+- Prefers Signal or Slack for quick questions and email for anything that needs a decision.
+
+SELECTED ACHIEVEMENTS
+- Lanternfish named one of the fictional "Atlantic 50" fastest-growing software companies, 2022 and
+  2024.
+- BerthCast reduced average vessel waiting time by 17 percent at three pilot ports in its first year,
+  according to the customers' own published figures.
+- Built a hiring process with structured interviews and work samples that cut time-to-hire from 71 to
+  38 days while improving six-month retention.
+- Led the company through its first ISO 27001 certification in 2021 and SOC 2 Type II in 2023.
+- Negotiated the company's first multi-year contract with a national port authority, worth EUR 4.2
+  million over five years.
+
+CURRENT PRIORITIES (2026)
+- Expanding BerthCast to inland waterways and rail terminals, with a pilot on the Rhine.
+- Hiring a Chief Product Officer; the search is run with Hana Lisowski.
+- Preparing the company for a possible Series C in 2027.
+- Spending at least two days a month with customers in person.
+
+INTERESTS
+Open-water swimming, restoring old wooden sailing dinghies, and Portuguese jazz. Organises an annual
+charity swim for the company along the Tagus estuary.

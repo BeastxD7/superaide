@@ -46,6 +46,9 @@ dev = [
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+markers = [
+    "live: calls the real Claude API and costs money; skipped unless RUN_LIVE=1 and ANTHROPIC_API_KEY is in .env",
+]
 
 [tool.coverage.run]
 source = ["superaide"]

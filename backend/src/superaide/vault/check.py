@@ -46,18 +46,27 @@ def check_anthropic(api_key: str, client: httpx.Client | None = None) -> Checked
     return Checked(values={"api_key": key})
 
 
+def _object(r: httpx.Response) -> dict[str, Any]:
+    """The JSON body, which must be an object; anything else counts as an unreadable answer."""
+    data = r.json()
+    if not isinstance(data, dict):
+        raise ValueError("expected a JSON object")
+    return data
+
+
 def check_telegram(bot_token: str, client: httpx.Client | None = None) -> Checked:
     token = bot_token.strip()
     if not re.fullmatch(r"\d{5,15}:[A-Za-z0-9_-]{30,50}", token):
         raise CheckFailed("That doesn't look like a bot token. BotFather sends one like 123456789:AAE…")
     try:
-        r = _client(client).get(f"https://api.telegram.org/bot{token}/getMe")
-        data = r.json()
+        data = _object(_client(client).get(f"https://api.telegram.org/bot{token}/getMe"))
     except (httpx.HTTPError, ValueError) as exc:
         raise CheckFailed("Couldn't reach Telegram. Check your internet connection and try again.") from exc
     if not data.get("ok"):
         raise CheckFailed("Telegram didn't accept that token. Copy it again from @BotFather.")
-    bot = data.get("result", {})
+    bot = data.get("result")
+    if not isinstance(bot, dict):
+        raise CheckFailed("Telegram answered without the bot's details. Try again in a minute.")
     return Checked(values={"bot_token": token}, meta={"username": bot.get("username"), "name": bot.get("first_name")})
 
 
@@ -69,10 +78,10 @@ def check_slack(bot_token: str, app_token: str, client: httpx.Client | None = No
         raise CheckFailed("The app-level token should start with xapp- (Basic Information page).")
     http = _client(client)
     try:
-        auth = http.post("https://slack.com/api/auth.test", headers={"Authorization": f"Bearer {bot}"}).json()
-        conn = http.post(
-            "https://slack.com/api/apps.connections.open", headers={"Authorization": f"Bearer {app}"}
-        ).json()
+        auth = _object(http.post("https://slack.com/api/auth.test", headers={"Authorization": f"Bearer {bot}"}))
+        conn = _object(
+            http.post("https://slack.com/api/apps.connections.open", headers={"Authorization": f"Bearer {app}"})
+        )
     except (httpx.HTTPError, ValueError) as exc:
         raise CheckFailed("Couldn't reach Slack. Check your internet connection and try again.") from exc
     if not auth.get("ok"):
