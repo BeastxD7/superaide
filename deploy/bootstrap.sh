@@ -118,6 +118,8 @@ ensure_secret ADMIN_TOKEN "$(openssl rand -hex 32)"
 # ------------------------------------------------------------------ Backups
 if [[ "${SKIP_CRON:-}" != 1 ]]; then
   say "Nightly database backup at 03:15 (kept 14 days in $ROOT/backups)"
+  # Minimal Debian cloud images may ship without a cron daemon.
+  command -v cron >/dev/null || { apt-get update -qq && apt-get install -y -qq cron && systemctl enable --now cron >/dev/null; }
   chmod +x "$ROOT/deploy/backup.sh"
   echo "15 3 * * * root $ROOT/deploy/backup.sh >>/var/log/superaide-backup.log 2>&1" >/etc/cron.d/superaide-backup
   chmod 644 /etc/cron.d/superaide-backup
