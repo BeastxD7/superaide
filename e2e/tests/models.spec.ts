@@ -104,6 +104,46 @@ test.describe('AI model page', () => {
     }
   })
 
+  test('a second server of the same kind gets its own card, key and role', async ({ page, owner }) => {
+    void owner
+    const one = await fakeModelServer()
+    const two = await fakeModelServer()
+    try {
+      await openModels(page)
+      const custom = card(page, 'Other OpenAI-compatible service')
+      await custom.getByRole('button', { name: 'Connect' }).click()
+      await custom.getByLabel('Address (base URL)').fill(one.url)
+      await custom.getByRole('button', { name: 'Save' }).click()
+      await expect(custom.getByText('Connected', { exact: true })).toBeVisible()
+
+      await custom.getByRole('button', { name: 'Add another' }).click()
+      const second = card(page, 'Other OpenAI-compatible service (custom-2)')
+      await second.getByLabel('Address (base URL)').fill(two.url)
+      await second.getByRole('button', { name: 'Save' }).click()
+      await expect(second.getByText('Connected', { exact: true })).toBeVisible()
+      expect(await query('SELECT key, preset FROM llm_provider ORDER BY key')).toEqual([
+        { key: 'custom', preset: 'custom' },
+        { key: 'custom-2', preset: 'custom' },
+      ])
+      expect(two.seen.some((s) => s.startsWith('GET /v1/models'))).toBe(true)
+
+      const chat = page.getByRole('group', { name: 'Conversation' })
+      await chat.getByLabel('Provider').selectOption('custom-2')
+      await expect(chat.getByLabel('Model')).toHaveValue('tiny-llm')
+      await page.getByRole('button', { name: 'Save models' }).click()
+      await expect(page.getByText('Saved.')).toBeVisible()
+      expect(await query("SELECT provider FROM model_role WHERE role = 'chat'")).toEqual([{ provider: 'custom-2' }])
+
+      await second.getByRole('button', { name: 'Change' }).click()
+      await second.getByRole('button', { name: 'Disconnect' }).click()
+      await expect(second).toHaveCount(0)
+      expect(await query('SELECT key FROM llm_provider')).toEqual([{ key: 'custom' }])
+    } finally {
+      one.server.close()
+      two.server.close()
+    }
+  })
+
   test('addresses that could reach the server itself are refused', async ({ page, owner }) => {
     void owner
     await openModels(page)

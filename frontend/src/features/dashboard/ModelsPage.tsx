@@ -44,13 +44,30 @@ export function ModelsPage() {
   const name = me?.agent.name ?? 'Ava'
   const { data, error, reload } = useAppData<ModelSettings>('/providers')
   const [open, setOpen] = useState<string | null>(null)
+  const [adding, setAdding] = useState<{ preset: string; key: string } | null>(null)
 
   const connected = useMemo(() => {
     if (!data) return new Set<string>()
-    const ids = data.providers.map((p) => p.preset)
+    const ids = data.providers.map((p) => p.key)
     return new Set(data.claude.connected ? ['anthropic', ...ids] : ids)
   }, [data])
-  const label = (id: string) => data?.presets.find((p) => p.id === id)?.label ?? id
+  const presetOf = (key: string) => data?.providers.find((p) => p.key === key)?.preset ?? key
+  const label = (key: string) => {
+    const base = data?.presets.find((p) => p.id === presetOf(key))?.label ?? key
+    return key === presetOf(key) ? base : `${base} (${key})`
+  }
+  // Another endpoint of the same kind gets the next free key: custom-2, custom-3…
+  const nextKey = (preset: string) => {
+    const taken = new Set(data?.providers.map((p) => p.key))
+    let n = 2
+    while (taken.has(`${preset}-${n}`)) n += 1
+    return `${preset}-${n}`
+  }
+  const changed = async () => {
+    setOpen(null)
+    setAdding(null)
+    await reload()
+  }
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -90,16 +107,48 @@ export function ModelsPage() {
             <ProviderCard
               key={p.id}
               preset={p}
+              endpointKey={p.id}
+              title={p.label}
               settings={data}
               connected={connected.has(p.id)}
               open={open === p.id}
               onOpen={() => setOpen(open === p.id ? null : p.id)}
-              onChanged={async () => {
-                setOpen(null)
-                await reload()
-              }}
+              onAddAnother={
+                p.local && connected.has(p.id) ? () => setAdding({ preset: p.id, key: nextKey(p.id) }) : undefined
+              }
+              onChanged={changed}
             />
           ))}
+          {data?.providers
+            .filter((e) => e.key !== e.preset)
+            .map((e) => {
+              const p = data.presets.find((x) => x.id === e.preset)
+              return p ? (
+                <ProviderCard
+                  key={e.key}
+                  preset={p}
+                  endpointKey={e.key}
+                  title={label(e.key)}
+                  settings={data}
+                  connected
+                  open={open === e.key}
+                  onOpen={() => setOpen(open === e.key ? null : e.key)}
+                  onChanged={changed}
+                />
+              ) : null
+            })}
+          {data && adding && (
+            <ProviderCard
+              preset={data.presets.find((x) => x.id === adding.preset)!}
+              endpointKey={adding.key}
+              title={`${label(adding.preset)} (${adding.key})`}
+              settings={data}
+              connected={false}
+              open
+              onOpen={() => setAdding(null)}
+              onChanged={changed}
+            />
+          )}
         </ul>
 
         {data && <WebSearchCard settings={data} onChanged={reload} />}
@@ -112,25 +161,31 @@ export function ModelsPage() {
 
 function ProviderCard({
   preset,
+  endpointKey,
+  title,
   settings,
   connected,
   open,
   onOpen,
+  onAddAnother,
   onChanged,
 }: {
   preset: ProviderPreset
+  endpointKey: string
+  title: string
   settings: ModelSettings
   connected: boolean
   open: boolean
   onOpen: () => void
+  onAddAnother?: () => void
   onChanged: () => Promise<void>
 }) {
-  const mine = settings.providers.find((p) => p.preset === preset.id)
+  const mine = settings.providers.find((p) => p.key === endpointKey)
   const hint = preset.id === 'anthropic' ? settings.claude.key_hint : (mine?.key_hint ?? '')
   const fromEnv = preset.id === 'anthropic' && settings.claude.via === 'env'
 
   return (
-    <li className="flex flex-col rounded-xl border border-line bg-white p-4" aria-label={preset.label}>
+    <li className="flex flex-col rounded-xl border border-line bg-white p-4" aria-label={title}>
       <div className="flex items-start gap-3">
         {PROVIDER_BRAND[preset.id] ? (
           <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-line bg-white text-ink">
@@ -143,7 +198,7 @@ function ProviderCard({
         )}
         <div className="min-w-0 flex-1">
           <p className="flex flex-wrap items-center gap-1.5 font-medium text-ink">
-            {preset.label}
+            {title}
             {connected && (
               <Badge variant="secondary" className="gap-1 text-violet-700">
                 <CheckCircle2 className="size-3" aria-hidden /> Connected
@@ -166,6 +221,7 @@ function ProviderCard({
       {open ? (
         <ConnectForm
           preset={preset}
+          endpointKey={endpointKey}
           baseUrl={mine?.base_url || preset.base_url}
           connected={connected}
           hint={hint}
@@ -174,9 +230,16 @@ function ProviderCard({
         />
       ) : (
         <div className="mt-auto pt-3">
-          <Button size="sm" variant={connected ? 'outline' : 'default'} onClick={onOpen}>
-            {connected ? 'Change' : 'Connect'}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant={connected ? 'outline' : 'default'} onClick={onOpen}>
+              {connected ? 'Change' : 'Connect'}
+            </Button>
+            {onAddAnother && (
+              <Button size="sm" variant="ghost" onClick={onAddAnother}>
+                Add another
+              </Button>
+            )}
+          </div>
         </div>
       )}
     </li>
@@ -185,6 +248,7 @@ function ProviderCard({
 
 function ConnectForm({
   preset,
+  endpointKey,
   baseUrl: savedUrl,
   connected,
   hint,
@@ -192,6 +256,7 @@ function ConnectForm({
   onChanged,
 }: {
   preset: ProviderPreset
+  endpointKey: string
   baseUrl: string
   connected: boolean
   hint: string
@@ -206,7 +271,11 @@ function ConnectForm({
   const showUrl = preset.id !== 'anthropic'
 
   // An empty key field keeps the saved key; the key is only sent when typed.
-  const body = () => ({ ...(apiKey ? { api_key: apiKey } : {}), ...(showUrl ? { base_url: baseUrl } : {}) })
+  const body = () => ({
+    ...(apiKey ? { api_key: apiKey } : {}),
+    ...(showUrl ? { base_url: baseUrl } : {}),
+    ...(endpointKey !== preset.id ? { key: endpointKey } : {}),
+  })
 
   async function run(kind: 'test' | 'save' | 'remove') {
     setBusy(kind)
@@ -217,7 +286,7 @@ function ConnectForm({
           await call<ConnectionTest>('/providers/test', { method: 'POST', json: { preset: preset.id, ...body() } }),
         )
       } else {
-        const path = kind === 'save' ? `/providers/${preset.id}` : `/providers/${preset.id}/remove`
+        const path = kind === 'save' ? `/providers/${preset.id}` : `/providers/${endpointKey}/remove`
         await call(path, { method: 'POST', json: kind === 'save' ? body() : {} })
         setApiKey('')
         await onChanged()
@@ -239,9 +308,9 @@ function ConnectForm({
       }}
     >
       <div className="space-y-1">
-        <Label htmlFor={`${preset.id}-key`}>API key{!preset.key_required && ' (if your server needs one)'}</Label>
+        <Label htmlFor={`${endpointKey}-key`}>API key{!preset.key_required && ' (if your server needs one)'}</Label>
         <Input
-          id={`${preset.id}-key`}
+          id={`${endpointKey}-key`}
           type="password"
           autoComplete="off"
           value={apiKey}
@@ -251,9 +320,9 @@ function ConnectForm({
       </div>
       {showUrl && (
         <div className="space-y-1">
-          <Label htmlFor={`${preset.id}-url`}>Address (base URL)</Label>
+          <Label htmlFor={`${endpointKey}-url`}>Address (base URL)</Label>
           <Input
-            id={`${preset.id}-url`}
+            id={`${endpointKey}-url`}
             inputMode="url"
             value={baseUrl}
             placeholder="https://…/v1"
@@ -448,7 +517,7 @@ function RolePicker({
   const modelsFor = (provider: string) =>
     provider === 'anthropic'
       ? (settings.priced.anthropic ?? [])
-      : (settings.providers.find((p) => p.preset === provider)?.models ?? [])
+      : (settings.providers.find((p) => p.key === provider)?.models ?? [])
   const isPriced = (c: Choice) => (settings.priced[c.provider] ?? []).includes(c.model)
   const update = (role: RoleName, patch: Partial<Choice>) => {
     setSaved(false)
@@ -461,6 +530,7 @@ function RolePicker({
     try {
       for (const role of ROLES) {
         const c = choices[role.id]
+        if (!connected.includes(c.provider)) continue
         if (!isPriced(c)) {
           if (c.input === '' || c.output === '') {
             throw new Error(`Enter the price of ${c.model} (from ${label(c.provider)}'s price page) first.`)
@@ -476,8 +546,13 @@ function RolePicker({
           })
         }
       }
+      // A role on a provider that isn't connected uses the conversation model instead.
+      const usable = (c: Choice) => connected.includes(c.provider)
       const roles = Object.fromEntries(
-        ROLES.map((r) => [r.id, { provider: choices[r.id].provider, model: choices[r.id].model }]),
+        ROLES.map((r) => {
+          const c = usable(choices[r.id]) ? choices[r.id] : choices.chat
+          return [r.id, { provider: c.provider, model: c.model }]
+        }),
       )
       await call('/providers/roles', { method: 'PUT', json: roles })
       await onSaved()

@@ -122,6 +122,8 @@ class PriceRegistry:
     base_urls: dict[str, str] = field(default_factory=dict)
     # Prices a provider lists for its own models (OpenRouter's models API), read when it was connected.
     listed: dict[tuple[str, str], ModelPrice] = field(default_factory=dict)
+    # Which kind (preset) each endpoint key is, e.g. "custom-2" -> "custom", for the built-in tables.
+    kinds: dict[str, str] = field(default_factory=dict)
 
     def price_for(self, model: str, provider: str = "anthropic", *, base_url: str | None = None) -> ModelPrice:
         """The owner's price first, then the provider's listed price, then the built-in tables."""
@@ -133,11 +135,12 @@ class PriceRegistry:
             return self.owner[key]
         if key in self.listed:
             return self.listed[key]
-        if key in BUILTIN:
-            return BUILTIN[key]
-        if (table_price := lookup(provider, model)) is not None:
+        kind = self.kinds.get(provider, provider)
+        if (kind, model) in BUILTIN:
+            return BUILTIN[(kind, model)]
+        if (table_price := lookup(kind, model)) is not None:
             return table_price
-        if provider in LOCAL_KINDS and is_local_url(base_url):
+        if kind in LOCAL_KINDS and is_local_url(base_url):
             return FREE
         raise UnknownModelPrice(f"No price for {provider} model {model!r}; set one in the app or add it to pricing.py")
 

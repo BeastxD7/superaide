@@ -315,11 +315,14 @@ class OwnerModelPrice(Scoped, Base):
 
 class LlmProvider(Scoped, Base):
     """A model provider the owner connected for this Ava (ADR 0007). Its key is in the vault
-    (integration_secret, provider "llm:<preset>"), never here."""
+    (integration_secret, provider "llm:<key>"), never here."""
 
     __tablename__ = "llm_provider"
-    __table_args__ = (UniqueConstraint("agent_id", "preset", name="uq_llm_provider"),)
+    __table_args__ = (UniqueConstraint("agent_id", "key", name="uq_llm_provider_key"),)
 
+    # This endpoint's own name: the preset for the first one, e.g. "custom-2" for another. Roles,
+    # prices, the ledger and the vault slot (llm:<key>) all use it.
+    key: Mapped[str] = mapped_column(String(24))
     preset: Mapped[str] = mapped_column(
         String(20)
     )  # openai | azure | openrouter | xai | gemini | ollama | vllm | custom

@@ -244,3 +244,62 @@ def test_openrouter_models_are_priced_from_its_list_without_asking(owner_client,
     assert ok.status_code == 200
     asks = owner_client.put("/app/providers/roles", json={"chat": {"provider": "openrouter", "model": "acme/unpriced"}})
     assert asks.status_code == 409
+
+
+def test_several_endpoints_of_one_kind_each_have_their_own_key_price_and_role(owner_client, service, monkeypatch):  # noqa: F811
+    import ipaddress
+
+    from superaide.security import urls
+
+    # custom = a server on this machine (free); custom-2 = a hosted endpoint (needs a price).
+    monkeypatch.setattr(
+        urls, "resolve", lambda host: [ipaddress.ip_address("127.0.0.1" if host == "localhost" else "8.8.8.8")]
+    )
+    assert owner_client.post("/app/providers/custom", json={"base_url": "http://localhost:8000/v1"}).status_code == 200
+    second = owner_client.post(
+        "/app/providers/custom", json={"key": "custom-2", "api_key": KEY, "base_url": "https://llm.example.com/v1"}
+    )
+    assert second.status_code == 200
+    keys = sorted((p["key"], p["preset"]) for p in second.json()["providers"])
+    assert keys == [("custom", "custom"), ("custom-2", "custom")]
+
+    # The same model name is free on the local one and needs a price on the hosted one.
+    assert (
+        owner_client.put(
+            "/app/providers/roles", json={"chat": {"provider": "custom", "model": "acme/fast"}}
+        ).status_code
+        == 200
+    )
+    hosted = {"chat": {"provider": "custom-2", "model": "acme/fast"}}
+    assert owner_client.put("/app/providers/roles", json=hosted).status_code == 409
+    owner_client.post(
+        "/app/providers/prices",
+        json={"provider": "custom-2", "model": "acme/fast", "input_usd_per_mtok": 2, "output_usd_per_mtok": 8},
+    )
+    assert owner_client.put("/app/providers/roles", json=hosted).status_code == 200
+
+    settings = runtime_settings()
+    assert settings.model_chat == "custom-2::acme/fast" and settings.llm_providers["custom-2"]["api_key"] == KEY
+    llm = build_llm(settings.model_copy(update={"fake_llm": False, "anthropic_api_key": ""}))
+    assert isinstance(llm, RoutedLLM) and set(llm.routes) == {"custom", "custom-2"}
+    prices = llm.guard.prices
+    assert prices.price_for("acme/fast", "custom").input == 0 and prices.price_for("acme/fast", "custom-2").input == 2
+
+    # A key that's already another kind is refused; removing one endpoint leaves the other.
+    clash = owner_client.post(
+        "/app/providers/ollama", json={"key": "custom-2", "base_url": "http://localhost:11434/v1"}
+    )
+    assert clash.status_code == 409
+    left = owner_client.post("/app/providers/custom-2/remove").json()
+    assert [p["key"] for p in left["providers"]] == ["custom"] and left["roles"]["chat"]["provider"] == "anthropic"
+
+
+def test_a_role_on_an_unconnected_provider_uses_the_chat_model():
+    from superaide.brain.llm import RoutedLLM as Routed
+
+    chat, other = object(), object()
+    routed = Routed({"custom": chat, "openai": other}, fallback="custom::tiny")
+    assert routed._route("claude-haiku-5-5") == (chat, "tiny")  # Claude isn't connected
+    assert routed._route("openai::gpt-5") == (other, "gpt-5")
+    with pytest.raises(RuntimeError):
+        Routed({"custom": chat})._route("claude-haiku-5-5")

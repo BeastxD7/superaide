@@ -217,8 +217,9 @@ class RoutedLLM:
     """Several providers behind one interface: a model id "<preset>::<model>" runs on that
     provider, a bare id on Claude (see brain/providers/config.py)."""
 
-    def __init__(self, routes: dict[str, Any]) -> None:
+    def __init__(self, routes: dict[str, Any], fallback: str | None = None) -> None:
         self.routes = routes
+        self.fallback = fallback  # the chat model, for a role whose provider isn't connected
         first = next(iter(routes.values()), None)
         self.guard = getattr(first, "guard", None)
 
@@ -227,6 +228,8 @@ class RoutedLLM:
 
         provider, name = split(model)
         llm = self.routes.get(provider)
+        if llm is None and self.fallback and self.fallback != model:
+            return self._route(self.fallback)
         if llm is None:
             raise RuntimeError(f"The model provider {provider!r} isn't connected")
         return llm, name

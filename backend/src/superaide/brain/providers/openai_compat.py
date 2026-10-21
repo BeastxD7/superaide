@@ -281,8 +281,8 @@ class OpenAICompatProvider:
 
     @property
     def price_key(self) -> str:
-        """Prices and the ledger use the preset (openai, openrouter, ollama…)."""
-        return self.preset.id
+        """Prices and the ledger use the endpoint's key (openai, openrouter, custom-2…)."""
+        return self.id
 
     def capabilities(self, model: str) -> Capabilities:
         return self.preset.capabilities

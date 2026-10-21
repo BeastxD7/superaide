@@ -54,7 +54,7 @@ def provider_usable(settings: Settings, provider: str) -> bool:
     from superaide.brain.providers.presets import PRESETS
 
     cfg = settings.llm_providers.get(provider)
-    preset = PRESETS.get(provider)
+    preset = PRESETS.get((cfg or {}).get("preset", provider))
     return cfg is not None and preset is not None and (bool(cfg.get("api_key")) or not preset.key_required)
 
 
@@ -82,7 +82,8 @@ def load_prices(settings: Settings | None = None) -> PriceRegistry:
         prices = owner_prices(s)
         listed = listed_prices(s)
     urls = {p: cfg.get("base_url", "") for p, cfg in (settings.llm_providers if settings else {}).items()}
-    return PriceRegistry(prices.owner, base_urls={p: u for p, u in urls.items() if u}, listed=listed)
+    kinds = {k: cfg.get("preset", k) for k, cfg in (settings.llm_providers if settings else {}).items()}
+    return PriceRegistry(prices.owner, base_urls={p: u for p, u in urls.items() if u}, listed=listed, kinds=kinds)
 
 
 def build_llm(settings: Settings) -> LLM:
@@ -99,16 +100,17 @@ def build_llm(settings: Settings) -> LLM:
     routes: dict[str, LLM] = {}
     if settings.anthropic_api_key:
         routes["anthropic"] = ClaudeLLM(guard, api_key=settings.anthropic_api_key)
-    for preset, cfg in settings.llm_providers.items():
-        if preset in PRESETS and provider_usable(settings, preset):
+    for key, cfg in settings.llm_providers.items():
+        preset = cfg.get("preset", key)
+        if preset in PRESETS and provider_usable(settings, key):
             provider = OpenAICompatProvider(
-                guard, PRESETS[preset], api_key=cfg.get("api_key", ""), base_url=cfg.get("base_url", ""), id=preset
+                guard, PRESETS[preset], api_key=cfg.get("api_key", ""), base_url=cfg.get("base_url", ""), id=key
             )
-            routes[preset] = ProviderLLM(provider, web=web)
+            routes[key] = ProviderLLM(provider, web=web)
     roles = {split(m)[0] for m in (settings.model_chat, settings.model_triage, settings.model_deep)}
     if set(routes) == {"anthropic"} and roles == {"anthropic"}:
         return routes["anthropic"]
-    return RoutedLLM(routes)
+    return RoutedLLM(routes, fallback=settings.model_chat)
 
 
 def build_messengers(settings: Settings) -> dict[str, Messenger]:

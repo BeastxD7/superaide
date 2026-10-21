@@ -88,6 +88,8 @@ def check_anthropic(api_key: str) -> CheckReport:
 class ProviderBody(BaseModel):
     api_key: str | None = Field(default=None, max_length=400)  # None or omitted keeps the stored key
     base_url: str = Field(default="", max_length=300)
+    # Another endpoint of the same kind, e.g. "custom-2"; omitted means the preset's own endpoint.
+    key: str | None = Field(default=None, pattern=config.KEY_RE, max_length=24)
 
 
 class TestBody(ProviderBody):
@@ -166,7 +168,7 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], Any]) -> APIRo
             return out
 
         known = {"anthropic": sorted(PRICES)}
-        known.update({p["preset"]: priced(p["preset"], p["models"]) for p in mine["providers"]})
+        known.update({p["key"]: priced(p["key"], p["models"]) for p in mine["providers"]})
         for role in roles.values():  # a model typed in by hand, already chosen
             if role["model"] not in known.get(role["provider"], []):
                 known.setdefault(role["provider"], []).extend(priced(role["provider"], [role["model"]]))
@@ -190,7 +192,7 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], Any]) -> APIRo
             raise HTTPException(404, "Unknown provider")
         p = PRESETS[preset]
         with session_scope() as s:
-            stored_key = config.key_for(s, preset)
+            stored_key = config.key_for(s, body.key or preset)
         api_key = (body.api_key if body.api_key is not None else stored_key).strip()
         if p.key_required and not api_key:
             raise HTTPException(400, f"{p.label} needs an API key.")
@@ -290,9 +292,13 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], Any]) -> APIRo
     def set_price(
         body: PriceBody, _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
     ) -> dict[str, Any]:
-        if body.provider != "anthropic" and body.provider not in PRESETS:
-            raise HTTPException(404, "Unknown provider")
         with session_scope() as s:
+            if (
+                body.provider != "anthropic"
+                and body.provider not in PRESETS
+                and config.endpoint(s, body.provider) is None
+            ):
+                raise HTTPException(404, "Unknown provider")
             set_owner_price(
                 s, provider=body.provider, model=body.model, input_usd_per_mtok=body.input_usd_per_mtok,
                 output_usd_per_mtok=body.output_usd_per_mtok, user_id=user_id,
@@ -319,26 +325,30 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], Any]) -> APIRo
                 store.save(s, "anthropic", {"api_key": (body.api_key or "").strip()}, user_id=user_id, meta={})
             else:
                 api_key, base_url = resolve(preset, body)
+                existing = config.endpoint(s, body.key or preset)
+                if existing is not None and existing.preset != preset:
+                    raise HTTPException(409, f"{body.key} is already used by another provider.")
                 config.save_provider(
-                    s, preset, base_url=base_url, api_key=api_key if body.api_key is not None else None,
+                    s, preset, key=body.key or preset, base_url=base_url,
+                    api_key=api_key if body.api_key is not None else None,
                     user_id=user_id, models=report.models, prices=report.prices,
                 )  # fmt: skip
         apply()
         return view()
 
     @router.post(
-        "/{preset}/remove",
+        "/{key}/remove",
         summary="Disconnect a provider",
         description="Deletes its key; roles on it go back to Claude.",
     )
     def remove(
-        preset: str, _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
+        key: str, _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
     ) -> dict[str, Any]:
         with session_scope() as s:
-            if preset == "anthropic":
+            if key == "anthropic":
                 store.remove(s, "anthropic", user_id=user_id)
-            elif preset in PRESETS:
-                config.remove_provider(s, preset, user_id=user_id)
+            elif config.endpoint(s, key) is not None or key in PRESETS:
+                config.remove_provider(s, key, user_id=user_id)
             else:
                 raise HTTPException(404, "Unknown provider")
         apply()

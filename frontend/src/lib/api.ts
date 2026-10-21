@@ -309,6 +309,7 @@ export type ProviderPreset = {
 }
 
 export type ConnectedProvider = {
+  key: string // this endpoint's name: the preset, or e.g. "custom-2" for another of the same kind
   preset: string
   base_url: string
   enabled: boolean
