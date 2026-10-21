@@ -65,3 +65,46 @@ def extract(text: str, sources: list[SourceDoc]) -> tuple[list[Text], list[str]]
     if dropped:
         log.info("dropped %d citation(s) to sources no tool returned", len(dropped))
     return parts or [Text("")], dropped
+
+
+_PREFIXES = ("ava://", "https://", "http://")
+
+
+def _could_be_marker(tail: str) -> bool:
+    """Whether `tail` (starting at "[") could still grow into a citation marker."""
+    body = tail[1:].lstrip()
+    if len(tail) > 400 or "]" in tail:
+        return False
+    head = body.split(",")[-1].strip() if body else ""
+    if not body:
+        return True
+    first = body.split(",")[0].strip()
+    ok_first = any(first.startswith(p) or p.startswith(first) for p in _PREFIXES)
+    ok_last = not head or any(head.startswith(p) or p.startswith(head) for p in _PREFIXES)
+    return ok_first and ok_last and not any(c.isspace() for c in body.strip().replace(", ", ","))
+
+
+class MarkerFilter:
+    """Takes streamed text and gives it back without citation markers, holding back only a
+    possible partial marker at the end of a chunk. The final text is cited properly by `extract`."""
+
+    def __init__(self) -> None:
+        self.pending = ""
+
+    def feed(self, delta: str) -> str:
+        text = self.pending + delta
+        self.pending = ""
+        start = text.rfind("[")
+        if start != -1 and _could_be_marker(text[start:]):
+            # Keep the whitespace before it too: a marker takes its leading space with it.
+            cut = len(text[:start].rstrip())
+            text, self.pending = text[:cut], text[cut:]
+        else:
+            # Trailing spaces wait for the next chunk, in case a marker follows and takes them.
+            cut = len(text.rstrip())
+            text, self.pending = text[:cut], text[cut:]
+        return MARKER.sub("", text)
+
+    def flush(self) -> str:
+        text, self.pending = self.pending, ""
+        return MARKER.sub("", text)

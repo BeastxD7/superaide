@@ -173,7 +173,7 @@ def test_a_stream_rebuilds_tool_calls_reports_deltas_and_settles_from_the_usage_
     step = p.step(purpose="chat_turn", model="m", system=[], messages=ask(), tools=[RECALL], max_tokens=300,
                   on_event=events.append)  # fmt: skip
     assert server.requests[0]["stream"] is True and server.requests[0]["stream_options"] == {"include_usage": True}
-    assert [e.text for e in events if isinstance(e, TextDelta)] == ["Let me ", "check."]
+    assert "".join(e.text for e in events if isinstance(e, TextDelta)) == "Let me check."
     assert any(isinstance(e, ToolCallReady) for e in events) and any(isinstance(e, PartDone) for e in events)
     assert step.stop == "tool_calls" and step.parts[-1] == ToolCall("call_9", "recall", {"query": "x"})
     assert step.cost_usd == Decimal("0.0022") and guard.summary().settled_usd == Decimal("0.0022")
@@ -306,3 +306,28 @@ def test_the_owner_tool_loop_runs_on_an_openai_compatible_model_with_checked_cit
     assert "[source id=ava://memory/" in server.requests[1]["messages"][-1]["content"]
     assert [c.uri for c in result.sources] == [f"ava://memory/{m.id}"]
     assert result.text.startswith("Friday at 7am [1].") and "999" not in result.text
+
+
+@pytest.mark.parametrize(
+    "chunks",
+    [
+        ["Your flight is on 3 Nov [ava://memory/12]. Pack light."],
+        ["Your flight is on 3 Nov [", "ava://mem", "ory/12]. Pack light."],
+        ["Your flight is on 3 Nov ", "[ava://memory/12", "]", ". Pack light."],
+        ["Your flight is on 3 Nov [ava://memory/12][https://ex", "ample.com/a]. Pack light."],
+    ],
+)
+def test_streamed_text_never_shows_citation_markers(chunks):
+    from superaide.brain.citations import MarkerFilter
+
+    f = MarkerFilter()
+    shown = "".join(f.feed(c) for c in chunks) + f.flush()
+    assert shown == "Your flight is on 3 Nov. Pack light."
+
+
+def test_brackets_that_are_not_markers_stream_through():
+    from superaide.brain.citations import MarkerFilter
+
+    f = MarkerFilter()
+    shown = "".join(f.feed(c) for c in ["Options [a", "] and [see note]", " and [1]."]) + f.flush()
+    assert shown == "Options [a] and [see note] and [1]."

@@ -325,6 +325,7 @@ class OpenAICompatProvider:
 
     def _stream(self, request: dict[str, Any], on_event: OnStreamEvent) -> _Accumulated:
         acc = _Accumulated()
+        markers = citations.MarkerFilter()  # the owner sees the text without [ava://…] markers as it streams
         stream = self.client.chat.completions.create(**request, stream=True, stream_options={"include_usage": True})
         for chunk in stream:
             acc.id = acc.id or _get(chunk, "id")
@@ -337,7 +338,8 @@ class OpenAICompatProvider:
                 text = _get(delta, "content")
                 if text:
                     acc.content += text
-                    on_event(TextDelta(text))
+                    if shown := markers.feed(text):
+                        on_event(TextDelta(shown))
                 thought = _get(delta, "reasoning_content") or _get(delta, "reasoning")
                 if thought:
                     acc.reasoning += thought
@@ -348,6 +350,8 @@ class OpenAICompatProvider:
                     slot["id"] = _get(call, "id") or slot["id"]
                     slot["name"] = _get(fn, "name") or slot["name"]
                     slot["arguments"] += _get(fn, "arguments") or ""
+        if rest := markers.flush():
+            on_event(TextDelta(rest))
         return acc
 
     def step(
