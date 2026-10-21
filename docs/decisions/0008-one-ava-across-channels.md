@@ -1,6 +1,7 @@
 # 0008: One Ava across channels
 
-Status: proposed (2026-10-22)
+Status: accepted and built (2026-10-22). See "As built" at the end for what changed from
+this design.
 
 ## Context
 
@@ -295,3 +296,26 @@ the reply plus citations (live):
 Live metrics: hit rate at steps 2, 3 and 7 (target 100%); leak count at steps 5 and 6 (must be 0);
 correct channel attribution at step 2; and the "I can't remember" false-claim rate at step 1
 (target 0).
+
+## As built (2026-10-22)
+
+All work packages are on main. Every xfail in `backend/tests/test_cross_channel.py` now passes.
+The scenario is `backend/tests/test_cross_channel_scenario.py`.
+
+Changes from the design above:
+
+- **WP2a:**
+  - `unaccent` was dropped. Accents are kept on both sides instead (stored text keeps them).
+  - The tokenizer keeps words in any script, so other languages match word for word.
+  - Full-text indexes are expression GIN indexes (`ix_event_fts`, `ix_memory_item_fts`, migration 0010), not generated `tsv` columns.
+  - The trigram threshold is 0.4, measured: "colour" against "clour" scores 0.44 with `word_similarity`.
+- **WP2b, the owner's decision:**
+  - The default is a **local** embedder: fastembed 0.9.0 (ONNX on CPU, Apache-2.0, exact pin) with `paraphrase-multilingual-MiniLM-L12-v2`. It is multilingual (50+ languages), Apache-2.0, 384 dimensions, a ~220 MB download cached in `~/.cache/superaide/models`, and takes about 2 ms per text on Python 3.14.
+  - Voyage is opt-in (`EMBEDDER=voyage` plus a key). It is recorded on the spend ledger with its own monthly cap.
+  - Vectors live in `memory_embedding` (one row per fact and model, with `tenant_id`/`agent_id`), created by migration 0015 only where pgvector exists. It is outside the ORM metadata.
+  - There is no HNSW index yet. An exact scan per owner is milliseconds at this size, and the column has no fixed size, so models can be switched.
+  - Messages are not embedded; only facts are.
+- **WP4:** pre-recall attaches up to 4 notes that match every word of the message (with spellings and synonyms). It shows nothing in the live stream.
+- **WP1:** the current conversation is kept whole. Only the other channels share the remaining ~2,000-token budget.
+- **Tenancy (ADR 0009):** new queries filter on the instance's `agent_id` (from settings until T1 adds the scope context variable): the timeline, pinned facts, the meaning arm, backfill and dedupe.
+- **WP6:** offline only. The live run against Haiku waits for the owner's go-ahead.
