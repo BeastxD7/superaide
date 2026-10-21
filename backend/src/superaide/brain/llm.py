@@ -133,9 +133,12 @@ class ProviderLLM:
         self.provider = provider
         self.guard = getattr(provider, "guard", None)
         self.web = web  # Superaide's own web tools (tools/web.py), standing in for provider-run ones
+        self.offered: set[str] = set()  # the stand-ins offered in the last step; only those may run
 
     def run_substitute(self, name: str, args: dict[str, Any]) -> tuple[Any, bool] | None:
-        return self.web.run(name, args) if self.web is not None else None
+        if self.web is None or name not in self.offered:
+            return None
+        return self.web.run(name, args)
 
     def step(
         self,
@@ -157,12 +160,14 @@ class ProviderLLM:
         native = {"web_search": caps.server_web_search, "web_fetch": caps.server_web_fetch}
         own = self.web.specs() if self.web is not None else {}
         neutral_tools: list[t.Tool] = []
+        self.offered = set()
         for x in tools_from_wire(tools):
             if not isinstance(x, t.HostedTool) or native[x.kind]:
                 neutral_tools.append(x)
             elif x.kind in own:  # the provider can't search or read the web itself: use ours
                 spec = own[x.kind]
                 neutral_tools.append(t.ToolSpec(spec["name"], spec["description"], spec["input_schema"]))
+                self.offered.add(spec["name"])
 
         def relay(event: t.StreamEvent) -> None:
             assert on_event is not None

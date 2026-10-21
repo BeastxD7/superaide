@@ -120,8 +120,10 @@ def test_a_model_without_web_search_reads_the_web_with_ours_and_cites_it(net):
     first = llm.step(purpose="chat_turn", model="claude-haiku-5-5", system=[], messages=hi, tools=tools, max_tokens=50)
     assert server.requests[0]["tools"][0]["function"]["name"] == "web_fetch"  # our tool stands in
     assert first.stop_reason == "tool_use"
+    assert ProviderLLM(p, web=web.WebTools(guard)).run_substitute("web_fetch", {"url": PAGE}) is None  # never offered
     with session_scope() as s:
         turn = turn_for(s, lambda *a: None, web=True)
+        turn.tools = lambda: tools  # type: ignore[method-assign]  # the web-research skill's hosted fetch
         turn.llm = llm
         server.responses = [
             completion(None, [("call_1", "web_fetch", {"url": PAGE})], "tool_calls"),
