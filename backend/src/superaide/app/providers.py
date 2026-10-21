@@ -229,11 +229,11 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], Any]) -> APIRo
         """One real search, charged against the cap like any other."""
         from decimal import Decimal
 
-        from superaide.brain.budget import BudgetExceeded, BudgetGuard, Limits
+        from superaide.brain.budget import BudgetExceeded, BudgetGuard
         from superaide.tools.web import WebTools
 
         settings = runtime_settings()
-        guard = BudgetGuard(settings.max_spend_usd, limits=Limits.from_settings(settings))
+        guard = BudgetGuard.for_instance(settings)
         tools = WebTools(guard, search_key=api_key, search_usd=Decimal(str(settings.web_search_usd_per_call)))
         try:
             out = tools.run("web_search", {"query": "Superaide personal assistant"})

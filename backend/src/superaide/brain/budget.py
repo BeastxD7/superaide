@@ -1,10 +1,20 @@
-"""Spend ledger with a hard cap.
+"""Spend ledger with a hard cap, per agent instance, plus a platform-wide guard.
 
 Every model call reserves its worst-case cost first. The reservation is
 refused if settled spend plus open reservations plus this call would pass the
 cap, so total spend cannot exceed MAX_SPEND_USD (default US$10). After the call
 the reservation is settled at the real price from the API's usage numbers.
 The kill switch is checked here too, so a frozen agent makes no model calls.
+
+Many owners (ADR 0009 T6):
+- The cap and the rolling limits count only this instance's ledger, and the lock
+  that keeps reservations honest is per instance, so owners never wait on each other.
+- An instance may carry its own limits (`agent_instance.spend_limits`), over the
+  .env defaults.
+- When the platform's own model key pays (`key_source="platform"`), each call also
+  draws on a platform-wide daily allowance (`platform_spend`, one row per UTC day),
+  reserved with one atomic UPDATE, no global lock. Spend on an owner's own key is
+  capped by the owner's limits only.
 """
 
 from __future__ import annotations
@@ -13,16 +23,20 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import case, func, select, text
 
 from superaide.audit import audit
+from superaide.brain import platform_spend as platform
 from superaide.brain.pricing import DEFAULT_PRICES, PriceRegistry, UsageCounts, cost_usd
 from superaide.db.models import SpendEntry
 from superaide.db.session import session_scope
 from superaide.policy.killswitch import is_frozen
+from superaide.tenancy.context import InstanceScope, scope_or_default, use_instance
 
-_LOCK_KEY = 784_221_001  # pg advisory lock id for the ledger
+_LOCK_KEY = 784_221_001  # pg advisory lock namespace for the ledger; the second key is the instance
+KEY_SOURCES = ("owner", "platform")
 
 
 class BudgetExceeded(RuntimeError):
@@ -58,6 +72,31 @@ class Limits:
         )
 
 
+def _override(cap: Decimal, limits: Limits, own: dict[str, Any]) -> tuple[Decimal, Limits]:
+    """Apply an instance's own limits; values that aren't positive numbers are ignored."""
+
+    def positive(value: Any) -> Decimal | None:
+        try:
+            d = Decimal(str(value))
+        except ArithmeticError, ValueError:
+            return None
+        return d if d.is_finite() and d > 0 else None
+
+    by_bucket = dict(limits.daily_by_bucket or {})
+    if isinstance(own.get("daily_by_bucket"), dict):
+        for bucket, value in own["daily_by_bucket"].items():
+            if (d := positive(value)) is not None:
+                by_bucket[str(bucket)] = d
+    return (
+        positive(own.get("lifetime_usd")) or cap,
+        Limits(
+            daily_usd=positive(own.get("daily_usd")) or limits.daily_usd,
+            monthly_usd=positive(own.get("monthly_usd")) or limits.monthly_usd,
+            daily_by_bucket=by_bucket,
+        ),
+    )
+
+
 class AgentFrozen(RuntimeError):
     pass
 
@@ -90,21 +129,47 @@ class BudgetGuard:
         db_url: str | None = None,
         limits: Limits | None = None,
         prices: PriceRegistry | None = None,
+        *,
+        scope: InstanceScope | None = None,
+        key_source: str = "owner",
     ) -> None:
+        if key_source not in KEY_SOURCES:
+            raise ValueError(f"key_source must be one of {KEY_SOURCES}")
         self.cap = Decimal(str(cap_usd))
         self.db_url = db_url
         self.limits = limits or Limits()
         self.prices = prices or DEFAULT_PRICES
+        self.scope = scope or scope_or_default()  # the instance whose ledger this guards
+        self.key_source = key_source
 
-    @staticmethod
-    def _committed(s, since: datetime | None = None, purposes: list[str] | None = None) -> Decimal:
+    @classmethod
+    def for_instance(
+        cls, settings: Any, *, prices: PriceRegistry | None = None, scope: InstanceScope | None = None
+    ) -> BudgetGuard:
+        """The guard for one instance: the .env limits, overridden by the instance's own spend_limits."""
+        scope = scope or scope_or_default()
+        cap, limits = Decimal(str(settings.max_spend_usd)), Limits.from_settings(settings)
+        key_source = "owner"
+        from superaide.tenancy.models import AgentInstance
+
+        with use_instance(scope), session_scope() as s:
+            instance = s.get(AgentInstance, scope.agent_id)
+            own = dict(instance.spend_limits or {}) if instance else {}
+            key_source = instance.key_source if instance and instance.key_source in KEY_SOURCES else "owner"
+        cap, limits = _override(cap, limits, own)
+        return cls(float(cap), limits=limits, prices=prices, scope=scope, key_source=key_source)
+
+    def _mine(self) -> Any:
+        return SpendEntry.agent_id == self.scope.agent_id
+
+    def _committed(self, s, since: datetime | None = None, purposes: list[str] | None = None) -> Decimal:
         """Settled cost plus open reservations, optionally within a window or for some purposes."""
         amount = case(
             (SpendEntry.status == "settled", SpendEntry.cost_usd),
             (SpendEntry.status == "reserved", SpendEntry.reserved_usd),
             else_=0,
         )
-        q = select(func.coalesce(func.sum(amount), 0))
+        q = select(func.coalesce(func.sum(amount), 0)).where(self._mine())
         if since is not None:
             q = q.where(SpendEntry.created_at >= since)
         if purposes is not None:
@@ -133,31 +198,35 @@ class BudgetGuard:
         return None
 
     def summary(self) -> SpendSummary:
-        with session_scope(self.db_url) as s:
+        with use_instance(self.scope), session_scope(self.db_url) as s:
             settled = s.scalar(
-                select(func.coalesce(func.sum(SpendEntry.cost_usd), 0)).where(SpendEntry.status == "settled")
+                select(func.coalesce(func.sum(SpendEntry.cost_usd), 0)).where(
+                    self._mine(), SpendEntry.status == "settled"
+                )
             )
             reserved = s.scalar(
-                select(func.coalesce(func.sum(SpendEntry.reserved_usd), 0)).where(SpendEntry.status == "reserved")
+                select(func.coalesce(func.sum(SpendEntry.reserved_usd), 0)).where(
+                    self._mine(), SpendEntry.status == "reserved"
+                )
             )
-            calls = s.scalar(select(func.count()).select_from(SpendEntry).where(SpendEntry.status == "settled"))
+            calls = s.scalar(
+                select(func.count()).select_from(SpendEntry).where(self._mine(), SpendEntry.status == "settled")
+            )
         return SpendSummary(self.cap, Decimal(settled or 0), Decimal(reserved or 0), int(calls or 0))
 
     def reserve(self, *, purpose: str, model: str, worst_case_usd: Decimal, provider: str = "anthropic") -> uuid.UUID:
         refusal: Exception | None = None
-        with session_scope(self.db_url) as s:
+        with use_instance(self.scope), session_scope(self.db_url) as s:
             if is_frozen(s):
                 audit(s, "budget", "llm_call_refused", reason="frozen", purpose=purpose)
                 refusal = AgentFrozen("Kill switch is on; no model calls")
             else:
-                s.execute(text("SELECT pg_advisory_xact_lock(:k)"), {"k": _LOCK_KEY})
-                settled = s.scalar(
-                    select(func.coalesce(func.sum(SpendEntry.cost_usd), 0)).where(SpendEntry.status == "settled")
+                # Serialise reservations for this instance only: other owners never wait on this one.
+                s.execute(
+                    text("SELECT pg_advisory_xact_lock(:ns, hashtext(:agent))"),
+                    {"ns": _LOCK_KEY, "agent": str(self.scope.agent_id)},
                 )
-                reserved = s.scalar(
-                    select(func.coalesce(func.sum(SpendEntry.reserved_usd), 0)).where(SpendEntry.status == "reserved")
-                )
-                committed = Decimal(settled or 0) + Decimal(reserved or 0)
+                committed = self._committed(s)
                 if committed + worst_case_usd > self.cap:
                     audit(
                         s,
@@ -175,9 +244,22 @@ class BudgetGuard:
                     )
                 elif (period_refusal := self._period_refusal(s, purpose, worst_case_usd)) is not None:
                     refusal = period_refusal
+                elif self.key_source == "platform" and not platform.draw(s, worst_case_usd):
+                    audit(
+                        s, "budget", "llm_call_refused", reason="platform", purpose=purpose,
+                        request_usd=float(worst_case_usd),
+                    )  # fmt: skip
+                    refusal = BudgetExceeded("Superaide's shared model allowance for today is used up", "platform")
                 else:
                     entry = SpendEntry(
-                        provider=provider, purpose=purpose, model=model, status="reserved", reserved_usd=worst_case_usd
+                        provider=provider,
+                        purpose=purpose,
+                        model=model,
+                        status="reserved",
+                        reserved_usd=worst_case_usd,
+                        key_source=self.key_source,
+                        tenant_id=self.scope.tenant_id,
+                        agent_id=self.scope.agent_id,
                     )
                     s.add(entry)
                     s.flush()
@@ -208,7 +290,7 @@ class BudgetGuard:
             computed: Decimal | None = fixed_cost_usd
         else:
             computed = cost_usd(model, usage, batch=batch, provider=provider, prices=self.prices) if known else None
-        with session_scope(self.db_url) as s:
+        with use_instance(self.scope), session_scope(self.db_url) as s:
             entry = s.get(SpendEntry, entry_id)
             assert entry is not None
             if computed is None:
@@ -224,6 +306,8 @@ class BudgetGuard:
                             computed_usd=float(computed), reported_usd=float(reported_cost_usd),
                         )  # fmt: skip
                     cost = max(computed, reported_cost_usd)
+            if entry.key_source == "platform":
+                platform.adjust(s, entry.created_at, cost - entry.reserved_usd)
             entry.status = "settled"
             entry.cost_usd = cost
             entry.input_tokens = usage.input_tokens
@@ -239,8 +323,10 @@ class BudgetGuard:
         return cost
 
     def fail(self, entry_id: uuid.UUID, error: str) -> None:
-        with session_scope(self.db_url) as s:
+        with use_instance(self.scope), session_scope(self.db_url) as s:
             entry = s.get(SpendEntry, entry_id)
+            if entry is not None and entry.status == "reserved" and entry.key_source == "platform":
+                platform.adjust(s, entry.created_at, -entry.reserved_usd)
             if entry is not None:
                 entry.status = "failed"
                 entry.settled_at = datetime.now(UTC)

@@ -287,6 +287,8 @@ class SpendEntry(Scoped, Base):
     __tablename__ = "spend_ledger"
 
     provider: Mapped[str] = mapped_column(String(40), default="anthropic", server_default="anthropic")
+    # Who paid for the model: the owner's own key, or the platform's (ADR 0009 T6).
+    key_source: Mapped[str] = mapped_column(String(20), default="owner", server_default="owner")
     purpose: Mapped[str] = mapped_column(String(40))
     model: Mapped[str] = mapped_column(String(60))
     status: Mapped[str] = mapped_column(String(20), default="reserved")  # reserved | settled | failed

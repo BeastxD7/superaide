@@ -115,7 +115,7 @@ def _freeze(args: argparse.Namespace) -> None:
 def _spend(_: argparse.Namespace) -> None:
     from superaide.brain.budget import BudgetGuard
 
-    summary = BudgetGuard(get_settings().max_spend_usd).summary()
+    summary = BudgetGuard.for_instance(get_settings()).summary()
     print(
         f"Spent US${summary.settled_usd:.4f} of US${summary.cap_usd:.2f} "
         f"({summary.calls} calls, US${summary.reserved_usd:.4f} reserved, US${summary.remaining_usd:.4f} left)"

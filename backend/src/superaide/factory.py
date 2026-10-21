@@ -8,7 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from superaide.brain.budget import BudgetGuard, Limits
+from superaide.brain.budget import BudgetGuard
 from superaide.brain.llm import LLM, ClaudeLLM, FakeLLM, ProviderLLM, RoutedLLM, SystemBlock
 from superaide.brain.pricing import PriceRegistry, owner_prices
 from superaide.brain.turn import Prediction, RequestedAction, TurnOutput
@@ -93,7 +93,7 @@ def build_llm(settings: Settings) -> LLM:
     from superaide.brain.providers.openai_compat import OpenAICompatProvider
     from superaide.brain.providers.presets import PRESETS
 
-    guard = BudgetGuard(settings.max_spend_usd, limits=Limits.from_settings(settings), prices=load_prices(settings))
+    guard = BudgetGuard.for_instance(settings, prices=load_prices(settings))  # this instance's ledger and limits
     web = WebTools(
         guard, search_key=settings.brave_search_api_key, search_usd=Decimal(str(settings.web_search_usd_per_call))
     )

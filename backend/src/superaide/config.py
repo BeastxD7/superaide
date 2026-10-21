@@ -51,6 +51,10 @@ class Settings(BaseSettings):
     budget_daily_by_bucket: dict[str, float] = Field(
         default_factory=lambda: {"chat": 0.40, "memory": 0.15, "research": 0.25}
     )
+    # These limits apply to each hired Ava on its own; an instance may set its own (agent_instance.spend_limits).
+    # Platform-wide, per UTC day, for calls paid with Superaide's own model key (ADR 0009). Owners'
+    # own keys never draw on it. 0 refuses every platform-paid call (no platform key is offered yet).
+    platform_daily_cap_usd: float = 0.0
     # Other model providers the owner connected in the app (preset -> base_url, api_key). Filled from
     # the database by vault.store.runtime_settings, never from .env. A model id "<preset>::<model>"
     # in model_chat/model_triage/model_deep runs on that provider; a bare id runs on Claude.

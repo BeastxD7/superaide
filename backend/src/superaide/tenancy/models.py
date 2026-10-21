@@ -8,10 +8,11 @@ belongs to it, the channel endpoints that route messages to it, and platform sta
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
+from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, UniqueConstraint, func, text
+from sqlalchemy import Date, DateTime, ForeignKey, Index, Numeric, String, UniqueConstraint, func, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -67,6 +68,9 @@ class AgentInstance(Base):
     locale: Mapped[str] = mapped_column(String(35), default="en")
     timezone: Mapped[str] = mapped_column(String(64), default="UTC")
     key_source: Mapped[str] = mapped_column(String(20), default="owner")  # owner | platform: who pays for the model
+    # This instance's own spend limits over the .env defaults: any of lifetime_usd, daily_usd,
+    # monthly_usd, daily_by_bucket ({"chat": 0.4, ...}). Empty: the defaults apply.
+    spend_limits: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, server_default=text("'{}'::jsonb"))
     created_at: Mapped[datetime] = _created()
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
@@ -103,6 +107,18 @@ class ChannelEndpoint(Base):
     webhook_secret_hash: Mapped[str] = mapped_column(String(64), default="")
     status: Mapped[str] = mapped_column(String(20), default="active")  # active | disabled
     created_at: Mapped[datetime] = _created()
+
+
+class PlatformSpend(Base):
+    """Platform-key spend per UTC day, for the platform-wide allowance (brain/platform_spend.py)."""
+
+    __tablename__ = "platform_spend"
+
+    day: Mapped[date] = mapped_column(Date, primary_key=True)
+    committed_usd: Mapped[Decimal] = mapped_column(Numeric(14, 6), default=Decimal(0))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), default=_now, onupdate=_now
+    )
 
 
 class PlatformState(Base):

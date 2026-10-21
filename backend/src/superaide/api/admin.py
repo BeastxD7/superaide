@@ -66,7 +66,7 @@ def _audit_count(s: Any, *actions: str) -> int:
 )
 def overview() -> dict[str, Any]:
     settings = get_settings()
-    spend = BudgetGuard(settings.max_spend_usd).summary().as_dict()
+    spend = BudgetGuard.for_instance(settings).summary().as_dict()
     day_ago = datetime.now(UTC) - timedelta(days=1)
     with session_scope() as s:
         unverified_links = int(
@@ -302,7 +302,7 @@ def audit_log(limit: int = 200) -> list[dict[str, Any]]:
 @router.get("/spend", summary="Spend", description="Claude API spend against `MAX_SPEND_USD`, by purpose and model.")
 def spend() -> dict[str, Any]:
     settings = get_settings()
-    summary = BudgetGuard(settings.max_spend_usd).summary().as_dict()
+    summary = BudgetGuard.for_instance(settings).summary().as_dict()
     with session_scope() as s:
         entries = s.scalars(select(SpendEntry).order_by(SpendEntry.created_at.desc()).limit(200)).all()
         return {
