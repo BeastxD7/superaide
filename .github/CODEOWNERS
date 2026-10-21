@@ -1,0 +1,5 @@
+# Reviews are requested from these people for changes to the matching paths.
+*                                   @BeastxD7
+/backend/src/superaide/auth/        @BeastxD7
+/backend/src/superaide/vault/       @BeastxD7
+/backend/alembic/versions/          @BeastxD7
