@@ -87,11 +87,21 @@ function recognitionConstructor(): SpeechRecognitionConstructor | null {
 
 // ---------- Support ----------
 
-export function speechSupport(): { recognition: boolean; synthesis: boolean } {
-  if (typeof window === 'undefined') return { recognition: false, synthesis: false }
+export type SpeechSupport = {
+  recognition: boolean
+  synthesis: boolean
+  /** The browser has the speech-to-text API but no service behind it (Brave), so it always fails. */
+  noService: boolean
+}
+
+export function speechSupport(): SpeechSupport {
+  if (typeof window === 'undefined') return { recognition: false, synthesis: false, noService: false }
+  // Brave ships the API without Google's speech service: every attempt ends in a 'network' error.
+  const noService = 'brave' in navigator
   return {
-    recognition: recognitionConstructor() !== null,
+    recognition: recognitionConstructor() !== null && !noService,
     synthesis: 'speechSynthesis' in window && typeof window.SpeechSynthesisUtterance === 'function',
+    noService,
   }
 }
 

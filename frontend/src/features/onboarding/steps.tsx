@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { speechSupport } from '@/features/onboarding/speech'
 import {
   ArrowUp,
   Bot,
@@ -67,7 +68,7 @@ export function StepControls({ input, done, agentName, me, onAnswer, reload, ope
         </div>
       )
     case 'intro':
-      return <IntroPicker input={input} onAnswer={onAnswer} reload={reload} openCall={openCall} />
+      return <IntroPicker input={input} agentName={agentName} onAnswer={onAnswer} reload={reload} openCall={openCall} />
     case 'people':
       return <PeoplePicker input={input} onAnswer={onAnswer} />
     case 'urgent':
@@ -201,15 +202,18 @@ function Submit({ children, onClick, disabled }: { children: ReactNode; onClick:
 
 function IntroPicker({
   input,
+  agentName,
   onAnswer,
   reload,
   openCall,
 }: {
   input: Extract<StepInput, { kind: 'intro' }>
+  agentName: string
   onAnswer: Answer
   reload: () => Promise<void>
   openCall: () => void
 }) {
+  const [noSpeechService] = useState(() => speechSupport().noService)
   const [tab, setTab] = useState<'chat' | 'files' | 'call'>(input.documents.length ? 'files' : 'chat')
   const tabs = [
     { key: 'chat', label: 'Tell me here', icon: MessageCircle },
@@ -247,6 +251,12 @@ function IntroPicker({
                 {input.call_questions} short questions, about five minutes. Talk, and your browser turns it into text.
                 Nothing is recorded.
               </p>
+              {noSpeechService && (
+                <p className="mt-3 rounded-xl bg-mist px-3 py-2 text-left text-sm text-body">
+                  Brave can't turn speech into text, so you'll type your answers while {agentName} talks. To answer out
+                  loud, open this page in Chrome, Edge or Safari.
+                </p>
+              )}
               <Button tone="violet" className="mt-4 w-full py-3" onClick={openCall}>
                 Start the call
               </Button>

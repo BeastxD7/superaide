@@ -31,7 +31,7 @@ import {
   type ReactNode,
 } from 'react'
 import { Orb, type Mood } from '@/components/Orb'
-import { createRecognizer, prepareVoices, recognitionLang, speak, speechSupport, stopSpeaking, unlockSpeech, type Recognizer } from '@/features/onboarding/speech'
+import { createRecognizer, prepareVoices, recognitionLang, speak, speechSupport, stopSpeaking, unlockSpeech, type Recognizer, type SpeechSupport } from '@/features/onboarding/speech'
 import { Button, Notice } from '@/components/ui'
 
 // The video call introduction: the owner meets their assistant face to face.
@@ -59,7 +59,7 @@ const YOU_TILE_BG = 'radial-gradient(70% 60% at 50% 40%, rgba(124,92,250,0.28) 0
 type Phase = 'connecting' | 'speaking' | 'answering' | 'thinking' | 'failed' | 'closing' | 'ended'
 type LineKind = 'question' | 'reply' | 'closing'
 type Cam = 'starting' | 'on' | 'off' | 'denied' | 'unavailable'
-type Voice = 'ok' | 'unsupported' | 'denied' | 'nomic' | 'broken'
+type Voice = 'ok' | 'unsupported' | 'noservice' | 'denied' | 'nomic' | 'broken'
 
 // Mutable call state that async callbacks (speech, recognition, timers) read.
 type Live = {
@@ -85,9 +85,16 @@ type Live = {
 
 const VOICE_NOTE: Record<Exclude<Voice, 'ok'>, string> = {
   unsupported: "Voice answers don't work in this browser, so type them here.",
+  noservice:
+    "This browser can't turn speech into text (Brave doesn't include a speech service), so type your answers here. To talk instead, open this page in Chrome, Edge or Safari.",
   denied: 'Your microphone is blocked, so type your answer here. To talk instead, allow the microphone for this site, then choose Use my voice.',
   nomic: 'No microphone found, so type your answer here.',
   broken: 'Voice stopped working, so type your answer here.',
+}
+
+function initialVoice(support: SpeechSupport): Voice {
+  if (support.recognition) return 'ok'
+  return support.noService ? 'noservice' : 'unsupported'
 }
 
 const CAM_NOTE: Record<Cam, string> = {
@@ -107,7 +114,7 @@ export function VideoCall({ agentName, firstQuestion, onAnswer, onFinish, onCanc
   const [interim, setInterim] = useState('')
   const [draft, setDraft] = useState('')
   const [typing, setTypingView] = useState(!support.recognition)
-  const [voice, setVoiceView] = useState<Voice>(support.recognition ? 'ok' : 'unsupported')
+  const [voice, setVoiceView] = useState<Voice>(initialVoice(support))
   const [muted, setMutedView] = useState(false)
   const [listening, setListening] = useState(false)
   const [captions, setCaptions] = useState(true)
@@ -129,7 +136,7 @@ export function VideoCall({ agentName, firstQuestion, onAnswer, onFinish, onCanc
     interim: '',
     muted: false,
     typing: !support.recognition,
-    voice: support.recognition ? 'ok' : 'unsupported',
+    voice: initialVoice(support),
     rec: null,
     turn: 0,
     startedAt: 0,
@@ -243,7 +250,8 @@ export function VideoCall({ agentName, firstQuestion, onAnswer, onFinish, onCanc
         if (turn !== st.turn) return
         if (code === 'not-allowed') fallBack('denied')
         else if (code === 'audio-capture') fallBack('nomic')
-        else if (code === 'service-not-allowed' || code === 'network' || code === 'language-not-supported') fallBack('broken')
+        else if (code === 'network' || code === 'service-not-allowed') fallBack('noservice')
+        else if (code === 'language-not-supported') fallBack('broken')
         // 'no-speech' and 'aborted' are routine: onEnd restarts listening if needed.
       },
       onEnd: () => {
