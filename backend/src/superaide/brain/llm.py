@@ -17,6 +17,7 @@ from pydantic import BaseModel, ValidationError
 
 from superaide.brain.budget import BudgetGuard
 from superaide.brain.pricing import WEB_SEARCH_USD, UsageCounts, worst_case_cost
+from superaide.brain.providers.types import SystemBlock
 
 T = TypeVar("T", bound=BaseModel)
 log = logging.getLogger(__name__)
@@ -24,12 +25,6 @@ log = logging.getLogger(__name__)
 # Live progress from a streaming step: ("text", {"delta"}), ("thinking", {"delta"}), and
 # ("block", {"block"}) as each content block completes (server tool calls and results).
 OnEvent = Callable[[str, dict[str, Any]], None]
-
-
-@dataclass
-class SystemBlock:
-    text: str
-    cache: bool = False  # mark the end of the stable prefix for prompt caching
 
 
 @dataclass
