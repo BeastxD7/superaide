@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     budget_daily_by_bucket: dict[str, float] = Field(
         default_factory=lambda: {"chat": 0.40, "memory": 0.15, "research": 0.25}
     )
+    # Other model providers the owner connected in the app (preset -> base_url, api_key). Filled from
+    # the database by vault.store.runtime_settings, never from .env. A model id "<preset>::<model>"
+    # in model_chat/model_triage/model_deep runs on that provider; a bare id runs on Claude.
+    llm_providers: dict[str, dict[str, str]] = Field(default_factory=dict, exclude=True)
     # Use a scripted fake model instead of the real API (tests, offline demos).
     fake_llm: bool = False
     # Let Ava search and read the web for the owner (costs US$0.01 a search, from the research budget)

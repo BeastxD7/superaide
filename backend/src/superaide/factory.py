@@ -8,7 +8,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from superaide.brain.budget import BudgetGuard, Limits
-from superaide.brain.llm import LLM, ClaudeLLM, FakeLLM, SystemBlock
+from superaide.brain.llm import LLM, ClaudeLLM, FakeLLM, ProviderLLM, RoutedLLM, SystemBlock
 from superaide.brain.pricing import PriceRegistry, owner_prices
 from superaide.brain.turn import Prediction, RequestedAction, TurnOutput
 from superaide.channels.base import FakeMessenger, Messenger, WebMessenger
@@ -45,13 +45,26 @@ class BrainStatus:
     reason: str  # connected | fake_llm | no_provider
 
 
+def provider_usable(settings: Settings, provider: str) -> bool:
+    """Connected, with a key where the service needs one."""
+    if provider == "anthropic":
+        return bool(settings.anthropic_api_key)
+    from superaide.brain.providers.presets import PRESETS
+
+    cfg = settings.llm_providers.get(provider)
+    preset = PRESETS.get(provider)
+    return cfg is not None and preset is not None and (bool(cfg.get("api_key")) or not preset.key_required)
+
+
 def brain_status(settings: Settings) -> BrainStatus:
-    """A real model whenever a provider is connected, unless FAKE_LLM=true forces offline mode.
-    Today the only provider is Anthropic; ADR 0007 adds others behind this same check."""
+    """A real model whenever the chat model's provider is connected, unless FAKE_LLM=true forces offline mode."""
+    from superaide.brain.providers.config import split
+
     if settings.fake_llm:
         return BrainStatus(False, None, "fake_llm")
-    if settings.anthropic_api_key:
-        return BrainStatus(True, "anthropic", "connected")
+    provider, _ = split(settings.model_chat)
+    if provider_usable(settings, provider):
+        return BrainStatus(True, provider, "connected")
     return BrainStatus(False, None, "no_provider")
 
 
@@ -59,17 +72,35 @@ def brain_ready(settings: Settings) -> bool:
     return brain_status(settings).ready
 
 
-def load_prices() -> PriceRegistry:
-    """Built-in prices plus any the owner set in the app."""
+def load_prices(settings: Settings | None = None) -> PriceRegistry:
+    """Built-in prices, any the owner set in the app, and where local model servers live."""
     with session_scope() as s:
-        return owner_prices(s)
+        prices = owner_prices(s)
+    urls = {p: cfg.get("base_url", "") for p, cfg in (settings.llm_providers if settings else {}).items()}
+    return PriceRegistry(prices.owner, base_urls={p: u for p, u in urls.items() if u})
 
 
 def build_llm(settings: Settings) -> LLM:
     if not brain_ready(settings):
         return FakeLLM(demo_responder)
-    guard = BudgetGuard(settings.max_spend_usd, limits=Limits.from_settings(settings), prices=load_prices())
-    return ClaudeLLM(guard, api_key=settings.anthropic_api_key)
+    from superaide.brain.providers.config import split
+    from superaide.brain.providers.openai_compat import OpenAICompatProvider
+    from superaide.brain.providers.presets import PRESETS
+
+    guard = BudgetGuard(settings.max_spend_usd, limits=Limits.from_settings(settings), prices=load_prices(settings))
+    routes: dict[str, LLM] = {}
+    if settings.anthropic_api_key:
+        routes["anthropic"] = ClaudeLLM(guard, api_key=settings.anthropic_api_key)
+    for preset, cfg in settings.llm_providers.items():
+        if preset in PRESETS and provider_usable(settings, preset):
+            provider = OpenAICompatProvider(
+                guard, PRESETS[preset], api_key=cfg.get("api_key", ""), base_url=cfg.get("base_url", ""), id=preset
+            )
+            routes[preset] = ProviderLLM(provider)
+    roles = {split(m)[0] for m in (settings.model_chat, settings.model_triage, settings.model_deep)}
+    if set(routes) == {"anthropic"} and roles == {"anthropic"}:
+        return routes["anthropic"]
+    return RoutedLLM(routes)
 
 
 def build_messengers(settings: Settings) -> dict[str, Messenger]:

@@ -196,6 +196,33 @@ class ProviderLLM:
         return LLMResult(done.text, done.parsed, model, usage, done.cost_usd, STOP_NAMES.get(done.stop, done.stop))
 
 
+class RoutedLLM:
+    """Several providers behind one interface: a model id "<preset>::<model>" runs on that
+    provider, a bare id on Claude (see brain/providers/config.py)."""
+
+    def __init__(self, routes: dict[str, Any]) -> None:
+        self.routes = routes
+        first = next(iter(routes.values()), None)
+        self.guard = getattr(first, "guard", None)
+
+    def _route(self, model: str) -> tuple[Any, str]:
+        from superaide.brain.providers.config import split
+
+        provider, name = split(model)
+        llm = self.routes.get(provider)
+        if llm is None:
+            raise RuntimeError(f"The model provider {provider!r} isn't connected")
+        return llm, name
+
+    def step(self, *, model: str, **kwargs: Any) -> StepResult:
+        llm, name = self._route(model)
+        return llm.step(model=name, **kwargs)
+
+    def complete(self, *, model: str, **kwargs: Any) -> LLMResult:
+        llm, name = self._route(model)
+        return llm.complete(model=name, **kwargs)
+
+
 Responder = Callable[[str, list[SystemBlock], list[dict[str, Any]], type[BaseModel] | None], Any]
 
 

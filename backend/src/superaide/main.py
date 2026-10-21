@@ -127,6 +127,9 @@ def create_app(agent: Agent | None = None) -> FastAPI:
 
     app.include_router(make_router(get_agent))
     app.include_router(make_connections_router(get_agent, apply_connections))
+    from superaide.app.providers import make_router as make_providers_router
+
+    app.include_router(make_providers_router(get_agent, apply_connections))
 
     @app.get(
         "/",

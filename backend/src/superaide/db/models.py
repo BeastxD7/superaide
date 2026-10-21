@@ -313,6 +313,40 @@ class OwnerModelPrice(Scoped, Base):
     )
 
 
+class LlmProvider(Scoped, Base):
+    """A model provider the owner connected for this Ava (ADR 0007). Its key is in the vault
+    (integration_secret, provider "llm:<preset>"), never here."""
+
+    __tablename__ = "llm_provider"
+    __table_args__ = (UniqueConstraint("agent_id", "preset", name="uq_llm_provider"),)
+
+    preset: Mapped[str] = mapped_column(
+        String(20)
+    )  # openai | azure | openrouter | xai | gemini | ollama | vllm | custom
+    base_url: Mapped[str] = mapped_column(String(300), default="")
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    meta: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)  # e.g. models seen at the last check
+    set_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user_account.id"), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
+    )
+
+
+class ModelRole(Scoped, Base):
+    """Which provider and model this Ava uses for a kind of work: chat, triage or deep."""
+
+    __tablename__ = "model_role"
+    __table_args__ = (UniqueConstraint("agent_id", "role", name="uq_model_role"),)
+
+    role: Mapped[str] = mapped_column(String(10))  # chat | triage | deep
+    provider: Mapped[str] = mapped_column(String(20))  # anthropic, or an llm_provider preset
+    model: Mapped[str] = mapped_column(String(120))
+    set_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user_account.id"), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
+    )
+
+
 # --- User accounts and sessions ----------------------------------------------------
 
 

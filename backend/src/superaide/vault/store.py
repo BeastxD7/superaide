@@ -83,10 +83,13 @@ def stored(session: Session) -> dict[tuple[str, str], IntegrationSecret]:
 
 def version(session: Session) -> str:
     """Changes whenever a connection is added, changed or removed."""
-    latest, count = session.execute(
-        select(func.max(IntegrationSecret.updated_at), func.count(IntegrationSecret.id))
-    ).one()
-    return f"{latest}:{count}"
+    from superaide.db.models import LlmProvider, ModelRole, OwnerModelPrice
+
+    parts = []
+    for table in (IntegrationSecret, LlmProvider, ModelRole, OwnerModelPrice):
+        latest, count = session.execute(select(func.max(table.updated_at), func.count(table.id))).one()
+        parts.append(f"{latest}:{count}")
+    return "|".join(parts)
 
 
 def runtime_settings(base: Settings | None = None) -> Settings:
@@ -98,6 +101,9 @@ def runtime_settings(base: Settings | None = None) -> Settings:
             field = FIELDS.get((provider, name))
             if field:
                 updates[field] = decrypt(row.ciphertext, slot(provider, name))
+        from superaide.brain.providers.config import overlay
+
+        updates.update(overlay(s))  # model providers and roles chosen in the app
     return base.model_copy(update=updates) if updates else base
 
 

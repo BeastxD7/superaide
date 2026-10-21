@@ -12,9 +12,7 @@ Other providers get their tables with their adapters, each with a checked date a
 
 from __future__ import annotations
 
-import ipaddress
 import math
-import socket
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -100,13 +98,14 @@ def is_local_url(base_url: str | None) -> bool:
     """True only if every address the host resolves to is loopback or private (this machine or the LAN)."""
     if not base_url:
         return False
+    from superaide.security.urls import UnsafeURL, resolve
+
     host = urlsplit(base_url).hostname
     if not host:
         return False
     try:
-        addresses = {str(info[4][0]) for info in socket.getaddrinfo(host, None)}
-        ips = [ipaddress.ip_address(a.split("%", 1)[0]) for a in addresses]
-    except OSError, UnicodeError, ValueError:
+        ips = resolve(host)
+    except UnsafeURL, ValueError:
         return False
     return bool(ips) and all((ip.is_loopback or ip.is_private) and not ip.is_link_local for ip in ips)
 
