@@ -75,7 +75,7 @@ GUIDES = {
 
 
 def slack_manifest_url() -> str:
-    manifest = Path(__file__).resolve().parents[3] / "slack-manifest.yml"
+    manifest = Path(__file__).resolve().parents[1] / "channels" / "slack_manifest.yml"
     if not manifest.exists():
         return "https://api.slack.com/apps?new_app=1"
     return "https://api.slack.com/apps?new_app=1&manifest_yaml=" + quote(manifest.read_text())

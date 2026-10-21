@@ -12,7 +12,7 @@ services:
       - "127.0.0.1:5432:5432"  # localhost only
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+      - ./deploy/postgres/initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U agent -d agent"]
       interval: 5s

@@ -1,14 +1,14 @@
 #!/bin/bash
-# Run superaide on your Mac with one command.
+# Run Superaide on your Mac with one command (for developers: see the Makefile).
 #
 #   bash ~/Desktop/superaide/start.command               start (Ctrl+C stops everything)
 #   bash ~/Desktop/superaide/start.command --reset       wipe the data first
 #   bash ~/Desktop/superaide/start.command --no-docker   embedded Postgres instead of Docker
 #
 # Three parts, the usual way:
-#   database  Postgres 17 in Docker (or an embedded Postgres without Docker)
-#   backend   FastAPI, a JSON API only, on http://127.0.0.1:8000  (docs at /docs)
-#   frontend  React + Vite on http://localhost:3000, calling the API with Axios
+#   database  Postgres 17 + pgvector in Docker (or an embedded Postgres without Docker)
+#   backend/  FastAPI, a JSON API only, on http://127.0.0.1:8000  (docs at /docs)
+#   frontend/ React + Vite on http://localhost:3000, calling the API with Axios
 set -euo pipefail
 cd "$(dirname "$0")"
 ROOT="$(pwd)"
@@ -26,8 +26,8 @@ for arg in "$@"; do
   esac
 done
 
-# 0. Stop a copy of the agent that is already running (an older version, say).
-OURS="superaide (serve|telegram-poll|slack-socket)|$ROOT/web/node_modules/.bin/vite|http.server $WEB_PORT"
+# 0. Stop a copy that is already running (this one, or the older agi-agent folder).
+OURS="(superaide|agi-agent) (serve|telegram-poll|slack-socket)|node_modules/.bin/vite --port $WEB_PORT|http.server $WEB_PORT"
 if pgrep -f "$OURS" >/dev/null 2>&1; then
   bold "Stopping the copy of the agent that was already running…"
   pkill -f "$OURS" 2>/dev/null || true
@@ -55,18 +55,19 @@ if ! command -v uv >/dev/null 2>&1; then
   fi
 fi
 
-# 2. .env with an admin token
+# 2. backend/.env with an admin token
+ENV_FILE="$ROOT/backend/.env"
 new_token() { openssl rand -hex 24 2>/dev/null || date +%s%N | shasum | cut -c1-48; }
-if [ ! -f .env ]; then
-  bold "Creating .env (offline model, no API spend)…"
-  cp .env.example .env
+if [ ! -f "$ENV_FILE" ]; then
+  bold "Creating backend/.env (offline model, no API spend)…"
+  cp "$ROOT/backend/.env.example" "$ENV_FILE"
 fi
-if grep -q '^ADMIN_TOKEN=$' .env; then
+if grep -q '^ADMIN_TOKEN=$' "$ENV_FILE"; then
   TOKEN="$(new_token)"
   tmp="$(mktemp)"
-  sed -e "s|^ADMIN_TOKEN=\$|ADMIN_TOKEN=$TOKEN|" -e "s|^SLACK_TEAM_ID=\$|SLACK_TEAM_ID=T_DEMO|" .env > "$tmp" && mv "$tmp" .env
+  sed -e "s|^ADMIN_TOKEN=\$|ADMIN_TOKEN=$TOKEN|" -e "s|^SLACK_TEAM_ID=\$|SLACK_TEAM_ID=T_DEMO|" "$ENV_FILE" > "$tmp" && mv "$tmp" "$ENV_FILE"
 fi
-TOKEN="$(grep '^ADMIN_TOKEN=' .env | head -1 | cut -d= -f2-)"
+TOKEN="$(grep '^ADMIN_TOKEN=' "$ENV_FILE" | head -1 | cut -d= -f2-)"
 export FRONTEND_ORIGIN="http://localhost:$WEB_PORT"
 
 # 3. Database: Postgres in Docker. Without Docker Desktop, an embedded Postgres.
@@ -93,12 +94,12 @@ if [ "$USE_DOCKER" = 1 ]; then
     fi
   fi
   bold "Starting Postgres in Docker…"
-  docker compose up -d --wait
+  docker compose up -d --wait db
   export DATABASE_URL="postgresql+psycopg://agent:agent@localhost:5432/agent"
 else
   bold "Starting the built-in Postgres (first run downloads it)…"
   mkdir -p "$ROOT/.local-db"
-  URI="$(uv run --quiet --no-project --python 3.12 --with pgserver python scripts/local_db.py "$ROOT/.local-db/pgdata" 2>/dev/null | tail -1)"
+  URI="$(uv run --quiet --no-project --python 3.12 --with pgserver python backend/scripts/local_db.py "$ROOT/.local-db/pgdata" 2>/dev/null | tail -1)"
   case "$URI" in
     postgresql://*) export DATABASE_URL="postgresql+psycopg://${URI#postgresql://}" ;;
     *) echo "Could not start the built-in database. Install Docker Desktop and run this again."; exit 1 ;;
@@ -107,48 +108,54 @@ fi
 
 # 4. Backend dependencies and tables
 bold "Installing backend dependencies (first run takes a minute)…"
+cd "$ROOT/backend"
 uv sync --quiet
 if [ "$RESET" = 1 ]; then
   uv run --quiet superaide reset-db --yes
 fi
 uv run --quiet alembic upgrade head
+cd "$ROOT"
 
 PIDS=()
 cleanup() { for p in "${PIDS[@]:-}"; do [ -n "$p" ] && kill "$p" 2>/dev/null || true; done; }
 trap cleanup EXIT INT TERM
 
 # 5. Backend API on :8000 (it also runs the Telegram and Slack listeners)
-if grep -Eq '^ANTHROPIC_API_KEY=.+' .env && ! grep -Eq '^FAKE_LLM=true' .env; then
-  bold "Brain: real Claude replies (spend cap $(grep '^MAX_SPEND_USD=' .env | cut -d= -f2) US dollars)."
+if grep -Eq '^ANTHROPIC_API_KEY=.+' "$ENV_FILE" && ! grep -Eq '^FAKE_LLM=true' "$ENV_FILE"; then
+  bold "Brain: real Claude replies (spend cap $(grep '^MAX_SPEND_USD=' "$ENV_FILE" | cut -d= -f2) US dollars)."
 else
-  bold "Brain: offline mode. Add ANTHROPIC_API_KEY to .env for real replies."
+  bold "Brain: offline until you connect Claude in the app (Connections)."
 fi
 bold "Starting the backend API on http://127.0.0.1:$API_PORT …"
-uv run --quiet superaide serve --port "$API_PORT" &
+(cd "$ROOT/backend" && exec uv run --quiet superaide serve --port "$API_PORT") &
 PIDS+=($!)
 # Telegram and Slack listeners run inside the API, for tokens in .env or connected in the app.
-if grep -Eq '^TELEGRAM_BOT_TOKEN=.+' .env; then bold "Telegram: connected from .env"; fi
-if grep -Eq '^SLACK_BOT_TOKEN=.+' .env; then bold "Slack: connected from .env"; fi
+if grep -Eq '^TELEGRAM_BOT_TOKEN=.+' "$ENV_FILE"; then bold "Telegram: connected from backend/.env"; fi
+if grep -Eq '^SLACK_BOT_TOKEN=.+' "$ENV_FILE"; then bold "Slack: connected from backend/.env"; fi
 
-# 6. Frontend on :3000. Vite dev server when Node 20+ is installed; otherwise the
-#    prebuilt files in web/dist from a plain static server. Either way it calls the API.
+# 6. Frontend on :3000. Vite dev server when Node 20+ is installed; otherwise a
+#    prebuilt frontend/dist from a plain static server. Either way it calls the API.
 NODE_OK=0
 if command -v npm >/dev/null 2>&1 && node -e 'process.exit(+process.versions.node.split(".")[0] >= 20 ? 0 : 1)' 2>/dev/null; then
   NODE_OK=1
 fi
 if [ "$NODE_OK" = 1 ]; then
-  if [ ! -d web/node_modules ] || [ web/package-lock.json -nt web/node_modules/.package-lock.json ]; then
+  if [ ! -d frontend/node_modules ] || [ frontend/package-lock.json -nt frontend/node_modules/.package-lock.json ]; then
     bold "Installing frontend dependencies (first run takes a minute)…"
-    (cd web && npm install --no-audit --no-fund --loglevel=error)
+    (cd frontend && npm ci --no-audit --no-fund --loglevel=error)
   fi
   bold "Starting the frontend (Vite) on http://localhost:$WEB_PORT …"
-  (cd web && VITE_API_URL="http://127.0.0.1:$API_PORT" exec "$ROOT/web/node_modules/.bin/vite" --port "$WEB_PORT" --strictPort --clearScreen false) &
+  (cd frontend && exec ./node_modules/.bin/vite --port "$WEB_PORT" --strictPort --clearScreen false) &
   PIDS+=($!)
-else
+elif [ -f frontend/dist/index.html ]; then
   bold "Node 20+ isn't installed, so serving the prebuilt frontend on http://localhost:$WEB_PORT …"
   echo "(Install Node with: brew install node, to get the live-reloading dev server.)"
-  uv run --quiet python -m http.server "$WEB_PORT" --bind 127.0.0.1 --directory web/dist >/dev/null 2>&1 &
+  (cd "$ROOT/backend" && exec uv run --quiet python -m http.server "$WEB_PORT" --bind 127.0.0.1 --directory "$ROOT/frontend/dist" >/dev/null 2>&1) &
   PIDS+=($!)
+else
+  bold "The frontend needs Node 20 or newer."
+  echo "Install it with: brew install node   (or from https://nodejs.org), then run this again."
+  exit 1
 fi
 
 # Wait for both, then open the app.
@@ -161,7 +168,7 @@ bold "Ready."
 echo "  App (frontend):    $APP_URL"
 echo "  API (backend):     http://127.0.0.1:$API_PORT   (interactive docs: http://127.0.0.1:$API_PORT/docs)"
 echo "  Operator console:  http://localhost:$WEB_PORT/#/console?token=$TOKEN"
-echo "  Forgot your password? Run: uv run superaide reset-password --email you@example.com"
+echo "  Forgot your password? Run: (cd backend && uv run superaide reset-password --email you@example.com)"
 echo "  Hire from scratch? Press Ctrl+C, then run: bash start.command --reset"
 echo "Keep this window open. Ctrl+C stops everything."
 open "$APP_URL" 2>/dev/null || xdg-open "$APP_URL" 2>/dev/null || true

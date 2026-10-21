@@ -12,7 +12,7 @@ from superaide.context.audience import Audience
 from superaide.db.models import Event, MemoryItem
 from superaide.identity.resolver import Sender
 
-CHARTER_PATH = Path(__file__).resolve().parents[3] / "skills" / "charter.md"
+CHARTER_PATH = Path(__file__).with_name("charter.md")
 
 ActionKind = Literal["none", "publish_post", "message_someone_else", "grant_access", "delete_memory", "change_identity"]
 

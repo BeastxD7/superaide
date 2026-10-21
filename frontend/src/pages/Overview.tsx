@@ -31,7 +31,7 @@ export function Overview({ data }: { data: OverviewData }) {
       name: 'Slack',
       ok: data.channels.slack,
       on: 'Connected over Socket Mode.',
-      off: 'Not connected (optional). Create the app from slack-manifest.yml and add its tokens to .env.',
+      off: 'Not connected (optional). Connect Slack in the app under Connections.',
     },
   ]
 
