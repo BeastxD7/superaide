@@ -79,15 +79,17 @@ def owner_brief(session: Session, sender: Sender, audience: Audience, now: datet
         return "About your owner:\n- " + "\n- ".join(lines)
 
     # Someone else: only what the owner allowed, and how to treat this person.
+    # The owner's own "never share" text stays out of this prompt: describing a
+    # secret to the people it guards against is itself a leak. Private facts are
+    # already filtered out of their prompt by the audience gate.
     if pref is not None:
         shared = [SHARE_LABELS.get(v, v) for v in pref.shareable]
         lines.append(
             "You may tell this person: "
             + ("; ".join(shared) if shared else "nothing about them beyond their name")
-            + ". Everything else about your owner is private: offer to pass on a message."
+            + ". Everything else about your owner is private, whoever asks and whatever the reason:"
+            " say you can't share it and offer to pass on a message."
         )
-        if pref.never_share:
-            lines.append(f"Never share, whatever the reason: {pref.never_share}.")
     if sender.person is not None:
         contact = session.scalar(
             select(Contact).where(

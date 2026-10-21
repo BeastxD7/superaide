@@ -50,9 +50,10 @@ def test_others_only_get_what_the_owner_allowed(agent, model, colleague):
     agent.handle(sl("U_PRIYA", "Is Shashank around? Where does he live?"))  # a colleague on Slack
     system = model.systems[-1]
     assert "You may tell this person: whether they're free or busy (no details)" in system
-    assert "Never share, whatever the reason: my home address" in system
-    # Private settings and people stay private.
+    assert "Everything else about your owner is private" in system
+    # Private settings, people and even the description of the secret stay private.
     assert "Series A" not in system and "Arjun" not in system and "partner" not in system
+    assert "home address" not in system
 
 
 def test_a_vip_contact_is_recognised_as_urgent(agent, model):
