@@ -201,3 +201,18 @@ export type Reminder = {
   delivered_at: string | null
   source: 'chat' | 'dashboard'
 }
+
+export type SkillCard = {
+  id: string
+  title: string
+  summary: string
+  publisher: string
+  tier: 'official' | 'community'
+  version: string
+  installed: boolean
+  removable: boolean
+  permissions: { id: string; label: string }[]
+  needs_consent: boolean
+  tools: string[]
+  cost: string | null
+}

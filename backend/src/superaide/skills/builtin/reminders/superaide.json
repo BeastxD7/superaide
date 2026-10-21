@@ -1,0 +1,19 @@
+{
+  "$schema": "../../manifest.schema.json",
+  "id": "superaide/reminders",
+  "version": "1.0.0",
+  "publisher": "Superaide",
+  "tier": "official",
+  "title": "Reminders & follow-ups",
+  "summary": "\"Remind me to call Priya on Friday at 5\" — Ava brings it back on time, in the app and on Telegram.",
+  "tools": [
+    {
+      "name": "create_reminder",
+      "description": "Set a reminder or follow-up for the owner. Ava will bring it back at that time.",
+      "inputSchema": {"type": "object", "properties": {"task": {"type": "string", "description": "What to remind them about, e.g. 'Call Priya'"}, "when": {"type": "string", "description": "When, in words: 'tomorrow at 5pm', 'in 2 hours', 'Friday'"}}, "required": ["task", "when"], "additionalProperties": false},
+      "effect": "write_own"
+    }
+  ],
+  "default_installed": true,
+  "removable": true
+}

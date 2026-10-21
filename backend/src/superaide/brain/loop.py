@@ -29,12 +29,14 @@ from superaide.intentions import service as intentions
 from superaide.intentions.when import clean_task, find_moment, zone
 from superaide.policy.actions import RULES as ACTION_RULES
 from superaide.policy.actions import decide
+from superaide.skills import registry
+from superaide.skills.manifest import Skill
+from superaide.skills.registry import WEB_SEARCHES_PER_STEP
 
 log = logging.getLogger(__name__)
 
 MAX_STEPS = 6
 MAX_TOKENS = 1200
-WEB_SEARCHES_PER_STEP = 3
 
 OWNER_RULES = """How you work with your owner:
 - Use the recall tool before answering anything about the owner, their people, plans, messages or documents. Answer from what it returns and cite it. If nothing supports an answer, say you don't have a source for that; never guess.
@@ -45,32 +47,6 @@ OWNER_RULES = """How you work with your owner:
 - Be brief. Plain sentences; light Markdown (bold, short lists) only when it helps.
 - Use metric units (°C, km) and the owner's time zone unless they ask otherwise."""
 
-RECALL_TOOL = {
-    "name": "recall",
-    "description": (
-        "Search what you know about the owner: notes in your notebook and past messages across "
-        "channels. Returns sources you can cite. Use specific keywords (names, topics, places)."
-    ),
-    "input_schema": {
-        "type": "object",
-        "properties": {"query": {"type": "string", "description": "Keywords to search for"}},
-        "required": ["query"],
-        "additionalProperties": False,
-    },
-}
-REMINDER_TOOL = {
-    "name": "create_reminder",
-    "description": "Set a reminder or follow-up for the owner. Ava will bring it back at that time.",
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "task": {"type": "string", "description": "What to remind them about, e.g. 'Call Priya'"},
-            "when": {"type": "string", "description": "When, in words: 'tomorrow at 5pm', 'in 2 hours', 'Friday'"},
-        },
-        "required": ["task", "when"],
-        "additionalProperties": False,
-    },
-}
 ACTION_TOOL = {
     "name": "propose_action",
     "description": (
@@ -88,9 +64,6 @@ ACTION_TOOL = {
         "additionalProperties": False,
     },
 }
-# The basic server tool versions work on every current model, Haiku included.
-WEB_SEARCH = {"type": "web_search_20250305", "name": "web_search", "max_uses": WEB_SEARCHES_PER_STEP}
-WEB_FETCH = {"type": "web_fetch_20250910", "name": "web_fetch", "max_uses": 3, "citations": {"enabled": True}}
 
 
 @dataclass
@@ -209,8 +182,14 @@ class OwnerTurn:
         )
         self.notes: list[str] = []
         self.tainted = False
+        self._skills: list[Skill] | None = None
 
     # --- prompt ---------------------------------------------------------------
+
+    def skills(self) -> list[Skill]:
+        if self._skills is None:
+            self._skills = registry.active(self.s)
+        return self._skills
 
     def system(self) -> list[SystemBlock]:
         assert self.sender.person is not None
@@ -220,16 +199,15 @@ class OwnerTurn:
             f"You are talking to your owner, {self.sender.name}, privately. "
             f"It is {now:%A %d %B %Y, %H:%M} in their time zone ({tz})."
         )
+        skills = registry.instructions_for(self.skills())
         return [
             SystemBlock(load_charter(self.agent_name) + "\n\n" + OWNER_RULES, cache=True),
-            SystemBlock(who + ("\n\n" + self.brief if self.brief else "")),
+            SystemBlock(who + ("\n\n" + self.brief if self.brief else "") + ("\n\n" + skills if skills else "")),
         ]
 
     def tools(self) -> list[dict[str, Any]]:
-        tools: list[dict[str, Any]] = [RECALL_TOOL, REMINDER_TOOL, ACTION_TOOL]
-        if self.web:
-            tools += [WEB_SEARCH, WEB_FETCH]
-        return tools
+        """The installed skills' tools, plus propose_action, which every turn has."""
+        return [*registry.tools_for(self.skills(), web_allowed=self.web), ACTION_TOOL]
 
     # --- tools ----------------------------------------------------------------
 
@@ -291,7 +269,7 @@ class OwnerTurn:
                 tools=tools,
                 max_tokens=MAX_TOKENS,
                 effort="low" if step else None,
-                max_web_searches=WEB_SEARCHES_PER_STEP if self.web else 0,
+                max_web_searches=WEB_SEARCHES_PER_STEP if any(t.get("name") == "web_search" for t in tools) else 0,
             )
             if any(b.get("type") in {"web_search_tool_result", "web_fetch_tool_result"} for b in last.content):
                 self.tainted = True

@@ -482,3 +482,18 @@ class Intention(Scoped, Base):
     delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     delivered_via: Mapped[list[str]] = mapped_column(ARRAY(String(20)), default=list)
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class InstalledSkill(Scoped, Base):
+    """A skill the owner installed, with the permissions they agreed to. A newer version that
+    asks for more must be agreed to again; until then the old grant is what's enforced."""
+
+    __tablename__ = "installed_skill"
+    __table_args__ = (UniqueConstraint("agent_id", "skill_id", name="uq_installed_skill"),)
+
+    skill_id: Mapped[str] = mapped_column(String(120))
+    version: Mapped[str] = mapped_column(String(40))
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    granted: Mapped[list[str]] = mapped_column(ARRAY(String(30)), default=list)
+    settings: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

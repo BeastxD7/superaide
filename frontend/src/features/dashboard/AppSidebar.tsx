@@ -1,6 +1,6 @@
 'use client'
 
-import { AlarmClock, BookOpen, ChevronsUpDown, House, LogOut, MessageCircle, Plug, Settings, Store, Users } from 'lucide-react'
+import { AlarmClock, BookOpen, ChevronsUpDown, House, LogOut, MessageCircle, Plug, Puzzle, Settings, Store, Users } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { BrandMark, PRODUCT } from '@/components/site'
@@ -47,6 +47,7 @@ export const NAV: { group: string; items: NavItem[] }[] = [
   {
     group: 'Setup',
     items: [
+      { href: '/dashboard/skills', label: 'Skills', icon: Puzzle },
       { href: '/dashboard/connections', label: 'Connections', icon: Plug },
       { href: '/dashboard/settings', label: 'Settings', icon: Settings },
     ],

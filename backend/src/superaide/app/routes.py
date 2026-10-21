@@ -45,6 +45,7 @@ from superaide.knowledge.ingest import ingest
 from superaide.knowledge.store import contacts_of, preferences_for, retire_document
 from superaide.policy.actions import ApprovalError, resolve
 from superaide.policy.killswitch import is_frozen
+from superaide.skills import registry as skill_registry
 
 
 @lru_cache
@@ -90,6 +91,11 @@ class ReminderBody(BaseModel):
     text: str = Field(min_length=1, max_length=500)
     # Either an exact moment, or a time in the text ("Call Priya tomorrow at 5").
     due_at: datetime | None = None
+
+
+class InstallBody(BaseModel):
+    # The permissions the owner saw on the consent screen; must match what the skill needs.
+    accepted: list[str] = Field(default_factory=list, max_length=10)
 
 
 class SnoozeBody(BaseModel):
@@ -468,6 +474,46 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
 
             audit(s, "app", "memory_forgotten", memory_id=m.id, person_id=person_id)
         return {"status": "forgotten"}
+
+    @router.get(
+        "/skills",
+        tags=["Owner: skills"],
+        summary="Skills",
+        description="Every skill Ava can have, whether it's installed, and the permissions each one needs.",
+    )
+    def skills(person_id: uuid.UUID = Depends(owner_person_id)) -> list[dict[str, Any]]:
+        with session_scope() as s:
+            return skill_registry.view(s)
+
+    @router.post(
+        "/skills/{publisher}/{name}/install",
+        tags=["Owner: skills"],
+        summary="Install a skill",
+        description="`accepted` must list exactly the permissions the skill needs (what the consent screen showed).",
+    )
+    def install_skill(
+        publisher: str, name: str, body: InstallBody, person_id: uuid.UUID = Depends(owner_person_id)
+    ) -> dict[str, Any]:
+        with session_scope() as s:
+            try:
+                skill_registry.install(s, f"{publisher}/{name}", body.accepted)
+            except skill_registry.SkillUnavailable as exc:
+                raise HTTPException(exc.status, str(exc)) from exc
+            return next(v for v in skill_registry.view(s) if v["id"] == f"{publisher}/{name}")
+
+    @router.post(
+        "/skills/{publisher}/{name}/remove",
+        tags=["Owner: skills"],
+        summary="Remove a skill",
+        description="Ava stops using it straight away. Built-in essentials can't be removed.",
+    )
+    def remove_skill(publisher: str, name: str, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        with session_scope() as s:
+            try:
+                skill_registry.remove(s, f"{publisher}/{name}")
+            except skill_registry.SkillUnavailable as exc:
+                raise HTTPException(exc.status, str(exc)) from exc
+            return next(v for v in skill_registry.view(s) if v["id"] == f"{publisher}/{name}")
 
     def _reminder_view(i: Intention, tz: str) -> dict[str, Any]:
         return {

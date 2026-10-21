@@ -36,6 +36,10 @@ TAGS = [
         "name": "Owner: chat & notebook",
         "description": "Talking to Ava, and everything Ava knows about the owner, with where it came from.",
     },
+    {
+        "name": "Owner: skills",
+        "description": "What Ava can do: install or remove skills, with the permissions each needs.",
+    },
     {"name": "Owner: reminders", "description": "Reminders and follow-ups Ava brings back at the right time."},
     {"name": "Owner: approvals", "description": "Actions Ava was asked to take that wait for the owner's yes or no."},
     {"name": "Owner: people & rules", "description": "Who matters to the owner and the standing rules Ava follows."},

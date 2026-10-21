@@ -1,0 +1,17 @@
+{
+  "$schema": "../../manifest.schema.json",
+  "id": "superaide/web-research",
+  "version": "1.0.0",
+  "publisher": "Superaide",
+  "tier": "official",
+  "title": "Web research",
+  "summary": "Ava searches and reads the web for you and cites every page she uses. About US$0.01 a search.",
+  "tools": [
+    {"name": "web_search", "description": "Anthropic web search (server tool).", "server_tool": "web_search_20250305", "effect": "read_public"},
+    {"name": "web_fetch", "description": "Anthropic web fetch (server tool).", "server_tool": "web_fetch_20250910", "effect": "read_public"}
+  ],
+  "network": ["*"],
+  "budget": {"bucket": "research", "per_use_usd": 0.01},
+  "default_installed": false,
+  "removable": true
+}

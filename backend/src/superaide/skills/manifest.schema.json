@@ -1,0 +1,254 @@
+{
+  "$defs": {
+    "Budget": {
+      "additionalProperties": false,
+      "properties": {
+        "bucket": {
+          "default": "other",
+          "enum": [
+            "chat",
+            "memory",
+            "research",
+            "other"
+          ],
+          "title": "Bucket",
+          "type": "string"
+        },
+        "per_use_usd": {
+          "default": 0,
+          "maximum": 10,
+          "minimum": 0,
+          "title": "Per Use Usd",
+          "type": "number"
+        }
+      },
+      "title": "Budget",
+      "type": "object"
+    },
+    "Connector": {
+      "additionalProperties": false,
+      "properties": {
+        "provider": {
+          "pattern": "^[a-z0-9_-]{1,40}$",
+          "title": "Provider",
+          "type": "string"
+        },
+        "scopes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Scopes",
+          "type": "array"
+        },
+        "mcp_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mcp Url"
+        }
+      },
+      "required": [
+        "provider"
+      ],
+      "title": "Connector",
+      "type": "object"
+    },
+    "Tool": {
+      "additionalProperties": false,
+      "description": "MCP's tool shape (name, description, inputSchema) plus the effect class Superaide enforces.",
+      "properties": {
+        "name": {
+          "pattern": "^[a-zA-Z0-9_-]{1,64}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "description": {
+          "maxLength": 1024,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "inputSchema": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Inputschema"
+        },
+        "server_tool": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Server Tool"
+        },
+        "mcp_server": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mcp Server"
+        },
+        "effect": {
+          "enum": [
+            "read_public",
+            "read_private",
+            "write_own",
+            "write_external",
+            "send",
+            "spend"
+          ],
+          "title": "Effect",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "description",
+        "effect"
+      ],
+      "title": "Tool",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "`superaide.json`: only what SKILL.md and MCP don't cover. Field names follow MCP's\nserver.json and Claude's marketplace.json where they overlap.",
+  "properties": {
+    "$schema": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "$Schema"
+    },
+    "id": {
+      "pattern": "^[a-z0-9-]+/[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "title": "Id",
+      "type": "string"
+    },
+    "version": {
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?$",
+      "title": "Version",
+      "type": "string"
+    },
+    "publisher": {
+      "maxLength": 80,
+      "minLength": 1,
+      "title": "Publisher",
+      "type": "string"
+    },
+    "tier": {
+      "enum": [
+        "official",
+        "community"
+      ],
+      "title": "Tier",
+      "type": "string"
+    },
+    "title": {
+      "maxLength": 80,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "summary": {
+      "maxLength": 300,
+      "minLength": 1,
+      "title": "Summary",
+      "type": "string"
+    },
+    "tools": {
+      "items": {
+        "$ref": "#/$defs/Tool"
+      },
+      "title": "Tools",
+      "type": "array"
+    },
+    "connectors": {
+      "items": {
+        "$ref": "#/$defs/Connector"
+      },
+      "title": "Connectors",
+      "type": "array"
+    },
+    "network": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Network",
+      "type": "array"
+    },
+    "budget": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Budget"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "settings": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Settings"
+    },
+    "default_installed": {
+      "default": false,
+      "title": "Default Installed",
+      "type": "boolean"
+    },
+    "removable": {
+      "default": true,
+      "title": "Removable",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "id",
+    "version",
+    "publisher",
+    "tier",
+    "title",
+    "summary"
+  ],
+  "title": "Superaide skill manifest (superaide.json)",
+  "type": "object",
+  "$id": "https://superaide.dev/schemas/superaide.json"
+}

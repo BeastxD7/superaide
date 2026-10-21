@@ -230,10 +230,13 @@ def test_side_effects_become_approvals_with_the_reason_and_risky_ones_are_refuse
     assert "action:message_someone_else:approval" in result.notes and "action:delete_memory:refused" in result.notes
 
 
-def test_web_tools_only_when_enabled_and_web_content_taints_the_turn(owner_client):
+def test_web_tools_only_with_the_skill_installed_and_web_content_taints_the_turn(owner_client):
+    from superaide.skills import registry
+
     with session_scope() as s:
-        off = Script("ok")
-        turn_for(s, off).run([{"role": "user", "content": "x"}])
+        t = turn_for(s, Script("ok"), web=True)
+        assert "web_search" not in [tool.get("name") for tool in t.tools()]  # not installed yet
+        registry.install(s, "superaide/web-research", ["read_public"])
         on = Script(
             {
                 "content": [
@@ -246,6 +249,8 @@ def test_web_tools_only_when_enabled_and_web_content_taints_the_turn(owner_clien
         )
         t = turn_for(s, on, web=True)
         result = t.run([{"role": "user", "content": "SFO delays?"}])
+        offline = turn_for(s, Script("ok"), web=False)
+        assert "web_search" not in [tool.get("name") for tool in offline.tools()]  # no real model, no web
     names = [tool.get("name") for tool in t.tools()]
     assert "web_search" in names and "web_fetch" in names
     assert result.tainted is True

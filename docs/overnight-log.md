@@ -12,7 +12,7 @@ backend tests, lint, types, the frontend checks and the full browser suite pass.
 | 5 | Tool loop + web research with sources | done | f48acfc |
 | 6 | Citations on every answer | done (verifier/abstain check still to do) | f48acfc |
 | 7 | Keyword recall over the notebook (instead of newest 30) | done | f48acfc |
-| 8 | Skills framework skeleton (manifest, consent, Skills page; Calendar/Gmail connectors on mocks) | in progress | |
+| 8 | Skills framework (protocol ADR 0006, manifest + JSON Schema validator, installed skills, consent, Skills page) | done (Calendar/Gmail connectors next) | see git log |
 
 ## Needs Shashank in the morning
 - Create a Google Cloud OAuth client for Calendar/Gmail (instructions will be here).
