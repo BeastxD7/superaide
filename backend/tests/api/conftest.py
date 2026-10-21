@@ -15,6 +15,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from superaide.main import create_app
+from tests.test_connections import master_key  # noqa: F401  (autouse: a test vault key, never a key file in ~)
 from tests.test_intro import brain  # noqa: F401  (the fake Claude that reads facts out of shared text)
 
 PASSWORD = "correct horse battery"
