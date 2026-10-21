@@ -8,3 +8,4 @@ Background research behind the design, with sources. Each report is a snapshot f
 | [Brain inspired developmental AI agents](Brain%20inspired%20developmental%20AI%20agents.md) | Growth stages and how agents learn over time |
 | [Brain inspired memory landscape and identity](Brain%20inspired%20memory%20landscape%20and%20identity.md) | Memory systems and recognising people across channels |
 | [Personal assistant memory architecture](Personal%20assistant%20memory%20architecture.md) | How Ava should store, retrieve and protect knowledge from many sources, triage and escalate, and what to build next |
+| [Humanistic assistant architecture review](Humanistic%20assistant%20architecture%20review.md) | What a real assistant can access and how trust grows; memory science as design rules; what the 2024–2026 memory systems really do (code teardown of OpenClaw, Mem0, Graphiti, Letta, A-MEM); gaps in Ava today; target architecture, six-phase plan and five humanistic ideas |
