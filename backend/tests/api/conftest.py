@@ -11,9 +11,11 @@ from typing import Any
 
 import httpx
 import pytest
+from argon2 import PasswordHasher
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from superaide.auth import passwords
 from superaide.main import create_app
 from tests.test_connections import master_key  # noqa: F401  (autouse: a test vault key, never a key file in ~)
 from tests.test_intro import brain  # noqa: F401  (the fake Claude that reads facts out of shared text)
@@ -24,6 +26,14 @@ OTHER = {"name": "Priya Tan", "email": "priya@example.com", "password": PASSWORD
 CSRF = {"X-Requested-With": "superaide"}
 
 Browser = Callable[..., TestClient]
+
+
+@pytest.fixture(autouse=True)
+def fast_password_hashing(monkeypatch) -> None:
+    """Argon2 at its real cost (64 MiB, 3 passes) makes hundreds of sign-ups slow. Same code, cheaper hash."""
+    fast = PasswordHasher(time_cost=1, memory_cost=1024, parallelism=1)
+    monkeypatch.setattr(passwords, "_hasher", fast)
+    monkeypatch.setattr(passwords, "_DUMMY_HASH", fast.hash("not-a-real-password-just-for-timing"))
 
 
 @pytest.fixture

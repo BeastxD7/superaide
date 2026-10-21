@@ -36,7 +36,7 @@ def clock(monkeypatch):
     [
         ("short1!", "at least 10"),
         ("x" * 9, "at least 10"),
-        ("Ab1!" * 65, "at most 256"),  # 260 characters
+        pytest.param("Ab1!" * 65, "at most 256", id="260-chars"),
         ("password123", "too easy"),
         ("PASSWORD123", "too easy"),  # case doesn't make a common password safe
         ("qwertyuiop", "too easy"),
@@ -87,9 +87,9 @@ def test_duplicate_email_in_any_case_or_spacing_is_refused(browser, variant):
 @pytest.mark.parametrize(
     ("field", "value"),
     [
-        ("name", "n" * 121),
-        ("email", "e" * 310 + "@example.com"),
-        ("password", "p" * 1025),
+        pytest.param("name", "n" * 121, id="name-121"),
+        pytest.param("email", "e" * 310 + "@example.com", id="email-322"),
+        pytest.param("password", "p" * 1025, id="password-1025"),
         ("name", ""),
         ("password", ""),
         ("name", 12345),
@@ -184,8 +184,8 @@ def test_login_works_with_the_email_in_any_case_or_spacing(browser):
         {"email": "", "password": PASSWORD},
         {"email": "shashank@example.com", "password": ""},
         {"email": 1, "password": 2},
-        {"email": "e" * 321, "password": PASSWORD},
-        {"email": "shashank@example.com", "password": "p" * 1025},
+        pytest.param({"email": "e" * 321, "password": PASSWORD}, id="email-321"),
+        pytest.param({"email": "shashank@example.com", "password": "p" * 1025}, id="password-1025"),
     ],
 )
 def test_malformed_login_requests_are_refused(browser, body):
@@ -257,7 +257,7 @@ def test_disabled_accounts_cannot_log_in_or_use_old_sessions(browser):
 
 @pytest.mark.parametrize(
     "cookie",
-    ["forged-token", "", "x" * 10_000, "' OR 1=1 --", "%00%ff", "ey.J9.Zm9v"],
+    ["forged-token", "", pytest.param("x" * 10_000, id="10k"), "' OR 1=1 --", "%00%ff", "ey.J9.Zm9v"],
 )
 def test_forged_or_garbage_session_cookies_are_refused(browser, cookie):
     signup(browser())

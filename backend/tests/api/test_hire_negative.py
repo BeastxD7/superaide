@@ -42,7 +42,9 @@ def test_malformed_hire_requests_are_refused(browser, body):
     assert _hires() == 0
 
 
-@pytest.mark.parametrize("agent", ["leo", "kai", "zed", "", "AVA", "ava ", "../ava", "x" * 5000])
+@pytest.mark.parametrize(
+    "agent", ["leo", "kai", "zed", "", "AVA", "ava ", "../ava", pytest.param("x" * 5000, id="5000-chars")]
+)
 def test_unknown_or_coming_soon_agents_cannot_be_hired(browser, agent):
     c = browser()
     signup(c)
