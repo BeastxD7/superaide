@@ -323,7 +323,7 @@ test.describe('console: impostor simulator', () => {
     const body = await (await simulated).text()
     await expect(page.getByText('Handled as a stranger: no memory, no model call, no actions.')).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Ava replied' })).toBeVisible()
-    await expect(page.getByText(/If we work together, I've sent a code to your usual channel\./)).toBeVisible()
+    await expect(page.getByText(/If we work together and you've already linked another channel, I'll send a code there/)).toBeVisible()
     // Nothing the owner told Ava reaches the impostor.
     for (const secret of ['PebbleRoad', 'Priya', 'Arjun', 'home address', 'Series A', 'quiet hours']) expect(body).not.toContain(secret)
     const result = JSON.parse(body) as { mode: string; outbox: { stable_key?: string; to_context?: string }[] }

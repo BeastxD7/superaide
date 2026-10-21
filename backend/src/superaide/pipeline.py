@@ -16,6 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from superaide.audit import audit
 from superaide.brain.budget import AgentFrozen, BudgetExceeded
 from superaide.brain.llm import LLM
+from superaide.brain.llm import OnEvent as Emit
 from superaide.brain.turn import TurnOutput, build_messages, build_system
 from superaide.channels.base import InboundMessage, Messenger
 from superaide.config import Settings
@@ -80,7 +81,8 @@ class Agent:
 
     # --- entry point -----------------------------------------------------------
 
-    def handle(self, msg: InboundMessage) -> HandleResult:
+    def handle(self, msg: InboundMessage, emit: Emit | None = None) -> HandleResult:
+        """`emit`, when given, receives live progress of an owner turn (the web chat streams it)."""
         if not msg.verified:
             with session_scope() as s:
                 audit(s, "pipeline", "dropped_unverified", provider=msg.provider)
@@ -146,7 +148,7 @@ class Agent:
                 return HandleResult("known", reply, ["remembered"])
 
             if ctx.kind == "dm" and self._is_owner(s, sender):
-                reply, notes, meta = self._owner_turn(s, sender, ctx, aud, msg, inbound)
+                reply, notes, meta = self._owner_turn(s, sender, ctx, aud, msg, inbound, emit)
                 self._reply(s, ctx, aud, reply, thread, meta=meta)
                 from superaide.knowledge import learn
 
@@ -250,12 +252,14 @@ class Agent:
                 )
             audit(s, "identity", "claim_seen", identity_id=sender.identity.id, claimed=claimed)
             return (
-                "Thanks. If we work together, I've sent a code to your usual channel. "
-                "Type it here to link this account. Until then I can't share anything or act for you."
+                "Thanks. If we work together and you've already linked another channel, I'll send a code there; "
+                "type it here to link this account. Setting me up for the first time? Open the link from "
+                "Connections in the app instead. Until then I can't share anything or act for you."
             )
         return (
             f"Hi, I'm {self.name}, an AI assistant. I don't recognise this account yet, so I can't help with "
-            "work here. If we work together, tell me your name and I'll check with you on your usual channel."
+            "work here. If we work together, open the link from Connections in the app, or tell me your name "
+            "and I'll check with you on a channel you've already linked."
         )
 
     # --- known people ----------------------------------------------------------
@@ -269,7 +273,7 @@ class Agent:
         return f"I've reached my US${self.settings.max_spend_usd:.0f} spending cap, so I'm paused."
 
     def _owner_turn(
-        self, s, sender: Sender, ctx: Context, aud: Audience, msg: InboundMessage, inbound
+        self, s, sender: Sender, ctx: Context, aud: Audience, msg: InboundMessage, inbound, emit: Emit | None = None
     ) -> tuple[str, list[str], dict]:
         """The owner's own conversation: a tool loop that can look things up, set reminders,
         search the web and ask for approval, with every answer citing its sources."""
@@ -287,6 +291,7 @@ class Agent:
             brief=owner_brief(s, sender, aud),
             inbound=inbound,
             web=uses_real_model(self.settings) and self.settings.web_tools_enabled,
+            emit=emit,
         )
         try:
             result = turn.run(build_messages(history, msg.text))
@@ -307,7 +312,11 @@ class Agent:
             tainted=result.tainted,
             notes=result.notes,
         )
-        meta = {"sources": sources} if sources else {}
+        meta: dict = {"sources": sources} if sources else {}
+        if result.activity:
+            meta["activity"] = result.activity[:20]
+        if result.reasoning:
+            meta["reasoning"] = result.reasoning
         return result.text, [*result.notes, f"steps:{result.steps}"], meta
 
     def _think(self, s, sender: Sender, ctx: Context, aud: Audience, msg: InboundMessage) -> tuple[str, list[str]]:

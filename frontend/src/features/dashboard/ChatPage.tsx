@@ -4,9 +4,9 @@ import { ArrowUp, BookOpen, Lightbulb, PenLine, Wand2 } from 'lucide-react'
 import Link from 'next/link'
 import { motion } from 'motion/react'
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
-import { Conversation, useReveal } from '@/components/Conversation'
+import { Conversation, useReveal, type LiveTurn } from '@/components/Conversation'
 import { Notice } from '@/components/site'
-import { AppError, call, type Message } from '@/lib/api'
+import { AppError, call, streamChat, type ChatEvent, type Message, type WorkStep } from '@/lib/api'
 import { useSession } from '@/lib/session-context'
 
 const QUICK = [
@@ -20,6 +20,7 @@ export function ChatPage() {
   const { me } = useSession()
   const [messages, setMessages] = useState<Message[]>([])
   const [pending, setPending] = useState(false)
+  const [live, setLive] = useState<LiveTurn | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -40,12 +41,12 @@ export function ChatPage() {
   }, [])
 
   // Reveal nothing until the history is in, so only new replies get the typing animation.
-  const { visible, typing } = useReveal(loaded ? messages : [], pending, false)
+  const { visible, typing } = useReveal(loaded ? messages : [], pending && !live, false, true)
 
   // Keep the newest message in view.
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
-  }, [visible.length, typing])
+  }, [visible.length, typing, live])
 
   useEffect(() => {
     const el = inputRef.current
@@ -63,19 +64,36 @@ export function ChatPage() {
     setError(null)
     setMessages((m) => [...m, { id: localId, from: 'you', text: t, at: new Date().toISOString() }])
     setPending(true)
+    setLive({ steps: [], reasoning: '', text: '', status: 'Thinking' })
+    let started = false // the server has the message, so it's saved whatever happens next
+    let mode = ''
+    let failure: string | null = null
     try {
-      const result = await call<{ mode: string; reply: string | null }>('/chat', { method: 'POST', json: { text: t } })
+      await streamChat(t, (e) => {
+        started = true
+        if (e.event === 'done') mode = e.data.mode
+        else if (e.event === 'error') failure = e.data.message
+        else setLive((now) => (now ? apply(now, e) : now))
+      })
       const fresh = await call<Message[]>('/messages')
       refreshed.current = true
       setMessages(fresh)
+      if (failure) setError(failure)
       // Paused: the message is kept, but say why nothing came back instead of leaving silence.
-      if (result.mode === 'frozen') setError(`${name} is paused, so she didn't reply. She'll see this once she's resumed.`)
+      else if (mode === 'frozen') setError(`${name} is paused, so she didn't reply. She'll see this once she's resumed.`)
     } catch (e) {
-      // Not sent: take the bubble back and give you your words to try again.
-      setMessages((m) => m.filter((x) => x.id !== localId))
-      setDraft((d) => d || t)
-      setError(e instanceof AppError ? e.message : String(e))
+      if (started) {
+        // The connection dropped mid-reply; the turn carries on server-side, so show what's saved.
+        call<Message[]>('/messages').then(setMessages).catch(() => {})
+        setError("Lost the live connection. The reply will appear here when it's ready; refresh to check.")
+      } else {
+        // Not sent: take the bubble back and give you your words to try again.
+        setMessages((m) => m.filter((x) => x.id !== localId))
+        setDraft((d) => d || t)
+        setError(e instanceof AppError ? e.message : String(e))
+      }
     } finally {
+      setLive(null)
       setPending(false)
     }
   }
@@ -134,7 +152,7 @@ export function ChatPage() {
               <Notice tone="warn">{name} is paused from the operator console. She won&apos;t reply until she&apos;s resumed.</Notice>
             </div>
           )}
-          <Conversation messages={visible} typing={typing} hue="indigo" agentName={name} />
+          <Conversation messages={visible} typing={typing} hue="indigo" agentName={name} live={live} />
         </div>
       </div>
 
@@ -171,4 +189,29 @@ export function ChatPage() {
       </div>
     </div>
   )
+}
+
+// Fold one streamed event into the reply being shown.
+function apply(turn: LiveTurn, e: ChatEvent): LiveTurn {
+  switch (e.event) {
+    case 'status':
+      return { ...turn, status: e.data.text }
+    case 'reasoning':
+      return { ...turn, reasoning: turn.reasoning + e.data.delta }
+    case 'text':
+      return { ...turn, text: turn.text + e.data.delta, status: 'Writing' }
+    case 'narration': {
+      // What she wrote before using a tool was her saying what she's doing, not the answer.
+      const say: WorkStep = { kind: 'say', label: e.data.text }
+      return { ...turn, text: '', steps: [...turn.steps, say] }
+    }
+    case 'tool': {
+      const step: WorkStep = { kind: 'tool', ...e.data }
+      const at = turn.steps.findIndex((s) => s.kind === 'tool' && s.id === e.data.id)
+      const steps = at >= 0 ? turn.steps.map((s, i) => (i === at ? step : s)) : [...turn.steps, step]
+      return { ...turn, steps, status: e.data.state === 'running' ? 'Working' : 'Thinking' }
+    }
+    default:
+      return turn
+  }
 }

@@ -104,7 +104,29 @@ export type Message = {
   at: string
   kind?: 'onboarding' | 'chat'
   sources?: SourceRef[]
+  activity?: WorkStep[]
+  reasoning?: string
 }
+
+// One thing Ava did while answering: a tool or skill call, or a line where she says what she's doing.
+export type WorkStep = {
+  kind: 'tool' | 'say'
+  id?: string
+  name?: string
+  state?: 'running' | 'done' | 'error'
+  label: string
+  detail?: string
+}
+
+// Events from POST /app/chat/stream (Server-Sent Events).
+export type ChatEvent =
+  | { event: 'status'; data: { text: string } }
+  | { event: 'reasoning'; data: { delta: string } }
+  | { event: 'text'; data: { delta: string } }
+  | { event: 'narration'; data: { text: string } }
+  | { event: 'tool'; data: { id: string; name: string; state: 'running' | 'done' | 'error'; label: string; detail: string } }
+  | { event: 'done'; data: { mode: string; reply: string | null; notes: string[] } }
+  | { event: 'error'; data: { message: string } }
 export type Memory = {
   id: string
   text: string
@@ -158,6 +180,49 @@ async function request<T>(url: string, init?: Init): Promise<T> {
 // The app's endpoints (/app/...).
 export function call<T>(path: string, init?: Init): Promise<T> {
   return request<T>(`/app${path}`, init)
+}
+
+// Send a chat message and get Ava's progress as it happens. Uses fetch, since axios can't
+// read a streamed body in the browser; the same-origin /api proxy passes the stream through.
+export async function streamChat(text: string, onEvent: (e: ChatEvent) => void, signal?: AbortSignal): Promise<void> {
+  let res: Response
+  try {
+    res = await fetch(`${API_URL}/app/chat/stream`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'superaide', Accept: 'text/event-stream' },
+      body: JSON.stringify({ text }),
+      signal,
+    })
+  } catch {
+    throw new ApiError(0, "Can't reach Superaide. Check your connection, or that start.command is still running.")
+  }
+  if (!res.ok || !res.body) {
+    const body = (await res.json().catch(() => null)) as { detail?: unknown } | null
+    const detail = body?.detail
+    const message =
+      typeof detail === 'string' ? detail : detail && typeof detail === 'object' && 'message' in detail ? String((detail as { message: unknown }).message) : `Request failed (${res.status})`
+    throw new ApiError(res.status, message)
+  }
+  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader()
+  let buffer = ''
+  for (;;) {
+    const { value, done } = await reader.read()
+    if (done) break
+    buffer += value
+    let cut: number
+    while ((cut = buffer.indexOf('\n\n')) >= 0) {
+      const chunk = buffer.slice(0, cut)
+      buffer = buffer.slice(cut + 2)
+      let event = 'message'
+      const data: string[] = []
+      for (const line of chunk.split('\n')) {
+        if (line.startsWith('event:')) event = line.slice(6).trim()
+        else if (line.startsWith('data:')) data.push(line.slice(5).trimStart())
+      }
+      if (data.length) onEvent({ event, data: JSON.parse(data.join('\n')) } as ChatEvent)
+    }
+  }
 }
 
 // Upload a file to an /app endpoint (multipart form).

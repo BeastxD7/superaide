@@ -72,15 +72,28 @@ def build_system(
     ]
 
 
+def tools_used(ev: Event) -> str:
+    """A record of the tools an earlier reply used, so the next turn knows what was actually done."""
+    done = [
+        f"{a.get('label', '')} -> {a.get('detail', '')}".strip(" ->")
+        for a in (ev.meta or {}).get("activity", [])
+        if a.get("kind") == "tool"
+    ]
+    return f"[Tools used for this reply: {'; '.join(done)}]" if done else ""
+
+
 def build_messages(history: list[Event], current_text: str) -> list[dict[str, Any]]:
     """Map the episodic log to alternating user/assistant turns."""
     turns: list[dict[str, Any]] = []
     for ev in history:
         role = "user" if ev.direction == "in" else "assistant"
+        content = ev.content
+        if role == "assistant" and (used := tools_used(ev)):
+            content = used + "\n" + content
         if turns and turns[-1]["role"] == role:
-            turns[-1]["content"] += "\n" + ev.content
+            turns[-1]["content"] += "\n" + content
         else:
-            turns.append({"role": role, "content": ev.content})
+            turns.append({"role": role, "content": content})
     while turns and turns[0]["role"] != "user":
         turns.pop(0)
     if turns and turns[-1]["role"] == "user" and turns[-1]["content"].endswith(current_text):

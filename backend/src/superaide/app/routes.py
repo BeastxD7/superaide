@@ -15,6 +15,7 @@ from functools import lru_cache
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -22,6 +23,7 @@ from sqlalchemy.exc import IntegrityError
 from superaide.app import accounts
 from superaide.app.catalog import catalog, find
 from superaide.app.onboarding import SHARE_LABELS, Onboarder, documents_view
+from superaide.app.stream import stream_turn
 from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header
 from superaide.config import get_settings
 from superaide.db.models import (
@@ -351,6 +353,8 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                     "at": e.created_at.isoformat(),
                     "kind": "onboarding" if (e.meta or {}).get("onboarding") else "chat",
                     "sources": (e.meta or {}).get("sources", []),
+                    "activity": (e.meta or {}).get("activity", []),
+                    "reasoning": (e.meta or {}).get("reasoning", ""),
                 }
                 for e in reversed(rows)
             ]
@@ -370,6 +374,31 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             msg = accounts.web_message(person, text)
         result = get_agent().handle(msg)
         return {"mode": result.mode, "reply": result.reply, "notes": result.notes}
+
+    @router.post(
+        "/chat/stream",
+        tags=["Owner: chat & notebook"],
+        summary="Send a message and watch Ava work",
+        description=(
+            "Like `/chat`, but answers with Server-Sent Events as Ava works: `status`, `reasoning` "
+            "(her summarised thinking), `narration` (what she says she's doing), `tool` (each skill or "
+            "tool call, `running` then `done` or `error`), `text` (the answer as it's written), and "
+            "finally `done` with the reply. The reply is saved even if the page is closed mid-way."
+        ),
+        response_class=StreamingResponse,
+    )
+    def chat_stream(body: ChatBody, person_id: uuid.UUID = Depends(owner_person_id)) -> StreamingResponse:
+        text = body.text.strip()
+        if not text:
+            raise HTTPException(422, "Type a message first.")
+        with session_scope() as s:
+            person = require(s, Person, person_id)
+            msg = accounts.web_message(person, text)
+        return StreamingResponse(
+            stream_turn(lambda emit: get_agent().handle(msg, emit=emit)),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
 
     @router.get(
         "/notebook",

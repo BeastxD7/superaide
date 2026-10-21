@@ -21,6 +21,10 @@ from superaide.brain.pricing import WEB_SEARCH_USD, UsageCounts, worst_case_cost
 T = TypeVar("T", bound=BaseModel)
 log = logging.getLogger(__name__)
 
+# Live progress from a streaming step: ("text", {"delta"}), ("thinking", {"delta"}), and
+# ("block", {"block"}) as each content block completes (server tool calls and results).
+OnEvent = Callable[[str, dict[str, Any]], None]
+
 
 @dataclass
 class SystemBlock:
@@ -61,6 +65,7 @@ class LLM(Protocol):
         max_tokens: int,
         effort: str | None = None,
         max_web_searches: int = 0,
+        on_event: OnEvent | None = None,
     ) -> StepResult: ...
 
     def complete(
@@ -95,6 +100,10 @@ def _system_param(system: list[SystemBlock]) -> list[dict[str, Any]]:
     return out
 
 
+def _block_dict(block: Any) -> dict[str, Any]:
+    return block.model_dump(exclude_none=True) if hasattr(block, "model_dump") else dict(block)
+
+
 class ClaudeLLM:
     def __init__(self, guard: BudgetGuard, api_key: str = "", client: Any = None) -> None:
         if client is None:
@@ -117,6 +126,7 @@ class ClaudeLLM:
         max_tokens: int,
         effort: str | None = None,
         max_web_searches: int = 0,
+        on_event: OnEvent | None = None,
     ) -> StepResult:
         prompt_chars = _prompt_chars(system, messages, None) + len(json.dumps(tools))
         worst = worst_case_cost(model, prompt_chars, max_tokens) + Decimal(max_web_searches) * WEB_SEARCH_USD
@@ -132,14 +142,31 @@ class ClaudeLLM:
         if effort:
             kwargs["output_config"] = {"effort": effort}
         try:
-            response = self.client.messages.create(**kwargs)
+            if on_event is None:
+                response = self.client.messages.create(**kwargs)
+            else:
+                # Streamed, with Claude's reasoning summarised so the owner can watch it work.
+                kwargs["thinking"] = {"type": "adaptive", "display": "summarized"}
+                response = self._stream(kwargs, on_event)
         except Exception as exc:
             self.guard.fail(entry_id, f"{type(exc).__name__}: {exc}")
             raise
         usage = UsageCounts.from_api(response.usage)
         cost = self.guard.settle(entry_id, model=model, usage=usage, request_id=getattr(response, "_request_id", None))
-        content = [b.model_dump(exclude_none=True) if hasattr(b, "model_dump") else dict(b) for b in response.content]
+        content = [_block_dict(b) for b in response.content]
         return StepResult(content=content, stop_reason=response.stop_reason or "end_turn", usage=usage, cost_usd=cost)
+
+    def _stream(self, kwargs: dict[str, Any], on_event: OnEvent) -> Any:
+        with self.client.messages.stream(**kwargs) as stream:
+            for event in stream:
+                if event.type == "content_block_delta":
+                    if event.delta.type == "text_delta":
+                        on_event("text", {"delta": event.delta.text})
+                    elif event.delta.type == "thinking_delta":
+                        on_event("thinking", {"delta": event.delta.thinking})
+                elif event.type == "content_block_stop":
+                    on_event("block", {"block": _block_dict(stream.current_message_snapshot.content[event.index])})
+            return stream.get_final_message()
 
     def complete(
         self,
@@ -224,6 +251,7 @@ class FakeLLM:
         max_tokens: int,
         effort: str | None = None,
         max_web_searches: int = 0,
+        on_event: OnEvent | None = None,
     ) -> StepResult:
         """The responder gets the purpose, system and messages; it may return text, a
         list of content blocks, a full {"content", "stop_reason"} dict, or a TurnOutput
@@ -238,6 +266,13 @@ class FakeLLM:
         else:
             text = out.reply if hasattr(out, "reply") else str(out)
             content, stop = [{"type": "text", "text": text}], "end_turn"
+        if on_event is not None:
+            for block in content:
+                if block.get("type") == "text":
+                    on_event("text", {"delta": block["text"]})
+                elif block.get("type") == "thinking":
+                    on_event("thinking", {"delta": block.get("thinking", "")})
+                on_event("block", {"block": block})
         return StepResult(content=content, stop_reason=stop, usage=UsageCounts())
 
     def complete(

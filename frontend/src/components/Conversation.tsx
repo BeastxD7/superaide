@@ -3,14 +3,19 @@
 import { Check, Copy } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
-import type { Hue, Message, SourceRef } from '@/lib/api'
+import type { Hue, Message, SourceRef, WorkStep } from '@/lib/api'
 import { Markdown } from '@/components/Markdown'
 import { Orb } from '@/components/Orb'
+import { WorkLog } from '@/components/WorkLog'
+
+// A reply being worked on right now (streamed from /app/chat/stream).
+export type LiveTurn = { steps: WorkStep[]; reasoning: string; text: string; status: string }
 
 // Ava's lines arrive one at a time, with a moment of "typing" before each, the
 // way a person introduces themselves. Your own messages appear at once.
 
-export function useReveal(messages: Message[], pending: boolean, animateAll: boolean) {
+// `instant`: replies were already watched arriving (streamed), so show them without the pause.
+export function useReveal(messages: Message[], pending: boolean, animateAll: boolean, instant = false) {
   const reduce = useReducedMotion()
   const [shown, setShown] = useState<number | null>(null)
 
@@ -24,14 +29,14 @@ export function useReveal(messages: Message[], pending: boolean, animateAll: boo
 
   useEffect(() => {
     if (shown === null || !next) return
-    if (next.from === 'you' || reduce) {
+    if (next.from === 'you' || reduce || instant) {
       setShown(count + 1)
       return
     }
     const delay = Math.min(1900, Math.max(650, 380 + next.text.length * 14))
     const t = window.setTimeout(() => setShown(count + 1), delay)
     return () => window.clearTimeout(t)
-  }, [shown, next, count, reduce])
+  }, [shown, next, count, reduce, instant])
 
   const typing = pending || (shown !== null && Boolean(next) && next.from === 'agent')
   return { visible: messages.slice(0, count), typing, settled: !typing && shown !== null && count >= messages.length }
@@ -43,18 +48,20 @@ export function Conversation({
   hue,
   agentName,
   scrollKey,
+  live,
 }: {
   messages: Message[]
   typing: boolean
   hue: Hue
   agentName: string
   scrollKey?: unknown
+  live?: LiveTurn | null
 }) {
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' })
-  }, [messages.length, typing, scrollKey])
+  }, [messages.length, typing, scrollKey, live])
 
   return (
     <div className="flex flex-col gap-2.5" aria-live="polite">
@@ -71,7 +78,14 @@ export function Conversation({
               className={`flex items-end gap-2.5 ${firstOfRun ? 'mt-3' : ''}`}
             >
               <div className="w-8 shrink-0">{isLastOfRun(messages, i) && <Orb hue={hue} size={32} />}</div>
-              <AgentBubble text={m.text} agentName={agentName} copyable={m.kind === 'chat' && m.text.length > 240} sources={m.sources} />
+              <AgentBubble
+                text={m.text}
+                agentName={agentName}
+                copyable={m.kind === 'chat' && m.text.length > 240}
+                sources={m.sources}
+                activity={m.activity}
+                reasoning={m.reasoning}
+              />
             </motion.div>
           ) : (
             <motion.div
@@ -88,7 +102,26 @@ export function Conversation({
             </motion.div>
           )
         })}
-        {typing && (
+        {live && (
+          <motion.div
+            key="live"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="mt-3 flex items-end gap-2.5"
+          >
+            <Orb hue={hue} size={32} mood="thinking" />
+            <div
+              className="max-w-[85%] min-w-[min(18rem,85%)] rounded-3xl rounded-bl-md bg-white px-4 py-2.5 text-ink shadow-[0_8px_24px_-18px_rgba(15,42,35,0.6)]"
+              data-testid="live-reply"
+              aria-label={`${agentName} is working`}
+            >
+              <WorkLog steps={live.steps} reasoning={live.reasoning} status={live.status} live />
+              {live.text && <Markdown text={live.text} />}
+            </div>
+          </motion.div>
+        )}
+        {typing && !live && (
           <motion.div
             key="typing"
             initial={{ opacity: 0, y: 8 }}
@@ -124,11 +157,15 @@ function AgentBubble({
   agentName,
   copyable,
   sources,
+  activity,
+  reasoning,
 }: {
   text: string
   agentName: string
   copyable: boolean
   sources?: SourceRef[]
+  activity?: WorkStep[]
+  reasoning?: string
 }) {
   const [copied, setCopied] = useState(false)
   async function copy() {
@@ -142,6 +179,7 @@ function AgentBubble({
   }
   return (
     <div className="group max-w-[85%] rounded-3xl rounded-bl-md bg-white px-4 py-2.5 text-ink shadow-[0_8px_24px_-18px_rgba(15,42,35,0.6)]">
+      <WorkLog steps={activity ?? []} reasoning={reasoning} />
       <Markdown text={text} />
       {sources && sources.length > 0 && <Sources sources={sources} />}
       {copyable && (
