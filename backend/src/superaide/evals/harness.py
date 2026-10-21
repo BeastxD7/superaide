@@ -384,8 +384,10 @@ def _out_sources(reply: str) -> list[dict[str, Any]]:
 
 
 @contextmanager
-def patched(llm: LLM, outbox: dict[str, FakeMessenger]) -> Iterator[None]:
-    """Background jobs build their own model client and Telegram sender: point both at ours."""
+def patched(llm: LLM, outbox: dict[str, FakeMessenger], live: bool) -> Iterator[None]:
+    """Background jobs build their own model client and Telegram sender: point both at ours.
+    Live, Ava has a model connected (`brain_ready`), so she handles reminders herself; offline she
+    doesn't, so the code-only paths run, as they do for an owner with no model connected."""
     import superaide.factory as factory
     import superaide.proactive.notify as notify
 
@@ -393,14 +395,15 @@ def patched(llm: LLM, outbox: dict[str, FakeMessenger]) -> Iterator[None]:
         outbox["telegram"].send_dm(identity, text_)
         return True
 
-    saved = (factory.build_llm, factory.uses_real_model, notify.send_telegram)
+    saved = (factory.build_llm, factory.brain_ready, notify.send_telegram)
     factory.build_llm = lambda settings: llm
-    factory.uses_real_model = lambda settings: True
+    if live:
+        factory.brain_ready = lambda settings: True
     notify.send_telegram = send_telegram  # type: ignore[assignment]
     try:
         yield
     finally:
-        factory.build_llm, factory.uses_real_model, notify.send_telegram = saved
+        factory.build_llm, factory.brain_ready, notify.send_telegram = saved
 
 
 # --- one scenario ---------------------------------------------------------------------------
@@ -426,7 +429,7 @@ def run_scenario(sc: Scenario, *, inner: LLM | None = None, judge: Judge | None 
     traveller = time_machine.travel(run.start, tick=True)
     clock = traveller.start()
     try:
-        with patched(rec, outbox):
+        with patched(rec, outbox, live):
             clock.shift(timedelta(days=-1))
             run.owner_id = build_world(sc, run.start, run)
             _seed_messages(agent, sc, run.owner_id)

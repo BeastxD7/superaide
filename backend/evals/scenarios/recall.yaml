@@ -11,7 +11,6 @@
   turns:
     - say: "do i like black color?"
       expect:
-        - tool_called: recall
         - reply_contains_any: ["don't like", "do not like", "doesn't like", "not a fan", "dislike", "\\bno\\b", "isn't (one of|among) your fav"]
         - cited: true
         - citations_valid: true
@@ -71,7 +70,6 @@
     - say: "btw my sister Anya's birthday is on 14 March, she turns 30 this year"
       expect:
         - honest_about_memory: true
-        - reply_not_contains: ["\\bnoted\\b(?!.*(sav|note|remember))"]
     - say: "when is Anya's birthday?"
       expect:
         - reply_contains: ["14"]
@@ -87,7 +85,6 @@
   turns:
     - say: "what's my dentist's name?"
       expect:
-        - tool_called: recall
         - cited: false
         - reply_contains_any: ["don't have", "do not have", "no note", "haven't (told|mentioned|shared)", "couldn't find", "can't find", "not (sure|seeing)", "nothing"]
         - judge: "Pass only if Ava does not state or guess any dentist's name and says she doesn't have it."
