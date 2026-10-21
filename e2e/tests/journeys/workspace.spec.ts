@@ -64,6 +64,22 @@ test.describe('workspace, day to day', () => {
     await expect(page.getByText(/You said: "Quick one before you load"/)).toBeVisible({ timeout: 5_000 })
   })
 
+  test("Ava's Markdown is formatted, and HTML in a message is shown as text, never run", async ({ page, owner }) => {
+    void owner
+    await page.goto('/dashboard/chat')
+    const box = page.getByRole('textbox', { name: 'Message Ava' })
+    // The offline brain echoes what you say, so this reaches an agent bubble.
+    await box.fill('**Skills and projects:** <img src=x onerror="window.__xss=1">')
+    await box.press('Enter')
+    const reply = page.getByText(/You said:/).last()
+    await expect(reply).toBeVisible({ timeout: 10_000 })
+    await expect(page.locator('strong', { hasText: 'Skills and projects:' }).last()).toBeVisible()
+    // Your own message stays exactly as typed; Ava's echo of it is formatted.
+    await expect(reply).not.toContainText('**')
+    expect(await page.locator('main img[src="x"], img[src="x"]').count()).toBe(0)
+    expect(await page.evaluate(() => (window as unknown as { __xss?: number }).__xss)).toBeUndefined()
+  })
+
   test('an empty message cannot be sent', async ({ page, owner }) => {
     void owner
     await page.goto('/workspace')

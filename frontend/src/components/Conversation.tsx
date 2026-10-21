@@ -4,6 +4,7 @@ import { Check, Copy } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import type { Hue, Message } from '@/lib/api'
+import { Markdown } from '@/components/Markdown'
 import { Orb } from '@/components/Orb'
 
 // Ava's lines arrive one at a time, with a moment of "typing" before each, the
@@ -131,7 +132,7 @@ function AgentBubble({ text, agentName, copyable }: { text: string; agentName: s
   }
   return (
     <div className="group max-w-[85%] rounded-3xl rounded-bl-md bg-white px-4 py-2.5 text-ink shadow-[0_8px_24px_-18px_rgba(15,42,35,0.6)]">
-      <p className="leading-relaxed whitespace-pre-wrap">{text}</p>
+      <Markdown text={text} />
       {copyable && (
         <button
           onClick={() => void copy()}
