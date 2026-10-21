@@ -305,6 +305,65 @@ textarea {
 
 /* ---- Overview ---------------------------------------------------------- */
 
+.live {
+  margin-bottom: 40px;
+  padding: 16px 20px;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.live ul {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.live-row {
+  display: grid;
+  grid-template-columns: 12px 90px 1fr;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.live-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--stranger);
+}
+
+.live-row.ok .live-dot {
+  background: var(--ok);
+}
+
+.live-name {
+  font-weight: 600;
+}
+
+.live-row.off .live-text {
+  color: var(--ink-quiet);
+}
+
+.hint {
+  margin: -4px 0 12px;
+  font-size: 14px;
+  max-width: 80ch;
+}
+
+.link-to {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.link-to select {
+  padding: 4px 8px;
+  font-size: 13px;
+}
+
 .hero h1 {
   font-size: clamp(30px, 4.4vw, 44px);
   font-weight: 700;

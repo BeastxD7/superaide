@@ -9,6 +9,7 @@ export type Overview = {
   frozen: boolean
   model_mode: string
   simulator: boolean
+  channels: { telegram: boolean; slack: boolean }
   spend: Spend
   gates: Gate[]
   safety: {

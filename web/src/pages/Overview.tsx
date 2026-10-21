@@ -13,8 +13,43 @@ export function Overview({ data }: { data: OverviewData }) {
   const { spend, safety, counts } = data
   const usedShare = Math.min(1, (spend.settled_usd + spend.reserved_usd) / spend.cap_usd)
 
+  const real = data.model_mode.startsWith('Claude')
+  const status = [
+    {
+      name: 'Brain',
+      ok: real,
+      on: 'Real Claude replies, inside the spend cap.',
+      off: 'Offline: replies are echoes. Put your key in ANTHROPIC_API_KEY in .env and restart.',
+    },
+    {
+      name: 'Telegram',
+      ok: data.channels.telegram,
+      on: 'Connected. Message your bot from your phone.',
+      off: 'Not connected. Create a bot with @BotFather, put its token in TELEGRAM_BOT_TOKEN in .env, restart.',
+    },
+    {
+      name: 'Slack',
+      ok: data.channels.slack,
+      on: 'Connected over Socket Mode.',
+      off: 'Not connected (optional). Create the app from slack-manifest.yml and add its tokens to .env.',
+    },
+  ]
+
   return (
     <div className="overview">
+      <section className="live" aria-labelledby="live-title">
+        <h2 id="live-title">What is live right now</h2>
+        <ul>
+          {status.map((s) => (
+            <li key={s.name} className={s.ok ? 'live-row ok' : 'live-row off'}>
+              <span className="live-dot" aria-hidden="true" />
+              <span className="live-name">{s.name}</span>
+              <span className="live-text">{s.ok ? s.on : s.off}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
       <section className="hero" aria-labelledby="stage-title">
         <h1 id="stage-title">
           {data.agent_name} is at the <span className="stage-word">{data.stage}</span> stage

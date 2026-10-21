@@ -115,3 +115,34 @@ def test_simulator_runs_an_impostor_scenario(client, manager):
     data = r.json()
     assert r.status_code == 200 and data["mode"] == "stranger"
     assert any("code" in m["text"] for m in data["outbox"])
+
+
+def test_operator_can_link_an_unlinked_account_from_the_dashboard(client, agent, manager):
+    agent.handle(tg("424242", "hello"))  # your real Telegram, unknown so far
+    people = client.get("/api/people", headers=AUTH).json()
+    stranger = next(p for p in people if p["id"] == "unlinked")["identities"][0]
+    r = client.post(f"/api/identities/{stranger['id']}/link", json={"person_id": str(manager.id)}, headers=AUTH)
+    assert r.status_code == 200
+    assert agent.handle(tg("424242", "hi again")).mode == "known"
+    # Linking twice is refused.
+    r = client.post(f"/api/identities/{stranger['id']}/link", json={"person_id": str(manager.id)}, headers=AUTH)
+    assert r.status_code == 409
+
+
+def test_outside_accounts_cannot_be_linked_from_the_dashboard(client, agent, manager):
+    from tests.conftest import sl
+
+    agent.handle(sl("U_OUT", "hi", team="T_OTHER", external=True))
+    people = client.get("/api/people", headers=AUTH).json()
+    outsider = next(p for p in people if p["id"] == "unlinked")["identities"][0]
+    r = client.post(f"/api/identities/{outsider['id']}/link", json={"person_id": str(manager.id)}, headers=AUTH)
+    assert r.status_code == 409
+
+
+def test_real_model_only_with_a_key():
+    from agi_agent.config import Settings
+    from agi_agent.factory import uses_real_model
+
+    assert not uses_real_model(Settings(anthropic_api_key="", fake_llm=False))
+    assert uses_real_model(Settings(anthropic_api_key="sk-test", fake_llm=False))
+    assert not uses_real_model(Settings(anthropic_api_key="sk-test", fake_llm=True))

@@ -14,11 +14,22 @@ const RELATION: Record<string, string> = {
 export function People({ conn }: { conn: Connection }) {
   const { data, error, reload } = useApi<PersonRow[]>(conn, '/api/people')
   const [busy, setBusy] = useState<string | null>(null)
+  const [choice, setChoice] = useState<Record<string, string>>({})
 
   async function unlinkIdentity(id: string) {
     setBusy(id)
     try {
       await api(conn, `/api/identities/${id}/unlink`, { method: 'POST' })
+      await reload()
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function linkIdentity(id: string, personId: string) {
+    setBusy(id)
+    try {
+      await api(conn, `/api/identities/${id}/link`, { method: 'POST', body: JSON.stringify({ person_id: personId }) })
       await reload()
     } finally {
       setBusy(null)
@@ -46,6 +57,12 @@ export function People({ conn }: { conn: Connection }) {
             <h2>{p.name}</h2>
             <span className="relation">{p.status === 'stranger' ? 'Not linked to anyone' : RELATION[p.relation] ?? p.relation}</span>
           </header>
+          {p.status === 'stranger' && (
+            <p className="quiet hint">
+              Is one of these you, messaging from your real Telegram or Slack? Pick your name and press Link. Only do this for
+              accounts you know are yours: anyone else should prove it with a code.
+            </p>
+          )}
           <table>
             <thead>
               <tr>
@@ -74,10 +91,34 @@ export function People({ conn }: { conn: Connection }) {
                   <td>{METHOD_NAMES[i.method] ?? i.method}</td>
                   <td className="quiet">{ago(i.last_seen_at)}</td>
                   <td>
-                    {p.status !== 'stranger' && (
+                    {p.status !== 'stranger' ? (
                       <button className="link-button" disabled={busy === i.id} onClick={() => unlinkIdentity(i.id)}>
                         Unlink
                       </button>
+                    ) : i.risk_flags.includes('external') ? null : (
+                      <span className="link-to">
+                        <select
+                          aria-label="Person to link this account to"
+                          value={choice[i.id] ?? ''}
+                          onChange={(e) => setChoice((c) => ({ ...c, [i.id]: e.target.value }))}
+                        >
+                          <option value="">This is…</option>
+                          {data
+                            .filter((x) => x.status !== 'stranger')
+                            .map((x) => (
+                              <option key={x.id} value={x.id}>
+                                {x.name}
+                              </option>
+                            ))}
+                        </select>
+                        <button
+                          className="link-button"
+                          disabled={!choice[i.id] || busy === i.id}
+                          onClick={() => linkIdentity(i.id, choice[i.id])}
+                        >
+                          Link
+                        </button>
+                      </span>
                     )}
                   </td>
                 </tr>

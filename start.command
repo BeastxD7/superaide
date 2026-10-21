@@ -91,13 +91,33 @@ if [ ! -f web/dist/index.html ] && command -v npm >/dev/null 2>&1; then
   (cd web && npm install --no-audit --no-fund && npm run build)
 fi
 
-# 6. Run
+# 6. Run: the API and dashboard, plus Telegram and Slack if their tokens are in .env
 PORT=8000
 if command -v lsof >/dev/null 2>&1; then
   while lsof -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; do PORT=$((PORT + 1)); done
 fi
+PIDS=()
+cleanup() { for p in "${PIDS[@]:-}"; do [ -n "$p" ] && kill "$p" 2>/dev/null || true; done; }
+trap cleanup EXIT INT TERM
+
+if grep -Eq '^ANTHROPIC_API_KEY=.+' .env && ! grep -Eq '^FAKE_LLM=true' .env; then
+  bold "Brain: real Claude replies (spend cap $(grep '^MAX_SPEND_USD=' .env | cut -d= -f2) US dollars)."
+else
+  bold "Brain: offline echo mode. Add ANTHROPIC_API_KEY to .env for real replies."
+fi
+if grep -Eq '^TELEGRAM_BOT_TOKEN=.+' .env; then
+  bold "Connecting Telegram…"
+  uv run --quiet agi-agent telegram-poll &
+  PIDS+=($!)
+fi
+if grep -Eq '^SLACK_BOT_TOKEN=.+' .env && grep -Eq '^SLACK_APP_TOKEN=.+' .env; then
+  bold "Connecting Slack…"
+  uv run --quiet agi-agent slack-socket &
+  PIDS+=($!)
+fi
+
 URL="http://127.0.0.1:$PORT/#token=$TOKEN"
-bold "Agent running. Dashboard: http://127.0.0.1:$PORT  (Ctrl+C to stop)"
+bold "Agent running. Dashboard: http://127.0.0.1:$PORT  (keep this window open; Ctrl+C to stop)"
 echo "Admin token: $TOKEN"
 ( sleep 3; open "$URL" 2>/dev/null || xdg-open "$URL" 2>/dev/null || true ) &
-exec uv run agi-agent serve --port "$PORT"
+uv run agi-agent serve --port "$PORT"

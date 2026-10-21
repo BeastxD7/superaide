@@ -30,6 +30,7 @@ export const AUDIENCE_NAMES: Record<string, string> = {
 export const METHOD_NAMES: Record<string, string> = {
   operator_bootstrap: 'Added by you at the terminal',
   code_via_trusted_channel: 'Code sent to a trusted channel',
+  operator_dashboard: 'Linked by you in the dashboard',
   unlinked: 'Unlinked',
   '': 'Not linked',
 }
@@ -62,6 +63,8 @@ export function describeAudit(row: AuditRow): { kind: AuditKind; text: string } 
       return { kind: 'refusal', text: 'Stopped sending codes to an account that asked too often.' }
     case 'link_no_trusted_channel':
       return { kind: 'identity', text: 'Could not send a code: that person has no trusted channel.' }
+    case 'linked_by_operator':
+      return { kind: 'identity', text: 'You linked an account to a person from the dashboard.' }
     case 'unlinked':
       return { kind: 'identity', text: `Unlinked a channel (by ${row.actor}).` }
     case 'person_bootstrapped':

@@ -28,7 +28,8 @@ from agi_agent.db.models import (
     SpendEntry,
 )
 from agi_agent.db.session import session_scope
-from agi_agent.identity.linking import unlink
+from agi_agent.factory import uses_real_model
+from agi_agent.identity.linking import operator_link, unlink
 from agi_agent.policy.killswitch import is_frozen, set_frozen
 
 
@@ -48,7 +49,7 @@ def _iso(dt: datetime | None) -> str | None:
     return dt.isoformat() if dt else None
 
 
-VERIFIED_LINK_METHODS = ("code_via_trusted_channel", "operator_bootstrap")
+VERIFIED_LINK_METHODS = ("code_via_trusted_channel", "operator_bootstrap", "operator_dashboard")
 
 
 def _audit_count(s: Any, *actions: str) -> int:
@@ -81,7 +82,13 @@ def overview() -> dict[str, Any]:
             "agent_name": settings.agent_name,
             "stage": "Infant",
             "frozen": is_frozen(s),
-            "model_mode": "offline (fake model)" if settings.fake_llm else "Claude API",
+            "model_mode": "Claude API (real replies)"
+            if uses_real_model(settings)
+            else "offline (no API key, replies are echoes)",
+            "channels": {
+                "telegram": bool(settings.telegram_bot_token),
+                "slack": bool(settings.slack_bot_token and settings.slack_app_token),
+            },
             "simulator": settings.enable_simulator,
             "spend": spend,
             # Gates from Infant to Child. Most are measured from phase 2 onward.
@@ -324,3 +331,24 @@ def unlink_identity(identity_id: uuid.UUID) -> dict[str, str]:
             raise HTTPException(409, "Already unlinked")
         unlink(s, identity, actor="dashboard", reason="unlinked from dashboard")
     return {"status": "unlinked"}
+
+
+class LinkBody(BaseModel):
+    person_id: uuid.UUID
+
+
+@router.post("/identities/{identity_id}/link")
+def link_identity(identity_id: uuid.UUID, body: LinkBody) -> dict[str, str]:
+    """Operator action from your own dashboard: attach an unlinked account to a person."""
+    with session_scope() as s:
+        identity = s.get(ChannelIdentity, identity_id)
+        person = s.get(Person, body.person_id)
+        if identity is None or person is None:
+            raise HTTPException(404, "No such identity or person")
+        if identity.person_id is not None:
+            raise HTTPException(409, "Already linked; unlink it first")
+        try:
+            operator_link(s, identity, person, actor="dashboard")
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from exc
+    return {"status": "linked"}

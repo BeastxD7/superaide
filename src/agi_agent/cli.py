@@ -137,11 +137,11 @@ def _seed_demo(_: argparse.Namespace) -> None:
             s,
             name="Shashank",
             relation="manager",
-            identities=[("telegram", "", "1001"), ("slack", team, "U_SHASHANK")],
+            identities=[("telegram", "", "demo-1001"), ("slack", team, "U_DEMO_SHASHANK")],
             actor="demo_seed",
         )
         bootstrap_person(
-            s, name="Priya Tan", relation="colleague", identities=[("slack", team, "U_PRIYA")], actor="demo_seed"
+            s, name="Priya Tan", relation="colleague", identities=[("slack", team, "U_DEMO_PRIYA")], actor="demo_seed"
         )
     print("Added demo people: Shashank (manager) and Priya Tan (colleague).")
 

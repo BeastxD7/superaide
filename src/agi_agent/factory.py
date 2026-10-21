@@ -17,17 +17,25 @@ from agi_agent.pipeline import Agent
 def demo_responder(
     purpose: str, system: list[SystemBlock], messages: list[dict[str, Any]], output_model: type[BaseModel] | None
 ) -> Any:
-    """Offline stand-in for Claude: echoes the last message. Costs nothing."""
+    """Offline stand-in used when no Claude API key is set. Costs nothing."""
     last = messages[-1]["content"].splitlines()[-1] if messages else ""
     return TurnOutput(
-        reply=f"(offline model) I heard: {last}",
+        reply=(
+            f'(Offline mode: no Claude API key yet, so I can only echo you.) You said: "{last}". '
+            "Add ANTHROPIC_API_KEY to .env and restart to get real replies."
+        ),
         requested_action=RequestedAction(kind="none", summary=""),
         prediction=Prediction(expectation="you will reply", confidence=0.5),
     )
 
 
+def uses_real_model(settings: Settings) -> bool:
+    """Real Claude whenever a key is present, unless FAKE_LLM=true forces offline mode."""
+    return bool(settings.anthropic_api_key) and not settings.fake_llm
+
+
 def build_llm(settings: Settings) -> LLM:
-    if settings.fake_llm:
+    if not uses_real_model(settings):
         return FakeLLM(demo_responder)
     return ClaudeLLM(BudgetGuard(settings.max_spend_usd), api_key=settings.anthropic_api_key)
 

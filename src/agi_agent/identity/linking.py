@@ -232,6 +232,22 @@ def unlink(session: Session, identity: ChannelIdentity, *, actor: str, reason: s
     audit(session, actor, "unlinked", identity_id=identity.id, previous_person_id=previous)
 
 
+def operator_link(session: Session, identity: ChannelIdentity, person: Person, *, actor: str) -> None:
+    """You, at your own dashboard or terminal, say "this account is this person".
+    Same standing as add-manager: the operator is trusted, a message never is."""
+    if "external" in (identity.risk_flags or []):
+        raise ValueError("Accounts from another company cannot be linked")
+    identity.person_id = person.id
+    identity.trust_level = int(Trust.LINKED)
+    identity.verification = {"method": "operator_dashboard", "verified_at": datetime.now(UTC).isoformat()}
+    session.add(
+        IdentityLinkEvent(
+            identity_id=identity.id, person_id=person.id, action="link", method="operator_dashboard", actor=actor
+        )
+    )
+    audit(session, actor, "linked_by_operator", identity_id=identity.id, person_id=person.id)
+
+
 def bootstrap_person(
     session: Session,
     *,
