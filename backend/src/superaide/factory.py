@@ -8,9 +8,11 @@ from pydantic import BaseModel
 
 from superaide.brain.budget import BudgetGuard, Limits
 from superaide.brain.llm import LLM, ClaudeLLM, FakeLLM, SystemBlock
+from superaide.brain.pricing import PriceRegistry, owner_prices
 from superaide.brain.turn import Prediction, RequestedAction, TurnOutput
 from superaide.channels.base import FakeMessenger, Messenger, WebMessenger
 from superaide.config import Settings, get_settings
+from superaide.db.session import session_scope
 from superaide.pipeline import Agent
 
 
@@ -35,10 +37,16 @@ def uses_real_model(settings: Settings) -> bool:
     return bool(settings.anthropic_api_key) and not settings.fake_llm
 
 
+def load_prices() -> PriceRegistry:
+    """Built-in prices plus any the owner set in the app."""
+    with session_scope() as s:
+        return owner_prices(s)
+
+
 def build_llm(settings: Settings) -> LLM:
     if not uses_real_model(settings):
         return FakeLLM(demo_responder)
-    guard = BudgetGuard(settings.max_spend_usd, limits=Limits.from_settings(settings))
+    guard = BudgetGuard(settings.max_spend_usd, limits=Limits.from_settings(settings), prices=load_prices())
     return ClaudeLLM(guard, api_key=settings.anthropic_api_key)
 
 

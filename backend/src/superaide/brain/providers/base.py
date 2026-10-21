@@ -26,11 +26,31 @@ from superaide.brain.providers.types import (
 class Guard(Protocol):
     """What a provider needs from the budget guard (brain/budget.py BudgetGuard)."""
 
-    def reserve(self, *, purpose: str, model: str, worst_case_usd: Decimal) -> uuid.UUID: ...
+    def reserve(self, *, purpose: str, model: str, worst_case_usd: Decimal, provider: str = ...) -> uuid.UUID: ...
 
-    def settle(self, entry_id: uuid.UUID, *, model: str, usage: UsageCounts, request_id: str | None) -> Decimal: ...
+    def settle(
+        self,
+        entry_id: uuid.UUID,
+        *,
+        model: str,
+        usage: UsageCounts,
+        request_id: str | None,
+        provider: str = ...,
+        reported_cost_usd: Decimal | None = None,
+        known: bool = True,
+    ) -> Decimal: ...
 
     def fail(self, entry_id: uuid.UUID, error: str) -> None: ...
+
+
+@dataclass
+class Priced:
+    """What a response says about its own cost."""
+
+    usage: UsageCounts
+    request_id: str | None = None
+    reported_cost_usd: Decimal | None = None  # e.g. OpenRouter's usage.cost
+    known: bool = True  # False when the provider sent no usage
 
 
 @dataclass
@@ -79,17 +99,21 @@ def metered[R](
     model: str,
     worst_case_usd: Decimal,
     call: Callable[[], R],
-    priced: Callable[[R], tuple[UsageCounts, str | None]],
+    priced: Callable[[R], Priced],
+    provider: str = "anthropic",
 ) -> tuple[R, UsageCounts, Decimal]:
     """Reserve the worst case, make the call, settle at the real price. A call that raises is
     marked failed (nothing billed); a response that came back is settled before anything reads
     it, so a cut-off or invalid answer is still counted against the cap."""
-    entry_id = guard.reserve(purpose=purpose, model=model, worst_case_usd=worst_case_usd)
+    entry_id = guard.reserve(purpose=purpose, model=model, worst_case_usd=worst_case_usd, provider=provider)
     try:
         response = call()
     except Exception as exc:  # the provider did not return a billable response
         guard.fail(entry_id, f"{type(exc).__name__}: {exc}")
         raise
-    usage, request_id = priced(response)
-    cost = guard.settle(entry_id, model=model, usage=usage, request_id=request_id)
-    return response, usage, cost
+    p = priced(response)
+    cost = guard.settle(
+        entry_id, model=model, usage=p.usage, request_id=p.request_id, provider=provider,
+        reported_cost_usd=p.reported_cost_usd, known=p.known,
+    )  # fmt: skip
+    return response, p.usage, cost

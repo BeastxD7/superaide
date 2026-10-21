@@ -11,7 +11,7 @@ from sqlalchemy import select
 from superaide.brain.budget import BudgetExceeded, BudgetGuard
 from superaide.brain.llm import SystemBlock as LegacySystemBlock
 from superaide.brain.pricing import UsageCounts
-from superaide.brain.providers.base import metered
+from superaide.brain.providers.base import Priced, metered
 from superaide.brain.providers.fake import FakeProvider
 from superaide.brain.providers.types import (
     HostedToolResult,
@@ -40,7 +40,7 @@ def test_metered_reserves_then_settles_at_the_real_price():
     guard = BudgetGuard(10)
     response, usage, cost = metered(
         guard, purpose="test", model="claude-sonnet-5-5", worst_case_usd=Decimal("0.01"),
-        call=lambda: "ok", priced=lambda r: (UsageCounts(input_tokens=1000, output_tokens=100), "req"),
+        call=lambda: "ok", priced=lambda r: Priced(UsageCounts(input_tokens=1000, output_tokens=100), "req"),
     )  # fmt: skip
     assert response == "ok" and cost == Decimal("0.003") and usage.input_tokens == 1000
     summary = guard.summary()
@@ -55,7 +55,7 @@ def test_metered_marks_a_failed_call_and_bills_nothing():
 
     with pytest.raises(RuntimeError):
         metered(guard, purpose="t", model="claude-haiku-5-5", worst_case_usd=Decimal("0.01"), call=boom,
-                priced=lambda r: (UsageCounts(), None))  # fmt: skip
+                priced=lambda r: Priced(UsageCounts()))  # fmt: skip
     with session_scope() as s:
         entry = s.scalar(select(SpendEntry))
         assert entry is not None and entry.status == "failed" and entry.cost_usd == 0
@@ -65,7 +65,7 @@ def test_metered_never_calls_past_the_cap():
     called = []
     with pytest.raises(BudgetExceeded):
         metered(BudgetGuard(0.001), purpose="t", model="claude-haiku-5-5", worst_case_usd=Decimal("0.01"),
-                call=lambda: called.append(1), priced=lambda r: (UsageCounts(), None))  # fmt: skip
+                call=lambda: called.append(1), priced=lambda r: Priced(UsageCounts()))  # fmt: skip
     assert called == []
 
 

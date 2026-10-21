@@ -1,6 +1,6 @@
 """Spend ledger with a hard cap.
 
-Every Claude call reserves its worst-case cost first. The reservation is
+Every model call reserves its worst-case cost first. The reservation is
 refused if settled spend plus open reservations plus this call would pass the
 cap, so total spend cannot exceed MAX_SPEND_USD (default US$10). After the call
 the reservation is settled at the real price from the API's usage numbers.
@@ -17,7 +17,7 @@ from decimal import Decimal
 from sqlalchemy import case, func, select, text
 
 from superaide.audit import audit
-from superaide.brain.pricing import UsageCounts, cost_usd
+from superaide.brain.pricing import DEFAULT_PRICES, PriceRegistry, UsageCounts, cost_usd
 from superaide.db.models import SpendEntry
 from superaide.db.session import session_scope
 from superaide.policy.killswitch import is_frozen
@@ -84,10 +84,17 @@ class SpendSummary:
 
 
 class BudgetGuard:
-    def __init__(self, cap_usd: float, db_url: str | None = None, limits: Limits | None = None) -> None:
+    def __init__(
+        self,
+        cap_usd: float,
+        db_url: str | None = None,
+        limits: Limits | None = None,
+        prices: PriceRegistry | None = None,
+    ) -> None:
         self.cap = Decimal(str(cap_usd))
         self.db_url = db_url
         self.limits = limits or Limits()
+        self.prices = prices or DEFAULT_PRICES
 
     @staticmethod
     def _committed(s, since: datetime | None = None, purposes: list[str] | None = None) -> Decimal:
@@ -136,7 +143,7 @@ class BudgetGuard:
             calls = s.scalar(select(func.count()).select_from(SpendEntry).where(SpendEntry.status == "settled"))
         return SpendSummary(self.cap, Decimal(settled or 0), Decimal(reserved or 0), int(calls or 0))
 
-    def reserve(self, *, purpose: str, model: str, worst_case_usd: Decimal) -> uuid.UUID:
+    def reserve(self, *, purpose: str, model: str, worst_case_usd: Decimal, provider: str = "anthropic") -> uuid.UUID:
         refusal: Exception | None = None
         with session_scope(self.db_url) as s:
             if is_frozen(s):
@@ -169,7 +176,9 @@ class BudgetGuard:
                 elif (period_refusal := self._period_refusal(s, purpose, worst_case_usd)) is not None:
                     refusal = period_refusal
                 else:
-                    entry = SpendEntry(purpose=purpose, model=model, status="reserved", reserved_usd=worst_case_usd)
+                    entry = SpendEntry(
+                        provider=provider, purpose=purpose, model=model, status="reserved", reserved_usd=worst_case_usd
+                    )
                     s.add(entry)
                     s.flush()
                     entry_id = entry.id
@@ -179,12 +188,37 @@ class BudgetGuard:
         return entry_id
 
     def settle(
-        self, entry_id: uuid.UUID, *, model: str, usage: UsageCounts, request_id: str | None, batch: bool = False
+        self,
+        entry_id: uuid.UUID,
+        *,
+        model: str,
+        usage: UsageCounts,
+        request_id: str | None,
+        batch: bool = False,
+        provider: str = "anthropic",
+        reported_cost_usd: Decimal | None = None,
+        known: bool = True,
     ) -> Decimal:
-        cost = cost_usd(model, usage, batch=batch)
+        """Settle at the real price. With no usage from the provider (`known=False`) the call is
+        settled at its reservation, never at 0. When the provider reports what it charged, the
+        higher of that and our own figure counts, and a gap of more than 5% is audited."""
+        computed = cost_usd(model, usage, batch=batch, provider=provider, prices=self.prices) if known else None
         with session_scope(self.db_url) as s:
             entry = s.get(SpendEntry, entry_id)
             assert entry is not None
+            if computed is None:
+                cost = entry.reserved_usd
+                audit(s, "budget", "usage_missing", provider=provider, model=model, cost_usd=float(cost))
+            else:
+                cost = computed
+                if reported_cost_usd is not None:
+                    gap = abs(reported_cost_usd - computed)
+                    if gap > max(computed, reported_cost_usd) * Decimal("0.05"):
+                        audit(
+                            s, "budget", "cost_mismatch", provider=provider, model=model,
+                            computed_usd=float(computed), reported_usd=float(reported_cost_usd),
+                        )  # fmt: skip
+                    cost = max(computed, reported_cost_usd)
             entry.status = "settled"
             entry.cost_usd = cost
             entry.input_tokens = usage.input_tokens

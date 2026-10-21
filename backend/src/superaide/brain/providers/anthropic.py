@@ -21,8 +21,8 @@ from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
-from superaide.brain.pricing import WEB_SEARCH_USD, UsageCounts, worst_case_cost
-from superaide.brain.providers.base import CheckReport, Guard, metered
+from superaide.brain.pricing import PriceRegistry, UsageCounts, tool_fee, worst_case_cost
+from superaide.brain.providers.base import CheckReport, Guard, Priced, metered
 from superaide.brain.providers.types import (
     Capabilities,
     Citation,
@@ -338,6 +338,11 @@ class AnthropicProvider:
         self.guard = guard
         self.id = id
 
+    @property
+    def prices(self) -> PriceRegistry | None:
+        """The guard's prices (owner overrides included), so reservation and settlement agree."""
+        return getattr(self.guard, "prices", None)
+
     def capabilities(self, model: str) -> Capabilities:
         return CAPABILITIES
 
@@ -354,8 +359,8 @@ class AnthropicProvider:
         self, purpose: str, model: str, worst: Decimal, call: Callable[[], Any]
     ) -> tuple[Any, UsageCounts, Decimal]:
         return metered(
-            self.guard, purpose=purpose, model=model, worst_case_usd=worst, call=call,
-            priced=lambda r: (UsageCounts.from_api(r.usage), getattr(r, "_request_id", None)),
+            self.guard, purpose=purpose, model=model, worst_case_usd=worst, call=call, provider=self.kind,
+            priced=lambda r: Priced(UsageCounts.from_api(r.usage), getattr(r, "_request_id", None)),
         )  # fmt: skip
 
     def step_wire(
@@ -373,7 +378,9 @@ class AnthropicProvider:
     ) -> tuple[list[dict[str, Any]], str, UsageCounts, Decimal]:
         """Returns (content blocks as dicts, stop_reason, usage, cost)."""
         prompt = prompt_chars(system, messages, None) + len(json.dumps(tools))
-        worst = worst_case_cost(model, prompt, max_tokens) + Decimal(max_web_searches) * WEB_SEARCH_USD
+        prices = self.prices
+        worst = worst_case_cost(model, prompt, max_tokens, provider=self.kind, prices=prices)
+        worst += max_web_searches * tool_fee(model, "web_search", self.kind, prices=prices)
         kwargs = step_kwargs(
             model=model, system=system, messages=messages, tools=tools, max_tokens=max_tokens, effort=effort,
             streaming=on_event is not None,
@@ -410,7 +417,9 @@ class AnthropicProvider:
         effort: str | None = None,
     ) -> tuple[str, Any, UsageCounts, Decimal, str | None]:
         """Returns (text, parsed, usage, cost, stop_reason)."""
-        worst = worst_case_cost(model, prompt_chars(system, messages, output_model), max_tokens)
+        worst = worst_case_cost(
+            model, prompt_chars(system, messages, output_model), max_tokens, provider=self.kind, prices=self.prices
+        )
         kwargs = complete_kwargs(
             model=model, system=system, messages=messages, max_tokens=max_tokens, output_model=output_model,
             effort=effort,

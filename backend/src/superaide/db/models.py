@@ -276,10 +276,11 @@ class AuditLog(Scoped, Base):
 
 
 class SpendEntry(Scoped, Base):
-    """One Claude API call: reserved before the call, settled after it."""
+    """One model call: reserved before the call, settled after it."""
 
     __tablename__ = "spend_ledger"
 
+    provider: Mapped[str] = mapped_column(String(40), default="anthropic", server_default="anthropic")
     purpose: Mapped[str] = mapped_column(String(40))
     model: Mapped[str] = mapped_column(String(60))
     status: Mapped[str] = mapped_column(String(20), default="reserved")  # reserved | settled | failed
@@ -291,6 +292,23 @@ class SpendEntry(Scoped, Base):
     cache_write_tokens: Mapped[int] = mapped_column(Integer, default=0)
     request_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     settled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class OwnerModelPrice(Scoped, Base):
+    """A price the owner set for a model Superaide has no built-in price for (US$ per million tokens)."""
+
+    __tablename__ = "owner_model_price"
+    __table_args__ = (UniqueConstraint("agent_id", "provider", "model", name="uq_owner_model_price"),)
+
+    provider: Mapped[str] = mapped_column(String(40))
+    model: Mapped[str] = mapped_column(String(120))
+    input_usd_per_mtok: Mapped[Decimal] = mapped_column(Numeric(12, 6), default=Decimal(0))
+    output_usd_per_mtok: Mapped[Decimal] = mapped_column(Numeric(12, 6), default=Decimal(0))
+    cache_read_mult: Mapped[Decimal] = mapped_column(Numeric(8, 4), default=Decimal(1))
+    set_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user_account.id"), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
+    )
 
 
 # --- User accounts and sessions ----------------------------------------------------
