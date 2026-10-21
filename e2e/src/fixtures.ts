@@ -45,7 +45,8 @@ export class Api {
   }
 
   signup(p: Person) {
-    return this.ok(this.post('/auth/signup', { name: p.name, email: p.email, password: p.password }))
+    // Signs up as a browser set to Singapore time would (the app sends the browser's time zone).
+    return this.ok(this.post('/auth/signup', { name: p.name, email: p.email, password: p.password, timezone: 'Asia/Singapore' }))
   }
 
   login(email: string, password: string) {
