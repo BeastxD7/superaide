@@ -21,15 +21,15 @@ from sqlalchemy.exc import IntegrityError
 
 from superaide.app import accounts
 from superaide.app.catalog import catalog, find
-from superaide.app.onboarding import Onboarder, documents_view
+from superaide.app.onboarding import SHARE_LABELS, Onboarder, documents_view
 from superaide.auth.routes import current_user_id, require_csrf_header
 from superaide.config import get_settings
-from superaide.db.models import AgentHire, Context, Document, Event, MemoryItem, Person, UserAccount
+from superaide.db.models import AgentHire, ChannelIdentity, Context, Document, Event, MemoryItem, Person, UserAccount
 from superaide.db.session import require, session_scope
 from superaide.factory import uses_real_model
 from superaide.knowledge import extract
 from superaide.knowledge.ingest import ingest
-from superaide.knowledge.store import retire_document
+from superaide.knowledge.store import contacts_of, preferences_for, retire_document
 from superaide.policy.killswitch import is_frozen
 
 
@@ -280,6 +280,50 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                     }
                     for m, title in rows
                 ]
+            }
+
+    @router.get("/people")
+    def people(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        """The people who matter to the owner, VIPs first, and where Ava can recognise them."""
+        with session_scope() as s:
+            owner = require(s, Person, person_id)
+            result = []
+            for contact, person in contacts_of(s, owner):
+                channels = sorted(
+                    set(
+                        s.scalars(
+                            select(ChannelIdentity.provider).where(
+                                ChannelIdentity.person_id == person.id, ChannelIdentity.lifecycle == "active"
+                            )
+                        )
+                    )
+                )
+                result.append(
+                    {
+                        "id": str(contact.id),
+                        "name": person.display_name,
+                        "relationship": contact.relationship,
+                        "vip": contact.vip,
+                        "channels": channels,
+                    }
+                )
+            return {"people": result}
+
+    @router.get("/preferences")
+    def preferences(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        """The owner's standing rules: what's urgent, quiet hours, how to reach them, what may be shared."""
+        with session_scope() as s:
+            pref = preferences_for(s, require(s, Person, person_id))
+            return {
+                "urgent_topics": list(pref.urgent_topics),
+                "digest": pref.digest,
+                "interrupt_channel": pref.interrupt_channel,
+                "quiet_start": pref.quiet_start,
+                "quiet_end": pref.quiet_end,
+                "vip_breaks_quiet": pref.vip_breaks_quiet,
+                "timezone": pref.timezone,
+                "shareable": [{"value": v, "label": SHARE_LABELS.get(v, v)} for v in pref.shareable],
+                "never_share": pref.never_share,
             }
 
     @router.post("/notebook/{memory_id}/forget")
