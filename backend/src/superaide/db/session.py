@@ -52,3 +52,17 @@ def require[M](session: Session, model: type[M], ident: Any) -> M:
 def rows_affected(result: Result[Any]) -> int:
     """Rows changed by an UPDATE or DELETE (execute() is typed as a plain Result)."""
     return cast(CursorResult[Any], result).rowcount or 0
+
+
+EXTENSIONS = ("pg_trgm",)  # typo-tolerant recall; optional: recall works without it
+
+
+def ensure_extensions(engine: Engine) -> None:
+    """Install the optional Postgres extensions the server has; skip any it lacks."""
+    from sqlalchemy import text
+
+    with engine.begin() as conn:
+        for name in EXTENSIONS:
+            available = conn.scalar(text("SELECT count(*) FROM pg_available_extensions WHERE name = :n"), {"n": name})
+            if available:
+                conn.execute(text(f'CREATE EXTENSION IF NOT EXISTS "{name}"'))

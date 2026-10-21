@@ -133,7 +133,6 @@ def test_nothing_from_the_owners_dm_reaches_a_group_they_are_in(scenario, agent)
 # --- the gaps (ADR 0008) ---------------------------------------------------------------
 
 
-@pytest.mark.xfail(strict=True, reason="WP2: recall is keyword AND; paraphrases and en-US spelling miss")
 @pytest.mark.parametrize("query", PARAPHRASES)
 def test_recall_finds_the_fact_for_a_paraphrase(scenario, query):
     with session_scope() as s:

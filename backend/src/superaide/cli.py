@@ -13,8 +13,9 @@ from superaide.config import get_settings
 def _init_db(_: argparse.Namespace) -> None:
     """Create tables directly (quick start). For real deployments use `alembic upgrade head`."""
     from superaide.db.models import Base
-    from superaide.db.session import get_engine
+    from superaide.db.session import ensure_extensions, get_engine
 
+    ensure_extensions(get_engine())
     Base.metadata.create_all(get_engine())
     print("Tables created.")
 

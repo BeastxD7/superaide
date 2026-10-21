@@ -1,7 +1,7 @@
 {
   "$schema": "../../manifest.schema.json",
   "id": "superaide/memory",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "publisher": "Superaide",
   "tier": "official",
   "title": "Memory",
@@ -9,8 +9,8 @@
   "tools": [
     {
       "name": "recall",
-      "description": "Search what you know about the owner: notes in your notebook and past messages across channels. Returns sources you can cite. Use specific keywords (names, topics, places).",
-      "inputSchema": {"type": "object", "properties": {"query": {"type": "string", "description": "Keywords to search for"}}, "required": ["query"], "additionalProperties": false},
+      "description": "Search what you know about the owner: notes in your notebook and past messages across channels. Returns sources you can cite. Use a few specific keywords (names, topics, places); fewer words find more.",
+      "inputSchema": {"type": "object", "properties": {"query": {"type": "string", "description": "A few keywords to search for (names, topics, places). Spelling variants and synonyms are matched for you"}, "channel": {"type": "string", "enum": ["telegram", "slack", "web"], "description": "Only what was said on this channel, e.g. when the owner asks what they told you on Telegram"}}, "required": ["query"], "additionalProperties": false},
       "effect": "read_private"
     }
   ],

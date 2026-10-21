@@ -347,7 +347,10 @@ class OwnerTurn:
     def run_tool(self, name: str, args: dict[str, Any]) -> tuple[Any, bool]:
         """Returns (tool_result content, is_error)."""
         if name == "recall":
-            found = recall(self.s, self.aud, str(args.get("query", "")), exclude_event=self.inbound.id)
+            found = recall(
+                self.s, self.aud, str(args.get("query", "")), exclude_event=self.inbound.id,
+                channel=str(args.get("channel") or "") or None,
+            )  # fmt: skip
             self.notes.append(f"recall:{len(found)}")
             self.recall_hits += len(found)
             if not found:

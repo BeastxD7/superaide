@@ -48,7 +48,7 @@ from superaide.brain.turn import Prediction, RequestedAction, TurnOutput  # noqa
 from superaide.channels.base import FakeMessenger, InboundMessage  # noqa: E402
 from superaide.config import get_settings  # noqa: E402
 from superaide.db.models import Base, Person  # noqa: E402
-from superaide.db.session import get_engine, session_scope  # noqa: E402
+from superaide.db.session import ensure_extensions, get_engine, session_scope  # noqa: E402
 from superaide.identity.linking import bootstrap_person  # noqa: E402
 from superaide.pipeline import Agent  # noqa: E402
 
@@ -61,6 +61,7 @@ OUR_TEAM = "T_OURS"
 @pytest.fixture(scope="session", autouse=True)
 def _schema() -> Iterator[None]:
     engine = get_engine()
+    ensure_extensions(engine)
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
     yield
