@@ -79,7 +79,7 @@ def resolve(session: Session, msg: InboundMessage, *, reconfirm_after_days: int 
         "username": msg.sender_username,
     }
     previous_seen = identity.last_seen_at
-    identity.last_seen_at = datetime.now(UTC)
+    now = datetime.now(UTC)
     if msg.external_sender and "external" not in (identity.risk_flags or []):
         identity.risk_flags = [*(identity.risk_flags or []), "external"]
 
@@ -96,6 +96,13 @@ def resolve(session: Session, msg: InboundMessage, *, reconfirm_after_days: int 
     linked = person
     if unconfirmed:
         person = None
+        # Kept apart from last_seen_at, so messages through an unconfirmed bot can't refresh the
+        # clock that decides when the account must be confirmed again.
+        pending = dict((identity.verification or {}).get("pending") or {})
+        pending["last_seen_at"] = now.isoformat()
+        identity.verification = {**(identity.verification or {}), "pending": pending}
+    else:
+        identity.last_seen_at = now
     trust = identity.trust_level if person else min(identity.trust_level, int(Trust.AUTHENTICATED))
     return Sender(
         identity=identity,

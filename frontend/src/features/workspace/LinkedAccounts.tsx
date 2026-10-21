@@ -19,6 +19,7 @@ export type LinkedAccount = {
   endpoint: string
   linked_at: string | null
   last_seen_at: string | null
+  last_seen_unconfirmed_at: string | null
   pending: { reason: 'new_endpoint' | 'stale'; endpoint: string; since: string | null; can_confirm: boolean } | null
 }
 
@@ -97,7 +98,7 @@ export function LinkedAccounts({
                   {a.pending.reason === 'stale'
                     ? `${a.mine ? 'Your' : `${a.person}'s`} account wrote after a long silence.`
                     : `${a.mine ? 'Your' : `${a.person}'s`} account wrote to a new ${what} (${a.pending.endpoint}).`}{' '}
-                  Until it's confirmed, I treat it as someone I don't know. If it wasn't {a.mine ? 'you' : 'them'}, unlink it.
+                  {a.last_seen_unconfirmed_at ? `Last message there ${when(a.last_seen_unconfirmed_at)}. ` : ''}Until it's confirmed, I treat it as someone I don't know. If it wasn't {a.mine ? 'you' : 'them'}, unlink it.
                 </p>
                 {links[a.id] ? (
                   <a

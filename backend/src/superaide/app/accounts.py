@@ -188,6 +188,7 @@ def redeem_invite(
     identity.person_id = person.id
     identity.trust_level = int(Trust.LINKED)
     identity.endpoint_key = endpoint or invite.endpoint_key
+    identity.last_seen_at = now  # confirmed just now: the silence clock starts again
     identity.verification = {"method": "invite_from_app", "verified_at": now.isoformat(), "invite_id": str(invite.id)}
     session.add(
         IdentityLinkEvent(

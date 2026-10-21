@@ -1,7 +1,8 @@
 """/app/channels/linked: the chat accounts linked to people, which bot or app each was confirmed
 on, and the owner's controls: confirm a new bot, unlink.
 
-Signed-in owner only. A Telegram account that wrote through a new bot is confirmed with a one-time
+Signed-in owner only, and only their own Telegram and Slack accounts. A Telegram account that
+wrote through a new bot is confirmed with a one-time
 t.me link made here (only that account, only through that bot, 15 minutes); a Slack account on a new
 app is confirmed with one tap here. Nothing in this module can be reached from a chat message.
 """
@@ -14,7 +15,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.app import accounts
@@ -71,9 +72,15 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         token = get_agent().settings.telegram_bot_token
         return bot_id(token), telegram_username(token)
 
-    def linked_identity(s: Session, identity_id: uuid.UUID) -> ChannelIdentity:
+    def linked_identity(s: Session, identity_id: uuid.UUID, person_id: uuid.UUID) -> ChannelIdentity:
+        """Only the signed-in owner's own Telegram or Slack accounts; anything else looks absent."""
         identity = s.get(ChannelIdentity, identity_id)
-        if identity is None or identity.person_id is None or identity.lifecycle != "active":
+        if (
+            identity is None
+            or identity.person_id != person_id
+            or identity.provider not in ("telegram", "slack")
+            or identity.lifecycle != "active"
+        ):
             raise HTTPException(404, "No such linked account")
         return identity
 
@@ -91,11 +98,9 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             rows = s.scalars(
                 select(ChannelIdentity)
                 .where(
-                    ChannelIdentity.person_id.is_not(None),
+                    ChannelIdentity.person_id == person_id,
                     ChannelIdentity.lifecycle == "active",
                     ChannelIdentity.provider.in_(("telegram", "slack")),
-                    # Your own accounts, and anyone else's that is waiting for you to confirm it.
-                    or_(ChannelIdentity.person_id == person_id, ChannelIdentity.verification.has_key("pending")),
                 )
                 .order_by(ChannelIdentity.provider, ChannelIdentity.created_at)
             ).all()
@@ -114,6 +119,8 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                         "endpoint": endpoint_label(identity.provider, identity.endpoint_key, bot, username),
                         "linked_at": _linked_at(s, identity),
                         "last_seen_at": identity.last_seen_at.isoformat() if identity.last_seen_at else None,
+                        # Messages through an unconfirmed bot are counted here, not in last_seen_at.
+                        "last_seen_unconfirmed_at": pending.get("last_seen_at") if pending else None,
                         "pending": (
                             {
                                 "reason": pending.get("reason", "new_endpoint"),
@@ -141,7 +148,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
     def confirm(identity_id: uuid.UUID, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         bot, username = current_bot()
         with session_scope() as s:
-            identity = linked_identity(s, identity_id)
+            identity = linked_identity(s, identity_id, person_id)
             pending = _pending(identity)
             if pending is None:
                 raise HTTPException(409, "This account has nothing waiting to be confirmed.")
@@ -155,6 +162,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             # Slack has no start links; the signed-in owner's tap is the confirmation.
             previous = identity.endpoint_key
             identity.endpoint_key = endpoint
+            identity.last_seen_at = datetime.now(UTC)  # confirmed: the silence clock starts again
             identity.verification = {"method": "confirmed_in_app", "verified_at": datetime.now(UTC).isoformat()}
             s.add(
                 IdentityLinkEvent(
@@ -172,7 +180,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
     )
     def unlink(identity_id: uuid.UUID, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         with session_scope() as s:
-            identity = linked_identity(s, identity_id)
+            identity = linked_identity(s, identity_id, person_id)
             linking.unlink(s, identity, actor="app", reason=f"unlinked in Connections by {person_id}")
         return {"unlinked": True}
 

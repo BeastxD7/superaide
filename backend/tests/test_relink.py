@@ -412,3 +412,43 @@ def test_the_migration_backfill_binds_existing_links_to_the_current_bot(manager)
             conn.execute(text("SELECT stable_key, endpoint_key FROM channel_identity WHERE provider='telegram'")).all()
         )
     assert rows == {"1001": OLD, "777": ""}
+
+
+def test_confirm_and_unlink_only_touch_the_owners_own_chat_accounts(bots, colleague):
+    _, new = bots
+    app = owner_app(new)
+    link_on(new, NEW)
+    with session_scope() as s:
+        owner = s.scalar(select(Person).where(Person.relation == "manager"))
+        web = s.scalar(select(ChannelIdentity).where(ChannelIdentity.provider == "web"))
+        if web is None:  # the app's own account for the owner
+            web = ChannelIdentity(provider="web", stable_key=str(owner.id), person_id=owner.id, aux_handles={})
+            s.add(web)
+            s.flush()
+        priya = s.scalar(select(ChannelIdentity).where(ChannelIdentity.stable_key == "U_PRIYA"))
+        priya.verification = {"pending": {"endpoint": "T_OURS/A_NEW", "reason": "new_endpoint"}}
+        web_id, priya_id = web.id, priya.id
+    for other in (web_id, priya_id):
+        assert app.post(f"/app/channels/linked/{other}/confirm").status_code == 404
+        assert app.post(f"/app/channels/linked/{other}/unlink").status_code == 404
+    with session_scope() as s:
+        assert s.get(ChannelIdentity, web_id).person_id is not None
+        assert s.get(ChannelIdentity, priya_id).person_id is not None
+    rows = app.get("/app/channels/linked").json()["accounts"]
+    assert [r["account"] for r in rows] == ["•••001"]  # someone else's account isn't listed
+
+
+def test_an_unconfirmed_bot_cannot_refresh_the_silence_clock(bots):
+    old, new = bots
+    app = owner_app(new)
+    link_on(old, OLD)
+    long_ago = datetime.now(UTC) - timedelta(days=31)
+    with session_scope() as s:
+        s.scalar(select(ChannelIdentity).where(ChannelIdentity.stable_key == ME)).last_seen_at = long_ago
+    for _ in range(3):
+        assert new.handle(tgm(ME, "keep me fresh", NEW)).mode == "unconfirmed"
+    row = identity()
+    assert row.last_seen_at == long_ago
+    assert app.get("/app/channels/linked").json()["accounts"][0]["last_seen_unconfirmed_at"]
+    # Back on the old bot the silence still counts.
+    assert old.handle(tgm(ME, "hi", OLD)).mode == "unconfirmed"
