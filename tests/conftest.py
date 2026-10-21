@@ -43,14 +43,14 @@ from typing import Any  # noqa: E402
 import pytest  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 
-from agi_agent.brain.llm import FakeLLM  # noqa: E402
-from agi_agent.brain.turn import Prediction, RequestedAction, TurnOutput  # noqa: E402
-from agi_agent.channels.base import FakeMessenger, InboundMessage  # noqa: E402
-from agi_agent.config import get_settings  # noqa: E402
-from agi_agent.db.models import Base, Person  # noqa: E402
-from agi_agent.db.session import get_engine, session_scope  # noqa: E402
-from agi_agent.identity.linking import bootstrap_person  # noqa: E402
-from agi_agent.pipeline import Agent  # noqa: E402
+from superaide.brain.llm import FakeLLM  # noqa: E402
+from superaide.brain.turn import Prediction, RequestedAction, TurnOutput  # noqa: E402
+from superaide.channels.base import FakeMessenger, InboundMessage  # noqa: E402
+from superaide.config import get_settings  # noqa: E402
+from superaide.db.models import Base, Person  # noqa: E402
+from superaide.db.session import get_engine, session_scope  # noqa: E402
+from superaide.identity.linking import bootstrap_person  # noqa: E402
+from superaide.pipeline import Agent  # noqa: E402
 
 MANAGER_TG = "1001"
 MANAGER_SLACK = "U_MGR"

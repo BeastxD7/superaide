@@ -43,7 +43,7 @@ export function People({ conn }: { conn: Connection }) {
       <div className="empty">
         <h2>No one yet</h2>
         <p>
-          Add yourself as the manager: <code>uv run agi-agent add-manager --name "Your name" --telegram-id 123</code>.
+          Add yourself as the manager: <code>uv run superaide add-manager --name "Your name" --telegram-id 123</code>.
           Message the bot first if you don't know your ID; it will show up here as an unlinked account.
         </p>
       </div>

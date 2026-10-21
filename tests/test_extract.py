@@ -16,8 +16,8 @@ import pypdf
 import pytest
 from docx.oxml import parse_xml
 
-from agi_agent.knowledge import extract as ex
-from agi_agent.knowledge.extract import (
+from superaide.knowledge import extract as ex
+from superaide.knowledge.extract import (
     MAX_FILE_BYTES,
     MAX_TEXT_CHARS,
     USER_AGENT,

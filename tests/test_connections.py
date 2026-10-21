@@ -12,12 +12,12 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from agi_agent.app import connections
-from agi_agent.db.models import AuditLog, IntegrationSecret
-from agi_agent.db.session import session_scope
-from agi_agent.main import create_app
-from agi_agent.vault import crypto
-from agi_agent.vault.store import runtime_settings
+from superaide.app import connections
+from superaide.db.models import AuditLog, IntegrationSecret
+from superaide.db.session import session_scope
+from superaide.main import create_app
+from superaide.vault import crypto
+from superaide.vault.store import runtime_settings
 
 PASSWORD = "correct horse battery"
 CLAUDE_KEY = "sk-ant-api03-" + "x" * 80 + "4f2a"
@@ -52,7 +52,7 @@ def services(request: httpx.Request) -> httpx.Response:
 def owner(agent, monkeypatch):
     monkeypatch.setattr(connections, "http_client", lambda: httpx.Client(transport=httpx.MockTransport(services)))
     app = create_app(agent)
-    c = TestClient(app, headers={"X-Requested-With": "agi-agent"})
+    c = TestClient(app, headers={"X-Requested-With": "superaide"})
     c.post("/auth/signup", json={"name": "Shashank Rao", "email": "s@example.com", "password": PASSWORD})
     c.post("/app/hire", json={"agent": "ava", "accepted_notice": True})
     c.app_ = app
@@ -71,7 +71,7 @@ def test_key_file_fallback_is_private(tmp_path, monkeypatch):
     monkeypatch.delenv("SECRETS_MASTER_KEY")
     monkeypatch.setattr(crypto, "_from_keyring", lambda: None)
     path = tmp_path / "master.key"
-    monkeypatch.setenv("AGI_AGENT_KEY_FILE", str(path))
+    monkeypatch.setenv("SUPERAIDE_KEY_FILE", str(path))
     crypto.master_key.cache_clear()
     key, where = crypto.master_key()
     assert where == "key file" and len(key) == 32
@@ -116,7 +116,7 @@ def test_telegram_and_slack_connect_and_disconnect(owner):
 
 
 def test_only_the_owner_can_see_or_change_connections(owner, agent):
-    other = TestClient(owner.app_, headers={"X-Requested-With": "agi-agent"})
+    other = TestClient(owner.app_, headers={"X-Requested-With": "superaide"})
     assert other.get("/app/connections").status_code == 401
     other.post("/auth/signup", json={"name": "Priya Tan", "email": "p@example.com", "password": PASSWORD})
     assert other.get("/app/connections").status_code == 403

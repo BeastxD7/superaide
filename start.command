@@ -1,9 +1,9 @@
 #!/bin/bash
-# Run agi-agent on your Mac with one command.
+# Run superaide on your Mac with one command.
 #
-#   bash ~/Desktop/agi-agent/start.command               start (Ctrl+C stops everything)
-#   bash ~/Desktop/agi-agent/start.command --reset       wipe the data first
-#   bash ~/Desktop/agi-agent/start.command --no-docker   embedded Postgres instead of Docker
+#   bash ~/Desktop/superaide/start.command               start (Ctrl+C stops everything)
+#   bash ~/Desktop/superaide/start.command --reset       wipe the data first
+#   bash ~/Desktop/superaide/start.command --no-docker   embedded Postgres instead of Docker
 #
 # Three parts, the usual way:
 #   database  Postgres 17 in Docker (or an embedded Postgres without Docker)
@@ -27,7 +27,7 @@ for arg in "$@"; do
 done
 
 # 0. Stop a copy of the agent that is already running (an older version, say).
-OURS="agi-agent (serve|telegram-poll|slack-socket)|$ROOT/web/node_modules/.bin/vite|http.server $WEB_PORT"
+OURS="superaide (serve|telegram-poll|slack-socket)|$ROOT/web/node_modules/.bin/vite|http.server $WEB_PORT"
 if pgrep -f "$OURS" >/dev/null 2>&1; then
   bold "Stopping the copy of the agent that was already running…"
   pkill -f "$OURS" 2>/dev/null || true
@@ -109,7 +109,7 @@ fi
 bold "Installing backend dependencies (first run takes a minute)…"
 uv sync --quiet
 if [ "$RESET" = 1 ]; then
-  uv run --quiet agi-agent reset-db --yes
+  uv run --quiet superaide reset-db --yes
 fi
 uv run --quiet alembic upgrade head
 
@@ -124,7 +124,7 @@ else
   bold "Brain: offline mode. Add ANTHROPIC_API_KEY to .env for real replies."
 fi
 bold "Starting the backend API on http://127.0.0.1:$API_PORT …"
-uv run --quiet agi-agent serve --port "$API_PORT" &
+uv run --quiet superaide serve --port "$API_PORT" &
 PIDS+=($!)
 # Telegram and Slack listeners run inside the API, for tokens in .env or connected in the app.
 if grep -Eq '^TELEGRAM_BOT_TOKEN=.+' .env; then bold "Telegram: connected from .env"; fi
@@ -161,7 +161,7 @@ bold "Ready."
 echo "  App (frontend):    $APP_URL"
 echo "  API (backend):     http://127.0.0.1:$API_PORT   (interactive docs: http://127.0.0.1:$API_PORT/docs)"
 echo "  Operator console:  http://localhost:$WEB_PORT/#/console?token=$TOKEN"
-echo "  Forgot your password? Run: uv run agi-agent reset-password --email you@example.com"
+echo "  Forgot your password? Run: uv run superaide reset-password --email you@example.com"
 echo "  Hire from scratch? Press Ctrl+C, then run: bash start.command --reset"
 echo "Keep this window open. Ctrl+C stops everything."
 open "$APP_URL" 2>/dev/null || xdg-open "$APP_URL" 2>/dev/null || true

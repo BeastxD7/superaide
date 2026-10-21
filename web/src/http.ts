@@ -33,7 +33,7 @@ export function createClient(baseURL: string, { token, withCredentials = false }
     withCredentials,
     // A custom header makes the browser check CORS first, so other sites can't
     // send changes with our cookie (CSRF protection; the API requires it).
-    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'agi-agent' },
+    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'superaide' },
   })
   client.interceptors.request.use((config) => {
     const t = token?.()

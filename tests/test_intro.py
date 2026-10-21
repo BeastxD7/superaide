@@ -6,18 +6,18 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from agi_agent.db.models import Document, MemoryItem
-from agi_agent.db.session import session_scope
-from agi_agent.knowledge import extract
-from agi_agent.knowledge.facts import Fact, FactList
-from agi_agent.main import create_app
+from superaide.db.models import Document, MemoryItem
+from superaide.db.session import session_scope
+from superaide.knowledge import extract
+from superaide.knowledge.facts import Fact, FactList
+from superaide.main import create_app
 
 PASSWORD = "correct horse battery"
 
 
 @pytest.fixture
 def client(agent):
-    c = TestClient(create_app(agent), headers={"X-Requested-With": "agi-agent"})
+    c = TestClient(create_app(agent), headers={"X-Requested-With": "superaide"})
     account = {"name": "Shashank Rao", "email": "s@example.com", "password": PASSWORD}
     assert c.post("/auth/signup", json=account).status_code == 200
     assert c.post("/app/hire", json={"agent": "ava", "accepted_notice": True}).status_code == 200
@@ -27,7 +27,7 @@ def client(agent):
 @pytest.fixture
 def brain(agent, monkeypatch):
     """Pretend a Claude key is set; the fake model answers fact-extraction calls."""
-    monkeypatch.setattr("agi_agent.factory.uses_real_model", lambda settings: True)
+    monkeypatch.setattr("superaide.factory.uses_real_model", lambda settings: True)
     original = agent.llm.responder
     seen: list[str] = []
 

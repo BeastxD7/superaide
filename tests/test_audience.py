@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from agi_agent.context.audience import Audience, visible_memories
-from agi_agent.db.models import MemoryItem
-from agi_agent.db.session import session_scope
+from superaide.context.audience import Audience, visible_memories
+from superaide.db.models import MemoryItem
+from superaide.db.session import session_scope
 
 
 def _add(content: str, kind: str, people=(), min_trust: int = 2) -> None:

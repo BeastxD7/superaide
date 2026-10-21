@@ -6,12 +6,12 @@ from types import SimpleNamespace
 import pytest
 from sqlalchemy import select
 
-from agi_agent.brain.budget import AgentFrozen, BudgetExceeded, BudgetGuard
-from agi_agent.brain.llm import ClaudeLLM, SystemBlock
-from agi_agent.brain.pricing import UnknownModelPrice, UsageCounts, cost_usd
-from agi_agent.db.models import AuditLog, SpendEntry
-from agi_agent.db.session import session_scope
-from agi_agent.policy.killswitch import set_frozen
+from superaide.brain.budget import AgentFrozen, BudgetExceeded, BudgetGuard
+from superaide.brain.llm import ClaudeLLM, SystemBlock
+from superaide.brain.pricing import UnknownModelPrice, UsageCounts, cost_usd
+from superaide.db.models import AuditLog, SpendEntry
+from superaide.db.session import session_scope
+from superaide.policy.killswitch import set_frozen
 
 
 def test_prices_match_the_published_table():

@@ -4,7 +4,7 @@ import type { ComponentProps, ReactNode } from 'react'
 import type { Session } from './AppRoot'
 import { homeFor } from './session'
 
-export const PRODUCT = 'Understudy'
+export const PRODUCT = 'Superaide'
 
 export const STAGES = [
   { name: 'Infant', does: 'Watches, asks questions and drafts. Everything waits for your yes.' },

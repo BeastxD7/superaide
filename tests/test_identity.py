@@ -4,10 +4,10 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 
-from agi_agent.db.models import ChannelIdentity, IdentityLinkEvent, LinkChallenge
-from agi_agent.db.session import session_scope
-from agi_agent.identity.linking import detect_claimed_name, detect_code, unlink
-from agi_agent.identity.trust import Trust
+from superaide.db.models import ChannelIdentity, IdentityLinkEvent, LinkChallenge
+from superaide.db.session import session_scope
+from superaide.identity.linking import detect_claimed_name, detect_code, unlink
+from superaide.identity.trust import Trust
 from tests.conftest import MANAGER_TG, codes_sent, sl, tg
 
 NEW_PHONE = "2002"

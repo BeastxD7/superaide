@@ -18,7 +18,7 @@ export function SpendPage({ conn }: { conn: Connection }) {
         <div className="empty">
           <h2>No model calls yet</h2>
           <p>
-            Run <code>uv run agi-agent hello</code> for one tiny real call (well under a cent) to check your API key.
+            Run <code>uv run superaide hello</code> for one tiny real call (well under a cent) to check your API key.
           </p>
         </div>
       ) : (

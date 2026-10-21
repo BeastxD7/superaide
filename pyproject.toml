@@ -1,5 +1,5 @@
 [project]
-name = "agi-agent"
+name = "superaide"
 version = "0.1.0"
 description = "An AI hire that grows up like a child, with identity checks you can trust"
 authors = [
@@ -29,7 +29,7 @@ dependencies = [
 ]
 
 [project.scripts]
-agi-agent = "agi_agent:main"
+superaide = "superaide:main"
 
 [build-system]
 requires = ["uv_build>=0.11.32,<0.12.0"]
@@ -53,7 +53,7 @@ target-version = "py313"
 select = ["E", "F", "I", "B", "UP"]
 
 [tool.ruff.lint.per-file-ignores]
-"src/agi_agent/brain/turn.py" = ["E501"]  # prompt text
+"src/superaide/brain/turn.py" = ["E501"]  # prompt text
 
 [tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = ["fastapi.Depends", "fastapi.Header", "fastapi.Query", "fastapi.File"]

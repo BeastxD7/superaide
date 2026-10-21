@@ -5,17 +5,17 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from agi_agent.app.accounts import owner
-from agi_agent.db.models import ChannelIdentity, Person
-from agi_agent.db.session import session_scope
-from agi_agent.identity.trust import Trust
-from agi_agent.knowledge.store import add_contact, preferences_for
-from agi_agent.main import create_app
+from superaide.app.accounts import owner
+from superaide.db.models import ChannelIdentity, Person
+from superaide.db.session import session_scope
+from superaide.identity.trust import Trust
+from superaide.knowledge.store import add_contact, preferences_for
+from superaide.main import create_app
 from tests.conftest import sl, tg
 
 
 def _setup(agent):
-    c = TestClient(create_app(agent), headers={"X-Requested-With": "agi-agent"})
+    c = TestClient(create_app(agent), headers={"X-Requested-With": "superaide"})
     c.post("/auth/signup", json={"name": "Shashank Rao", "email": "s@example.com", "password": "correct horse battery"})
     c.post("/app/hire", json={"agent": "ava", "accepted_notice": True})
     with session_scope() as s:

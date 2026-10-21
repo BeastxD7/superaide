@@ -8,9 +8,9 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
-from agi_agent.channels.slack import verify_signature
-from agi_agent.channels.telegram import SECRET_HEADER, parse_update, verify_secret
-from agi_agent.main import create_app
+from superaide.channels.slack import verify_signature
+from superaide.channels.telegram import SECRET_HEADER, parse_update, verify_secret
+from superaide.main import create_app
 from tests.conftest import MANAGER_TG, tg
 
 AUTH = {"Authorization": "Bearer test-admin-token"}
@@ -140,8 +140,8 @@ def test_outside_accounts_cannot_be_linked_from_the_dashboard(client, agent, man
 
 
 def test_real_model_only_with_a_key():
-    from agi_agent.config import Settings
-    from agi_agent.factory import uses_real_model
+    from superaide.config import Settings
+    from superaide.factory import uses_real_model
 
     assert not uses_real_model(Settings(anthropic_api_key="", fake_llm=False))
     assert uses_real_model(Settings(anthropic_api_key="sk-test", fake_llm=False))

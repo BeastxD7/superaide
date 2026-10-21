@@ -10,10 +10,10 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from agi_agent.app import accounts
-from agi_agent.db.models import ChannelIdentity, Contact, OwnerPreference, Person
-from agi_agent.db.session import session_scope
-from agi_agent.main import create_app
+from superaide.app import accounts
+from superaide.db.models import ChannelIdentity, Contact, OwnerPreference, Person
+from superaide.db.session import session_scope
+from superaide.main import create_app
 from tests.conftest import sl, tg
 
 PASSWORD = "correct horse battery"
@@ -25,7 +25,7 @@ def browser(agent):
     app = create_app(agent)
 
     def make() -> TestClient:
-        return TestClient(app, headers={"X-Requested-With": "agi-agent"})
+        return TestClient(app, headers={"X-Requested-With": "superaide"})
 
     return make
 
@@ -77,7 +77,7 @@ def test_hiring_needs_an_account_and_consent_and_happens_once(client, browser):
 
 def test_app_needs_a_session(client):
     assert client.get("/app/me").status_code == 401
-    client.cookies.set("agi_session", "forged-token")
+    client.cookies.set("superaide_session", "forged-token")
     assert client.get("/app/me").status_code == 401
 
 
@@ -203,7 +203,7 @@ def test_introduction_is_said_once(client):
 
 def test_backend_is_an_api_for_the_frontend_on_port_3000(client):
     """The backend serves JSON only; the React app on :3000 calls it across origins."""
-    assert client.get("/").json()["service"] == "agi-agent API"
+    assert client.get("/").json()["service"] == "superaide API"
     for origin in ("http://localhost:3000", "http://127.0.0.1:3000"):
         r = client.options(
             "/app/agents",

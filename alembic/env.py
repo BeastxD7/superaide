@@ -5,8 +5,8 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
-from agi_agent.config import get_settings
-from agi_agent.db.models import Base
+from superaide.config import get_settings
+from superaide.db.models import Base
 
 config = context.config
 config.set_main_option("sqlalchemy.url", get_settings().database_url)

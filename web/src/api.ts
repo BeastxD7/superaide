@@ -106,7 +106,7 @@ export type SimResult = {
   outbox: { text: string; stable_key?: string; to_context?: string }[]
 }
 
-const STORE_KEY = 'agi-agent-dashboard'
+const STORE_KEY = 'superaide-console'
 
 export type Connection = { base: string; token: string }
 

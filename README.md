@@ -1,4 +1,4 @@
-# agi-agent
+# Superaide
 
 An AI personal assistant that grows up like a child, with identity checks you can trust.
 
@@ -29,7 +29,7 @@ Three separate parts, the usual way:
 | Part | What | Where |
 | --- | --- | --- |
 | Frontend | React 19 + Vite 8 + Tailwind CSS 4 + Motion, in `web/` | http://localhost:3000 |
-| Backend | FastAPI, a JSON API only (no pages), in `src/agi_agent/` | http://127.0.0.1:8000 (docs at `/docs`) |
+| Backend | FastAPI, a JSON API only (no pages), in `src/superaide/` | http://127.0.0.1:8000 (docs at `/docs`) |
 | Database | Postgres 17 with pgvector, in Docker | localhost:5432 |
 
 The frontend calls the backend over HTTP with Axios (`web/src/http.ts`). The API address comes from `VITE_API_URL` (default `http://127.0.0.1:8000`; copy `web/.env.example` to `web/.env.local` to change it). The backend only accepts browser requests from the frontend's address (`FRONTEND_ORIGIN`, default `http://localhost:3000`). Telegram and Slack talk to the backend directly.
@@ -39,13 +39,13 @@ The frontend calls the backend over HTTP with Axios (`web/src/http.ts`). The API
 You need [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed (`brew install --cask docker`) and opened once. Then paste this into Terminal:
 
 ```bash
-bash ~/Desktop/agi-agent/start.command
+bash ~/Desktop/superaide/start.command
 ```
 
 It installs [uv](https://docs.astral.sh/uv/) if needed, stops any copy that is already running, starts Postgres (in Docker, or a built-in Postgres if Docker Desktop isn't installed), creates `.env` with an admin token, starts the backend API on port 8000 and the frontend on port 3000, and opens http://localhost:3000. With Node 20+ installed the frontend runs on Vite's dev server; without Node it serves the prebuilt files in `web/dist`. You land on the marketplace as a new visitor: open Ava's card, hire it, and Ava onboards you. Without an API key the brain runs in offline mode, so this costs nothing. The terminal also prints the API docs and operator console links. Press Ctrl+C to stop everything; run it again any time and you pick up where you left off.
 
 - `bash start.command --reset` wipes the data first, so you can hire Ava again from scratch.
-- Forgot your password? `uv run agi-agent reset-password --email you@example.com` sets a new one and signs that account out everywhere.
+- Forgot your password? `uv run superaide reset-password --email you@example.com` sets a new one and signs that account out everywhere.
 - `bash start.command --no-docker` uses an embedded Postgres in `.local-db/` instead of Docker.
 
 ## Quick start on your Mac, step by step
@@ -53,7 +53,7 @@ It installs [uv](https://docs.astral.sh/uv/) if needed, stops any copy that is a
 You need [Docker Desktop](https://www.docker.com/products/docker-desktop/), [uv](https://docs.astral.sh/uv/) (`brew install uv`) and Node 22 or later (`brew install node`).
 
 ```bash
-cd ~/Desktop/agi-agent
+cd ~/Desktop/superaide
 cp .env.example .env              # then set ADMIN_TOKEN (the comment shows how to make one)
 docker compose up -d              # Postgres 17 with pgvector, on localhost only
 uv sync                           # installs Python 3.14 and the dependencies
@@ -64,7 +64,7 @@ uv run pytest                     # 70+ tests, offline, free
 ### Try it with no API key and no channels
 
 ```bash
-uv run agi-agent serve            # backend API on http://127.0.0.1:8000 (keep this running)
+uv run superaide serve            # backend API on http://127.0.0.1:8000 (keep this running)
 # in a second terminal:
 cd web && npm install && npm run dev   # frontend on http://localhost:3000 (console at #/console)
 ```
@@ -72,7 +72,7 @@ cd web && npm install && npm run dev   # frontend on http://localhost:3000 (cons
 Open http://localhost:3000/#/console, paste your `ADMIN_TOKEN`, then add yourself in a third terminal so the scenarios have someone to protect:
 
 ```bash
-uv run agi-agent add-manager --name "Shashank" --telegram-id 1001
+uv run superaide add-manager --name "Shashank" --telegram-id 1001
 ```
 
 Go to **Try an impostor** and run the scenarios. Without an API key the model is an offline echo, so this costs nothing. Start again from an empty database any time with `docker compose down -v && docker compose up -d && uv run alembic upgrade head`.
@@ -97,28 +97,28 @@ Go to **Try an impostor** and run the scenarios. Without an API key the model is
 
 1. Create a workspace in the [Claude Console](https://platform.claude.com/dashboard), make an API key, and set the workspace spend limit to US$10 as a second guard.
 2. In `.env`, set `ANTHROPIC_API_KEY=...` and keep `MAX_SPEND_USD=10`. Restart `start.command`; the workspace shows Ava as online, and the console's *What is live right now* panel turns green for Brain.
-3. `uv run agi-agent hello` makes one tiny Haiku 5.5 call (a small fraction of a cent) to check the key. `uv run agi-agent spend` shows the total.
+3. `uv run superaide hello` makes one tiny Haiku 5.5 call (a small fraction of a cent) to check the key. `uv run superaide spend` shows the total.
 
-Replies to known people use Sonnet 5.5. My estimate is about a cent per reply with the current prompts, so US$10 covers several hundred to a thousand messages. When the cap is reached, Ava says it is paused and makes no further calls. Prices live in `src/agi_agent/brain/pricing.py`; a model missing from that table is refused.
+Replies to known people use Sonnet 5.5. My estimate is about a cent per reply with the current prompts, so US$10 covers several hundred to a thousand messages. When the cap is reached, Ava says it is paused and makes no further calls. Prices live in `src/superaide/brain/pricing.py`; a model missing from that table is refused.
 
 ## Commands
 
 | Command | What it does |
 | --- | --- |
-| `uv run agi-agent serve` | The backend API (app, console and webhooks) on 127.0.0.1:8000 |
-| `uv run agi-agent reset-password --email …` | Set a new password for an app account (signs it out everywhere) |
-| `uv run agi-agent telegram-poll` | Receive Telegram messages without a public URL |
-| `uv run agi-agent slack-socket` | Receive Slack messages over Socket Mode |
-| `uv run agi-agent add-manager` / `add-colleague` | Register a person and their first channels |
-| `uv run agi-agent unlink --identity <id>` | Undo a link |
-| `uv run agi-agent freeze` / `unfreeze` | Kill switch |
-| `uv run agi-agent spend` | Spend against the cap |
-| `uv run agi-agent hello` | One tiny real Claude call |
+| `uv run superaide serve` | The backend API (app, console and webhooks) on 127.0.0.1:8000 |
+| `uv run superaide reset-password --email …` | Set a new password for an app account (signs it out everywhere) |
+| `uv run superaide telegram-poll` | Receive Telegram messages without a public URL |
+| `uv run superaide slack-socket` | Receive Slack messages over Socket Mode |
+| `uv run superaide add-manager` / `add-colleague` | Register a person and their first channels |
+| `uv run superaide unlink --identity <id>` | Undo a link |
+| `uv run superaide freeze` / `unfreeze` | Kill switch |
+| `uv run superaide spend` | Spend against the cap |
+| `uv run superaide hello` | One tiny real Claude call |
 
 ## How the code is laid out
 
 ```text
-src/agi_agent/
+src/superaide/
   pipeline.py        verify → resolve → audience gate → think → policy → reply
   channels/          Telegram and Slack adapters, signature checks
   identity/          resolver, linking codes, trust tiers

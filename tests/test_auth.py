@@ -8,10 +8,10 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select, update
 
-from agi_agent.auth import service
-from agi_agent.db.models import AuthEvent, Person, UserAccount, UserSession
-from agi_agent.db.session import session_scope
-from agi_agent.main import create_app
+from superaide.auth import service
+from superaide.db.models import AuthEvent, Person, UserAccount, UserSession
+from superaide.db.session import session_scope
+from superaide.main import create_app
 
 PASSWORD = "correct horse battery"
 EMAIL = "Shashank@Example.com"
@@ -20,7 +20,7 @@ EMAIL = "Shashank@Example.com"
 @pytest.fixture
 def browser(agent):
     app = create_app(agent)
-    return lambda: TestClient(app, headers={"X-Requested-With": "agi-agent"})
+    return lambda: TestClient(app, headers={"X-Requested-With": "superaide"})
 
 
 @pytest.fixture
@@ -41,14 +41,14 @@ def test_signup_sets_a_safe_cookie_and_stores_only_a_hash(client):
     assert r.status_code == 200, r.text
     assert r.json()["user"]["email"] == EMAIL and r.json()["hire"] is None
     cookie = r.headers["set-cookie"].lower()
-    assert "agi_session=" in cookie and "httponly" in cookie and "samesite=lax" in cookie
+    assert "superaide_session=" in cookie and "httponly" in cookie and "samesite=lax" in cookie
     with session_scope() as s:
         user = s.scalar(select(UserAccount))
         assert user.email_normalized == "shashank@example.com"
         assert user.password_hash.startswith("$argon2id$") and PASSWORD not in user.password_hash
         # The account is one person in the agents' world too.
         assert s.get(Person, user.person_id).display_name == "Shashank Rao"
-        token = client.cookies.get("agi_session")
+        token = client.cookies.get("superaide_session")
         stored = s.scalar(select(UserSession.token_hash))
         assert token not in stored and stored == service.token_hash(token)
     assert client.get("/auth/me").json()["user"]["name"] == "Shashank Rao"
@@ -75,11 +75,11 @@ def test_login_logout_and_generic_errors(client, browser):
     assert wrong.json()["detail"] == unknown.json()["detail"]  # doesn't reveal which emails exist
     assert login(other).status_code == 200
     assert other.get("/auth/me").status_code == 200
-    old_cookie = other.cookies.get("agi_session")
+    old_cookie = other.cookies.get("superaide_session")
     assert other.post("/auth/logout").status_code == 200
     # The server revoked it: replaying the old cookie doesn't work.
     replay = browser()
-    replay.cookies.set("agi_session", old_cookie)
+    replay.cookies.set("superaide_session", old_cookie)
     assert replay.get("/auth/me").status_code == 401
 
 
