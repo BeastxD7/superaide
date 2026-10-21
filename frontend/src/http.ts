@@ -5,7 +5,7 @@ import axios, { AxiosError, type AxiosInstance } from 'axios'
 //
 // The API defaults to the same host name the page was opened with, so the
 // session cookie is first-party (localhost:3000 and localhost:8000 are the same
-// site). Override with VITE_API_URL in web/.env.local.
+// site). Override with VITE_API_URL in frontend/.env.local.
 export const API_URL: string =
   (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ||
   `${window.location.protocol}//${window.location.hostname}:8000`
