@@ -110,7 +110,9 @@ def run_due(now: datetime | None = None, limit: int = 20) -> int:
                 raise LookupError(f"no handler for job kind {kind!r}")
             with session_scope() as s:
                 job = s.get(Job, job_id)
-                assert job is not None
+                if job is None:  # deleted since it was claimed (a database reset): nothing to run
+                    log.info("job %s (%s) is gone; skipped", job_id, kind)
+                    continue
                 fn(s, job)
                 job.status = "done"
                 job.finished_at = _now()
@@ -119,7 +121,8 @@ def run_due(now: datetime | None = None, limit: int = 20) -> int:
             log.exception("job %s (%s) failed", job_id, kind)
             with session_scope() as s:
                 job = s.get(Job, job_id)
-                assert job is not None
+                if job is None:
+                    continue
                 job.last_error = f"{type(exc).__name__}: {exc}"[:2000]
                 if job.attempts >= job.max_attempts:
                     job.status = "failed"

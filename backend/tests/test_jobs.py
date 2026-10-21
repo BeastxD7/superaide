@@ -6,7 +6,7 @@ import time
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from superaide.db.models import AuditLog, Job
 from superaide.db.session import session_scope
@@ -114,6 +114,30 @@ def test_a_queued_job_can_be_cancelled(ran):
         assert cancel(s, "reminder:7") is False  # nothing queued under that key any more
     assert run_due(NOW) == 0 and ran == []
     assert job("ok").status == "cancelled"
+
+
+def test_a_job_deleted_after_it_was_claimed_is_skipped_without_stopping_the_worker(ran):
+    # Rows can vanish between claiming and running (a database reset, as the e2e suite does
+    # between tests): the rest still run and the worker's tick doesn't crash.
+    @handler("wipe")
+    def wipe(session, job):
+        ran.append(("wipe", job.payload))
+        session.execute(delete(Job).where(Job.kind != "wipe"))
+
+    @handler("gone")
+    def gone(session, job):
+        session.execute(delete(Job).where(Job.id == job.id))
+        session.flush()
+        raise RuntimeError("failed after its row was deleted")
+
+    with session_scope() as s:
+        enqueue(s, "wipe", {}, run_at=NOW - timedelta(seconds=3))
+        enqueue(s, "ok", {"n": 1}, run_at=NOW - timedelta(seconds=2))
+    assert run_due(NOW) == 2
+    assert ran == [("wipe", {})]  # the deleted job was skipped, not run
+    with session_scope() as s:
+        enqueue(s, "gone", {}, run_at=NOW - timedelta(seconds=1))
+    assert run_due(NOW) == 1  # a failure for a job that no longer exists is only logged
 
 
 def test_a_job_with_no_handler_fails_instead_of_looping(ran):
