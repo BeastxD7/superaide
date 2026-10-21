@@ -11,8 +11,9 @@ regexes = ['''^xox[bp]-1-abc-[a-z]+$''', '''^xapp-1-abc-[a-z]+$''']
 
 [[allowlists]]
 description = "Research reports quote example platform user IDs (not secrets)"
-targetRules = ["discord-client-id"]
+condition = "AND"
 paths = ['''^docs/research/''']
+regexes = ['''^987654321012345678$''']
 
 [[allowlists]]
 description = "Made-up Slack app token in the API connection tests"
@@ -25,3 +26,9 @@ description = "A forged session cookie value in the accounts e2e tests (base64 o
 condition = "AND"
 paths = ['''(^|/)e2e/tests/accounts\.spec\.ts$''']
 regexes = ['''^Q2hlY2tpbmctdGhhdC1hLXJhbmRvbS10b2tlbi1mYWls''']
+
+[[allowlists]]
+description = "A made-up OpenRouter-style key in the provider settings tests"
+condition = "AND"
+paths = ['''(^|/)tests/test_providers_config\.py$''']
+regexes = ['''^sk-or-v1-test-secret-key-0123456789$''']
