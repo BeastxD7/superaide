@@ -123,7 +123,8 @@ def test_send_dm_posts_to_the_bot_api_with_the_user_id_as_chat_id():
     [request] = seen
     assert request.method == "POST"
     assert str(request.url) == f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    assert json.loads(request.content) == {"chat_id": "1001", "text": "Hi Shashank"}
+    body = json.loads(request.content)
+    assert body["chat_id"] == "1001" and body["text"] == "Hi Shashank" and body["parse_mode"] == "HTML"
 
 
 def test_send_to_context_posts_to_the_group_chat_id():
@@ -131,7 +132,8 @@ def test_send_to_context_posts_to_the_group_chat_id():
     TelegramMessenger(TOKEN, client).send_to_context(Context(external_id="-100123"), "Noted")
     [request] = seen
     assert request.url.path == f"/bot{TOKEN}/sendMessage"
-    assert json.loads(request.content) == {"chat_id": "-100123", "text": "Noted"}
+    body = json.loads(request.content)
+    assert body["chat_id"] == "-100123" and body["text"] == "Noted" and body["parse_mode"] == "HTML"
 
 
 def test_a_refused_send_is_logged_not_raised(caplog):

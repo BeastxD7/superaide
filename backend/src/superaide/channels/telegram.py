@@ -13,7 +13,8 @@ from typing import Any
 
 import httpx
 
-from superaide.channels.base import InboundMessage
+from superaide.channels import format as fmt
+from superaide.channels.base import InboundMessage, Sources
 from superaide.db.models import ChannelIdentity, Context
 
 log = logging.getLogger(__name__)
@@ -68,21 +69,40 @@ class TelegramMessenger:
         self.base = f"https://api.telegram.org/bot{token}"
         self.http = client or httpx.Client(timeout=15)
 
-    def _send(self, chat_id: str, text: str, thread_id: str = "") -> None:
-        body: dict[str, Any] = {"chat_id": chat_id, "text": text}
-        if thread_id.isdigit():  # a forum topic
-            body["message_thread_id"] = int(thread_id)
-        r = self.http.post(f"{self.base}/sendMessage", json=body)
-        if r.status_code != 200:
-            log.warning("telegram send failed: %s %s", r.status_code, r.text[:200])
+    def _post(self, body: dict[str, Any]) -> httpx.Response:
+        return self.http.post(f"{self.base}/sendMessage", json=body)
+
+    def _send(self, chat_id: str, text: str, thread_id: str = "", sources: Sources | None = None) -> None:
+        """Send Markdown as Telegram HTML, split under the 4096-character limit. If Telegram
+        can't parse the markup, that message goes again as plain text."""
+        for html_text, markdown in fmt.outgoing(
+            text, sources, render=fmt.to_telegram_html, footer=fmt.telegram_footer, limit=fmt.TELEGRAM_LIMIT
+        ):
+            body: dict[str, Any] = {
+                "chat_id": chat_id,
+                "text": html_text,
+                "parse_mode": "HTML",
+                "link_preview_options": {"is_disabled": True},
+            }
+            if thread_id.isdigit():  # a forum topic
+                body["message_thread_id"] = int(thread_id)
+            r = self._post(body)
+            if r.status_code == 400 and "can't parse entities" in r.text:
+                log.warning("telegram refused the formatting, sending plain text: %s", r.text[:200])
+                del body["parse_mode"]
+                body["text"] = fmt.to_plain(markdown)[: fmt.TELEGRAM_LIMIT]
+                r = self._post(body)
+            if r.status_code != 200:
+                log.warning("telegram send failed: %s %s", r.status_code, r.text[:200])
+                return
 
     def send_dm(self, identity: ChannelIdentity, text: str) -> None:
         # In a private chat the chat ID equals the user ID. The user must have
         # started the bot once, or Telegram refuses the message.
         self._send(identity.stable_key, text)
 
-    def send_to_context(self, context: Context, text: str, thread_id: str = "") -> None:
-        self._send(context.external_id, text, thread_id)
+    def send_to_context(self, context: Context, text: str, thread_id: str = "", sources: Sources | None = None) -> None:
+        self._send(context.external_id, text, thread_id, sources)
 
 
 def poll_forever(token: str, handle: Callable[[InboundMessage], Any], stop: threading.Event | None = None) -> None:

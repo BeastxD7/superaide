@@ -19,6 +19,7 @@ from superaide.brain.llm import LLM
 from superaide.brain.llm import OnEvent as Emit
 from superaide.brain.turn import TurnOutput, build_messages, build_system
 from superaide.channels.base import InboundMessage, Messenger
+from superaide.channels.format import strip_citations
 from superaide.config import Settings
 from superaide.context.audience import Audience, audience_for, visible_memories
 from superaide.db.models import Context
@@ -393,5 +394,13 @@ class Agent:
         if messenger is None:
             audit(s, "pipeline", "no_messenger", provider=ctx.provider)
             return
-        messenger.send_to_context(ctx, text, thread)
+        # The stored event keeps the Markdown and the sources list as they are (the app shows
+        # both). Over a channel the "[n]" marks need the list beside them: the owner's own
+        # replies carry it as a footer (only _owner_turn sets sources); anywhere else the
+        # marks are dropped so they don't point at nothing.
+        sources = (meta or {}).get("sources") or None
+        if sources and ctx.kind == "dm":
+            messenger.send_to_context(ctx, text, thread, sources=sources)
+        else:
+            messenger.send_to_context(ctx, strip_citations(text), thread)
         log_event(s, context=ctx, direction="out", content=text, audience=aud, thread_id=thread, meta=meta)

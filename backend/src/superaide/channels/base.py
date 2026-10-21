@@ -26,23 +26,34 @@ class InboundMessage:
     raw: dict[str, Any] = field(default_factory=dict)
 
 
+Sources = list[dict[str, Any]]
+
+
 class Messenger(Protocol):
+    """`text` is Ava's Markdown; each messenger converts it to its channel's format. `sources`
+    (owner DMs only) become a short footer so the "[1]" marks point at something."""
+
     def send_dm(self, identity: ChannelIdentity, text: str) -> None: ...
 
-    def send_to_context(self, context: Context, text: str, thread_id: str = "") -> None: ...
+    def send_to_context(
+        self, context: Context, text: str, thread_id: str = "", sources: Sources | None = None
+    ) -> None: ...
 
 
 @dataclass
 class FakeMessenger:
     """Records outbound messages instead of sending them (tests and dry runs)."""
 
-    sent: list[dict[str, str]] = field(default_factory=list)
+    sent: list[dict[str, Any]] = field(default_factory=list)
 
     def send_dm(self, identity: ChannelIdentity, text: str) -> None:
         self.sent.append({"to_identity": str(identity.id), "stable_key": identity.stable_key, "text": text})
 
-    def send_to_context(self, context: Context, text: str, thread_id: str = "") -> None:
-        self.sent.append({"to_context": context.external_id, "text": text, "thread_id": thread_id})
+    def send_to_context(self, context: Context, text: str, thread_id: str = "", sources: Sources | None = None) -> None:
+        sent: dict[str, Any] = {"to_context": context.external_id, "text": text, "thread_id": thread_id}
+        if sources:
+            sent["sources"] = sources
+        self.sent.append(sent)
 
 
 class WebMessenger:
@@ -52,5 +63,5 @@ class WebMessenger:
     def send_dm(self, identity: ChannelIdentity, text: str) -> None:
         return None
 
-    def send_to_context(self, context: Context, text: str, thread_id: str = "") -> None:
+    def send_to_context(self, context: Context, text: str, thread_id: str = "", sources: Sources | None = None) -> None:
         return None

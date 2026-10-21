@@ -13,7 +13,8 @@ import time
 from collections.abc import Callable
 from typing import Any
 
-from superaide.channels.base import InboundMessage
+from superaide.channels import format as fmt
+from superaide.channels.base import InboundMessage, Sources
 from superaide.db.models import ChannelIdentity, Context
 
 log = logging.getLogger(__name__)
@@ -77,15 +78,21 @@ class SlackMessenger:
             client = WebClient(token=token)
         self.client = client
 
+    def _post(self, channel: str, text: str, thread_id: str = "", sources: Sources | None = None) -> None:
+        """Markdown goes out as Slack mrkdwn, split under Slack's recommended length."""
+        messages = fmt.outgoing(text, sources, render=fmt.to_slack, footer=fmt.slack_footer, limit=fmt.SLACK_LIMIT)
+        for mrkdwn, _ in messages:
+            if thread_id:
+                self.client.chat_postMessage(channel=channel, text=mrkdwn, thread_ts=thread_id)
+            else:
+                self.client.chat_postMessage(channel=channel, text=mrkdwn)
+
     def send_dm(self, identity: ChannelIdentity, text: str) -> None:
         opened = self.client.conversations_open(users=identity.stable_key)
-        self.client.chat_postMessage(channel=opened["channel"]["id"], text=text)
+        self._post(opened["channel"]["id"], text)
 
-    def send_to_context(self, context: Context, text: str, thread_id: str = "") -> None:
-        if thread_id:
-            self.client.chat_postMessage(channel=context.external_id, text=text, thread_ts=thread_id)
-        else:
-            self.client.chat_postMessage(channel=context.external_id, text=text)
+    def send_to_context(self, context: Context, text: str, thread_id: str = "", sources: Sources | None = None) -> None:
+        self._post(context.external_id, text, thread_id, sources)
 
 
 def run_socket_mode(bot_token: str, app_token: str, our_team_id: str, handle: Callable[[InboundMessage], Any]) -> None:
