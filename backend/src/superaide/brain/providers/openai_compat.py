@@ -241,9 +241,13 @@ class OpenAICompatProvider:
             if not self.base_url:
                 raise RuntimeError(f"{preset.label} needs a base URL")
             headers = {"api-key": api_key} if preset.azure_key_header and api_key else None
+            from superaide.security.urls import safe_client
+
             client = openai.OpenAI(
                 api_key=api_key or "not-needed", base_url=self.base_url, max_retries=2, timeout=120,
                 default_headers=headers,
+                # Each connection is checked when made, so a name can't later point inside our network.
+                http_client=safe_client(allow_private=preset.local, for_openai=True, timeout=120),
             )  # fmt: skip
         self.client = client
 

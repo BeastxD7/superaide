@@ -47,7 +47,10 @@ FETCH_TOOL = {
 
 def client() -> httpx.Client:
     """Replaced in tests with one that doesn't touch the network."""
-    return httpx.Client(timeout=10, follow_redirects=False)
+    from superaide.security.urls import safe_client
+
+    # Every connection, redirects included, is checked again when it is made (DNS rebinding).
+    return safe_client(allow_private=False, hosted_mode=True, timeout=10, follow_redirects=False)
 
 
 def source(url: str, title: str, text: str) -> dict[str, Any]:
