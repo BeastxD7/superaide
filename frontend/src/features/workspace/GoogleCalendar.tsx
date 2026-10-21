@@ -1,10 +1,11 @@
 'use client'
 
-import { CalendarDays, Check, ChevronDown, Copy, ExternalLink, Puzzle } from 'lucide-react'
+import { Check, ChevronDown, Copy, ExternalLink, Puzzle } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import Link from 'next/link'
 import { useEffect, useState, type FormEvent } from 'react'
 import { AppError, call, type SkillCard } from '@/lib/api'
+import { BrandIcon } from '@/components/BrandIcon'
 import { Button, Notice } from '@/components/site'
 
 // Google Calendar, read-only. Two steps: save the owner's own OAuth client (made in
@@ -63,8 +64,8 @@ export function GoogleCalendarRow({
   return (
     <div className="overflow-hidden rounded-2xl bg-white">
       <button onClick={onToggle} aria-expanded={expanded} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-lilac-50">
-        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-lilac-100 text-violet-600">
-          <CalendarDays className="size-4" />
+        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-lilac-100">
+          <BrandIcon brand="googlecalendar" size={18} decorative />
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-medium text-ink">Google Calendar</span>
