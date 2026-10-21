@@ -22,7 +22,7 @@ from sqlalchemy.exc import IntegrityError
 from superaide.app import accounts
 from superaide.app.catalog import catalog, find
 from superaide.app.onboarding import SHARE_LABELS, Onboarder, documents_view
-from superaide.auth.routes import current_user_id, require_csrf_header
+from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header
 from superaide.config import get_settings
 from superaide.db.models import AgentHire, ChannelIdentity, Context, Document, Event, MemoryItem, Person, UserAccount
 from superaide.db.session import require, session_scope
@@ -86,7 +86,7 @@ class CallAnswerBody(BaseModel):
 
 
 def make_router(get_agent: Callable[[], Any]) -> APIRouter:
-    router = APIRouter(prefix="/app", dependencies=[Depends(require_csrf_header)])
+    router = APIRouter(prefix="/app", dependencies=[Depends(require_csrf_header), Depends(reject_nul_text)])
 
     def onboarder() -> Onboarder:
         agent = get_agent()  # its settings include credentials connected in the app
@@ -121,7 +121,8 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 try:
                     person = accounts.hire(s, user, body.agent)
                 except accounts.AlreadyHired as exc:
-                    raise HTTPException(409, f"{settings.agent_name} already works for {exc.owner}.") from exc
+                    # Not the owner's name: any signed-up account can ask, and it's not theirs to know.
+                    raise HTTPException(409, f"{settings.agent_name} already works for someone else.") from exc
                 onboarder().ensure_started(s, person)
                 return {"hired": body.agent, "person": {"id": str(person.id), "name": person.display_name}}
         except IntegrityError as exc:  # someone else hired at the same moment

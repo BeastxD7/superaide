@@ -13,3 +13,15 @@ regexes = ['''^xox[bp]-1-abc-[a-z]+$''', '''^xapp-1-abc-[a-z]+$''']
 description = "Research reports quote example platform user IDs (not secrets)"
 targetRules = ["discord-client-id"]
 paths = ['''^docs/research/''']
+
+[[allowlists]]
+description = "Made-up Slack app token in the API connection tests"
+condition = "AND"
+paths = ['''(^|/)tests/api/test_connections_negative\.py$''']
+regexes = ['''^xapp-1-A111-2222-[a-z]+$''']
+
+[[allowlists]]
+description = "A forged session cookie value in the accounts e2e tests (base64 of plain English)"
+condition = "AND"
+paths = ['''(^|/)e2e/tests/accounts\.spec\.ts$''']
+regexes = ['''^Q2hlY2tpbmctdGhhdC1hLXJhbmRvbS10b2tlbi1mYWls''']

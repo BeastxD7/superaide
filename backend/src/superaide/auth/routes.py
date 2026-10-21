@@ -8,6 +8,7 @@ origin passes. That is the CSRF protection for cookie-authenticated calls.
 
 from __future__ import annotations
 
+import re
 import uuid
 from collections.abc import Callable
 from typing import Any
@@ -34,6 +35,19 @@ def client_of(request: Request) -> Client:
 def require_csrf_header(request: Request) -> None:
     if request.method in UNSAFE and not request.headers.get("x-requested-with"):
         raise HTTPException(403, "Missing X-Requested-With header")
+
+
+# A JSON string escape for NUL (\u0000) that isn't itself an escaped backslash followed by "u0000".
+_JSON_NUL = re.compile(rb"(?<!\\)(?:\\\\)*\\u0000")
+
+
+async def reject_nul_text(request: Request) -> None:
+    """Postgres text can't hold NUL characters: refuse them up front instead of failing on save (a 500)."""
+    content_type = request.headers.get("content-type", "")
+    if request.method not in UNSAFE or content_type.startswith(("multipart/", "application/x-www-form-urlencoded")):
+        return  # uploads are cleaned by the extractor; only JSON bodies are checked here
+    if _JSON_NUL.search(await request.body()):
+        raise HTTPException(422, "Text can't contain NUL characters.")
 
 
 def session_token(request: Request) -> str | None:
@@ -131,7 +145,7 @@ class PasswordBody(BaseModel):
 
 
 def make_router() -> APIRouter:
-    router = APIRouter(prefix="/auth", dependencies=[Depends(require_csrf_header)])
+    router = APIRouter(prefix="/auth", dependencies=[Depends(require_csrf_header), Depends(reject_nul_text)])
 
     @router.post("/signup")
     def signup(body: SignupBody, request: Request, response: Response) -> dict[str, Any]:

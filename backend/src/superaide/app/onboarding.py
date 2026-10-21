@@ -78,7 +78,8 @@ CALL_QUESTIONS = [
     {"id": "q4", "text": "Is there anything I should always be careful with, or never share?"},
 ]
 CALL_ACKS = ["Got it, thanks.", "That's helpful.", "Thanks, noted.", "Perfect."]
-HHMM = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
+# ASCII digits only, and the whole string: \d also matches other scripts' digits and $ allows a final "\n".
+HHMM = re.compile(r"([01][0-9]|2[0-3]):[0-5][0-9]")
 
 
 @dataclass
@@ -264,14 +265,14 @@ class Onboarder:
     def answer(self, session: Session, person: Person, step: str, payload: dict[str, Any]) -> StepView:
         """Record an answer and move on (or stay, with a hint, if more is needed)."""
         state = self.state(session, person)
-        if step != state.step:
-            return self.view(session, person)  # stale tab: show where we really are
+        if step != state.step or step == "done":
+            return self.view(session, person)  # stale tab, or nothing left to answer: show where we really are
         answers = dict(state.answers or {})
         extra: list[str] = []
         name = person.display_name
 
         if step == "hello":
-            choice = str(payload.get("choice", "Nice to meet you"))[:100]
+            choice = _text(payload.get("choice"), 100) or "Nice to meet you"
             self._hear(session, person, choice)
             if choice.startswith("What will you"):
                 extra = [
@@ -285,7 +286,7 @@ class Onboarder:
         elif step == "about":
             mode = str(payload.get("mode", "chat"))
             if mode == "chat":
-                text = str(payload.get("text", "")).strip()[:4000]
+                text = _text(payload.get("text"), 4000)
                 if not text:
                     return self.view(session, person, hint="Even one line helps. What do you do?")
                 self._hear(session, person, text)
@@ -306,15 +307,17 @@ class Onboarder:
                 extra = [self._learned_summary(session, person)]
 
         elif step == "people":
-            people = payload.get("people", []) if not payload.get("skip") else []
-            added = []
-            for p in people[:30] if isinstance(people, list) else []:
-                pname = " ".join(str(p.get("name", "")).split())[:120]
-                if not pname:
+            people = [] if _flag(payload.get("skip"), False) else _list(payload.get("people"))
+            added: list[tuple[str, bool]] = []
+            for p in people[:30]:
+                if not isinstance(p, dict):
                     continue
+                pname = " ".join(_text(p.get("name"), 10_000).split())[:120]
+                if not pname or pname.lower() in {n.lower() for n, _ in added}:
+                    continue  # blank, or already given in this answer: the first one counts
                 rel = str(p.get("relationship", "Other"))
                 rel = rel if rel in RELATIONSHIPS else "Other"
-                vip = bool(p.get("vip"))
+                vip = _flag(p.get("vip"), False)
                 add_contact(session, owner=person, name=pname, relationship=rel.lower(), vip=vip)
                 remember_fact(
                     session, owner=person, category="person", source="intro_chat",
@@ -335,8 +338,8 @@ class Onboarder:
                 extra = ["No problem. You can add people any time from your notebook."]
 
         elif step == "urgent":
-            topics = [str(t)[:200] for t in payload.get("topics", []) if str(t).strip()][:12]
-            other = str(payload.get("other", "")).strip()[:200]
+            topics = [t[:200] for t in _list(payload.get("topics")) if isinstance(t, str) and t.strip()][:12]
+            other = _text(payload.get("other"), 200)
             if other:
                 topics.append(other)
             if not topics:
@@ -360,7 +363,7 @@ class Onboarder:
             if channel not in {"app"} | ({"telegram"} if "telegram" in providers else set()):
                 channel = "app"
             start, end = str(payload.get("quiet_start", "22:00")), str(payload.get("quiet_end", "07:00"))
-            if not (HHMM.match(start) and HHMM.match(end)):
+            if not (HHMM.fullmatch(start) and HHMM.fullmatch(end)):
                 return self.view(session, person, hint="Use times like 22:00 and 07:00.")
             tz = str(payload.get("timezone", pref.timezone))[:64]
             try:
@@ -368,7 +371,7 @@ class Onboarder:
             except ZoneInfoNotFoundError, ValueError:
                 tz = pref.timezone
             pref.interrupt_channel, pref.quiet_start, pref.quiet_end, pref.timezone = channel, start, end, tz
-            pref.vip_breaks_quiet = bool(payload.get("vip_breaks_quiet", True))
+            pref.vip_breaks_quiet = _flag(payload.get("vip_breaks_quiet"), True)
             where = "here in the app" if channel == "app" else "on Telegram"
             self._hear(
                 session,
@@ -383,12 +386,13 @@ class Onboarder:
 
         elif step == "share":
             pref = preferences_for(session, person)
-            if payload.get("skip"):
+            if _flag(payload.get("skip"), False):
                 chosen: list[str] = []
             else:
-                chosen = [str(v) for v in payload.get("shareable", []) if str(v) in SHARE_LABELS]
+                offered = [v for v in _list(payload.get("shareable")) if isinstance(v, str) and v in SHARE_LABELS]
+                chosen = list(dict.fromkeys(offered))  # each once, in the order given
             pref.shareable = chosen
-            pref.never_share = str(payload.get("never", "")).strip()[:1000]
+            pref.never_share = _text(payload.get("never"), 1000)
             answers["share_saved"] = True
             said = "; ".join(SHARE_LABELS[c] for c in chosen) or "Nothing for now"
             self._hear(session, person, said + (f". Never share: {pref.never_share}" if pref.never_share else ""))
@@ -563,6 +567,30 @@ def _mid_sentence(text: str) -> str:
     if text in URGENT_OPTIONS or text.split(" ", 1)[0].lower() in _LOWER_FIRST_WORDS:
         return text[:1].lower() + text[1:]
     return text
+
+
+# Answers arrive as free-form JSON from the client. These read them defensively, so a
+# missing, null or wrongly typed value is treated as "no answer" rather than stored as
+# its Python repr ("None", "{'x': 1}") or crashing the request.
+
+
+def _text(value: Any, limit: int) -> str:
+    """A free-text answer, trimmed; "" if it isn't text."""
+    return value.strip()[:limit] if isinstance(value, str) else ""
+
+
+def _list(value: Any) -> list[Any]:
+    """A list answer; [] if it isn't a list (a string would otherwise be read letter by letter)."""
+    return value if isinstance(value, list) else []
+
+
+def _flag(value: Any, default: bool) -> bool:
+    """A yes/no answer. Text is read for what it says: bool("false") would be True."""
+    if value is None:
+        return default
+    if isinstance(value, str):
+        return value.strip().lower() in {"true", "yes", "on", "1"}
+    return bool(value)
 
 
 def _join(items: list[str]) -> str:

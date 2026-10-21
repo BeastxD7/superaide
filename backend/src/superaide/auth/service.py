@@ -67,10 +67,12 @@ def _event(session: Session, kind: str, client: Client, *, user_id=None, email: 
     )
 
 
-def _recent(session: Session, kind: str, since: timedelta, *, ip: str | None = None) -> int:
+def _recent(session: Session, kind: str, since: timedelta, *, ip: str | None = None, user_id=None) -> int:
     q = select(func.count()).select_from(AuthEvent).where(AuthEvent.kind == kind, AuthEvent.created_at > _now() - since)
     if ip is not None:
         q = q.where(AuthEvent.ip == ip)
+    if user_id is not None:
+        q = q.where(AuthEvent.user_id == user_id)
     return session.scalar(q) or 0
 
 
@@ -223,6 +225,11 @@ def revoke_all(session: Session, user: UserAccount, *, except_token: str | None 
 def change_password(
     session: Session, user: UserAccount, *, current: str, new: str, keep_token: str | None, client: Client
 ) -> None:
+    # Same limit as login, so a stolen session can't be used to guess the password.
+    settings = get_settings()
+    window = timedelta(minutes=settings.login_lock_minutes)
+    if _recent(session, "password_change_fail", window, user_id=user.id) >= settings.login_max_failures:
+        raise AuthError(429, f"Too many wrong passwords. Try again in {settings.login_lock_minutes} minutes.")
     ok, _ = verify_password(user.password_hash, current)
     if not ok:
         _event(session, "password_change_fail", client, user_id=user.id)
