@@ -32,7 +32,7 @@ import {
 } from 'react'
 import { Orb, type Mood } from '@/components/Orb'
 import { createRecognizer, prepareVoices, recognitionLang, speak, speechSupport, stopSpeaking, unlockSpeech, type Recognizer, type SpeechSupport } from '@/features/onboarding/speech'
-import { Button, Notice } from '@/components/ui'
+import { Button, Notice } from '@/components/site'
 
 // The video call introduction: the owner meets their assistant face to face.
 // The assistant asks each question aloud, listens to the answer, and hands the

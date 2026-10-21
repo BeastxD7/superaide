@@ -108,6 +108,26 @@ export type Memory = {
   at: string
 }
 
+export type PersonCard = {
+  id: string
+  name: string
+  relationship: string
+  vip: boolean
+  channels: string[]
+}
+
+export type Preferences = {
+  urgent_topics: string[]
+  digest: string
+  interrupt_channel: string
+  quiet_start: string
+  quiet_end: string
+  vip_breaks_quiet: boolean
+  timezone: string
+  shareable: { value: string; label: string }[]
+  never_share: string
+}
+
 // The signed-in account, from /auth/me. The session itself is an httpOnly cookie
 // the browser sends automatically; page code never sees it.
 export type Account = {
@@ -147,4 +167,7 @@ export const auth = {
     request<Account>('/auth/signup', { method: 'POST', json: { name, email, password } }),
   login: (email: string, password: string) => request<Account>('/auth/login', { method: 'POST', json: { email, password } }),
   logout: () => request<{ status: string }>('/auth/logout', { method: 'POST' }),
+  changePassword: (current: string, next: string) =>
+    request<{ status: string }>('/auth/password', { method: 'POST', json: { current, new: next } }),
+  logoutEverywhere: () => request<{ status: string }>('/auth/logout-everywhere', { method: 'POST' }),
 }

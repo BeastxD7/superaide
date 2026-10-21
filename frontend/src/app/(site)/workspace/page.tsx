@@ -1,8 +1,6 @@
-import type { Metadata } from 'next'
-import { WorkspaceScreen } from '@/app/(site)/screens'
+import { redirect } from 'next/navigation'
 
-export const metadata: Metadata = { title: 'Workspace', robots: { index: false } }
-
+// The workspace became the dashboard; old links land in its chat.
 export default function WorkspacePage() {
-  return <WorkspaceScreen />
+  redirect('/dashboard/chat')
 }

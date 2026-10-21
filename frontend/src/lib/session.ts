@@ -1,10 +1,10 @@
 import type { Account } from '@/lib/api'
 
-// Where a signed-in account belongs: its agent's workspace, the introduction, or the marketplace.
+// Where a signed-in account belongs: its dashboard, the introduction, or the marketplace.
 export function homeFor(account: Account | null): string {
   const hire = account?.hire
   if (!hire) return '/'
-  return hire.onboarding_done ? '/workspace' : '/meet'
+  return hire.onboarding_done ? '/dashboard' : '/meet'
 }
 
 // Only follow "next" to a page inside this app (never to another site).

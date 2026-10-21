@@ -12,7 +12,7 @@ import { Orb } from '@/components/Orb'
 import { StepControls } from '@/features/onboarding/steps'
 import { unlockSpeech } from '@/features/onboarding/speech'
 import { VideoCall, type CallQuestion, type CallTurnResult } from '@/features/onboarding/VideoCall'
-import { AccountMenu, Notice } from '@/components/ui'
+import { AccountMenu, Notice } from '@/components/site'
 
 export function Meet({ session }: { session: Session }) {
   const router = useRouter()

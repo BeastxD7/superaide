@@ -4,7 +4,7 @@ import { Check, ChevronDown, ExternalLink, Hash, KeyRound, MessageCircle, Send, 
 import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { AppError, call, type Me } from '@/lib/api'
-import { Button, Notice } from '@/components/ui'
+import { Button, Notice } from '@/components/site'
 
 // Connect Claude, Telegram and Slack from the app. Keys are checked with the
 // service, then kept encrypted on this computer; the app only ever shows a hint.

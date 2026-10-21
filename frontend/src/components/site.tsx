@@ -116,7 +116,7 @@ export function NavBar({ session, links = true, cta = true }: { session: Session
             <>
               {hire ? (
                 <Button tone="dark" icon onClick={() => router.push(homeFor(account))}>
-                  {hire.onboarding_done ? 'Open Ava' : 'Continue with Ava'}
+                  {hire.onboarding_done ? 'Open dashboard' : 'Continue with Ava'}
                 </Button>
               ) : cta ? (
                 <Button tone="dark" icon onClick={() => router.push('/agents/ava')}>

@@ -9,7 +9,7 @@ import { call, type AgentCard } from '@/lib/api'
 import type { Session } from '@/lib/session-context'
 import { Orb } from '@/components/Orb'
 import { homeFor } from '@/lib/session'
-import { Button, NavBar, STAGES } from '@/components/ui'
+import { Button, NavBar, STAGES } from '@/components/site'
 
 const CHANNEL_ICONS: Record<string, typeof Send> = { 'In the app': MessageCircle, Telegram: Send, Slack: Hash }
 

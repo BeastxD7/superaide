@@ -9,7 +9,7 @@ import { AppError, auth } from '@/lib/api'
 import type { Session } from '@/lib/session-context'
 import { Orb } from '@/components/Orb'
 import { homeFor, safeNext } from '@/lib/session'
-import { Button, Notice, PRODUCT } from '@/components/ui'
+import { Button, Notice, PRODUCT } from '@/components/site'
 
 type Mode = 'signup' | 'login'
 

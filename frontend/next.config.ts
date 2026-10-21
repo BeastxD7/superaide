@@ -15,6 +15,8 @@ const nextConfig: NextConfig = {
   // Next's dev server blocks its own scripts for other host names; start.command
   // users may open the app as 127.0.0.1 as well as localhost.
   allowedDevOrigins: ['127.0.0.1'],
+  // Keep Next's dev badge clear of the dashboard's account button (bottom left).
+  devIndicators: { position: 'bottom-right' },
   reactStrictMode: true,
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }]

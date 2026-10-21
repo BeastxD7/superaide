@@ -29,7 +29,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from 'react'
 import { AppError, call, upload, type IngestResult, type Me, type SharedDoc, type StepInput } from '@/lib/api'
 import { Connections } from '@/features/workspace/Connections'
-import { Button, Notice } from '@/components/ui'
+import { Button, Notice } from '@/components/site'
 
 // The answer panel for each step of the introduction. Each control calls
 // onAnswer(payload, whatYouSaid); intro actions (files, links, the call) talk to
@@ -52,7 +52,7 @@ export function StepControls({ input, done, agentName, me, onAnswer, reload, ope
   const router = useRouter()
   if (done || input.kind === 'none')
     return (
-      <Button tone="violet" icon className="w-full justify-between text-base" onClick={() => router.push('/workspace')}>
+      <Button tone="violet" icon className="w-full justify-between text-base" onClick={() => router.push('/dashboard')}>
         Start working with {agentName}
       </Button>
     )

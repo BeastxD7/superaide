@@ -14,10 +14,6 @@ const Meet = dynamic(() => import('@/features/onboarding/Meet').then((m) => m.Me
   ssr: false,
   loading: () => <div className="min-h-dvh mesh" aria-busy="true" />,
 })
-const Workspace = dynamic(() => import('@/features/workspace/Workspace').then((m) => m.Workspace), {
-  ssr: false,
-  loading: () => <div className="min-h-dvh mesh" aria-busy="true" />,
-})
 
 export function MarketplaceScreen({ initialAgents }: { initialAgents: AgentCard[] | null }) {
   return <Marketplace session={useSession()} initialAgents={initialAgents} />
@@ -41,10 +37,4 @@ export function MeetScreen() {
   const session = useSession()
   if (session.loading) return <div className="min-h-dvh mesh" aria-busy="true" />
   return <Meet session={session} />
-}
-
-export function WorkspaceScreen() {
-  const session = useSession()
-  if (session.loading) return <div className="min-h-dvh mesh" aria-busy="true" />
-  return <Workspace session={session} />
 }

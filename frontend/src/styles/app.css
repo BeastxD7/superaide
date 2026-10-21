@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import 'tw-animate-css';
 
 /* Superaide: white canvas, deep violet ink, lilac and pastel panels, and each
    agent's own iridescent colour. Layout patterns from the landing-page and
@@ -36,9 +37,47 @@
   --color-danger: #c03a5b;
 
   --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* shadcn/ui tokens, mapped onto the palette above (components in src/components/ui).
+     Note: `muted` stays our grey *text*; shadcn's muted background is `mist`. */
+  --color-background: #ffffff;
+  --color-foreground: var(--color-ink);
+  --color-card: #ffffff;
+  --color-card-foreground: var(--color-ink);
+  --color-popover: #ffffff;
+  --color-popover-foreground: var(--color-ink);
+  --color-primary: var(--color-violet-600);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: var(--color-mist);
+  --color-secondary-foreground: var(--color-ink);
+  --color-muted-foreground: var(--color-muted);
+  --color-accent: var(--color-lilac-100);
+  --color-accent-foreground: var(--color-ink);
+  --color-destructive: var(--color-danger);
+  --color-border: var(--color-line);
+  --color-input: var(--color-line);
+  --color-ring: var(--color-violet-500);
+
+  --color-sidebar: var(--color-lilac-50);
+  --color-sidebar-foreground: var(--color-body);
+  --color-sidebar-primary: var(--color-violet-600);
+  --color-sidebar-primary-foreground: #ffffff;
+  --color-sidebar-accent: var(--color-lilac-100);
+  --color-sidebar-accent-foreground: var(--color-ink);
+  --color-sidebar-border: var(--color-line);
+  --color-sidebar-ring: var(--color-violet-500);
+
+  --radius: 0.875rem;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
 @layer base {
+  * {
+    border-color: var(--color-border);
+  }
   html {
     color-scheme: light;
     -webkit-font-smoothing: antialiased;

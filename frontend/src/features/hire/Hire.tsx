@@ -9,7 +9,7 @@ import { AppError, call, type AgentCard } from '@/lib/api'
 import type { Session } from '@/lib/session-context'
 import { Orb } from '@/components/Orb'
 import { homeFor } from '@/lib/session'
-import { AccountMenu, BrandMark, Button, Notice } from '@/components/ui'
+import { AccountMenu, BrandMark, Button, Notice } from '@/components/site'
 
 // Hiring is three steps: create an account (or log in), agree to how the agent
 // handles what you share, and you're hired. The account step lives on #/signup.

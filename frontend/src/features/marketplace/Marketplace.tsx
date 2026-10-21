@@ -9,7 +9,7 @@ import { call, type AgentCard } from '@/lib/api'
 import type { Session } from '@/lib/session-context'
 import { Orb, huePanel } from '@/components/Orb'
 import { homeFor } from '@/lib/session'
-import { Button, Footer, NavBar, Sparkle, STAGES } from '@/components/ui'
+import { Button, Footer, NavBar, Sparkle, STAGES } from '@/components/site'
 
 const MotionLink = motion.create(Link)
 
