@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from superaide.audit import audit
@@ -99,7 +99,12 @@ def add_contact(
     existing = session.scalar(
         select(Contact)
         .join(Person, Person.id == Contact.person_id)
-        .where(Contact.owner_person_id == owner.id, Contact.removed_at.is_(None), Person.display_name.ilike(name))
+        .where(
+            Contact.owner_person_id == owner.id,
+            Contact.removed_at.is_(None),
+            # Case-insensitive equality, not ILIKE: in a name, % _ and \ are just characters.
+            func.lower(Person.display_name) == name.lower(),
+        )
     )
     if existing is not None:
         existing.relationship = relationship or existing.relationship
