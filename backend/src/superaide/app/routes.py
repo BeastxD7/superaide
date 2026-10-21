@@ -121,7 +121,8 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 try:
                     person = accounts.hire(s, user, body.agent)
                 except accounts.AlreadyHired as exc:
-                    raise HTTPException(409, f"{settings.agent_name} already works for {exc.owner}.") from exc
+                    # Not the owner's name: any signed-up account can ask, and it's not theirs to know.
+                    raise HTTPException(409, f"{settings.agent_name} already works for someone else.") from exc
                 onboarder().ensure_started(s, person)
                 return {"hired": body.agent, "person": {"id": str(person.id), "name": person.display_name}}
         except IntegrityError as exc:  # someone else hired at the same moment
