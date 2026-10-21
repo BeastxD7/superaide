@@ -22,7 +22,7 @@ from sqlalchemy.exc import IntegrityError
 from superaide.app import accounts
 from superaide.app.catalog import catalog, find
 from superaide.app.onboarding import SHARE_LABELS, Onboarder, documents_view
-from superaide.auth.routes import current_user_id, require_csrf_header
+from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header
 from superaide.config import get_settings
 from superaide.db.models import AgentHire, ChannelIdentity, Context, Document, Event, MemoryItem, Person, UserAccount
 from superaide.db.session import require, session_scope
@@ -86,7 +86,7 @@ class CallAnswerBody(BaseModel):
 
 
 def make_router(get_agent: Callable[[], Any]) -> APIRouter:
-    router = APIRouter(prefix="/app", dependencies=[Depends(require_csrf_header)])
+    router = APIRouter(prefix="/app", dependencies=[Depends(require_csrf_header), Depends(reject_nul_text)])
 
     def onboarder() -> Onboarder:
         agent = get_agent()  # its settings include credentials connected in the app

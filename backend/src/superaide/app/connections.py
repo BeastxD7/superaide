@@ -18,7 +18,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from superaide.app.routes import owner_person_id, telegram_username
-from superaide.auth.routes import current_user_id, require_csrf_header
+from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header
 from superaide.db.session import session_scope
 from superaide.knowledge.ingest import read_pending
 from superaide.vault import check, store
@@ -83,7 +83,7 @@ def slack_manifest_url() -> str:
 
 
 def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool]]) -> APIRouter:
-    router = APIRouter(prefix="/app/connections", dependencies=[Depends(require_csrf_header)])
+    router = APIRouter(prefix="/app/connections", dependencies=[Depends(require_csrf_header), Depends(reject_nul_text)])
 
     def view() -> dict[str, Any]:
         settings = get_agent().settings
