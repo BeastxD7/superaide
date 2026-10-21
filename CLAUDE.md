@@ -11,6 +11,9 @@ Read `README.md` for the overview and `docs/architecture.md` for how a request f
   - Routes are in `src/app/` and screens in `src/features/`.
   - The browser calls `/api/*`, which `src/app/api/[...path]/route.ts` forwards to FastAPI.
   - `src/proxy.ts` redirects signed-out visitors.
+  - The signed-in app is `/dashboard/*`: a shadcn/ui sidebar shell (`src/features/dashboard/`) with Home, Chat, Notebook, People, Connections and Settings. The introduction (`/meet`) stays full-screen.
+  - shadcn components live in `src/components/ui/`, with tokens mapped onto the violet palette in `src/styles/app.css`. Add more with `npx shadcn add <name>`. Site-wide pieces (nav, account menu, brand mark) are in `src/components/site.tsx`.
+  - `frontend/AGENTS.md` (written by `next dev`) points to the Next.js docs bundled in `node_modules/next/dist/docs/`. Check them before using a Next API from memory; this is Next 16.
 - `e2e/`: Playwright. One isolated stack per `E2E_SLOT` (API on :8100+n, web on :3100+n, database `superaide_e2e_n`).
 - `.claude/agents/`: `e2e-tester` and `api-tester`. Run several `e2e-tester`s in parallel, one area and one slot each.
 - `start.command`: one-click run on the owner's Mac (Docker or embedded Postgres; installs Node if missing).
@@ -39,13 +42,15 @@ Read `README.md` for the overview and `docs/architecture.md` for how a request f
 - Conventional Commits (`feat:`, `fix(auth):`, `test(e2e):` …), small commits, a test with every behaviour change.
 - Copy in the UI: plain words, sentence case, active voice; errors say what to do next.
 - A bug found by a test agent gets a failing test first (`test.fail(true, 'BUG: …')` or `xfail(strict=True)`), then the fix.
+- **Open bugs are listed in `docs/test-findings.md`**, each with the test that proves it. Remove the marker, fix, and commit both together.
 
 ## Status (October 2026)
 
 Done:
-- Accounts and sessions, hiring, and the introduction: chat, files and links, or a video call with browser speech.
+- Accounts and sessions, hiring, and the introduction: chat, files and links, or a video call with browser speech. Brave can't do speech-to-text, so it falls back to typing and says why.
 - Knowledge with provenance, the owner brief, the credentials vault and in-app connections (Claude, Telegram, Slack).
-- The Next.js port, CI, Docker images, and E2E and API test suites.
+- The Next.js port, the dashboard, CI, Docker images, and the E2E, API and journey test suites.
+- `GET /app/people` and `GET /app/preferences` feed the dashboard. There are no editing endpoints yet.
 
 Next, in order (from `docs/research/Personal assistant memory architecture.md`):
 1. **Relevance retrieval:** full-text search (`tsvector`) plus reciprocal rank fusion inside the audience filter, `document_chunk` for long files, and a small evaluation set. Retrieval currently returns the newest 5 or 30 memories whatever was asked, and extraction reads only the first 12,000 characters of a file.
@@ -58,9 +63,11 @@ Next, in order (from `docs/research/Personal assistant memory architecture.md`):
 5. **Escalation and digests:**
    - An escalation ladder with acknowledgement buttons on Telegram and Slack, plus two or three digests a day.
    - Also: row-level security, log redaction, and an AI notice at first contact.
-6. Editing preferences and people after the introduction (there's no UI for it yet).
+6. Editing preferences and people from the dashboard: the People and Settings pages are read-only today.
 
 ## Working with the owner (Shashank)
+
+- Claude Code on Shashank's Mac (`~/Desktop/superaide`) owns this repo from 21 October 2026: features, bug fixes and pushing to GitHub.
 
 - Narrate progress as you go: what you're doing, what you found, what's next.
 - He runs things with `bash ~/Desktop/superaide/start.command` on a Mac. Keep that path working, and test it from a fresh clone.

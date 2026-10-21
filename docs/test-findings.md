@@ -1,0 +1,49 @@
+# Test findings to fix
+
+Bugs found by the test agents on 21 October 2026. Each one has a test of the correct behaviour that's marked as a known bug:
+- `test.fail(true, 'BUG: …')` in `e2e/tests/`
+- `@pytest.mark.xfail(strict=True)` in `backend/tests/`
+
+To fix one:
+1. Remove the marker.
+2. Make the test pass.
+3. Commit the fix and the test together.
+
+The suite stays green in the meantime.
+
+Severity: **high** means data could leak or the app breaks; **medium** is a real user-facing problem; **low** is polish.
+
+## Accounts and access (`e2e/tests/accounts.spec.ts`)
+
+| # | Severity | Bug | Test |
+|---|---|---|---|
+| A1 | Medium | A password containing your name as typed (with spaces) is accepted. `password_problem` strips spaces from the name but not from the password. | sign-up › a password that contains your name as you typed it is refused |
+| A2 | Medium | A failed log-in isn't announced to screen readers: `Notice` has no `role="alert"` or live region. The smoke test's `getByRole('alert')` also matches Next's empty route announcer, so it should filter by text. | log-in › a failed log-in is announced to screen readers |
+| A3 | Low | A 422 response for a password over 1024 characters sends the password back in `input`. No submitted secret should ever appear in a response. | sign-up › a refused sign-up or log-in never sends the password back |
+| A4 | Low | Raw validator messages reach people: "String should have at least 3 characters" for a short email, and "at most 1024 characters" for a long password. | a very short email gets the same plain message… / a very long password gets the same plain message… |
+| A5 | Low | A 500 with a plain-text body shows "Request failed with status code 500". | log-in › a server error shows a message a person can act on |
+| A6 | Low | When the password error appears, the field keeps `aria-describedby` pointing at the removed hint, so the error isn't the field's description. | the password field error is announced as the field's description |
+| A7 | Low | `/agents/<unknown>/hire` shows a hire page whose button does nothing, instead of the 404 page. | not-found pages › signed in › hiring an agent that does not exist shows the 404 page |
+
+Product questions raised:
+- Lockout and duplicate sign-up both reveal that an account exists.
+- Should your first name alone in a password count as using your name?
+- The 404 page keeps the site's default title.
+- The "Can't reach Superaide… start.command" error wording is aimed at a developer, not a hosted user.
+
+## Fixed by the API test agent (`backend/tests/api/`)
+
+These came with their fixes:
+- JSON containing a NUL character caused a 500.
+- There was no limit on wrong current-password guesses at `POST /auth/password`.
+- A second account trying to hire Ava was told the owner's name.
+- Quiet hours weren't validated strictly, and malformed onboarding answers weren't read safely.
+
+Still open: the marketplace and agent page show "Works for <first name>" to everyone. Decide whether the public should see who hired an agent.
+
+## Needs updating for the dashboard
+
+The browser specs were written against the earlier layout, before the dashboard. They may need:
+- **Log out:** now in the account menu (nav, hire, introduction) and the sidebar's account menu (dashboard), not a standalone "Log out" button.
+- **`/workspace`:** now redirects to `/dashboard/chat`. The chat heading "Hello, <name>. What shall we work on?" is unchanged.
+- **Notebook, connections and the agent card:** now separate dashboard pages, not a right-hand rail.
