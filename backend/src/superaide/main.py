@@ -49,6 +49,10 @@ def create_app(agent: Agent | None = None) -> FastAPI:
         description=docs.DESCRIPTION,
         openapi_tags=docs.TAGS,
         swagger_ui_parameters=docs.SWAGGER_UI,
+        # Hidden on a public server (ENABLE_API_DOCS=false): it maps every endpoint for a visitor.
+        docs_url="/docs" if settings.enable_api_docs else None,
+        redoc_url="/redoc" if settings.enable_api_docs else None,
+        openapi_url="/openapi.json" if settings.enable_api_docs else None,
     )
     app.add_middleware(
         CORSMiddleware,

@@ -369,3 +369,12 @@ def test_agent_is_built_once_and_rebuilt_when_a_connection_changes(configure, sp
     assert c.post("/api/simulate", json=SIM, headers=AUTH).status_code == 200
     assert len(built) == 2 and built[1].telegram_bot_token == "123456789:" + "B" * 35
     crypto.master_key.cache_clear()
+
+
+def test_api_docs_can_be_turned_off_for_a_public_server(configure, agent):
+    on = TestClient(main.create_app(agent))
+    assert all(on.get(p).status_code == 200 for p in ("/docs", "/redoc", "/openapi.json"))
+    configure(enable_api_docs=False)
+    off = TestClient(main.create_app(agent))
+    assert all(off.get(p).status_code == 404 for p in ("/docs", "/redoc", "/openapi.json"))
+    assert off.get("/health").json() == {"status": "ok"}

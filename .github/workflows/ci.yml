@@ -170,6 +170,16 @@ jobs:
       - uses: actions/checkout@v5
       - uses: docker/setup-buildx-action@v3
 
+      - name: Production compose file is valid
+        run: |
+          cp .env.prod.example .env
+          docker compose -f docker-compose.prod.yml config -q
+        env:
+          # The example leaves secrets blank on purpose; any value satisfies the required-variable checks.
+          POSTGRES_PASSWORD: ci
+          SECRETS_MASTER_KEY: ci
+          ADMIN_TOKEN: ci
+
       - name: Build the API image
         uses: docker/build-push-action@v6
         with:
@@ -187,6 +197,19 @@ jobs:
           tags: superaide-web:ci
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
+
+      - name: Build the Caddy image (HTTPS proxy with rate limiting)
+        uses: docker/build-push-action@v6
+        with:
+          context: deploy/caddy
+          push: false
+          load: true
+          tags: superaide-caddy:ci
+          cache-from: type=gha,scope=caddy
+          cache-to: type=gha,mode=max,scope=caddy
+
+      - name: Caddyfile is valid
+        run: docker run --rm -e DOMAIN=example.com superaide-caddy:ci caddy validate --config /etc/caddy/Caddyfile
 
   secrets:
     name: Secret scan

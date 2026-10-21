@@ -25,6 +25,7 @@ SLACK_APP = "xapp-1-abc-defghi"
 @pytest.fixture(autouse=True)
 def master_key(monkeypatch):
     monkeypatch.setenv("SECRETS_MASTER_KEY", base64.b64encode(b"k" * 32).decode())
+    monkeypatch.delenv("SECRETS_MASTER_KEY_FILE", raising=False)  # a server's setting must not leak into tests
     crypto.master_key.cache_clear()
     yield
     crypto.master_key.cache_clear()
@@ -347,6 +348,57 @@ def test_master_key_in_the_environment_may_have_whitespace(monkeypatch):
     monkeypatch.setenv("SECRETS_MASTER_KEY", "  " + base64.b64encode(b"w" * 32).decode() + "\n")
     crypto.master_key.cache_clear()
     assert crypto.master_key() == (b"w" * 32, "environment")
+
+
+@pytest.fixture
+def secret_file(monkeypatch, tmp_path):
+    """SECRETS_MASTER_KEY_FILE as a server sets it: a Docker secret, root-owned and world-readable."""
+    path = tmp_path / "vault_master_key"
+    path.write_text(base64.b64encode(b"f" * 32).decode() + "\n")
+    os.chmod(path, 0o444)
+    monkeypatch.delenv("SECRETS_MASTER_KEY")
+    monkeypatch.setenv("SECRETS_MASTER_KEY_FILE", str(path))
+    monkeypatch.setattr(crypto, "_from_keyring", lambda: pytest.fail("a server must not touch the keychain"))
+    crypto.master_key.cache_clear()
+    return path
+
+
+def test_master_key_from_a_secret_file(secret_file):
+    assert crypto.master_key() == (b"f" * 32, "secret file")
+    assert secret_file.read_text().strip() == base64.b64encode(b"f" * 32).decode()  # read, never rewritten
+
+
+def test_the_environment_wins_over_the_secret_file(secret_file, monkeypatch):
+    monkeypatch.setenv("SECRETS_MASTER_KEY", base64.b64encode(b"e" * 32).decode())
+    assert crypto.master_key() == (b"e" * 32, "environment")
+
+
+def test_a_missing_secret_file_is_an_error_not_a_new_key(secret_file, monkeypatch, tmp_path):
+    """A typo in the path must stop the server, not mint a key that can't read the saved credentials."""
+    gone = tmp_path / "nope"
+    monkeypatch.setenv("SECRETS_MASTER_KEY_FILE", str(gone))
+    monkeypatch.setenv("SUPERAIDE_KEY_FILE", str(tmp_path / "fallback.key"))
+    with pytest.raises(crypto.VaultError, match="can't be read"):
+        crypto.master_key()
+    assert not gone.exists() and not (tmp_path / "fallback.key").exists()
+
+
+@pytest.mark.parametrize(
+    ("content", "error"),
+    [("not base64 at all!", "isn't base64"), (base64.b64encode(b"s" * 16).decode(), "32 bytes")],
+)
+def test_a_bad_secret_file_is_refused(secret_file, content, error):
+    os.chmod(secret_file, 0o644)
+    secret_file.write_text(content)
+    with pytest.raises(crypto.VaultError, match=error):
+        crypto.master_key()
+
+
+def test_a_bad_environment_key_says_how_to_make_one(monkeypatch):
+    monkeypatch.setenv("SECRETS_MASTER_KEY", "definitely not base64!")
+    crypto.master_key.cache_clear()
+    with pytest.raises(crypto.VaultError, match="openssl rand -base64 32"):
+        crypto.master_key()
 
 
 class FakeKeyring:

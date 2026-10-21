@@ -32,6 +32,7 @@ GOOGLE_REFRESH = "1//test-refresh-token-7q"
 @pytest.fixture(autouse=True)
 def master_key(monkeypatch):
     monkeypatch.setenv("SECRETS_MASTER_KEY", base64.b64encode(b"k" * 32).decode())
+    monkeypatch.delenv("SECRETS_MASTER_KEY_FILE", raising=False)  # a server's setting must not leak into tests
     crypto.master_key.cache_clear()
     yield
     crypto.master_key.cache_clear()

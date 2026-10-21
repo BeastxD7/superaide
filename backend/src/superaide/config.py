@@ -65,6 +65,8 @@ class Settings(BaseSettings):
     frontend_origin: str = "http://localhost:3000"
     # Dev only: lets the dashboard inject fake messages to try impostor scenarios.
     enable_simulator: bool = False
+    # The interactive API docs (/docs, /redoc, /openapi.json). Turn off on a public server.
+    enable_api_docs: bool = True
 
     # Run the Telegram and Slack listeners inside the API (follows connections made in the app)
     run_channels_in_api: bool = True

@@ -1,0 +1,69 @@
+# The public front door: HTTPS for $DOMAIN (certificate from Let's Encrypt, renewed
+# automatically), security headers, rate limits, then everything to the web app.
+# The web app serves the pages and forwards /api/* to the API on the private network.
+{
+	order rate_limit before basic_auth
+	# Caddy's own admin endpoint stays off: nothing else in the stack needs it.
+	admin off
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	header {
+		# Browsers remember to use HTTPS only (one year). The app also sends
+		# nosniff, Referrer-Policy, X-Frame-Options and Permissions-Policy itself.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		Cross-Origin-Opener-Policy "same-origin"
+		X-Content-Type-Options "nosniff"
+		-Server
+		-X-Powered-By
+	}
+
+	# Uploads to the notebook are at most 10 MB; refuse bigger bodies before they reach the app.
+	request_body {
+		max_size 12MB
+	}
+
+	# Brakes on password guessing and sign-up spam, per client address, on top of
+	# the app's own per-account lockout and per-address limits. 429 when exceeded.
+	rate_limit {
+		zone auth {
+			match {
+				method POST
+				path /api/auth/*
+			}
+			key {remote_host}
+			events 20
+			window 1m
+		}
+		zone everything {
+			key {remote_host}
+			events 600
+			window 1m
+		}
+	}
+
+	# Telegram/Slack webhooks are off by default: the app listens by polling (Telegram)
+	# and Socket Mode (Slack), which need no inbound route. To use webhooks instead,
+	# uncomment this; requests without the configured secret/signature are refused.
+	# handle /webhooks/* {
+	# 	reverse_proxy api:8000
+	# }
+
+	handle {
+		reverse_proxy web:3000
+	}
+
+	# Access log on stdout (docker compose logs caddy). Cookies and Authorization are
+	# redacted by Caddy; the OAuth code in Google's sign-in callback is dropped here.
+	log {
+		output stdout
+		format filter {
+			request>uri query {
+				delete code
+				delete state
+			}
+		}
+	}
+}

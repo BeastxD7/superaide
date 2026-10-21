@@ -1,0 +1,121 @@
+# Production stack for one server (any Ubuntu/Debian VPS). Guide: deploy/README.md
+#
+#   cp .env.prod.example .env      # then fill it in (or run deploy/bootstrap.sh)
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Only Caddy is reachable from outside (ports 80 and 443). Postgres, the API and
+# the web app talk on private Docker networks. The API applies database
+# migrations every time it starts, then serves.
+name: superaide
+
+x-hardened: &hardened
+  restart: unless-stopped
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  logging: &logging
+    driver: json-file
+    options: { max-size: 10m, max-file: "5" }
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: agent
+      POSTGRES_DB: agent
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [data]
+    shm_size: 256mb
+    security_opt: [no-new-privileges:true]
+    logging: *logging
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agent -d agent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    <<: *hardened
+    build: ./backend
+    image: superaide-api:prod
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://agent:${POSTGRES_PASSWORD}@db:5432/agent
+      SECRETS_MASTER_KEY: ${SECRETS_MASTER_KEY:?Set SECRETS_MASTER_KEY in .env (openssl rand -base64 32)}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:?Set ADMIN_TOKEN in .env}
+      FRONTEND_ORIGIN: ${PUBLIC_URL:-https://${DOMAIN:?Set DOMAIN in .env}}
+      # Fixed for a public server, whatever .env says.
+      SESSION_COOKIE_SECURE: "true"
+      ENABLE_SIMULATOR: "false"
+      ENABLE_API_DOCS: "false"
+    # One process on purpose: the job runner (reminders, digests) and the Telegram/Slack
+    # listeners start inside the API, and more workers would run them twice.
+    # Only the web app and Caddy can reach this port, so their forwarded client
+    # address is trusted (it drives the per-address sign-up and log-in limits).
+    command:
+      - sh
+      - -c
+      - >-
+        alembic upgrade head &&
+        exec uvicorn superaide.main:app --host 0.0.0.0 --port 8000 --workers 1
+        --proxy-headers --forwarded-allow-ips '*' --no-server-header --no-access-log
+    tmpfs: [/tmp]
+    networks: [data, app]
+    depends_on:
+      db: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      start_period: 60s
+      retries: 5
+
+  web:
+    <<: *hardened
+    build: ./frontend
+    image: superaide-web:prod
+    environment:
+      API_INTERNAL_URL: http://api:8000
+      # Caddy overwrites X-Forwarded-For with the real client address; pass it on.
+      TRUST_PROXY_HEADERS: "true"
+    tmpfs:
+      - /tmp
+      - /app/.next/cache:uid=10001,gid=10001
+    networks: [app]
+    depends_on:
+      api: { condition: service_healthy }
+
+  caddy:
+    <<: *hardened
+    build: ./deploy/caddy
+    image: superaide-caddy:prod
+    # Runs as an unprivileged user; binding 80/443 relies on Docker's default
+    # net.ipv4.ip_unprivileged_port_start=0 (set here too, for older engines).
+    sysctls:
+      net.ipv4.ip_unprivileged_port_start: 0
+    tmpfs: [/tmp]
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in .env}
+    ports:
+      - "${HTTP_PUBLISH:-80}:80"
+      - "${HTTPS_PUBLISH:-443}:443"
+      - "${HTTPS_PUBLISH:-443}:443/udp" # HTTP/3
+    volumes:
+      - caddy_data:/data # certificates: keep this volume
+      - caddy_config:/config
+    networks: [app]
+    depends_on: [web]
+
+networks:
+  # Postgres is on a network with no route out; only the API joins it.
+  data:
+    internal: true
+  app:
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

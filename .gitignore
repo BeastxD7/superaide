@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+!.env.prod.example
 *.pem
 *.key
 master.key
@@ -36,3 +37,6 @@ frontend/dist/
 
 # start.command installs Node here when the Mac has none
 .tools/
+
+# Production database dumps (deploy/backup.sh)
+backups/

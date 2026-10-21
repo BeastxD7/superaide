@@ -5,8 +5,15 @@ Each secret is encrypted with AES-256-GCM under a master key, with the slot
 another slot. The master key never touches the database:
 
 1. SECRETS_MASTER_KEY in the environment (base64, 32 bytes), for servers and tests;
-2. otherwise the operating system keychain (macOS Keychain) via `keyring`;
-3. otherwise a key file readable only by you (~/.config/superaide/master.key).
+2. otherwise SECRETS_MASTER_KEY_FILE, a file holding that same value (a Docker or
+   systemd secret). It is only read, never created: if it is set but missing, that
+   is an error, so a server never silently starts with a new key;
+3. otherwise the operating system keychain (macOS Keychain) via `keyring`;
+4. otherwise a key file readable only by you (~/.config/superaide/master.key).
+
+On a headless Linux server there is no keychain, so set 1 or 2 there; otherwise
+the key lands in a generated file next to the app, and losing it loses every
+stored credential.
 
 Limits: any program running as you can ask the keychain for the key. This
 protects database dumps and backups, not a computer that is already compromised.
@@ -67,12 +74,30 @@ def _from_file() -> bytes:
     return key
 
 
+def _from_secret_file(path: str) -> bytes:
+    try:
+        text = Path(path).read_text().strip()
+    except OSError as exc:
+        raise VaultError(f"SECRETS_MASTER_KEY_FILE points to {path}, which can't be read.") from exc
+    return _decode(text, "SECRETS_MASTER_KEY_FILE")
+
+
+def _decode(text: str, source: str) -> bytes:
+    try:
+        return base64.b64decode(text, validate=True)
+    except ValueError as exc:  # binascii.Error is a ValueError
+        raise VaultError(f"{source} isn't base64. Make one with: openssl rand -base64 32") from exc
+
+
 @lru_cache
 def master_key() -> tuple[bytes, str]:
     """The 32-byte master key and where it lives (for the status screen)."""
     env = os.environ.get("SECRETS_MASTER_KEY", "").strip()
+    secret_file = os.environ.get("SECRETS_MASTER_KEY_FILE", "").strip()
     if env:
-        key, where = base64.b64decode(env), "environment"
+        key, where = _decode(env, "SECRETS_MASTER_KEY"), "environment"
+    elif secret_file:
+        key, where = _from_secret_file(secret_file), "secret file"
     elif (k := _from_keyring()) is not None:
         key, where = k, "keychain"
     else:

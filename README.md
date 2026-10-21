@@ -47,6 +47,8 @@ make check                         # everything CI runs: lint, types, tests, bui
 
 `make` lists every command. To run the whole stack in containers: `make stack`.
 
+**On a server:** [deploy/README.md](deploy/README.md) puts the whole app on a VPS with HTTPS: `sudo bash deploy/bootstrap.sh your-domain`.
+
 ## Repository layout
 
 ```text
@@ -73,10 +75,12 @@ frontend/
   src/components/    shared UI (buttons, nav, the agent's orb, conversation)
   src/lib/           API client, session, server-side helpers
   src/proxy.ts       sends signed-out visitors to log in before private pages
-deploy/postgres/     database init scripts
+deploy/             production: VPS guide, bootstrap and backup scripts, Caddy (HTTPS) image
+deploy/postgres/     database init scripts (development)
 docs/                architecture, decisions, research
 .github/             CI, Dependabot, templates
 compose.yaml         local Postgres, or the full stack with --profile app
+docker-compose.prod.yml  production stack: Caddy, web, API, Postgres (.env.prod.example)
 start.command        one-click start on a Mac
 ```
 
