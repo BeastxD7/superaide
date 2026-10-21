@@ -116,8 +116,11 @@ class PriceRegistry:
     """Built-in prices plus the owner's own. Lookups never guess: no price, no call."""
 
     owner: dict[tuple[str, str], ModelPrice] = field(default_factory=dict)
+    # Where each configured local server lives, so its models are free only at a local address.
+    base_urls: dict[str, str] = field(default_factory=dict)
 
     def price_for(self, model: str, provider: str = "anthropic", *, base_url: str | None = None) -> ModelPrice:
+        base_url = base_url or self.base_urls.get(provider)
         key = (provider, model)
         if key in self.owner:
             return self.owner[key]

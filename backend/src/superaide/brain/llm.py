@@ -121,6 +121,81 @@ class ClaudeLLM:
         return LLMResult(text=text, parsed=parsed, model=model, usage=usage, cost_usd=cost, stop_reason=stop_reason)
 
 
+STOP_NAMES = {"end": "end_turn", "tool_calls": "tool_use", "pause": "pause_turn", "max_tokens": "max_tokens"}
+
+
+class ProviderLLM:
+    """The tool loop's dict interface on top of any neutral provider (e.g. OpenAI-compatible).
+    Conversation dicts are read into neutral messages; the provider's parts come back as the
+    same block shapes the loop already understands, citations included."""
+
+    def __init__(self, provider: Any) -> None:
+        self.provider = provider
+        self.guard = getattr(provider, "guard", None)
+
+    def step(
+        self,
+        *,
+        purpose: str,
+        model: str,
+        system: list[SystemBlock],
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]],
+        max_tokens: int,
+        effort: str | None = None,
+        max_web_searches: int = 0,
+        on_event: OnEvent | None = None,
+    ) -> StepResult:
+        from superaide.brain.providers import types as t
+        from superaide.brain.providers.anthropic import messages_from_wire, part_to_wire, tools_from_wire
+
+        caps = self.provider.capabilities(model)
+        neutral_tools = [x for x in tools_from_wire(tools) if not isinstance(x, t.HostedTool) or caps.server_web_search]
+
+        def relay(event: t.StreamEvent) -> None:
+            assert on_event is not None
+            if isinstance(event, t.TextDelta):
+                on_event("text", {"delta": event.text})
+            elif isinstance(event, t.ReasoningDelta):
+                on_event("thinking", {"delta": event.text})
+            elif isinstance(event, t.PartDone):
+                on_event("block", {"block": part_to_wire(event.part)})
+
+        step = self.provider.step(
+            purpose=purpose, model=model, system=system, messages=messages_from_wire(messages), tools=neutral_tools,
+            max_tokens=max_tokens, effort=effort, on_event=relay if on_event is not None else None,
+        )  # fmt: skip
+        content = [
+            part_to_wire(p) for p in step.parts if not (isinstance(p, t.Text) and not p.text and not p.citations)
+        ]
+        usage = UsageCounts(
+            input_tokens=step.usage.input_tokens,
+            output_tokens=step.usage.output_tokens,
+            cache_read_tokens=step.usage.cache_read_tokens,
+        )
+        return StepResult(content, STOP_NAMES.get(step.stop, step.stop), usage, step.cost_usd)
+
+    def complete(
+        self,
+        *,
+        purpose: str,
+        model: str,
+        system: list[SystemBlock],
+        messages: list[dict[str, Any]],
+        max_tokens: int,
+        output_model: type[BaseModel] | None = None,
+        effort: str | None = None,
+    ) -> LLMResult:
+        from superaide.brain.providers.anthropic import messages_from_wire
+
+        done = self.provider.complete(
+            purpose=purpose, model=model, system=system, messages=messages_from_wire(messages), max_tokens=max_tokens,
+            output_model=output_model, effort=effort,
+        )  # fmt: skip
+        usage = UsageCounts(input_tokens=done.usage.input_tokens, output_tokens=done.usage.output_tokens)
+        return LLMResult(done.text, done.parsed, model, usage, done.cost_usd, STOP_NAMES.get(done.stop, done.stop))
+
+
 Responder = Callable[[str, list[SystemBlock], list[dict[str, Any]], type[BaseModel] | None], Any]
 
 

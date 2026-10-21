@@ -177,6 +177,13 @@ def citation_from_wire(c: dict[str, Any]) -> Citation | None:
     return None
 
 
+def citation_to_wire(c: Citation) -> dict[str, Any]:
+    """A citation from another provider, in the shape the tool loop reads."""
+    if c.kind == "web":
+        return {"type": "web_search_result_location", "url": c.source_id, "title": c.title, "cited_text": c.cited_text}
+    return {"type": "search_result_location", "source": c.source_id, "title": c.title, "cited_text": c.cited_text}
+
+
 def source_from_wire(block: dict[str, Any]) -> SourceDoc:
     uri = str(block.get("source", ""))
     text = "".join(str(t.get("text", "")) for t in block.get("content") or [] if t.get("type") == "text")
@@ -231,15 +238,18 @@ def part_to_wire(part: ContentPart) -> dict[str, Any]:
     if part.provider_data and KEY in part.provider_data:
         return part.provider_data[KEY]
     if isinstance(part, Text):
-        return {"type": "text", "text": part.text}
+        out: dict[str, Any] = {"type": "text", "text": part.text}
+        if part.citations:
+            out["citations"] = [citation_to_wire(c) for c in part.citations]
+        return out
     if isinstance(part, ToolCall):
         return {"type": "tool_use", "id": part.id, "name": part.name, "input": part.args}
     if isinstance(part, ToolResult):
         content: Any = part.content if isinstance(part.content, str) else [source_to_wire(s) for s in part.content]
-        out: dict[str, Any] = {"type": "tool_result", "tool_use_id": part.call_id, "content": content}
+        result: dict[str, Any] = {"type": "tool_result", "tool_use_id": part.call_id, "content": content}
         if part.is_error:
-            out["is_error"] = True
-        return out
+            result["is_error"] = True
+        return result
     if isinstance(part, Reasoning):
         # Thinking from another provider has no signature Claude would accept: say it as text.
         return {"type": "text", "text": part.text}
