@@ -326,6 +326,7 @@ export type ModelSettings = {
   roles: Record<RoleName, { provider: string; model: string }>
   brain: { ready: boolean; provider: string | null }
   priced: Record<string, string[]>
+  web_search: { connected: boolean; via: 'app' | 'env' | null; key_hint: string; usd_per_call: number }
 }
 
 export type ConnectionTest = { ok: boolean; message: string; models: string[] }

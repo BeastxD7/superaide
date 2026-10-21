@@ -188,3 +188,40 @@ def test_hosted_mode_refuses_a_local_server_in_the_app_and_never_prices_it_free(
     assert r.status_code == 400 and "private network" in r.text and service.seen == []
     with pytest.raises(UnknownModelPrice):
         PriceRegistry(base_urls={"ollama": "http://localhost:11434/v1"}).price_for("llama3.2", "ollama")
+
+
+BRAVE = "BSA-test-brave-key-0123456789"
+
+
+def test_web_search_key_is_tested_charged_stored_masked_and_removable(owner_client, monkeypatch):  # noqa: F811
+    from superaide.db.models import SpendEntry
+    from superaide.tools import web as webtools
+
+    calls = []
+
+    def fake_search(query, api_key, http=None):
+        calls.append(api_key)
+        if api_key != BRAVE:
+            return "The search service answered with an error (401).", True
+        return [webtools.source("https://example.com", "Example", "hi")], False
+
+    monkeypatch.setattr(webtools, "search", fake_search)
+    assert owner_client.get("/app/providers").json()["web_search"]["connected"] is False
+
+    bad = owner_client.post("/app/providers/web-search", json={"api_key": "BSA-wrong-key-000000"})
+    assert bad.status_code == 400 and "didn't accept" in bad.text
+
+    tested = owner_client.post("/app/providers/web-search/test", json={"api_key": BRAVE})
+    assert tested.status_code == 200 and tested.json()["ok"] and BRAVE not in tested.text
+    with session_scope() as s:
+        assert "brave" in {e.provider for e in s.scalars(select(SpendEntry))}  # the test search was charged
+        assert s.scalar(select(IntegrationSecret).where(IntegrationSecret.provider == "brave")) is None  # not saved
+
+    saved = owner_client.post("/app/providers/web-search", json={"api_key": BRAVE})
+    body = saved.json()["web_search"]
+    assert saved.status_code == 200 and body["connected"] and body["via"] == "app" and body["key_hint"]
+    assert BRAVE not in saved.text and runtime_settings().brave_search_api_key == BRAVE
+
+    gone = owner_client.post("/app/providers/web-search/remove")
+    assert gone.status_code == 200 and gone.json()["web_search"]["connected"] is False
+    assert runtime_settings().brave_search_api_key == ""

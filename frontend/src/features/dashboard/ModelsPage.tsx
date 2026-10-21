@@ -1,6 +1,6 @@
 'use client'
 
-import { CheckCircle2, ExternalLink, KeyRound, Loader2, PlugZap, Server } from 'lucide-react'
+import { CheckCircle2, ExternalLink, Globe, KeyRound, Loader2, PlugZap, Server } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { BrandIcon, type Brand } from '@/components/BrandIcon'
 import { Notice } from '@/components/site'
@@ -101,6 +101,8 @@ export function ModelsPage() {
             />
           ))}
         </ul>
+
+        {data && <WebSearchCard settings={data} onChanged={reload} />}
 
         {data && <RolePicker settings={data} connected={[...connected]} label={label} onSaved={reload} />}
       </div>
@@ -290,6 +292,133 @@ function ConnectForm({
         )}
       </div>
     </form>
+  )
+}
+
+function WebSearchCard({ settings, onChanged }: { settings: ModelSettings; onChanged: () => Promise<void> }) {
+  const ws = settings.web_search
+  const [open, setOpen] = useState(false)
+  const [apiKey, setApiKey] = useState('')
+  const [busy, setBusy] = useState<'test' | 'save' | 'remove' | null>(null)
+  const [result, setResult] = useState<ConnectionTest | null>(null)
+  const [problem, setProblem] = useState<string | null>(null)
+
+  async function run(kind: 'test' | 'save' | 'remove') {
+    setBusy(kind)
+    setProblem(null)
+    try {
+      if (kind === 'test') {
+        setResult(
+          await call<ConnectionTest>('/providers/web-search/test', { method: 'POST', json: { api_key: apiKey } }),
+        )
+      } else {
+        await call(kind === 'save' ? '/providers/web-search' : '/providers/web-search/remove', {
+          method: 'POST',
+          json: kind === 'save' ? { api_key: apiKey } : {},
+        })
+        setApiKey('')
+        setResult(null)
+        setOpen(false)
+        await onChanged()
+      }
+    } catch (e) {
+      setProblem(errorText(e))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <section className="mt-8" aria-label="Web search">
+      <h2 className="text-lg font-medium text-ink">Web search</h2>
+      <div className="mt-3 rounded-xl border border-line bg-white p-4">
+        <div className="flex items-start gap-3">
+          <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-lilac-100 text-violet-600">
+            <Globe className="size-4.5" aria-hidden />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="flex flex-wrap items-center gap-1.5 font-medium text-ink">
+              Brave Search
+              {ws.connected && (
+                <Badge variant="secondary" className="gap-1 text-violet-700">
+                  <CheckCircle2 className="size-3" aria-hidden /> Connected
+                </Badge>
+              )}
+            </p>
+            {ws.connected && ws.key_hint && <p className="text-xs text-muted">Key {ws.key_hint}</p>}
+            {ws.via === 'env' && <p className="text-xs text-muted">Set up by your administrator</p>}
+          </div>
+        </div>
+        <p className="mt-3 text-sm text-body">
+          Claude searches the web by itself. Other models search through Brave with your own key. Each search counts
+          about US${ws.usd_per_call.toFixed(3)} against your spending cap.
+        </p>
+        {open ? (
+          <form
+            className="mt-3 space-y-3 rounded-lg bg-mist p-3"
+            aria-label="Connect Brave Search"
+            onSubmit={(e) => {
+              e.preventDefault()
+              void run('save')
+            }}
+          >
+            <div className="space-y-1">
+              <Label htmlFor="brave-key">Brave Search API key</Label>
+              <Input
+                id="brave-key"
+                type="password"
+                autoComplete="off"
+                value={apiKey}
+                placeholder="BSA…"
+                onChange={(e) => setApiKey(e.target.value)}
+              />
+            </div>
+            <a
+              href="https://api-dashboard.search.brave.com/app/keys"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-violet-700 underline"
+            >
+              <KeyRound className="size-3" aria-hidden /> Where to get a key{' '}
+              <ExternalLink className="size-3" aria-hidden />
+            </a>
+            {result && <Notice tone={result.ok ? 'info' : 'error'}>{result.message}</Notice>}
+            {problem && <Notice tone="error">{problem}</Notice>}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={busy !== null || !apiKey}
+                onClick={() => void run('test')}
+              >
+                {busy === 'test' && <Loader2 className="animate-spin" aria-hidden />} Test search
+              </Button>
+              <Button type="submit" size="sm" disabled={busy !== null || !apiKey}>
+                {busy === 'save' && <Loader2 className="animate-spin" aria-hidden />} Save
+              </Button>
+              {ws.via === 'app' && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  disabled={busy !== null}
+                  onClick={() => void run('remove')}
+                >
+                  Turn off
+                </Button>
+              )}
+            </div>
+          </form>
+        ) : (
+          <div className="pt-3">
+            <Button size="sm" variant={ws.connected ? 'outline' : 'default'} onClick={() => setOpen(true)}>
+              {ws.connected ? 'Change' : 'Add a key'}
+            </Button>
+          </div>
+        )}
+      </div>
+    </section>
   )
 }
 

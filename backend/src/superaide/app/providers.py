@@ -94,6 +94,25 @@ class TestBody(ProviderBody):
     preset: str = Field(max_length=20)
 
 
+class SearchKeyBody(BaseModel):
+    api_key: str = Field(min_length=10, max_length=200)
+
+
+def web_search_view(settings: Any) -> dict[str, Any]:
+    """Whether Superaide's own web search has a key, and how it's set. Never the key."""
+    from superaide.config import get_settings
+
+    with session_scope() as s:
+        row = store.stored(s).get(("brave", "api_key"))
+    via = "app" if row else ("env" if get_settings().brave_search_api_key else None)
+    return {
+        "connected": via is not None,
+        "via": via,
+        "key_hint": row.hint if row else "",
+        "usd_per_call": settings.web_search_usd_per_call,
+    }
+
+
 class RoleChoice(BaseModel):
     provider: str = Field(max_length=20)
     model: str = Field(min_length=1, max_length=120)
@@ -161,6 +180,7 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], Any]) -> APIRo
             "providers": mine["providers"],
             "roles": roles,
             "brain": {"ready": status.ready, "provider": status.provider},
+            "web_search": web_search_view(settings),
             "priced": known,  # models whose price Superaide knows, per provider
         }
 
@@ -202,6 +222,62 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], Any]) -> APIRo
     def test_connection(body: TestBody, _: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         report = test(body.preset, body)
         return {"ok": report.ok, "message": report.message, "models": report.models}
+
+    def search_check(api_key: str) -> CheckReport:
+        """One real search, charged against the cap like any other."""
+        from decimal import Decimal
+
+        from superaide.brain.budget import BudgetExceeded, BudgetGuard, Limits
+        from superaide.tools.web import WebTools
+
+        settings = runtime_settings()
+        guard = BudgetGuard(settings.max_spend_usd, limits=Limits.from_settings(settings))
+        tools = WebTools(guard, search_key=api_key, search_usd=Decimal(str(settings.web_search_usd_per_call)))
+        try:
+            out = tools.run("web_search", {"query": "Superaide personal assistant"})
+        except BudgetExceeded as exc:
+            return CheckReport(False, f"Not tested: {exc}")
+        content, is_error = out if out is not None else ("Search isn't available.", True)
+        if is_error:
+            message = str(content)
+            if "(401)" in message or "(403)" in message or "(422)" in message:
+                message = "Brave didn't accept that key."
+            return CheckReport(False, message)
+        return CheckReport(True, "Web search works.")
+
+    @router.post(
+        "/web-search/test",
+        summary="Test a web search key",
+        description="Runs one Brave search with the key (charged against your cap). Saves nothing.",
+    )
+    def test_search(body: SearchKeyBody, _: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        report = search_check(body.api_key.strip())
+        return {"ok": report.ok, "message": report.message, "models": []}
+
+    @router.post(
+        "/web-search",
+        summary="Turn on web search",
+        description="Tests the Brave Search key, then stores it encrypted. Used by models without built-in search.",
+    )
+    def save_search(
+        body: SearchKeyBody, _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
+    ) -> dict[str, Any]:
+        report = search_check(body.api_key.strip())
+        if not report.ok:
+            raise HTTPException(400, report.message)
+        with session_scope() as s:
+            store.save(s, "brave", {"api_key": body.api_key.strip()}, user_id=user_id, meta={})
+        apply()
+        return view()
+
+    @router.post("/web-search/remove", summary="Turn off web search", description="Deletes the stored search key.")
+    def remove_search(
+        _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
+    ) -> dict[str, Any]:
+        with session_scope() as s:
+            store.remove(s, "brave", user_id=user_id)
+        apply()
+        return view()
 
     @router.post(
         "/prices",

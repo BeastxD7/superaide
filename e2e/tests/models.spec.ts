@@ -133,6 +133,19 @@ test.describe('AI model page', () => {
     await expect(ollama.getByText(/Couldn't reach Ollama/)).toBeVisible()
   })
 
+  test('web search: explains the cost, needs a real key, and stores nothing on a bad one', async ({ page, owner }) => {
+    void owner
+    await openModels(page)
+    const section = page.getByRole('region', { name: 'Web search' })
+    await expect(section.getByText(/Each search counts about US\$0\.010/)).toBeVisible()
+    await section.getByRole('button', { name: 'Add a key' }).click()
+    await expect(section.getByRole('button', { name: 'Save' })).toBeDisabled()
+    await section.getByLabel('Brave Search API key').fill('short')
+    await section.getByRole('button', { name: 'Save' }).click()
+    await expect(section.getByText(/at least 10 characters/)).toBeVisible()
+    expect((await storedSecrets()).some((s) => s.provider === 'brave')).toBe(false)
+  })
+
   test('someone who has not hired Ava cannot read or change the model settings', async ({ api }) => {
     await api.signup(newPerson('Not Hired'))
     expect((await api.get('/app/providers')).status()).toBe(403)
