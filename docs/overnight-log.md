@@ -58,3 +58,10 @@ backend tests, lint, types, the frontend checks and the full browser suite pass.
   - Providers (ADR 0007) landed: the AI model page, OpenAI-compatible adapter, prices, hosted-mode SSRF guard, DNS-rebinding fix.
   - New non-cancelling "Full" CI workflow is running.
   - Dev spend tonight: US$0.049 (64 calls); lifetime dev US$0.07.
+- 03:20 IST:
+  - Providers follow-ups landed: the DNS-rebinding guard on every connection, stream marker cleanup, the Brave Web search card, official price tables (sources and dates in code), and a key per endpoint (0016).
+  - Channel health landed (Token rejected → Connections warning, in-app note, Ava stops promising the channel, 5-minute poller backoff).
+  - Telegram/Slack formatting landed (77fed86).
+  - The reliability scorecard landed (91a9eca): 93% mean, 87% pass^3 over 62 live scenarios, US$0.34. The same agent is fixing its top 10 and will re-run.
+  - Cloudflare quick tunnel opened for the owner's phone (dev only; random URL).
+  - The owner's account email is "shashank@pebbleroad.cmo" (typo); they're resetting the password via the CLI. Ask in the morning whether to correct it to .com.
