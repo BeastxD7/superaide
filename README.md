@@ -113,9 +113,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and conventions, and [SE
 
 ## Roadmap
 
-1. Triage and escalation: decide when to interrupt the owner, using their urgent topics, VIPs and quiet hours.
-2. Memory upgrade: embeddings and hybrid search, time-valid facts, consolidation (see [docs/research](docs/research)).
-3. Editing preferences and people after the introduction.
-4. The correction loop and the first measured gates from Infant to Child.
+The plan comes from [Personal assistant memory architecture](docs/research/Personal%20assistant%20memory%20architecture.md):
+
+1. Relevance retrieval: full-text and vector search fused inside the audience filter, and long files read in chunks.
+2. Consolidation: source trust, superseding instead of overwriting, conflicts shown to the owner, real erasure.
+3. Triage and escalation: Haiku gathers evidence and code decides whether to handle, take a message, add to a digest or interrupt. Strangers can leave a message.
+4. Editing preferences and people after the introduction.
+5. The correction loop and the first measured gates from Infant to Child.
 
 Proprietary. All rights reserved.
