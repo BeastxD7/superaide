@@ -1,6 +1,6 @@
 # Ava reliability scorecard (offline)
 
-Generated 2026-10-21T20:38:21+00:00 · model `fake` · k = 1 run(s) per scenario · cost US$0.0000
+Generated 2026-10-21T21:09:43+00:00 · model `fake` · k = 1 run(s) per scenario · cost US$0.0000
 
 **Overall: mean 92%, pass^1 92%** over 25 scenarios (known gaps excluded). pass^k counts a scenario only if every one of its k runs passed.
 

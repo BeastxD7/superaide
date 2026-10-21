@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-21T20:38:21+00:00",
+  "generated_at": "2026-10-21T21:09:43+00:00",
   "mode": "offline",
   "model": "fake",
   "k": 1,
@@ -279,7 +279,7 @@
       "passes": 1,
       "k": 1,
       "cost_usd": 0.0,
-      "skipped_checks": 5
+      "skipped_checks": 4
     },
     {
       "id": "xchan-remember-telegram-ask-slack",
@@ -509,7 +509,7 @@
       "passes": 1,
       "k": 1,
       "cost_usd": 0.0,
-      "skipped_checks": 5
+      "skipped_checks": 4
     },
     {
       "id": "recall-typo-question",
@@ -549,7 +549,7 @@
       "passes": 1,
       "k": 1,
       "cost_usd": 0.0,
-      "skipped_checks": 6
+      "skipped_checks": 5
     },
     {
       "id": "recall-unknown-says-so",
@@ -559,7 +559,7 @@
       "passes": 1,
       "k": 1,
       "cost_usd": 0.0,
-      "skipped_checks": 4
+      "skipped_checks": 3
     },
     {
       "id": "recall-two-facts-one-question",
