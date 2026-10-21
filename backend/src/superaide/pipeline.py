@@ -136,6 +136,9 @@ class Agent:
             if ctx.kind == "dm" and self._is_owner(s, sender):
                 reply, notes, meta = self._owner_turn(s, sender, ctx, aud, msg, inbound)
                 self._reply(s, ctx, aud, reply, thread, meta=meta)
+                from superaide.knowledge import learn
+
+                learn.schedule(s, inbound)  # after the reply: learn anything worth keeping
                 return HandleResult("known", reply, notes)
 
             reply, notes = self._think(s, sender, ctx, aud, msg)
