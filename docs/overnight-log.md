@@ -47,3 +47,7 @@ backend tests, lint, types, the frontend checks and the full browser suite pass.
   - **Owner action:** paste a fresh BotFather token under Connections → Telegram.
 - ADR 0009 (many owners, one Ava) approved. T0, T9, T10-now and T12 are building; the rest wait on 0007/0008.
 - Innovation research is in `docs/research/AGI era growth ideas.md`; top ideas for the morning are listed there (proposals only).
+- 02:45 IST: Telegram root cause found. Telegram's automated abuse system (12:48 AM) reset sessions, reset bot tokens and froze @AvaXD_bot, which was 11 minutes old. It's not our bug. **Owner action:** check Devices, enable 2FA, then appeal (`/appealbot…` in the Abuse Notifications chat) or create a new bot and paste its token.
+- Cross-channel memory (ADR 0008) is complete on main (6bab999). The dev DB is at 0015 (providers, tenancy T0/T9, embeddings) and the dev stack was restarted.
+- Live E2E: "what color do i hate?" in the app → "You dislike black. You said so on Telegram earlier… [1]" (US spelling + paraphrase + cross-channel + citation). FIXED.
+- The AI model page (/dashboard/models) works live; the providers agent will add real brand logos to the cards.
