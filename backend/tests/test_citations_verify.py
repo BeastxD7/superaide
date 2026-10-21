@@ -175,6 +175,10 @@ def test_the_heuristic_on_its_own():
     assert verify.unsupported("Your note from 21 Oct says gym.", grounding=grounding, recall_found=False)
     assert verify.unsupported("You said you'd skip it.", grounding=grounding, recall_found=False)
     assert verify.unsupported("You just said you'd skip it.", grounding=grounding, recall_found=False) == []
+    # Quoting the owner's words from this turn back is grounded (the offline echo does this);
+    # a quote of something they never wrote is not.
+    assert verify.unsupported('You said: "lunch with Priya".', grounding=grounding, recall_found=False) == []
+    assert verify.unsupported('You said: "dinner with Sam".', grounding=grounding, recall_found=False)
     assert verify.unsupported("It's Thursday, 14:30 here.", grounding=grounding, recall_found=False) == []
     assert verify.unsupported("Your note says gym. [1]", grounding=grounding, recall_found=False) == []
     assert verify.unsupported("Your note from 21 Oct says gym.", grounding=grounding, recall_found=True) == []

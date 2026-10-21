@@ -10,7 +10,7 @@ test.describe('workspace, day to day', () => {
     await box.fill('What can you do for me this week?')
     await box.press('Enter')
     await expect(box).toHaveValue('')
-    await expect(chat.getByText('What can you do for me this week?')).toBeVisible()
+    await expect(chat.getByText('What can you do for me this week?', { exact: true })).toBeVisible()
     // Offline mode answers at once with a placeholder reply.
     await expect(chat.getByText(/Offline mode|You said/i).last()).toBeVisible({ timeout: 10_000 })
     await page.screenshot({ path: 'test-results/journey/workspace-reply.png' })

@@ -70,7 +70,7 @@ test('a real turn streams through the app and the reply keeps a record of the wo
   expect(body).toContain('event: done')
   // Once done, the saved reply replaces the live view, and the box is ready again.
   await expect(page.getByTestId('live-reply')).toHaveCount(0)
-  await expect(page.getByText('Hello Ava, how are you today?')).toBeVisible()
+  await expect(page.getByText('Hello Ava, how are you today?', { exact: true })).toBeVisible()
   await expect(box).toBeEnabled()
 })
 

@@ -1,6 +1,6 @@
 // The person-facing API under /app on the backend. Signed-in calls send the
 // session token that /app/hire (or the owner-link command) gave this browser.
-import { API_URL, ApiError, createClient } from '@/lib/http'
+import { API_URL, ApiError, createClient, errorFromDetail } from '@/lib/http'
 
 export type Hue = 'indigo' | 'sky' | 'rose'
 
@@ -200,10 +200,7 @@ export async function streamChat(text: string, onEvent: (e: ChatEvent) => void, 
   }
   if (!res.ok || !res.body) {
     const body = (await res.json().catch(() => null)) as { detail?: unknown } | null
-    const detail = body?.detail
-    const message =
-      typeof detail === 'string' ? detail : detail && typeof detail === 'object' && 'message' in detail ? String((detail as { message: unknown }).message) : `Request failed (${res.status})`
-    throw new ApiError(res.status, message)
+    throw errorFromDetail(res.status, body?.detail, `Request failed (${res.status})`)
   }
   const reader = res.body.pipeThrough(new TextDecoderStream()).getReader()
   let buffer = ''

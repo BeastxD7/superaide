@@ -8,13 +8,14 @@ test.describe('reminders', () => {
     const box = page.getByRole('textbox', { name: 'Message Ava' })
     await box.fill('remind me to call Priya tomorrow at 5pm')
     await box.press('Enter')
-    await expect(page.getByText(/Got it\. I'll remind you tomorrow at 5:00 pm: Call Priya/)).toBeVisible()
+    // Between midnight and 4am "tomorrow" means the coming day, which is today's date (intentions/when.py).
+    await expect(page.getByText(/Got it\. I'll remind you (today|tomorrow) at 5:00 pm: Call Priya/)).toBeVisible()
 
     await page.getByRole('link', { name: 'Reminders', exact: true }).click()
     await expect(page).toHaveURL(/\/dashboard\/reminders$/)
     const list = page.getByRole('list', { name: 'Upcoming reminders' })
     await expect(list.getByText('Call Priya')).toBeVisible()
-    await expect(list.getByText(/tomorrow at 5:00 pm/)).toBeVisible()
+    await expect(list.getByText(/(today|tomorrow) at 5:00 pm/)).toBeVisible()
 
     // Make it due now; the background worker delivers it into the chat.
     await query(`UPDATE intention SET due_at = now() - interval '1 second'`)

@@ -102,25 +102,6 @@ export function Conversation({
             </motion.div>
           )
         })}
-        {live && (
-          <motion.div
-            key="live"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="mt-3 flex items-end gap-2.5"
-          >
-            <Orb hue={hue} size={32} mood="thinking" />
-            <div
-              className="max-w-[85%] min-w-[min(18rem,85%)] rounded-3xl rounded-bl-md bg-white px-4 py-2.5 text-ink shadow-[0_8px_24px_-18px_rgba(15,42,35,0.6)]"
-              data-testid="live-reply"
-              aria-label={`${agentName} is working`}
-            >
-              <WorkLog steps={live.steps} reasoning={live.reasoning} status={live.status} live />
-              {live.text && <Markdown text={live.text} />}
-            </div>
-          </motion.div>
-        )}
         {typing && !live && (
           <motion.div
             key="typing"
@@ -143,6 +124,24 @@ export function Conversation({
           </motion.div>
         )}
       </AnimatePresence>
+      {/* Outside AnimatePresence: the saved reply replaces it at once, so the two never show together. */}
+      {live && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-3 flex items-end gap-2.5"
+        >
+          <Orb hue={hue} size={32} mood="thinking" />
+          <div
+            className="max-w-[85%] min-w-[min(18rem,85%)] rounded-3xl rounded-bl-md bg-white px-4 py-2.5 text-ink shadow-[0_8px_24px_-18px_rgba(15,42,35,0.6)]"
+            data-testid="live-reply"
+            aria-label={`${agentName} is working`}
+          >
+            <WorkLog steps={live.steps} reasoning={live.reasoning} status={live.status} live />
+            {live.text && <Markdown text={live.text} />}
+          </div>
+        </motion.div>
+      )}
       <div ref={endRef} className="h-px" />
     </div>
   )

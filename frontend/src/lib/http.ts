@@ -49,17 +49,22 @@ export function createClient(baseURL: string, { token, withCredentials = false }
           new ApiError(404, 'The Superaide API is an older version without this feature. Stop it and run start.command again.'),
         )
       }
-      if (detail && typeof detail === 'object' && 'message' in detail) {
-        const d = detail as { message: string; field?: string }
-        return Promise.reject(new ApiError(status, d.message, d.field))
-      }
-      if (Array.isArray(detail)) {
-        // FastAPI validation errors: [{loc: [..., field], msg}]
-        const first = detail[0] as { loc?: string[]; msg?: string } | undefined
-        return Promise.reject(new ApiError(status, first?.msg ?? 'Check the form and try again.', first?.loc?.at(-1)))
-      }
-      return Promise.reject(new ApiError(status, typeof detail === 'string' ? detail : err.message))
+      return Promise.reject(errorFromDetail(status, detail, err.message))
     },
   )
   return client
+}
+
+// Turn an API error body's `detail` into an ApiError (shared with fetch-based calls such as streaming chat).
+export function errorFromDetail(status: number, detail: unknown, fallback: string): ApiError {
+  if (detail && typeof detail === 'object' && 'message' in detail) {
+    const d = detail as { message: string; field?: string }
+    return new ApiError(status, d.message, d.field)
+  }
+  if (Array.isArray(detail)) {
+    // FastAPI validation errors: [{loc: [..., field], msg}]
+    const first = detail[0] as { loc?: string[]; msg?: string } | undefined
+    return new ApiError(status, first?.msg ?? 'Check the form and try again.', first?.loc?.at(-1))
+  }
+  return new ApiError(status, typeof detail === 'string' ? detail : fallback)
 }

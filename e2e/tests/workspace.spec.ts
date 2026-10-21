@@ -238,7 +238,7 @@ test.describe('workspace: chat', () => {
   test('if the API cannot be reached, the person is told and can send again', async ({ page, owner }) => {
     void owner
     await openChat(page)
-    await page.route('**/api/app/chat', (route) => route.abort('connectionrefused'))
+    await page.route('**/api/app/chat/stream', (route) => route.abort('connectionrefused'))
     await composer(page).fill('Lost in the network')
     await composer(page).press('Enter')
     await expect(page.getByText(/Can't reach Superaide/)).toBeVisible()
@@ -247,7 +247,7 @@ test.describe('workspace: chat', () => {
     await expect(page.locator('[aria-live="polite"]').getByText('Lost in the network', { exact: true })).toHaveCount(0)
     await expect(page.getByLabel('Ava is typing')).toHaveCount(0)
 
-    await page.unroute('**/api/app/chat')
+    await page.unroute('**/api/app/chat/stream')
     await composer(page).press('Enter') // send the same words again
     await expect(page.getByText('You said: "Lost in the network"')).toBeVisible()
     await expect(page.getByText(/Can't reach Superaide/)).toHaveCount(0)
@@ -655,7 +655,7 @@ test.describe('connections', () => {
         if (n < s.fields.length - 1) await expect(save, 'every field is needed').toBeDisabled()
       }
       await expect(save).toBeEnabled()
-      await expect(page.getByText('Kept encrypted in environment. Never shown again.')).toBeVisible()
+      await expect(page.getByText('Kept encrypted in the server’s vault. Never shown again.')).toBeVisible()
     }
   })
 

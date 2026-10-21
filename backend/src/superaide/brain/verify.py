@@ -66,6 +66,9 @@ HONEST = re.compile(
     re.IGNORECASE,
 )
 
+# Words quoted back, as in: you said "call Priya".
+_QUOTED = re.compile(r"[\"“]([^\"“”]{2,})[\"”]")
+
 _SENTENCE = re.compile(r"[^.!?\n]+[.!?]*(?:[\"”’)]*)(?:\s*\[\d+\])*")
 _MARK = re.compile(r"\[\d+\]")
 
@@ -154,6 +157,9 @@ def unsupported(text: str, *, grounding: str, recall_found: bool) -> list[str]:
     for sentence in sentences(text):
         if _MARK.search(sentence) or not is_owner_claim(sentence) or HONEST.search(sentence):
             continue
+        quoted = _QUOTED.findall(sentence)
+        if quoted and all(flat(q) in grounding for q in quoted):
+            continue  # it quotes the owner's own words back from this turn
         specifics = [m.group(0) for m in SPECIFIC.finditer(sentence)]
         if specifics and all(flat(s) in grounding for s in specifics):
             continue  # it repeats the owner's own words or a tool's output
