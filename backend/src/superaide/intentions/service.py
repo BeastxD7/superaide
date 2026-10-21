@@ -14,14 +14,12 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.app.accounts import web_message
 from superaide.audit import audit
-from superaide.context.audience import Audience
-from superaide.db.models import ChannelIdentity, Intention, Job, Person
+from superaide.db.models import Intention, Job, Person
 from superaide.intentions.when import zone
 from superaide.jobs.queue import cancel, enqueue, handler
 from superaide.knowledge.store import preferences_for
-from superaide.memory.store import get_or_create_context, log_event
+from superaide.proactive.notify import notify_owner
 
 log = logging.getLogger(__name__)
 
@@ -136,27 +134,6 @@ def upcoming(session: Session, owner: Person, *, include_closed: bool = False, l
 # --- delivery ----------------------------------------------------------------------
 
 
-def _telegram_identity(session: Session, owner: Person) -> ChannelIdentity | None:
-    return session.scalar(
-        select(ChannelIdentity).where(
-            ChannelIdentity.person_id == owner.id,
-            ChannelIdentity.provider == "telegram",
-            ChannelIdentity.lifecycle == "active",
-        )
-    )
-
-
-def _send_telegram(identity: ChannelIdentity, text: str) -> bool:
-    from superaide.channels.telegram import TelegramMessenger
-    from superaide.vault.store import runtime_settings
-
-    token = runtime_settings().telegram_bot_token
-    if not token:
-        return False
-    TelegramMessenger(token).send_dm(identity, text)
-    return True
-
-
 @handler(JOB_KIND)
 def deliver(session: Session, job: Job) -> None:
     intention = session.get(Intention, uuid.UUID(job.payload["intention_id"]))
@@ -166,20 +143,7 @@ def deliver(session: Session, job: Job) -> None:
     if owner is None:
         return
     text = f"⏰ Reminder: {intention.text}"
-    ctx = get_or_create_context(session, web_message(owner, ""))
-    log_event(
-        session, context=ctx, direction="out", content=text, audience=Audience(person_ids={owner.id}),
-        meta={"intention_id": str(intention.id), "kind": "reminder"},
-    )  # fmt: skip
-    via = ["app"]
-    pref = preferences_for(session, owner)
-    identity = _telegram_identity(session, owner)
-    if identity is not None and pref.interrupt_channel == "telegram":
-        try:
-            if _send_telegram(identity, text):
-                via.append("telegram")
-        except Exception:  # the in-app copy is already there
-            log.exception("telegram reminder failed")
+    via = notify_owner(session, owner, text, {"intention_id": str(intention.id), "kind": "reminder"})
     intention.delivered_at = datetime.now(UTC)
     intention.delivered_via = via
     audit(session, "intentions", "intention_delivered", intention_id=intention.id, via=via)

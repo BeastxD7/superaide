@@ -349,6 +349,9 @@ class Onboarder:
             pref = preferences_for(session, person)
             pref.urgent_topics = topics
             pref.digest = digest
+            from superaide.proactive.digest import schedule as schedule_digest
+
+            schedule_digest(session, person)
             label = next(d["label"] for d in DIGESTS if d["value"] == digest).lower()
             self._hear(session, person, f"Urgent: {'; '.join(topics)}. Digest: {label}.")
             remember_fact(

@@ -22,6 +22,14 @@ class JobWorker:
         from superaide.jobs.handlers import load
 
         load()
+        try:  # make sure recurring work (the daily digest) is queued
+            from superaide.db.session import session_scope
+            from superaide.proactive.digest import ensure_scheduled
+
+            with session_scope() as s:
+                ensure_scheduled(s)
+        except Exception:
+            log.exception("couldn't schedule the digest")
         self._stop.clear()
         self._thread = threading.Thread(target=self._loop, name="job-worker", daemon=True)
         self._thread.start()

@@ -10,7 +10,6 @@ from sqlalchemy import select
 
 from superaide.db.models import ChannelIdentity, Event, Intention, Job, OwnerPreference
 from superaide.db.session import session_scope
-from superaide.intentions import service
 from superaide.intentions.when import parse_reminder, zone
 from superaide.jobs.handlers import load
 from superaide.jobs.queue import run_due
@@ -115,7 +114,7 @@ def test_a_reminder_is_delivered_once_in_the_app(owner):
 
 def test_a_reminder_also_goes_to_telegram_when_linked_and_chosen(owner, monkeypatch):
     sent: list[str] = []
-    monkeypatch.setattr(service, "_send_telegram", lambda identity, text: sent.append(text) or True)
+    monkeypatch.setattr("superaide.proactive.notify.send_telegram", lambda identity, text: sent.append(text) or True)
     with session_scope() as s:
         person_id = s.scalar(select(Intention.owner_person_id)) or None
     owner.post("/app/chat", json={"text": "remind me in 10 minutes to check the oven"})
