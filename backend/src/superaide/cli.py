@@ -46,6 +46,19 @@ def _serve(args: argparse.Namespace) -> None:
     uvicorn.run("superaide.main:app", host="127.0.0.1", port=args.port, reload=args.reload)
 
 
+def _worker(_: argparse.Namespace) -> None:
+    """Run background jobs in this process (instead of inside the API)."""
+    from superaide.jobs.worker import JobWorker
+
+    worker = JobWorker()
+    worker.start()
+    try:
+        while True:
+            input()
+    except KeyboardInterrupt, EOFError:
+        worker.stop()
+
+
 def _telegram_poll(_: argparse.Namespace) -> None:
     from superaide.channels.telegram import poll_forever
     from superaide.factory import build_agent
@@ -206,6 +219,7 @@ def main() -> None:
     p.add_argument("--reload", action="store_true")
     p.set_defaults(func=_serve)
 
+    sub.add_parser("worker", help="run background jobs (reminders, digests) in this process").set_defaults(func=_worker)
     sub.add_parser("telegram-poll", help="receive Telegram messages by polling").set_defaults(func=_telegram_poll)
     sub.add_parser("slack-socket", help="receive Slack messages over Socket Mode").set_defaults(func=_slack_socket)
 

@@ -54,6 +54,8 @@ class Settings(BaseSettings):
 
     # Run the Telegram and Slack listeners inside the API (follows connections made in the app)
     run_channels_in_api: bool = True
+    # Run background jobs (reminders, follow-ups, digests) inside the API process
+    run_jobs_in_api: bool = True
 
     # User accounts and sessions
     session_cookie_name: str = "superaide_session"

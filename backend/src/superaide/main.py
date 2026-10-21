@@ -24,6 +24,7 @@ from superaide.channels.base import FakeMessenger, InboundMessage
 from superaide.channels.runner import ChannelRunner
 from superaide.config import get_settings
 from superaide.db.session import session_scope
+from superaide.jobs.worker import JobWorker
 from superaide.pipeline import Agent
 
 log = logging.getLogger(__name__)
@@ -99,6 +100,8 @@ def create_app(agent: Agent | None = None) -> FastAPI:
             return {}
         return runner.ensure(a.settings)
 
+    worker = JobWorker()
+
     @asynccontextmanager
     async def lifespan(_: FastAPI):
         if fixed is None and settings.run_channels_in_api:
@@ -107,7 +110,10 @@ def create_app(agent: Agent | None = None) -> FastAPI:
                 log.info("channel listeners: %s", started)
             except Exception:
                 log.exception("couldn't start channel listeners")
+        if fixed is None and settings.run_jobs_in_api:
+            worker.start()
         yield
+        worker.stop()
         runner.stop()
 
     app.router.lifespan_context = lifespan
