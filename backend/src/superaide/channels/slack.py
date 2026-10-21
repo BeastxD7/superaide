@@ -14,11 +14,30 @@ from collections.abc import Callable
 from typing import Any
 
 from superaide.channels import format as fmt
+from superaide.channels import health
 from superaide.channels.base import InboundMessage, Sources
 from superaide.db.models import ChannelIdentity, Context
 
 log = logging.getLogger(__name__)
 MAX_SKEW_SECONDS = 60 * 5
+# Slack's error codes for a token that no longer works.
+AUTH_ERRORS = frozenset({"invalid_auth", "token_revoked", "token_expired", "account_inactive", "not_authed"})
+
+
+def auth_error(exc: BaseException) -> str:
+    """The Slack error code when `exc` says our token was rejected, else "". Works for SlackApiError
+    (and anything shaped like it) without importing slack_sdk here, and for Bolt's start-up error."""
+    response = getattr(exc, "response", None)
+    code = ""
+    if response is not None:
+        try:
+            code = str(response.get("error") or "")
+        except Exception:
+            code = ""
+    if code in AUTH_ERRORS:
+        return code
+    text = str(exc)
+    return next((c for c in AUTH_ERRORS if c in text), "")
 
 
 def verify_signature(
@@ -78,21 +97,39 @@ class SlackMessenger:
             client = WebClient(token=token)
         self.client = client
 
-    def _post(self, channel: str, text: str, thread_id: str = "", sources: Sources | None = None) -> None:
+    def _call(self, method: str, **kwargs: Any) -> Any:
+        """One Web API call. A rejected token or an unreachable Slack becomes DeliveryFailed and is
+        recorded as the channel's health; other Slack errors (e.g. channel_not_found) propagate."""
+        try:
+            result = getattr(self.client, method)(**kwargs)
+        except Exception as exc:
+            code = auth_error(exc)
+            if code:
+                health.record("slack", health.AUTH_FAILED, f"Slack rejected the token ({code})")
+                raise health.DeliveryFailed("slack", health.AUTH_FAILED, "the Slack token was rejected") from None
+            if isinstance(exc, OSError):  # connection refused, DNS, timeouts (urllib errors are OSErrors)
+                health.record("slack", health.UNREACHABLE, f"Couldn't reach Slack ({type(exc).__name__})")
+                raise health.DeliveryFailed("slack", health.UNREACHABLE, "Slack couldn't be reached") from None
+            raise
+        health.record("slack", health.OK)
+        return result
+
+    def _post(self, channel: str, text: str, thread_id: str = "", sources: Sources | None = None) -> bool:
         """Markdown goes out as Slack mrkdwn, split under Slack's recommended length."""
         messages = fmt.outgoing(text, sources, render=fmt.to_slack, footer=fmt.slack_footer, limit=fmt.SLACK_LIMIT)
         for mrkdwn, _ in messages:
             if thread_id:
-                self.client.chat_postMessage(channel=channel, text=mrkdwn, thread_ts=thread_id)
+                self._call("chat_postMessage", channel=channel, text=mrkdwn, thread_ts=thread_id)
             else:
-                self.client.chat_postMessage(channel=channel, text=mrkdwn)
+                self._call("chat_postMessage", channel=channel, text=mrkdwn)
+        return True
 
-    def send_dm(self, identity: ChannelIdentity, text: str) -> None:
-        opened = self.client.conversations_open(users=identity.stable_key)
-        self._post(opened["channel"]["id"], text)
+    def send_dm(self, identity: ChannelIdentity, text: str) -> bool:
+        opened = self._call("conversations_open", users=identity.stable_key)
+        return self._post(opened["channel"]["id"], text)
 
-    def send_to_context(self, context: Context, text: str, thread_id: str = "", sources: Sources | None = None) -> None:
-        self._post(context.external_id, text, thread_id, sources)
+    def send_to_context(self, context: Context, text: str, thread_id: str = "", sources: Sources | None = None) -> bool:
+        return self._post(context.external_id, text, thread_id, sources)
 
 
 def run_socket_mode(bot_token: str, app_token: str, our_team_id: str, handle: Callable[[InboundMessage], Any]) -> None:

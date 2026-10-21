@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 
 from superaide.audit import audit
 from superaide.channels.base import Messenger
+from superaide.channels.health import DeliveryFailed
 from superaide.config import Settings
 from superaide.db.models import ChannelIdentity, IdentityLinkEvent, LinkChallenge, Person
 from superaide.identity.trust import Trust
@@ -126,12 +127,15 @@ def start_challenge(
     session.add(challenge)
     session.flush()
     handle = new_identity.aux_handles.get("username") or new_identity.aux_handles.get("display_name") or "an account"
-    messengers[via.provider].send_dm(
-        via,
-        f"{agent_name} here. Someone on {new_identity.provider.capitalize()} ({handle}) just said they are you. "
-        f"If that was you, type this code in that chat within {settings.link_code_ttl_minutes} minutes: {code}\n"
-        "If it wasn't you, ignore this. They get nothing without the code.",
-    )
+    try:
+        messengers[via.provider].send_dm(
+            via,
+            f"{agent_name} here. Someone on {new_identity.provider.capitalize()} ({handle}) just said they are you. "
+            f"If that was you, type this code in that chat within {settings.link_code_ttl_minutes} minutes: {code}\n"
+            "If it wasn't you, ignore this. They get nothing without the code.",
+        )
+    except DeliveryFailed as exc:  # the code expires unused; the channel's health says why
+        audit(session, "identity", "link_code_not_delivered", provider=via.provider, reason=exc.kind)
     audit(
         session,
         "identity",
@@ -205,12 +209,15 @@ def verify_code(
     audit(session, "identity", "linked", identity_id=identity.id, person_id=person.id)
     for trusted in trusted_identities(session, person):
         if trusted.id != identity.id and trusted.provider in messengers:
-            messengers[trusted.provider].send_dm(
-                trusted,
-                f"{agent_name} here. I linked a {identity.provider} account to you. "
-                "If that wasn't you, unlink it from the dashboard (People page) or run: "
-                f"superaide unlink --identity {identity.id}",
-            )
+            try:
+                messengers[trusted.provider].send_dm(
+                    trusted,
+                    f"{agent_name} here. I linked a {identity.provider} account to you. "
+                    "If that wasn't you, unlink it from the dashboard (People page) or run: "
+                    f"superaide unlink --identity {identity.id}",
+                )
+            except DeliveryFailed as exc:
+                audit(session, "identity", "link_notice_not_delivered", provider=trusted.provider, reason=exc.kind)
     return VerifyResult(True, "linked", person)
 
 

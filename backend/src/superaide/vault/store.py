@@ -127,10 +127,18 @@ def status(session: Session, settings: Settings) -> dict[str, Any]:
             return {"connected": True, "via": "env", "hints": {}, "meta": {}, "since": None}
         return {"connected": False, "via": None, "hints": {}, "meta": {}, "since": None}
 
+    from superaide.channels import health
+
+    def channel(provider: str, names: list[str]) -> dict[str, Any]:
+        found = entry(provider, names)
+        # Saved isn't the same as working: say when the service rejected the token or is unreachable.
+        found["health"] = health.get(session, provider) if found["connected"] else {"status": health.OK}
+        return found
+
     return {
         "anthropic": entry("anthropic", ["api_key"]),
-        "telegram": entry("telegram", ["bot_token"]),
-        "slack": entry("slack", ["bot_token", "app_token"]),
+        "telegram": channel("telegram", ["bot_token"]),
+        "slack": channel("slack", ["bot_token", "app_token"]),
         # Google needs the owner's OAuth client first, then their sign-in (the refresh token).
         "google": {
             **entry("google", ["client_id", "client_secret", "refresh_token"]),

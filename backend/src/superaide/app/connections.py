@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field
 
 from superaide.app.routes import owner_person_id, telegram_username
 from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header
+from superaide.channels import health
 from superaide.config import get_settings
 from superaide.connectors import google
 from superaide.db.session import session_scope
@@ -125,6 +126,8 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
     def connect(provider: str, checked: check.Checked, user_id: uuid.UUID) -> dict[str, Any]:
         with session_scope() as s:
             store.save(s, provider, checked.values, user_id=user_id, meta=checked.meta)
+            if provider in health.PROVIDERS:
+                health.reset(s, provider)  # the service just accepted this token
         telegram_username.cache_clear()
         apply()
         return view()
@@ -291,6 +294,8 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
             raise HTTPException(404, "Unknown connection")
         with session_scope() as s:
             store.remove(s, provider, user_id=user_id)
+            if provider in health.PROVIDERS:
+                health.reset(s, provider)
         telegram_username.cache_clear()
         apply()
         return view()

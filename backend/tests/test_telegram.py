@@ -10,9 +10,11 @@ from typing import Any
 import httpx
 import pytest
 
-from superaide.channels import telegram
+from superaide.channels import health, telegram
+from superaide.channels.health import DeliveryFailed
 from superaide.channels.telegram import TelegramMessenger, parse_update, poll_forever, verify_secret
 from superaide.db.models import ChannelIdentity, Context
+from superaide.db.session import session_scope
 from superaide.pipeline import parse_start_code
 
 TOKEN = "123456789:" + "A" * 35
@@ -146,9 +148,12 @@ def test_a_refused_send_is_logged_not_raised(caplog):
 
 def test_the_token_never_appears_in_a_send_failure_log(caplog):
     client, _ = recording_client(500, {"ok": False})
-    with caplog.at_level(logging.WARNING, logger="superaide.channels.telegram"):
+    with caplog.at_level(logging.WARNING, logger="superaide.channels.telegram"), pytest.raises(DeliveryFailed) as err:
         TelegramMessenger(TOKEN, client).send_dm(ChannelIdentity(stable_key="1001"), "x")
     assert caplog.text and TOKEN not in caplog.text
+    assert TOKEN not in str(err.value)
+    with session_scope() as s:
+        assert health.get(s, "telegram")["status"] == health.UNREACHABLE
 
 
 # --- polling ----------------------------------------------------------------------
@@ -311,3 +316,25 @@ def test_one_malformed_update_does_not_stop_the_loop(fake_telegram):
     got = []
     poll_forever(TOKEN, lambda m: got.append(m.text), stop)
     assert got == ["fine"] and fake.offsets == [0, 3]
+
+
+def test_a_rejected_token_backs_off_for_minutes_and_records_the_health(fake_telegram):
+    stop = InstantStop()
+    revoked = httpx.Response(401, json={"ok": False, "error_code": 401, "description": "Unauthorized"})
+    fake_telegram([revoked, revoked, revoked], stop)
+    poll_forever(TOKEN, lambda m: None, stop)
+    assert stop.waits == [telegram.AUTH_BACKOFF] * 3 and telegram.AUTH_BACKOFF >= 300
+    with session_scope() as s:
+        state = health.get(s, "telegram")
+        assert state["status"] == health.AUTH_FAILED and TOKEN not in state["last_error"]
+
+
+def test_polling_that_works_again_marks_telegram_healthy(fake_telegram):
+    stop = InstantStop()
+    revoked = httpx.Response(401, json={"ok": False, "error_code": 401, "description": "Unauthorized"})
+    fake_telegram([revoked, [update("back", update_id=1)]], stop)
+    got: list[str] = []
+    poll_forever(TOKEN, lambda m: got.append(m.text), stop)
+    assert got == ["back"]
+    with session_scope() as s:
+        assert health.get(s, "telegram")["status"] == health.OK

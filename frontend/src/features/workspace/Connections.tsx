@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, ChevronDown, ExternalLink, KeyRound } from 'lucide-react'
+import { AlertTriangle, Check, ChevronDown, ExternalLink, KeyRound } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { AppError, call, type Me } from '@/lib/api'
@@ -18,7 +18,13 @@ type Service = {
   meta?: Record<string, string | null>
   available?: boolean
   reason?: string
+  // Telegram and Slack: whether the service still accepts the saved token (backend channels/health.py).
+  health?: { status: 'ok' | 'auth_failed' | 'unreachable'; last_error?: string; since?: string | null }
 }
+
+// Saved but refused by the service (revoked or regenerated token): needs a new one.
+const rejected = (s: Service) => s.connected && s.health?.status === 'auth_failed'
+
 type Status = {
   services: Record<'anthropic' | 'telegram' | 'slack' | 'whatsapp', Service> & { google: GoogleService }
   guides: Record<string, { url: string; steps: string[] }> & { google: GoogleGuide }
@@ -101,15 +107,21 @@ export function Connections({ agentName, me, refreshMe }: { agentName: string; m
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-medium text-ink">{name}</span>
-                <span className="block truncate text-xs text-muted">
-                  {s.connected
-                    ? s.via === 'env'
-                      ? 'Connected from the .env file'
-                      : `Connected${s.meta?.username ? ` as @${s.meta.username}` : s.meta?.team ? ` to ${s.meta.team}` : ''} (${Object.values(s.hints ?? {})[0] ?? ''})`
-                    : why}
+                <span className={`block truncate text-xs ${rejected(s) ? 'text-warn' : 'text-muted'}`}>
+                  {rejected(s)
+                    ? `Token rejected: reconnect${s.meta?.username ? ` (@${s.meta.username})` : ''}`
+                    : s.connected
+                      ? s.via === 'env'
+                        ? 'Connected from the .env file'
+                        : `Connected${s.meta?.username ? ` as @${s.meta.username}` : s.meta?.team ? ` to ${s.meta.team}` : ''} (${Object.values(s.hints ?? {})[0] ?? ''})${s.health?.status === 'unreachable' ? ' · couldn’t be reached lately' : ''}`
+                      : why}
                 </span>
               </span>
-              {s.connected ? (
+              {rejected(s) ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-warn/10 px-2.5 py-1 text-xs font-medium text-warn">
+                  <AlertTriangle className="size-3.5" /> Reconnect
+                </span>
+              ) : s.connected ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2.5 py-1 text-xs font-medium text-ok">
                   <Check className="size-3.5" /> Connected
                 </span>
@@ -223,8 +235,19 @@ function ConnectForm({
 
   return (
     <div className="border-t border-line px-4 pt-3 pb-4">
-      {provider === 'telegram' && service.connected && <TelegramPairing me={me} refreshMe={refreshMe} username={service.meta?.username ?? null} />}
-      {!(service.connected && service.via === 'app') && (
+      {rejected(service) && (
+        <div className="mb-3">
+          <Notice tone="warn">
+            {provider === 'telegram' ? 'Telegram' : 'Slack'} rejected the saved token
+            {service.health?.since ? ` (since ${new Date(service.health.since).toLocaleString()})` : ''}, so nothing reaches you there.
+            It was probably revoked or regenerated. Paste a new one below to reconnect.
+          </Notice>
+        </div>
+      )}
+      {provider === 'telegram' && service.connected && !rejected(service) && (
+        <TelegramPairing me={me} refreshMe={refreshMe} username={service.meta?.username ?? null} />
+      )}
+      {(!(service.connected && service.via === 'app') || rejected(service)) && (
         <>
           <ol className="space-y-1.5 text-sm text-body">
             {guide.steps.map((s, i) => (
@@ -261,7 +284,7 @@ function ConnectForm({
             ))}
             {error && <Notice tone="error">{error}</Notice>}
             <Button tone="violet" type="submit" className="w-full py-3" disabled={busy || fields.some((f) => !(values[f.name] ?? '').trim())}>
-              {busy ? 'Checking…' : 'Check and save'}
+              {busy ? 'Checking…' : rejected(service) ? 'Check and reconnect' : 'Check and save'}
             </Button>
             <p className="text-center text-xs text-muted">Kept encrypted in {where}. Never shown again.</p>
           </form>

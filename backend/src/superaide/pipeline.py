@@ -20,6 +20,7 @@ from superaide.brain.llm import OnEvent as Emit
 from superaide.brain.turn import TurnOutput, build_messages, build_system
 from superaide.channels.base import InboundMessage, Messenger
 from superaide.channels.format import strip_citations
+from superaide.channels.health import DeliveryFailed
 from superaide.config import Settings
 from superaide.context.audience import Audience, audience_for, visible_memories
 from superaide.db.models import Context
@@ -399,8 +400,13 @@ class Agent:
         # replies carry it as a footer (only _owner_turn sets sources); anywhere else the
         # marks are dropped so they don't point at nothing.
         sources = (meta or {}).get("sources") or None
-        if sources and ctx.kind == "dm":
-            messenger.send_to_context(ctx, text, thread, sources=sources)
-        else:
-            messenger.send_to_context(ctx, strip_citations(text), thread)
+        try:
+            if sources and ctx.kind == "dm":
+                messenger.send_to_context(ctx, text, thread, sources=sources)
+            else:
+                messenger.send_to_context(ctx, strip_citations(text), thread)
+        except DeliveryFailed as exc:  # health is recorded by the messenger; keep the turn and its record
+            log.warning("reply not delivered on %s: %s", ctx.provider, exc.kind)
+            audit(s, "pipeline", "reply_not_delivered", provider=ctx.provider, reason=exc.kind)
+            meta = {**(meta or {}), "undelivered": exc.kind}
         log_event(s, context=ctx, direction="out", content=text, audience=aud, thread_id=thread, meta=meta)

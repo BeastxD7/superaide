@@ -31,13 +31,16 @@ Sources = list[dict[str, Any]]
 
 class Messenger(Protocol):
     """`text` is Ava's Markdown; each messenger converts it to its channel's format. `sources`
-    (owner DMs only) become a short footer so the "[1]" marks point at something."""
+    (owner DMs only) become a short footer so the "[1]" marks point at something.
 
-    def send_dm(self, identity: ChannelIdentity, text: str) -> None: ...
+    Sends may return False when the platform refused that one message, and raise
+    channels.health.DeliveryFailed when the channel itself is down (token rejected, unreachable)."""
+
+    def send_dm(self, identity: ChannelIdentity, text: str) -> bool | None: ...
 
     def send_to_context(
         self, context: Context, text: str, thread_id: str = "", sources: Sources | None = None
-    ) -> None: ...
+    ) -> bool | None: ...
 
 
 @dataclass

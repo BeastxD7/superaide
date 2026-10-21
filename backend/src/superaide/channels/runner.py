@@ -65,11 +65,17 @@ class ChannelRunner:
             self._slack = None
             log.info("Slack listener stopped")
         if bot and app and self._slack is None:
-            from superaide.channels.slack import socket_mode_handler
+            from superaide.channels import health
+            from superaide.channels.slack import auth_error, socket_mode_handler
 
             try:
                 handler = socket_mode_handler(bot, app, team, self.handle)
                 handler.connect()
                 self._slack = (key, handler)
-            except Exception:
+            except Exception as exc:
                 log.exception("Slack listener failed to start")
+                code = auth_error(exc)
+                if code:
+                    health.record("slack", health.AUTH_FAILED, f"Slack rejected the token ({code})")
+            else:
+                health.record("slack", health.OK)

@@ -14,8 +14,9 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
-from superaide.channels import slack, telegram
+from superaide.channels import health, slack, telegram
 from superaide.channels.runner import ChannelRunner
+from superaide.db.session import session_scope
 
 TG_A = "111:" + "A" * 35
 TG_B = "222:" + "B" * 35
@@ -185,6 +186,8 @@ def test_a_slack_listener_that_cannot_start_is_reported_and_retried_later(
         assert runner.ensure(s) == {"telegram": True, "slack": False}
     assert attempts == ["xoxb-bad", "xoxb-bad"]  # not remembered as running, so the next apply retries
     assert "Slack listener failed to start" in caplog.text
+    with session_scope() as db:
+        assert health.get(db, "slack")["status"] == health.AUTH_FAILED  # Connections shows it
     polling.wait_started()
     assert len(polling.calls) == 1
 

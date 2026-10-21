@@ -129,6 +129,21 @@ def test_telegram_and_slack_connect_and_disconnect(owner):
     assert r["services"]["whatsapp"]["available"] is False
 
 
+def test_a_rejected_telegram_token_shows_on_connections_until_a_new_one_is_saved(owner):
+    from superaide.channels import health
+
+    assert owner.post("/app/connections/telegram", json={"bot_token": TG_TOKEN}).status_code == 200
+    assert owner.get("/app/connections").json()["services"]["telegram"]["health"]["status"] == "ok"
+    health.record("telegram", health.AUTH_FAILED, "Telegram rejected the bot token (401)")  # e.g. from a send
+    tg = owner.get("/app/connections").json()["services"]["telegram"]
+    assert tg["connected"] is True
+    assert tg["health"]["status"] == "auth_failed" and tg["health"]["since"]
+    assert "rejected" in tg["health"]["last_error"] and TG_TOKEN not in json.dumps(tg)
+    # Reconnecting with a token Telegram accepts clears it.
+    r = owner.post("/app/connections/telegram", json={"bot_token": TG_TOKEN}).json()
+    assert r["services"]["telegram"]["health"]["status"] == "ok"
+
+
 def test_only_the_owner_can_see_or_change_connections(owner, agent):
     other = TestClient(owner.app_, headers={"X-Requested-With": "superaide"})
     assert other.get("/app/connections").status_code == 401

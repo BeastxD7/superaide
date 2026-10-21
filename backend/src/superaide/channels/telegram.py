@@ -14,11 +14,15 @@ from typing import Any
 import httpx
 
 from superaide.channels import format as fmt
+from superaide.channels import health
 from superaide.channels.base import InboundMessage, Sources
 from superaide.db.models import ChannelIdentity, Context
 
 log = logging.getLogger(__name__)
 SECRET_HEADER = "X-Telegram-Bot-Api-Secret-Token"
+# Telegram answers 401 for a revoked token and 404 for one that isn't a token at all.
+AUTH_STATUSES = (401, 404)
+AUTH_BACKOFF = 300.0  # seconds between getUpdates tries once the token is rejected
 
 
 def verify_secret(received: str | None, expected: str) -> bool:
@@ -70,11 +74,20 @@ class TelegramMessenger:
         self.http = client or httpx.Client(timeout=15)
 
     def _post(self, body: dict[str, Any]) -> httpx.Response:
-        return self.http.post(f"{self.base}/sendMessage", json=body)
+        try:
+            return self.http.post(f"{self.base}/sendMessage", json=body)
+        except httpx.HTTPError as exc:  # the message would hold the URL, and so the token: log the type only
+            log.warning("telegram send failed: %s", type(exc).__name__)
+            health.record("telegram", health.UNREACHABLE, f"Couldn't reach Telegram ({type(exc).__name__})")
+            raise health.DeliveryFailed("telegram", health.UNREACHABLE, "Telegram couldn't be reached") from None
 
-    def _send(self, chat_id: str, text: str, thread_id: str = "", sources: Sources | None = None) -> None:
+    def _send(self, chat_id: str, text: str, thread_id: str = "", sources: Sources | None = None) -> bool:
         """Send Markdown as Telegram HTML, split under the 4096-character limit. If Telegram
-        can't parse the markup, that message goes again as plain text."""
+        can't parse the markup, that message goes again as plain text.
+
+        True when Telegram took it. Raises DeliveryFailed when the token is rejected or Telegram
+        can't be reached (and records the channel's health); False for a per-chat refusal, e.g. the
+        person blocked the bot (403), which says nothing about the token."""
         for html_text, markdown in fmt.outgoing(
             text, sources, render=fmt.to_telegram_html, footer=fmt.telegram_footer, limit=fmt.TELEGRAM_LIMIT
         ):
@@ -94,15 +107,23 @@ class TelegramMessenger:
                 r = self._post(body)
             if r.status_code != 200:
                 log.warning("telegram send failed: %s %s", r.status_code, r.text[:200])
-                return
+                if r.status_code in AUTH_STATUSES:
+                    health.record("telegram", health.AUTH_FAILED, f"Telegram rejected the bot token ({r.status_code})")
+                    raise health.DeliveryFailed("telegram", health.AUTH_FAILED, "the bot token was rejected")
+                if r.status_code >= 500:
+                    health.record("telegram", health.UNREACHABLE, f"Telegram answered {r.status_code}")
+                    raise health.DeliveryFailed("telegram", health.UNREACHABLE, f"Telegram answered {r.status_code}")
+                return False
+        health.record("telegram", health.OK)
+        return True
 
-    def send_dm(self, identity: ChannelIdentity, text: str) -> None:
+    def send_dm(self, identity: ChannelIdentity, text: str) -> bool:
         # In a private chat the chat ID equals the user ID. The user must have
         # started the bot once, or Telegram refuses the message.
-        self._send(identity.stable_key, text)
+        return self._send(identity.stable_key, text)
 
-    def send_to_context(self, context: Context, text: str, thread_id: str = "", sources: Sources | None = None) -> None:
-        self._send(context.external_id, text, thread_id, sources)
+    def send_to_context(self, context: Context, text: str, thread_id: str = "", sources: Sources | None = None) -> bool:
+        return self._send(context.external_id, text, thread_id, sources)
 
 
 def poll_forever(token: str, handle: Callable[[InboundMessage], Any], stop: threading.Event | None = None) -> None:
@@ -120,23 +141,36 @@ def poll_forever(token: str, handle: Callable[[InboundMessage], Any], stop: thre
         log.warning("telegram deleteWebhook failed: %s", exc)
     offset = 0
     backoff = 3.0
+    known = ""  # the health this poller last recorded, so a healthy loop doesn't write every poll
     log.info("Telegram polling started")
     while not stop.is_set():
         try:
             r = http.get(f"{base}/getUpdates", params={"timeout": 20, "offset": offset})
             data = r.json()
         except (httpx.HTTPError, ValueError) as exc:
-            log.warning("telegram poll error: %s", exc)
+            log.warning("telegram poll error: %s", type(exc).__name__)  # str(exc) can hold the URL and token
             stop.wait(3)
             continue
+        if r.status_code in AUTH_STATUSES:
+            # The token was revoked or regenerated. Retrying every few seconds can't fix that; a new
+            # token saved in the app restarts this listener at once (ChannelRunner sets `stop`).
+            log.warning("telegram getUpdates refused (%s): %s", r.status_code, data.get("description", ""))
+            if known != health.AUTH_FAILED:
+                health.record("telegram", health.AUTH_FAILED, f"Telegram rejected the bot token ({r.status_code})")
+                known = health.AUTH_FAILED
+            stop.wait(AUTH_BACKOFF)
+            continue
         if r.status_code != 200 or not data.get("ok", True):
-            # 409: another poller or a webhook is active; 401: the token was revoked. Telegram
-            # answers these at once, so wait (longer each time) instead of hammering it.
+            # 409: another poller or a webhook is active. Telegram answers at once, so wait
+            # (longer each time) instead of hammering it.
             log.warning("telegram getUpdates refused (%s): %s", r.status_code, data.get("description", ""))
             stop.wait(backoff)
             backoff = min(backoff * 2, 60.0)
             continue
         backoff = 3.0
+        if known != health.OK:
+            health.record("telegram", health.OK)
+            known = health.OK
         for update in data.get("result", []):
             if isinstance(update.get("update_id"), int):
                 offset = max(offset, update["update_id"] + 1)

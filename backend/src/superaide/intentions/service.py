@@ -16,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.audit import audit
+from superaide.channels import health
 from superaide.db.models import Intention, Job, Person
 from superaide.intentions.when import zone
 from superaide.jobs.queue import cancel, enqueue, handler
@@ -115,6 +116,14 @@ def check_channel(session: Session, owner: Person, channel: str | None) -> str:
             f"{name} isn't linked, so a reminder can't be sent there. Tell the owner, and that they can link "
             f"{name} under Connections; or offer to set it in the app.",
         )
+    if channel in EXTERNAL and health.rejected(session, channel):
+        name = CHANNEL_NAMES[channel]
+        token = "bot token" if channel == "telegram" else "token"
+        raise IntentionError(
+            409,
+            f"{name} is linked, but its {token} was rejected, so nothing can be sent there right now. Tell the "
+            f"owner to reconnect {name} under Connections; or offer to set the reminder in the app.",
+        )
     return channel
 
 
@@ -124,6 +133,11 @@ def describe_channel(session: Session, owner: Person, channel: str) -> str:
         prefers = preferences_for(session, owner).interrupt_channel == "telegram"
         channel = "telegram" if prefers else "app"
     if channel in EXTERNAL and identity_for(session, owner, channel) is not None:
+        if health.rejected(session, channel):
+            return (
+                f"in the app only ({CHANNEL_NAMES[channel]}'s token was rejected; it needs reconnecting under "
+                "Connections)"
+            )
         return f"in the app and on {CHANNEL_NAMES[channel]}"
     return "in the app"
 

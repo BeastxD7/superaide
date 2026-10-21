@@ -344,20 +344,29 @@ class OwnerTurn:
             f"It is {now:%A %d %B %Y, %H:%M} in their time zone ({tz})."
         )
         from superaide.knowledge.store import preferences_for
-        from superaide.proactive.notify import linked_channels
+        from superaide.proactive.notify import linked_channels, rejected_channels
 
         linked = linked_channels(self.s, self.sender.person)
+        # A linked channel whose token the service rejected can't deliver anything: never offer it.
+        broken = [c for c in rejected_channels(self.s) if c in linked]
+        usable = [c for c in linked if c not in broken]
         on_telegram = (
-            "telegram" in linked and preferences_for(self.s, self.sender.person).interrupt_channel == "telegram"
+            "telegram" in usable and preferences_for(self.s, self.sender.person).interrupt_channel == "telegram"
         )
         missing = [CHANNEL_NAMES[c] for c in EXTERNAL if c not in linked]
         who += (
             " Reminders and your daily briefing arrive in the Superaide app chat at the time they're due"
             + (", and on Telegram too." if on_telegram else ".")
             + " Channels linked for delivery right now: "
-            + ", ".join(CHANNEL_NAMES[c] for c in linked)
+            + ", ".join(CHANNEL_NAMES[c] for c in usable)
             + ". A reminder can be sent to any of these as well as the app: pass channel to create_reminder or "
             "update_reminder when the owner says where."
+            + "".join(
+                f" {CHANNEL_NAMES[c]} is linked but its {'bot token' if c == 'telegram' else 'token'} was rejected, "
+                f"so nothing can be sent there right now; ask the owner to reconnect it under Connections, and "
+                f"don't promise anything will arrive on {CHANNEL_NAMES[c]}."
+                for c in broken
+            )
             + (
                 f" Not linked: {' and '.join(missing)}; the owner can link {'it' if len(missing) == 1 else 'them'} "
                 "under Connections."
