@@ -32,8 +32,19 @@ RULES: dict[str, Rule] = {
     "grant_access": Rule(int(Trust.STEPPED_UP), manager_only=True, needs_approval=True),
     "delete_memory": Rule(int(Trust.STEPPED_UP), manager_only=True, needs_approval=True),
 }
-# Identity and trust changes never happen through chat; they need the dashboard or CLI.
-NEVER_VIA_CHAT = {"change_identity"}
+# Never through a chat channel, whatever the sender's trust: these need the signed-in app (or the
+# operator's CLI). Anything not in RULES is refused too; this set names them so the refusal is explicit
+# and tested. Approving is never an action at all: approvals are decided only by the app's routes.
+NEVER_VIA_CHAT = {
+    "change_identity",
+    "change_trust",
+    "approve_action",
+    "change_connection",
+    "change_credentials",
+    "change_settings",
+    "export_data",
+    "delete_data",
+}
 
 
 @dataclass

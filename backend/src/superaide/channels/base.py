@@ -23,6 +23,9 @@ class InboundMessage:
     thread_id: str = ""  # Slack thread_ts or Telegram topic; "" for the main conversation
     external_sender: bool = False  # e.g. Slack Connect user from another company
     chat_title: str = ""
+    # Which of our endpoints received it: the Telegram bot id, or the Slack app ("team/app id").
+    # "" for the web app. Links are bound to the endpoint that confirmed them (identity/resolver.py).
+    endpoint: str = ""
     raw: dict[str, Any] = field(default_factory=dict)
 
 

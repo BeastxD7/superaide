@@ -692,7 +692,11 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         if not username:
             return {"available": False}
         with session_scope() as s:
-            code = accounts.create_invite(s, require(s, Person, person_id), "telegram")
+            from superaide.channels.telegram import bot_id
+
+            code = accounts.create_invite(
+                s, require(s, Person, person_id), "telegram", endpoint=bot_id(settings.telegram_bot_token)
+            )
         return {"available": True, "url": f"https://t.me/{username}?start={code}", "expires_minutes": 15}
 
     return router

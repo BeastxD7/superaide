@@ -91,6 +91,10 @@ class ChannelIdentity(Scoped, Base):
     lifecycle: Mapped[str] = mapped_column(String(20), default="active")  # active | superseded | revoked
     risk_flags: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # The endpoint (Telegram bot id, Slack app) this link was confirmed on. A message from the same
+    # account through any other endpoint is not trusted until the owner confirms it in the app.
+    # Same meaning as channel_endpoint.external_key (ADR 0009); "" = not bound yet.
+    endpoint_key: Mapped[str] = mapped_column(String(200), default="", server_default="")
 
 
 class IdentityLinkEvent(Scoped, Base):
@@ -478,6 +482,10 @@ class ChannelInvite(Scoped, Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     used_by_identity_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("channel_identity.id"), nullable=True)
+    # The bot it was made for: opened through any other bot, it is refused. "" = any (older invites).
+    endpoint_key: Mapped[str] = mapped_column(String(200), default="", server_default="")
+    # A confirm-this-bot invite works only for the account that was waiting to be confirmed.
+    for_identity_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("channel_identity.id"), nullable=True)
 
 
 class AgentState(Base):

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -13,12 +13,20 @@ from superaide.channels.base import InboundMessage
 from superaide.db.models import ChannelIdentity, Person
 from superaide.identity.trust import Trust
 
+# Channels whose links are bound to the endpoint (bot or app) that confirmed them.
+BOUND_PROVIDERS = ("telegram", "slack")
+
 
 @dataclass
 class Sender:
     identity: ChannelIdentity
     person: Person | None
     trust: int
+    # Set when a linked account wrote through an endpoint it wasn't confirmed on ("new_endpoint"), or
+    # after a long silence ("stale"). The sender is then treated as unknown until the owner confirms.
+    unconfirmed: str = ""
+    linked_person: Person | None = None  # who the account is linked to, when unconfirmed
+    first_notice: bool = False  # the first message in this unconfirmed state: tell the owner once
 
     @property
     def known(self) -> bool:
@@ -43,7 +51,12 @@ def find_identity(session: Session, provider: str, tenant_scope: str, stable_key
     )
 
 
-def resolve(session: Session, msg: InboundMessage) -> Sender:
+def endpoint_confirmed(identity: ChannelIdentity, endpoint: str) -> bool:
+    """May something private go to this account through this endpoint (bot)?"""
+    return not identity.endpoint_key or identity.endpoint_key == endpoint
+
+
+def resolve(session: Session, msg: InboundMessage, *, reconfirm_after_days: int = 0) -> Sender:
     if not msg.verified:
         raise ValueError("refusing to resolve an unverified message")
     identity = find_identity(session, msg.provider, msg.tenant_scope, msg.sender_id)
@@ -65,6 +78,7 @@ def resolve(session: Session, msg: InboundMessage) -> Sender:
         "display_name": msg.sender_display,
         "username": msg.sender_username,
     }
+    previous_seen = identity.last_seen_at
     identity.last_seen_at = datetime.now(UTC)
     if msg.external_sender and "external" not in (identity.risk_flags or []):
         identity.risk_flags = [*(identity.risk_flags or []), "external"]
@@ -76,5 +90,63 @@ def resolve(session: Session, msg: InboundMessage) -> Sender:
             person = candidate
     if "external" in (identity.risk_flags or []):
         person = None  # people from other companies are never treated as linked colleagues here
+    unconfirmed, first = "", False
+    if person is not None and msg.provider in BOUND_PROVIDERS:
+        unconfirmed, first = _check_endpoint(session, identity, msg, previous_seen, reconfirm_after_days)
+    linked = person
+    if unconfirmed:
+        person = None
     trust = identity.trust_level if person else min(identity.trust_level, int(Trust.AUTHENTICATED))
-    return Sender(identity=identity, person=person, trust=trust)
+    return Sender(
+        identity=identity,
+        person=person,
+        trust=trust,
+        unconfirmed=unconfirmed,
+        linked_person=linked if unconfirmed else None,
+        first_notice=first,
+    )
+
+
+def _check_endpoint(
+    session: Session, identity: ChannelIdentity, msg: InboundMessage, previous_seen: datetime | None, days: int
+) -> tuple[str, bool]:
+    """Is this linked account writing through the endpoint its link was confirmed on?
+
+    Returns (reason, first): reason "" when it is; "new_endpoint" through another bot or app;
+    "stale" when it comes back after `days` of silence. `first` is True when this message started
+    the unconfirmed state (so the owner is told once, not on every message)."""
+    if not identity.endpoint_key:
+        if msg.endpoint:
+            # Linked before links were bound (or added by the operator): bind to the endpoint the
+            # owner set up. Messages only ever arrive through the bot or app connected in the app.
+            identity.endpoint_key = msg.endpoint
+            audit(
+                session,
+                "identity",
+                "endpoint_bound",
+                identity_id=identity.id,
+                endpoint=msg.endpoint,
+                method="first_use",
+            )
+        return "", False
+    pending = (identity.verification or {}).get("pending")
+    reason = ""
+    if msg.endpoint != identity.endpoint_key:
+        reason = "new_endpoint"
+    elif isinstance(pending, dict) and pending.get("endpoint") == msg.endpoint:
+        reason = str(pending.get("reason") or "stale")
+    elif days > 0 and previous_seen is not None and datetime.now(UTC) - previous_seen > timedelta(days=days):
+        reason = "stale"
+    if not reason:
+        return "", False
+    first = not (isinstance(pending, dict) and pending.get("endpoint") == msg.endpoint)
+    if first:
+        identity.verification = {
+            **(identity.verification or {}),
+            "pending": {"endpoint": msg.endpoint, "reason": reason, "since": datetime.now(UTC).isoformat()},
+        }
+    audit(
+        session, "identity", "link_unconfirmed", identity_id=identity.id, provider=msg.provider, reason=reason,
+        endpoint=msg.endpoint, confirmed_endpoint=identity.endpoint_key,
+    )  # fmt: skip
+    return reason, first

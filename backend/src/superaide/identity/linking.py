@@ -47,6 +47,19 @@ def _hash(salt: str, code: str) -> str:
     return hashlib.sha256((salt + code).encode()).hexdigest()
 
 
+def _reachable(identity: ChannelIdentity, settings: Settings) -> bool:
+    """A code may go to this account only through the bot it was confirmed on: after a bot change,
+    whoever holds the Telegram account isn't trusted to receive codes until the owner confirms."""
+    if identity.provider != "telegram":
+        return True
+    from superaide.channels.telegram import bot_id
+    from superaide.identity.resolver import endpoint_confirmed
+
+    return endpoint_confirmed(identity, bot_id(settings.telegram_bot_token)) and not (identity.verification or {}).get(
+        "pending"
+    )
+
+
 def trusted_identities(session: Session, person: Person) -> list[ChannelIdentity]:
     rows = session.scalars(
         select(ChannelIdentity)
@@ -109,7 +122,7 @@ def start_challenge(
         if (i.provider, i.tenant_scope, i.stable_key)
         != (new_identity.provider, new_identity.tenant_scope, new_identity.stable_key)
     ]
-    via = next((i for i in candidates if i.provider in messengers), None)
+    via = next((i for i in candidates if i.provider in messengers and _reachable(i, settings)), None)
     if via is None:
         audit(session, "identity", "link_no_trusted_channel", person_id=person.id)
         return None
@@ -208,7 +221,7 @@ def verify_code(
     )
     audit(session, "identity", "linked", identity_id=identity.id, person_id=person.id)
     for trusted in trusted_identities(session, person):
-        if trusted.id != identity.id and trusted.provider in messengers:
+        if trusted.id != identity.id and trusted.provider in messengers and _reachable(trusted, settings):
             try:
                 messengers[trusted.provider].send_dm(
                     trusted,

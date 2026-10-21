@@ -130,6 +130,8 @@ class Settings(BaseSettings):
     link_code_ttl_minutes: int = 10
     link_code_max_attempts: int = 5
     link_challenges_per_identity_per_day: int = 3
+    # A linked Telegram/Slack account silent this long must be confirmed again in the app (0 = never).
+    link_reconfirm_after_days: int = 30
 
 
 @lru_cache

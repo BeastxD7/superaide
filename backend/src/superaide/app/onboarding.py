@@ -413,7 +413,9 @@ class Onboarder:
         elif step == "connect":
             choice = str(payload.get("choice", "done"))
             if choice == "telegram" and self.telegram_username:
-                code = create_invite(session, person, "telegram")
+                from superaide.channels.telegram import bot_id
+
+                code = create_invite(session, person, "telegram", endpoint=bot_id(self.settings.telegram_bot_token))
                 answers["telegram_invite_url"] = f"https://t.me/{self.telegram_username}?start={code}"
                 state.answers = answers
                 return self.view(

@@ -135,7 +135,11 @@ def linked_providers(session: Session, person: Person) -> set[str]:
 # --- Telegram invites: made in the signed-in app, redeemed in Telegram ---------------
 
 
-def create_invite(session: Session, person: Person, provider: str) -> str:
+def create_invite(
+    session: Session, person: Person, provider: str, *, endpoint: str, for_identity: ChannelIdentity | None = None
+) -> str:
+    """`endpoint` is the bot the link opens (its id); the invite works only through that bot.
+    `for_identity` makes it a confirm-this-bot invite that only that account can use."""
     code = secrets.token_urlsafe(12)  # letters, digits, - and _: valid in a Telegram start link
     session.add(
         ChannelInvite(
@@ -143,14 +147,21 @@ def create_invite(session: Session, person: Person, provider: str) -> str:
             provider=provider,
             code_hash=_hash(code),
             expires_at=datetime.now(UTC) + timedelta(minutes=INVITE_TTL_MINUTES),
+            endpoint_key=endpoint,
+            for_identity_id=for_identity.id if for_identity else None,
         )
     )
-    audit(session, "app", "channel_invite_created", person_id=person.id, provider=provider)
+    audit(
+        session, "app", "channel_invite_created", person_id=person.id, provider=provider, endpoint=endpoint,
+        confirm=for_identity is not None,
+    )  # fmt: skip
     return code
 
 
-def redeem_invite(session: Session, *, provider: str, code: str, identity: ChannelIdentity) -> Person | None:
-    """Link the account that opened the invite to the person who made it."""
+def redeem_invite(
+    session: Session, *, provider: str, code: str, identity: ChannelIdentity, endpoint: str = ""
+) -> Person | None:
+    """Link the account that opened the invite to the person who made it, on the bot it came through."""
     now = datetime.now(UTC)
     invite = session.scalar(
         select(ChannelInvite).where(ChannelInvite.code_hash == _hash(code), ChannelInvite.provider == provider)
@@ -158,16 +169,25 @@ def redeem_invite(session: Session, *, provider: str, code: str, identity: Chann
     if invite is None or invite.used_at is not None or invite.expires_at <= now:
         audit(session, "identity", "invite_rejected", provider=provider)
         return None
+    if invite.endpoint_key and invite.endpoint_key != endpoint:
+        audit(session, "identity", "invite_rejected", provider=provider, reason="wrong_endpoint", invite_id=invite.id)
+        return None
+    if invite.for_identity_id is not None and invite.for_identity_id != identity.id:
+        audit(session, "identity", "invite_rejected", provider=provider, reason="other_account", invite_id=invite.id)
+        return None
     if "external" in (identity.risk_flags or []):
         audit(session, "identity", "link_refused", reason="external_account", identity_id=identity.id)
         return None
     person = session.get(Person, invite.person_id)
     if person is None:
         return None
+    relink = identity.person_id == person.id  # already theirs: this confirms a new bot
+    previous_endpoint = identity.endpoint_key
     invite.used_at = now
     invite.used_by_identity_id = identity.id
     identity.person_id = person.id
     identity.trust_level = int(Trust.LINKED)
+    identity.endpoint_key = endpoint or invite.endpoint_key
     identity.verification = {"method": "invite_from_app", "verified_at": now.isoformat(), "invite_id": str(invite.id)}
     session.add(
         IdentityLinkEvent(
@@ -176,8 +196,15 @@ def redeem_invite(session: Session, *, provider: str, code: str, identity: Chann
             action="link",
             method="invite_from_app",
             actor="identity_service",
-            evidence={"invite_id": str(invite.id)},
+            evidence={
+                "invite_id": str(invite.id),
+                "endpoint": identity.endpoint_key,
+                "previous_endpoint": previous_endpoint,
+            },
         )
     )
-    audit(session, "identity", "linked", identity_id=identity.id, person_id=person.id, method="invite_from_app")
+    audit(
+        session, "identity", "endpoint_confirmed" if relink else "linked", identity_id=identity.id,
+        person_id=person.id, method="invite_from_app", endpoint=identity.endpoint_key,
+    )  # fmt: skip
     return person

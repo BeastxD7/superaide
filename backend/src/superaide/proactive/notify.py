@@ -72,8 +72,23 @@ def messenger_for(provider: str) -> Any:
     return None
 
 
+def confirmed_here(provider: str, identity: ChannelIdentity) -> bool:
+    """Is this account confirmed on the bot connected now? (Links are bound to a bot; see identity/resolver.py.)"""
+    if provider != "telegram":
+        return True
+    from superaide.channels.telegram import bot_id
+    from superaide.identity.resolver import endpoint_confirmed
+    from superaide.vault.store import runtime_settings
+
+    return endpoint_confirmed(identity, bot_id(runtime_settings().telegram_bot_token))
+
+
 def send_via(provider: str, identity: ChannelIdentity, text: str) -> bool:
     """True when the message went out. Raises health.DeliveryFailed when the channel is down."""
+    if not confirmed_here(provider, identity):
+        # The bot changed and the owner hasn't confirmed this account on it: keep it in the app.
+        log.info("not pushing to Telegram: account not confirmed on the current bot")
+        return False
     messenger = messenger_for(provider)
     if messenger is None:
         return False
@@ -86,6 +101,11 @@ def send_telegram(identity: ChannelIdentity, text: str) -> bool:
 
 def _push(provider: str, identity: ChannelIdentity, text: str) -> tuple[bool, str]:
     """(sent, why not) for one push to Telegram or Slack."""
+    if not confirmed_here(provider, identity):
+        return (
+            False,
+            "your Telegram account isn't confirmed on the new bot yet. Confirm it under Connections → Telegram.",
+        )
     try:
         sent = send_telegram(identity, text) if provider == "telegram" else send_via(provider, identity, text)
     except health.DeliveryFailed as exc:

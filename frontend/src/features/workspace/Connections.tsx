@@ -1,12 +1,13 @@
 'use client'
 
-import { AlertTriangle, Check, ChevronDown, ExternalLink, KeyRound } from 'lucide-react'
+import { AlertTriangle, Check, ChevronDown, ExternalLink, KeyRound, ShieldAlert } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { AppError, call, type Me } from '@/lib/api'
 import { BrandIcon } from '@/components/BrandIcon'
 import { Button, Notice } from '@/components/site'
 import { GoogleCalendarRow, type GoogleGuide, type GoogleService } from '@/features/workspace/GoogleCalendar'
+import { LinkedAccounts, type LinkedAccount } from '@/features/workspace/LinkedAccounts'
 
 // Connect Claude, Telegram, Slack and Google Calendar from the app. Keys are checked with the
 // service, then kept encrypted on this computer; the app only ever shows a hint.
@@ -51,10 +52,23 @@ export function Connections({ agentName, me, refreshMe }: { agentName: string; m
   const [error, setError] = useState<string | null>(null)
 
   const [googleOutcome, setGoogleOutcome] = useState<string | null>(null)
+  const [linked, setLinked] = useState<LinkedAccount[]>([])
+
+  const reloadLinked = useCallback(async () => {
+    try {
+      const rows = (await call<{ accounts: LinkedAccount[] }>('/channels/linked')).accounts
+      setLinked(rows)
+      const waiting = rows.find((a) => a.pending)
+      if (waiting) setOpen((o) => o ?? waiting.provider)
+    } catch {
+      setLinked([])
+    }
+  }, [])
 
   const load = useCallback(async () => {
     try {
       setStatus(await call<Status>('/connections'))
+      void reloadLinked()
       // Back from Google sign-in: /dashboard/connections?google=<outcome>. Show it once, then tidy the URL.
       const params = new URLSearchParams(window.location.search)
       const outcome = params.get('google')
@@ -68,7 +82,7 @@ export function Connections({ agentName, me, refreshMe }: { agentName: string; m
     } catch (e) {
       setError(e instanceof AppError ? e.message : String(e))
     }
-  }, [])
+  }, [reloadLinked])
 
   useEffect(() => {
     void load()
@@ -95,6 +109,7 @@ export function Connections({ agentName, me, refreshMe }: { agentName: string; m
       {rows.map(({ key, brand, name, why }) => {
         const s = status.services[key]
         const expanded = open === key
+        const waiting = linked.some((a) => a.provider === key && a.pending)
         return (
           <div key={key} className="overflow-hidden rounded-2xl bg-white">
             <button
@@ -120,6 +135,10 @@ export function Connections({ agentName, me, refreshMe }: { agentName: string; m
               {rejected(s) ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-warn/10 px-2.5 py-1 text-xs font-medium text-warn">
                   <AlertTriangle className="size-3.5" /> Reconnect
+                </span>
+              ) : waiting ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
+                  <ShieldAlert className="size-3.5" /> Confirm
                 </span>
               ) : s.connected ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2.5 py-1 text-xs font-medium text-ok">
@@ -150,6 +169,11 @@ export function Connections({ agentName, me, refreshMe }: { agentName: string; m
                     }}
                     me={me}
                     refreshMe={refreshMe}
+                    linked={linked}
+                    onLinkedChanged={async () => {
+                      await reloadLinked()
+                      await refreshMe()
+                    }}
                   />
                 </motion.div>
               )}
@@ -195,6 +219,8 @@ function ConnectForm({
   onSaved,
   me,
   refreshMe,
+  linked,
+  onLinkedChanged,
 }: {
   provider: 'anthropic' | 'telegram' | 'slack'
   service: Service
@@ -203,6 +229,8 @@ function ConnectForm({
   onSaved: (s: Status) => Promise<void>
   me: Me
   refreshMe: () => Promise<Me | null>
+  linked: LinkedAccount[]
+  onLinkedChanged: () => Promise<void>
 }) {
   const [values, setValues] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
@@ -247,7 +275,10 @@ function ConnectForm({
           </Notice>
         </div>
       )}
-      {provider === 'telegram' && service.connected && !rejected(service) && (
+      {provider !== 'anthropic' && service.connected && (
+        <LinkedAccounts provider={provider} accounts={linked} onChanged={onLinkedChanged} />
+      )}
+      {provider === 'telegram' && service.connected && !rejected(service) && !linked.some((a) => a.provider === 'telegram' && a.mine) && (
         <TelegramPairing me={me} refreshMe={refreshMe} username={service.meta?.username ?? null} />
       )}
       {(!(service.connected && service.via === 'app') || rejected(service)) && (

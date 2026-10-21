@@ -84,7 +84,7 @@ def scenario(agent, monkeypatch):
     with session_scope() as s:
         person = hired_owner(s)
         assert person is not None
-        code = accounts.create_invite(s, person, "telegram")
+        code = accounts.create_invite(s, person, "telegram", endpoint="")
     assert "Linked" in (agent.handle(tg(PHONE, f"/start {code}")).reply or "")
 
     assert agent.handle(tg(PHONE, SAID_ON_TELEGRAM)).mode == "known"

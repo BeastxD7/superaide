@@ -134,6 +134,9 @@ def create_app(agent: Agent | None = None) -> FastAPI:
 
     app.include_router(make_router(get_agent))
     app.include_router(make_connections_router(get_agent, apply_connections))
+    from superaide.app.linked import make_router as make_linked_router
+
+    app.include_router(make_linked_router(get_agent))
     from superaide.app.providers import make_router as make_providers_router
 
     app.include_router(make_providers_router(get_agent, apply_connections))

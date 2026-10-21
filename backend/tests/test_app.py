@@ -172,7 +172,7 @@ def test_telegram_invite_links_the_phone_to_the_app_account(client, agent):
     _hire(client)
     with session_scope() as s:
         person = s.scalar(select(Person).where(Person.relation == "manager"))
-        code = accounts.create_invite(s, person, "telegram")
+        code = accounts.create_invite(s, person, "telegram", endpoint="")
     # Someone without the link stays a stranger.
     assert agent.handle(tg("777000", "/start wrongcode123")).mode == "stranger"
     # Opening the link sends "/start <code>" from the person's real Telegram.

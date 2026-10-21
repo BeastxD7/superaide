@@ -64,6 +64,7 @@ def parse_update(update: dict[str, Any], *, verified: bool, bot: str = "") -> In
         message_id=f"{bot}:{message.get('message_id', '')}" if bot else str(message.get("message_id", "")),
         thread_id=str(message.get("message_thread_id") or "") if message.get("is_topic_message") else "",
         chat_title=chat.get("title", ""),
+        endpoint=bot,
         raw=update,
     )
 

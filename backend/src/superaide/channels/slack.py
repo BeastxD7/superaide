@@ -56,6 +56,12 @@ def verify_signature(
     return hmac.compare_digest(expected, signature)
 
 
+def endpoint_of(payload: dict[str, Any]) -> str:
+    """Our side of a Slack event: the workspace the app is installed in, and the app."""
+    team, app = str(payload.get("team_id") or ""), str(payload.get("api_app_id") or "")
+    return f"{team}/{app}" if app else team
+
+
 def parse_event(payload: dict[str, Any], *, our_team_id: str, verified: bool) -> InboundMessage | None:
     event = payload.get("event") or {}
     etype = event.get("type")
@@ -85,6 +91,7 @@ def parse_event(payload: dict[str, Any], *, our_team_id: str, verified: bool) ->
         message_id=event.get("ts", ""),
         thread_id=event.get("thread_ts", "") if event.get("thread_ts") != event.get("ts") else "",
         external_sender=external,
+        endpoint=endpoint_of(payload),
         raw=payload,
     )
 

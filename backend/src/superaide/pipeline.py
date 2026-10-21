@@ -71,7 +71,7 @@ def thread_of(msg: InboundMessage) -> str:
 
 @dataclass
 class HandleResult:
-    mode: str  # dropped | duplicate | frozen | stranger | known
+    mode: str  # dropped | duplicate | frozen | stranger | unconfirmed | known
     reply: str | None = None
     notes: list[str] = field(default_factory=list)
 
@@ -93,7 +93,7 @@ class Agent:
             return HandleResult("dropped")
 
         with session_scope() as s:
-            sender = resolve(s, msg)
+            sender = resolve(s, msg, reconfirm_after_days=self.settings.link_reconfirm_after_days)
             ctx = get_or_create_context(s, msg)
             aud = audience_for(ctx, sender)
             if seen_before(s, ctx, msg.message_id):
@@ -120,14 +120,30 @@ class Agent:
                 else:
                     from superaide.app.accounts import redeem_invite
 
-                    person = redeem_invite(s, provider="telegram", code=invite_code, identity=sender.identity)
-                    reply = (
-                        f"Linked. Hi {person.display_name}, it's {self.name}. I'll recognise you here from now on."
-                        if person
-                        else self._ai_notice("That link has expired or was already used. Make a new one in the app.")
+                    person = redeem_invite(
+                        s, provider="telegram", code=invite_code, identity=sender.identity, endpoint=msg.endpoint
                     )
+                    if person is None:
+                        reply = self._ai_notice("That link has expired or was already used. Make a new one in the app.")
+                    elif sender.unconfirmed:
+                        reply = f"Confirmed. Hi {person.display_name}, it's {self.name}. This bot is yours now."
+                    else:
+                        reply = (
+                            f"Linked. Hi {person.display_name}, it's {self.name}. I'll recognise you here from now on."
+                        )
                 self._reply(s, ctx, aud, reply, thread)
                 return HandleResult("known" if sender.known else "stranger", reply, ["invite"])
+
+            if sender.unconfirmed:
+                # A linked account on a bot (or app) it wasn't confirmed on, or back after a long
+                # silence. Whoever holds that account now isn't trusted with anything private until
+                # the owner confirms in the signed-in app: a fixed reply, no model, no memory.
+                self._tell_owner_unconfirmed(s, sender, msg)
+                if ctx.kind != "dm":
+                    return HandleResult("unconfirmed")
+                reply = self._unconfirmed_reply(sender, msg.provider)
+                self._reply(s, ctx, aud, reply, thread)
+                return HandleResult("unconfirmed", reply)
 
             if not sender.known:
                 reply = self._ai_notice(self._stranger(s, sender, msg))
@@ -227,6 +243,53 @@ class Agent:
         except service.IntentionError as exc:
             return str(exc)
         return f"Got it. I'll remind you {service.describe_due(intention.due_at, tz)}: {intention.text}"
+
+    # --- linked accounts on an unconfirmed endpoint ------------------------------
+
+    def _unconfirmed_reply(self, sender: Sender, provider: str) -> str:
+        where, what = ("Slack", "app") if provider == "slack" else ("Telegram", "bot")
+        steps = f"open Superaide → Connections → {where} → Confirm this {what}."
+        if sender.unconfirmed == "stale":
+            return f"It's been a while. To keep your chats private, confirm it's you: {steps}"
+        return f"This is a new {self.name} {what}. To keep your chats private, confirm it's you: {steps}"
+
+    def _endpoint_name(self, provider: str, endpoint: str) -> str:
+        if provider == "telegram":
+            from superaide.channels.telegram import bot_id
+
+            if endpoint and endpoint == bot_id(self.settings.telegram_bot_token):
+                from superaide.app.routes import telegram_username
+
+                username = telegram_username(self.settings.telegram_bot_token)
+                if username:
+                    return f"bot @{username}"
+            return f"bot (id {endpoint})" if endpoint else "bot"
+        return "Slack app"
+
+    def _tell_owner_unconfirmed(self, s, sender: Sender, msg: InboundMessage) -> None:
+        """Once per new bot (or silence): an in-app notice. Never pushed to a chat channel."""
+        if not sender.first_notice:
+            return
+        from superaide.app.accounts import owner
+        from superaide.proactive.notify import notify_owner
+
+        boss = owner(s)
+        if boss is None or sender.linked_person is None:
+            return
+        whose = "your" if sender.linked_person.id == boss.id else f"{sender.linked_person.display_name}'s"
+        where = "Slack" if msg.provider == "slack" else "Telegram"
+        if sender.unconfirmed == "stale":
+            text = f"{whose.capitalize()} {where} account messaged me after a long silence."
+        else:
+            on = self._endpoint_name(msg.provider, msg.endpoint)
+            text = f"A message came from {whose} {where} account on the new {on}."
+        text += f" Confirm it's you in Connections → {where}. If it wasn't you, unlink that account there."
+        notify_owner(
+            s, boss, text,
+            {"kind": "security", "event": "link_unconfirmed", "identity_id": str(sender.identity.id)},
+            channel="app",
+        )  # fmt: skip
+        audit(s, "identity", "owner_notified_unconfirmed", identity_id=sender.identity.id, reason=sender.unconfirmed)
 
     # --- strangers -------------------------------------------------------------
 
