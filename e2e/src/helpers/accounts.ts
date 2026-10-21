@@ -91,6 +91,23 @@ export function forgedCookie(value: string, url: string): Cookie {
   }
 }
 
+// The public site's account menu (in the nav): a button named after the signed-in
+// account opens a small menu with "Log out".
+export function accountButton(page: Page): Locator {
+  return page.getByRole('navigation').getByRole('button', { name: /^Account: signed in as / })
+}
+
+export function navLogOut(page: Page): Locator {
+  return page.getByRole('navigation').getByRole('button', { name: 'Log out' })
+}
+
+// Log out from the public site's nav (marketplace, agent pages, hire, introduction).
+export async function logOutFromNav(page: Page): Promise<void> {
+  await accountButton(page).click()
+  await navLogOut(page).click()
+  await expect(page.getByRole('navigation').getByRole('link', { name: 'Log in' })).toBeVisible()
+}
+
 // The page fits the screen: nothing sticks out sideways.
 export async function expectNoHorizontalScroll(page: Page): Promise<void> {
   const { scrollWidth, innerWidth } = await page.evaluate(() => ({

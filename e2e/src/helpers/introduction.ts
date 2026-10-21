@@ -151,21 +151,12 @@ export class Meet {
 
 // --- after the introduction ---------------------------------------------------------
 
-// Ava's notebook, wherever this build of the app keeps it: a rail beside the chat on
-// /workspace (a "Notebook" tab on a phone), or its own page in the dashboard
-// (/dashboard/notebook). Returns the region that holds it.
+// Ava's notebook, its own page in the dashboard (/dashboard/notebook). Call it once
+// the dashboard has opened (e.g. after "Start working with Ava"). Returns the page's main region.
 export async function openNotebook(page: Page): Promise<Locator> {
-  await expect(page).toHaveURL(/\/(workspace|dashboard)/)
-  if (new URL(page.url()).pathname.startsWith('/dashboard')) {
-    await page.goto('/dashboard/notebook')
-    const region = page.getByRole('main')
-    await expect(region.getByRole('heading', { name: "Ava's notebook" })).toBeVisible()
-    return region
-  }
-  await expect(page.getByRole('heading', { name: /What shall we work on\?$/ })).toBeVisible()
-  const tab = page.getByRole('button', { name: 'Notebook', exact: true })
-  if (await tab.isVisible()) await tab.click()
-  const region = page.getByRole('complementary')
+  await expect(page).toHaveURL(/\/dashboard/)
+  await page.goto('/dashboard/notebook')
+  const region = page.getByRole('main')
   await expect(region.getByRole('heading', { name: "Ava's notebook" })).toBeVisible()
   return region
 }

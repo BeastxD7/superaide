@@ -539,7 +539,7 @@ test.describe('video call', () => {
     // The conversation keeps the questions and answers too.
     for (const answer of ANSWERS) await expect(page.getByText(answer, { exact: true })).toBeVisible()
 
-    // Finish the introduction, then read the notebook in the workspace.
+    // Finish the introduction, then read the notebook in the dashboard.
     await openTab(page, 'Video call')
     await page.getByRole('button', { name: "I'm done introducing myself" }).click()
     await expect(page.getByText('Step 3 of 8: Your people')).toBeVisible()
@@ -549,7 +549,8 @@ test.describe('video call', () => {
     await api.answer('share', { skip: true })
     await api.answer('rules')
     await api.answer('connect', { choice: 'done' })
-    await page.goto('/workspace')
+    await page.goto('/dashboard/notebook')
+    await expect(page.getByRole('heading', { level: 1, name: "Ava's notebook" })).toBeVisible()
     const entry = page.getByRole('listitem').filter({ hasText: ANSWERS[0] })
     await expect(entry).toBeVisible()
     await expect(entry).toContainText('from our video call')

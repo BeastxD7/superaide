@@ -13,7 +13,7 @@ import {
   memories,
   newVisitor,
   OFFLINE_REPLY,
-  openWorkspace,
+  openChat,
   webConversation,
 } from '../src/helpers/workspace'
 
@@ -249,9 +249,9 @@ test.describe('console: pause switch', () => {
       expect(await isPaused()).toBe(true)
 
       // The owner, in their own browser, is told and gets no reply.
-      await openWorkspace(page)
-      await expect(page.getByText("Ava is paused from the operator console. It won't reply until it's resumed.")).toBeVisible()
-      await expect(page.getByText('Ava is paused', { exact: true })).toBeVisible()
+      await openChat(page)
+      await expect(page.getByText("Ava is paused from the operator console. She won't reply until she's resumed.")).toBeVisible()
+      await expect(page.getByRole('main').getByText('Ava: paused', { exact: true })).toBeVisible()
       const reply = page.waitForResponse((r) => r.url().endsWith('/api/app/chat'))
       await composer(page).fill('Are you there?')
       await composer(page).press('Enter')
@@ -272,7 +272,7 @@ test.describe('console: pause switch', () => {
       await expect(operator.page.getByText('Paused: no model calls, no replies')).toHaveCount(0)
       expect(await isPaused()).toBe(false)
 
-      await openWorkspace(page)
+      await openChat(page)
       await expect(page.getByText('Ava is paused from the operator console.')).toHaveCount(0)
       await composer(page).fill('Back now?')
       await composer(page).press('Enter')
@@ -294,10 +294,9 @@ test.describe('console: pause switch', () => {
     await expect(page.getByRole('button', { name: 'Resume Ava' })).toBeVisible()
   })
 
-  test('a pause made while the owner has the workspace open is explained on their next message', async ({ page, owner }) => {
-    test.fail(true, 'BUG: the workspace ignores mode "frozen" from /app/chat, so an owner paused mid-session gets silence with no explanation')
+  test('a pause made while the owner has the chat open is explained on their next message', async ({ page, owner }) => {
     void owner
-    await openWorkspace(page)
+    await openChat(page)
     await new Admin(page.request).pause(true)
     await composer(page).fill('Hello?')
     await composer(page).press('Enter')

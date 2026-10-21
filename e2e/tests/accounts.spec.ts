@@ -6,16 +6,20 @@ import { PASSWORD, WEB_PORT } from '../src/env'
 import {
   HOSTILE_NEXT,
   MSG,
+  accountButton,
   collectPageErrors,
   expectFieldError,
   fillLogin,
   fillSignup,
   forgedCookie,
+  logOutFromNav,
   loginForm,
+  navLogOut,
   sessionCookie,
   signupForm,
   trapOffsiteRequests,
 } from '../src/helpers/accounts'
+import { chatHeading, homeHeading, logOutFromSidebar } from '../src/helpers/workspace'
 
 // Open the form and wait until it's live (the first field takes focus once the page has hydrated).
 async function gotoSignup(page: Page, next?: string, origin = ''): Promise<void> {
@@ -41,8 +45,8 @@ async function countAccounts(): Promise<number> {
   return (await query('SELECT 1 FROM user_account')).length
 }
 
-const workspaceHeading = (page: Page, person: Person) =>
-  page.getByRole('heading', { name: `Hello, ${person.name.split(' ')[0]}. What shall we work on?` })
+// The dashboard's chat (the old /workspace screen) greets the owner by first name.
+const workspaceHeading = (page: Page, person: Person) => chatHeading(page, person)
 
 // ---------------------------------------------------------------------------------
 test.describe('sign-up', () => {
@@ -54,7 +58,7 @@ test.describe('sign-up', () => {
     await signupForm(page).submit.click()
 
     await expect(page).toHaveURL('/')
-    await expect(page.getByRole('navigation').getByRole('button', { name: 'Log out' })).toBeVisible()
+    await expect(accountButton(page)).toHaveAccessibleName(`Account: signed in as ${person.name}`)
     await expect(page.getByRole('navigation').getByRole('link', { name: 'Log in' })).toHaveCount(0)
 
     // What was stored: one account, the password hashed (never kept as typed).
@@ -170,7 +174,7 @@ test.describe('sign-up', () => {
   })
 
   test('a refused sign-up or log-in never sends the password back', async ({ api }) => {
-    test.fail(true, 'BUG: validation errors (e.g. a password over 1024 characters) echo the submitted password in "input"')
+    // A3, fixed by ef868ca: backend main.py's RequestValidationError handler drops "input" from every 422.
     const password = `do not echo me ${'x y z '.repeat(200)}`
     const person = newPerson()
     const responses = [
@@ -335,7 +339,7 @@ test.describe('log-in', () => {
       await fillLogin(page, owner.email, owner.password)
       await loginForm(page).submit.click()
       await expect(page).toHaveURL('/')
-      await expect(page.getByRole('navigation').getByRole('button', { name: 'Log out' })).toBeVisible()
+      await expect(accountButton(page)).toBeVisible()
       expect(await sessionCookie(page.context())).toBeDefined()
     })
 
@@ -383,7 +387,7 @@ test.describe('log-in', () => {
         await loginForm(page).submit.click()
 
         await expect(page).toHaveURL('/')
-        await expect(page.getByRole('navigation').getByRole('button', { name: 'Log out' })).toBeVisible()
+        await expect(accountButton(page)).toBeVisible()
         expect(offsite).toEqual([])
         expect(dialogs).toEqual([])
       })
@@ -409,23 +413,34 @@ test.describe('log-in', () => {
     })
   }
 
-  test('an introduced owner logs in and lands in the workspace', async ({ page, owner }) => {
+  test('an introduced owner logs in and lands on the dashboard', async ({ page, owner }) => {
     await page.context().clearCookies()
     await gotoLogin(page)
     await fillLogin(page, owner.email, owner.password)
     await loginForm(page).submit.click()
-    await expect(page).toHaveURL('/workspace')
-    await expect(workspaceHeading(page, owner)).toBeVisible()
+    await expect(page).toHaveURL('/dashboard')
+    await expect(homeHeading(page, owner)).toBeVisible()
   })
 
   test('opening a private page, then logging in, returns you to it', async ({ page, owner }) => {
+    await page.context().clearCookies()
+    await page.goto('/dashboard/chat')
+    await expect(page).toHaveURL('/login?next=%2Fdashboard%2Fchat')
+    await expect(loginForm(page).email).toBeFocused()
+    await fillLogin(page, owner.email, owner.password)
+    await loginForm(page).submit.click()
+    await expect(page).toHaveURL('/dashboard/chat')
+    await expect(workspaceHeading(page, owner)).toBeVisible()
+  })
+
+  test('an old /workspace link still works: log in, then land in the chat', async ({ page, owner }) => {
     await page.context().clearCookies()
     await page.goto('/workspace')
     await expect(page).toHaveURL('/login?next=%2Fworkspace')
     await expect(loginForm(page).email).toBeFocused()
     await fillLogin(page, owner.email, owner.password)
     await loginForm(page).submit.click()
-    await expect(page).toHaveURL('/workspace')
+    await expect(page).toHaveURL('/dashboard/chat')
     await expect(workspaceHeading(page, owner)).toBeVisible()
   })
 
@@ -625,17 +640,18 @@ test.describe('log-out', () => {
     void owner
     await page.goto('/')
     const nav = page.getByRole('navigation')
-    await expect(nav.getByRole('button', { name: 'Open Ava' })).toBeVisible()
-    await nav.getByRole('button', { name: 'Log out' }).click()
+    await expect(nav.getByRole('button', { name: 'Open dashboard' })).toBeVisible()
+    await logOutFromNav(page)
 
     await expect(nav.getByRole('link', { name: 'Log in' })).toBeVisible()
-    await expect(nav.getByRole('button', { name: 'Log out' })).toHaveCount(0)
+    await expect(accountButton(page)).toHaveCount(0)
+    await expect(navLogOut(page)).toHaveCount(0)
     await expect(page).toHaveURL('/')
     expect(await sessionCookie(page.context())).toBeUndefined()
     const sessions = await query<{ revoked: boolean }>('SELECT revoked_at IS NOT NULL AS revoked FROM user_session')
     expect(sessions).toEqual([{ revoked: true }])
 
-    for (const path of ['/workspace', '/meet']) {
+    for (const path of ['/dashboard', '/dashboard/chat', '/dashboard/notebook', '/workspace', '/meet']) {
       await page.goto(path)
       await expect(page).toHaveURL(`/login?next=${encodeURIComponent(path)}`)
     }
@@ -643,17 +659,18 @@ test.describe('log-out', () => {
     await expect(page).toHaveURL('/signup?next=%2Fagents%2Fava%2Fhire')
   })
 
-  test('from the workspace bar', async ({ page, owner, api }) => {
-    await page.goto('/workspace')
+  test('from the dashboard sidebar', async ({ page, owner, api }) => {
+    await page.goto('/dashboard/chat')
     await expect(workspaceHeading(page, owner)).toBeVisible()
-    await page.getByRole('button', { name: 'Log out' }).click()
-    await expect(page).not.toHaveURL(/\/workspace$/)
+    await logOutFromSidebar(page, owner)
+    await expect(page).toHaveURL('/')
     await expect(workspaceHeading(page, owner)).toHaveCount(0)
+    await expect(page.getByRole('navigation').getByRole('link', { name: 'Log in' })).toBeVisible()
     expect((await api.get('/auth/me')).status()).toBe(401)
   })
 
   for (const how of ['an in-app link', 'a full page load'] as const) {
-    test(`the back button never shows private data again (left the workspace by ${how})`, async ({ page, owner }) => {
+    test(`the back button never shows private data again (left the dashboard by ${how})`, async ({ page, owner }) => {
       // Watch the page for the workspace greeting from the moment we log out.
       await page.addInitScript(() => {
         const check = () => {
@@ -664,18 +681,20 @@ test.describe('log-out', () => {
         new MutationObserver(check).observe(document, { subtree: true, childList: true, characterData: true })
         document.addEventListener('DOMContentLoaded', check)
       })
-      await page.goto('/workspace')
+      await page.goto('/dashboard/chat')
       await expect(workspaceHeading(page, owner)).toBeVisible()
-      if (how === 'an in-app link') await page.getByRole('link', { name: 'Superaide' }).click()
-      else await page.goto('/')
+      if (how === 'an in-app link') {
+        // The sidebar's account menu links back to the marketplace.
+        await page.getByRole('button', { name: `Account: signed in as ${owner.name}` }).click()
+        await page.getByRole('menuitem', { name: 'Browse agents' }).click()
+      } else await page.goto('/')
       await expect(page).toHaveURL('/')
 
-      await page.getByRole('navigation').getByRole('button', { name: 'Log out' }).click()
-      await expect(page.getByRole('navigation').getByRole('link', { name: 'Log in' })).toBeVisible()
+      await logOutFromNav(page)
       await page.evaluate(() => sessionStorage.setItem('e2e-armed', '1'))
 
       await page.goBack()
-      await expect(page).toHaveURL('/login?next=%2Fworkspace')
+      await expect(page).toHaveURL('/login?next=%2Fdashboard%2Fchat')
       await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
       await expect(workspaceHeading(page, owner)).toHaveCount(0)
       expect(await page.evaluate(() => sessionStorage.getItem('e2e-leak'))).toBeNull()
@@ -687,8 +706,7 @@ test.describe('log-out', () => {
     const old = await sessionCookie(page.context())
     expect(old).toBeDefined()
     await page.goto('/')
-    await page.getByRole('navigation').getByRole('button', { name: 'Log out' }).click()
-    await expect(page.getByRole('navigation').getByRole('link', { name: 'Log in' })).toBeVisible()
+    await logOutFromNav(page)
 
     await page.context().addCookies([old!])
     expect((await api.get('/auth/me')).status()).toBe(401)
@@ -696,34 +714,37 @@ test.describe('log-out', () => {
     expect((await api.get('/app/messages')).status()).toBe(401)
     expect((await api.post('/app/chat', { text: 'Are you still there?' })).status()).toBe(401)
 
-    await page.goto('/workspace')
-    await expect(page).toHaveURL('/login?next=%2Fworkspace')
+    // The page only checks that a cookie exists; the dashboard asks the API and sends you to log in.
+    await page.goto('/dashboard/chat')
+    await expect(page).toHaveURL('/login?next=%2Fdashboard%2Fchat')
+    await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
+    await expect(workspaceHeading(page, owner)).toHaveCount(0)
+    await expect(page.getByText('I lead applied AI at PebbleRoad in Singapore.')).toHaveCount(0)
   })
 
   test('logging out and back in picks up where you left off', async ({ page, owner }) => {
     await page.goto('/')
-    await page.getByRole('navigation').getByRole('button', { name: 'Log out' }).click()
-    await expect(page.getByRole('navigation').getByRole('link', { name: 'Log in' })).toBeVisible()
+    await logOutFromNav(page)
     await page.getByRole('navigation').getByRole('link', { name: 'Log in' }).click()
     await expect(page).toHaveURL('/login')
     await expect(loginForm(page).email).toBeFocused()
     await fillLogin(page, owner.email, owner.password)
     await loginForm(page).submit.click()
-    await expect(page).toHaveURL('/workspace')
-    await expect(workspaceHeading(page, owner)).toBeVisible()
+    await expect(page).toHaveURL('/dashboard')
+    await expect(homeHeading(page, owner)).toBeVisible()
   })
 })
 
 // ---------------------------------------------------------------------------------
 test.describe('sessions', () => {
   test('a session survives a reload and a new page in the same browser', async ({ page, owner }) => {
-    await page.goto('/workspace')
+    await page.goto('/dashboard/chat')
     await expect(workspaceHeading(page, owner)).toBeVisible()
     await page.reload()
     await expect(workspaceHeading(page, owner)).toBeVisible()
 
     const second = await page.context().newPage()
-    await second.goto('/workspace')
+    await second.goto('/dashboard/chat')
     await expect(workspaceHeading(second, owner)).toBeVisible()
     await second.close()
   })
@@ -733,8 +754,8 @@ test.describe('sessions', () => {
     const origin = new URL(test.info().project.use.baseURL ?? page.url()).origin
     const other = await browser.newContext()
     const p = await other.newPage()
-    await p.goto(`${origin}/workspace`)
-    await expect(p).toHaveURL(`${origin}/login?next=%2Fworkspace`)
+    await p.goto(`${origin}/dashboard/chat`)
+    await expect(p).toHaveURL(`${origin}/login?next=%2Fdashboard%2Fchat`)
     await other.close()
   })
 
@@ -751,11 +772,11 @@ test.describe('sessions', () => {
     })
   })
 
-  test('an introduced owner opening log-in or sign-up goes to the workspace', async ({ page, owner }) => {
+  test('an introduced owner opening log-in or sign-up goes to the dashboard', async ({ page, owner }) => {
     for (const path of ['/login', '/signup']) {
       await page.goto(path)
-      await expect(page).toHaveURL('/workspace')
-      await expect(workspaceHeading(page, owner)).toBeVisible()
+      await expect(page).toHaveURL('/dashboard')
+      await expect(homeHeading(page, owner)).toBeVisible()
     }
   })
 
@@ -771,8 +792,8 @@ test.describe('sessions', () => {
       await page.context().addCookies([forgedCookie(value, origin)])
 
       expect((await api.get('/auth/me')).status()).toBe(401)
-      await page.goto('/workspace')
-      await expect(page).toHaveURL('/login?next=%2Fworkspace')
+      await page.goto('/dashboard/chat')
+      await expect(page).toHaveURL('/login?next=%2Fdashboard%2Fchat')
       await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
 
       await page.goto('/')
@@ -796,8 +817,9 @@ test.describe('sessions', () => {
     void owner
     await query("UPDATE user_session SET expires_at = now() - interval '1 minute'")
     expect((await api.get('/auth/me')).status()).toBe(401)
-    await page.goto('/workspace')
-    await expect(page).toHaveURL('/login?next=%2Fworkspace')
+    await page.goto('/dashboard/chat')
+    await expect(page).toHaveURL('/login?next=%2Fdashboard%2Fchat')
+    await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
   })
 })
 
@@ -806,6 +828,8 @@ test.describe('redirects when signed out', () => {
   const cases = [
     { path: '/meet', to: '/login?next=%2Fmeet', heading: 'Welcome back' },
     { path: '/workspace', to: '/login?next=%2Fworkspace', heading: 'Welcome back' },
+    { path: '/dashboard', to: '/login?next=%2Fdashboard', heading: 'Welcome back' },
+    { path: '/dashboard/notebook', to: '/login?next=%2Fdashboard%2Fnotebook', heading: 'Welcome back' },
     { path: '/agents/ava/hire', to: '/signup?next=%2Fagents%2Fava%2Fhire', heading: 'Create your account' },
   ]
   for (const c of cases) {
@@ -852,14 +876,14 @@ test.describe('host names', () => {
     await expect(page).toHaveURL(`${origin}/meet`)
   })
 
-  test('opened as 127.0.0.1: log in and reach the workspace', async ({ page, owner }) => {
+  test('opened as 127.0.0.1: log in and reach the dashboard chat', async ({ page, owner }) => {
     await page.context().clearCookies()
-    await page.goto(`${origin}/workspace`)
-    await expect(page).toHaveURL(`${origin}/login?next=%2Fworkspace`)
+    await page.goto(`${origin}/dashboard/chat`)
+    await expect(page).toHaveURL(`${origin}/login?next=%2Fdashboard%2Fchat`)
     await expect(loginForm(page).email).toBeFocused()
     await fillLogin(page, owner.email, owner.password)
     await loginForm(page).submit.click()
-    await expect(page).toHaveURL(`${origin}/workspace`)
+    await expect(page).toHaveURL(`${origin}/dashboard/chat`)
     await expect(workspaceHeading(page, owner)).toBeVisible()
   })
 })

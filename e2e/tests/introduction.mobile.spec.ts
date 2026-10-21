@@ -94,8 +94,9 @@ test.describe('the introduction on a phone', () => {
     await expectAboveControls(meet, meet.line(/^So far I know/), meet.startWorking())
     await expectNoHorizontalScroll(page)
 
-    // The workspace's notebook tab shows what was said.
+    // "Start working with Ava" opens the dashboard; its notebook shows what was said.
     await meet.startWorking().click()
+    await expect(page).toHaveURL(/\/dashboard$/)
     const notebook = await openNotebook(page)
     await expect(notebook.getByText(`Priya is ${owner.name}'s partner; they can always get through, even when busy.`)).toBeVisible()
     expect(await contacts()).toEqual([{ name: 'Priya', relationship: 'partner', vip: true }])
@@ -135,7 +136,6 @@ test.describe('the introduction on a phone', () => {
   })
 
   test('a long link in your introduction wraps inside the screen', async ({ page, api }) => {
-    test.fail(true, 'BUG: chat bubbles use pre-wrap without word breaking, so a long link runs off the side of a phone screen')
     await api.answer('hello', { choice: 'Nice to meet you' })
     const meet = new Meet(page)
     await meet.open()

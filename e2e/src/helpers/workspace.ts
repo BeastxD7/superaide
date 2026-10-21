@@ -111,11 +111,65 @@ export const OFFLINE_REPLY = /Offline mode: no Claude API key yet, so I can only
 // means the conversation history has loaded.
 export const INTRO_LINE = 'I lead applied AI at PebbleRoad in Singapore.'
 
-// Open the workspace and wait until the conversation history has loaded. Sending
-// before that replays the whole history with typing pauses (see the race test).
-export async function openWorkspace(page: Page): Promise<void> {
-  await page.goto('/workspace')
+// Open the dashboard's chat and wait until the conversation history has loaded.
+// (The old /workspace screen became the dashboard; /workspace redirects to /dashboard/chat.)
+export async function openChat(page: Page): Promise<void> {
+  await page.goto('/dashboard/chat')
+  await expect(page).toHaveURL(/\/dashboard\/chat$/)
   await expect(page.getByText(INTRO_LINE, { exact: true })).toBeVisible()
+}
+
+// The dashboard's notebook page, with its list loaded.
+export async function openNotebookPage(page: Page): Promise<void> {
+  await page.goto('/dashboard/notebook')
+  await expect(page.getByRole('heading', { level: 1, name: "Ava's notebook" })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Forget this' }).first()).toBeVisible()
+}
+
+// The dashboard's Connections page.
+export async function openConnections(page: Page): Promise<void> {
+  await page.goto('/dashboard/connections')
+  await expect(page.getByRole('heading', { level: 1, name: 'Connections' })).toBeVisible()
+}
+
+// The dashboard's Home greeting depends on the time of day.
+export function homeHeading(page: Page, person: Person) {
+  const first = person.name.split(' ')[0]
+  return page.getByRole('heading', { level: 1, name: new RegExp(`^Good (morning|afternoon|evening), ${first}$`) })
+}
+
+// The chat page's greeting.
+export function chatHeading(page: Page, person: Person) {
+  return page.getByRole('heading', { level: 1, name: `Hello, ${person.name.split(' ')[0]}. What shall we work on?` })
+}
+
+// On a phone the sidebar is a sheet behind the "Toggle Sidebar" button.
+export function sidebarTrigger(page: Page) {
+  // The trigger in the page's top bar (the sidebar's edge "rail" has the same name).
+  return page.getByRole('main').getByRole('button', { name: 'Toggle Sidebar' })
+}
+
+export async function openSidebarIfHidden(page: Page): Promise<void> {
+  const link = page.getByRole('link', { name: 'Notebook', exact: true })
+  await expect(sidebarTrigger(page)).toBeVisible()
+  if (await link.isVisible()) return
+  await sidebarTrigger(page).click()
+  await expect(link).toBeVisible()
+}
+
+// A page in the dashboard sidebar (Home, Chat, Notebook, People, Connections, Settings).
+export async function goToDashboardPage(page: Page, name: string): Promise<void> {
+  await openSidebarIfHidden(page)
+  await page.getByRole('link', { name, exact: true }).click()
+}
+
+// Log out from the dashboard: the account button at the foot of the sidebar opens a
+// menu with "Log out".
+export async function logOutFromSidebar(page: Page, person: Person): Promise<void> {
+  await openSidebarIfHidden(page)
+  await page.getByRole('button', { name: `Account: signed in as ${person.name}` }).click()
+  await page.getByRole('menuitem', { name: 'Log out' }).click()
+  await expect(page).not.toHaveURL(/\/dashboard/)
 }
 
 export function composer(page: Page, agent = 'Ava') {

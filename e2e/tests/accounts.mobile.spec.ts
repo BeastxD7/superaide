@@ -5,11 +5,13 @@ import { expect, newPerson, test } from '../src/fixtures'
 import { PASSWORD } from '../src/env'
 import {
   MSG,
+  accountButton,
   expectFieldError,
   expectNoHorizontalScroll,
   fillLogin,
   fillSignup,
   loginForm,
+  navLogOut,
   signupForm,
 } from '../src/helpers/accounts'
 
@@ -103,7 +105,7 @@ test.describe('accounts on a phone', () => {
     await f.password.fill(person.password)
     await f.submit.tap()
     await expect(page).toHaveURL('/')
-    await expect(page.getByRole('button', { name: 'Log out' })).toBeVisible()
+    await expect(accountButton(page)).toBeVisible()
     await expectNoHorizontalScroll(page)
   })
 
@@ -111,8 +113,12 @@ test.describe('accounts on a phone', () => {
     await api.signup(newPerson())
     await page.goto('/')
     await expectNoHorizontalScroll(page)
-    const logout = page.getByRole('navigation').getByRole('button', { name: 'Log out' })
+    // Log out lives in the account menu, opened from the button with your initial.
+    await expectTappable(page, accountButton(page))
+    await accountButton(page).tap()
+    const logout = navLogOut(page)
     await expectTappable(page, logout)
+    await expectNoHorizontalScroll(page)
     await logout.tap()
     await expect(page.getByRole('navigation').getByRole('link', { name: 'Log in' })).toBeVisible()
     expect((await api.get('/auth/me')).status()).toBe(401)

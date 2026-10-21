@@ -33,7 +33,7 @@ test('the three intro tabs fit across a phone screen', async ({ page }) => {
 })
 
 test('the intro tab labels are readable in full on a phone', async ({ page }) => {
-  test.fail(true, 'BUG: on a 412px-wide phone the tabs read "Tell me h…" and "Files & lin…"')
+  // F10, fixed by 4d1b3f6: phones get short tab labels (features/onboarding/steps.tsx).
   for (const name of ['Tell me here', 'Files & links', 'Video call']) {
     const cut = await page.getByRole('tab', { name }).evaluate((tab) =>
       Array.from(tab.querySelectorAll('span')).some((s) => s.scrollWidth > s.clientWidth),

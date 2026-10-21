@@ -48,8 +48,9 @@ test.describe('smoke', () => {
     await expect(page).toHaveURL(/\/login\?next=%2Fworkspace$/)
   })
 
-  test('an introduced owner lands in the workspace', async ({ page, owner }) => {
+  test('an introduced owner lands in the dashboard chat from an old /workspace link', async ({ page, owner }) => {
     await page.goto('/workspace')
+    await expect(page).toHaveURL(/\/dashboard\/chat$/)
     await expect(page.getByRole('heading', { name: `Hello, ${owner.name.split(' ')[0]}. What shall we work on?` })).toBeVisible()
   })
 })
