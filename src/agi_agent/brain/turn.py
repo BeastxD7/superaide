@@ -55,7 +55,9 @@ RULES = """Rules that always apply:
 - In the prediction field, say what you expect the person to do next with your reply and how confident you are (0 to 1)."""
 
 
-def build_system(agent_name: str, sender: Sender, audience: Audience, memories: list[MemoryItem]) -> list[SystemBlock]:
+def build_system(
+    agent_name: str, sender: Sender, audience: Audience, memories: list[MemoryItem], brief: str = ""
+) -> list[SystemBlock]:
     who = (
         f"Who you are talking to: {sender.name}. Relation to you: {sender.relation}. "
         f"Trust tier: {sender.trust}. This is {audience.describe()}."
@@ -66,7 +68,7 @@ def build_system(agent_name: str, sender: Sender, audience: Audience, memories: 
         mem = "Memories you may use here: none."
     return [
         SystemBlock(load_charter(agent_name) + "\n\n" + RULES, cache=True),  # stable prefix, cached
-        SystemBlock(who + "\n\n" + mem),
+        SystemBlock(who + ("\n\n" + brief if brief else "") + "\n\n" + mem),
     ]
 
 

@@ -29,15 +29,61 @@ export type Me = {
   channels: { web: boolean; telegram: boolean; telegram_available: boolean; slack: boolean }
 }
 
+export type SharedDoc = {
+  id: string
+  kind: string
+  title: string
+  source: string
+  status: 'stored' | 'read' | 'failed'
+  facts: number
+  warnings: string[]
+}
+
+export type Option = { value: string; label: string }
+
 export type StepInput =
   | { kind: 'chips'; options: string[] }
-  | { kind: 'text'; placeholder: string; multiline: boolean }
-  | { kind: 'multi'; options: string[]; other: boolean; submit: string }
-  | { kind: 'voice'; placeholder: string; options: string[]; submit: string }
+  | { kind: 'intro'; placeholder: string; documents: SharedDoc[]; facts: number; call_questions: number }
+  | {
+      kind: 'people'
+      relationships: string[]
+      existing: { name: string; relationship: string; vip: boolean }[]
+      submit: string
+      skip: string
+    }
+  | { kind: 'urgent'; options: string[]; selected: string[]; digests: Option[]; digest: string; submit: string }
+  | {
+      kind: 'reach'
+      channels: (Option & { available: boolean; note: string })[]
+      channel: string
+      quiet_start: string
+      quiet_end: string
+      vip_breaks_quiet: boolean
+      timezone: string
+      submit: string
+    }
+  | {
+      kind: 'share'
+      options: Option[]
+      selected: string[]
+      never: string
+      never_placeholder: string
+      submit: string
+      skip: string
+    }
   | { kind: 'rules'; items: string[]; submit: string }
-  | { kind: 'channels'; telegram_available: boolean; telegram_linked: boolean; invite_url: string | null }
-  | { kind: 'topic'; options: string[]; placeholder: string; skip: string }
+  | { kind: 'connect'; telegram_available: boolean; telegram_linked: boolean; invite_url: string | null; submit: string }
   | { kind: 'none' }
+
+export type IngestResult = {
+  document_id: string
+  title: string
+  facts: number
+  duplicate: boolean
+  status: string
+  message: string
+  warnings: string[]
+}
 
 export type StepView = {
   step: string
@@ -51,7 +97,16 @@ export type StepView = {
 }
 
 export type Message = { id: string; from: 'you' | 'agent'; text: string; at: string; kind?: 'onboarding' | 'chat' }
-export type Memory = { id: string; text: string; private: boolean; at: string }
+export type Memory = {
+  id: string
+  text: string
+  category: string
+  source: string
+  document: string | null
+  shareable: boolean
+  private: boolean
+  at: string
+}
 
 // The signed-in account, from /auth/me. The session itself is an httpOnly cookie
 // the browser sends automatically; page code never sees it.
@@ -75,6 +130,14 @@ async function request<T>(url: string, init?: Init): Promise<T> {
 // The app's endpoints (/app/...).
 export function call<T>(path: string, init?: Init): Promise<T> {
   return request<T>(`/app${path}`, init)
+}
+
+// Upload a file to an /app endpoint (multipart form).
+export async function upload<T>(path: string, file: File): Promise<T> {
+  const form = new FormData()
+  form.append('file', file)
+  const res = await client.post<T>(`/app${path}`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  return res.data
 }
 
 // Accounts (/auth/...).

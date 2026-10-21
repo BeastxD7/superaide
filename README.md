@@ -1,8 +1,8 @@
 # agi-agent
 
-An AI hire that grows up like a child, with identity checks you can trust.
+An AI personal assistant that grows up like a child, with identity checks you can trust.
 
-The agent (called Ava by default) starts at the **Infant** stage: it watches, asks and drafts, and nothing it does leaves your chat without your approval. This repo is **phase 1 of the plan: its body and its identity**. It can talk on Telegram and Slack, it knows who it is talking to, it refuses impostors, it keeps private things private, and it cannot spend more than **US$10** of Claude API credit.
+You can't be everywhere at once. Ava, the personal assistant, fields the people who reach out when you're busy: it answers what you've allowed, takes proper messages for the rest, and interrupts you only for what you said is urgent. It starts at the **Infant** stage: it watches, asks and learns, and nothing it does leaves your chat without your approval. This repo is **phase 1 of the plan: its body and its identity**. It can talk on Telegram and Slack, it knows who it is talking to, it refuses impostors, it keeps private things private, and it cannot spend more than **US$10** of Claude API credit.
 
 ## What works today
 
@@ -13,9 +13,14 @@ The agent (called Ava by default) starts at the **Infant** stage: it watches, as
 - **Policy.** Authority comes from the database (`manager`, `colleague`), never from what a message claims. Publishing, messaging others, granting access and deleting memory need your approval, and are refused outright for anyone but the manager.
 - **Spend cap.** Every Claude call reserves its worst-case price first and is refused if that could pass `MAX_SPEND_USD` (10 by default). The real price is settled from the API's token counts.
 - **Kill switch.** One command or one button stops all model calls and replies.
-- **The app.** A marketplace where you meet the agents, hire Ava (name and consent), and are then onboarded by Ava itself: it introduces itself, asks about you, your goals and your voice, explains its ground rules, offers Telegram, and drafts your first post. After that you work with it in a chat with its notebook (everything it remembers, each item removable) beside it. Built with React, Tailwind CSS and Motion (Framer Motion).
+- **Accounts.** Sign up and log in with email and password (Argon2id hashes), sessions in an httpOnly cookie that expire after 30 idle days and can be revoked, lockout after repeated wrong passwords, per-device throttling, CSRF protection, and an audit trail of every sign-in event. Hiring an agent needs an account; only the hiring account can see its workspace.
+- **Getting to know you.** After hiring, Ava introduces itself and learns about you in eight short steps: about you (chat, upload a resume or add links, or a **video call** where Ava speaks and your browser turns your answers into text), the people who matter (and who can always get through), what counts as urgent, how and when to reach you (quiet hours), what it may share, ground rules, and connections.
+- **What Ava knows, and from where.** Settings live in typed tables (`contact`, `owner_preference`); facts live in the notebook with a category and their source (chat, call, a named file or link). Removing a file removes what was learned from it. Files and links are read by the small model inside the spend cap; offline, the text is kept and read later.
+- **Owner-aware answers.** Every prompt carries a short brief about the owner. The owner gets their full settings; anyone else gets only what the owner allowed to be shared; a VIP contact is recognised as such.
+- **Connections in the app.** Connect Claude (API key), Telegram (bot token) and Slack (a pre-filled app plus two tokens) without editing files. Each credential is checked with the service, encrypted with AES-256-GCM under a master key kept in the macOS Keychain, shown only as a hint like `sk-…4f2a`, and applied at once. WhatsApp is listed as unavailable: Meta's business terms don't allow general-purpose AI assistants on business numbers outside the EEA and Brazil.
+- **The app.** React, Tailwind CSS and Motion (Framer Motion): the marketplace, sign-up, hiring, the introduction, and a workspace with the chat, the notebook and connections.
 - **Operator console.** At `#/console`: growth stage, people and trust tiers, conversations, a readable safety log, spend, the pause switch and an impostor simulator.
-- **Tests.** 43 tests, including the five impostor scenarios in `tests/redteam/`. They use a fake model, so they cost nothing.
+- **Tests.** 70+ tests, including the five impostor scenarios in `tests/redteam/`. They use a fake model, so they cost nothing.
 
 ## How it fits together
 
@@ -53,7 +58,7 @@ cp .env.example .env              # then set ADMIN_TOKEN (the comment shows how 
 docker compose up -d              # Postgres 17 with pgvector, on localhost only
 uv sync                           # installs Python 3.14 and the dependencies
 uv run alembic upgrade head       # creates the tables
-uv run pytest                     # 43 tests, offline, free
+uv run pytest                     # 70+ tests, offline, free
 ```
 
 ### Try it with no API key and no channels
@@ -122,7 +127,10 @@ src/agi_agent/
   brain/             Claude client, pricing, spend ledger, prompt and reply schema
   policy/            action rules, kill switch
   api/               admin API for the operator console
-  app/               the person-facing app: catalog, hiring, onboarding, chat API
+  app/               the person-facing app API: catalog, hiring, introduction, chat, connections
+  auth/              accounts, passwords, sessions, rate limits
+  knowledge/         what the agent knows: extraction from files/links, facts, people, preferences, owner brief
+  vault/             encrypted credentials and the checks against each service
   db/                SQLAlchemy models (migrations in alembic/)
 skills/charter.md    who the agent is and its hard limits (cached in every prompt)
 tests/redteam/       the five impostor scenarios

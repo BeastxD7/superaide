@@ -117,7 +117,7 @@ PIDS=()
 cleanup() { for p in "${PIDS[@]:-}"; do [ -n "$p" ] && kill "$p" 2>/dev/null || true; done; }
 trap cleanup EXIT INT TERM
 
-# 5. Backend API on :8000, plus Telegram and Slack if their tokens are in .env
+# 5. Backend API on :8000 (it also runs the Telegram and Slack listeners)
 if grep -Eq '^ANTHROPIC_API_KEY=.+' .env && ! grep -Eq '^FAKE_LLM=true' .env; then
   bold "Brain: real Claude replies (spend cap $(grep '^MAX_SPEND_USD=' .env | cut -d= -f2) US dollars)."
 else
@@ -126,16 +126,9 @@ fi
 bold "Starting the backend API on http://127.0.0.1:$API_PORT …"
 uv run --quiet agi-agent serve --port "$API_PORT" &
 PIDS+=($!)
-if grep -Eq '^TELEGRAM_BOT_TOKEN=.+' .env; then
-  bold "Connecting Telegram…"
-  uv run --quiet agi-agent telegram-poll &
-  PIDS+=($!)
-fi
-if grep -Eq '^SLACK_BOT_TOKEN=.+' .env && grep -Eq '^SLACK_APP_TOKEN=.+' .env; then
-  bold "Connecting Slack…"
-  uv run --quiet agi-agent slack-socket &
-  PIDS+=($!)
-fi
+# Telegram and Slack listeners run inside the API, for tokens in .env or connected in the app.
+if grep -Eq '^TELEGRAM_BOT_TOKEN=.+' .env; then bold "Telegram: connected from .env"; fi
+if grep -Eq '^SLACK_BOT_TOKEN=.+' .env; then bold "Slack: connected from .env"; fi
 
 # 6. Frontend on :3000. Vite dev server when Node 20+ is installed; otherwise the
 #    prebuilt files in web/dist from a plain static server. Either way it calls the API.

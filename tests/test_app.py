@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from agi_agent.app import accounts
-from agi_agent.db.models import ChannelIdentity, Person
+from agi_agent.db.models import ChannelIdentity, Contact, OwnerPreference, Person
 from agi_agent.db.session import session_scope
 from agi_agent.main import create_app
 from tests.conftest import sl, tg
@@ -81,57 +81,78 @@ def test_app_needs_a_session(client):
     assert client.get("/app/me").status_code == 401
 
 
-def test_full_onboarding_then_chat(client, model):
-    auth = _hire(client)
+def test_full_introduction_then_chat(client, model):
+    _hire(client)
     me = client.get("/app/me").json()
     assert me["onboarding"] == {"step": "hello", "done": False}
-    # Ava introduced herself in the conversation at hire time.
+    assert me["agent"]["role"] == "Personal assistant"
     first = client.get("/app/messages").json()
-    assert first[0]["from"] == "agent" and "I'm Ava" in first[0]["text"]
+    assert first[0]["from"] == "agent" and "your personal assistant" in first[0]["text"]
 
-    view = _answer(client, auth, "hello", choice="What comes after Infant?")
-    assert view["step"] == "about" and any("Adolescent" in line for line in view["ava"])
-    assert _answer(client, auth, "about", text="")["step"] == "about"  # needs an answer
-    view = _answer(client, auth, "about", text="I lead applied AI at a consultancy in Singapore.")
-    assert view["step"] == "goals"
-    view = _answer(client, auth, "goals", goals=["Win clients", "Share what I learn"])
-    assert view["step"] == "voice"
-    view = _answer(client, auth, "voice", sample="Most AI pilots fail for boring reasons.", tones=["Direct"])
+    view = _answer(client, None, "hello", choice="What will you do for me?")
+    assert view["step"] == "about" and view["input"]["kind"] == "intro"
+    assert _answer(client, None, "about", mode="continue")["hint"]  # nothing shared yet
+    assert _answer(client, None, "about", mode="chat", text="")["step"] == "about"
+    view = _answer(client, None, "about", mode="chat", text="I run an AI consultancy in Singapore.")
+    assert view["step"] == "people"
+    view = _answer(
+        client,
+        None,
+        "people",
+        people=[
+            {"name": "Priya", "relationship": "Partner", "vip": True},
+            {"name": "Arjun", "relationship": "Team", "vip": False},
+            {"name": "  ", "relationship": "Team"},
+        ],
+    )
+    assert view["step"] == "urgent"
+    view = _answer(
+        client, None, "urgent", topics=["A family emergency"], other="Anything about the Series A", digest="morning"
+    )
+    assert view["step"] == "reach"
+    assert _answer(client, None, "reach", quiet_start="25:00", quiet_end="07:00")["hint"]  # bad time
+    view = _answer(
+        client, None, "reach", channel="telegram", quiet_start="22:30", quiet_end="07:00",
+        vip_breaks_quiet=True, timezone="Asia/Singapore",
+    )  # fmt: skip
+    assert view["step"] == "share"
+    view = _answer(client, None, "share", shareable=["availability", "work_email", "nonsense"], never="My home address")
     assert view["step"] == "rules"
-    view = _answer(client, auth, "rules")
-    assert view["step"] == "channels" and view["input"]["telegram_available"] is False
-    view = _answer(client, auth, "channels", choice="here")
-    assert view["step"] == "first_task"
-    view = _answer(client, auth, "first_task", topic="Why most AI pilots stall")
+    view = _answer(client, None, "rules")
+    assert view["step"] == "connect" and view["input"]["telegram_available"] is False
+    view = _answer(client, None, "connect", choice="done")
     assert view["done"] is True
 
-    # The draft request went through the normal brain, with the onboarding memories in the prompt.
-    assert "applied AI at a consultancy" in model.systems[-1]
-    assert "Win clients" in model.systems[-1]
+    # The settings landed in typed tables.
+    with session_scope() as s:
+        pref = s.scalar(select(OwnerPreference))
+        assert (pref.digest, pref.interrupt_channel, pref.quiet_start) == ("morning", "app", "22:30")  # no Telegram yet
+        assert pref.shareable == ["availability", "work_email"] and pref.never_share == "My home address"
+        assert "Anything about the Series A" in pref.urgent_topics
+        people = s.execute(select(Contact, Person).join(Person, Person.id == Contact.person_id)).all()
+        assert {(p.display_name, c.vip, p.relation) for c, p in people} == {
+            ("Priya", True, "contact"),
+            ("Arjun", False, "contact"),
+        }
+    # And as facts with their category and source.
+    notebook = client.get("/app/notebook").json()["memories"]
+    assert {"about", "person", "urgency", "availability", "sharing"} <= {m["category"] for m in notebook}
+    assert {m["source"] for m in notebook} == {"intro_chat"}
+    assert all(m["private"] for m in notebook)
     convo = client.get("/app/messages").json()
-    texts = [m["text"] for m in convo]
-    i = texts.index("Please draft my first LinkedIn post about: Why most AI pilots stall")
-    assert convo[i + 1]["from"] == "agent" and "That's us set up" in convo[-1]["text"]
-    # Onboarding lines are marked so the app can tell them from real work (the draft).
-    assert convo[0]["kind"] == "onboarding"
-    assert convo[i + 1] | {"id": None, "at": None} == {
-        "id": None,
-        "at": None,
-        "from": "agent",
-        "text": "ok",
-        "kind": "chat",
-    }
+    assert convo[-1]["kind"] == "onboarding" and "So far I know" in convo[-1]["text"]
 
-    # Normal chat afterwards.
-    model.reply = "Here's a sharper hook."
-    r = client.post("/app/chat", json={"text": "Make the opening punchier"}).json()
-    assert r["mode"] == "known" and r["reply"] == "Here's a sharper hook."
+    # Normal chat afterwards, with what Ava learned in its prompt.
+    model.reply = "Priya is your partner."
+    r = client.post("/app/chat", json={"text": "Who is Priya?"}).json()
+    assert r["mode"] == "known" and r["reply"] == "Priya is your partner."
+    assert "Priya" in model.systems[-1]
 
 
 def test_notebook_is_private_and_forgettable(client, agent, model, colleague):
-    auth = _hire(client)
-    _answer(client, auth, "hello", choice="Nice to meet you")
-    _answer(client, auth, "about", text="I build an AI agent marketplace.")
+    _hire(client)
+    _answer(client, None, "hello", choice="Nice to meet you")
+    _answer(client, None, "about", mode="chat", text="I build an AI agent marketplace.")
     notebook = client.get("/app/notebook").json()["memories"]
     assert any("AI agent marketplace" in m["text"] for m in notebook)
 

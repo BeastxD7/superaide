@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     # Dev only: lets the dashboard inject fake messages to try impostor scenarios.
     enable_simulator: bool = False
 
+    # Run the Telegram and Slack listeners inside the API (follows connections made in the app)
+    run_channels_in_api: bool = True
+
     # User accounts and sessions
     session_cookie_name: str = "agi_session"
     session_cookie_secure: bool = False  # set true when served over HTTPS

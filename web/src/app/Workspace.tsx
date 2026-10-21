@@ -2,32 +2,49 @@ import {
   ArrowUp,
   BookOpen,
   Brain,
-  Check,
-  ExternalLink,
   Lightbulb,
   LogOut,
-  MessageCircle,
   PenLine,
-  Send,
   Wand2,
-  Hash,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { AppError, call, type Memory, type Message } from './api'
 import type { Session } from './AppRoot'
+import { Connections } from './Connections'
 import { Conversation, useReveal } from './Conversation'
 import { Orb } from './Orb'
 import { Notice, PRODUCT, Sparkle, STAGES } from './ui'
 
 const QUICK = [
-  { icon: PenLine, label: 'Draft a post', prefill: 'Draft a LinkedIn post about ' },
-  { icon: Lightbulb, label: 'Ideas from my notes', prefill: 'Here are some notes. Give me three post ideas:\n\n' },
-  { icon: Wand2, label: 'Sharpen a draft', prefill: 'Make this post sharper without changing my voice:\n\n' },
+  { icon: Lightbulb, label: 'How would you handle…', prefill: 'If someone messages you saying ' },
+  { icon: PenLine, label: 'Draft a reply', prefill: 'Help me reply to this message:\n\n' },
+  { icon: Wand2, label: 'Remember something', prefill: 'Remember that ' },
   { icon: BookOpen, label: 'What do you know about me?', send: 'What do you know about me so far?' },
 ]
 
 type Tab = 'chat' | 'notebook' | 'ava'
+
+const CATEGORY_LABEL: Record<string, string> = {
+  about: 'About you',
+  work: 'Work',
+  person: 'People',
+  preference: 'Preference',
+  urgency: 'Urgent',
+  availability: 'Availability',
+  sharing: 'Sharing',
+  other: 'Note',
+}
+const SOURCE_LABEL: Record<string, string> = {
+  chat: 'from chat',
+  intro_chat: 'from your introduction',
+  intro_call: 'from our video call',
+  document: 'from a file you shared',
+  link: 'from a link you shared',
+  telegram: 'from Telegram',
+  slack: 'from Slack',
+  owner_edit: 'added by you',
+}
 
 export function Workspace({ session }: { session: Session }) {
   const me = session.me
@@ -160,8 +177,8 @@ export function Workspace({ session }: { session: Session }) {
             {me.brain === 'offline' && (
               <div className="mb-4">
                 <Notice tone="warn">
-                  {agentName}'s Claude brain isn't connected yet, so replies are placeholders. Add <code>ANTHROPIC_API_KEY</code> to the{' '}
-                  <code>.env</code> file in the agi-agent folder, then run start.command again.
+                  {agentName}'s Claude brain isn't connected yet, so replies are placeholders. Connect Claude under
+                  Connections (on the right) to switch it on.
                 </Notice>
               </div>
             )}
@@ -212,7 +229,10 @@ export function Workspace({ session }: { session: Session }) {
             <Notebook memories={notebook} agentName={agentName} onChange={loadNotebook} />
           </div>
           <div className={tab === 'notebook' ? 'hidden lg:block' : ''}>
-            <Channels session={session} />
+            <div className="rounded-[28px] bg-sky-100 p-5">
+              <h2 className="mb-3 px-1 text-lg font-medium tight">Connections</h2>
+              <Connections agentName={me.agent.name} me={me} refreshMe={session.refresh} />
+            </div>
           </div>
         </aside>
       </div>
@@ -291,6 +311,11 @@ function Notebook({ memories, agentName, onChange }: { memories: Memory[]; agent
               exit={{ opacity: 0, x: 30, transition: { duration: 0.2 } }}
               className="rounded-2xl bg-mist px-4 py-3 text-sm text-ink"
             >
+              <p className="mb-1.5 flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-muted">
+                <span className="rounded-full bg-white px-2 py-0.5 text-violet-700">{CATEGORY_LABEL[m.category] ?? 'Note'}</span>
+                <span>{m.document ? `from ${m.document}` : (SOURCE_LABEL[m.source] ?? 'from chat')}</span>
+                {m.shareable && <span className="rounded-full bg-sky-100 px-2 py-0.5 text-ok">Shareable</span>}
+              </p>
               <p className="line-clamp-4 whitespace-pre-wrap">{m.text}</p>
               {confirm === m.id ? (
                 <div className="mt-2 flex items-center gap-2 text-xs">
@@ -315,70 +340,6 @@ function Notebook({ memories, agentName, onChange }: { memories: Memory[]; agent
             Nothing yet. Tell {agentName} "remember that…" and it will appear here.
           </li>
         )}
-      </ul>
-    </div>
-  )
-}
-
-function Channels({ session }: { session: Session }) {
-  const me = session.me!
-  const [invite, setInvite] = useState<{ url: string } | null>(null)
-  const [unavailable, setUnavailable] = useState(false)
-  const { refresh } = session
-  const linked = me.channels.telegram
-
-  useEffect(() => {
-    if (!invite || linked) return
-    const t = window.setInterval(() => void refresh(), 3000)
-    const stop = window.setTimeout(() => setInvite(null), 15 * 60 * 1000)
-    return () => {
-      window.clearInterval(t)
-      window.clearTimeout(stop)
-    }
-  }, [invite, linked, refresh])
-
-  async function connect() {
-    const r = await call<{ available: boolean; url?: string }>('/channels/telegram', { method: 'POST' })
-    if (r.available && r.url) setInvite({ url: r.url })
-    else setUnavailable(true)
-  }
-
-  return (
-    <div className="rounded-[28px] bg-sky-100 p-6">
-      <h2 className="text-lg font-medium tight">Where you talk to {me.agent.name}</h2>
-      <ul className="mt-4 space-y-2 text-sm">
-        <li className="flex items-center justify-between rounded-2xl bg-white px-4 py-3">
-          <span className="flex items-center gap-3 text-ink">
-            <MessageCircle className="size-4 text-violet-600" /> In the app
-          </span>
-          <Check className="size-4 text-ok" />
-        </li>
-        <li className="rounded-2xl bg-white px-4 py-3">
-          <div className="flex items-center justify-between gap-2">
-            <span className="flex items-center gap-3 text-ink">
-              <Send className="size-4 text-violet-600" /> Telegram
-            </span>
-            {linked ? (
-              <Check className="size-4 text-ok" />
-            ) : invite ? (
-              <a href={invite.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full bg-[#e8f4fd] px-3 py-1 text-xs font-medium text-[#1f6fa8]">
-                Open Telegram <ExternalLink className="size-3" />
-              </a>
-            ) : (
-              <button onClick={() => void connect()} className="rounded-full bg-ink px-3 py-1 text-xs font-medium text-white">
-                Connect
-              </button>
-            )}
-          </div>
-          {invite && !linked && <p className="mt-2 text-xs text-muted">Press Start in Telegram. The link works once, for 15 minutes.</p>}
-          {unavailable && <p className="mt-2 text-xs text-muted">Telegram isn't set up yet. Add a Telegram bot token to .env, then restart.</p>}
-        </li>
-        <li className="flex items-center justify-between rounded-2xl bg-white px-4 py-3">
-          <span className="flex items-center gap-3 text-ink">
-            <Hash className="size-4 text-violet-600" /> Slack
-          </span>
-          {me.channels.slack ? <Check className="size-4 text-ok" /> : <span className="text-xs text-muted">Linked from the console</span>}
-        </li>
       </ul>
     </div>
   )

@@ -22,7 +22,7 @@ def demo_responder(
     return TurnOutput(
         reply=(
             f'(Offline mode: no Claude API key yet, so I can only echo you.) You said: "{last}". '
-            "Add ANTHROPIC_API_KEY to .env and restart to get real replies."
+            "Connect Claude under Connections to get real replies."
         ),
         requested_action=RequestedAction(kind="none", summary=""),
         prediction=Prediction(expectation="you will reply", confidence=0.5),

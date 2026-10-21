@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request
@@ -16,6 +17,7 @@ from agi_agent.audit import audit
 from agi_agent.auth.routes import make_router as make_auth_router
 from agi_agent.channels import slack, telegram
 from agi_agent.channels.base import FakeMessenger, InboundMessage
+from agi_agent.channels.runner import ChannelRunner
 from agi_agent.config import get_settings
 from agi_agent.db.session import session_scope
 from agi_agent.pipeline import Agent
@@ -54,17 +56,49 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     app.include_router(admin_router)
     app.include_router(make_auth_router())
 
+    fixed = agent  # tests pass their own agent; it is never rebuilt
+    current: dict[str, Any] = {"agent": None, "version": None}
+
     def get_agent() -> Agent:
-        nonlocal agent
-        if agent is None:
-            from agi_agent.factory import build_agent
+        """The agent, rebuilt whenever a connection (Claude, Telegram, Slack) changes in the app."""
+        if fixed is not None:
+            return fixed
+        from agi_agent.factory import build_agent
+        from agi_agent.vault.store import runtime_settings, version
 
-            agent = build_agent(settings)
-        return agent
+        with session_scope() as s:
+            v = version(s)
+        if current["agent"] is None or current["version"] != v:
+            current["agent"], current["version"] = build_agent(runtime_settings(settings)), v
+        return current["agent"]
 
+    runner = ChannelRunner(lambda msg: get_agent().handle(msg))
+
+    def apply_connections() -> dict[str, bool]:
+        """Use new or removed credentials now: rebuild the agent and the listeners."""
+        a = get_agent()
+        if fixed is not None or not settings.run_channels_in_api:
+            return {}
+        return runner.ensure(a.settings)
+
+    @asynccontextmanager
+    async def lifespan(_: FastAPI):
+        if fixed is None and settings.run_channels_in_api:
+            try:
+                started = apply_connections()
+                log.info("channel listeners: %s", started)
+            except Exception:
+                log.exception("couldn't start channel listeners")
+        yield
+        runner.stop()
+
+    app.router.lifespan_context = lifespan
+
+    from agi_agent.app.connections import make_router as make_connections_router
     from agi_agent.app.routes import make_router
 
     app.include_router(make_router(get_agent))
+    app.include_router(make_connections_router(get_agent, apply_connections))
 
     @app.get("/")
     def index() -> dict[str, str]:

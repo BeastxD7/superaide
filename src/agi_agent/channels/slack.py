@@ -85,7 +85,12 @@ class SlackMessenger:
 
 
 def run_socket_mode(bot_token: str, app_token: str, our_team_id: str, handle: Callable[[InboundMessage], Any]) -> None:
-    """Receive events over a websocket: no public URL, good for a laptop."""
+    """Receive events over a websocket: no public URL, good for a laptop. Blocks."""
+    socket_mode_handler(bot_token, app_token, our_team_id, handle).start()
+
+
+def socket_mode_handler(bot_token: str, app_token: str, our_team_id: str, handle: Callable[[InboundMessage], Any]):
+    """A Socket Mode handler: .connect() to run in the background, .close() to stop."""
     from slack_bolt import App
     from slack_bolt.adapter.socket_mode import SocketModeHandler
 
@@ -105,5 +110,5 @@ def run_socket_mode(bot_token: str, app_token: str, our_team_id: str, handle: Ca
     def on_mention(body: dict[str, Any]) -> None:
         _dispatch(body)
 
-    log.info("Slack Socket Mode started")
-    SocketModeHandler(app, app_token).start()
+    log.info("Slack Socket Mode ready")
+    return SocketModeHandler(app, app_token)

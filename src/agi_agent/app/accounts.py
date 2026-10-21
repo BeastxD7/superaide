@@ -30,8 +30,9 @@ from agi_agent.identity.trust import Trust
 INVITE_TTL_MINUTES = 15
 NOTICE_VERSION = "2026-10-21"
 NOTICE_TEXT = (
-    "Ava is an AI. It remembers what you tell it so it can work with you, shows everything it remembers "
-    "in its notebook, and never repeats private things to anyone else. You can remove anything at any time."
+    "Ava is an AI personal assistant. It remembers what you tell it, and what people who contact it say, so "
+    "it can help you. Everything it knows about you is in its notebook. It shares only what you allow, never "
+    "repeats private things to anyone else, and you can remove anything at any time."
 )
 
 

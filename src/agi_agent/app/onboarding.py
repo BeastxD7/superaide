@@ -1,54 +1,84 @@
-"""The agent onboards the person who hired it, like a new colleague would.
+"""The personal assistant gets to know the person who hired it, like a new EA would.
 
 The conversation is driven by the server so it is stored like any other chat:
-every line Ava says and every answer is an event in the in-app conversation,
-and what Ava learns becomes private memories visible only to that person.
+every line the agent says and every answer is an event in the in-app
+conversation. What the agent learns goes to typed settings (people, urgency,
+quiet hours, sharing) and to private facts with their source.
+
+Steps: hello → about (chat, files & links, or a video call) → people → urgent
+→ reach → share → rules → connect → done. People and sharing can be skipped.
 """
 
 from __future__ import annotations
 
+import re
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from agi_agent.app.accounts import linked_providers, web_message
+from agi_agent.app.accounts import create_invite, linked_providers, web_message
 from agi_agent.audit import audit
-from agi_agent.brain.llm import SystemBlock
 from agi_agent.context.audience import Audience
-from agi_agent.db.models import Event, MemoryItem, Onboarding, Person
+from agi_agent.db.models import Document, Event, MemoryItem, Onboarding, Person
 from agi_agent.identity.resolver import resolve
+from agi_agent.knowledge.facts import extract_facts
+from agi_agent.knowledge.store import add_contact, contacts_of, preferences_for, remember_fact
 from agi_agent.memory.store import get_or_create_context, log_event
 
-STEPS = ["hello", "about", "goals", "voice", "rules", "channels", "first_task", "done"]
+STEPS = ["hello", "about", "people", "urgent", "reach", "share", "rules", "connect", "done"]
 LABELS = {
     "hello": "Hello",
     "about": "About you",
-    "goals": "Goals",
-    "voice": "Your voice",
+    "people": "Your people",
+    "urgent": "Urgent",
+    "reach": "Reaching you",
+    "share": "Sharing",
     "rules": "Ground rules",
-    "channels": "Stay in touch",
-    "first_task": "First task",
+    "connect": "Connect",
 }
-GOALS = [
-    "Grow my audience",
-    "Win clients",
-    "Hire great people",
-    "Build my personal brand",
-    "Share what I learn",
-    "Promote a product",
+RELATIONSHIPS = ["Family", "Partner", "Boss", "Team", "Client", "Investor", "Friend", "Other"]
+URGENT_OPTIONS = [
+    "Anything from the people who can always get through",
+    "A family emergency",
+    "A client escalation",
+    "Something is down or broken",
+    "Legal, money or contracts",
+    "Travel changes",
 ]
-TONES = ["Direct", "Warm", "Playful", "Technical", "Story-led", "Contrarian"]
+DIGESTS = [
+    {"value": "morning", "label": "Every morning"},
+    {"value": "evening", "label": "Every evening"},
+    {"value": "both", "label": "Morning and evening"},
+    {"value": "none", "label": "No digest"},
+]
+SHARE_OPTIONS = [
+    {"value": "availability", "label": "Whether you're free or busy, without details"},
+    {"value": "in_meeting", "label": "That you're in a meeting or travelling"},
+    {"value": "work_email", "label": "Your work email"},
+    {"value": "company_role", "label": "Your company and role"},
+    {"value": "office_city", "label": "Which city you work from"},
+]
+SHARE_LABELS = {o["value"]: o["label"] for o in SHARE_OPTIONS}
 RULES = [
     "I'm an AI, and I'll always say so to anyone I talk to.",
-    "What you tell me in private stays private. I never repeat it in a group or to someone else.",
-    "Nothing gets posted, sent or deleted without your approval.",
-    "Everything I remember is in my notebook. You can read it and remove anything.",
-    "If someone claims to be you from a new account, I check with you first.",
+    "I tell people only what you've said I may share. Everything else stays private.",
+    "I never make promises, accept meetings or send anything as you without your yes.",
+    "I interrupt you only for what you said is urgent. The rest waits for your digest.",
+    "Everything I know about you is in my notebook. You can read it and remove anything.",
+    "If someone claims to be you, or claims something is urgent, I check before I act.",
 ]
-TOPIC_IDEAS = ["What I learned this month", "A lesson from a recent project", "Why I'm building with AI"]
+CALL_QUESTIONS = [
+    {"id": "q1", "text": "Tell me a little about yourself and what you do."},
+    {"id": "q2", "text": "What does a normal week look like for you? When are you hardest to reach?"},
+    {"id": "q3", "text": "Who are the people I'll hear from most, and how do you know them?"},
+    {"id": "q4", "text": "Is there anything I should always be careful with, or never share?"},
+]
+CALL_ACKS = ["Got it, thanks.", "That's helpful.", "Thanks, noted.", "Perfect."]
+HHMM = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
 
 
 @dataclass
@@ -70,75 +100,43 @@ def first_name(person: Person) -> str:
     return person.display_name.split()[0] if person.display_name.strip() else "there"
 
 
-def lines_for(step: str, person: Person, agent_name: str, answers: dict[str, Any]) -> list[str]:
+def lines_for(step: str, person: Person, agent_name: str) -> list[str]:
     name = first_name(person)
     if step == "hello":
         return [
-            f"Hi {name}, I'm {agent_name}. Thanks for hiring me.",
-            "Before anything else: I'm an AI, not a person. I don't have feelings, but I keep a careful notebook, "
-            "and I get better at working with you every week.",
-            "Right now I'm at the Infant stage. I watch, ask questions and draft. Nothing I write goes anywhere "
-            "unless you say yes.",
+            f"Hi {name}, I'm {agent_name}, your personal assistant. Thanks for hiring me.",
+            "First, so there's no confusion: I'm an AI, not a person. When you're busy, people can talk to me "
+            "instead. I'll help where you let me, take clear messages, and only interrupt you when something "
+            "really can't wait.",
+            "I'm new, so I start at the Infant stage: I watch, ask and learn. I won't send anything or make "
+            "promises for you without your yes.",
         ]
     if step == "about":
-        return ["Tell me a little about what you do. A sentence or two is plenty."]
-    if step == "goals":
-        return ["Thanks. What do you want LinkedIn to do for you? Pick as many as fit."]
-    if step == "voice":
         return [
-            "Now your voice. Paste a post you wrote and liked, or one by someone whose style you'd like to borrow. "
-            "I'll study it. Then pick a few words for how you like to sound.",
+            "Let's start with you. Pick whatever's easiest: tell me here, share your resume or a few links, "
+            "or hop on a quick video call. Mix and match."
         ]
+    if step == "people":
+        return [
+            "Who matters most to you? Family, your boss, your team, key clients. Tell me who should always "
+            "get through, even when you're busy."
+        ]
+    if step == "urgent":
+        return ["What counts as urgent for you? I'll only interrupt you for these. Everything else goes in a digest."]
+    if step == "reach":
+        return ["When something is urgent, how should I reach you? And when should I stay quiet?"]
+    if step == "share":
+        return ["People will ask me things about you. What am I allowed to tell them?"]
     if step == "rules":
         return ["Before we start, here's how I work, so there are no surprises."]
-    if step == "channels":
-        return ["Where should I find you? We can always talk right here. I can also be on your phone through Telegram."]
-    if step == "first_task":
-        return ["Last thing. Want me to draft your first post? Give me a topic, or pick one of these."]
+    if step == "connect":
+        return [
+            "Last step, and it's optional: connect the apps you use, so I can reach you there and people can "
+            "reach me. You can always do this later."
+        ]
     if step == "done":
-        return [f"That's us set up, {name}. Everything you told me is in my notebook. Let's get to work."]
+        return [f"That's us set up, {name}. Everything you told me is in my notebook, and you can change any of it."]
     return []
-
-
-def input_for(step: str, *, telegram_available: bool, telegram_linked: bool, answers: dict[str, Any]) -> dict[str, Any]:
-    if step == "hello":
-        return {"kind": "chips", "options": ["Nice to meet you", "What comes after Infant?"]}
-    if step == "about":
-        return {
-            "kind": "text",
-            "placeholder": "e.g. I lead applied AI at a consultancy in Singapore",
-            "multiline": True,
-        }
-    if step == "goals":
-        return {"kind": "multi", "options": GOALS, "other": True, "submit": "These are my goals"}
-    if step == "voice":
-        return {
-            "kind": "voice",
-            "placeholder": "Paste a post here (optional)",
-            "options": TONES,
-            "submit": "That's my voice",
-        }
-    if step == "rules":
-        return {"kind": "rules", "items": RULES, "submit": "Sounds good"}
-    if step == "channels":
-        return {
-            "kind": "channels",
-            "telegram_available": telegram_available,
-            "telegram_linked": telegram_linked,
-            "invite_url": answers.get("telegram_invite_url"),
-        }
-    if step == "first_task":
-        return {"kind": "topic", "options": TOPIC_IDEAS, "placeholder": "Or type your own topic", "skip": "Not now"}
-    return {"kind": "none"}
-
-
-def state_for(session: Session, person: Person) -> Onboarding:
-    row = session.scalar(select(Onboarding).where(Onboarding.person_id == person.id))
-    if row is None:
-        row = Onboarding(person_id=person.id, step="hello", answers={})
-        session.add(row)
-        session.flush()
-    return row
 
 
 class Onboarder:
@@ -149,137 +147,275 @@ class Onboarder:
 
     # --- views -------------------------------------------------------------------
 
-    def view(
-        self, session: Session, person: Person, extra: list[str] | None = None, hint: str | None = None
-    ) -> StepView:
-        state = state_for(session, person)
+    def state(self, session: Session, person: Person) -> Onboarding:
+        row = session.scalar(select(Onboarding).where(Onboarding.person_id == person.id))
+        if row is None:
+            row = Onboarding(person_id=person.id, step="hello", answers={})
+            session.add(row)
+            session.flush()
+        return row
+
+    def view(self, session: Session, person: Person, hint: str | None = None) -> StepView:
+        state = self.state(session, person)
         step = state.step
-        index = STEPS.index(step)
-        providers = linked_providers(session, person)
         return StepView(
             step=step,
-            index=index,
+            index=STEPS.index(step),
             total=len(LABELS),
             labels=list(LABELS.values()),
-            ava=(extra or []) + lines_for(step, person, self.settings.agent_name, state.answers or {}),
-            input=input_for(
-                step,
-                telegram_available=bool(self.telegram_username),
-                telegram_linked="telegram" in providers,
-                answers=state.answers or {},
-            ),
+            ava=lines_for(step, person, self.settings.agent_name),
+            input=self.input_for(session, person, step, state.answers or {}),
             done=step == "done",
             hint=hint,
         )
 
+    def input_for(self, session: Session, person: Person, step: str, answers: dict[str, Any]) -> dict[str, Any]:
+        if step == "hello":
+            return {"kind": "chips", "options": ["Nice to meet you", "What will you do for me?"]}
+        if step == "about":
+            return {
+                "kind": "intro",
+                "placeholder": "e.g. I run a 40-person AI consultancy in Singapore. Most of my week is client work…",
+                "documents": documents_view(session, person),
+                "facts": facts_count(session, person),
+                "call_questions": len(CALL_QUESTIONS),
+            }
+        if step == "people":
+            return {
+                "kind": "people",
+                "relationships": RELATIONSHIPS,
+                "existing": [
+                    {"name": p.display_name, "relationship": c.relationship, "vip": c.vip}
+                    for c, p in contacts_of(session, person)
+                ],
+                "submit": "These are my people",
+                "skip": "Skip for now",
+            }
+        if step == "urgent":
+            pref = preferences_for(session, person)
+            return {
+                "kind": "urgent",
+                "options": URGENT_OPTIONS,
+                "selected": pref.urgent_topics or URGENT_OPTIONS[:2],
+                "digests": DIGESTS,
+                "digest": pref.digest,
+                "submit": "That's what's urgent",
+            }
+        if step == "reach":
+            pref = preferences_for(session, person)
+            providers = linked_providers(session, person)
+            return {
+                "kind": "reach",
+                "channels": [
+                    {"value": "app", "label": "In the app", "available": True, "note": ""},
+                    {
+                        "value": "telegram",
+                        "label": "Telegram",
+                        "available": "telegram" in providers,
+                        "note": "" if "telegram" in providers else "Connect Telegram in the last step first",
+                    },
+                    {"value": "call", "label": "Phone call", "available": False, "note": "Coming soon"},
+                ],
+                "channel": pref.interrupt_channel,
+                "quiet_start": pref.quiet_start,
+                "quiet_end": pref.quiet_end,
+                "vip_breaks_quiet": pref.vip_breaks_quiet,
+                "timezone": pref.timezone,
+                "submit": "Save how to reach me",
+            }
+        if step == "share":
+            pref = preferences_for(session, person)
+            return {
+                "kind": "share",
+                "options": SHARE_OPTIONS,
+                "selected": pref.shareable if answers.get("share_saved") else ["availability", "in_meeting"],
+                "never": pref.never_share,
+                "never_placeholder": "Anything I must never share? e.g. my phone number, my family's details",
+                "submit": "That's what you can share",
+                "skip": "Share nothing for now",
+            }
+        if step == "rules":
+            return {"kind": "rules", "items": RULES, "submit": "Sounds good"}
+        if step == "connect":
+            providers = linked_providers(session, person)
+            return {
+                "kind": "connect",
+                "telegram_available": bool(self.telegram_username),
+                "telegram_linked": "telegram" in providers,
+                "invite_url": answers.get("telegram_invite_url"),
+                "submit": "Finish",
+            }
+        return {"kind": "none"}
+
     def start(self, session: Session, person: Person) -> None:
-        """Called once at hire: Ava's first lines go into the conversation."""
-        self._say(session, person, lines_for("hello", person, self.settings.agent_name, {}))
+        """Called once at hire: the agent's first lines go into the conversation."""
+        self._say(session, person, lines_for("hello", person, self.settings.agent_name))
 
     def ensure_started(self, session: Session, person: Person) -> None:
-        """A manager who never went through hiring in the app (added from the command
-        line, say) still gets Ava's introduction the first time they open it."""
-        if state_for(session, person).step != "hello":
+        """Say the introduction once, the first time the owner opens the app."""
+        if self.state(session, person).step != "hello":
             return
         _, ctx, _ = self._context(session, person)
-        said_anything = session.scalar(select(Event.id).where(Event.context_id == ctx.id).limit(1))
-        if said_anything is None:
+        if session.scalar(select(Event.id).where(Event.context_id == ctx.id).limit(1)) is None:
             self.start(session, person)
 
     # --- answers -------------------------------------------------------------------
 
-    def answer(
-        self, session: Session, person: Person, step: str, payload: dict[str, Any]
-    ) -> tuple[StepView, str | None]:
-        """Record an answer and move on. Returns the next view, plus a topic when
-        the person asked for a first draft: the caller runs that chat turn after
-        this transaction commits (it uses its own transaction)."""
-        state = state_for(session, person)
+    def answer(self, session: Session, person: Person, step: str, payload: dict[str, Any]) -> StepView:
+        """Record an answer and move on (or stay, with a hint, if more is needed)."""
+        state = self.state(session, person)
         if step != state.step:
-            return self.view(session, person), None  # stale tab: show where we really are
+            return self.view(session, person)  # stale tab: show where we really are
         answers = dict(state.answers or {})
         extra: list[str] = []
-        name = first_name(person)
+        name = person.display_name
 
         if step == "hello":
-            choice = str(payload.get("choice", "Nice to meet you"))
+            choice = str(payload.get("choice", "Nice to meet you"))[:100]
             self._hear(session, person, choice)
-            if choice.startswith("What comes after"):
+            if choice.startswith("What will you"):
                 extra = [
-                    "As I learn, I move up: Child (I draft and suggest on my own), Adolescent (I can publish inside "
-                    "themes you've approved, with time for you to stop me) and Adult (I work on my own within my "
-                    "limits). I only move up when the numbers show I've learned, and you sign off.",
+                    "When you're in a meeting or heads-down, people can message me. I'll answer what you've "
+                    "allowed, take a proper message for the rest, and decide with your rules whether it can "
+                    "wait for your digest or needs you now.",
+                    "As I learn, I move up: Child, Adolescent, then Adult, taking on more each time, but only "
+                    "when the numbers show I've learned and you sign off.",
                 ]
+
         elif step == "about":
-            text = str(payload.get("text", "")).strip()
-            if not text:
-                return self.view(session, person, hint="Even one line helps. What do you do?"), None
-            self._hear(session, person, text)
-            answers["about"] = text[:1000]
-            self._remember(session, person, f"About {person.display_name}: {text[:1000]}")
-        elif step == "goals":
-            picked = [str(g) for g in payload.get("goals", []) if str(g).strip()][:8]
-            other = str(payload.get("other", "")).strip()
+            mode = str(payload.get("mode", "chat"))
+            if mode == "chat":
+                text = str(payload.get("text", "")).strip()[:4000]
+                if not text:
+                    return self.view(session, person, hint="Even one line helps. What do you do?")
+                self._hear(session, person, text)
+                remember_fact(
+                    session, owner=person, content=f"{name} says: {text}", category="about", source="intro_chat"
+                )
+                facts = extract_facts(self.agent, owner_name=name, text=text, source="the owner introducing themselves")
+                for f in facts:
+                    remember_fact(
+                        session, owner=person, content=f.content, category=f.category, source="intro_chat",
+                        confidence=f.confidence,
+                    )  # fmt: skip
+                extra = [f"Thanks, {first_name(person)}. I've noted that."]
+            else:  # "continue": after sharing files, links or a call
+                if facts_count(session, person) == 0 and not documents_view(session, person):
+                    return self.view(session, person, hint="Share at least one thing about yourself first.")
+                self._hear(session, person, "That's me for now")
+                extra = [self._learned_summary(session, person)]
+
+        elif step == "people":
+            people = payload.get("people", []) if not payload.get("skip") else []
+            added = []
+            for p in people[:30] if isinstance(people, list) else []:
+                pname = " ".join(str(p.get("name", "")).split())[:120]
+                if not pname:
+                    continue
+                rel = str(p.get("relationship", "Other"))
+                rel = rel if rel in RELATIONSHIPS else "Other"
+                vip = bool(p.get("vip"))
+                add_contact(session, owner=person, name=pname, relationship=rel.lower(), vip=vip)
+                remember_fact(
+                    session, owner=person, category="person", source="intro_chat",
+                    content=f"{pname} is {name}'s {rel.lower()}"
+                    + ("; they can always get through, even when busy." if vip else "."),
+                )  # fmt: skip
+                added.append((pname, vip))
+            if added:
+                vips = [n for n, v in added if v]
+                said = ", ".join(n + (" (always)" if v else "") for n, v in added)
+                self._hear(session, person, said)
+                extra = [
+                    f"Got it: {_join([n for n, _ in added])}."
+                    + (f" {_join(vips)} can always get through." if vips else "")
+                ]
+            else:
+                self._hear(session, person, "Skip for now")
+                extra = ["No problem. You can add people any time from your notebook."]
+
+        elif step == "urgent":
+            topics = [str(t)[:200] for t in payload.get("topics", []) if str(t).strip()][:12]
+            other = str(payload.get("other", "")).strip()[:200]
             if other:
-                picked.append(other[:200])
-            if not picked:
-                return self.view(session, person, hint="Pick at least one, or write your own."), None
-            self._hear(session, person, ", ".join(picked))
-            answers["goals"] = picked
-            self._remember(session, person, f"{person.display_name}'s LinkedIn goals: {', '.join(picked)}")
-        elif step == "voice":
-            sample = str(payload.get("sample", "")).strip()[:3000]
-            tones = [str(t) for t in payload.get("tones", []) if str(t).strip()][:6]
-            said = ", ".join(tones) if tones else "No tone picked"
-            self._hear(session, person, (f"{said}. Here's a post I like:\n\n{sample}" if sample else said))
-            answers["tones"] = tones
-            if tones:
-                self._remember(session, person, f"{person.display_name} likes to sound: {', '.join(tones)}")
-            if sample:
-                answers["sample"] = sample
-                self._remember(session, person, f"A post {person.display_name} likes, as a style reference: {sample}")
-                summary = self._study_voice(sample, tones)
-                if summary:
-                    self._remember(
-                        session, person, f"What {self.settings.agent_name} noticed about the voice: {summary}"
-                    )
-                    extra = [f"Here's what I noticed: {summary}"]
-                else:
-                    extra = ["Saved. I'll study it properly once my Claude brain is connected."]
+                topics.append(other)
+            if not topics:
+                return self.view(session, person, hint="Pick at least one, or write your own.")
+            digest = str(payload.get("digest", "evening"))
+            digest = digest if digest in {d["value"] for d in DIGESTS} else "evening"
+            pref = preferences_for(session, person)
+            pref.urgent_topics = topics
+            pref.digest = digest
+            label = next(d["label"] for d in DIGESTS if d["value"] == digest).lower()
+            self._hear(session, person, f"Urgent: {'; '.join(topics)}. Digest: {label}.")
+            remember_fact(
+                session, owner=person, category="urgency", source="intro_chat",
+                content=f"{name} wants to be interrupted only for: {'; '.join(topics)}.",
+            )  # fmt: skip
+
+        elif step == "reach":
+            pref = preferences_for(session, person)
+            providers = linked_providers(session, person)
+            channel = str(payload.get("channel", "app"))
+            if channel not in {"app"} | ({"telegram"} if "telegram" in providers else set()):
+                channel = "app"
+            start, end = str(payload.get("quiet_start", "22:00")), str(payload.get("quiet_end", "07:00"))
+            if not (HHMM.match(start) and HHMM.match(end)):
+                return self.view(session, person, hint="Use times like 22:00 and 07:00.")
+            tz = str(payload.get("timezone", pref.timezone))[:64]
+            try:
+                ZoneInfo(tz)
+            except (ZoneInfoNotFoundError, ValueError):
+                tz = pref.timezone
+            pref.interrupt_channel, pref.quiet_start, pref.quiet_end, pref.timezone = channel, start, end, tz
+            pref.vip_breaks_quiet = bool(payload.get("vip_breaks_quiet", True))
+            where = "here in the app" if channel == "app" else "on Telegram"
+            self._hear(
+                session,
+                person,
+                f"Reach me {where}. Quiet hours {start} to {end}"
+                + (", except for the people who can always get through." if pref.vip_breaks_quiet else "."),
+            )
+            remember_fact(
+                session, owner=person, category="availability", source="intro_chat",
+                content=f"{name}'s quiet hours are {start}–{end} ({tz}); urgent messages go {where}.",
+            )  # fmt: skip
+
+        elif step == "share":
+            pref = preferences_for(session, person)
+            if payload.get("skip"):
+                chosen: list[str] = []
+            else:
+                chosen = [str(v) for v in payload.get("shareable", []) if str(v) in SHARE_LABELS]
+            pref.shareable = chosen
+            pref.never_share = str(payload.get("never", "")).strip()[:1000]
+            answers["share_saved"] = True
+            said = "; ".join(SHARE_LABELS[c] for c in chosen) or "Nothing for now"
+            self._hear(session, person, said + (f". Never share: {pref.never_share}" if pref.never_share else ""))
+            if pref.never_share:
+                remember_fact(
+                    session, owner=person, category="sharing", source="intro_chat",
+                    content=f"{name} asked that this is never shared with anyone: {pref.never_share}",
+                )  # fmt: skip
+
         elif step == "rules":
             self._hear(session, person, "Sounds good")
             answers["rules_accepted_at"] = datetime.now(UTC).isoformat()
             audit(session, "app", "ground_rules_accepted", person_id=person.id)
-        elif step == "channels":
-            choice = str(payload.get("choice", "here"))
-            if choice == "telegram" and self.telegram_username:
-                from agi_agent.app.accounts import create_invite
 
+        elif step == "connect":
+            choice = str(payload.get("choice", "done"))
+            if choice == "telegram" and self.telegram_username:
                 code = create_invite(session, person, "telegram")
                 answers["telegram_invite_url"] = f"https://t.me/{self.telegram_username}?start={code}"
                 state.answers = answers
-                return (
-                    self.view(
-                        session,
-                        person,
-                        hint="Open Telegram with the button and press Start. The link works once, for 15 minutes.",
-                    ),
-                    None,
+                return self.view(
+                    session,
+                    person,
+                    hint="Open Telegram with the button and press Start. The link works once, for 15 minutes.",
                 )
-            label = {"here": "Here in the app is fine", "telegram_done": "I've connected Telegram"}.get(choice, choice)
-            self._hear(session, person, label)
+            self._hear(session, person, "All done")
             answers.pop("telegram_invite_url", None)
-        elif step == "first_task":
-            topic = str(payload.get("topic", "")).strip()
-            if topic:
-                answers["first_topic"] = topic[:300]
-                state.answers = answers
-                state.step = "done"
-                state.completed_at = datetime.now(UTC)
-                audit(session, "app", "onboarding_completed", person_id=person.id)
-                session.flush()
-                return self.view(session, person), topic[:300]
-            self._hear(session, person, "Not now")
 
         # Advance to the next step and say its opening lines.
         nxt = STEPS[STEPS.index(step) + 1]
@@ -291,25 +427,68 @@ class Onboarder:
         session.flush()
         if extra:
             self._say(session, person, extra)
-        self._say(session, person, lines_for(nxt, person, self.settings.agent_name, answers))
-        _ = name
-        return self.view(session, person, extra), None
+        lines = lines_for(nxt, person, self.settings.agent_name)
+        if nxt == "done":
+            lines = lines + [self._learned_summary(session, person, closing=True)]
+        self._say(session, person, lines)
+        return self.view(session, person)
 
-    def draft_first_post(self, person_id: Any, topic: str) -> None:
-        """After the onboarding transaction commits: a normal chat turn writes the
-        draft into the conversation, then Ava's closing line follows it."""
-        from agi_agent.db.session import session_scope
+    # --- the video call introduction -------------------------------------------------
 
-        with session_scope() as s:
-            person = s.get(Person, person_id)
-        if person is None:
-            return
-        self.agent.handle(web_message(person, f"Please draft my first LinkedIn post about: {topic}"))
-        with session_scope() as s:
-            person = s.get(Person, person_id)
-            self._say(s, person, lines_for("done", person, self.settings.agent_name, {}))
+    def call_start(self) -> dict[str, Any]:
+        return {"first": CALL_QUESTIONS[0], "total": len(CALL_QUESTIONS)}
+
+    def call_answer(self, session: Session, person: Person, question_id: str, transcript: str) -> dict[str, Any]:
+        """One spoken answer: keep it in the conversation and as knowledge, then ask the next question."""
+        ids = [q["id"] for q in CALL_QUESTIONS]
+        if question_id not in ids:
+            raise ValueError("unknown question")
+        i = ids.index(question_id)
+        question = CALL_QUESTIONS[i]["text"]
+        transcript = " ".join(transcript.split())[:4000]
+        if transcript:
+            _, ctx, aud = self._context(session, person)
+            log_event(
+                session, context=ctx, direction="out", content=question, audience=aud,
+                meta={"onboarding": True, "via": "call"},
+            )  # fmt: skip
+            self._hear(session, person, transcript, via="call")
+            remember_fact(
+                session, owner=person, category="about", source="intro_call",
+                content=f"Asked \"{question}\", {person.display_name} said: {transcript}",
+            )  # fmt: skip
+            for f in extract_facts(
+                self.agent, owner_name=person.display_name, text=f"Q: {question}\nA: {transcript}", source="video call"
+            ):
+                remember_fact(
+                    session, owner=person, content=f.content, category=f.category, source="intro_call",
+                    confidence=f.confidence,
+                )  # fmt: skip
+        nxt = CALL_QUESTIONS[i + 1] if i + 1 < len(CALL_QUESTIONS) else None
+        return {"next": nxt, "reply": CALL_ACKS[i % len(CALL_ACKS)] if nxt else None}
+
+    def call_finish(self, session: Session, person: Person) -> None:
+        self._say(session, person, ["Thanks for the call. " + self._learned_summary(session, person)])
 
     # --- helpers -------------------------------------------------------------------
+
+    def _learned_summary(self, session: Session, person: Person, closing: bool = False) -> str:
+        n = facts_count(session, person)
+        docs = len(documents_view(session, person))
+        people = len(contacts_of(session, person))
+        pref = preferences_for(session, person)
+        if closing:
+            parts = [f"{n} things about you"]
+            if people:
+                parts.append(f"{people} {'person' if people == 1 else 'people'} who matter to you")
+            urgent = (
+                f" I'll interrupt you for: {_join([t.lower() for t in pref.urgent_topics])}."
+                if pref.urgent_topics
+                else ""
+            )
+            return f"So far I know {_join(parts)}.{urgent}"
+        src = f" from {docs} {'document' if docs == 1 else 'documents and links'}" if docs else ""
+        return f"Here's where I am: {n} things about you in my notebook{src}. You can read them any time."
 
     def _context(self, session: Session, person: Person):
         msg = web_message(person, "")
@@ -323,47 +502,54 @@ class Onboarder:
         for line in lines:
             log_event(session, context=ctx, direction="out", content=line, audience=aud, meta={"onboarding": True})
 
-    def _hear(self, session: Session, person: Person, text: str) -> None:
+    def _hear(self, session: Session, person: Person, text: str, via: str = "chat") -> None:
         sender, ctx, aud = self._context(session, person)
         log_event(
-            session, context=ctx, direction="in", content=text, audience=aud, sender=sender, meta={"onboarding": True}
+            session, context=ctx, direction="in", content=text, audience=aud, sender=sender,
+            meta={"onboarding": True, "via": via},
+        )  # fmt: skip
+
+
+def facts_count(session: Session, person: Person) -> int:
+    return (
+        session.scalar(
+            select(func.count())
+            .select_from(MemoryItem)
+            .where(MemoryItem.subject_person_ids.contains([person.id]), MemoryItem.valid_to.is_(None))
         )
+        or 0
+    )
 
-    def _remember(self, session: Session, person: Person, content: str) -> None:
-        _, ctx, _aud = self._context(session, person)
-        session.add(
-            MemoryItem(
-                content=content,
-                subject_person_ids=[person.id],
-                origin_context_id=ctx.id,
-                allowed_kind="persons",
-                allowed_person_ids=[person.id],
-                min_trust=2,
-            )
+
+def documents_view(session: Session, person: Person) -> list[dict[str, Any]]:
+    docs = session.scalars(
+        select(Document)
+        .where(Document.owner_person_id == person.id, Document.removed_at.is_(None))
+        .order_by(Document.created_at)
+    ).all()
+    out = []
+    for d in docs:
+        n = session.scalar(
+            select(func.count())
+            .select_from(MemoryItem)
+            .where(MemoryItem.document_id == d.id, MemoryItem.valid_to.is_(None))
         )
-        audit(session, "memory", "remembered", source="onboarding")
+        out.append(
+            {
+                "id": str(d.id),
+                "kind": d.kind,
+                "title": d.title or d.source,
+                "source": d.source,
+                "status": d.status,
+                "facts": n or 0,
+                "warnings": list(d.warnings or []),
+            }
+        )
+    return out
 
-    def _study_voice(self, sample: str, tones: list[str]) -> str | None:
-        from agi_agent.factory import uses_real_model
 
-        if not uses_real_model(self.settings):
-            return None
-        try:
-            result = self.agent.llm.complete(
-                purpose="onboarding_voice",
-                model=self.settings.model_chat,
-                system=[
-                    SystemBlock(
-                        "You study a LinkedIn post to learn the writer's voice. Reply with two short sentences, "
-                        "addressed to the writer as 'you', naming concrete habits (openings, sentence length, "
-                        "structure, tone). No preamble, no flattery."
-                    )
-                ],
-                messages=[
-                    {"role": "user", "content": f"Tones they picked: {', '.join(tones) or 'none'}\n\nPost:\n{sample}"}
-                ],
-                max_tokens=160,
-            )
-            return result.text.strip() or None
-        except Exception:  # budget cap, kill switch or API error: onboarding carries on
-            return None
+def _join(items: list[str]) -> str:
+    items = [i for i in items if i]
+    if len(items) <= 1:
+        return "".join(items)
+    return ", ".join(items[:-1]) + " and " + items[-1]

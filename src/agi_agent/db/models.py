@@ -18,6 +18,7 @@ from typing import Any
 from sqlalchemy import (
     Boolean,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -166,6 +167,74 @@ class MemoryItem(Scoped, Base):
     min_trust: Mapped[int] = mapped_column(Integer, default=2)
     valid_from: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     valid_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # What kind of fact this is, where it came from, and how sure we are.
+    # category: about | work | person | preference | urgency | availability | sharing | other
+    category: Mapped[str] = mapped_column(String(30), default="other", server_default="other", index=True)
+    # source: chat | intro_chat | intro_call | document | link | telegram | slack | owner_edit
+    source: Mapped[str] = mapped_column(String(30), default="chat", server_default="chat")
+    document_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("document.id"), nullable=True, index=True)
+    confidence: Mapped[float] = mapped_column(Float, default=1.0, server_default="1")
+
+
+class Document(Scoped, Base):
+    """Something the owner shared for the agent to read: a file or a link.
+
+    The extracted text is kept so facts can be traced back to it; the original
+    file bytes are not stored. Removing a document also retires its facts.
+    """
+
+    __tablename__ = "document"
+    __table_args__ = (UniqueConstraint("owner_person_id", "sha256", name="uq_document_owner_sha"),)
+
+    owner_person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(20))  # pdf | docx | text | web | github
+    title: Mapped[str] = mapped_column(String(300), default="")
+    source: Mapped[str] = mapped_column(Text, default="")  # file name or URL
+    sha256: Mapped[str] = mapped_column(String(64))
+    size_bytes: Mapped[int] = mapped_column(Integer, default=0)
+    text: Mapped[str] = mapped_column(Text, default="")
+    # stored: text kept, facts not read yet (no model) · read: facts extracted · failed
+    status: Mapped[str] = mapped_column(String(20), default="stored")
+    warnings: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
+    removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# --- The owner's people and preferences ----------------------------------------------
+
+
+class Contact(Scoped, Base):
+    """Someone who matters to the owner. They are a Person too, so the agent can
+    recognise them once their Telegram, Slack or email is linked."""
+
+    __tablename__ = "contact"
+    __table_args__ = (UniqueConstraint("owner_person_id", "person_id", name="uq_contact_owner_person"),)
+
+    owner_person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), index=True)
+    person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"))
+    relationship: Mapped[str] = mapped_column(String(30), default="other")  # family | partner | boss | team | ...
+    vip: Mapped[bool] = mapped_column(Boolean, default=False)  # can always get through, even in quiet hours
+    notes: Mapped[str] = mapped_column(Text, default="")
+    removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class OwnerPreference(Scoped, Base):
+    """How the owner wants the assistant to triage, interrupt and share. One row per owner."""
+
+    __tablename__ = "owner_preference"
+
+    person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), unique=True)
+    urgent_topics: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
+    digest: Mapped[str] = mapped_column(String(20), default="evening")  # morning | evening | both | none
+    interrupt_channel: Mapped[str] = mapped_column(String(20), default="app")  # app | telegram | slack
+    quiet_start: Mapped[str] = mapped_column(String(5), default="22:00")  # HH:MM, owner's timezone
+    quiet_end: Mapped[str] = mapped_column(String(5), default="07:00")
+    vip_breaks_quiet: Mapped[bool] = mapped_column(Boolean, default=True)
+    timezone: Mapped[str] = mapped_column(String(64), default="Asia/Singapore")
+    shareable: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)  # what may be told to others
+    never_share: Mapped[str] = mapped_column(Text, default="")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
+    )
 
 
 # --- Governance ----------------------------------------------------------------
@@ -292,6 +361,28 @@ class AgentHire(TenantScoped, Base):
     status: Mapped[str] = mapped_column(String(20), default="active")  # active | ended
     notice: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# --- Connections (encrypted third-party credentials) --------------------------------
+
+
+class IntegrationSecret(TenantScoped, Base):
+    """One credential for a connected service, encrypted (see agi_agent.vault).
+    The plaintext never leaves the server; the app only ever shows `hint`."""
+
+    __tablename__ = "integration_secret"
+    __table_args__ = (UniqueConstraint("tenant_id", "provider", "name", name="uq_integration_secret_slot"),)
+
+    provider: Mapped[str] = mapped_column(String(30))  # anthropic | telegram | slack
+    name: Mapped[str] = mapped_column(String(40))  # api_key | bot_token | app_token | team_id
+    ciphertext: Mapped[str] = mapped_column(Text)
+    hint: Mapped[str] = mapped_column(String(40), default="")  # masked, e.g. sk-ant-…4f2a
+    meta: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)  # e.g. the bot's @username
+    set_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user_account.id"), nullable=True)
+    validated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
+    )
 
 
 class Onboarding(Scoped, Base):

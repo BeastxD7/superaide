@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hmac
 import logging
+import threading
 from collections.abc import Callable
 from typing import Any
 
@@ -73,23 +74,28 @@ class TelegramMessenger:
         self._send(context.external_id, text)
 
 
-def poll_forever(token: str, handle: Callable[[InboundMessage], Any]) -> None:
+def poll_forever(token: str, handle: Callable[[InboundMessage], Any], stop: threading.Event | None = None) -> None:
     """Long-polling for local development (no public URL needed).
 
     Updates come straight from Telegram over TLS with our bot token, so they
-    count as verified.
+    count as verified. Returns when `stop` is set (within one poll, ~20 s).
     """
-    http = httpx.Client(timeout=40)
+    stop = stop or threading.Event()
+    http = httpx.Client(timeout=30)
     base = f"https://api.telegram.org/bot{token}"
-    http.post(f"{base}/deleteWebhook")  # polling and webhooks are mutually exclusive
+    try:
+        http.post(f"{base}/deleteWebhook")  # polling and webhooks are mutually exclusive
+    except httpx.HTTPError as exc:
+        log.warning("telegram deleteWebhook failed: %s", exc)
     offset = 0
     log.info("Telegram polling started")
-    while True:
+    while not stop.is_set():
         try:
-            r = http.get(f"{base}/getUpdates", params={"timeout": 30, "offset": offset})
+            r = http.get(f"{base}/getUpdates", params={"timeout": 20, "offset": offset})
             data = r.json()
         except (httpx.HTTPError, ValueError) as exc:
             log.warning("telegram poll error: %s", exc)
+            stop.wait(3)
             continue
         for update in data.get("result", []):
             offset = max(offset, update["update_id"] + 1)

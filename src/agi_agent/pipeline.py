@@ -22,6 +22,7 @@ from agi_agent.db.models import Context
 from agi_agent.db.session import session_scope
 from agi_agent.identity import linking
 from agi_agent.identity.resolver import Sender, resolve
+from agi_agent.knowledge.profile import owner_brief
 from agi_agent.memory.store import get_or_create_context, log_event, parse_remember, recent_events, remember
 from agi_agent.policy.actions import decide
 from agi_agent.policy.killswitch import is_frozen
@@ -148,8 +149,9 @@ class Agent:
     # --- known people ----------------------------------------------------------
 
     def _think(self, s, sender: Sender, ctx: Context, aud: Audience, msg: InboundMessage) -> tuple[str, list[str]]:
-        memories = visible_memories(s, aud)
-        system = build_system(self.name, sender, aud, memories)
+        is_owner = sender.relation == "manager" and aud.person_ids == {sender.person.id} if sender.person else False
+        memories = visible_memories(s, aud, limit=30 if is_owner else 5)
+        system = build_system(self.name, sender, aud, memories, brief=owner_brief(s, sender, aud))
         messages = build_messages(recent_events(s, ctx), msg.text)
         try:
             result = self.llm.complete(

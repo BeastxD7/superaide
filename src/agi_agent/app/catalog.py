@@ -1,4 +1,4 @@
-"""The agents on the marketplace. Only Ava can be hired today."""
+"""The agents on the marketplace. Only Ava, the personal assistant, can be hired today."""
 
 from __future__ import annotations
 
@@ -12,24 +12,38 @@ def catalog(settings: Settings) -> list[dict[str, Any]]:
         {
             "slug": "ava",
             "name": settings.agent_name,
-            "role": "LinkedIn content strategist",
+            "role": "Personal assistant",
             "status": "available",
             "hue": "indigo",
             "stage": "Infant",
             "price": "Free while in beta",
-            "tagline": "Learns your voice from your edits and drafts posts that sound like you.",
+            "tagline": "Answers for you when you're busy, and only interrupts you when it really matters.",
             "skills": [
-                "Drafts LinkedIn posts in your voice",
-                "Turns your notes and meetings into post ideas",
-                "Learns from every edit you make",
-                "Keeps a notebook you can read and edit",
+                "Handles people who reach out when you're busy",
+                "Knows who matters to you and what counts as urgent",
+                "Interrupts you only for what can't wait",
+                "Shares only what you said it may share",
+                "Keeps a notebook of what it knows, which you can read and edit",
             ],
             "never": [
-                "Posts, sends or deletes anything without your approval",
+                "Makes commitments or sends anything as you without your approval",
                 "Repeats what you say in private to anyone else",
                 "Pretends to be a person",
             ],
             "channels": ["In the app", "Telegram", "Slack"],
+        },
+        {
+            "slug": "leo",
+            "name": "Leo",
+            "role": "LinkedIn content strategist",
+            "status": "coming_soon",
+            "hue": "rose",
+            "stage": "In training",
+            "price": "Coming soon",
+            "tagline": "Learns your voice from your edits and drafts posts that sound like you.",
+            "skills": [],
+            "never": [],
+            "channels": [],
         },
         {
             "slug": "kai",
@@ -40,19 +54,6 @@ def catalog(settings: Settings) -> list[dict[str, Any]]:
             "stage": "In training",
             "price": "Coming soon",
             "tagline": "Picks up small tickets, writes tests first and asks before touching anything risky.",
-            "skills": [],
-            "never": [],
-            "channels": [],
-        },
-        {
-            "slug": "rhea",
-            "name": "Rhea",
-            "role": "Research analyst",
-            "status": "coming_soon",
-            "hue": "rose",
-            "stage": "In training",
-            "price": "Coming soon",
-            "tagline": "Reads the documents you share and answers with the exact page it came from.",
             "skills": [],
             "never": [],
             "channels": [],
