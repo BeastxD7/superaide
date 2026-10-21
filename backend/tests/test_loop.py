@@ -299,3 +299,27 @@ def test_colleagues_keep_the_old_path_and_never_reach_the_owner_tools(agent, man
     assert result.reply == "I'll pass that on."
     with session_scope() as s:
         assert s.scalar(select(Intention)) is None
+
+
+def test_a_cited_block_that_only_repeats_the_quote_is_folded_into_the_sentence_before():
+    # What Haiku 5.5 actually returned in a live run: the claim, then the quote as its own cited block.
+    text, sources = render(
+        [
+            {"type": "text", "text": "Your flight is Friday at 7:10am. "},
+            {
+                "type": "text",
+                "text": "Shashank's flight to Bangalore is on Friday 23 Oct at 7:10am.",
+                "citations": [
+                    {
+                        "type": "search_result_location",
+                        "source": "ava://memory/aaa",
+                        "title": "Note",
+                        "cited_text": "Shashank's flight to Bangalore is on Friday 23 Oct at 7:10am.",
+                    }
+                ],
+            },
+            {"type": "text", "text": "\n\nArjun is picking you up."},
+        ]
+    )
+    assert text == "Your flight is Friday at 7:10am. [1]\n\nArjun is picking you up."
+    assert [s.uri for s in sources] == ["ava://memory/aaa"]
