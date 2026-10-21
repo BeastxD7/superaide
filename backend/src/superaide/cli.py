@@ -12,11 +12,13 @@ from superaide.config import get_settings
 
 def _init_db(_: argparse.Namespace) -> None:
     """Create tables directly (quick start). For real deployments use `alembic upgrade head`."""
+    from superaide.context.vectors import ensure_vector_store
     from superaide.db.models import Base
     from superaide.db.session import ensure_extensions, get_engine
 
     ensure_extensions(get_engine())
     Base.metadata.create_all(get_engine())
+    ensure_vector_store(get_engine())
     print("Tables created.")
 
 
@@ -194,6 +196,8 @@ def _reset_db(args: argparse.Namespace) -> None:
     if not args.yes:
         sys.exit("This deletes all data. Run again with --yes to confirm.")
     engine = get_engine()
+    with engine.begin() as conn:
+        conn.execute(text("DROP TABLE IF EXISTS memory_embedding"))  # outside the ORM metadata
     Base.metadata.drop_all(engine)
     with engine.begin() as conn:
         conn.execute(text("DROP TABLE IF EXISTS alembic_version"))

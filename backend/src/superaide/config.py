@@ -50,6 +50,14 @@ class Settings(BaseSettings):
     llm_providers: dict[str, dict[str, str]] = Field(default_factory=dict, exclude=True)
     # Use a scripted fake model instead of the real API (tests, offline demos).
     fake_llm: bool = False
+    # Embeddings for recall (ADR 0008 WP2b): local (on this machine, free, the default) | voyage
+    # (Voyage AI's API: private facts leave the machine, so it's opt-in) | fake (tests) | none
+    embedder: str = "local"
+    embed_model_local: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"  # 50+ languages
+    embed_cache_dir: str = ""  # where the local model is kept; default ~/.cache/superaide/models
+    voyage_api_key: str = ""
+    embed_model_voyage: str = "voyage-4-lite"
+    embed_monthly_usd: float = 1.00  # cap on Voyage spend in any 30 days (local costs nothing)
     # Let Ava search and read the web for the owner (costs US$0.01 a search, from the research budget)
     web_tools_enabled: bool = True
 

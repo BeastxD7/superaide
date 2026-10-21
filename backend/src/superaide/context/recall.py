@@ -135,7 +135,12 @@ def recall_memories(
             stmt = stmt.join(origin, origin.id == MemoryItem.origin_context_id).where(origin.provider == channel)
         return stmt
 
-    found = _fuse(_arms(session, query, MemoryItem.content, base, limit * 2, strict))[:limit]
+    arms = _arms(session, query, MemoryItem.content, base, limit * 2, strict)
+    if not strict:
+        from superaide.context.vectors import meaning_arm
+
+        arms.append(meaning_arm(session, base, query, limit * 2))
+    found = _fuse(arms)[:limit]
     contexts = _contexts(session, {m.origin_context_id for m in found if m.origin_context_id})
     out = []
     for m in found:

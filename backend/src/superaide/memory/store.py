@@ -229,6 +229,9 @@ def remember(
     )
     session.add(item)
     session.flush()
+    from superaide.context import vectors
+
+    vectors.schedule(session, item)
     audit(session, "memory", "remembered", memory_id=item.id, audience=[str(i) for i in audience.person_ids])
     return item
 

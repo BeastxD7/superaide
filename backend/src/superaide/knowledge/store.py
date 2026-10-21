@@ -88,6 +88,9 @@ def remember_fact(
     )
     session.add(item)
     session.flush()
+    from superaide.context import vectors
+
+    vectors.schedule(session, item)
     audit(session, "memory", "remembered", memory_id=item.id, source=item.source, category=item.category)
     return item
 

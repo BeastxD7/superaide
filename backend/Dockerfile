@@ -22,8 +22,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 FROM python:${PYTHON_VERSION}-slim AS runtime
 RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin app \
-    && mkdir -p /home/app/.config/superaide \
-    && chown -R app:app /home/app/.config
+    && mkdir -p /home/app/.config/superaide /home/app/.cache/superaide \
+    && chown -R app:app /home/app/.config /home/app/.cache
 WORKDIR /app
 COPY --from=build --chown=app:app /app/.venv /app/.venv
 COPY --chown=app:app alembic.ini ./

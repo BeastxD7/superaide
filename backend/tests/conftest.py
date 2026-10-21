@@ -30,6 +30,8 @@ os.environ.update(
         "ADMIN_TOKEN": "test-admin-token",
         "ENABLE_SIMULATOR": "true",
         "FAKE_LLM": "true",
+        "EMBEDDER": "fake",
+        "VOYAGE_API_KEY": "",
         "MAX_SPEND_USD": "10",
         "ANTHROPIC_API_KEY": "",
         "TELEGRAM_BOT_TOKEN": "",
@@ -47,6 +49,7 @@ from superaide.brain.llm import FakeLLM  # noqa: E402
 from superaide.brain.turn import Prediction, RequestedAction, TurnOutput  # noqa: E402
 from superaide.channels.base import FakeMessenger, InboundMessage  # noqa: E402
 from superaide.config import get_settings  # noqa: E402
+from superaide.context.vectors import ensure_vector_store  # noqa: E402
 from superaide.db.models import Base, Person  # noqa: E402
 from superaide.db.session import ensure_extensions, get_engine, session_scope  # noqa: E402
 from superaide.identity.linking import bootstrap_person  # noqa: E402
@@ -62,8 +65,11 @@ OUR_TEAM = "T_OURS"
 def _schema() -> Iterator[None]:
     engine = get_engine()
     ensure_extensions(engine)
+    with engine.begin() as conn:
+        conn.execute(text("DROP TABLE IF EXISTS memory_embedding"))  # outside the ORM metadata
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
+    ensure_vector_store(engine)
     yield
 
 

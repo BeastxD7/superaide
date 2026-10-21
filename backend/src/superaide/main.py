@@ -115,6 +115,13 @@ def create_app(agent: Agent | None = None) -> FastAPI:
             except Exception:
                 log.exception("couldn't start channel listeners")
         if fixed is None and settings.run_jobs_in_api:
+            try:
+                from superaide.context import vectors
+
+                with session_scope() as s:
+                    vectors.start(s)  # load the local embedder in the background; backfill once per model
+            except Exception:
+                log.exception("couldn't start embeddings; recall stays keyword-only")
             worker.start()
         yield
         worker.stop()

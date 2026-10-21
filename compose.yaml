@@ -55,6 +55,8 @@ services:
     volumes:
       # The vault's master key (encrypts connected credentials) survives rebuilds.
       - vault-key:/home/app/.config/superaide
+      # The local embedding model (~220 MB, downloaded once) survives rebuilds.
+      - models:/home/app/.cache/superaide
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -74,3 +76,4 @@ services:
 volumes:
   pgdata:
   vault-key:
+  models:
