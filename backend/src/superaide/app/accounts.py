@@ -25,6 +25,7 @@ from superaide.db.models import (
     Person,
     UserAccount,
 )
+from superaide.db.session import require
 from superaide.identity.trust import Trust
 
 INVITE_TTL_MINUTES = 15
@@ -65,12 +66,12 @@ def hire(session: Session, user: UserAccount, agent_slug: str = "ava") -> Person
     existing = owner_account(session, agent_slug)
     if existing is not None:
         if existing.id == user.id:
-            return session.get(Person, user.person_id)
+            return require(session, Person, user.person_id)
         raise AlreadyHired(existing.display_name)
     now = datetime.now(UTC)
     notice = {"kind": "consent_at_hire", "version": NOTICE_VERSION, "text": NOTICE_TEXT, "at": now.isoformat()}
     session.add(AgentHire(agent_slug=agent_slug, owner_user_id=user.id, notice=notice))
-    person = session.get(Person, user.person_id)
+    person = require(session, Person, user.person_id)
     person.relation = "manager"
     person.notice_basis = notice
     session.flush()

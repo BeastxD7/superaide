@@ -16,7 +16,7 @@ from sqlalchemy import select
 
 from superaide.audit import audit
 from superaide.db.models import Document, Person
-from superaide.db.session import session_scope
+from superaide.db.session import require, session_scope
 from superaide.knowledge.extract import Extracted
 from superaide.knowledge.facts import extract_facts
 from superaide.knowledge.store import remember_fact
@@ -40,7 +40,7 @@ def ingest(agent: Any, owner_id: uuid.UUID, extracted: Extracted, *, size_bytes:
 
     # 1. Keep the text (or find that it was already shared).
     with session_scope() as s:
-        owner = s.get(Person, owner_id)
+        owner = require(s, Person, owner_id)
         existing = s.scalar(
             select(Document).where(
                 Document.owner_person_id == owner_id, Document.sha256 == digest, Document.removed_at.is_(None)
@@ -73,8 +73,8 @@ def ingest(agent: Any, owner_id: uuid.UUID, extracted: Extracted, *, size_bytes:
 
     # 3. Keep the facts, linked to the document.
     with session_scope() as s:
-        owner = s.get(Person, owner_id)
-        doc = s.get(Document, doc_id)
+        owner = require(s, Person, owner_id)
+        doc = require(s, Document, doc_id)
         n = 0
         for f in facts:
             if remember_fact(
@@ -114,11 +114,11 @@ def read_pending(agent: Any, owner_id: uuid.UUID) -> int:
                 )
             )
         ]
-        owner_name = s.get(Person, owner_id).display_name
+        owner_name = require(s, Person, owner_id).display_name
     for doc_id, title, text, kind in pending:
         facts = extract_facts(agent, owner_name=owner_name, text=text, source=title)
         with session_scope() as s:
-            owner, doc = s.get(Person, owner_id), s.get(Document, doc_id)
+            owner, doc = require(s, Person, owner_id), require(s, Document, doc_id)
             for f in facts:
                 remember_fact(
                     s,

@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from superaide.audit import audit
 from superaide.db.models import Contact, Document, MemoryItem, OwnerPreference, Person
+from superaide.db.session import rows_affected
 
 CATEGORIES = ("about", "work", "person", "preference", "urgency", "availability", "sharing", "other")
 SOURCES = ("chat", "intro_chat", "intro_call", "document", "link", "telegram", "slack", "owner_edit")
@@ -69,13 +70,15 @@ def retire_document(session: Session, document: Document) -> int:
     """Remove a shared file or link and every fact that came from it."""
     now = datetime.now(UTC)
     document.removed_at = now
-    n = session.execute(
-        update(MemoryItem)
-        .where(MemoryItem.document_id == document.id, MemoryItem.valid_to.is_(None))
-        .values(valid_to=now)
-    ).rowcount
+    n = rows_affected(
+        session.execute(
+            update(MemoryItem)
+            .where(MemoryItem.document_id == document.id, MemoryItem.valid_to.is_(None))
+            .values(valid_to=now)
+        )
+    )
     audit(session, "memory", "document_removed", document_id=document.id, facts_retired=n)
-    return n or 0
+    return n
 
 
 def preferences_for(session: Session, person: Person) -> OwnerPreference:

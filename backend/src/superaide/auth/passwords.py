@@ -28,7 +28,7 @@ def verify_password(password_hash: str | None, password: str) -> tuple[bool, boo
     """Returns (matches, needs_rehash). Always does the full amount of work."""
     try:
         _hasher.verify(password_hash or _DUMMY_HASH, password)
-    except (VerifyMismatchError, VerificationError, InvalidHashError):
+    except VerifyMismatchError, VerificationError, InvalidHashError:
         return False, False
     if password_hash is None:
         return False, False

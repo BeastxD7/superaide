@@ -22,6 +22,7 @@ from superaide.audit import audit
 from superaide.auth.passwords import hash_password, password_problem, verify_password
 from superaide.config import get_settings
 from superaide.db.models import AuthEvent, Person, UserAccount, UserSession
+from superaide.db.session import rows_affected
 
 # Only refresh last_used_at/expiry this often, so reads don't write on every request.
 TOUCH_EVERY = timedelta(minutes=5)
@@ -216,7 +217,7 @@ def revoke_all(session: Session, user: UserAccount, *, except_token: str | None 
     q = update(UserSession).where(UserSession.user_id == user.id, UserSession.revoked_at.is_(None))
     if except_token:
         q = q.where(UserSession.token_hash != token_hash(except_token))
-    return session.execute(q.values(revoked_at=_now())).rowcount or 0
+    return rows_affected(session.execute(q.values(revoked_at=_now())))
 
 
 def change_password(

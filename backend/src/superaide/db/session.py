@@ -5,8 +5,9 @@ from __future__ import annotations
 from collections.abc import Iterator
 from contextlib import contextmanager
 from functools import lru_cache
+from typing import Any, cast
 
-from sqlalchemy import Engine, create_engine
+from sqlalchemy import CursorResult, Engine, Result, create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from superaide.config import get_settings
@@ -34,3 +35,20 @@ def session_scope(url: str | None = None) -> Iterator[Session]:
         raise
     finally:
         session.close()
+
+
+class NotFound(LookupError):
+    """A row that must exist (it was just checked, or is referenced) is missing."""
+
+
+def require[M](session: Session, model: type[M], ident: Any) -> M:
+    """Like session.get, but raises NotFound instead of returning None."""
+    row = session.get(model, ident)
+    if row is None:
+        raise NotFound(f"{model.__name__} {ident} not found")
+    return row
+
+
+def rows_affected(result: Result[Any]) -> int:
+    """Rows changed by an UPDATE or DELETE (execute() is typed as a plain Result)."""
+    return cast(CursorResult[Any], result).rowcount or 0

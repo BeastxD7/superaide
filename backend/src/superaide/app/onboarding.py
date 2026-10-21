@@ -365,7 +365,7 @@ class Onboarder:
             tz = str(payload.get("timezone", pref.timezone))[:64]
             try:
                 ZoneInfo(tz)
-            except (ZoneInfoNotFoundError, ValueError):
+            except ZoneInfoNotFoundError, ValueError:
                 tz = pref.timezone
             pref.interrupt_channel, pref.quiet_start, pref.quiet_end, pref.timezone = channel, start, end, tz
             pref.vip_breaks_quiet = bool(payload.get("vip_breaks_quiet", True))

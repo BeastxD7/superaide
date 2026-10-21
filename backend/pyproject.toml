@@ -1,7 +1,7 @@
 [project]
 name = "superaide"
 version = "0.1.0"
-description = "An AI hire that grows up like a child, with identity checks you can trust"
+description = "Superaide: AI personal assistants you hire, who work for you across chat channels"
 authors = [
     { name = "Shashank" }
 ]
@@ -37,7 +37,9 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "mypy>=1.19",
     "pytest>=9.1.1",
+    "pytest-cov>=7",
     "ruff>=0.17.1",
 ]
 
@@ -45,9 +47,25 @@ dev = [
 pythonpath = ["."]
 testpaths = ["tests"]
 
+[tool.coverage.run]
+source = ["superaide"]
+branch = true
+
+[tool.coverage.report]
+skip_empty = true
+
+[tool.mypy]
+python_version = "3.14"
+files = ["src"]
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+check_untyped_defs = true
+
 [tool.ruff]
 line-length = 120
-target-version = "py313"
+target-version = "py314"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]

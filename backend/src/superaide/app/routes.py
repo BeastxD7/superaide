@@ -25,7 +25,7 @@ from superaide.app.onboarding import Onboarder, documents_view
 from superaide.auth.routes import current_user_id, require_csrf_header
 from superaide.config import get_settings
 from superaide.db.models import AgentHire, Context, Document, Event, MemoryItem, Person, UserAccount
-from superaide.db.session import session_scope
+from superaide.db.session import require, session_scope
 from superaide.factory import uses_real_model
 from superaide.knowledge import extract
 from superaide.knowledge.ingest import ingest
@@ -59,7 +59,7 @@ def owner_person_id(user_id: uuid.UUID = Depends(current_user_id)) -> uuid.UUID:
         hire = s.scalar(select(AgentHire).where(AgentHire.owner_user_id == user_id, AgentHire.status == "active"))
         if hire is None:
             raise HTTPException(403, "Hire Ava first.")
-        return s.get(UserAccount, user_id).person_id
+        return require(s, UserAccount, user_id).person_id
 
 
 class HireBody(BaseModel):
@@ -110,13 +110,14 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
     @router.post("/hire")
     def hire(body: HireBody, user_id: uuid.UUID = Depends(current_user_id)) -> dict[str, Any]:
         settings = get_settings()
-        if find(settings, body.agent) is None or find(settings, body.agent)["status"] != "available":
+        listing = find(settings, body.agent)
+        if listing is None or listing["status"] != "available":
             raise HTTPException(404, "That agent can't be hired yet")
         if not body.accepted_notice:
             raise HTTPException(400, "Please read and accept how the agent handles what you tell it")
         try:
             with session_scope() as s:
-                user = s.get(UserAccount, user_id)
+                user = require(s, UserAccount, user_id)
                 try:
                     person = accounts.hire(s, user, body.agent)
                 except accounts.AlreadyHired as exc:
@@ -130,7 +131,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
     def me(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         settings = get_agent().settings
         with session_scope() as s:
-            person = s.get(Person, person_id)
+            person = require(s, Person, person_id)
             state = onboarder().state(s, person)
             providers = accounts.linked_providers(s, person)
             return {
@@ -151,7 +152,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
     def onboarding(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         ob = onboarder()
         with session_scope() as s:
-            person = s.get(Person, person_id)
+            person = require(s, Person, person_id)
             ob.ensure_started(s, person)
             return ob.view(s, person).as_dict()
 
@@ -159,13 +160,13 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
     def onboarding_answer(body: AnswerBody, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         ob = onboarder()
         with session_scope() as s:
-            return ob.answer(s, s.get(Person, person_id), body.step, body.answer).as_dict()
+            return ob.answer(s, require(s, Person, person_id), body.step, body.answer).as_dict()
 
     # --- introducing yourself with files, links or a video call -------------------
 
     def _said(person_id: uuid.UUID, line: str) -> None:
         with session_scope() as s:
-            onboarder()._say(s, s.get(Person, person_id), [line])
+            onboarder()._say(s, require(s, Person, person_id), [line])
 
     @router.post("/intro/files")
     async def intro_file(
@@ -197,7 +198,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
     @router.get("/intro/documents")
     def intro_documents(person_id: uuid.UUID = Depends(owner_person_id)) -> list[dict[str, Any]]:
         with session_scope() as s:
-            return documents_view(s, s.get(Person, person_id))
+            return documents_view(s, require(s, Person, person_id))
 
     @router.post("/intro/documents/{document_id}/remove")
     def remove_document(document_id: uuid.UUID, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
@@ -215,14 +216,14 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
     def call_answer(body: CallAnswerBody, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         with session_scope() as s:
             try:
-                return onboarder().call_answer(s, s.get(Person, person_id), body.question_id, body.transcript)
+                return onboarder().call_answer(s, require(s, Person, person_id), body.question_id, body.transcript)
             except ValueError as exc:
                 raise HTTPException(422, str(exc)) from exc
 
     @router.post("/intro/call/finish")
     def call_finish(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, str]:
         with session_scope() as s:
-            onboarder().call_finish(s, s.get(Person, person_id))
+            onboarder().call_finish(s, require(s, Person, person_id))
         return {"status": "ok"}
 
     @router.get("/messages")
@@ -249,7 +250,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
     @router.post("/chat")
     def chat(body: ChatBody, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         with session_scope() as s:
-            person = s.get(Person, person_id)
+            person = require(s, Person, person_id)
             msg = accounts.web_message(person, body.text.strip())
         result = get_agent().handle(msg)
         return {"mode": result.mode, "reply": result.reply, "notes": result.notes}
@@ -301,7 +302,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         if not username:
             return {"available": False}
         with session_scope() as s:
-            code = accounts.create_invite(s, s.get(Person, person_id), "telegram")
+            code = accounts.create_invite(s, require(s, Person, person_id), "telegram")
         return {"available": True, "url": f"https://t.me/{username}?start={code}", "expires_minutes": 15}
 
     return router

@@ -68,7 +68,7 @@ class BudgetGuard:
                 select(func.coalesce(func.sum(SpendEntry.reserved_usd), 0)).where(SpendEntry.status == "reserved")
             )
             calls = s.scalar(select(func.count()).select_from(SpendEntry).where(SpendEntry.status == "settled"))
-        return SpendSummary(self.cap, Decimal(settled), Decimal(reserved), int(calls or 0))
+        return SpendSummary(self.cap, Decimal(settled or 0), Decimal(reserved or 0), int(calls or 0))
 
     def reserve(self, *, purpose: str, model: str, worst_case_usd: Decimal) -> uuid.UUID:
         refusal: Exception | None = None
@@ -84,7 +84,7 @@ class BudgetGuard:
                 reserved = s.scalar(
                     select(func.coalesce(func.sum(SpendEntry.reserved_usd), 0)).where(SpendEntry.status == "reserved")
                 )
-                committed = Decimal(settled) + Decimal(reserved)
+                committed = Decimal(settled or 0) + Decimal(reserved or 0)
                 if committed + worst_case_usd > self.cap:
                     audit(
                         s,
