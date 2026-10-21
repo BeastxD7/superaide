@@ -10,7 +10,7 @@
     {
       "name": "create_reminder",
       "description": "Set a reminder or follow-up for the owner. Ava will bring it back at that time. The result includes the reminder's id.",
-      "inputSchema": {"type": "object", "properties": {"task": {"type": "string", "description": "What to remind them about, e.g. 'Call Priya'"}, "when": {"type": "string", "description": "When, in words: 'tomorrow at 5pm', 'in 2 hours', 'Friday'"}}, "required": ["task", "when"], "additionalProperties": false},
+      "inputSchema": {"type": "object", "properties": {"task": {"type": "string", "description": "What to remind them about, as a short clean phrase in plain words: fix typos and drop filler ('remind me that I need to deinnk water' becomes 'Drink water'). E.g. 'Call Priya'"}, "when": {"type": "string", "description": "When, in words: 'tomorrow at 5pm', 'in 2 hours', 'Friday'"}}, "required": ["task", "when"], "additionalProperties": false},
       "effect": "write_own"
     },
     {

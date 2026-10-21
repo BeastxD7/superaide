@@ -130,13 +130,17 @@ class Agent:
                 self._reply(s, ctx, aud, reply, thread)
                 return HandleResult("stranger", reply)
 
-            if ctx.kind == "dm" and is_reminder_request(msg.text) and self._is_owner(s, sender):
+            # With a model connected, Ava handles reminders herself (her create_reminder tool), so
+            # she understands typos and phrasing and you can watch her reason. The code-only
+            # reader below is for when no model is connected.
+            ava_decides = ctx.kind == "dm" and self._is_owner(s, sender) and self._brain_ready()
+            if ctx.kind == "dm" and is_reminder_request(msg.text) and self._is_owner(s, sender) and not ava_decides:
                 reply = self._remind(s, sender, inbound)
                 self._reply(s, ctx, aud, reply, thread)
                 return HandleResult("known", reply, ["reminder"])
 
             fact = parse_remember(msg.text)
-            if fact is not None and ctx.kind == "dm":
+            if fact is not None and ctx.kind == "dm" and not (ava_decides and OBLIGATION.match(fact)):
                 # "Remember that I need to go to the gym at 12pm" means a reminder, not a note.
                 if self._is_owner(s, sender) and (set_reminder := self._remind_from_fact(s, sender, inbound, fact)):
                     self._reply(s, ctx, aud, set_reminder, thread)
@@ -186,6 +190,11 @@ class Agent:
         except service.IntentionError as exc:
             return str(exc)
         return f"Got it. I'll remind you {service.describe_due(intention.due_at, tz)}: {intention.text}"
+
+    def _brain_ready(self) -> bool:
+        from superaide.factory import brain_ready
+
+        return brain_ready(self.settings)
 
     def _remind_from_fact(self, s, sender: Sender, inbound, fact: str) -> str | None:
         """A reminder if the fact names a moment; None if it's just something to know."""
