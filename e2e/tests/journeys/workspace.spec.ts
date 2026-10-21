@@ -19,13 +19,49 @@ test.describe('workspace, day to day', () => {
   test('"remember that…" lands in the notebook and can be forgotten', async ({ page, owner }) => {
     void owner
     await page.goto('/workspace')
+    await expect(page).toHaveURL(/\/dashboard\/chat$/)
     const box = page.getByRole('textbox', { name: 'Message Ava' })
     await box.fill('remember that my flight to Bangalore is on Friday')
     await box.press('Enter')
+    await expect(page.getByText(/I'll only bring that up with you/)).toBeVisible()
+
+    await page.getByRole('link', { name: 'Notebook', exact: true }).click()
     const note = page.getByText('my flight to Bangalore is on Friday', { exact: true })
     await expect(note).toBeVisible()
     await page.reload()
     await expect(note).toBeVisible()
+
+    // Forgetting asks once, and then it's gone for good.
+    const card = page.getByRole('listitem').filter({ has: note })
+    await card.getByRole('button', { name: 'Forget this' }).click()
+    await card.getByRole('button', { name: 'Keep' }).click()
+    await expect(note).toBeVisible()
+    await card.getByRole('button', { name: 'Forget this' }).click()
+    await card.getByRole('button', { name: 'Forget', exact: true }).click()
+    await expect(note).toHaveCount(0)
+    await page.reload()
+    await expect(note).toHaveCount(0)
+  })
+
+  test('typing before the history loads keeps your message and does not replay the history', async ({ page, owner }) => {
+    void owner
+    // A slow connection: the history takes a while to arrive.
+    let held = true
+    await page.route('**/api/app/messages', async (route) => {
+      if (held) {
+        held = false
+        await new Promise((r) => setTimeout(r, 2500))
+      }
+      await route.continue()
+    })
+    await page.goto('/dashboard/chat')
+    const box = page.getByRole('textbox', { name: 'Message Ava' })
+    await box.fill('Quick one before you load')
+    await box.press('Enter')
+    // History arrives all at once, with your message still at the end and Ava's echo after it.
+    await expect(page.getByText("That's us set up", { exact: false })).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText('Quick one before you load', { exact: true })).toBeVisible()
+    await expect(page.getByText(/You said: "Quick one before you load"/)).toBeVisible({ timeout: 5_000 })
   })
 
   test('an empty message cannot be sent', async ({ page, owner }) => {
@@ -36,11 +72,13 @@ test.describe('workspace, day to day', () => {
   })
 
   test('logging out ends the session everywhere in the app', async ({ page, owner }) => {
-    void owner
-    await page.goto('/workspace')
-    await page.getByRole('button', { name: /log out|sign out/i }).click()
-    await page.goto('/workspace')
-    await expect(page).toHaveURL(/\/login\?next=%2Fworkspace$/)
+    await page.goto('/dashboard')
+    await page.getByRole('button', { name: new RegExp(owner.name) }).click()
+    await expect(page.getByText('Signed in as')).toBeVisible()
+    await page.getByRole('menuitem', { name: 'Log out' }).click()
+    await expect(page).not.toHaveURL(/\/dashboard/)
+    await page.goto('/dashboard')
+    await expect(page).toHaveURL(/\/login\?next=%2Fdashboard$/)
     await page.goto('/')
     await expect(page.getByRole('link', { name: 'Log in' })).toBeVisible()
   })

@@ -25,13 +25,21 @@ export function ChatPage() {
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
+  const [loaded, setLoaded] = useState(false)
+  const refreshed = useRef(false)
+
   useEffect(() => {
     call<Message[]>('/messages')
-      .then(setMessages)
+      .then((history) => {
+        // Something sent before the history arrived stays, after it; a newer copy wins.
+        if (!refreshed.current) setMessages((now) => [...history, ...now.filter((m) => m.id.startsWith('local-'))])
+      })
       .catch((e: Error) => setError(e.message))
+      .finally(() => setLoaded(true))
   }, [])
 
-  const { visible, typing } = useReveal(messages, pending, false)
+  // Reveal nothing until the history is in, so only new replies get the typing animation.
+  const { visible, typing } = useReveal(loaded ? messages : [], pending, false)
 
   // Keep the newest message in view.
   useEffect(() => {
@@ -54,7 +62,9 @@ export function ChatPage() {
     setPending(true)
     try {
       await call('/chat', { method: 'POST', json: { text: t } })
-      setMessages(await call<Message[]>('/messages'))
+      const fresh = await call<Message[]>('/messages')
+      refreshed.current = true
+      setMessages(fresh)
     } catch (e) {
       setError(e instanceof AppError ? e.message : String(e))
     } finally {

@@ -107,22 +107,27 @@ test('a new owner browses, hires Ava, introduces themselves and gets to work', a
     await snap(page, 'connect')
     await page.getByRole('button', { name: 'Finish' }).click({ timeout: 15_000 })
     await page.getByRole('button', { name: /Start working with Ava/ }).click({ timeout: 15_000 })
-    await expect(page).toHaveURL(/\/workspace$/)
-    await snap(page, 'workspace')
+    await expect(page).toHaveURL(/\/dashboard$/)
+    await snap(page, 'dashboard')
+    await page.getByRole('link', { name: 'Chat', exact: true }).click()
+    await expect(page).toHaveURL(/\/dashboard\/chat$/)
   })
 
-  await test.step('ask Ava something in the workspace', async () => {
-    const box = page.getByRole('textbox').last()
+  await test.step('ask Ava something in the chat', async () => {
+    const box = page.getByRole('textbox', { name: 'Message Ava' })
     await box.fill('remember that my flight to Bangalore is on Friday')
     await box.press('Enter')
     await expect(page.getByText(/Bangalore/).first()).toBeVisible()
     await page.waitForTimeout(3000)
-    await snap(page, 'workspace-chat')
+    await snap(page, 'chat')
+    await page.getByRole('link', { name: 'Notebook', exact: true }).click()
+    await expect(page.getByText('my flight to Bangalore is on Friday', { exact: true })).toBeVisible()
+    await snap(page, 'notebook')
   })
 
   await test.step('leave and come back the next day', async () => {
     await page.reload()
-    await expect(page).toHaveURL(/\/workspace$/)
+    await expect(page).toHaveURL(/\/dashboard\/notebook$/)
     await page.goto('/')
     await snap(page, 'landing-signed-in')
     await page.goto('/agents/ava')

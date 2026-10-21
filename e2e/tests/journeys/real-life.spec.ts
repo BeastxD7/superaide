@@ -74,7 +74,7 @@ test.describe('passwords', () => {
   test('a signed-in person who opens the login page is taken to their work', async ({ page, owner }) => {
     void owner
     await page.goto('/login')
-    await expect(page).toHaveURL(/\/workspace$/)
+    await expect(page).toHaveURL(/\/dashboard$/)
   })
 })
 
@@ -97,8 +97,8 @@ test.describe('someone else', () => {
     await p2.getByRole('button', { name: 'Create account' }).click()
     await p2.goto('/agents/ava/hire')
     await expect(p2.getByRole('button', { name: 'Hire Ava' })).toHaveCount(0)
-    await p2.goto('/workspace')
-    await expect(p2).not.toHaveURL(/\/workspace$/)
+    await p2.goto('/dashboard')
+    await expect(p2).not.toHaveURL(/\/dashboard/)
     await ctx.close()
   })
 })
