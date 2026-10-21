@@ -159,7 +159,7 @@ class Agent:
                 model=self.settings.model_chat,
                 system=system,
                 messages=messages,
-                max_tokens=800,
+                max_tokens=4000,  # room for thinking before the reply
                 output_model=TurnOutput,
             )
         except BudgetExceeded:

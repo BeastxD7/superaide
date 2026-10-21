@@ -43,8 +43,10 @@ SYSTEM = (
 )
 
 
-def extract_facts(agent: Any, *, owner_name: str, text: str, source: str) -> list[Fact]:
-    """Facts from `text`, or [] in offline mode or if the call fails (budget cap, kill switch, API error)."""
+def extract_facts(agent: Any, *, owner_name: str, text: str, source: str) -> list[Fact] | None:
+    """Facts from `text`. [] when there is nothing to read or in offline mode; None when reading
+    failed (budget cap, kill switch, API error, an answer cut off), so the caller can keep the
+    text and try again instead of treating it as read."""
     from superaide.factory import uses_real_model
 
     if not text.strip() or not uses_real_model(agent.settings):
@@ -61,13 +63,16 @@ def extract_facts(agent: Any, *, owner_name: str, text: str, source: str) -> lis
                     f"{text[:MAX_INPUT_CHARS]}\n</shared_text>",
                 }
             ],
-            max_tokens=1500,
+            # The small model thinks before answering and that counts against max_tokens,
+            # so leave room for up to 15 facts after it; low effort keeps the thinking short.
+            max_tokens=8000,
+            effort="low",
             output_model=FactList,
         )
     except Exception as exc:  # the intro carries on without facts
         log.warning("fact extraction failed: %s", exc)
-        return []
+        return None
     parsed = result.parsed
     if isinstance(parsed, FactList):
         return parsed.facts[:15]
-    return []
+    return None

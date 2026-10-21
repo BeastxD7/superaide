@@ -133,3 +133,72 @@ def test_video_call_answers_become_knowledge(client, brain):
 
 def test_unknown_call_question_is_refused(client):
     assert client.post("/app/intro/call/answer", json={"question_id": "q99", "transcript": "hi"}).status_code == 422
+
+
+@pytest.fixture
+def broken_brain(agent, monkeypatch):
+    """A Claude key is set, but reading fails (cut-off answer, API error, cap reached)."""
+    monkeypatch.setattr("superaide.factory.uses_real_model", lambda settings: True)
+    original = agent.llm.responder
+
+    def responder(purpose, system, messages, output_model):
+        if purpose == "intro_facts":
+            raise RuntimeError("answer cut off")
+        return original(purpose, system, messages, output_model)
+
+    agent.llm.responder = responder
+    return original
+
+
+def test_a_resume_that_could_not_be_read_stays_saved_and_is_read_on_the_next_try(client, agent, broken_brain):
+    from superaide.knowledge.ingest import read_pending
+
+    body = upload(client, "Resume 2026.pdf.txt", b"Shashank Rao\nHead of Applied AI, PebbleRoad").json()
+    # Not "read, 0 facts": the owner is told it wasn't read, and it waits to be tried again.
+    assert body["status"] == "stored" and body["facts"] == 0 and "couldn't read it just now" in body["message"]
+    assert client.get("/app/intro/documents").json()[0]["status"] == "stored"
+
+    def working(purpose, system, messages, output_model):
+        if purpose == "intro_facts":
+            return FactList(
+                facts=[Fact(content="Shashank leads applied AI at PebbleRoad.", category="work", confidence=1)]
+            )
+        return broken_brain(purpose, system, messages, output_model)
+
+    agent.llm.responder = working
+    with session_scope() as s:
+        owner_id = s.scalar(select(Document)).owner_person_id
+    assert read_pending(agent, owner_id) == 1
+    doc = client.get("/app/intro/documents").json()[0]
+    assert doc["status"] == "read" and doc["facts"] == 1
+
+
+def test_a_failed_read_is_retried_later_and_never_marked_read(agent, client, broken_brain):
+    from superaide.knowledge.ingest import read_pending
+
+    upload(client, "cv.txt", b"Shashank Rao, Singapore")
+    with session_scope() as s:
+        owner_id = s.scalar(select(Document)).owner_person_id
+    assert read_pending(agent, owner_id) == 1  # tried
+    assert client.get("/app/intro/documents").json()[0]["status"] == "stored"  # still waiting
+
+
+def test_connecting_claude_reads_what_was_saved_while_offline(client, monkeypatch):
+    from superaide.app import connections
+    from superaide.vault.check import Checked
+
+    calls: list = []
+    monkeypatch.setattr(connections.check, "check_anthropic", lambda key, http: Checked(values={"api_key": key}))
+    monkeypatch.setattr(connections, "read_pending", lambda agent, owner_id: calls.append(owner_id))
+    upload(client, "resume.txt", b"Shashank Rao")
+    r = client.post("/app/connections/anthropic", json={"api_key": "sk-ant-api03-" + "x" * 40})
+    assert r.status_code == 200, r.text
+    assert len(calls) == 1
+
+
+def test_a_chat_introduction_carries_on_when_reading_fails(client, broken_brain):
+    client.get("/app/onboarding")
+    client.post("/app/onboarding", json={"step": "hello", "answer": {"choice": "Nice to meet you"}})
+    r = client.post("/app/onboarding", json={"step": "about", "answer": {"mode": "chat", "text": "I lead applied AI."}})
+    assert r.status_code == 200, r.text
+    assert r.json()["step"] == "people"

@@ -293,7 +293,7 @@ class Onboarder:
                     session, owner=person, content=f"{name} says: {text}", category="about", source="intro_chat"
                 )
                 facts = extract_facts(self.agent, owner_name=name, text=text, source="the owner introducing themselves")
-                for f in facts:
+                for f in facts or []:
                     remember_fact(
                         session, owner=person, content=f.content, category=f.category, source="intro_chat",
                         confidence=f.confidence,
@@ -457,8 +457,14 @@ class Onboarder:
                 session, owner=person, category="about", source="intro_call",
                 content=f"Asked \"{question}\", {person.display_name} said: {transcript}",
             )  # fmt: skip
-            for f in extract_facts(
-                self.agent, owner_name=person.display_name, text=f"Q: {question}\nA: {transcript}", source="video call"
+            for f in (
+                extract_facts(
+                    self.agent,
+                    owner_name=person.display_name,
+                    text=f"Q: {question}\nA: {transcript}",
+                    source="video call",
+                )
+                or []
             ):
                 remember_fact(
                     session, owner=person, content=f.content, category=f.category, source="intro_call",
