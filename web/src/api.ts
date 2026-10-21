@@ -108,7 +108,21 @@ const STORE_KEY = 'agi-agent-dashboard'
 
 export type Connection = { base: string; token: string }
 
+// When the dashboard is served by the agent itself, the API is on the same
+// address. The Vite dev server (port 5173) talks to the agent on port 8000.
+export function defaultBase(): string {
+  return window.location.port === '5173' ? 'http://127.0.0.1:8000' : window.location.origin
+}
+
 export function loadConnection(): Connection | null {
+  // start.command opens the page with #token=... so you are connected at once.
+  const fromHash = new URLSearchParams(window.location.hash.slice(1)).get('token')
+  if (fromHash) {
+    history.replaceState(null, '', window.location.pathname)
+    const conn = { base: defaultBase(), token: fromHash }
+    saveConnection(conn)
+    return conn
+  }
   try {
     const raw = localStorage.getItem(STORE_KEY)
     return raw ? (JSON.parse(raw) as Connection) : null

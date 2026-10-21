@@ -119,6 +119,49 @@ def _hello(_: argparse.Namespace) -> None:
     _spend(_)
 
 
+def _seed_demo(_: argparse.Namespace) -> None:
+    """Add demo people so the dashboard and impostor simulator have someone to protect.
+    Does nothing if anyone is already registered."""
+    from sqlalchemy import func, select
+
+    from agi_agent.db.models import Person
+    from agi_agent.db.session import session_scope
+    from agi_agent.identity.linking import bootstrap_person
+
+    team = get_settings().slack_team_id or "T_DEMO"
+    with session_scope() as s:
+        if s.scalar(select(func.count()).select_from(Person)):
+            print("People already registered; demo data not added.")
+            return
+        bootstrap_person(
+            s,
+            name="Shashank",
+            relation="manager",
+            identities=[("telegram", "", "1001"), ("slack", team, "U_SHASHANK")],
+            actor="demo_seed",
+        )
+        bootstrap_person(
+            s, name="Priya Tan", relation="colleague", identities=[("slack", team, "U_PRIYA")], actor="demo_seed"
+        )
+    print("Added demo people: Shashank (manager) and Priya Tan (colleague).")
+
+
+def _reset_db(args: argparse.Namespace) -> None:
+    """Delete every table. Run `alembic upgrade head` afterwards."""
+    from sqlalchemy import text
+
+    from agi_agent.db.models import Base
+    from agi_agent.db.session import get_engine
+
+    if not args.yes:
+        sys.exit("This deletes all data. Run again with --yes to confirm.")
+    engine = get_engine()
+    Base.metadata.drop_all(engine)
+    with engine.begin() as conn:
+        conn.execute(text("DROP TABLE IF EXISTS alembic_version"))
+    print("Database wiped.")
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     parser = argparse.ArgumentParser(prog="agi-agent")
@@ -152,6 +195,10 @@ def main() -> None:
     p.set_defaults(func=_unlink)
 
     sub.add_parser("hello", help="one tiny real Claude call to test the key").set_defaults(func=_hello)
+    sub.add_parser("seed-demo", help="add demo people if none exist").set_defaults(func=_seed_demo)
+    p = sub.add_parser("reset-db", help="delete all data")
+    p.add_argument("--yes", action="store_true")
+    p.set_defaults(func=_reset_db)
 
     args = parser.parse_args()
     args.func(args)

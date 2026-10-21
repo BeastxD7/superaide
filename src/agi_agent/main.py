@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import json
 import logging
+from pathlib import Path
 from typing import Any
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from agi_agent.api.admin import require_admin
@@ -120,6 +122,12 @@ def create_app(agent: Agent | None = None) -> FastAPI:
         with session_scope() as s:
             audit(s, "dashboard", "simulated_message", provider=body.provider, mode=result.mode)
         return {"mode": result.mode, "reply": result.reply, "notes": result.notes, "outbox": outbox.sent}
+
+    # Serve the prebuilt dashboard (web/dist) from the same address, so trying
+    # the agent needs no Node and no CORS. API routes above take precedence.
+    dist = Path(__file__).resolve().parents[2] / "web" / "dist"
+    if (dist / "index.html").exists():
+        app.mount("/", StaticFiles(directory=dist, html=True), name="dashboard")
 
     return app
 

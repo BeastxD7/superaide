@@ -10,7 +10,10 @@ __pycache__/
 
 # Node
 web/node_modules/
-web/dist/
+
 
 # OS
 .DS_Store
+
+# Local demo database (start.command)
+.local-db/

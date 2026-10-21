@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { api, loadConnection, saveConnection, type Connection, type Overview as OverviewData } from './api'
+import { api, defaultBase, loadConnection, saveConnection, type Connection, type Overview as OverviewData } from './api'
 import { Conversations } from './pages/Conversations'
 import { Overview } from './pages/Overview'
 import { People } from './pages/People'
@@ -41,7 +41,7 @@ export default function App() {
 }
 
 function Connect({ onConnect }: { onConnect: (c: Connection) => void }) {
-  const [base, setBase] = useState('http://127.0.0.1:8000')
+  const [base, setBase] = useState(defaultBase)
   const [token, setToken] = useState('')
   const [error, setError] = useState<string | null>(null)
 
