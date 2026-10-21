@@ -482,7 +482,7 @@ class Onboarder:
             if people:
                 parts.append(f"{people} {'person' if people == 1 else 'people'} who matter to you")
             urgent = (
-                f" I'll interrupt you for: {_join([t.lower() for t in pref.urgent_topics])}."
+                f" I'll interrupt you for: {_join([_mid_sentence(t) for t in pref.urgent_topics])}."
                 if pref.urgent_topics
                 else ""
             )
@@ -546,6 +546,17 @@ def documents_view(session: Session, person: Person) -> list[dict[str, Any]]:
             }
         )
     return out
+
+
+_LOWER_FIRST_WORDS = {"a", "an", "the", "any", "anything", "anyone", "something", "someone", "my", "our", "when", "if"}
+
+
+def _mid_sentence(text: str) -> str:
+    """Our own options and sentences that start with a common word read better mid-sentence
+    ("a family emergency"); anything else may start with a name, so it stays as typed."""
+    if text in URGENT_OPTIONS or text.split(" ", 1)[0].lower() in _LOWER_FIRST_WORDS:
+        return text[:1].lower() + text[1:]
+    return text
 
 
 def _join(items: list[str]) -> str:
