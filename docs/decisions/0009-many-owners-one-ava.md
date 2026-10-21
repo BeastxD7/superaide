@@ -204,7 +204,7 @@ Oban's and Graphile Worker's per-queue concurrency, applied per tenant.
      calls `getManagedBotToken` to get the child bot's token. One tap gives each owner their own bot
      (e.g. `@ShashankAvaBot`), with routing by bot and no BotFather. *To confirm against the official
      docs before building: limits per owner, and who owns the bot if the owner leaves.*
-  3. **Business connections** (Bot API 7.2): an owner with Telegram Premium connects a bot to their
+  3. **Business connections** (Bot API 7.2, *from memory; to confirm*): an owner with Telegram Premium connects a bot to their
      personal account, and the bot answers messages people send to the **owner's own account**, each
      update tagged with a `business_connection_id` that maps to one instance. Excellent fit for a
      personal assistant, but Premium only.
@@ -212,7 +212,7 @@ Oban's and Graphile Worker's per-queue concurrency, applied per tenant.
     one consumer per bot and does not scale to thousands of bots.
 - **Slack**: a distributed app uses OAuth v2 and gets a bot token per workspace (`team_id`, and
   `enterprise_id` on Enterprise Grid). Socket Mode is not allowed for apps in the public Slack
-  Marketplace, so a distributed app must take Events over HTTP with the signing secret. Two owners in the
+  Marketplace (*from memory; to confirm*), so a distributed app must take Events over HTTP with the signing secret. Two owners in the
   same workspace would share one install and one bot user, which is ambiguous for third parties.
 - **WhatsApp Business Platform**: from 15 January 2026 Meta's terms bar providers whose core product is
   a general-purpose AI assistant from the Business API. Ava is likely in scope, so WhatsApp is **not
@@ -298,6 +298,12 @@ data:
 | Google OAuth callback | The one-time `state` row is stored with `agent_id`; the callback looks up the state, then scopes. |
 | Operator console | Explicit instance chosen in the console, audited (section 9). |
 | CLI | `--instance <id>`; required when more than one exists. |
+
+Anything that happens before an instance is known (a bad webhook secret, an unknown `endpoint_id`, an
+unroutable Slack team, a dropped unverified message as at `pipeline.py:88-91`) is audited in a
+**platform-level** audit table without `agent_id` (like `auth_event`), never in an instance's log; with
+fail-closed defaults such an insert into `audit_log` would raise. Platform-guard and operator actions
+are audited there too (operator break-glass is additionally written to the instance's own log).
 
 Everything after this point is unchanged in shape: the pipeline resolves identity, audience and policy
 inside the instance. `accounts.owner(s)` becomes `instance_owner(s)`, reading the scoped
