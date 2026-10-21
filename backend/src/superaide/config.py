@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     budget_monthly_usd: float = 5.00  # any 30 days
     # Per purpose bucket, any 24 hours (chat replies, memory reading, web research).
     budget_daily_by_bucket: dict[str, float] = Field(
-        default_factory=lambda: {"chat": 0.40, "memory": 0.15, "research": 0.25}
+        default_factory=lambda: {"chat": 0.40, "memory": 0.15, "research": 0.25, "triage": 0.05}
     )
     # These limits apply to each hired Ava on its own; an instance may set its own (agent_instance.spend_limits).
     # Platform-wide, per UTC day, for calls paid with Superaide's own model key (ADR 0009). Owners'
@@ -104,6 +104,12 @@ class Settings(BaseSettings):
     run_channels_in_api: bool = True
     # Run background jobs (reminders, follow-ups, digests) inside the API process
     run_jobs_in_api: bool = True
+
+    # Triage and escalation (ADR 0010). Off: every known non-owner gets a model reply, as before.
+    # On: each of their messages also gets a recorded decision (handle, hold, interrupt, defer or
+    # verify), and an interrupt escalates to the owner until acknowledged. What the sender is told
+    # doesn't change until the pipeline hook (TR5) lands.
+    triage_enabled: bool = False
 
     # User accounts and sessions
     session_cookie_name: str = "superaide_session"

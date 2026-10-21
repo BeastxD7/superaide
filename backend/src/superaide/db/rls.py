@@ -51,6 +51,12 @@ TABLES: tuple[str, ...] = (
     "owner_preference",
     "person",
     "spend_ledger",
+    "escalation",  # triage (ADR 0010)
+    "escalation_ack",
+    "escalation_delivery",
+    "triage_decision",
+    "triage_rule",
+    "triage_settings",
 )
 
 # Tables that have agent_id but are read before an instance is known, to find it.
