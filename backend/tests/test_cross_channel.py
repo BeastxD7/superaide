@@ -140,7 +140,6 @@ def test_recall_finds_the_fact_for_a_paraphrase(scenario, query):
         assert any(src.text == LEARNED for src in recall(s, aud, query))
 
 
-@pytest.mark.xfail(strict=True, reason="WP1: short-term history is per context; the Telegram DM never reaches the app")
 def test_the_app_chat_prompt_includes_what_the_owner_just_said_on_telegram(scenario):
     client, rec = scenario
     rec.chat_messages.clear()

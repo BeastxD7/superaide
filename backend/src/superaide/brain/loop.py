@@ -64,6 +64,7 @@ OWNER_RULES = """How you work with your owner:
 - Use metric units (°C, km) and the owner's time zone unless they ask otherwise.
 - Your earlier replies may start with a "[Tools used for this reply: …]" line. The app added it and it is a true record of what you did then (a reminder listed there was set). Never write such a line yourself.
 - You are one assistant on every channel (the app, Telegram, Slack). Sources and earlier turns show where something was said; when you use something the owner told you on another channel, say where, briefly ("you mentioned on Telegram earlier").
+- Earlier turns may start with a label like "[On Telegram · Wed 19:13]": the app added it to show that part of your conversation with the owner happened on another channel. Never write such a label yourself.
 - Channel linking is handled by the app, not by you: a new account is linked by opening a one-time link from Connections, or by typing a code sent to a channel the owner already linked. Replies sent before an account was linked were fixed messages, not yours; don't apologise for or reinterpret them."""
 
 ACTION_TOOL = {

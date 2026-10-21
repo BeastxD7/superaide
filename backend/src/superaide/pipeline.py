@@ -30,10 +30,12 @@ from superaide.knowledge.profile import owner_brief
 from superaide.memory.store import (
     get_or_create_context,
     log_event,
+    owner_timeline,
     parse_remember,
     recent_events,
     remember,
     seen_before,
+    strip_label,
 )
 from superaide.policy.actions import decide
 from superaide.policy.killswitch import is_frozen
@@ -288,8 +290,13 @@ class Agent:
         search the web and ask for approval, with every answer citing its sources."""
         from superaide.brain.loop import OwnerTurn
         from superaide.factory import brain_ready
+        from superaide.intentions.service import owner_zone
+        from superaide.intentions.when import zone
 
-        history = recent_events(s, ctx, thread_id=thread_of(msg))
+        assert sender.person is not None
+        timeline = owner_timeline(
+            s, sender.person.id, ctx, thread_id=thread_of(msg), tz=zone(owner_zone(s, sender.person))
+        )
         turn = OwnerTurn(
             llm=self.llm,
             model=self.settings.model_chat,
@@ -304,7 +311,7 @@ class Agent:
             learns=brain_ready(self.settings),
         )
         try:
-            result = turn.run(build_messages(history, msg.text))
+            result = turn.run(build_messages(timeline.events, msg.text, timeline.labels))
         except BudgetExceeded as exc:
             return self._budget_reply(s, exc), ["budget"], {}
         except AgentFrozen:
@@ -327,7 +334,9 @@ class Agent:
             meta["activity"] = result.activity[:20]
         if result.reasoning:
             meta["reasoning"] = result.reasoning
-        return result.text, [*result.notes, f"steps:{result.steps}"], meta
+        if timeline.labels:
+            meta["other_channels"] = len(timeline.labels)  # turns from other channels this reply saw
+        return strip_label(result.text), [*result.notes, f"steps:{result.steps}"], meta
 
     def _think(self, s, sender: Sender, ctx: Context, aud: Audience, msg: InboundMessage) -> tuple[str, list[str]]:
         is_owner = sender.relation == "manager" and aud.person_ids == {sender.person.id} if sender.person else False

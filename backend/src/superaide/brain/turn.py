@@ -82,14 +82,24 @@ def tools_used(ev: Event) -> str:
     return f"[Tools used for this reply: {'; '.join(done)}]" if done else ""
 
 
-def build_messages(history: list[Event], current_text: str) -> list[dict[str, Any]]:
-    """Map the episodic log to alternating user/assistant turns."""
+LABELLED_CHARS = 600  # a turn from another channel is context, not the conversation itself
+
+
+def build_messages(
+    history: list[Event], current_text: str, labels: dict[Any, str] | None = None
+) -> list[dict[str, Any]]:
+    """Map the episodic log to alternating user/assistant turns. `labels` marks turns that
+    happened on another channel ("[On Telegram · Wed 19:13] …")."""
     turns: list[dict[str, Any]] = []
     for ev in history:
         role = "user" if ev.direction == "in" else "assistant"
         content = ev.content
         if role == "assistant" and (used := tools_used(ev)):
             content = used + "\n" + content
+        if labels and (label := labels.get(ev.id)):
+            if len(content) > LABELLED_CHARS:
+                content = content[: LABELLED_CHARS - 1] + "…"
+            content = f"{label} {content}"
         if turns and turns[-1]["role"] == role:
             turns[-1]["content"] += "\n" + content
         else:

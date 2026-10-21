@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import re
 import uuid
+from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta, tzinfo
 
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
@@ -110,6 +112,76 @@ def recent_events(session: Session, context: Context, limit: int = 12, thread_id
         .limit(limit)
     ).all()
     return list(reversed(rows))
+
+
+# --- one conversation across channels (ADR 0008) ---------------------------------------
+
+TIMELINE_WINDOW = timedelta(hours=48)
+TIMELINE_OTHER = 12  # messages from the owner's other channels
+TIMELINE_CHARS = 8_000  # about 2,000 tokens for the whole history
+TIMELINE_EVENT_CHARS = 600
+WHERE = {"telegram": "On Telegram", "slack": "On Slack", "web": "In the app"}
+LABEL_RE = re.compile(r"^\s*\[(?:On|In) [^\]\n]{1,60}\]\s*")
+
+
+@dataclass
+class Timeline:
+    events: list[Event]
+    labels: dict[uuid.UUID, str] = field(default_factory=dict)  # event id → "[On Telegram · Wed 19:13]"
+
+
+def owner_timeline(
+    session: Session,
+    owner_id: uuid.UUID,
+    context: Context,
+    thread_id: str = "",
+    tz: tzinfo = UTC,
+    now: datetime | None = None,
+) -> Timeline:
+    """The owner's recent conversation on every channel, merged by time: this conversation's
+    latest messages, plus what they and Ava said in their other private DMs in the last 48
+    hours, each labelled with where it happened. Call only for the owner's own private DM.
+
+    Only messages whose audience was exactly the owner, with nobody unknown present, in a DM,
+    qualify: groups, channels, threads with others and other people's DMs never do."""
+    now = now or datetime.now(UTC)
+    here = recent_events(session, context, thread_id=thread_id)
+    rows = session.execute(
+        select(Event, Context.provider)
+        .join(Context, Context.id == Event.context_id)
+        .where(
+            Event.context_id != context.id,
+            Context.kind == "dm",
+            Event.audience_person_ids == [owner_id],
+            Event.audience_has_unknown.is_(False),
+            or_(Event.resolved_person_id == owner_id, Event.direction == "out"),
+            Event.content != "",
+            Event.created_at > now - TIMELINE_WINDOW,
+        )
+        .order_by(Event.created_at.desc())
+        .limit(TIMELINE_OTHER)
+    ).all()
+    labels: dict[uuid.UUID, str] = {}
+    for event, provider in rows:
+        when = event.created_at.astimezone(tz)
+        labels[event.id] = f"[{WHERE.get(provider, 'On ' + provider.title())} · {when:%a %H:%M}]"
+    # This conversation is kept whole, as before; other channels fill what's left of the
+    # budget, newest first.
+    room = TIMELINE_CHARS - sum(len(e.content) for e in here)
+    others: list[Event] = []
+    for event, _ in rows:
+        size = min(len(event.content), TIMELINE_EVENT_CHARS) + len(labels[event.id])
+        if size > room:
+            break
+        others.append(event)
+        room -= size
+    kept = sorted([*here, *others], key=lambda e: e.created_at)
+    return Timeline(kept, {e.id: labels[e.id] for e in kept if e.id in labels})
+
+
+def strip_label(text: str) -> str:
+    """Ava must not write the app's channel labels herself; remove one she copied."""
+    return LABEL_RE.sub("", text, count=1)
 
 
 def parse_remember(text: str) -> str | None:
