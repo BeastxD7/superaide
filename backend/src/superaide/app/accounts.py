@@ -100,6 +100,9 @@ def hire(session: Session, user: UserAccount, agent_slug: str = "ava") -> Person
                 actor="app",
             )
         )
+    from superaide.tenancy.service import ensure_instance_for_hire
+
+    ensure_instance_for_hire(session, user, person, agent_slug)  # the instance record behind this hire (ADR 0009)
     if session.scalar(select(Onboarding).where(Onboarding.person_id == person.id)) is None:
         session.add(Onboarding(person_id=person.id, step="hello", answers={}))
     audit(session, "app", "hired", person_id=person.id, user_id=user.id, agent=agent_slug)

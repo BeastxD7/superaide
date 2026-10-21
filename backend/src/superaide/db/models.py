@@ -553,3 +553,9 @@ class InstalledSkill(Scoped, Base):
     granted: Mapped[list[str]] = mapped_column(ARRAY(String(30)), default=list)
     settings: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# Tables defined in their own modules, imported here so every user of Base (Alembic,
+# the tests' create_all) sees them.
+from superaide.auth import models as _auth_models  # noqa: E402, F401
+from superaide.tenancy import models as _tenancy_models  # noqa: E402, F401
