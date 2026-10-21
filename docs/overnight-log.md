@@ -65,3 +65,8 @@ backend tests, lint, types, the frontend checks and the full browser suite pass.
   - The reliability scorecard landed (91a9eca): 93% mean, 87% pass^3 over 62 live scenarios, US$0.34. The same agent is fixing its top 10 and will re-run.
   - Cloudflare quick tunnel opened for the owner's phone (dev only; random URL).
   - The owner's account email is "shashank@pebbleroad.cmo" (typo); they're resetting the password via the CLI. Ask in the morning whether to correct it to .com.
+- 03:05 IST:
+  - Backed up the dev DB (~/superaide-dev-2026-10-22-0258.dump) and migrated it to 0017 (RLS policies; no behaviour change while the app connects as the superuser). **The owner's step** of creating the restricted `superaide_app` role (runbook in ADR 0009 T1 / the tenancy agent's report) waits for approval.
+  - The dev stack restarted after a startup race; live Telegram check OK.
+  - Two new issues were assigned to the reliability agent: delivered reminders still listed as "open", and Ava doubting the verified owner on Telegram.
+  - ADR 0010 (triage & escalation) proposed: decision rules → small classifier → policy, a stage-gated ladder with Acknowledge buttons, a feedback loop that makes the trust stages real. 10 open questions for the owner.
