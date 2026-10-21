@@ -38,6 +38,9 @@ class ChannelRunner:
             self._ensure_slack("", "", "")
 
     def _ensure_telegram(self, token: str) -> None:
+        if self._telegram and self._telegram[0] == token and not self._telegram[2].is_alive():
+            log.warning("Telegram listener had stopped; starting it again")
+            self._telegram = None
         if self._telegram and self._telegram[0] != token:
             self._telegram[1].set()  # the thread exits after its current poll
             self._telegram = None
