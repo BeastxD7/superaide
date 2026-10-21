@@ -1,5 +1,22 @@
-# Postgres 17 with pgvector, for development on your laptop.
-# Start it with: docker compose up -d
+# Local development stack.
+#
+#   docker compose up -d db                # just Postgres 17 + pgvector (what start.command uses)
+#   docker compose --profile app up --build   # the whole stack in containers:
+#                                            #   app http://localhost:3000, API http://127.0.0.1:8000
+#
+# Every port is published on 127.0.0.1 only. Secrets come from backend/.env (optional).
+name: superaide
+
+x-backend: &backend
+  build: ./backend
+  image: superaide-api:local
+  env_file:
+    - path: ./backend/.env
+      required: false
+  environment:
+    DATABASE_URL: postgresql+psycopg://agent:agent@db:5432/agent
+    FRONTEND_ORIGIN: http://localhost:3000
+
 services:
   db:
     image: pgvector/pgvector:pg17
@@ -9,7 +26,7 @@ services:
       POSTGRES_PASSWORD: agent
       POSTGRES_DB: agent
     ports:
-      - "127.0.0.1:5432:5432"  # localhost only
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./deploy/postgres/initdb:/docker-entrypoint-initdb.d:ro
@@ -19,5 +36,37 @@ services:
       timeout: 3s
       retries: 10
 
+  migrate:
+    <<: *backend
+    profiles: [app]
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    <<: *backend
+    profiles: [app]
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      # The vault's master key (encrypts connected credentials) survives rebuilds.
+      - vault-key:/home/app/.config/superaide
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    profiles: [app]
+    build: ./frontend
+    image: superaide-web:local
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:8080"
+    depends_on:
+      - api
+
 volumes:
   pgdata:
+  vault-key:
