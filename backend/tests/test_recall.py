@@ -122,3 +122,19 @@ def test_pre_recall_needs_every_word_so_it_stays_quiet_on_small_talk(people):
         ]
         assert pre_recall(s, owner_only(owner), "black coffee please") == []
         assert pre_recall(s, owner_only(owner), "hi!") == []
+
+
+@pytest.mark.parametrize(
+    ("note", "query"),
+    [("Shashank n'aime pas le café noir", "café noir"), ("शशांक को काला रंग पसंद नहीं है", "काला रंग"),
+     ("黒は嫌い", "黒は嫌い"), ("Shashank's dog is called Bruno", "what's my dog's name?")],
+)  # fmt: skip
+def test_other_languages_and_apostrophes_still_match_word_for_word(people, note, query):
+    owner, _ = people
+    with session_scope() as s:
+        _note(s, owner, note)
+        assert [f.text for f in recall(s, owner_only(owner), query)] == [note]
+
+
+def test_tokens_never_carry_tsquery_syntax():
+    assert lexicon.words("a & b | !c (d) e:* 'f' <-> g") == ["b", "c", "d", "e", "f", "g"]

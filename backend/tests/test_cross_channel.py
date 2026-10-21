@@ -148,7 +148,6 @@ def test_the_app_chat_prompt_includes_what_the_owner_just_said_on_telegram(scena
     assert SAID_ON_TELEGRAM in prompt and "Telegram" in prompt
 
 
-@pytest.mark.xfail(strict=True, reason="WP3: learned preferences are only reachable through recall, never pinned")
 def test_a_learned_preference_is_pinned_into_the_owner_brief(scenario):
     with session_scope() as s:
         _, sender, aud = _web_audience(s)

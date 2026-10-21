@@ -64,3 +64,51 @@ def test_a_vip_contact_is_recognised_as_urgent(agent, model):
     system = model.systems[-1]
     assert "This person is your owner's partner, and can always get through" in system
     assert "Series A" not in system
+
+
+def _fact(s, person, content, category="preference", allowed=None, valid_to=None):
+    from superaide.db.models import MemoryItem
+
+    s.add(
+        MemoryItem(
+            content=content, subject_person_ids=[person.id], allowed_kind="persons",
+            allowed_person_ids=allowed or [person.id], min_trust=2, category=category, valid_to=valid_to,
+        )
+    )  # fmt: skip
+
+
+def test_learned_preferences_are_pinned_in_the_owners_own_brief_only(agent, model, colleague):
+    from datetime import UTC, datetime
+
+    c = _setup(agent)
+    with session_scope() as s:
+        me = owner(s)
+        _fact(s, me, "Shashank does not like the colour black.")
+        _fact(s, me, "Shashank is vegetarian.", category="about")
+        _fact(s, me, "Shashank used to like grey.", valid_to=datetime.now(UTC))  # retired: not pinned
+        _fact(s, me, "Shashank's flight is on Friday.", category="work")  # not a core category
+        _fact(s, me, "Asked about the week, Shashank said: " + "x" * 300, category="about")  # too long
+    c.post("/app/chat", json={"text": "hello"})
+    system = model.systems[-1]
+    assert "What you know about them" in system
+    assert system.index("does not like the colour black") < system.index("is vegetarian")  # preferences first
+    for absent in ("used to like grey", "flight is on Friday", "x" * 300):
+        assert absent not in system
+    # A colleague never gets them (groups: see test_cross_channel.py).
+    n = len(model.systems)
+    agent.handle(sl("U_PRIYA", "What colours does Shashank like?"))
+    assert len(model.systems) == n + 1
+    assert "colour black" not in model.systems[-1] and "What you know about them" not in model.systems[-1]
+
+
+def test_pinned_facts_stay_within_their_budget(agent, model):
+    from superaide.knowledge.profile import PINNED_CHARS, PINNED_MAX
+
+    c = _setup(agent)
+    with session_scope() as s:
+        me = owner(s)
+        for i in range(40):
+            _fact(s, me, f"Shashank preference number {i}: " + "y" * 150)
+    c.post("/app/chat", json={"text": "hello"})
+    pinned = [line for line in model.systems[-1].splitlines() if "preference number" in line]
+    assert 0 < len(pinned) <= PINNED_MAX and sum(len(p) for p in pinned) <= PINNED_CHARS + 2 * len(pinned)

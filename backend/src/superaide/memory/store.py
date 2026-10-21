@@ -151,6 +151,7 @@ def owner_timeline(
         .join(Context, Context.id == Event.context_id)
         .where(
             Event.context_id != context.id,
+            Event.agent_id == context.agent_id,  # this Ava instance only (ADR 0009 tenancy)
             Context.kind == "dm",
             Event.audience_person_ids == [owner_id],
             Event.audience_has_unknown.is_(False),

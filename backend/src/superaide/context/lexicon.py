@@ -7,11 +7,14 @@ variants and, for a few preference words, its synonyms. Recall then asks for eve
 (AND) and, failing that, for any of them (OR). Kept in code rather than a Postgres thesaurus,
 which needs files on the database server that neither the Docker image nor the embedded
 Postgres lets us ship.
+
+Other languages degrade gracefully: their words pass through unchanged (any script), so
+recall still matches them exactly and by trigram; only the spelling and synonym widening is
+English. Paraphrase in other languages is the embedder's job (ADR 0008 WP2b).
 """
 
 from __future__ import annotations
 
-import re
 import unicodedata
 
 # en-GB root → en-US root. Matched as a prefix, so inflections follow ("colours", "organising").
@@ -112,26 +115,40 @@ for _group in _SYNONYM_GROUPS:
 
 # Words that never help a search (Postgres drops its own stop words; these are ours).
 STOP = {
-    "a", "about", "all", "an", "and", "any", "are", "at", "ava", "btw", "can", "could", "did", "do",
+    "a", "about", "all", "don", "s", "t", "an", "and", "any", "are", "at", "ava", "btw", "can", "could", "did", "do",
     "does", "dont", "for", "from", "not", "really",
     "had", "has", "have", "how", "i", "is", "it", "know", "me", "my", "of", "on", "or", "remember",
     "said", "say", "tell", "that", "the", "this", "to", "told", "was", "what", "when", "where",
     "which", "who", "why", "with", "you", "your",
 }  # fmt: skip
 
-WORD = re.compile(r"[a-z0-9]+")
+
+def _tokens(text: str) -> list[str]:
+    """Runs of letters, marks and digits in any script ("colour", "café", "काला", "黒"). Nothing
+    else gets through, so a token can never carry tsquery syntax (& | ! ( ) : * '). Apostrophes
+    split words ("don't" → "don", "t"), as Postgres's parser does."""
+    out: list[str] = []
+    cur: list[str] = []
+    for ch in text:
+        if unicodedata.category(ch)[0] in "LMN":
+            cur.append(ch)
+        elif cur:
+            out.append("".join(cur))
+            cur = []
+    if cur:
+        out.append("".join(cur))
+    return out
 
 
 def _plain(text: str) -> str:
-    """Lowercase, accents off ("café" → "cafe"), apostrophes dropped ("don't" → "dont")."""
-    text = unicodedata.normalize("NFKD", text.lower())
-    return "".join(c for c in text if not unicodedata.combining(c)).replace("'", "").replace("’", "")
+    """Lowercased and NFC-normalised; accents are kept, because the stored text keeps them."""
+    return unicodedata.normalize("NFC", text.lower())
 
 
 def words(text: str) -> list[str]:
     """The searchable words of a question, in order, without our stop words."""
     out: list[str] = []
-    for w in WORD.findall(_plain(text)):
+    for w in _tokens(_plain(text)):
         if w not in STOP and w not in out:
             out.append(w)
     return out
@@ -173,4 +190,4 @@ def groups(text: str, limit: int = 12) -> list[set[str]]:
 
 def normalise(text: str) -> str:
     """A canonical form for comparing two facts: plain words, en-GB spelling, no punctuation."""
-    return " ".join(_swap(w, US_GB_ROOTS) or w for w in WORD.findall(_plain(text)))
+    return " ".join(_swap(w, US_GB_ROOTS) or w for w in _tokens(_plain(text)))

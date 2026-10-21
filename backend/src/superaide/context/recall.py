@@ -61,7 +61,7 @@ def _tsquery(term_groups: list[set[str]], *, any_word: bool) -> Any | None:
         expr = " | ".join(w for g in groups for w in g)
     else:
         expr = " & ".join("(" + " | ".join(g) + ")" for g in groups)
-    return func.to_tsquery(LANG, expr)  # words are [a-z0-9]+ only (lexicon.WORD), so this is safe
+    return func.to_tsquery(LANG, expr)  # words are letters/marks/digits only (lexicon._tokens), so this is safe
 
 
 def _has_trgm(session: Session) -> bool:

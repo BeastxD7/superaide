@@ -11,12 +11,12 @@ from __future__ import annotations
 from datetime import UTC, datetime, time
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from superaide.app.accounts import owner as hired_by
-from superaide.context.audience import Audience
-from superaide.db.models import Contact, OwnerPreference
+from superaide.context.audience import Audience, memory_filter
+from superaide.db.models import Contact, MemoryItem, OwnerPreference, Person
 from superaide.identity.resolver import Sender
 from superaide.knowledge.store import contacts_of
 
@@ -43,6 +43,38 @@ def _in_quiet_hours(pref: OwnerPreference, now: datetime) -> tuple[bool, str]:
     t = local.time()
     quiet = (start <= t or t < end) if start > end else (start <= t < end)
     return quiet, local.strftime("%a %H:%M")
+
+
+PINNED_CATEGORIES = ("preference", "about")
+PINNED_MAX = 15
+PINNED_CHARS = 1_600  # about 400 tokens
+PINNED_FACT_CHARS = 240  # longer notes (raw intro answers) are left to recall
+
+
+def core_facts(session: Session, audience: Audience, owner: Person) -> list[str]:
+    """The owner's likes, dislikes and standing facts, always in their own private prompt
+    (Letta's core block): finding "doesn't like black" must not depend on a search."""
+    rows = session.scalars(
+        select(MemoryItem)
+        .where(
+            memory_filter(audience),  # defence in depth: the caller already checked it's the owner, alone
+            MemoryItem.agent_id == owner.agent_id,  # this owner's Ava only (ADR 0009 tenancy)
+            MemoryItem.category.in_(PINNED_CATEGORIES),
+            func.length(MemoryItem.content) <= PINNED_FACT_CHARS,
+        )
+        .order_by(
+            (MemoryItem.category == "preference").desc(), MemoryItem.confidence.desc(), MemoryItem.created_at.desc()
+        )
+        .limit(PINNED_MAX)
+    ).all()
+    out: list[str] = []
+    used = 0
+    for m in rows:
+        if used + len(m.content) > PINNED_CHARS:
+            break
+        out.append(m.content)
+        used += len(m.content)
+    return out
 
 
 def owner_brief(session: Session, sender: Sender, audience: Audience, now: datetime | None = None) -> str:
@@ -81,7 +113,13 @@ def owner_brief(session: Session, sender: Sender, audience: Audience, now: datet
                 )
                 + "."
             )
-        return "About your owner:\n- " + "\n- ".join(lines)
+        brief = "About your owner:\n- " + "\n- ".join(lines)
+        known = core_facts(session, audience, owner)
+        if known:
+            brief += "\n\nWhat you know about them (from their notebook; no need to search for these):\n- " + (
+                "\n- ".join(known)
+            )
+        return brief
 
     # Someone else: only what the owner allowed, and how to treat this person.
     # The owner's own "never share" text stays out of this prompt: describing a
