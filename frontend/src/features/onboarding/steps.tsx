@@ -216,24 +216,27 @@ function IntroPicker({
   const [noSpeechService] = useState(() => speechSupport().noService)
   const [tab, setTab] = useState<'chat' | 'files' | 'call'>(input.documents.length ? 'files' : 'chat')
   const tabs = [
-    { key: 'chat', label: 'Tell me here', icon: MessageCircle },
-    { key: 'files', label: 'Files & links', icon: Paperclip },
-    { key: 'call', label: 'Video call', icon: Video },
+    { key: 'chat', label: 'Tell me here', short: 'Chat', icon: MessageCircle },
+    { key: 'files', label: 'Files & links', short: 'Files', icon: Paperclip },
+    { key: 'call', label: 'Video call', short: 'Call', icon: Video },
   ] as const
   return (
     <div>
       <div className="mb-3 grid grid-cols-3 gap-1.5 rounded-2xl bg-white/70 p-1.5" role="tablist" aria-label="How to introduce yourself">
-        {tabs.map(({ key, label, icon: Icon }) => (
+        {tabs.map(({ key, label, short, icon: Icon }) => (
           <button
             key={key}
             role="tab"
             aria-selected={tab === key}
+            aria-label={label}
             onClick={() => setTab(key)}
             className={`flex items-center justify-center gap-2 rounded-xl px-2 py-2.5 text-sm font-medium transition-colors ${
               tab === key ? 'bg-violet-600 text-white shadow-sm' : 'text-body hover:bg-white'
             }`}
           >
-            <Icon className="size-4" /> <span className="truncate">{label}</span>
+            {/* Phones get the short label, so no tab is cut off mid-word. */}
+            <Icon className="size-4" /> <span className="truncate sm:hidden">{short}</span>
+            <span className="hidden truncate sm:inline">{label}</span>
           </button>
         ))}
       </div>
@@ -489,6 +492,7 @@ function UrgentPicker({ input, onAnswer }: { input: Extract<StepInput, { kind: '
         value={other}
         onChange={(e) => setOther(e.target.value)}
         placeholder="Something else? e.g. anything about the Series A"
+        aria-label="Something else that's urgent"
         className="mt-3 w-full rounded-2xl bg-white px-4 py-3 text-sm text-ink outline-none placeholder:text-muted/70 focus:ring-2 focus:ring-violet-400/50"
       />
       <p className="mt-4 mb-2 text-sm font-medium text-ink">Everything else, in a digest:</p>
@@ -588,6 +592,7 @@ function SharePicker({ input, onAnswer }: { input: Extract<StepInput, { kind: 's
         onChange={(e) => setNever(e.target.value)}
         rows={2}
         placeholder={input.never_placeholder}
+        aria-label="Never share"
         className="mt-3 w-full resize-none rounded-2xl bg-white px-4 py-3 text-sm text-ink outline-none placeholder:text-muted/70 focus:ring-2 focus:ring-violet-400/50"
       />
       <Submit onClick={() => void onAnswer({ shareable: picked, never }, null)}>{input.submit}</Submit>
