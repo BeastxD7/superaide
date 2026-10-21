@@ -78,3 +78,8 @@ backend tests, lint, types, the frontend checks and the full browser suite pass.
 - 03:45 IST: identity binding (0a9ae99) landed. Dev migrated to 0018; the owner's Telegram link is backfilled to the current bot (@Ava2xD_bot) and the dev stack restarted cleanly.
   - Live Telegram check OK: owner recognised; the reply is formatted (no raw **), with a "Sources: [1] Note · preference · from Telegram" footer.
   - Identity follow-ups in progress: restrict confirm/unlink to the owner's own chat identities; don't let unconfirmed bots refresh last-seen.
+- 04:10 IST:
+  - Reliability fixes 1–12 landed (38b306b..dab423f). Live scorecard: 93% → 97% mean, 87% → 94% pass^3; citations, approvals and briefing now at 100%. Cost US$0.10.
+  - Per-instance budget plus the platform allowance landed (ADR 0009 T6, 38b306b, migration 0019). The platform cap defaults to $0 until the owner decides pricing.
+  - Identity follow-ups landed (aa54a50).
+  - Next: reliability round 3 (double-typo recall, the remaining honesty hedge, ~20 harder scenarios); tenancy T2 (accounts → own Ava); triage foundations; mobile ADR.
