@@ -383,6 +383,23 @@ def test_new_password_signs_out_old_sessions_and_the_old_password(browser):
     assert login(browser(), password="a brand new passphrase").status_code == 200
 
 
+def test_guessing_the_current_password_is_limited(browser, settings, clock):
+    """A stolen session must not become a way to brute-force the account's password."""
+    me = browser()
+    signup(me)
+    for i in range(settings.login_max_failures):
+        r = me.post("/auth/password", json={"current": f"guess number {i}", "new": "a brand new passphrase"})
+        assert r.status_code == 401
+    r = me.post("/auth/password", json={"current": PASSWORD, "new": "a brand new passphrase"})
+    assert r.status_code == 429, r.text
+    assert login(browser(), password="a brand new passphrase").status_code == 401  # not changed
+    # After the lock window the owner can change it again. (The failures were recorded at real
+    # time, a few seconds after the frozen clock started, hence the extra minute.)
+    clock[0] += timedelta(minutes=settings.login_lock_minutes + 1)
+    r = me.post("/auth/password", json={"current": PASSWORD, "new": "a brand new passphrase"})
+    assert r.status_code == 200, r.text
+
+
 @pytest.mark.parametrize(
     "body", [{}, {"current": PASSWORD}, {"new": "a brand new passphrase"}, {"current": 1, "new": 2}]
 )
