@@ -110,3 +110,13 @@ def test_a_reported_cost_counts_when_it_is_higher_and_a_gap_is_audited():
     with session_scope() as s:
         gaps = s.scalars(select(AuditLog).where(AuditLog.action == "cost_mismatch")).all()
         assert len(gaps) == 1 and gaps[0].detail["reported_usd"] == 0.0075
+
+
+def test_an_owner_price_for_a_new_claude_model_still_counts_cache_writes_and_searches():
+    with session_scope() as s:
+        set_owner_price(s, provider="anthropic", model="claude-new-6", input_usd_per_mtok=Decimal("1"),
+                        output_usd_per_mtok=Decimal("5"), user_id=None)  # fmt: skip
+        prices = owner_prices(s)
+    usage = UsageCounts(cache_write_1h_tokens=1_000_000, web_search_requests=2)
+    assert cost_usd("claude-new-6", usage, prices=prices) == Decimal("2.02")  # 2x input, plus $0.01 a search
+    assert worst_case_cost("claude-new-6", 0, 0, prices=prices) == Decimal("0.004")  # 2,000 overhead tokens at 2x

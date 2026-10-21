@@ -324,6 +324,10 @@ def test_the_neutral_interface_sends_exactly_the_recorded_request(name: str) -> 
 
 @pytest.mark.skipif(not RECORD, reason="set RECORD_WIRE=1 to re-record (only before changing the adapter)")
 def test_record() -> None:
+    # The recording is the gate: it must come from the code before a refactor, never after one.
+    assert not FIXTURE.exists() or os.environ.get("RECORD_WIRE_OVERWRITE") == "1", (
+        "the fixture exists; delete it or set RECORD_WIRE_OVERWRITE=1 only if the old request really changed"
+    )
     FIXTURE.parent.mkdir(exist_ok=True)
     FIXTURE.write_text(json.dumps({n: run_legacy(n) for n in sorted(SCENARIOS)}, indent=1, sort_keys=True) + "\n")
 

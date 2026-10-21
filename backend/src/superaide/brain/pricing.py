@@ -78,6 +78,16 @@ PRICES: dict[str, ModelPrice] = {
 }
 FREE = ModelPrice(Decimal(0), Decimal(0))
 
+# What every model of a provider kind is charged besides tokens, applied to owner-set prices too,
+# so an owner price for a new Claude model still counts cache writes and web searches.
+PROVIDER_RULES: dict[str, dict[str, Any]] = {
+    "anthropic": {
+        "cache_write_5m_mult": CACHE_WRITE_5M,
+        "cache_write_1h_mult": CACHE_WRITE_1H,
+        "tool_fees": {"web_search": WEB_SEARCH_USD},
+    },
+}
+
 # Built-in prices by (provider kind, model).
 BUILTIN: dict[tuple[str, str], ModelPrice] = {("anthropic", m): p for m, p in PRICES.items()}
 
@@ -227,7 +237,9 @@ def owner_prices(session: Any) -> PriceRegistry:
     rows = session.scalars(select(OwnerModelPrice)).all()
     return PriceRegistry(
         {
-            (r.provider, r.model): ModelPrice(r.input_usd_per_mtok, r.output_usd_per_mtok, r.cache_read_mult)
+            (r.provider, r.model): ModelPrice(
+                r.input_usd_per_mtok, r.output_usd_per_mtok, r.cache_read_mult, **PROVIDER_RULES.get(r.provider, {})
+            )
             for r in rows
         }
     )
