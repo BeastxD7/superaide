@@ -56,28 +56,28 @@ Open the dashboard, paste your `ADMIN_TOKEN`, then add yourself in a third termi
 uv run agi-agent add-manager --name "Shashank" --telegram-id 1001
 ```
 
-Go to **Try an impostor** and run the scenarios. With `FAKE_LLM=true` the model is an offline echo, so this costs nothing. Start again from an empty database any time with `docker compose down -v && docker compose up -d && uv run alembic upgrade head`.
+Go to **Try an impostor** and run the scenarios. Without an API key the model is an offline echo, so this costs nothing. Start again from an empty database any time with `docker compose down -v && docker compose up -d && uv run alembic upgrade head`.
 
 ## Connect your real channels
 
 **Telegram**
 
-1. Message `@BotFather`, create a bot, and put its token in `TELEGRAM_BOT_TOKEN`.
-2. Run `uv run agi-agent telegram-poll` (polling needs no public URL).
-3. Message your bot. It answers as a stranger, and the dashboard's **People** page shows your numeric Telegram ID under *Unlinked accounts*.
-4. Add yourself with that ID: `uv run agi-agent add-manager --name "Shashank" --telegram-id <your id>`.
+1. Message `@BotFather`, send `/newbot`, and put the token it gives you in `TELEGRAM_BOT_TOKEN` in `.env`.
+2. Run `bash start.command` again. It now also connects Telegram (polling, so no public URL is needed).
+3. Message your bot from your phone. It answers as a stranger, because it doesn't know your account yet.
+4. In the dashboard's **People** page, find your account under *Unlinked accounts*, choose "Shashank" and press **Link**. From then on Ava knows it's you.
 
 **Slack**
 
 1. Create an app at [api.slack.com/apps](https://api.slack.com/apps) from `slack-manifest.yml`.
 2. Generate an app-level token with `connections:write` (`SLACK_APP_TOKEN`), install the app, and copy the bot token (`SLACK_BOT_TOKEN`). Put your workspace's team ID (starts with `T`) in `SLACK_TEAM_ID`.
-3. Run `uv run agi-agent slack-socket`.
+3. Run `bash start.command` again; it connects Slack too.
 4. Link Slack to yourself the way a real user would: DM Ava "it's Shashank". The code arrives on Telegram. Type it in Slack and the two channels become one person.
 
 ## Real Claude calls and the US$10 cap
 
 1. Create a workspace in the [Claude Console](https://platform.claude.com/dashboard), make an API key, and set the workspace spend limit to US$10 as a second guard.
-2. In `.env`: `ANTHROPIC_API_KEY=...`, `FAKE_LLM=false`, `MAX_SPEND_USD=10`.
+2. In `.env`, set `ANTHROPIC_API_KEY=...` and keep `MAX_SPEND_USD=10`. Restart `start.command`; the dashboard's *What is live right now* panel turns green for Brain.
 3. `uv run agi-agent hello` makes one tiny Haiku 5.5 call (a small fraction of a cent) to check the key. `uv run agi-agent spend` shows the total.
 
 Replies to known people use Sonnet 5.5. My estimate is about a cent per reply with the current prompts, so US$10 covers several hundred to a thousand messages. When the cap is reached, Ava says it is paused and makes no further calls. Prices live in `src/agi_agent/brain/pricing.py`; a model missing from that table is refused.
