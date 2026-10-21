@@ -55,15 +55,17 @@ def test_the_loop_narrates_each_tool_call_and_streams_the_answer(owner_client):
     # What she wrote before the tool call is narration, not part of the answer.
     assert ("narration", {"text": "Let me check your notes."}) in seen
     tools = [d for k, d in seen if k == "tool"]
-    assert [t["state"] for t in tools] == ["running", "done"]
+    # The recall, then the source check (the uncited answer restates the note, so it gets cited).
+    assert [(t["name"], t["state"]) for t in tools] == [
+        ("recall", "running"), ("recall", "done"), ("verify", "running"), ("verify", "done"),
+    ]  # fmt: skip
     assert tools[0]["label"] == "Searching your notes and messages for “gym”"
     assert tools[1]["detail"] == "Found 1 source"
     assert kinds.index("narration") < kinds.index("tool") < len(kinds) - 1
-    assert seen[-1] == ("text", {"delta": "Your gym is Cult Fit."})
-
-    assert result.text == "Your gym is Cult Fit."
+    assert ("text", {"delta": "Your gym is Cult Fit."}) in seen
+    assert result.text == "Your gym is Cult Fit. [1]"
     assert result.reasoning == "Check the notes first."
-    assert result.activity == [
+    assert result.activity[:2] == [
         {"kind": "say", "label": "Let me check your notes."},
         {
             "kind": "tool",

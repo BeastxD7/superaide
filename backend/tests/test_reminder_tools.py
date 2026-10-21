@@ -349,3 +349,33 @@ def test_moving_to_a_bare_time_keeps_the_reminders_day():
         s.refresh(r)
         tomorrow = (datetime.now(UTC).astimezone(tz) + timedelta(days=1)).date()
         assert r.due_at.astimezone(tz).date() == tomorrow and r.due_at.astimezone(tz).hour == 9
+
+
+def test_delivered_reminders_are_listed_apart_from_upcoming_ones_and_clearing_one_marks_it_done():
+    # Live Telegram test 2026-10-22: four reminders that had already gone off were listed as
+    # "open, soonest first", as if still to come.
+    with session_scope() as s:
+        later = make(s, "Pay rent", hours=30)
+        went_off = make(s, "Drink water", hours=1)
+        went_off.delivered_at, went_off.delivered_via = datetime.now(UTC), ["app"]
+        s.flush()
+        script = Script(tool_use("list_reminders", {}), "Here they are.")
+        turn_for(s, script, "what's on my reminders list?").run(ASK)
+        text = result_of(script)["content"]
+        upcoming, _, delivered = text.partition("Already delivered, not marked done (1):")
+        assert "Pay rent" in upcoming and "Drink water" not in upcoming
+        assert "Drink water" in delivered and "don't call them upcoming" in delivered
+        script = Script(tool_use("cancel_reminder", {"id": str(went_off.id)}), "Cleared.")
+        turn_for(s, script, "clear the water one").run(ASK)
+        assert result_of(script)["content"] == "Reminder marked done: Drink water."
+        s.refresh(went_off)
+        s.refresh(later)
+        assert (went_off.status, later.status) == ("done", "open")
+
+
+def test_the_owner_prompt_says_the_chat_is_their_verified_account():
+    # Live Telegram test 2026-10-22: "Btw I'm Shashank" got "I can't verify identity from messages alone".
+    with session_scope() as s:
+        turn = turn_for(s, Script("Hi!"), "btw I'm Shashank")
+        prompt = "\n".join(b.text for b in turn.system())
+        assert "verified by the app through a linked identity" in prompt and "never doubt" in prompt

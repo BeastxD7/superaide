@@ -180,11 +180,11 @@ def _content_words(text: str) -> set[str]:
 
 
 def restates(sentence: str, source_text: str) -> bool:
-    """The sentence says what the source says: at least two of the source's content words, and
-    most of them (a short note), appear in it. Chit-chat shares nothing with a note."""
+    """The sentence says what the source says: three of the source's content words, or two that
+    are most of a short note, appear in it. Chit-chat shares nothing with a note."""
     src = _content_words(source_text)
     common = src & _content_words(sentence)
-    return len(common) >= 2 and len(common) >= 0.6 * len(src)
+    return len(common) >= 3 or (len(common) >= 2 and len(common) >= 0.6 * len(src))
 
 
 def uncited_restatements(text: str, sources: list[str]) -> list[tuple[str, int]]:

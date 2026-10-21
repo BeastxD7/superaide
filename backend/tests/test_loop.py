@@ -400,3 +400,8 @@ def test_chit_chat_next_to_a_found_note_is_not_cited():
     assert uncited_restatements("You're welcome, Shashank.", notes) == []
     assert uncited_restatements("Arjun Mehta is your manager.", notes) == [("Arjun Mehta is your manager.", 0)]
     assert uncited_restatements("Arjun Mehta is your manager. [1]", notes) == []
+    # A short answer from a long learned note (live eval: "Anya's birthday is on 14 March.").
+    long_note = ["Shashank's sister Anya's birthday is on 14 March, and she turns 30 this year."]
+    answer = "Anya's birthday is on 14 March."
+    assert uncited_restatements(answer, long_note) == [(answer, 0)]
+    assert uncited_restatements("Happy to help with Anya's plans.", long_note) == []

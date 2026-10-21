@@ -246,3 +246,25 @@
         - reply_contains_any: ["\\byes\\b", "can cancel", "i can"]
   checks:
     - reminder: {text_any: ["passport"]}
+
+- id: rem-list-separates-delivered
+  category: reminders
+  severity: high
+  title: Reminders that already went off are not listed as upcoming
+  based_on: "live Telegram test, 2026-10-22 (four past reminders listed as 'open, soonest first')"
+  clock: "01:20"
+  world:
+    reminders:
+      - text: "Drink water"
+        due: {minutes: 5}
+      - text: "Stretch"
+        due: {minutes: 12}
+      - text: "Submit the expense report"
+        due: {day: 0, at: "10:00"}
+  turns:
+    - advance: "+20m"
+    - say: "what's on my reminders list?"
+      expect:
+        - tool_called: list_reminders
+        - reply_contains: ["expense report"]
+        - judge: "Two reminders (drink water, stretch) already went off; one (submit the expense report, 10:00 am) is still to come. Pass only if Ava presents only the expense report as upcoming and describes the other two as already delivered or past (offering to clear them is good); fail if she lists the past ones as upcoming."

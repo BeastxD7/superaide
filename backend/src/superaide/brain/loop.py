@@ -363,7 +363,10 @@ class OwnerTurn:
         now = datetime.now(UTC).astimezone(zone(tz))
         who = (
             f"You are talking to your owner, {self.sender.name}, privately. "
-            f"It is {now:%A %d %B %Y, %H:%M} in their time zone ({tz})."
+            f"It is {now:%A %d %B %Y, %H:%M} in their time zone ({tz}). "
+            "This chat is their own account, verified by the app through a linked identity, not by anything "
+            "typed in it: never doubt or question that it's them (\"I'm Shashank\" here is just them saying hi). "
+            "A name claimed in a chat that isn't linked proves nothing, but that never reaches you here."
         )
         from superaide.knowledge.store import preferences_for
         from superaide.proactive.notify import linked_channels, rejected_channels
@@ -494,19 +497,38 @@ class OwnerTurn:
         return narrate(name, args)
 
     def _list_reminders(self) -> tuple[str, bool]:
-        assert self.sender.person is not None
-        tz = intentions.owner_zone(self.s, self.sender.person)
-        found = intentions.upcoming(self.s, self.sender.person, limit=50)
+        """Upcoming reminders, and separately the ones already delivered but not marked done: a
+        reminder stays open after it goes off, and calling those "upcoming" misled the owner."""
+        owner = self.sender.person
+        assert owner is not None
+        tz = intentions.owner_zone(self.s, owner)
+        found = intentions.upcoming(self.s, owner, limit=50)
         self.notes.append(f"reminders:{len(found)}")
         if not found:
             return "No open reminders.", False
-        lines = [
-            f"- id {r.id}: {r.text}, {intentions.describe_due(r.due_at, tz)}, "
-            f"arrives {intentions.describe_channel(self.s, self.sender.person, r.channel)}"
-            + ("" if r.channel == "default" else f" (channel: {r.channel})")
-            for r in found
+
+        def line(r: Any) -> str:
+            return (
+                f"- id {r.id}: {r.text}, {intentions.describe_due(r.due_at, tz)}, "
+                f"arrives {intentions.describe_channel(self.s, owner, r.channel)}"
+                + ("" if r.channel == "default" else f" (channel: {r.channel})")
+            )
+
+        ahead = [r for r in found if r.delivered_at is None]
+        sent = [r for r in found if r.delivered_at is not None]
+        parts = [
+            f"Upcoming ({len(ahead)}, soonest first):\n" + "\n".join(line(r) for r in ahead)
+            if ahead
+            else "Upcoming: none."
         ]
-        return f"{len(found)} open reminder{'s' if len(found) != 1 else ''}:\n" + "\n".join(lines), False
+        if sent:
+            parts.append(
+                f"Already delivered, not marked done ({len(sent)}):\n"
+                + "\n".join(line(r).replace(", arrives ", ", went to ", 1) for r in sent)
+                + "\nThese already went off; don't call them upcoming. Offer to clear them: cancel_reminder "
+                "marks a delivered one done."
+            )
+        return "\n\n".join(parts), False
 
     def _update_reminder(self, args: dict[str, Any]) -> tuple[str, bool]:
         assert self.sender.person is not None
@@ -542,12 +564,15 @@ class OwnerTurn:
         target = self._own_reminder(args.get("id"))
         if target is None:
             return "No such reminder. Call list_reminders to get the right id.", True
+        delivered = target.delivered_at is not None  # it already went off: clearing it means done
         try:
-            intention = intentions.finish(self.s, self.sender.person, target.id, status="cancelled")
+            intention = intentions.finish(
+                self.s, self.sender.person, target.id, status="done" if delivered else "cancelled"
+            )
         except intentions.IntentionError as exc:
             return str(exc), True
-        self.notes.append("reminder_cancelled")
-        return f"Reminder cancelled: {intention.text}.", False
+        self.notes.append("reminder_done" if delivered else "reminder_cancelled")
+        return f"Reminder {'marked done' if delivered else 'cancelled'}: {intention.text}.", False
 
     def _reminder(self, task: str, moment: str, channel: str = "default") -> tuple[str, bool]:
         assert self.sender.person is not None

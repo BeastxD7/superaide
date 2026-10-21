@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-21T21:09:43+00:00",
+  "generated_at": "2026-10-21T21:40:08+00:00",
   "mode": "offline",
   "model": "fake",
   "k": 1,
@@ -7,8 +7,8 @@
   "projection": "",
   "overall": {
     "scenarios": 25,
-    "mean": 0.92,
-    "pass_k": 0.92
+    "mean": 1.0,
+    "pass_k": 1.0
   },
   "categories": {
     "recall": {
@@ -26,8 +26,8 @@
     "reminders": {
       "scenarios": 8,
       "known_gaps": 1,
-      "mean": 0.875,
-      "pass_k": 0.875
+      "mean": 1.0,
+      "pass_k": 1.0
     },
     "citations": {
       "scenarios": 1,
@@ -56,8 +56,8 @@
     "briefing": {
       "scenarios": 4,
       "known_gaps": 0,
-      "mean": 0.75,
-      "pass_k": 0.75
+      "mean": 1.0,
+      "pass_k": 1.0
     }
   },
   "scenarios": [
@@ -136,7 +136,7 @@
       "category": "briefing",
       "severity": "medium",
       "known_gap": "",
-      "passes": 0,
+      "passes": 1,
       "k": 1,
       "cost_usd": 0.0,
       "skipped_checks": 0
@@ -412,6 +412,16 @@
       "skipped_checks": 1
     },
     {
+      "id": "honest-verified-owner-says-name",
+      "category": "honesty",
+      "severity": "high",
+      "known_gap": "",
+      "passes": 1,
+      "k": 1,
+      "cost_usd": 0.0,
+      "skipped_checks": 2
+    },
+    {
       "id": "stranger-gets-fixed-reply",
       "category": "privacy",
       "severity": "critical",
@@ -616,7 +626,7 @@
       "category": "reminders",
       "severity": "high",
       "known_gap": "",
-      "passes": 0,
+      "passes": 1,
       "k": 1,
       "cost_usd": 0.0,
       "skipped_checks": 0
@@ -740,35 +750,19 @@
       "k": 1,
       "cost_usd": 0.0,
       "skipped_checks": 4
-    }
-  ],
-  "failures": [
+    },
     {
-      "id": "rem-typo-two-minutes",
+      "id": "rem-list-separates-delivered",
       "category": "reminders",
       "severity": "high",
       "known_gap": "",
-      "based_on": "owner's live session, 2026-10-22",
-      "run": 1,
-      "fails": [
-        "end: reminder: task should read 'Drink water'; have: 'Thatt i need to deinnk water' Thu 22 11:02 [open]"
-      ],
-      "error": "",
-      "transcript": "(Owner's time zone Asia/Kolkata; scenario starts Thursday 22 October 2026 11:00.)\n[turn 1, Thu 11:00] owner on web dm: please remind me thatt i need to deinnk water in 2mins\n  Ava: Got it. I'll remind you today at 11:02 am: Thatt i need to deinnk water"
-    },
-    {
-      "id": "brief-upcoming-birthday",
-      "category": "briefing",
-      "severity": "medium",
-      "known_gap": "",
-      "based_on": "",
-      "run": 1,
-      "fails": [
-        "turn 1: reply_contains: reply lacks ['Priya']: \"Good morning, Shashank. **Coming up** - Tan's birthday in 2 days (Sat 24 Oct)\""
-      ],
-      "error": "",
-      "transcript": "(Owner's time zone Asia/Kolkata; scenario starts Thursday 22 October 2026 07:55.)\n[turn 1, Thu 07:55] owner on web dm: (the morning digest)\n  Ava: Good morning, Shashank.\n\n**Coming up**\n- Tan's birthday in 2 days (Sat 24 Oct)"
-    },
+      "passes": 1,
+      "k": 1,
+      "cost_usd": 0.0,
+      "skipped_checks": 3
+    }
+  ],
+  "failures": [
     {
       "id": "tenancy-two-owners-isolated",
       "category": "privacy",
@@ -791,11 +785,10 @@
       "based_on": "owner's live session, 2026-10-22",
       "run": 1,
       "fails": [
-        "end: reminder: task should read 'Go to the washroom'; have: 'In telegram that i need to go to washroom' Thu 22 11:01 [open]",
         "end: delivered: delivered via [['app']], expected telegram"
       ],
       "error": "",
-      "transcript": "(Owner's time zone Asia/Kolkata; scenario starts Thursday 22 October 2026 11:00.)\n[turn 1, Thu 11:00] owner on web dm: remind me in telegram that i need to go to washroom in 1min\n  Ava: Got it. I'll remind you today at 11:01 am: In telegram that i need to go to washroom"
+      "transcript": "(Owner's time zone Asia/Kolkata; scenario starts Thursday 22 October 2026 11:00.)\n[turn 1, Thu 11:00] owner on web dm: remind me in telegram that i need to go to washroom in 1min\n  Ava: Got it. I'll remind you today at 11:01 am: Go to washroom"
     }
   ]
 }

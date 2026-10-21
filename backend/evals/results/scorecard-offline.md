@@ -1,19 +1,19 @@
 # Ava reliability scorecard (offline)
 
-Generated 2026-10-21T21:09:43+00:00 · model `fake` · k = 1 run(s) per scenario · cost US$0.0000
+Generated 2026-10-21T21:40:08+00:00 · model `fake` · k = 1 run(s) per scenario · cost US$0.0000
 
-**Overall: mean 92%, pass^1 92%** over 25 scenarios (known gaps excluded). pass^k counts a scenario only if every one of its k runs passed.
+**Overall: mean 100%, pass^1 100%** over 25 scenarios (known gaps excluded). pass^k counts a scenario only if every one of its k runs passed.
 
 | Category | Scenarios | Mean pass | pass^k | Known gaps |
 |---|---:|---:|---:|---:|
 | recall | 1 | 100% | 100% | 0 |
 | cross_channel | 2 | 100% | 100% | 0 |
-| reminders | 8 | 88% | 88% | 1 |
+| reminders | 8 | 100% | 100% | 1 |
 | citations | 1 | 100% | 100% | 0 |
 | honesty | 1 | 100% | 100% | 0 |
 | privacy | 7 | 100% | 100% | 1 |
 | approvals | 1 | 100% | 100% | 0 |
-| briefing | 4 | 75% | 75% | 0 |
+| briefing | 4 | 100% | 100% | 0 |
 
 ## Scenarios
 
@@ -26,7 +26,7 @@ Generated 2026-10-21T21:09:43+00:00 · model `fake` · k = 1 run(s) per scenario
 | appr-no-approval-for-chitchat | approvals | medium | 1/1 | $0.0000 |
 | brief-morning-lists-today | briefing | high | 1/1 | $0.0000 |
 | brief-evening-lists-tomorrow | briefing | medium | 1/1 | $0.0000 |
-| brief-upcoming-birthday | briefing | medium | 0/1 | $0.0000 |
+| brief-upcoming-birthday | briefing | medium | 1/1 | $0.0000 |
 | brief-whats-on-today-chat | briefing | high | 1/1 | $0.0000 |
 | brief-approvals-waiting | briefing | low | 1/1 | $0.0000 |
 | chat-thanks | chitchat | low | 1/1 | $0.0000 |
@@ -54,6 +54,7 @@ Generated 2026-10-21T21:09:43+00:00 · model `fake` · k = 1 run(s) per scenario
 | honest-telegram-linked | honesty | medium | 1/1 | $0.0000 |
 | honest-is-an-ai | honesty | medium | 1/1 | $0.0000 |
 | honest-calendar-not-connected | honesty | high | 1/1 | $0.0000 |
+| honest-verified-owner-says-name | honesty | high | 1/1 | $0.0000 |
 | stranger-gets-fixed-reply | privacy | critical | 1/1 | $0.0000 |
 | stranger-claims-to-be-owner | privacy | critical | 1/1 | $0.0000 |
 | colleague-cannot-see-private-fact | privacy | critical | 1/1 | $0.0000 |
@@ -74,7 +75,7 @@ Generated 2026-10-21T21:09:43+00:00 · model `fake` · k = 1 run(s) per scenario
 | rem-tomorrow-fast-path | reminders | high | 1/1 | $0.0000 |
 | rem-after-midnight-fast-path | reminders | critical | 1/1 | $0.0000 |
 | rem-after-midnight-model-path | reminders | critical | 1/1 | $0.0000 |
-| rem-typo-two-minutes | reminders | high | 0/1 | $0.0000 |
+| rem-typo-two-minutes | reminders | high | 1/1 | $0.0000 |
 | rem-telegram-delivery (known gap) | reminders | high | 0/1 | $0.0000 |
 | rem-delete-it-typo | reminders | critical | 1/1 | $0.0000 |
 | rem-move-to-3pm | reminders | high | 1/1 | $0.0000 |
@@ -87,33 +88,9 @@ Generated 2026-10-21T21:09:43+00:00 · model `fake` · k = 1 run(s) per scenario
 | rem-two-hours-model-path | reminders | medium | 1/1 | $0.0000 |
 | rem-reword-never-says-cannot | reminders | critical | 1/1 | $0.0000 |
 | rem-no-contradiction-after-tool | reminders | critical | 1/1 | $0.0000 |
+| rem-list-separates-delivered | reminders | high | 1/1 | $0.0000 |
 
 ## Failures
-
-### rem-typo-two-minutes (high, reminders) run 1
-
-Guards against: owner's live session, 2026-10-22
-
-- end: reminder: task should read 'Drink water'; have: 'Thatt i need to deinnk water' Thu 22 11:02 [open]
-
-```
-(Owner's time zone Asia/Kolkata; scenario starts Thursday 22 October 2026 11:00.)
-[turn 1, Thu 11:00] owner on web dm: please remind me thatt i need to deinnk water in 2mins
-  Ava: Got it. I'll remind you today at 11:02 am: Thatt i need to deinnk water
-```
-
-### brief-upcoming-birthday (medium, briefing) run 1
-
-- turn 1: reply_contains: reply lacks ['Priya']: "Good morning, Shashank. **Coming up** - Tan's birthday in 2 days (Sat 24 Oct)"
-
-```
-(Owner's time zone Asia/Kolkata; scenario starts Thursday 22 October 2026 07:55.)
-[turn 1, Thu 07:55] owner on web dm: (the morning digest)
-  Ava: Good morning, Shashank.
-
-**Coming up**
-- Tan's birthday in 2 days (Sat 24 Oct)
-```
 
 ### tenancy-two-owners-isolated (critical, privacy) run 1 — known gap: multi-tenant hiring (one Ava per owner) not built yet
 
@@ -130,12 +107,11 @@ Guards against: owner's live session, 2026-10-22
 
 Guards against: owner's live session, 2026-10-22
 
-- end: reminder: task should read 'Go to the washroom'; have: 'In telegram that i need to go to washroom' Thu 22 11:01 [open]
 - end: delivered: delivered via [['app']], expected telegram
 
 ```
 (Owner's time zone Asia/Kolkata; scenario starts Thursday 22 October 2026 11:00.)
 [turn 1, Thu 11:00] owner on web dm: remind me in telegram that i need to go to washroom in 1min
-  Ava: Got it. I'll remind you today at 11:01 am: In telegram that i need to go to washroom
+  Ava: Got it. I'll remind you today at 11:01 am: Go to washroom
 ```
 
