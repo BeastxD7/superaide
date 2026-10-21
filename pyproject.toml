@@ -1,0 +1,47 @@
+[project]
+name = "agi-agent"
+version = "0.1.0"
+description = "An AI hire that grows up like a child, with identity checks you can trust"
+authors = [
+    { name = "Shashank" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "alembic>=1.20.0",
+    "anthropic>=1.17.0",
+    "fastapi>=0.156.8",
+    "httpx>=0.28.1",
+    "psycopg[binary]>=3.3.6",
+    "pydantic>=2.14.1",
+    "pydantic-settings>=2.16.1",
+    "slack-bolt>=1.30.0",
+    "sqlalchemy>=2.1",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[project.scripts]
+agi-agent = "agi_agent:main"
+
+[build-system]
+requires = ["uv_build>=0.11.32,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.17.1",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/agi_agent/brain/turn.py" = ["E501"]  # prompt text
