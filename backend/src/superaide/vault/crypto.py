@@ -91,7 +91,10 @@ def encrypt(plaintext: str, slot: str) -> str:
 
 def decrypt(token: str, slot: str) -> str:
     key, _ = master_key()
-    raw = base64.b64decode(token)
+    try:
+        raw = base64.b64decode(token, validate=True)
+    except ValueError as exc:  # binascii.Error is a ValueError
+        raise VaultError("Unknown secret format.") from exc
     if raw[:1] != VERSION:
         raise VaultError("Unknown secret format.")
     try:
