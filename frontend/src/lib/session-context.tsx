@@ -62,8 +62,10 @@ export function SessionProvider({ initialAccount, hasSession, children }: Provid
 
   const signedIn = useCallback(
     async (acc: Account) => {
-      setAccount(acc)
+      // Load the agent state before announcing the account, so no page sees
+      // "signed in, hired, but no agent yet" and bounces to the home page.
       await loadAgent(acc)
+      setAccount(acc)
       router.refresh() // re-render server components with the new session cookie
     },
     [loadAgent, router],

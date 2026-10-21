@@ -22,7 +22,7 @@ const components: Components = {
 
 export function Markdown({ text }: { text: string }) {
   return (
-    <div className="break-words">
+    <div className="[overflow-wrap:anywhere]">
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
         {text}
       </ReactMarkdown>

@@ -32,9 +32,11 @@ export function DashboardShell({ defaultOpen, children }: { defaultOpen: boolean
 
   return (
     <TooltipProvider delayDuration={300}>
-      <SidebarProvider defaultOpen={defaultOpen}>
+      {/* The app fills the window exactly: the header stays put, and each page
+          scrolls inside it (the chat keeps its composer on screen). */}
+      <SidebarProvider defaultOpen={defaultOpen} className="h-svh">
         <AppSidebar session={session} me={me} />
-        <SidebarInset className="min-h-0 md:peer-data-[variant=inset]:shadow-[0_1px_2px_rgba(27,22,56,0.06),0_12px_40px_-24px_rgba(27,22,56,0.25)]">
+        <SidebarInset className="min-h-0 overflow-hidden md:peer-data-[variant=inset]:shadow-[0_1px_2px_rgba(27,22,56,0.06),0_12px_40px_-24px_rgba(27,22,56,0.25)]">
           <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line/70 px-4">
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4" />
@@ -44,7 +46,7 @@ export function DashboardShell({ defaultOpen, children }: { defaultOpen: boolean
               {me.agent.name}: {status.label.toLowerCase()}
             </span>
           </header>
-          <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">{children}</div>
         </SidebarInset>
       </SidebarProvider>
     </TooltipProvider>

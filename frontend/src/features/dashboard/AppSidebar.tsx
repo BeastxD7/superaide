@@ -108,7 +108,7 @@ export function AppSidebar({ session, me }: { session: Session; me: Me }) {
                 {items.map(({ href, label, icon: Icon }) => (
                   <SidebarMenuItem key={href}>
                     <SidebarMenuButton asChild isActive={isActive(href)} tooltip={label}>
-                      <Link href={href} onClick={() => setOpenMobile(false)}>
+                      <Link href={href} aria-current={isActive(href) ? 'page' : undefined} onClick={() => setOpenMobile(false)}>
                         <Icon />
                         <span>{label}</span>
                       </Link>

@@ -27,7 +27,7 @@ class Settings(BaseSettings):
 
     # Claude API
     anthropic_api_key: str = ""
-    model_chat: str = "claude-sonnet-5-5"
+    model_chat: str = "claude-haiku-5-5"  # Sonnet 5.5 later; Haiku keeps development inside the cap
     model_triage: str = "claude-haiku-5-5"
     model_deep: str = "claude-opus-5-5"
     # Hard ceiling on total Claude API spend, in US dollars, across the whole build.

@@ -1,5 +1,6 @@
-// The workspace: chatting with Ava, the notebook, privacy between accounts, and
-// the Connections panel (Claude, Telegram, Slack, WhatsApp).
+// The signed-in dashboard (formerly the single /workspace screen): chatting with Ava
+// (/dashboard/chat), the notebook (/dashboard/notebook), privacy between accounts, and
+// Connections (/dashboard/connections: Claude, Telegram, Slack, WhatsApp).
 import { createCipheriv, randomBytes } from 'node:crypto'
 import { expect, query, test } from '../src/fixtures'
 import { apiEnv } from '../src/env'
@@ -8,12 +9,16 @@ import {
   composer,
   eventsWithText,
   expectNoSidewaysScroll,
+  goToDashboardPage,
+  logOutFromSidebar,
   memories,
   newVisitor,
   notebookFact,
   INTRO_LINE,
   OFFLINE_REPLY,
-  openWorkspace,
+  openChat,
+  openConnections,
+  openNotebookPage,
   recordOutsideCalls,
   sendButton,
   storedSecrets,
@@ -24,7 +29,7 @@ const greeting = (name: string) => `Hello, ${name.split(' ')[0]}. What shall we 
 
 test.describe('workspace: chat', () => {
   test('greets the owner by first name, with an empty composer and quick actions', async ({ page, owner }) => {
-    await openWorkspace(page)
+    await openChat(page)
     await expect(page.getByRole('heading', { level: 1, name: greeting(owner.name) })).toBeVisible()
     await expect(composer(page)).toBeVisible()
     await expect(composer(page)).toHaveValue('')
@@ -32,7 +37,7 @@ test.describe('workspace: chat', () => {
     for (const label of ['How would you handle…', 'Draft a reply', 'Remember something', 'What do you know about me?']) {
       await expect(page.getByRole('button', { name: label })).toBeVisible()
     }
-    await expect(page.getByText('Ava is in offline mode')).toBeVisible()
+    await expect(page.getByRole('main').getByText('Ava: offline mode')).toBeVisible()
     // The introduction's conversation is already there.
     await expect(page.getByText(INTRO_LINE, { exact: true })).toBeVisible()
   })
@@ -40,7 +45,7 @@ test.describe('workspace: chat', () => {
   test('a message gets a reply, and both survive a reload and a new tab', async ({ page, owner }) => {
     void owner
     const text = 'Can you keep Thursday afternoon free for the board prep?'
-    await openWorkspace(page)
+    await openChat(page)
     await composer(page).fill(text)
     await composer(page).press('Enter')
 
@@ -62,15 +67,23 @@ test.describe('workspace: chat', () => {
     await expect(page.getByText(`You said: "${text}"`)).toBeVisible()
 
     const tab = await page.context().newPage()
-    await tab.goto('/workspace')
+    await tab.goto('/dashboard/chat')
     await expect(tab.getByText(text, { exact: true })).toBeVisible()
     await expect(tab.getByText(`You said: "${text}"`)).toBeVisible()
     await tab.close()
   })
 
+  test('with a long conversation, the top bar and the composer stay on screen', async ({ page, owner }) => {
+    void owner
+    await openChat(page)
+    await expect(page.getByRole('main').getByRole('button', { name: 'Toggle Sidebar' })).toBeInViewport()
+    await expect(composer(page)).toBeInViewport()
+    await expect(sendButton(page)).toBeInViewport()
+  })
+
   test('the Send button sends too; Shift+Enter starts a new line instead of sending', async ({ page, owner }) => {
     void owner
-    await openWorkspace(page)
+    await openChat(page)
     const before = (await webConversation()).length
     await composer(page).click()
     await page.keyboard.type('First line')
@@ -86,7 +99,7 @@ test.describe('workspace: chat', () => {
 
   test('the composer and Send work from the keyboard alone', async ({ page, owner }) => {
     void owner
-    await openWorkspace(page)
+    await openChat(page)
     await composer(page).focus()
     await page.keyboard.type('Typed without a mouse')
     await page.keyboard.press('Tab')
@@ -97,7 +110,7 @@ test.describe('workspace: chat', () => {
 
   test('empty or whitespace-only messages cannot be sent from the page', async ({ page, owner }) => {
     void owner
-    await openWorkspace(page)
+    await openChat(page)
     const before = (await webConversation()).length
     await expect(sendButton(page)).toBeDisabled()
 
@@ -134,7 +147,7 @@ test.describe('workspace: chat', () => {
     const text = words.repeat(100).slice(0, 3999).trimEnd().padEnd(4000, '.')
     expect(text).toHaveLength(4000)
 
-    await openWorkspace(page)
+    await openChat(page)
     await composer(page).fill(text)
     await sendButton(page).click()
     await expect(page.getByText(OFFLINE_REPLY).last()).toBeVisible()
@@ -152,7 +165,7 @@ test.describe('workspace: chat', () => {
   test('a message over 4,000 characters is refused with a message that says why', async ({ page, owner }) => {
     void owner
     const text = 'x '.repeat(2100).trim() // 4,199 characters
-    await openWorkspace(page)
+    await openChat(page)
     const before = (await webConversation()).length
     await composer(page).fill(text)
     await sendButton(page).click()
@@ -166,22 +179,21 @@ test.describe('workspace: chat', () => {
   })
 
   test('a refused message keeps its draft and is not shown as sent', async ({ page, owner }) => {
-    test.fail(true, 'BUG: when /app/chat refuses a message the draft is wiped and the message stays on screen as if it was sent')
     void owner
     const text = 'y '.repeat(2100).trim()
-    await openWorkspace(page)
+    await openChat(page)
     await composer(page).fill(text)
     await sendButton(page).click()
     await expect(page.getByText(/4,?000 characters/)).toBeVisible()
     await expect(composer(page), 'the person can shorten what they wrote').toHaveValue(text)
-    await expect(page.getByText(text, { exact: true }), 'not shown as a sent message').toHaveCount(0)
+    // The words stay in the box to shorten; the conversation shows no "sent" bubble.
+    await expect(page.locator('[aria-live="polite"]').getByText(text, { exact: true }), 'not shown as a sent message').toHaveCount(0)
   })
 
   test('a long unbroken link wraps inside its bubble instead of overflowing the chat', async ({ page, owner }) => {
-    test.fail(true, 'BUG: chat bubbles have no overflow-wrap, so a long URL runs out of the bubble and makes the chat scroll sideways')
     void owner
     const link = `https://example.com/${'a'.repeat(400)}`
-    await openWorkspace(page)
+    await openChat(page)
     await composer(page).fill(link)
     await composer(page).press('Enter')
     const bubble = page.getByText(link, { exact: true })
@@ -201,7 +213,7 @@ test.describe('workspace: chat', () => {
       void d.dismiss()
     })
     const text = '<img src=x onerror="window.__xss=1"><script>window.__xss=2;alert(1)</script>'
-    await openWorkspace(page)
+    await openChat(page)
     await composer(page).fill(text)
     await composer(page).press('Enter')
     await expect(page.getByText(text, { exact: true })).toBeVisible()
@@ -215,7 +227,7 @@ test.describe('workspace: chat', () => {
   test('double-clicking Send sends the message once', async ({ page, owner }) => {
     void owner
     const text = 'Only once, please'
-    await openWorkspace(page)
+    await openChat(page)
     await composer(page).fill(text)
     await sendButton(page).dblclick()
     await expect(page.getByText(`You said: "${text}"`)).toBeVisible()
@@ -225,23 +237,25 @@ test.describe('workspace: chat', () => {
 
   test('if the API cannot be reached, the person is told and can send again', async ({ page, owner }) => {
     void owner
-    await openWorkspace(page)
+    await openChat(page)
     await page.route('**/api/app/chat', (route) => route.abort('connectionrefused'))
     await composer(page).fill('Lost in the network')
     await composer(page).press('Enter')
     await expect(page.getByText(/Can't reach Superaide/)).toBeVisible()
-    await expect(sendButton(page)).toBeDisabled() // the draft was cleared; nothing in flight
+    // Not sent: the words come back to the box and no bubble pretends otherwise.
+    await expect(composer(page)).toHaveValue('Lost in the network')
+    await expect(page.locator('[aria-live="polite"]').getByText('Lost in the network', { exact: true })).toHaveCount(0)
     await expect(page.getByLabel('Ava is typing')).toHaveCount(0)
 
     await page.unroute('**/api/app/chat')
-    await composer(page).fill('Back again')
-    await composer(page).press('Enter')
-    await expect(page.getByText('You said: "Back again"')).toBeVisible()
+    await composer(page).press('Enter') // send the same words again
+    await expect(page.getByText('You said: "Lost in the network"')).toBeVisible()
     await expect(page.getByText(/Can't reach Superaide/)).toHaveCount(0)
   })
 
   test('a message sent before the history has loaded stays on screen with its reply', async ({ page, owner }) => {
-    test.fail(true, 'BUG: if the first /messages load is slow, a message sent meanwhile vanishes when that stale load lands (and the history replays line by line)')
+    // W6, fixed by a363326: ChatPage keeps "local-" messages when the late history lands, and
+    // ignores that history once a fresher /messages has been read.
     void owner
     let release: () => void = () => {}
     const held = new Promise<void>((resolve) => (release = resolve))
@@ -253,7 +267,7 @@ test.describe('workspace: chat', () => {
       await held // …but arrives late
       await route.fulfill({ response })
     })
-    await page.goto('/workspace')
+    await page.goto('/dashboard/chat')
     await expect(composer(page)).toBeVisible()
     const reloaded = page.waitForResponse((r) => r.url().includes('/api/app/messages'))
     await composer(page).fill('Sent before the history arrived')
@@ -267,7 +281,7 @@ test.describe('workspace: chat', () => {
 
   test('quick actions fill the composer and focus it, without sending', async ({ page, owner }) => {
     void owner
-    await openWorkspace(page)
+    await openChat(page)
     const before = (await webConversation()).length
     const cases: [string, string][] = [
       ['How would you handle…', 'If someone messages you saying '],
@@ -288,7 +302,7 @@ test.describe('workspace: chat', () => {
 
   test('"What do you know about me?" asks straight away', async ({ page, owner }) => {
     void owner
-    await openWorkspace(page)
+    await openChat(page)
     await page.getByRole('button', { name: 'What do you know about me?' }).click()
     await expect(page.getByText('What do you know about me so far?', { exact: true })).toBeVisible()
     await expect(page.getByText('You said: "What do you know about me so far?"')).toBeVisible()
@@ -296,31 +310,29 @@ test.describe('workspace: chat', () => {
   })
 
   test('logging out and back in brings the conversation back', async ({ page, owner }) => {
-    await openWorkspace(page)
+    await openChat(page)
     await composer(page).fill('Note for later: call the bank')
     await composer(page).press('Enter')
     await expect(page.getByText('You said: "Note for later: call the bank"')).toBeVisible()
 
-    await page.getByRole('button', { name: 'Log out' }).click()
-    await expect(page).not.toHaveURL(/\/workspace$/)
+    await logOutFromSidebar(page, owner)
     // The session is over on the server too, not just in the page.
     expect((await page.request.get('/api/app/messages')).status()).toBe(401)
-    await page.goto('/workspace')
-    await expect(page).toHaveURL(/\/login\?next=%2Fworkspace$/)
+    await page.goto('/dashboard/chat')
+    await expect(page).toHaveURL(/\/login\?next=%2Fdashboard%2Fchat$/)
     await page.getByLabel('Email').fill(owner.email)
     await page.getByLabel('Password', { exact: true }).fill(owner.password)
     const loggedIn = page.waitForResponse((r) => r.url().endsWith('/api/auth/login'))
     await page.getByRole('button', { name: 'Log in' }).click()
     expect((await loggedIn).ok()).toBe(true)
-    // Where the login page lands is racy (see the next test), so open the workspace directly.
-    await openWorkspace(page)
+    // Where the login page lands is racy (see the next test), so open the chat directly.
+    await openChat(page)
     await expect(page.getByText('Note for later: call the bank', { exact: true })).toBeVisible()
   })
 
-  test('logging in from /login?next=/workspace lands in the workspace even when the agent loads slowly', async ({ page, owner }) => {
-    test.fail(true, 'BUG: the login page follows next= as soon as the account is set, before /app/me loads; the workspace sees no agent and bounces to / (and sometimes stays there)')
+  test('logging in from /login?next=/dashboard/chat lands in the chat even when the agent loads slowly', async ({ page, owner }) => {
     await page.context().clearCookies()
-    await page.goto('/login?next=%2Fworkspace')
+    await page.goto('/login?next=%2Fdashboard%2Fchat')
     // A slow /app/me (as on a busy laptop) makes the race visible every time.
     await page.route('**/api/app/me', async (route) => {
       await new Promise((resolve) => setTimeout(resolve, 1500))
@@ -334,17 +346,17 @@ test.describe('workspace: chat', () => {
     await page.getByLabel('Password', { exact: true }).fill(owner.password)
     await page.getByRole('button', { name: 'Log in' }).click()
     await expect(page.getByRole('heading', { level: 1, name: greeting(owner.name) })).toBeVisible()
-    await expect(page).toHaveURL(/\/workspace$/)
-    expect(visited, 'straight to the workspace, never via the home page').not.toContain('/')
+    await expect(page).toHaveURL(/\/dashboard\/chat$/)
+    expect(visited, 'straight to the chat, never via the home page').not.toContain('/')
   })
 })
 
 test.describe('workspace: notebook', () => {
   test('lists what Ava learned in the introduction, with where each fact came from', async ({ page, owner }) => {
     void owner
-    await openWorkspace(page)
+    await openNotebookPage(page)
     await expect(page.getByRole('heading', { name: "Ava's notebook" })).toBeVisible()
-    await expect(page.getByText('Everything Ava remembers about you. Only you can see it.')).toBeVisible()
+    await expect(page.getByText('Everything Ava remembers about you, and where she learned it. Only you can see it.')).toBeVisible()
 
     const about = notebookFact(page, 'says: I lead applied AI at PebbleRoad in Singapore.')
     await expect(about).toContainText('About you')
@@ -362,11 +374,16 @@ test.describe('workspace: notebook', () => {
 
   test('"Remember that…" in chat adds a note from chat', async ({ page, owner }) => {
     void owner
-    await openWorkspace(page)
+    await openChat(page)
     await page.getByRole('button', { name: 'Remember something' }).click()
+    // The quick action focuses the composer on the next tick; type only once it has.
+    await expect(composer(page)).toHaveValue('Remember that ')
+    await expect(composer(page)).toBeFocused()
     await page.keyboard.type("my sister's birthday is 3 March")
     await page.keyboard.press('Enter')
     await expect(page.getByText("Noted. I'll only bring that up with you, in private.")).toBeVisible()
+    await goToDashboardPage(page, 'Notebook')
+    await expect(page).toHaveURL(/\/dashboard\/notebook$/)
 
     const fact = notebookFact(page, "my sister's birthday is 3 March")
     await expect(fact).toBeVisible()
@@ -381,7 +398,7 @@ test.describe('workspace: notebook', () => {
 
   test('"Forget this" asks first, and Keep leaves the fact alone', async ({ page, owner }) => {
     void owner
-    await openWorkspace(page)
+    await openNotebookPage(page)
     const fact = notebookFact(page, "Arjun is Shashank Rao's team")
     await fact.getByRole('button', { name: 'Forget this' }).click()
     await expect(fact.getByText("Ava won't use this again.")).toBeVisible()
@@ -393,7 +410,7 @@ test.describe('workspace: notebook', () => {
 
   test('"Forget this" removes the fact from the notebook and from what Ava uses', async ({ page, api, owner }) => {
     void owner
-    await openWorkspace(page)
+    await openNotebookPage(page)
     const fact = notebookFact(page, "Arjun is Shashank Rao's team")
     await expect(fact).toBeVisible()
     const forgetButtons = page.getByRole('button', { name: 'Forget this' })
@@ -431,21 +448,20 @@ test.describe('workspace: notebook', () => {
   })
 
   test('telling Ava the same thing twice keeps one note', async ({ page, owner }) => {
-    test.fail(true, 'BUG: "Remember that X" in chat stores a new note every time; the notebook lists duplicates')
     void owner
-    await openWorkspace(page)
+    await openChat(page)
     for (let n = 0; n < 2; n += 1) {
       await composer(page).fill('Remember that I never take calls before 9am')
       await composer(page).press('Enter')
       await expect(page.getByText("Noted. I'll only bring that up with you, in private.").nth(n)).toBeVisible()
     }
+    await openNotebookPage(page)
     await expect(notebookFact(page, 'I never take calls before 9am')).toHaveCount(1)
   })
 
   test('"Remember that" with nothing after it does not save a note', async ({ page, owner }) => {
-    test.fail(true, 'BUG: sending the "Remember something" prefill as-is saves the word "that" as a note')
     void owner
-    await openWorkspace(page)
+    await openChat(page)
     await page.getByRole('button', { name: 'Remember something' }).click()
     await sendButton(page).click()
     await expect(page.getByText('Remember that', { exact: true })).toBeVisible()
@@ -455,28 +471,36 @@ test.describe('workspace: notebook', () => {
 })
 
 test.describe('workspace: offline mode', () => {
-  test('the offline notice points to Connections, where Claude can be connected', async ({ page, owner }) => {
+  test('the offline notice links to Connections, where Claude can be connected', async ({ page, owner }) => {
     void owner
-    await openWorkspace(page)
+    await openChat(page)
     const notice = page.getByText("Ava's Claude brain isn't connected yet")
     await expect(notice).toBeVisible()
-    await expect(notice).toContainText('Connect Claude under Connections')
-    await expect(page.getByText('Offline mode: placeholder replies')).toBeVisible()
+    await expect(notice).toContainText('replies are placeholders')
+    await expect(page.getByRole('main').getByText('Ava: offline mode')).toBeVisible()
 
-    // Connections is where the notice says, and Claude is the first thing in it.
-    await expect(page.getByRole('heading', { name: 'Connections' })).toBeVisible()
+    // The notice's link opens Connections, and Claude is the first thing in it.
+    await notice.getByRole('link', { name: 'Connect Claude' }).click()
+    await expect(page).toHaveURL(/\/dashboard\/connections$/)
+    await expect(page.getByRole('heading', { level: 1, name: 'Connections' })).toBeVisible()
     const claude = page.getByRole('button', { name: /Claude, Ava's brain/ })
     await expect(claude).toBeVisible()
-    const [noticeBox, connBox] = await Promise.all([notice.boundingBox(), claude.boundingBox()])
-    expect(connBox!.x, 'Connections is on the right of the notice').toBeGreaterThan(noticeBox!.x + noticeBox!.width - 1)
     await claude.click()
     await expect(page.getByLabel('Claude API key')).toBeVisible()
+  })
+
+  test('the dashboard home says Ava is in offline mode and links to Connections', async ({ page, owner }) => {
+    void owner
+    await page.goto('/dashboard')
+    await expect(page.getByText('Ava is in offline mode, so her replies are placeholders for now.')).toBeVisible()
+    await page.getByRole('main').getByRole('link', { name: 'Connect Claude' }).click()
+    await expect(page).toHaveURL(/\/dashboard\/connections$/)
   })
 })
 
 test.describe('workspace: privacy between accounts', () => {
   test("another account can't read or change this owner's chat, notebook or connections", async ({ page, browser, owner }) => {
-    await openWorkspace(page)
+    await openChat(page)
     await composer(page).fill('Remember that the acquisition closes in May')
     await composer(page).press('Enter')
     await expect(page.getByText("Noted. I'll only bring that up with you, in private.")).toBeVisible()
@@ -488,7 +512,10 @@ test.describe('workspace: privacy between accounts', () => {
 
       const hire = await other.api.post('/app/hire', { agent: 'ava', accepted_notice: true })
       expect(hire.status()).toBe(409)
-      expect((await hire.json()).detail).toBe(`Ava already works for ${owner.name}.`)
+      // dc2e12a: a second account is no longer told the owner's name.
+      const refusal = (await hire.json()).detail as string
+      expect(refusal).toBe('Ava already works for someone else.')
+      expect(refusal).not.toContain(owner.name.split(' ')[0])
 
       for (const path of ['/app/messages', '/app/notebook', '/app/me', '/app/connections']) {
         const r = await other.api.get(path)
@@ -510,10 +537,13 @@ test.describe('workspace: privacy between accounts', () => {
       expect((await memories()).find((m) => m.id === secret.id)?.valid_to).toBeNull()
       expect(await eventsWithText('What did my boss tell you?')).toHaveLength(0)
 
-      // In the browser they are sent away from the workspace without seeing anything.
-      await other.page.goto('/workspace')
-      await expect(other.page).toHaveURL(/\/$/)
-      await expect(other.page.getByText('the acquisition closes in May')).toHaveCount(0)
+      // In the browser they are sent away from the dashboard without seeing anything.
+      for (const path of ['/dashboard/chat', '/dashboard/notebook', '/workspace']) {
+        await other.page.goto(path)
+        await expect(other.page).toHaveURL(/\/$/)
+        await expect(other.page.getByText('the acquisition closes in May')).toHaveCount(0)
+        await expect(other.page.getByText('PebbleRoad')).toHaveCount(0)
+      }
     } finally {
       await other.context.close()
     }
@@ -582,7 +612,7 @@ test.describe('connections', () => {
   test('each service opens its own setup guide, one at a time', async ({ page, owner }) => {
     void owner
     const outside = await recordOutsideCalls(page)
-    await openWorkspace(page)
+    await openConnections(page)
     for (const s of SERVICES) {
       const row = connectionRow(page, s.row)
       await expect(row).toHaveAttribute('aria-expanded', 'false')
@@ -609,7 +639,7 @@ test.describe('connections', () => {
 
   test('keys go into password fields, and "Check and save" waits for every field', async ({ page, owner }) => {
     void owner
-    await openWorkspace(page)
+    await openConnections(page)
     for (const s of SERVICES) {
       await connectionRow(page, s.row).click()
       const save = page.getByRole('button', { name: 'Check and save' })
@@ -654,7 +684,7 @@ test.describe('connections', () => {
     test(`a ${w.service} key in the wrong format is refused with a clear message, and nothing is stored or sent`, async ({ page, owner }) => {
       void owner
       const outside = await recordOutsideCalls(page)
-      await openWorkspace(page)
+      await openConnections(page)
       await connectionRow(page, w.row).click()
       for (const [label, value] of Object.entries(w.fill)) await page.getByLabel(label).fill(value)
 
@@ -704,7 +734,7 @@ test.describe('connections', () => {
 
   test('a key that is too short is refused with a message a person can act on', async ({ page, owner }) => {
     void owner
-    await openWorkspace(page)
+    await openConnections(page)
     await connectionRow(page, /Claude, Ava's brain/).click()
     await page.getByLabel('Claude API key').fill('sk-ant')
     await page.getByRole('button', { name: 'Check and save' }).click()
@@ -714,7 +744,7 @@ test.describe('connections', () => {
 
   test('while a key is being checked the button says so and cannot be pressed twice', async ({ page, owner }) => {
     void owner
-    await openWorkspace(page)
+    await openConnections(page)
     let release: () => void = () => {}
     const held = new Promise<void>((resolve) => (release = resolve))
     let calls = 0
@@ -738,11 +768,13 @@ test.describe('connections', () => {
   test('if connections cannot be loaded, the panel says so instead of spinning', async ({ page, owner }) => {
     void owner
     await page.route('**/api/app/connections', (route) => route.abort('connectionrefused'))
-    await openWorkspace(page)
+    await openConnections(page)
     await expect(page.getByRole('heading', { name: 'Connections' })).toBeVisible()
     await expect(page.getByText(/Can't reach Superaide/)).toBeVisible()
     await expect(page.getByText('Checking connections…')).toHaveCount(0)
-    // The rest of the workspace still works.
+    // The rest of the dashboard still works.
+    await goToDashboardPage(page, 'Chat')
+    await expect(page.getByText(INTRO_LINE, { exact: true })).toBeVisible()
     await composer(page).fill('Still here?')
     await composer(page).press('Enter')
     await expect(page.getByText('You said: "Still here?"')).toBeVisible()
@@ -750,7 +782,7 @@ test.describe('connections', () => {
 
   test('"Disconnect" on something that is not connected is harmless', async ({ page, api, owner }) => {
     void owner
-    await openWorkspace(page)
+    await openConnections(page)
     // Nothing is connected, so the page offers no Disconnect at all.
     for (const s of SERVICES) {
       await connectionRow(page, s.row).click()
@@ -770,9 +802,10 @@ test.describe('connections', () => {
     expect(traversal.status()).toBeLessThan(500)
 
     expect(await storedSecrets()).toEqual([])
-    // The workspace still works and still shows nothing connected.
+    // The dashboard still works and still shows nothing connected.
     await page.reload()
     await expect(connectionRow(page, /Claude, Ava's brain/)).toContainText('Real replies and reading your files')
+    await openChat(page)
     await composer(page).fill('Still answering?')
     await composer(page).press('Enter')
     await expect(page.getByText('You said: "Still answering?"')).toBeVisible()
@@ -782,7 +815,7 @@ test.describe('connections', () => {
     void owner
     const key = 'sk-ant-e2e-planted-placeholder-not-real-7f3a'
     await plantSecret('anthropic', 'api_key', key)
-    await openWorkspace(page)
+    await openConnections(page)
     const claude = connectionRow(page, /Claude, Ava's brain/)
     await expect(claude).toContainText('Connected (sk-…7f3a)')
 
@@ -803,7 +836,7 @@ test.describe('connections', () => {
 
   test('WhatsApp is shown as unavailable, with the reason', async ({ page, owner }) => {
     void owner
-    await openWorkspace(page)
+    await openConnections(page)
     await expect(page.getByText('WhatsApp', { exact: true })).toBeVisible()
     await expect(page.getByText("Meta's WhatsApp Business terms don't allow general-purpose AI assistants")).toBeVisible()
     await expect(page.getByText('Not available')).toBeVisible()

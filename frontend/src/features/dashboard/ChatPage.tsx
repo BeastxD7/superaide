@@ -27,6 +27,7 @@ export function ChatPage() {
 
   const [loaded, setLoaded] = useState(false)
   const refreshed = useRef(false)
+  const localCount = useRef(0)
 
   useEffect(() => {
     call<Message[]>('/messages')
@@ -56,16 +57,23 @@ export function ChatPage() {
   async function send(text: string) {
     const t = text.trim()
     if (!t || pending) return
+    localCount.current += 1
+    const localId = `local-${localCount.current}`
     setDraft('')
     setError(null)
-    setMessages((m) => [...m, { id: `local-${Date.now()}`, from: 'you', text: t, at: new Date().toISOString() }])
+    setMessages((m) => [...m, { id: localId, from: 'you', text: t, at: new Date().toISOString() }])
     setPending(true)
     try {
-      await call('/chat', { method: 'POST', json: { text: t } })
+      const result = await call<{ mode: string; reply: string | null }>('/chat', { method: 'POST', json: { text: t } })
       const fresh = await call<Message[]>('/messages')
       refreshed.current = true
       setMessages(fresh)
+      // Paused: the message is kept, but say why nothing came back instead of leaving silence.
+      if (result.mode === 'frozen') setError(`${name} is paused, so she didn't reply. She'll see this once she's resumed.`)
     } catch (e) {
+      // Not sent: take the bubble back and give you your words to try again.
+      setMessages((m) => m.filter((x) => x.id !== localId))
+      setDraft((d) => d || t)
       setError(e instanceof AppError ? e.message : String(e))
     } finally {
       setPending(false)
