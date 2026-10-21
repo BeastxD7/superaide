@@ -1,0 +1,9 @@
+* text=auto eol=lf
+*.command text eol=lf
+*.sh text eol=lf
+*.png binary
+*.svg text
+
+# Generated lockfiles: collapse them in GitHub diffs.
+backend/uv.lock linguist-generated=true
+frontend/package-lock.json linguist-generated=true
