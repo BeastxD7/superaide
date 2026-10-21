@@ -18,13 +18,16 @@ The agent (called Ava by default) starts at the **Infant** stage: it watches, as
 
 ## Try it in one command
 
-Paste this into Terminal:
+You need [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed (`brew install --cask docker`) and opened once. Then paste this into Terminal:
 
 ```bash
 bash ~/Desktop/agi-agent/start.command
 ```
 
-It installs [uv](https://docs.astral.sh/uv/) if needed, starts a local Postgres (Docker if it is running, otherwise an embedded one in `.local-db/`), creates `.env` with an admin token, adds two demo people (Shashank as manager, Priya Tan as colleague), and opens the dashboard at http://127.0.0.1:8000 already signed in. It uses the offline fake model, so it costs nothing. Press Ctrl+C to stop; run it again any time. `bash start.command --reset` wipes the demo data.
+It installs [uv](https://docs.astral.sh/uv/) if needed, starts Docker Desktop if it is closed, runs Postgres 17 in Docker, creates `.env` with an admin token, adds two demo people (Shashank as manager, Priya Tan as colleague), and opens the dashboard at http://127.0.0.1:8000 already signed in. It uses the offline fake model, so it costs nothing. Press Ctrl+C to stop; run it again any time.
+
+- `bash start.command --reset` wipes the demo data first.
+- `bash start.command --no-docker` uses an embedded Postgres in `.local-db/` instead of Docker.
 
 ## Quick start on your Mac, step by step
 
