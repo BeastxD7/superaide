@@ -66,11 +66,14 @@ def _flat(system: Any, messages: Any) -> str:
 class Recorder:
     """Wraps the real or fake LLM and keeps every call of the current turn."""
 
-    def __init__(self, inner: LLM) -> None:
+    def __init__(self, inner: LLM, pages: dict[str, str] | None = None) -> None:
         self.inner = inner
         self.calls: list[Call] = []
+        self.pages = pages or {}  # canned web pages: web_fetch reads these, never the network
 
     def step(self, **kw: Any) -> StepResult:
+        if self.pages:
+            kw["tools"] = _client_web_tools(kw.get("tools") or [])
         result = self.inner.step(**kw)
         tools = [str(b.get("name")) for b in result.content if b.get("type") in {"tool_use", "server_tool_use"}]
         said = " ".join(
@@ -83,12 +86,39 @@ class Recorder:
         )
         return result
 
+    def run_substitute(self, name: str, args: dict[str, Any]) -> tuple[Any, bool] | None:
+        """Superaide's own web_fetch (the loop's path for models without hosted tools), on canned pages."""
+        if name != "web_fetch" or not self.pages:
+            return None
+        from superaide.tools.web import source
+
+        url = str(args.get("url", ""))
+        page = self.pages.get(url) or next((t for u, t in self.pages.items() if u.rstrip("/") in url), None)
+        if page is None:
+            return f"Couldn't fetch {url}: not found.", True
+        return [source(url, "Web page", page)], False
+
     def complete(self, **kw: Any) -> LLMResult:
         result = self.inner.complete(**kw)
         self.calls.append(
             Call(kw["purpose"], _flat(kw["system"], kw["messages"]), [], result.text[:500], Decimal(result.cost_usd))
         )
         return result
+
+
+def _client_web_tools(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Hosted web tools run at the provider, out of reach: swap web_fetch for the client tool the loop
+    runs itself, and drop web search (it would reach the real web and cost money)."""
+    from superaide.tools.web import FETCH_TOOL
+
+    out = []
+    for t in tools:
+        kind = str(t.get("type", ""))
+        if kind.startswith("web_fetch"):
+            out.append(FETCH_TOOL)
+        elif not kind.startswith("web_search"):
+            out.append(t)
+    return out
 
 
 class OfflineModel:
@@ -137,6 +167,7 @@ class TurnRecord:
     sources: list[dict[str, Any]] = field(default_factory=list)
     calls: list[Call] = field(default_factory=list)
     scripted: bool = False
+    message_id: str = ""
 
     @property
     def tools(self) -> list[str]:
@@ -272,6 +303,11 @@ def build_world(sc: Scenario, start: datetime, run: Run | None = None) -> uuid.U
                 item.allowed_kind, item.allowed_person_ids, item.min_trust = "org", [], 2
             elif item is not None and m.audience == "public":
                 item.allowed_kind, item.allowed_person_ids, item.min_trust = "public", [], 0
+        if w.web_pages:
+            from superaide.skills import registry
+
+            skill = registry.catalog()["superaide/web-research"]
+            registry.install(s, "superaide/web-research", list(skill.manifest.permissions))
         for c in w.contacts:
             add_contact(s, owner=person, name=str(c["name"]), relationship=str(c.get("relationship", "other")),
                         vip=bool(c.get("vip", False)))  # fmt: skip
@@ -336,8 +372,8 @@ def parse_shift(spec: str) -> timedelta:
 # --- messages -----------------------------------------------------------------------------
 
 
-def inbound(turn: Turn, owner: Person, text_: str) -> InboundMessage:
-    mid = uuid.uuid4().hex
+def inbound(turn: Turn, owner: Person, text_: str, mid: str = "") -> InboundMessage:
+    mid = mid or uuid.uuid4().hex
     if turn.who in {"owner", "second_owner"} and turn.via == "web":
         from superaide.app.accounts import web_message
 
@@ -418,9 +454,9 @@ def run_scenario(sc: Scenario, *, inner: LLM | None = None, judge: Judge | None 
 
     live = inner is not None
     offline = OfflineModel()
-    rec = Recorder(inner if inner is not None else FakeLLM(offline))
+    rec = Recorder(inner if inner is not None else FakeLLM(offline), sc.world.web_pages)
     outbox = {"telegram": FakeMessenger(), "slack": FakeMessenger(), "web": FakeMessenger()}
-    settings: Settings = get_settings().model_copy(update={"web_tools_enabled": False})
+    settings: Settings = get_settings().model_copy(update={"web_tools_enabled": bool(sc.world.web_pages)})
     agent = Agent(llm=rec, messengers=outbox, settings=settings)  # type: ignore[arg-type]
 
     reset_db()
@@ -453,7 +489,9 @@ def run_scenario(sc: Scenario, *, inner: LLM | None = None, judge: Judge | None 
                         who = run.second_owner_id if turn.who == "second_owner" else run.owner_id
                         owner = s.get(Person, who)
                         assert owner is not None, f"no {turn.who} in this world"
-                        msg = inbound(turn, owner, turn.say or "")
+                        again = next((t.message_id for t in run.turns if t.index == turn.same_id_as), "")
+                        msg = inbound(turn, owner, turn.say or "", again)
+                        rec_turn.message_id = msg.message_id
                     result = agent.handle(msg)
                     rec_turn.reply, rec_turn.mode, rec_turn.notes = result.reply or "", result.mode, list(result.notes)
                     rec_turn.sources = _out_sources(rec_turn.reply)

@@ -39,6 +39,8 @@ SELF_TESTS = [
     "brief-morning-lists-today",
     "rem-tomorrow-fast-path",
     "rem-after-midnight-fast-path",
+    "hard-inj-web-page-exfiltrate",  # a canned web page through the loop's own web_fetch: tainted
+    "hard-dup-redelivered-message",  # a redelivered platform message id is dropped, no model call
 ]
 
 

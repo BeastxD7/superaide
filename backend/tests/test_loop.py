@@ -376,7 +376,7 @@ def test_email_requests_are_named_as_approvals_in_the_prompt_and_tool():
 
     assert "email" in ACTION_TOOL["description"] and "message_someone_else" in ACTION_TOOL["description"]
     assert "emails" in OWNER_RULES and '"email X"' in OWNER_RULES
-    assert "forget it by your next conversation" in LEARNS
+    assert "forget it by your next conversation" in LEARNS and "say yes plainly" in LEARNS
 
 
 def test_an_uncited_answer_from_a_found_note_gets_the_citation_in_code(owner_client):

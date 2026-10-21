@@ -45,7 +45,9 @@ PRE_RECALL = 4  # notes code looks up before the model runs
 LEARNS = (
     "You learn from what your owner tells you: after you reply, anything worth keeping is saved to their "
     "notebook, whichever channel they said it on, and you can recall it anywhere. So don't tell them you can't "
-    "remember or save something they just told you, or that you may forget it by your next conversation."
+    "remember or save something they just told you, or that you may forget it by your next conversation. "
+    "The conversation itself is kept as well. Asked whether you'll remember, say yes plainly, without "
+    'caveats like "I may not keep every word".'
 )
 MAX_TOKENS = 1200
 MAX_REASONING_CHARS = 4000

@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import ColumnElement, Select, desc, func, select, text
+from sqlalchemy import ColumnElement, Select, case, desc, func, literal, select, text
 from sqlalchemy.orm import Session, aliased
 
 from superaide.context import lexicon
@@ -140,7 +140,10 @@ def recall_memories(
         from superaide.context.vectors import meaning_arm
 
         arms.append(meaning_arm(session, base, query, limit * 2))
-    found = _fuse(arms)[:limit]
+    return _memory_sources(session, _fuse(arms)[:limit], channel)
+
+
+def _memory_sources(session: Session, found: list[MemoryItem], channel: str | None = None) -> list[Source]:
     contexts = _contexts(session, {m.origin_context_id for m in found if m.origin_context_id})
     out = []
     for m in found:
@@ -234,9 +237,32 @@ def recall(
     return (notes[:seats] + msgs + notes[seats:])[:limit]
 
 
+FUZZY_WORD_MIN = 0.45  # "favrite" in "… favourite …" 0.5, "cusine" in "… cuisine …" 0.5
+FUZZY_ONE_WORD_MIN = 0.6  # with a single long word, it alone must be close
+
+
+def fuzzy_memories(session: Session, aud: Audience, query: str, limit: int = 4) -> list[Source]:
+    """Notes that two or more of the question's longer words are close to, each on its own, for
+    questions with typos in several words ("whats my favrite cusine"). Stricter than the trigram
+    arm of `recall` (which needs one close word), because it runs before the model, unasked."""
+    if not _has_trgm(session):
+        return []
+    long = list(dict.fromkeys(w for w in lexicon.words(query) if len(w) >= 5))[:6]
+    if not long:
+        return []
+    sims = [func.word_similarity(w, MemoryItem.content) for w in long]
+    need, floor = (1, FUZZY_ONE_WORD_MIN) if len(long) == 1 else (2, FUZZY_WORD_MIN)
+    close = sum((case((sim >= floor, 1), else_=0) for sim in sims), start=literal(0))
+    total = sum(sims, start=literal(0.0))
+    stmt = select(MemoryItem).where(memory_filter(aud), close >= need).order_by(desc(total)).limit(limit)
+    return _memory_sources(session, list(session.scalars(stmt)))
+
+
 def pre_recall(session: Session, aud: Audience, query: str, limit: int = 4) -> list[Source]:
     """Notes matching every word of the owner's message (spellings and synonyms included),
-    looked up by code before the model runs, so a fact never depends on the model's query."""
+    looked up by code before the model runs, so a fact never depends on the model's query.
+    When nothing matches exactly, notes close to two or more of its words (typos)."""
     if not lexicon.words(query):
         return []
-    return recall_memories(session, aud, " ".join(query.split())[:300], limit=limit, strict=True)
+    query = " ".join(query.split())[:300]
+    return recall_memories(session, aud, query, limit=limit, strict=True) or fuzzy_memories(session, aud, query, limit)

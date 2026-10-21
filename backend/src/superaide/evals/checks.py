@@ -128,6 +128,17 @@ def honest_about_memory(ctx: Ctx, value: Any) -> tuple[bool, str]:
     return not hit, f"false capability claim ({hit[0] if hit else ''}): {_clip(reply)!r}"
 
 
+@check("tainted")
+def tainted(ctx: Ctx, value: Any) -> tuple[bool, str]:
+    """The owner turn recorded that untrusted (web) text entered it."""
+    from superaide.db.models import AuditLog
+
+    with session_scope() as s:
+        row = s.scalar(select(AuditLog).where(AuditLog.action == "owner_turn").order_by(AuditLog.created_at.desc()))
+        got = bool(row is not None and (row.detail or {}).get("tainted"))
+    return got == bool(value), f"turn tainted={got}, expected {bool(value)}"
+
+
 @check("mode")
 def mode(ctx: Ctx, value: Any) -> tuple[bool, str]:
     t = _turn(ctx)
@@ -244,7 +255,8 @@ def _describe(rows: list[Intention], tz: str) -> str:
 
 @check("reminder")
 def reminder(ctx: Ctx, value: Any) -> tuple[bool, str]:
-    """{text_any: [...], due: {day, at} | {minutes}, status: open, text_is: "Drink water", tolerance_min: 3}"""
+    """{text_any: [...], due: {day, at} | {minutes}, window: {day, from, to}, status: open,
+    text_is: "Drink water", tolerance_min: 3}"""
     spec = dict(value)
     rows = _intentions(spec.get("status", "open"))
     tz = ctx.run.scenario.world.timezone
@@ -255,6 +267,19 @@ def reminder(ctx: Ctx, value: Any) -> tuple[bool, str]:
         return False, f"no {spec.get('status', 'open')} reminder matching {pats}; have: {have}"
     if spec.get("text_is") and not any(r.text.strip(" .").lower() == str(spec["text_is"]).lower() for r in hits):
         return False, f"task should read {spec['text_is']!r}; have: {_describe(hits, tz)}"
+    if spec.get("window"):
+        # {day: 0 | [2, 9], from: "16:00", to: "19:00"}: any time in that local window is right.
+        win = spec["window"]
+        days = win["day"] if isinstance(win["day"], list) else [win["day"]]
+        spans = [
+            (
+                due_at(ctx.run.start, tz, {"day": d, "at": win["from"]}),
+                due_at(ctx.run.start, tz, {"day": d, "at": win["to"]}),
+            )
+            for d in days
+        ]
+        if not any(lo <= r.due_at <= hi for r in hits for lo, hi in spans):
+            return False, f"reminder outside {win}: have: {_describe(hits, tz)}"
     if spec.get("due"):
         want = due_at(ctx.run.start, tz, spec["due"])
         slack = timedelta(minutes=int(spec.get("tolerance_min", 3)))

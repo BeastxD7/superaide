@@ -74,6 +74,7 @@ class World(Strict):
     owner_name: str = "Shashank Rao"
     colleague: bool = True  # Priya Tan, linked on Slack
     second_owner: bool = False  # another account that hires its own Ava (multi-tenant)
+    web_pages: dict[str, str] = Field(default_factory=dict)  # url → page text; web_fetch reads these
     telegram_linked: bool = True
     interrupt_channel: Literal["app", "telegram", "slack"] = "app"
     digest: Literal["morning", "evening", "both", "none"] = "morning"
@@ -105,6 +106,7 @@ class Turn(Strict):
     say: str | None = None
     advance: str | None = None  # move the clock first: "+90m", "+2h", "+1d"
     run_jobs: bool = True  # run due background jobs (learning, reminders) after the turn
+    same_id_as: int | None = None  # a redelivery: reuse that turn's platform message id
     digest: Literal["morning", "evening"] | None = None  # compose the digest instead of saying something
     expect: list[dict[str, Any]] = Field(default_factory=list)
     fake: FakeTurn | None = None

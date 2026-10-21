@@ -138,3 +138,29 @@ def test_other_languages_and_apostrophes_still_match_word_for_word(people, note,
 
 def test_tokens_never_carry_tsquery_syntax():
     assert lexicon.words("a & b | !c (d) e:* 'f' <-> g") == ["b", "c", "d", "e", "f", "g"]
+
+
+def test_a_question_with_two_typos_still_finds_the_note_before_the_model_runs(people):
+    # Live eval 2026-10-22: "whats my favrite cusine again" got "I don't have a source".
+    owner, colleague = people
+    with session_scope() as s:
+        _note(s, owner, "Shashank's favourite cuisine is Thai food.")
+        _note(s, owner, "Shashank does not like the colour black.")
+        found = pre_recall(s, owner_only(owner), "whats my favrite cusine again")
+        assert [f.text for f in found] == ["Shashank's favourite cuisine is Thai food."]
+
+
+def test_one_close_word_among_several_is_not_enough_to_attach_a_note(people):
+    owner, colleague = people
+    with session_scope() as s:
+        _note(s, owner, "Shashank's favourite cuisine is Thai food.")
+        # Only "favrite" is close; "colour" and "dislike" match nothing here.
+        assert pre_recall(s, owner_only(owner), "which colour do I dislike, my favrite?") == []
+
+
+def test_typo_matching_stays_behind_the_audience_gate(people):
+    owner, colleague = people
+    with session_scope() as s:
+        _note(s, owner, "Shashank's favourite cuisine is Thai food.")  # owner only
+        assert pre_recall(s, owner_only(colleague), "whats his favrite cusine") == []
+        assert pre_recall(s, Audience(person_ids={owner}, has_unknown=True), "favrite cusine") == []

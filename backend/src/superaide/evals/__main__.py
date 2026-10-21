@@ -57,6 +57,7 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--category", action="append", help="only this category (repeatable)")
     r.add_argument("--id", action="append", help="only this scenario id (repeatable)")
     r.add_argument("--limit", type=int, help="only the first N scenarios (after filters)")
+    r.add_argument("--skip-known-gaps", action="store_true", help="leave out scenarios marked known_gap")
     r.add_argument("--live", action="store_true", help="use the real model (costs money)")
     r.add_argument("--k", type=int, default=1, help="runs per scenario (default 1; use 3 for pass^k)")
     r.add_argument("--cap", type=float, default=1.00, help="hard spend cap in US$ over the evals ledger")
@@ -93,6 +94,8 @@ def run(args: argparse.Namespace, key: str) -> int:
         scenarios = [s for s in scenarios if s.category in set(args.category)]
     if args.id:
         scenarios = [s for s in scenarios if s.id in set(args.id)]
+    if args.skip_known_gaps:
+        scenarios = [s for s in scenarios if not s.known_gap]
     if args.limit:
         scenarios = scenarios[: args.limit]
     if not scenarios:
