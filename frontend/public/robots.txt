@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /api/
+Disallow: /console
+Disallow: /meet
+Disallow: /workspace

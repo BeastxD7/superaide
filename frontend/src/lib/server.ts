@@ -19,11 +19,12 @@ async function get<T>(path: string, cookie?: string): Promise<T | null> {
   }
 }
 
-// The signed-in account for this request, or null.
-export async function currentAccount(): Promise<Account | null> {
+// The signed-in account for this request. `hasSession` says whether the browser
+// sent a session cookie at all (the account can still be null if it expired).
+export async function currentSession(): Promise<{ account: Account | null; hasSession: boolean }> {
   const token = (await cookies()).get(SESSION_COOKIE)?.value
-  if (!token) return null
-  return get<Account>('/auth/me', `${SESSION_COOKIE}=${token}`)
+  if (!token) return { account: null, hasSession: false }
+  return { account: await get<Account>('/auth/me', `${SESSION_COOKIE}=${token}`), hasSession: true }
 }
 
 export async function agentCatalog(): Promise<AgentCard[] | null> {

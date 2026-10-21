@@ -7,7 +7,6 @@ import {
   BookOpen,
   Brain,
   Lightbulb,
-  LogOut,
   PenLine,
   Wand2,
 } from 'lucide-react'
@@ -18,7 +17,7 @@ import type { Session } from '@/lib/session-context'
 import { Connections } from '@/features/workspace/Connections'
 import { Conversation, useReveal } from '@/components/Conversation'
 import { Orb } from '@/components/Orb'
-import { Notice, PRODUCT, Sparkle, STAGES } from '@/components/ui'
+import { AccountMenu, BrandMark, Notice, PRODUCT, STAGES } from '@/components/ui'
 
 const QUICK = [
   { icon: Lightbulb, label: 'How would you handle…', prefill: 'If someone messages you saying ' },
@@ -121,7 +120,7 @@ export function Workspace({ session }: { session: Session }) {
       <header className="px-3 pt-3 sm:px-4">
         <div className="glass mx-auto flex max-w-7xl items-center gap-3 rounded-full border border-white/70 py-1.5 pr-1.5 pl-4 shadow-[0_8px_30px_-20px_rgba(15,42,35,0.5)]">
           <Link href="/" className="flex items-center gap-2 font-semibold text-ink tight">
-            <Sparkle className="size-5 text-violet-600" />
+            <BrandMark className="size-7" />
             <span className="hidden sm:inline">{PRODUCT}</span>
           </Link>
           <div className="mx-auto flex items-center gap-1 rounded-full bg-mist p-1 text-sm lg:hidden">
@@ -139,14 +138,7 @@ export function Workspace({ session }: { session: Session }) {
             <span className={`size-2 rounded-full ${me.paused ? 'bg-warn' : me.brain === 'claude' ? 'bg-ok' : 'bg-muted'}`} />
             {me.paused ? `${agentName} is paused` : me.brain === 'claude' ? `${agentName} is online` : `${agentName} is in offline mode`}
           </span>
-          <button
-            onClick={() => void session.logOut()}
-            className="grid size-10 place-items-center rounded-full text-muted hover:bg-white hover:text-ink"
-            aria-label="Log out"
-            title="Log out"
-          >
-            <LogOut className="size-4" />
-          </button>
+          <AccountMenu session={session} />
         </div>
       </header>
 

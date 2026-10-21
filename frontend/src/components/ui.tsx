@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowUpRight, LogOut } from 'lucide-react'
 import { motion } from 'motion/react'
-import type { ComponentProps, ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ComponentProps, type ReactNode } from 'react'
 import type { Session } from '@/lib/session-context'
 import { homeFor } from '@/lib/session'
 
@@ -16,6 +16,32 @@ export const STAGES = [
   { name: 'Adolescent', does: 'Publishes inside themes you have approved, with time for you to stop it.' },
   { name: 'Adult', does: 'Works on its own, within the limits you set.' },
 ]
+
+// The product's mark: an agent's face, the same one as the browser tab icon (src/app/icon.svg).
+export function BrandMark({ className = 'size-6' }: { className?: string }) {
+  const id = useId()
+  return (
+    <svg viewBox="0 0 64 64" className={className} aria-hidden>
+      <defs>
+        <linearGradient id={`${id}b`} x1="0.1" y1="0" x2="0.9" y2="1">
+          <stop offset="0" stopColor="#d9c9ff" />
+          <stop offset="0.38" stopColor="#b9a6ff" />
+          <stop offset="0.68" stopColor="#f3b6f5" />
+          <stop offset="1" stopColor="#9cc7ff" />
+        </linearGradient>
+        <radialGradient id={`${id}s`} cx="0.32" cy="0.26" r="0.48">
+          <stop offset="0" stopColor="#fff" stopOpacity="0.95" />
+          <stop offset="0.45" stopColor="#fff" stopOpacity="0.32" />
+          <stop offset="1" stopColor="#fff" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <circle cx="32" cy="32" r="30" fill={`url(#${id}b)`} />
+      <circle cx="32" cy="32" r="30" fill={`url(#${id}s)`} />
+      <rect x="21.5" y="25.5" width="7" height="13" rx="3.5" fill="#1d1640" />
+      <rect x="35.5" y="25.5" width="7" height="13" rx="3.5" fill="#1d1640" />
+    </svg>
+  )
+}
 
 export function Sparkle({ className = 'size-5' }: { className?: string }) {
   return (
@@ -69,7 +95,7 @@ export function NavBar({ session, links = true, cta = true }: { session: Session
     <header className="sticky top-0 z-30 px-4 pt-4 sm:px-6">
       <nav className="glass mx-auto flex max-w-6xl items-center justify-between gap-4 rounded-full border border-white/60 py-2 pr-2 pl-5 shadow-[0_8px_30px_-18px_rgba(27,22,56,0.45)]">
         <Link href="/" className="flex items-center gap-2 font-semibold text-ink tight">
-          <Sparkle className="size-5 text-violet-600" />
+          <BrandMark className="size-7" />
           <span className="text-lg">{PRODUCT}</span>
         </Link>
         {links && (
@@ -97,21 +123,7 @@ export function NavBar({ session, links = true, cta = true }: { session: Session
                   Meet Ava
                 </Button>
               ) : null}
-              <span
-                className="hidden size-10 place-items-center rounded-full bg-lilac-100 text-sm font-semibold text-violet-700 sm:grid"
-                title={`${account.user.name} (${account.user.email})`}
-                aria-label={`Signed in as ${account.user.name}`}
-              >
-                {account.user.name.charAt(0).toUpperCase()}
-              </span>
-              <button
-                onClick={() => void session.logOut()}
-                className="grid size-10 place-items-center rounded-full text-muted hover:bg-mist hover:text-ink"
-                aria-label="Log out"
-                title="Log out"
-              >
-                <LogOut className="size-4" />
-              </button>
+              <AccountMenu session={session} />
             </>
           ) : (
             <>
@@ -128,6 +140,72 @@ export function NavBar({ session, links = true, cta = true }: { session: Session
         </div>
       </nav>
     </header>
+  )
+}
+
+// Who is signed in, on every signed-in screen: the account's initial opens a
+// small menu with the name, email and Log out.
+export function AccountMenu({ session }: { session: Session }) {
+  const account = session.account
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const menuId = useId()
+
+  useEffect(() => {
+    if (!open) return
+    const onPointer = (e: PointerEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('pointerdown', onPointer)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('pointerdown', onPointer)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  if (!account) return null
+  const initial = account.user.name.trim().charAt(0).toUpperCase() || '?'
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-controls={menuId}
+        aria-label={`Account: signed in as ${account.user.name}`}
+        title={`${account.user.name} (${account.user.email})`}
+        className="grid size-10 place-items-center rounded-full bg-lilac-100 text-sm font-semibold text-violet-700 hover:bg-lilac-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500"
+      >
+        {initial}
+      </button>
+      {open && (
+        <div
+          id={menuId}
+          className="absolute right-0 z-40 mt-2 w-64 rounded-2xl border border-line bg-white p-2 text-left shadow-[0_18px_50px_-20px_rgba(27,22,56,0.45)]"
+        >
+          <div className="px-3 py-2">
+            <p className="text-xs text-muted">Signed in as</p>
+            <p className="truncate font-medium text-ink">{account.user.name}</p>
+            <p className="truncate text-sm text-muted">{account.user.email}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false)
+              void session.logOut()
+            }}
+            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-ink hover:bg-mist"
+          >
+            <LogOut className="size-4" />
+            Log out
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
 

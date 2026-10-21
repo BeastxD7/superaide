@@ -9,7 +9,6 @@ import type { ReactNode } from 'react'
 export const metadata: Metadata = {
   title: 'Operator console | Superaide',
   robots: { index: false, follow: false },
-  icons: { icon: '/favicon.svg' },
 }
 
 // The operator console has its own look, so it has its own root layout:

@@ -15,9 +15,12 @@ export type Session = {
 
 const SessionContext = createContext<Session | null>(null)
 
-// The signed-in account comes from the server render (so pages don't flash a
-// logged-out state); the hired agent's workspace state is loaded in the browser.
-export function SessionProvider({ initialAccount, children }: { initialAccount: Account | null; children: ReactNode }) {
+type ProviderProps = { initialAccount: Account | null; hasSession: boolean; children: ReactNode }
+
+// The signed-in account comes from the server render, so every page knows at
+// once who is signed in (no logged-out flash). The hired agent's workspace state
+// is loaded in the browser. With no session cookie there is nothing to check.
+export function SessionProvider({ initialAccount, hasSession, children }: ProviderProps) {
   const router = useRouter()
   const [account, setAccount] = useState<Account | null>(initialAccount)
   const [me, setMe] = useState<Me | null>(null)
@@ -53,8 +56,9 @@ export function SessionProvider({ initialAccount, children }: { initialAccount: 
   }, [loadAgent])
 
   useEffect(() => {
-    void refresh()
-  }, [refresh])
+    if (hasSession || initialAccount) void refresh()
+    else setLoading(false) // signed out: the server already checked
+  }, [refresh, hasSession, initialAccount])
 
   const signedIn = useCallback(
     async (acc: Account) => {
@@ -65,17 +69,16 @@ export function SessionProvider({ initialAccount, children }: { initialAccount: 
     [loadAgent, router],
   )
 
+  // A full page load to the home page: nothing from the signed-in session stays
+  // in memory, and pages that need an account don't race to redirect elsewhere.
   const logOut = useCallback(async () => {
     try {
       await auth.logout()
     } catch {
-      // Already signed out on the server; clear the page either way.
+      // Already signed out on the server; leave the page either way.
     }
-    setAccount(null)
-    setMe(null)
-    router.push('/')
-    router.refresh()
-  }, [router])
+    window.location.assign('/')
+  }, [])
 
   const value = useMemo(
     () => ({ account, me, loading, refresh, signedIn, logOut }),

@@ -12,7 +12,7 @@ import { Orb } from '@/components/Orb'
 import { StepControls } from '@/features/onboarding/steps'
 import { unlockSpeech } from '@/features/onboarding/speech'
 import { VideoCall, type CallQuestion, type CallTurnResult } from '@/features/onboarding/VideoCall'
-import { Notice } from '@/components/ui'
+import { AccountMenu, Notice } from '@/components/ui'
 
 export function Meet({ session }: { session: Session }) {
   const router = useRouter()
@@ -125,6 +125,7 @@ export function Meet({ session }: { session: Session }) {
               {view && !view.done ? `Getting to know you. Step ${view.index + 1} of ${view.total}: ${view.labels[view.index]}` : 'All set'}
             </p>
           </div>
+          <AccountMenu session={session} />
           <Link href="/" className="grid size-9 place-items-center rounded-full text-muted hover:bg-white hover:text-ink" aria-label="Leave for now" title="Leave for now. Ava will pick up where you left off.">
             <X className="size-4" />
           </Link>

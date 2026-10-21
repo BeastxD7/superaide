@@ -5,9 +5,11 @@ import type { ReactNode } from 'react'
 import type { Account } from '@/lib/api'
 import { SessionProvider } from '@/lib/session-context'
 
-export function Providers({ initialAccount, children }: { initialAccount: Account | null; children: ReactNode }) {
+type Props = { initialAccount: Account | null; hasSession: boolean; children: ReactNode }
+
+export function Providers({ initialAccount, hasSession, children }: Props) {
   return (
-    <SessionProvider initialAccount={initialAccount}>
+    <SessionProvider initialAccount={initialAccount} hasSession={hasSession}>
       <MotionConfig reducedMotion="user">{children}</MotionConfig>
     </SessionProvider>
   )

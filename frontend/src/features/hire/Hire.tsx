@@ -9,7 +9,7 @@ import { AppError, call, type AgentCard } from '@/lib/api'
 import type { Session } from '@/lib/session-context'
 import { Orb } from '@/components/Orb'
 import { homeFor } from '@/lib/session'
-import { Button, Notice, PRODUCT, Sparkle } from '@/components/ui'
+import { AccountMenu, BrandMark, Button, Notice } from '@/components/ui'
 
 // Hiring is three steps: create an account (or log in), agree to how the agent
 // handles what you share, and you're hired. The account step lives on #/signup.
@@ -73,8 +73,8 @@ export function Hire({ slug, session }: { slug: string; session: Session }) {
             <ChevronLeft className="size-5" />
           </Link>
         ) : (
-          <span className="grid size-10 shrink-0 place-items-center text-violet-600">
-            <Sparkle />
+          <span className="grid size-10 shrink-0 place-items-center">
+            <BrandMark className="size-7" />
           </span>
         )}
         <div
@@ -92,9 +92,7 @@ export function Hire({ slug, session }: { slug: string; session: Session }) {
             transition={{ type: 'spring', stiffness: 120, damping: 20 }}
           />
         </div>
-        <Link href="/" className="text-sm font-medium text-muted hover:text-ink">
-          {PRODUCT}
-        </Link>
+        <AccountMenu session={session} />
       </header>
 
       <main className="mx-auto flex w-full max-w-xl flex-1 flex-col px-5 pt-10 pb-8">
