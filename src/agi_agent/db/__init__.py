@@ -1,14 +1,17 @@
 from agi_agent.db.models import (
     AgentState,
     Approval,
+    AppSession,
     AuditLog,
     Base,
     ChannelIdentity,
+    ChannelInvite,
     Context,
     Event,
     IdentityLinkEvent,
     LinkChallenge,
     MemoryItem,
+    Onboarding,
     Person,
     SpendEntry,
 )
@@ -16,6 +19,9 @@ from agi_agent.db.session import get_engine, session_scope
 
 __all__ = [
     "AgentState",
+    "AppSession",
+    "ChannelInvite",
+    "Onboarding",
     "Approval",
     "AuditLog",
     "Base",

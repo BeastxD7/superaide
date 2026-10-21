@@ -1,0 +1,86 @@
+@import 'tailwindcss';
+
+/* Understudy: white canvas, deep forest ink, lilac and pastel panels, and each
+   agent's own iridescent colour. Drawn from the Stellar landing page and the
+   assistant-onboarding references the user shared. */
+@theme {
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+
+  --color-ink: #0f2a23;
+  --color-forest-800: #1b4135;
+  --color-forest-600: #2e5e4f;
+  --color-body: #33443e;
+  --color-muted: #66756f;
+  --color-line: #e4e8e5;
+  --color-canvas: #ffffff;
+  --color-mist: #f6f7f5;
+
+  --color-lilac-50: #fbf7ff;
+  --color-lilac-100: #f4eafe;
+  --color-lilac-200: #e9d7fc;
+  --color-violet-400: #9a82ff;
+  --color-violet-500: #7c5cfa;
+  --color-violet-600: #6747ee;
+  --color-violet-700: #5232d4;
+
+  --color-sage-100: #edf1ee;
+  --color-sky-100: #e9eefc;
+  --color-peach-100: #fcefe7;
+  --color-kai: #14806f;
+  --color-rhea: #c26a1f;
+
+  --color-ok: #1f7a4d;
+  --color-warn: #a35f0b;
+  --color-danger: #b4323f;
+
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    @apply bg-canvas font-sans text-body;
+    font-feature-settings: 'ss01', 'cv11';
+  }
+  h1,
+  h2,
+  h3 {
+    @apply text-ink;
+    text-wrap: balance;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-violet-500);
+    outline-offset: 3px;
+  }
+  ::selection {
+    background: var(--color-lilac-200);
+  }
+}
+
+@utility tight {
+  letter-spacing: -0.035em;
+}
+
+@utility mesh {
+  background:
+    radial-gradient(60% 50% at 15% 10%, #f6e8ff 0%, transparent 70%),
+    radial-gradient(50% 45% at 90% 20%, #e7efff 0%, transparent 70%),
+    radial-gradient(60% 50% at 70% 100%, #fdf0e8 0%, transparent 70%),
+    #fbfaff;
+}
+
+@utility glass {
+  background: rgb(255 255 255 / 0.72);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

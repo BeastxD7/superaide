@@ -61,6 +61,10 @@ def create_app(agent: Agent | None = None) -> FastAPI:
             agent = build_agent(settings)
         return agent
 
+    from agi_agent.app.routes import make_router
+
+    app.include_router(make_router(get_agent))
+
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}

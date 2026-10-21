@@ -116,10 +116,12 @@ export function defaultBase(): string {
 }
 
 export function loadConnection(): Connection | null {
-  // start.command opens the page with #token=... so you are connected at once.
-  const fromHash = new URLSearchParams(window.location.hash.slice(1)).get('token')
+  // start.command prints a link ending #/console?token=... so you are connected at once.
+  const hash = window.location.hash
+  const query = hash.includes('?') ? hash.slice(hash.indexOf('?') + 1) : hash.slice(1)
+  const fromHash = new URLSearchParams(query).get('token')
   if (fromHash) {
-    history.replaceState(null, '', window.location.pathname)
+    history.replaceState(null, '', `${window.location.pathname}#/console`)
     const conn = { base: defaultBase(), token: fromHash }
     saveConnection(conn)
     return conn

@@ -11,7 +11,7 @@ Rules baked into the schema:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -50,7 +50,11 @@ class Scoped:
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), default=_tenant, index=True)
     agent_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), default=_agent, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # Set in Python so rows written in one transaction keep their order
+    # (Postgres now() is the same for a whole transaction).
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now()
+    )
 
 
 # --- Identity -----------------------------------------------------------------
@@ -202,6 +206,44 @@ class SpendEntry(Scoped, Base):
     cache_write_tokens: Mapped[int] = mapped_column(Integer, default=0)
     request_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     settled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# --- App accounts ----------------------------------------------------------------
+
+
+class AppSession(Scoped, Base):
+    """A signed-in browser for the person who hired the agent. Only a hash is stored."""
+
+    __tablename__ = "app_session"
+
+    person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class Onboarding(Scoped, Base):
+    """Where the person is in the agent's onboarding conversation."""
+
+    __tablename__ = "onboarding"
+
+    person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), unique=True)
+    step: Mapped[str] = mapped_column(String(30), default="hello")
+    answers: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ChannelInvite(Scoped, Base):
+    """A one-time link made in the signed-in app, opened in Telegram to connect it."""
+
+    __tablename__ = "channel_invite"
+
+    person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"))
+    provider: Mapped[str] = mapped_column(String(20))
+    code_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    used_by_identity_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("channel_identity.id"), nullable=True)
 
 
 class AgentState(Base):

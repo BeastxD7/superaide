@@ -81,7 +81,7 @@ def settings():
 
 @pytest.fixture
 def outbox() -> dict[str, FakeMessenger]:
-    return {"telegram": FakeMessenger(), "slack": FakeMessenger()}
+    return {"telegram": FakeMessenger(), "slack": FakeMessenger(), "web": FakeMessenger()}
 
 
 class ScriptedModel:

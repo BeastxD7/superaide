@@ -1,4 +1,9 @@
 import { useState, type FormEvent } from 'react'
+import '@fontsource/atkinson-hyperlegible-next/400.css'
+import '@fontsource/atkinson-hyperlegible-next/600.css'
+import '@fontsource/atkinson-hyperlegible-next/700.css'
+import '@fontsource/atkinson-hyperlegible-mono/400.css'
+import './styles.css'
 import { api, defaultBase, loadConnection, saveConnection, type Connection, type Overview as OverviewData } from './api'
 import { Conversations } from './pages/Conversations'
 import { Overview } from './pages/Overview'
@@ -18,7 +23,7 @@ const TABS = [
 ] as const
 type TabKey = (typeof TABS)[number]['key']
 
-export default function App() {
+export default function ConsoleApp() {
   const [conn, setConn] = useState<Connection | null>(() => loadConnection())
   if (!conn)
     return (

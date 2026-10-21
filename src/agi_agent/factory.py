@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from agi_agent.brain.budget import BudgetGuard
 from agi_agent.brain.llm import LLM, ClaudeLLM, FakeLLM, SystemBlock
 from agi_agent.brain.turn import Prediction, RequestedAction, TurnOutput
-from agi_agent.channels.base import FakeMessenger, Messenger
+from agi_agent.channels.base import FakeMessenger, Messenger, WebMessenger
 from agi_agent.config import Settings, get_settings
 from agi_agent.pipeline import Agent
 
@@ -53,6 +53,7 @@ def build_messengers(settings: Settings) -> dict[str, Messenger]:
     if not messengers:
         messengers["telegram"] = FakeMessenger()
         messengers["slack"] = FakeMessenger()
+    messengers["web"] = WebMessenger()  # the in-app chat always works
     return messengers
 
 

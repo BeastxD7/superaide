@@ -8,6 +8,7 @@ actions; it cannot write identity, trust or memory tables.
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 
 from agi_agent.audit import audit
@@ -26,6 +27,13 @@ from agi_agent.policy.actions import decide
 from agi_agent.policy.killswitch import is_frozen
 
 log = logging.getLogger(__name__)
+START_CODE_RE = re.compile(r"^/start\s+([A-Za-z0-9_-]{8,64})\s*$")
+
+
+def parse_start_code(text: str) -> str | None:
+    """Telegram sends "/start <code>" when someone opens t.me/<bot>?start=<code>."""
+    m = START_CODE_RE.match(text)
+    return m.group(1) if m else None
 
 
 @dataclass
@@ -59,6 +67,22 @@ class Agent:
             if is_frozen(s):
                 audit(s, "pipeline", "frozen_no_reply", event_id=inbound.id)
                 return HandleResult("frozen")
+
+            invite_code = parse_start_code(msg.text) if msg.provider == "telegram" else None
+            if invite_code is not None:
+                if sender.known:
+                    reply = f"You're already linked here, {sender.name}. Just message me."
+                else:
+                    from agi_agent.app.accounts import redeem_invite
+
+                    person = redeem_invite(s, provider="telegram", code=invite_code, identity=sender.identity)
+                    reply = (
+                        f"Linked. Hi {person.display_name}, it's {self.name}. I'll recognise you here from now on."
+                        if person
+                        else "That link has expired or was already used. Make a new one in the app."
+                    )
+                self._reply(s, ctx, aud, reply)
+                return HandleResult("known" if sender.known else "stranger", reply, ["invite"])
 
             if not sender.known:
                 reply = self._stranger(s, sender, msg)

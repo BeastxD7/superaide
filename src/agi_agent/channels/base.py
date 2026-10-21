@@ -42,3 +42,14 @@ class FakeMessenger:
 
     def send_to_context(self, context: Context, text: str) -> None:
         self.sent.append({"to_context": context.external_id, "text": text})
+
+
+class WebMessenger:
+    """The in-app chat. Replies are stored as events by the pipeline and the
+    browser reads them back, so there is nothing to push."""
+
+    def send_dm(self, identity: ChannelIdentity, text: str) -> None:
+        return None
+
+    def send_to_context(self, context: Context, text: str) -> None:
+        return None

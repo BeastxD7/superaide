@@ -83,7 +83,6 @@ if [ "$RESET" = 1 ]; then
   uv run --quiet agi-agent reset-db --yes
 fi
 uv run --quiet alembic upgrade head
-uv run --quiet agi-agent seed-demo
 
 # 5. Dashboard: prebuilt in web/dist; rebuild only if missing and Node exists
 if [ ! -f web/dist/index.html ] && command -v npm >/dev/null 2>&1; then
@@ -116,8 +115,10 @@ if grep -Eq '^SLACK_BOT_TOKEN=.+' .env && grep -Eq '^SLACK_APP_TOKEN=.+' .env; t
   PIDS+=($!)
 fi
 
-URL="http://127.0.0.1:$PORT/#token=$TOKEN"
-bold "Agent running. Dashboard: http://127.0.0.1:$PORT  (keep this window open; Ctrl+C to stop)"
-echo "Admin token: $TOKEN"
+URL="http://127.0.0.1:$PORT/"
+bold "Agent running at $URL  (keep this window open; Ctrl+C to stop)"
+echo "Operator console: http://127.0.0.1:$PORT/#/console?token=$TOKEN"
+echo "Already hired Ava and got signed out? Run: uv run agi-agent owner-link --port $PORT"
+echo "Want to hire from scratch? Stop this and run: bash start.command --reset"
 ( sleep 3; open "$URL" 2>/dev/null || xdg-open "$URL" 2>/dev/null || true ) &
 uv run agi-agent serve --port "$PORT"
