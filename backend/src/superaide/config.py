@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     )
     # Use a scripted fake model instead of the real API (tests, offline demos).
     fake_llm: bool = False
+    # Let Ava search and read the web for the owner (costs US$0.01 a search, from the research budget)
+    web_tools_enabled: bool = True
 
     # Telegram
     telegram_bot_token: str = ""

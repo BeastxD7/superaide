@@ -11,6 +11,7 @@ dependencies = [
     "anthropic>=1.17.0",
     "argon2-cffi>=23",
     "cryptography>=44",
+    "dateparser>=1.2",
     "email-validator>=2",
     "fastapi>=0.156.8",
     "httpcore>=1.0.9",
@@ -75,6 +76,7 @@ select = ["E", "F", "I", "B", "UP"]
 
 [tool.ruff.lint.per-file-ignores]
 "src/superaide/brain/turn.py" = ["E501"]  # prompt text
+"src/superaide/brain/loop.py" = ["E501"]  # prompt text
 "src/superaide/docs.py" = ["E501"]  # a Markdown table
 
 [tool.ruff.lint.flake8-bugbear]

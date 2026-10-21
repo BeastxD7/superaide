@@ -31,12 +31,15 @@ from superaide.db.models import (
     Context,
     Document,
     Event,
+    Intention,
     MemoryItem,
     Person,
     UserAccount,
 )
 from superaide.db.session import require, session_scope
 from superaide.factory import uses_real_model
+from superaide.intentions import service as intentions
+from superaide.intentions.when import clean_task, find_moment, zone
 from superaide.knowledge import extract
 from superaide.knowledge.ingest import ingest
 from superaide.knowledge.store import contacts_of, preferences_for, retire_document
@@ -81,6 +84,16 @@ class HireBody(BaseModel):
 class AnswerBody(BaseModel):
     step: str
     answer: dict[str, Any] = Field(default_factory=dict)
+
+
+class ReminderBody(BaseModel):
+    text: str = Field(min_length=1, max_length=500)
+    # Either an exact moment, or a time in the text ("Call Priya tomorrow at 5").
+    due_at: datetime | None = None
+
+
+class SnoozeBody(BaseModel):
+    minutes: int = Field(ge=1, le=60 * 24 * 30)
 
 
 class ChatBody(BaseModel):
@@ -331,6 +344,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                     "text": e.content,
                     "at": e.created_at.isoformat(),
                     "kind": "onboarding" if (e.meta or {}).get("onboarding") else "chat",
+                    "sources": (e.meta or {}).get("sources", []),
                 }
                 for e in reversed(rows)
             ]
@@ -454,6 +468,92 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
 
             audit(s, "app", "memory_forgotten", memory_id=m.id, person_id=person_id)
         return {"status": "forgotten"}
+
+    def _reminder_view(i: Intention, tz: str) -> dict[str, Any]:
+        return {
+            "id": str(i.id),
+            "kind": i.kind,
+            "text": i.text,
+            "due_at": i.due_at.isoformat(),
+            "due_text": intentions.describe_due(i.due_at, tz),
+            "status": i.status,
+            "delivered_at": i.delivered_at.isoformat() if i.delivered_at else None,
+            "source": i.source,
+        }
+
+    @router.get(
+        "/reminders",
+        tags=["Owner: reminders"],
+        summary="Reminders",
+        description="Open reminders and follow-ups, soonest first. `?all=true` includes finished ones.",
+    )
+    def reminders(all: bool = False, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        with session_scope() as s:
+            owner = require(s, Person, person_id)
+            tz = intentions.owner_zone(s, owner)
+            rows = intentions.upcoming(s, owner, include_closed=all)
+            return {"timezone": tz, "reminders": [_reminder_view(i, tz) for i in rows]}
+
+    @router.post(
+        "/reminders",
+        tags=["Owner: reminders"],
+        summary="Add a reminder",
+        description='Give `due_at`, or put the time in `text` (for example "Call Priya tomorrow at 5").',
+    )
+    def add_reminder(body: ReminderBody, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        with session_scope() as s:
+            owner = require(s, Person, person_id)
+            tz = intentions.owner_zone(s, owner)
+            text, due = body.text, body.due_at
+            if due is None:
+                found = find_moment(text, datetime.now(UTC).astimezone(zone(tz)))
+                if found is None:
+                    raise HTTPException(422, 'Add a time, like "tomorrow at 9" or "in 2 hours".')
+                due, rest = found
+                text = clean_task(rest) or text
+            elif due.tzinfo is None:
+                due = due.replace(tzinfo=zone(tz))
+            try:
+                intention = intentions.create(s, owner, text=text, due_at=due, source="dashboard")
+            except intentions.IntentionError as exc:
+                raise HTTPException(exc.status, str(exc)) from exc
+            return _reminder_view(intention, tz)
+
+    @router.post(
+        "/reminders/{reminder_id}/snooze",
+        tags=["Owner: reminders"],
+        summary="Snooze",
+        description="Bring it back `minutes` from now.",
+    )
+    def snooze_reminder(
+        reminder_id: uuid.UUID, body: SnoozeBody, person_id: uuid.UUID = Depends(owner_person_id)
+    ) -> dict[str, Any]:
+        with session_scope() as s:
+            owner = require(s, Person, person_id)
+            try:
+                i = intentions.snooze(s, owner, reminder_id, minutes=body.minutes)
+            except intentions.IntentionError as exc:
+                raise HTTPException(exc.status, str(exc)) from exc
+            return _reminder_view(i, intentions.owner_zone(s, owner))
+
+    @router.post(
+        "/reminders/{reminder_id}/{verdict}",
+        tags=["Owner: reminders"],
+        summary="Mark done or cancel",
+        description="`verdict` is `done` or `cancel`.",
+    )
+    def close_reminder(
+        reminder_id: uuid.UUID, verdict: str, person_id: uuid.UUID = Depends(owner_person_id)
+    ) -> dict[str, Any]:
+        if verdict not in {"done", "cancel"}:
+            raise HTTPException(404, "Not found")
+        with session_scope() as s:
+            owner = require(s, Person, person_id)
+            try:
+                i = intentions.finish(s, owner, reminder_id, status="done" if verdict == "done" else "cancelled")
+            except intentions.IntentionError as exc:
+                raise HTTPException(exc.status, str(exc)) from exc
+            return _reminder_view(i, intentions.owner_zone(s, owner))
 
     @router.get(
         "/approvals",

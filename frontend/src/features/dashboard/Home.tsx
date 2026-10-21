@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowRight, BookOpen, Check, Clock, MessageCircle, Plug, ShieldCheck, Star, Users } from 'lucide-react'
+import { AlarmClock, ArrowRight, BookOpen, Check, Clock, MessageCircle, Plug, ShieldCheck, Star, Users } from 'lucide-react'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { Orb } from '@/components/Orb'
@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CATEGORY_LABEL, DIGEST_LABEL, CHANNEL_LABEL, capitalise, useAppData } from '@/features/dashboard/data'
-import type { Me, Memory, Message, PersonCard, Preferences } from '@/lib/api'
+import type { Me, Memory, Message, PersonCard, Preferences, Reminder } from '@/lib/api'
 import { useSession } from '@/lib/session-context'
 
 function greeting(): string {
@@ -25,6 +25,7 @@ export function DashboardHome() {
   const people = useAppData<{ people: PersonCard[] }>('/people')
   const prefs = useAppData<Preferences>('/preferences')
   const messages = useAppData<Message[]>('/messages')
+  const reminders = useAppData<{ reminders: Reminder[] }>('/reminders')
   if (!me) return null
   const name = me.agent.name
   const first = me.person.name.split(' ')[0]
@@ -64,6 +65,7 @@ export function DashboardHome() {
           <KnowsCard name={name} memories={notebook.data?.memories} />
           <PeopleCard people={people.data?.people} />
           <RulesCard name={name} prefs={prefs.data} />
+          <ComingUpCard name={name} reminders={reminders.data?.reminders} />
           <LatestCard name={name} messages={messages.data} />
         </div>
       </div>
@@ -273,6 +275,37 @@ function RulesCard({ name, prefs }: { name: string; prefs: Preferences | null })
               <dd className="mt-0.5 text-ink">{DIGEST_LABEL[prefs.digest] ?? prefs.digest}</dd>
             </div>
           </dl>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function ComingUpCard({ name, reminders }: { name: string; reminders?: Reminder[] }) {
+  const next = (reminders ?? []).slice(0, 3)
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <AlarmClock className="size-4 text-violet-600" aria-hidden />
+          Coming up
+        </CardTitle>
+        <SeeAll href="/dashboard/reminders">Reminders</SeeAll>
+      </CardHeader>
+      <CardContent>
+        {!reminders ? (
+          <Loading />
+        ) : next.length === 0 ? (
+          <p className="text-sm text-muted">Nothing yet. Tell {name} &ldquo;remind me to…&rdquo; and she&apos;ll bring it back on time.</p>
+        ) : (
+          <ul className="space-y-2.5">
+            {next.map((r) => (
+              <li key={r.id} className="text-sm">
+                <p className="line-clamp-1 font-medium text-ink">{r.text}</p>
+                <p className="text-xs text-muted">{r.due_text}</p>
+              </li>
+            ))}
+          </ul>
         )}
       </CardContent>
     </Card>

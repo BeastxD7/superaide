@@ -94,6 +94,23 @@ class ScriptedModel:
 
     def __call__(self, purpose, system, messages, output_model) -> Any:
         self.systems.append("\n".join(b.text for b in system))
+        if output_model is None:  # the owner's tool loop: an action is a propose_action call
+            last = messages[-1]["content"] if messages else ""
+            answered = isinstance(last, list) and any(b.get("type") == "tool_result" for b in last)
+            if self.next_action.kind != "none" and not answered:
+                return [
+                    {
+                        "type": "tool_use",
+                        "id": "toolu_scripted",
+                        "name": "propose_action",
+                        "input": {
+                            "kind": self.next_action.kind,
+                            "summary": self.next_action.summary,
+                            "rationale": "asked",
+                        },
+                    }
+                ]
+            return self.reply
         return TurnOutput(
             reply=self.reply,
             requested_action=self.next_action,

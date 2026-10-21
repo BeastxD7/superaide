@@ -24,6 +24,7 @@ from superaide.db.models import Context
 from superaide.db.session import session_scope
 from superaide.identity import linking
 from superaide.identity.resolver import Sender, resolve
+from superaide.intentions.when import is_reminder_request
 from superaide.knowledge.profile import owner_brief
 from superaide.memory.store import (
     get_or_create_context,
@@ -120,6 +121,11 @@ class Agent:
                 self._reply(s, ctx, aud, reply, thread)
                 return HandleResult("stranger", reply)
 
+            if ctx.kind == "dm" and is_reminder_request(msg.text) and self._is_owner(s, sender):
+                reply = self._remind(s, sender, inbound)
+                self._reply(s, ctx, aud, reply, thread)
+                return HandleResult("known", reply, ["reminder"])
+
             fact = parse_remember(msg.text)
             if fact is not None and ctx.kind == "dm":
                 remember(s, content=fact, sender=sender, context=ctx, audience=aud, source_event=inbound)
@@ -127,9 +133,42 @@ class Agent:
                 self._reply(s, ctx, aud, reply, thread)
                 return HandleResult("known", reply, ["remembered"])
 
+            if ctx.kind == "dm" and self._is_owner(s, sender):
+                reply, notes, meta = self._owner_turn(s, sender, ctx, aud, msg, inbound)
+                self._reply(s, ctx, aud, reply, thread, meta=meta)
+                return HandleResult("known", reply, notes)
+
             reply, notes = self._think(s, sender, ctx, aud, msg)
             self._reply(s, ctx, aud, reply, thread)
             return HandleResult("known", reply, notes)
+
+    # --- reminders -------------------------------------------------------------
+
+    @staticmethod
+    def _is_owner(s, sender: Sender) -> bool:
+        from superaide.app.accounts import owner
+
+        boss = owner(s)
+        return boss is not None and sender.person is not None and sender.person.id == boss.id
+
+    def _remind(self, s, sender: Sender, inbound) -> str:
+        from datetime import UTC, datetime
+
+        from superaide.intentions import service
+        from superaide.intentions.when import parse_reminder, zone
+
+        assert sender.person is not None
+        tz = service.owner_zone(s, sender.person)
+        parsed = parse_reminder(inbound.content, datetime.now(UTC).astimezone(zone(tz)))
+        if parsed is None:
+            return 'When should I remind you? Say it with a time, like "remind me to call Priya tomorrow at 5".'
+        try:
+            intention = service.create(
+                s, sender.person, text=parsed.task, due_at=parsed.due, source="chat", source_event_id=inbound.id
+            )
+        except service.IntentionError as exc:
+            return str(exc)
+        return f"Got it. I'll remind you {service.describe_due(intention.due_at, tz)}: {intention.text}"
 
     # --- strangers -------------------------------------------------------------
 
@@ -178,6 +217,56 @@ class Agent:
 
     # --- known people ----------------------------------------------------------
 
+    def _budget_reply(self, s, exc: BudgetExceeded) -> str:
+        audit(s, "pipeline", "budget_cap_reached", period=exc.period)
+        if exc.period in {"day", "bucket"}:
+            return "I've used today's thinking budget, so I'll pick this up again tomorrow."
+        if exc.period == "month":
+            return "I've used this month's budget, so I'm pausing until it frees up."
+        return f"I've reached my US${self.settings.max_spend_usd:.0f} spending cap, so I'm paused."
+
+    def _owner_turn(
+        self, s, sender: Sender, ctx: Context, aud: Audience, msg: InboundMessage, inbound
+    ) -> tuple[str, list[str], dict]:
+        """The owner's own conversation: a tool loop that can look things up, set reminders,
+        search the web and ask for approval, with every answer citing its sources."""
+        from superaide.brain.loop import OwnerTurn
+        from superaide.factory import uses_real_model
+
+        history = recent_events(s, ctx, thread_id=thread_of(msg))
+        turn = OwnerTurn(
+            llm=self.llm,
+            model=self.settings.model_chat,
+            agent_name=self.name,
+            session=s,
+            sender=sender,
+            audience=aud,
+            brief=owner_brief(s, sender, aud),
+            inbound=inbound,
+            web=uses_real_model(self.settings) and self.settings.web_tools_enabled,
+        )
+        try:
+            result = turn.run(build_messages(history, msg.text))
+        except BudgetExceeded as exc:
+            return self._budget_reply(s, exc), ["budget"], {}
+        except AgentFrozen:
+            return "I'm paused right now.", ["frozen"], {}
+        sources = [
+            {"n": i + 1, "uri": c.uri, "kind": c.kind, "title": c.title[:200], "cited_text": c.cited_text[:300]}
+            for i, c in enumerate(result.sources)
+        ]
+        audit(
+            s,
+            "brain",
+            "owner_turn",
+            steps=result.steps,
+            sources=len(sources),
+            tainted=result.tainted,
+            notes=result.notes,
+        )
+        meta = {"sources": sources} if sources else {}
+        return result.text, [*result.notes, f"steps:{result.steps}"], meta
+
     def _think(self, s, sender: Sender, ctx: Context, aud: Audience, msg: InboundMessage) -> tuple[str, list[str]]:
         is_owner = sender.relation == "manager" and aud.person_ids == {sender.person.id} if sender.person else False
         memories = visible_memories(s, aud, limit=30 if is_owner else 5)
@@ -193,12 +282,7 @@ class Agent:
                 output_model=TurnOutput,
             )
         except BudgetExceeded as exc:
-            audit(s, "pipeline", "budget_cap_reached", period=exc.period)
-            if exc.period in {"day", "bucket"}:
-                return ("I've used today's thinking budget, so I'll pick this up again tomorrow.", ["budget"])
-            if exc.period == "month":
-                return ("I've used this month's budget, so I'm pausing until it frees up.", ["budget"])
-            return (f"I've reached my US${self.settings.max_spend_usd:.0f} spending cap, so I'm paused.", ["budget"])
+            return self._budget_reply(s, exc), ["budget"]
         except AgentFrozen:
             return ("I'm paused right now.", ["frozen"])
 
@@ -227,10 +311,10 @@ class Agent:
 
     # --- output ------------------------------------------------------------------
 
-    def _reply(self, s, ctx: Context, aud: Audience, text: str, thread: str = "") -> None:
+    def _reply(self, s, ctx: Context, aud: Audience, text: str, thread: str = "", meta: dict | None = None) -> None:
         messenger = self.messengers.get(ctx.provider)
         if messenger is None:
             audit(s, "pipeline", "no_messenger", provider=ctx.provider)
             return
         messenger.send_to_context(ctx, text, thread)
-        log_event(s, context=ctx, direction="out", content=text, audience=aud, thread_id=thread)
+        log_event(s, context=ctx, direction="out", content=text, audience=aud, thread_id=thread, meta=meta)

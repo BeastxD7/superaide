@@ -19,6 +19,9 @@ class JobWorker:
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
             return
+        from superaide.jobs.handlers import load
+
+        load()
         self._stop.clear()
         self._thread = threading.Thread(target=self._loop, name="job-worker", daemon=True)
         self._thread.start()

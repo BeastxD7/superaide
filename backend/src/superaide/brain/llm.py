@@ -16,7 +16,7 @@ from typing import Any, Protocol, TypeVar
 from pydantic import BaseModel, ValidationError
 
 from superaide.brain.budget import BudgetGuard
-from superaide.brain.pricing import UsageCounts, worst_case_cost
+from superaide.brain.pricing import WEB_SEARCH_USD, UsageCounts, worst_case_cost
 
 T = TypeVar("T", bound=BaseModel)
 log = logging.getLogger(__name__)
@@ -38,7 +38,31 @@ class LLMResult:
     stop_reason: str | None = None
 
 
+@dataclass
+class StepResult:
+    """One Messages API call inside a tool loop: content blocks as plain dicts (sent back
+    unchanged on the next step, as server tools require), why it stopped, and its cost."""
+
+    content: list[dict[str, Any]]
+    stop_reason: str
+    usage: UsageCounts
+    cost_usd: Decimal = Decimal(0)
+
+
 class LLM(Protocol):
+    def step(
+        self,
+        *,
+        purpose: str,
+        model: str,
+        system: list[SystemBlock],
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]],
+        max_tokens: int,
+        effort: str | None = None,
+        max_web_searches: int = 0,
+    ) -> StepResult: ...
+
     def complete(
         self,
         *,
@@ -61,6 +85,16 @@ def _prompt_chars(
     return chars
 
 
+def _system_param(system: list[SystemBlock]) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for block in system:
+        item: dict[str, Any] = {"type": "text", "text": block.text}
+        if block.cache:
+            item["cache_control"] = {"type": "ephemeral"}
+        out.append(item)
+    return out
+
+
 class ClaudeLLM:
     def __init__(self, guard: BudgetGuard, api_key: str = "", client: Any = None) -> None:
         if client is None:
@@ -71,6 +105,41 @@ class ClaudeLLM:
             client = anthropic.Anthropic(api_key=api_key, max_retries=2)
         self.client = client
         self.guard = guard
+
+    def step(
+        self,
+        *,
+        purpose: str,
+        model: str,
+        system: list[SystemBlock],
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]],
+        max_tokens: int,
+        effort: str | None = None,
+        max_web_searches: int = 0,
+    ) -> StepResult:
+        prompt_chars = _prompt_chars(system, messages, None) + len(json.dumps(tools))
+        worst = worst_case_cost(model, prompt_chars, max_tokens) + Decimal(max_web_searches) * WEB_SEARCH_USD
+        entry_id = self.guard.reserve(purpose=purpose, model=model, worst_case_usd=worst)
+        kwargs: dict[str, Any] = {
+            "model": model,
+            "max_tokens": max_tokens,
+            "system": _system_param(system),
+            "messages": messages,
+        }
+        if tools:
+            kwargs["tools"] = tools
+        if effort:
+            kwargs["output_config"] = {"effort": effort}
+        try:
+            response = self.client.messages.create(**kwargs)
+        except Exception as exc:
+            self.guard.fail(entry_id, f"{type(exc).__name__}: {exc}")
+            raise
+        usage = UsageCounts.from_api(response.usage)
+        cost = self.guard.settle(entry_id, model=model, usage=usage, request_id=getattr(response, "_request_id", None))
+        content = [b.model_dump(exclude_none=True) if hasattr(b, "model_dump") else dict(b) for b in response.content]
+        return StepResult(content=content, stop_reason=response.stop_reason or "end_turn", usage=usage, cost_usd=cost)
 
     def complete(
         self,
@@ -86,16 +155,10 @@ class ClaudeLLM:
         worst = worst_case_cost(model, _prompt_chars(system, messages, output_model), max_tokens)
         entry_id = self.guard.reserve(purpose=purpose, model=model, worst_case_usd=worst)
 
-        system_param: list[dict[str, Any]] = []
-        for block in system:
-            item: dict[str, Any] = {"type": "text", "text": block.text}
-            if block.cache:
-                item["cache_control"] = {"type": "ephemeral"}
-            system_param.append(item)
         kwargs: dict[str, Any] = {
             "model": model,
             "max_tokens": max_tokens,
-            "system": system_param,
+            "system": _system_param(system),
             "messages": messages,
         }
         output_config: dict[str, Any] = {}
@@ -149,6 +212,33 @@ class FakeLLM:
 
     responder: Responder
     calls: list[dict[str, Any]] = field(default_factory=list)
+
+    def step(
+        self,
+        *,
+        purpose: str,
+        model: str,
+        system: list[SystemBlock],
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]],
+        max_tokens: int,
+        effort: str | None = None,
+        max_web_searches: int = 0,
+    ) -> StepResult:
+        """The responder gets the purpose, system and messages; it may return text, a
+        list of content blocks, a full {"content", "stop_reason"} dict, or a TurnOutput
+        (its reply becomes the text, so the offline echo works in the tool loop too)."""
+        self.calls.append({"purpose": purpose, "model": model, "system": system, "messages": messages, "tools": tools})
+        out = self.responder(purpose, system, messages, None)
+        if isinstance(out, dict) and "content" in out:
+            content, stop = list(out["content"]), str(out.get("stop_reason", "end_turn"))
+        elif isinstance(out, list):
+            content = list(out)
+            stop = "tool_use" if any(b.get("type") == "tool_use" for b in content) else "end_turn"
+        else:
+            text = out.reply if hasattr(out, "reply") else str(out)
+            content, stop = [{"type": "text", "text": text}], "end_turn"
+        return StepResult(content=content, stop_reason=stop, usage=UsageCounts())
 
     def complete(
         self,

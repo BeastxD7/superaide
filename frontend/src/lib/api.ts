@@ -96,7 +96,15 @@ export type StepView = {
   hint: string | null
 }
 
-export type Message = { id: string; from: 'you' | 'agent'; text: string; at: string; kind?: 'onboarding' | 'chat' }
+export type SourceRef = { n: number; uri: string; kind: 'memory' | 'message' | 'web' | 'other'; title: string; cited_text: string }
+export type Message = {
+  id: string
+  from: 'you' | 'agent'
+  text: string
+  at: string
+  kind?: 'onboarding' | 'chat'
+  sources?: SourceRef[]
+}
 export type Memory = {
   id: string
   text: string
@@ -181,4 +189,15 @@ export type ApprovalItem = {
   result: string | null
   at: string
   decided_at: string | null
+}
+
+export type Reminder = {
+  id: string
+  kind: 'reminder' | 'follow_up'
+  text: string
+  due_at: string
+  due_text: string
+  status: 'open' | 'done' | 'cancelled'
+  delivered_at: string | null
+  source: 'chat' | 'dashboard'
 }

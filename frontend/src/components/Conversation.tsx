@@ -3,7 +3,7 @@
 import { Check, Copy } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
-import type { Hue, Message } from '@/lib/api'
+import type { Hue, Message, SourceRef } from '@/lib/api'
 import { Markdown } from '@/components/Markdown'
 import { Orb } from '@/components/Orb'
 
@@ -71,7 +71,7 @@ export function Conversation({
               className={`flex items-end gap-2.5 ${firstOfRun ? 'mt-3' : ''}`}
             >
               <div className="w-8 shrink-0">{isLastOfRun(messages, i) && <Orb hue={hue} size={32} />}</div>
-              <AgentBubble text={m.text} agentName={agentName} copyable={m.kind === 'chat' && m.text.length > 240} />
+              <AgentBubble text={m.text} agentName={agentName} copyable={m.kind === 'chat' && m.text.length > 240} sources={m.sources} />
             </motion.div>
           ) : (
             <motion.div
@@ -119,7 +119,17 @@ function isLastOfRun(messages: Message[], i: number): boolean {
   return i === messages.length - 1 || messages[i + 1].from !== messages[i].from
 }
 
-function AgentBubble({ text, agentName, copyable }: { text: string; agentName: string; copyable: boolean }) {
+function AgentBubble({
+  text,
+  agentName,
+  copyable,
+  sources,
+}: {
+  text: string
+  agentName: string
+  copyable: boolean
+  sources?: SourceRef[]
+}) {
   const [copied, setCopied] = useState(false)
   async function copy() {
     try {
@@ -133,6 +143,7 @@ function AgentBubble({ text, agentName, copyable }: { text: string; agentName: s
   return (
     <div className="group max-w-[85%] rounded-3xl rounded-bl-md bg-white px-4 py-2.5 text-ink shadow-[0_8px_24px_-18px_rgba(15,42,35,0.6)]">
       <Markdown text={text} />
+      {sources && sources.length > 0 && <Sources sources={sources} />}
       {copyable && (
         <button
           onClick={() => void copy()}
@@ -144,5 +155,38 @@ function AgentBubble({ text, agentName, copyable }: { text: string; agentName: s
         </button>
       )}
     </div>
+  )
+}
+
+const SOURCE_KIND: Record<SourceRef['kind'], string> = { memory: 'Note', message: 'Message', web: 'Web', other: 'Source' }
+
+// Where the answer came from: numbered to match the [1] [2] marks in the text. Web
+// sources open the page; notes and messages show the exact words that were used.
+function Sources({ sources }: { sources: SourceRef[] }) {
+  return (
+    <details className="group mt-2 border-t border-line/70 pt-2 text-xs">
+      <summary className="cursor-pointer list-none font-medium text-violet-700 select-none">
+        Sources ({sources.length})
+      </summary>
+      <ol className="mt-1.5 space-y-1.5" aria-label="Sources">
+        {sources.map((src) => (
+          <li key={src.n} className="flex gap-2">
+            <span className="w-5 shrink-0 text-muted">[{src.n}]</span>
+            <span className="min-w-0 [overflow-wrap:anywhere]">
+              <span className="font-medium text-ink">{SOURCE_KIND[src.kind]}</span>
+              {' · '}
+              {src.kind === 'web' ? (
+                <a href={src.uri} target="_blank" rel="noopener noreferrer" className="text-violet-700 underline">
+                  {src.title || src.uri}
+                </a>
+              ) : (
+                <span className="text-body">{src.title}</span>
+              )}
+              {src.cited_text && <span className="mt-0.5 block text-muted">&ldquo;{src.cited_text}&rdquo;</span>}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </details>
   )
 }
