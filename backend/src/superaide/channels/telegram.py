@@ -88,6 +88,7 @@ def poll_forever(token: str, handle: Callable[[InboundMessage], Any], stop: thre
     except httpx.HTTPError as exc:
         log.warning("telegram deleteWebhook failed: %s", exc)
     offset = 0
+    backoff = 3.0
     log.info("Telegram polling started")
     while not stop.is_set():
         try:
@@ -97,11 +98,20 @@ def poll_forever(token: str, handle: Callable[[InboundMessage], Any], stop: thre
             log.warning("telegram poll error: %s", exc)
             stop.wait(3)
             continue
+        if r.status_code != 200 or not data.get("ok", True):
+            # 409: another poller or a webhook is active; 401: the token was revoked. Telegram
+            # answers these at once, so wait (longer each time) instead of hammering it.
+            log.warning("telegram getUpdates refused (%s): %s", r.status_code, data.get("description", ""))
+            stop.wait(backoff)
+            backoff = min(backoff * 2, 60.0)
+            continue
+        backoff = 3.0
         for update in data.get("result", []):
-            offset = max(offset, update["update_id"] + 1)
-            msg = parse_update(update, verified=True)
-            if msg is not None:
-                try:
+            if isinstance(update.get("update_id"), int):
+                offset = max(offset, update["update_id"] + 1)
+            try:
+                msg = parse_update(update, verified=True)
+                if msg is not None:
                     handle(msg)
-                except Exception:  # keep polling even if one message fails
-                    log.exception("failed to handle telegram update")
+            except Exception:  # keep polling even if one update is malformed or fails
+                log.exception("failed to handle telegram update")
