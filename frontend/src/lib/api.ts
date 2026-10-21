@@ -124,6 +124,7 @@ export type ChatEvent =
   | { event: 'reasoning'; data: { delta: string } }
   | { event: 'text'; data: { delta: string } }
   | { event: 'narration'; data: { text: string } }
+  | { event: 'retract'; data: Record<string, never> }
   | { event: 'tool'; data: { id: string; name: string; state: 'running' | 'done' | 'error'; label: string; detail: string } }
   | { event: 'done'; data: { mode: string; reply: string | null; notes: string[] } }
   | { event: 'error'; data: { message: string } }

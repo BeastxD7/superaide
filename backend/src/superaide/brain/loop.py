@@ -21,6 +21,8 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from superaide.audit import audit
+from superaide.brain import verify
+from superaide.brain.budget import BudgetExceeded
 from superaide.brain.llm import LLM, StepResult, SystemBlock
 from superaide.brain.turn import load_charter
 from superaide.context.audience import Audience
@@ -248,6 +250,9 @@ class OwnerTurn:
         self.reasoning = ""
         self._said = ""  # text streamed in the current step
         self._server_calls: dict[str, tuple[str, str]] = {}
+        self.returned_uris: set[str] = set()  # ava:// sources tools actually returned this turn
+        self.recall_hits = 0
+        self._known = ""  # the date, time zone and owner brief from the system prompt
 
     # --- live progress ----------------------------------------------------------
 
@@ -327,6 +332,7 @@ class OwnerTurn:
             + ("" if telegram else " Telegram isn't linked yet; they can link it under Connections.")
         )
         skills = registry.instructions_for(self.skills())
+        self._known = who + ("\n\n" + self.brief if self.brief else "")  # facts Ava was told, for the source check
         return [
             SystemBlock(load_charter(self.agent_name) + "\n\n" + OWNER_RULES, cache=True),
             SystemBlock(who + ("\n\n" + self.brief if self.brief else "") + ("\n\n" + skills if skills else "")),
@@ -343,6 +349,7 @@ class OwnerTurn:
         if name == "recall":
             found = recall(self.s, self.aud, str(args.get("query", "")), exclude_event=self.inbound.id)
             self.notes.append(f"recall:{len(found)}")
+            self.recall_hits += len(found)
             if not found:
                 return "Nothing in your notes or messages matches that.", False
             return search_results(found), False
@@ -506,8 +513,7 @@ class OwnerTurn:
                 msgs = [*msgs, {"role": "assistant", "content": last.content}]
                 continue
             if last.stop_reason != "tool_use":
-                text, sources = render(last.content)
-                return self._result(text or "…", sources, self.notes, step + 1)
+                return self._finish(system, tools, msgs, last, step + 1)
             self._narrated()
             results = []
             for block in last.content:
@@ -517,6 +523,7 @@ class OwnerTurn:
                 label = self.label(name, args)
                 self.tool_event(str(block["id"]), name, "running", label)
                 content, is_error = self.run_tool(name, args)
+                self.returned_uris |= verify.returned_uris(content)
                 self.tool_event(
                     str(block["id"]), name, "error" if is_error else "done", label, outcome(name, content, is_error)
                 )
@@ -526,13 +533,105 @@ class OwnerTurn:
                 results.append(result)
             msgs = [*msgs, {"role": "assistant", "content": last.content}, {"role": "user", "content": results}]
         audit(self.s, "brain", "tool_loop_limit", steps=MAX_STEPS, notes=json.dumps(self.notes)[:300])
-        text, sources = render(last.content if last else [])
+        content, dropped = verify.drop_unreturned(last.content if last else [], self.returned_uris)
+        if dropped:
+            self.notes.append(f"cite_dropped:{len(dropped)}")
+        text, sources = render(content)
         return self._result(
             (text + "\n\n" if text else "") + "I've stopped here to keep this quick; ask me to carry on.",
             sources,
             self.notes + ["step_limit"],
             MAX_STEPS,
         )
+
+    # --- the source check ------------------------------------------------------
+
+    def _finish(
+        self,
+        system: list[SystemBlock],
+        tools: list[dict[str, Any]],
+        msgs: list[dict[str, Any]],
+        last: StepResult,
+        steps: int,
+    ) -> LoopResult:
+        """Check the final answer's sources before it goes out (see brain/verify.py): drop
+        citations of anything no tool returned, then revise once, or own up, if a claim about
+        the owner's data has no source."""
+        grounding = verify.grounding_text(msgs, last.content) + verify.flat(self._known)
+        content, dropped = verify.drop_unreturned(last.content, self.returned_uris)
+        text, sources = render(content)
+        flagged = verify.unsupported(text, grounding=grounding, recall_found=self.recall_hits > 0)
+        if not (sources or dropped or flagged):
+            return self._result(text or "…", sources, self.notes, steps)  # chit-chat: nothing to check
+
+        check_id = f"verify_{steps}"
+        label = "Checking every claim has a source"
+        self.tool_event(check_id, "verify", "running", label)
+        outcome = "ok"
+        if flagged:
+            outcome = "abstained"
+            revised = self._revise(system, tools, msgs, last, flagged) if steps < MAX_STEPS else None
+            if revised is not None:
+                steps += 1
+                r_content, r_dropped = verify.drop_unreturned(revised.content, self.returned_uris)
+                dropped += r_dropped
+                r_text, r_sources = render(r_content)
+                still = verify.unsupported(r_text, grounding=grounding, recall_found=self.recall_hits > 0)
+                if r_text and not still:
+                    text, sources, outcome = r_text, r_sources, "revised"
+                elif r_text:
+                    text, sources = r_text, r_sources
+            if outcome == "abstained":
+                text = (text + "\n\n" if text else "") + verify.ABSTAIN
+        if dropped:
+            self.notes.append(f"cite_dropped:{len(dropped)}")
+        if flagged:
+            self.notes.append(f"unsupported:{len(flagged)}")
+        self.notes.append(f"verify:{outcome}")
+        audit(
+            self.s,
+            "brain",
+            "citation_verify",
+            outcome=outcome,
+            dropped=dropped[:10],
+            unsupported=[f[:200] for f in flagged[:5]],
+            sources=len(sources),
+        )
+        self.tool_event(check_id, "verify", "done", label, verify.detail(len(dropped), len(flagged), outcome))
+        return self._result(text or "…", sources, self.notes, steps)
+
+    def _revise(
+        self,
+        system: list[SystemBlock],
+        tools: list[dict[str, Any]],
+        msgs: list[dict[str, Any]],
+        last: StepResult,
+        flagged: list[str],
+    ) -> StepResult | None:
+        """One extra step asking the model to drop or own up to the unsupported sentences.
+        None if it can't be had (spend cap) or the model reached for a tool instead."""
+        self._said = ""
+        self.emit("retract", {})  # the draft already streamed to the chat is replaced
+        self.emit("status", {"text": "Checking sources"})
+        ask = {"role": "user", "content": verify.revision_request(flagged)}
+        try:
+            step = self.llm.step(
+                purpose="verify",
+                model=self.model,
+                system=system,
+                messages=[*msgs, {"role": "assistant", "content": last.content}, ask],
+                tools=tools,  # the conversation holds tool blocks, so the definitions must stay
+                max_tokens=MAX_TOKENS,
+                effort="low",
+                on_event=self.on_model_event if self._emit is not None else None,
+            )
+        except BudgetExceeded:
+            log.info("source check revision refused by the spend cap; abstaining instead")
+            return None
+        self._said = ""
+        if step.stop_reason not in {"end_turn", "stop_sequence"}:
+            return None
+        return step
 
     def _narrated(self) -> None:
         """The text of a step that went on to use tools was Ava saying what she's doing, not her answer."""

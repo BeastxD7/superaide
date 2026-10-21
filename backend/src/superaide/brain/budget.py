@@ -32,7 +32,7 @@ class BudgetExceeded(RuntimeError):
 
 
 # Which daily bucket each kind of model call draws from.
-BUCKETS = {"chat_turn": "chat", "intro_facts": "memory", "web_research": "research"}
+BUCKETS = {"chat_turn": "chat", "verify": "chat", "intro_facts": "memory", "web_research": "research"}
 
 
 def bucket_for(purpose: str) -> str:

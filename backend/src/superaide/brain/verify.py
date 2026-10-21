@@ -1,0 +1,188 @@
+"""Every claim about the owner's own data must come from something Ava looked up this turn.
+
+Two checks run on the owner-turn reply before it is sent, both in code:
+
+- A cited `ava://` source must be one a tool actually returned this turn. Anything else is a
+  fabricated citation and is dropped.
+- A sentence that talks about the owner's notes, messages or plans ("your note from 21 Oct",
+  "you said", "your meeting at 3pm") with no citation, in a turn where recall found nothing,
+  is unsupported unless every date and time in it appears in what Ava saw this turn: the
+  owner's own words in the conversation or a tool's output. That keeps "Done, I'll remind
+  you at 5pm" and plain chit-chat untouched while catching a made-up "gym note from 21 Oct".
+
+The loop (brain/loop.py) then asks the model once to remove or own up to what is
+unsupported, and appends an honest line if it still doesn't.
+"""
+
+from __future__ import annotations
+
+import json
+import re
+from typing import Any
+
+ABSTAIN = "I don't have a source for that in your notes or messages, so please treat it as unconfirmed."
+
+_MONTHS = (
+    r"(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?"
+    r"|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)"
+)
+_WEEKDAYS = r"(?:mon|tues|wednes|thurs|fri|satur|sun)day"
+
+# Dates and times a claim can be pinned to.
+SPECIFIC = re.compile(
+    rf"\b\d{{1,2}}(?:st|nd|rd|th)?\s+(?:of\s+)?{_MONTHS}\b"  # 21 Oct, 21st of October
+    rf"|\b{_MONTHS}\s+\d{{1,2}}(?:st|nd|rd|th)?\b"  # Oct 21
+    r"|\b\d{1,2}/\d{1,2}(?:/\d{2,4})?\b"  # 21/10
+    r"|\b\d{1,2}(?::\d{2})?\s?(?:am|pm)\b"  # 7am, 7:10 pm
+    r"|\b\d{1,2}:\d{2}\b"  # 14:30
+    rf"|\b{_WEEKDAYS}\b",
+    re.IGNORECASE,
+)
+
+# A sentence that says it comes from the owner's own records or words.
+MEMORY_REF = re.compile(
+    r"\byour\s+(?:\w+\s+)?(?:notes?|messages?|emails?|docs?|documents?|files?|records?|entr(?:y|ies)|logs?)\b"
+    r"|\b(?:a|the)\s+(?:\w+\s+)?(?:note|message|email|entry)\s+(?:from|on|dated|about|saying)\b"
+    r"|\bin\s+your\s+(?:notes|messages|records|calendar)\b"
+    r"|\baccording\s+to\s+your\b"
+    r"|\byou(?:'ve)?\s+(?:said|told\s+me|mentioned|wrote|noted|saved|shared|asked\s+me)\b",
+    re.IGNORECASE,
+)
+
+# Second-person plans: only a claim when pinned to a date or time.
+PLAN_REF = re.compile(
+    r"\byour\s+(?:\w+\s+)?(?:meetings?|appointments?|flights?|plans?|schedule|calendar|calls?|events?|"
+    r"sessions?|bookings?|reservations?|deadlines?|classes?|trips?)\b"
+    r"|\byou(?:'re|\s+are|\s+have|'ve\s+got|\s+had|\s+were)\b",
+    re.IGNORECASE,
+)
+
+# The sentence already owns up to having no source, or only points back at this chat.
+HONEST = re.compile(
+    r"\b(?:no|don't\s+have\s+a|do\s+not\s+have\s+a|couldn't\s+find\s+a|can't\s+find\s+a)\s+(?:source|record|note)"
+    r"|\b(?:couldn't|can't|could\s+not|cannot|didn't|did\s+not)\s+find\b"
+    r"|\bnothing\s+(?:in|matches|matched)\b"
+    r"|\bjust\s+(?:said|told\s+me|mentioned)\b|\b(?:in|earlier\s+in)\s+this\s+(?:chat|conversation)\b",
+    re.IGNORECASE,
+)
+
+_SENTENCE = re.compile(r"[^.!?\n]+[.!?]*(?:[\"”’)]*)(?:\s*\[\d+\])*")
+_MARK = re.compile(r"\[\d+\]")
+
+
+def sentences(text: str) -> list[str]:
+    """Sentences of a rendered reply, each keeping the [n] marks that follow it."""
+    return [m.group(0).strip() for m in _SENTENCE.finditer(text) if m.group(0).strip(" -*\t")]
+
+
+def returned_uris(content: Any) -> set[str]:
+    """The ava:// sources in a tool result's content (recall, calendar and any other skill)."""
+    if not isinstance(content, list):
+        return set()
+    return {
+        str(b.get("source", ""))
+        for b in content
+        if isinstance(b, dict) and b.get("type") == "search_result" and b.get("source")
+    }
+
+
+def drop_unreturned(content: list[dict[str, Any]], allowed: set[str]) -> tuple[list[dict[str, Any]], list[str]]:
+    """Remove citations of ava:// sources no tool returned this turn. Web citations come from
+    the API's own server tools and are kept."""
+    dropped: list[str] = []
+    out: list[dict[str, Any]] = []
+    for block in content:
+        citations = block.get("citations") if block.get("type") == "text" else None
+        if not citations:
+            out.append(block)
+            continue
+        kept = []
+        for c in citations:
+            uri = str(c.get("source") or c.get("url") or "")
+            if uri.startswith("ava://") and uri not in allowed:
+                dropped.append(uri)
+            else:
+                kept.append(c)
+        out.append({**block, "citations": kept} if len(kept) != len(citations) else block)
+    return out, dropped
+
+
+def grounding_text(messages: list[dict[str, Any]], content: list[dict[str, Any]]) -> str:
+    """Everything Ava saw this turn that the owner can stand behind: their own words in the
+    conversation, every tool result, and any web results in the final step."""
+    parts: list[str] = []
+    for msg in messages:
+        body = msg.get("content")
+        if msg.get("role") == "user":
+            parts.append(body if isinstance(body, str) else json.dumps(body, default=str))
+        elif isinstance(body, list):  # assistant steps: keep server tool results (web pages)
+            parts.extend(
+                json.dumps(b.get("content"), default=str)
+                for b in body
+                if isinstance(b, dict) and str(b.get("type", "")).endswith("_tool_result")
+            )
+    parts.extend(
+        json.dumps(b.get("content"), default=str) for b in content if str(b.get("type", "")).endswith("_tool_result")
+    )
+    return flat("\n".join(parts))
+
+
+_CLOCK = re.compile(r"(?<![:\d])(\d{1,2})\s?(am|pm)\b")
+_MONTH_WORD = re.compile(rf"\b({_MONTHS})\b")
+
+
+def flat(text: str) -> str:
+    """Lower-case, spaces removed, "5pm" written "5:00pm" and months cut to three letters, so
+    "Friday 5pm, 21 October" and "friday at 5:00 pm, 21 oct" compare equal piece by piece."""
+    text = _CLOCK.sub(r"\1:00\2", text.lower())
+    text = _MONTH_WORD.sub(lambda m: m.group(1)[:3], text)
+    return re.sub(r"\s+", "", text)
+
+
+def is_owner_claim(sentence: str) -> bool:
+    """Shaped like a statement about the owner's own data (before checking its sources)."""
+    if MEMORY_REF.search(sentence):
+        return True
+    return bool(PLAN_REF.search(sentence) and SPECIFIC.search(sentence))
+
+
+def unsupported(text: str, *, grounding: str, recall_found: bool) -> list[str]:
+    """Uncited sentences about the owner's data that nothing Ava saw this turn backs up."""
+    if recall_found:  # recall found sources: an uncited paraphrase of them isn't policed here
+        return []
+    flagged = []
+    for sentence in sentences(text):
+        if _MARK.search(sentence) or not is_owner_claim(sentence) or HONEST.search(sentence):
+            continue
+        specifics = [m.group(0) for m in SPECIFIC.finditer(sentence)]
+        if specifics and all(flat(s) in grounding for s in specifics):
+            continue  # it repeats the owner's own words or a tool's output
+        if not specifics and not MEMORY_REF.search(sentence):
+            continue
+        flagged.append(sentence)
+    return flagged
+
+
+def revision_request(flagged: list[str]) -> str:
+    lines = "\n".join(f"- {s}" for s in flagged)
+    return (
+        "[Source check by the app, not the owner] These sentences in your reply describe the owner's notes, "
+        "messages or plans, but nothing you looked up this turn supports them:\n"
+        f"{lines}\n"
+        "Write your reply again without them. Where it matters, say plainly that you don't have a source "
+        "for that. Keep everything else. Don't call tools and don't mention this check."
+    )
+
+
+def detail(dropped: int, flagged: int, outcome: str) -> str:
+    """The work-log line for the check."""
+    bits = []
+    if dropped:
+        bits.append(f"Dropped {dropped} citation{'s' if dropped != 1 else ''} I couldn't find")
+    if flagged:
+        bits.append(f"{flagged} claim{'s' if flagged != 1 else ''} had no source")
+    if outcome == "revised":
+        bits.append("rewrote the answer")
+    elif outcome == "abstained":
+        bits.append("said I have no source")
+    return "; ".join(bits) if bits else "Every claim has a source"

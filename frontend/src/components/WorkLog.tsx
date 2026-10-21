@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  BadgeCheck,
   Bell,
   Brain,
   CalendarDays,
@@ -26,6 +27,7 @@ const TOOL_ICON: Record<string, LucideIcon> = {
   web_search: Globe,
   web_fetch: FileText,
   propose_action: ShieldCheck,
+  verify: BadgeCheck,
 }
 
 // What Ava did while answering: each tool or skill call with how it went, the lines where
