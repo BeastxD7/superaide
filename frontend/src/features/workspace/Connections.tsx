@@ -5,8 +5,9 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { AppError, call, type Me } from '@/lib/api'
 import { Button, Notice } from '@/components/site'
+import { GoogleCalendarRow, type GoogleGuide, type GoogleService } from '@/features/workspace/GoogleCalendar'
 
-// Connect Claude, Telegram and Slack from the app. Keys are checked with the
+// Connect Claude, Telegram, Slack and Google Calendar from the app. Keys are checked with the
 // service, then kept encrypted on this computer; the app only ever shows a hint.
 
 type Service = {
@@ -18,8 +19,8 @@ type Service = {
   reason?: string
 }
 type Status = {
-  services: Record<'anthropic' | 'telegram' | 'slack' | 'whatsapp', Service>
-  guides: Record<string, { url: string; steps: string[] }>
+  services: Record<'anthropic' | 'telegram' | 'slack' | 'whatsapp', Service> & { google: GoogleService }
+  guides: Record<string, { url: string; steps: string[] }> & { google: GoogleGuide }
   keys_kept_in: string
 }
 
@@ -42,9 +43,21 @@ export function Connections({ agentName, me, refreshMe }: { agentName: string; m
   const [open, setOpen] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  const [googleOutcome, setGoogleOutcome] = useState<string | null>(null)
+
   const load = useCallback(async () => {
     try {
       setStatus(await call<Status>('/connections'))
+      // Back from Google sign-in: /dashboard/connections?google=<outcome>. Show it once, then tidy the URL.
+      const params = new URLSearchParams(window.location.search)
+      const outcome = params.get('google')
+      if (outcome) {
+        setGoogleOutcome(outcome)
+        setOpen('google')
+        params.delete('google')
+        const rest = params.toString()
+        window.history.replaceState(window.history.state, '', `${window.location.pathname}${rest ? `?${rest}` : ''}${window.location.hash}`)
+      }
     } catch (e) {
       setError(e instanceof AppError ? e.message : String(e))
     }
@@ -53,6 +66,7 @@ export function Connections({ agentName, me, refreshMe }: { agentName: string; m
   useEffect(() => {
     void load()
   }, [load])
+
 
   if (!status) return error ? <Notice tone="error">{error}</Notice> : <p className="text-sm text-muted">Checking connections…</p>
 
@@ -124,6 +138,18 @@ export function Connections({ agentName, me, refreshMe }: { agentName: string; m
           </div>
         )
       })}
+      <GoogleCalendarRow
+        service={status.services.google}
+        guide={status.guides.google}
+        where={where}
+        expanded={open === 'google'}
+        onToggle={() => setOpen(open === 'google' ? null : 'google')}
+        outcome={googleOutcome}
+        onChanged={(next) => {
+          setGoogleOutcome(null)
+          setStatus((prev) => (prev ? { ...prev, services: { ...prev.services, google: next.services.google } } : prev))
+        }}
+      />
       <div className="flex items-center gap-3 rounded-2xl bg-white/60 px-4 py-3">
         <span className="grid size-9 shrink-0 place-items-center rounded-full bg-mist text-muted">
           <MessageCircle className="size-4" />

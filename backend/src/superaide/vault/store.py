@@ -69,6 +69,14 @@ def remove(session: Session, provider: str, *, user_id: uuid.UUID | None) -> int
     return len(rows)
 
 
+def remove_field(session: Session, provider: str, name: str) -> None:
+    row = session.scalar(
+        select(IntegrationSecret).where(IntegrationSecret.provider == provider, IntegrationSecret.name == name)
+    )
+    if row is not None:
+        session.delete(row)
+
+
 def stored(session: Session) -> dict[tuple[str, str], IntegrationSecret]:
     return {(r.provider, r.name): r for r in session.scalars(select(IntegrationSecret))}
 

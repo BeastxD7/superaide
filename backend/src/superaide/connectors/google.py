@@ -30,6 +30,10 @@ class GoogleError(Exception):
     pass
 
 
+class ScopeNotGranted(GoogleError):
+    """Signed in, but the calendar box on Google's consent screen was left unticked."""
+
+
 def _client(client: httpx.Client | None) -> httpx.Client:
     return client or httpx.Client(timeout=15)
 
@@ -89,7 +93,7 @@ def exchange_code(
         raise GoogleError("Google didn't give Ava access. Try connecting again, and allow calendar access.")
     granted = set(str(data.get("scope", "")).split())
     if not set(SCOPES) <= granted:
-        raise GoogleError("Calendar access wasn't granted. Tick the calendar box on Google's screen.")
+        raise ScopeNotGranted("Calendar access wasn't granted. Tick the calendar box on Google's screen.")
     return data
 
 

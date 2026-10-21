@@ -6,6 +6,7 @@ import base64
 import json
 import os
 import stat
+from urllib.parse import parse_qs, urlparse
 
 import httpx
 import pytest
@@ -22,6 +23,10 @@ from superaide.vault.store import runtime_settings
 PASSWORD = "correct horse battery"
 CLAUDE_KEY = "sk-ant-api03-" + "x" * 80 + "4f2a"
 TG_TOKEN = "123456789:" + "A" * 35
+GOOGLE_CLIENT = "1234-abc.apps.googleusercontent.com"
+NO_SCOPE_CLIENT = "5678-def.apps.googleusercontent.com"
+GOOGLE_SECRET = "test-google-client-secret-9z"
+GOOGLE_REFRESH = "1//test-refresh-token-7q"
 
 
 @pytest.fixture(autouse=True)
@@ -45,6 +50,14 @@ def services(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={"ok": True, "team_id": "T123", "team": "PebbleRoad", "user": "ava"})
     if "apps.connections.open" in url:
         return httpx.Response(200, json={"ok": True, "url": "wss://example"})
+    if "oauth2.googleapis.com/token" in url:
+        form = parse_qs(request.content.decode())
+        if form.get("code") != ["good-code"] or not form.get("code_verifier"):
+            return httpx.Response(400, json={"error": "invalid_grant"})
+        scope = (
+            "" if form.get("client_id") == [NO_SCOPE_CLIENT] else "https://www.googleapis.com/auth/calendar.readonly"
+        )
+        return httpx.Response(200, json={"access_token": "ya29.x", "refresh_token": GOOGLE_REFRESH, "scope": scope})
     return httpx.Response(404)
 
 
@@ -121,3 +134,95 @@ def test_only_the_owner_can_see_or_change_connections(owner, agent):
     other.post("/auth/signup", json={"name": "Priya Tan", "email": "p@example.com", "password": PASSWORD})
     assert other.get("/app/connections").status_code == 403
     assert other.post("/app/connections/anthropic", json={"api_key": CLAUDE_KEY}).status_code == 403
+
+
+def callback(client: TestClient, **params: str) -> httpx.Response:
+    return client.get("/app/connections/google/callback", params=params, follow_redirects=False)
+
+
+def google_start(client: TestClient) -> dict[str, str]:
+    r = client.post("/app/connections/google/start")
+    assert r.status_code == 200, r.text
+    query = parse_qs(urlparse(r.json()["url"]).query)
+    return {k: v[0] for k, v in query.items()}
+
+
+def test_google_client_is_saved_masked_and_the_redirect_uri_is_shown(owner):
+    first = owner.get("/app/connections").json()
+    assert first["guides"]["google"]["redirect_uri"] == "http://localhost:3000/api/app/connections/google/callback"
+    assert first["services"]["google"] | {"since": None} == {
+        "connected": False, "via": None, "hints": {}, "meta": {}, "since": None, "client_ready": False,
+    }  # fmt: skip
+    assert owner.post("/app/connections/google/start").status_code == 409  # no client yet
+    bad = owner.post("/app/connections/google", json={"client_id": "not-a-google-id", "client_secret": GOOGLE_SECRET})
+    assert bad.status_code == 400 and "apps.googleusercontent.com" in bad.json()["detail"]
+
+    r = owner.post("/app/connections/google", json={"client_id": GOOGLE_CLIENT, "client_secret": GOOGLE_SECRET})
+    assert r.status_code == 200, r.text
+    google = r.json()["services"]["google"]
+    assert google["client_ready"] and not google["connected"]
+    assert GOOGLE_SECRET not in r.text and GOOGLE_SECRET not in owner.get("/app/connections").text
+
+    q = google_start(owner)
+    assert q["client_id"] == GOOGLE_CLIENT and q["code_challenge_method"] == "S256" and q["code_challenge"]
+    assert q["redirect_uri"] == first["guides"]["google"]["redirect_uri"]
+    assert q["scope"] == "https://www.googleapis.com/auth/calendar.readonly" and q["access_type"] == "offline"
+
+
+def test_google_sign_in_round_trip_stores_the_refresh_token_once(owner):
+    owner.post("/app/connections/google", json={"client_id": GOOGLE_CLIENT, "client_secret": GOOGLE_SECRET})
+    q = google_start(owner)
+    # A forged or stale state is refused, and doesn't spoil the real sign-in.
+    r = callback(owner, code="good-code", state="forged")
+    assert r.status_code == 303 and r.headers["location"].endswith("/dashboard/connections?google=expired")
+    r = callback(owner, code="good-code", state=q["state"])
+    assert (
+        r.status_code == 303 and r.headers["location"] == "http://localhost:3000/dashboard/connections?google=connected"
+    )
+    google = owner.get("/app/connections").json()["services"]["google"]
+    assert google["connected"] and google["via"] == "app"
+    assert GOOGLE_REFRESH not in json.dumps(google) and GOOGLE_SECRET not in json.dumps(google)
+    assert runtime_settings().google_refresh_token == GOOGLE_REFRESH
+    # The state works once.
+    again = callback(owner, code="good-code", state=q["state"])
+    assert again.headers["location"].endswith("?google=expired")
+    # A new client needs a new sign-in: the old refresh token is dropped.
+    r = owner.post("/app/connections/google", json={"client_id": NO_SCOPE_CLIENT, "client_secret": GOOGLE_SECRET})
+    assert r.json()["services"]["google"]["connected"] is False and runtime_settings().google_refresh_token == ""
+    owner.post("/app/connections/google", json={"client_id": GOOGLE_CLIENT, "client_secret": GOOGLE_SECRET})
+    google_start(owner)
+    r = owner.post("/app/connections/google/disconnect").json()
+    assert r["services"]["google"] | {"since": None} == {
+        "connected": False, "via": None, "hints": {}, "meta": {}, "since": None, "client_ready": False,
+    }  # fmt: skip
+
+
+def test_google_callback_sends_every_outcome_back_to_connections(owner, agent):
+    def outcome(client: TestClient, **params: str) -> str:
+        r = callback(client, **params)
+        assert r.status_code == 303
+        return r.headers["location"].rsplit("?google=", 1)[1]
+
+    owner.post("/app/connections/google", json={"client_id": GOOGLE_CLIENT, "client_secret": GOOGLE_SECRET})
+    q = google_start(owner)
+    assert outcome(owner, error="access_denied", state=q["state"]) == "cancelled"
+    q = google_start(owner)
+    assert outcome(owner, code="bad-code", state=q["state"]) == "failed"
+    owner.post("/app/connections/google", json={"client_id": NO_SCOPE_CLIENT, "client_secret": GOOGLE_SECRET})
+    q = google_start(owner)
+    assert outcome(owner, code="good-code", state=q["state"]) == "no_calendar"
+    assert runtime_settings().google_refresh_token == ""
+    # A browser whose session lapsed still lands back on Connections with a message, not a bare 401.
+    signed_out = TestClient(owner.app_)
+    assert outcome(signed_out, code="good-code", state="whatever") == "expired"
+    assert outcome(signed_out) == "cancelled"
+
+
+def test_only_the_owner_can_set_up_google(owner):
+    other = TestClient(owner.app_, headers={"X-Requested-With": "superaide"})
+    other.post("/auth/signup", json={"name": "Priya Tan", "email": "p@example.com", "password": PASSWORD})
+    body = {"client_id": GOOGLE_CLIENT, "client_secret": GOOGLE_SECRET}
+    assert other.post("/app/connections/google", json=body).status_code == 403
+    owner.post("/app/connections/google", json=body)
+    assert other.post("/app/connections/google/start").status_code == 403
+    assert other.post("/app/connections/google/disconnect").status_code == 403

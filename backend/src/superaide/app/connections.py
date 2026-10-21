@@ -1,4 +1,4 @@
-"""/app/connections: connect Claude, Telegram and Slack from the app.
+"""/app/connections: connect Claude, Telegram, Slack and Google Calendar from the app.
 
 Owner only. A credential is checked with its service, encrypted, saved, and
 applied at once (the agent and listeners are rebuilt). Responses never contain
@@ -76,6 +76,15 @@ GUIDES = {
             "Paste it here. Then open your bot once so it knows it's you.",
         ],
     },
+    "google": {
+        "url": "https://console.cloud.google.com/apis/credentials",
+        "steps": [
+            "In Google Cloud, pick or create a project and enable the Google Calendar API.",
+            "Set up the OAuth consent screen (External, Testing) and add your own Google account as a test user.",
+            "Create an OAuth client ID of type Web application, with the redirect URI below.",
+            "Paste the client ID and secret here, then press Connect Google Calendar.",
+        ],
+    },
     "slack": {
         "url": "",  # filled with the pre-filled app manifest link
         "steps": [
@@ -110,6 +119,7 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
         _, where = master_key()
         guides = {k: dict(v) for k, v in GUIDES.items()}
         guides["slack"]["url"] = slack_manifest_url()
+        guides["google"]["redirect_uri"] = google_redirect_uri()
         return {"services": result, "guides": guides, "keys_kept_in": where}
 
     def connect(provider: str, checked: check.Checked, user_id: uuid.UUID) -> dict[str, Any]:
@@ -196,6 +206,8 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
                 400, "That doesn't look like a Google client ID (it ends in .apps.googleusercontent.com)."
             )
         with session_scope() as s:
+            # A sign-in made with an earlier client doesn't work with this one: sign in again.
+            store.remove_field(s, "google", "refresh_token")
             store.save(
                 s, "google", {"client_id": client_id, "client_secret": body.client_secret.strip()},
                 user_id=user_id, meta={"redirect_uri": google_redirect_uri()},
@@ -207,39 +219,45 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
         summary="Start Google sign-in",
         description="Returns the Google sign-in URL (OAuth 2.1 with PKCE). Open it in the browser.",
     )
-    def google_start(_: uuid.UUID = Depends(owner_person_id)) -> dict[str, str]:
+    def google_start(
+        _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
+    ) -> dict[str, str]:
         settings = runtime_settings()
         if not (settings.google_client_id and settings.google_client_secret):
             raise HTTPException(409, "Save your Google OAuth client first.")
         verifier, challenge = google.pkce_pair()
         state = secrets.token_urlsafe(24)
         with session_scope() as s:
-            set_state(s, GOOGLE_PENDING, {"state": state, "verifier": verifier, "at": datetime.now(UTC).isoformat()})
+            set_state(
+                s, GOOGLE_PENDING,
+                {"state": state, "verifier": verifier, "user_id": str(user_id), "at": datetime.now(UTC).isoformat()},
+            )  # fmt: skip
         return {"url": google.auth_url(settings.google_client_id, google_redirect_uri(), state, challenge)}
 
     @router.get(
         "/google/callback",
         summary="Google sign-in callback",
-        description="Google sends the browser here. Checks the one-time state, then stores the refresh token.",
+        description=(
+            "Google sends the browser here. Checks the one-time state from Start (which is tied to the signed-in "
+            "owner), stores the refresh token, then sends the browser back to Connections with ?google=<result>."
+        ),
         include_in_schema=False,
     )
-    def google_callback(
-        code: str = "",
-        state: str = "",
-        error: str = "",
-        _: uuid.UUID = Depends(owner_person_id),
-        user_id: uuid.UUID = Depends(current_user_id),
-    ) -> RedirectResponse:
+    def google_callback(code: str = "", state: str = "", error: str = "") -> RedirectResponse:
+        # No session check here: the one-time state, made by the owner's own /start, is the proof. That way a
+        # lapsed session still lands back on Connections with a message instead of a bare 401.
         back = f"{get_settings().frontend_origin.rstrip('/')}/dashboard/connections"
         with session_scope() as s:
             pending = get_state(s, GOOGLE_PENDING)
-            set_state(s, GOOGLE_PENDING, {})  # one use only
+            matches = bool(state) and secrets.compare_digest(str(pending.get("state", "")), state)
+            if matches:
+                set_state(s, GOOGLE_PENDING, {})  # one use only; a stray request can't wipe a real sign-in
         fresh = (
             bool(pending.get("at")) and datetime.now(UTC) - datetime.fromisoformat(pending["at"]) < google.PENDING_TTL
         )
         if error or not code:
             return RedirectResponse(f"{back}?google=cancelled", status_code=303)
-        if not fresh or not secrets.compare_digest(str(pending.get("state", "")), state):
+        if not matches or not fresh or not pending.get("user_id"):
             return RedirectResponse(f"{back}?google=expired", status_code=303)
         settings = runtime_settings()
         try:
@@ -247,11 +265,13 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
                 client_id=settings.google_client_id, client_secret=settings.google_client_secret, code=code,
                 verifier=str(pending["verifier"]), redirect_uri=google_redirect_uri(), client=http_client(),
             )  # fmt: skip
+        except google.ScopeNotGranted:
+            return RedirectResponse(f"{back}?google=no_calendar", status_code=303)
         except google.GoogleError:
             return RedirectResponse(f"{back}?google=failed", status_code=303)
         with session_scope() as s:
             store.save(
-                s, "google", {"refresh_token": str(tokens["refresh_token"])}, user_id=user_id,
+                s, "google", {"refresh_token": str(tokens["refresh_token"])}, user_id=uuid.UUID(pending["user_id"]),
                 meta={"scopes": google.SCOPES},
             )  # fmt: skip
         return RedirectResponse(f"{back}?google=connected", status_code=303)
@@ -260,7 +280,8 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
         "/{provider}/disconnect",
         summary="Disconnect a service",
         description=(
-            "Deletes the stored credential and stops its listener. `provider` is `anthropic`, `telegram` or `slack`."
+            "Deletes the stored credential and stops its listener. "
+            "`provider` is `anthropic`, `telegram`, `slack` or `google`."
         ),
     )
     def disconnect(
