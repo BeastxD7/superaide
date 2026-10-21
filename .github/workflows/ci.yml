@@ -92,8 +92,11 @@ jobs:
 
       - run: npm ci --no-audit --no-fund
       - run: npm run lint
-      - name: Type check and build
+      - run: npm run typecheck
+      - name: Build
         run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
 
   images:
     name: Docker images build

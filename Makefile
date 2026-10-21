@@ -31,7 +31,7 @@ migration: ## New migration from model changes: make migration m="add contacts"
 api: ## Backend API with auto-reload on http://127.0.0.1:8000
 	$(BACKEND) uv run superaide serve --reload
 
-web: ## Frontend dev server on http://localhost:3000
+web: ## Frontend (Next.js) dev server on http://localhost:3000
 	$(FRONTEND) npm run dev
 
 dev: ## Everything at once (database, API, frontend), like start.command
@@ -48,14 +48,14 @@ fmt: ## Format and auto-fix the backend
 
 typecheck: ## Type-check backend (mypy) and frontend (tsc)
 	$(BACKEND) uv run mypy
-	$(FRONTEND) npx tsc -b
+	$(FRONTEND) npm run typecheck
 
 test: ## Backend tests (needs TEST_DATABASE_URL, see backend/.env.example)
 	$(BACKEND) uv run pytest
 
 check: lint typecheck test build ## Everything CI runs
 
-build: ## Production build of the frontend into frontend/dist
+build: ## Production build of the frontend (Next.js standalone server)
 	$(FRONTEND) npm run build
 
 stack: ## The whole stack in Docker: app :3000, API :8000
@@ -65,4 +65,4 @@ stack-down: ## Stop the Docker stack
 	docker compose --profile app down
 
 clean: ## Remove caches and build output
-	rm -rf backend/.pytest_cache backend/.ruff_cache backend/.mypy_cache backend/htmlcov backend/.coverage frontend/dist
+	rm -rf backend/.pytest_cache backend/.ruff_cache backend/.mypy_cache backend/htmlcov backend/.coverage frontend/.next

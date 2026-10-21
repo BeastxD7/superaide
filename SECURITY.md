@@ -22,6 +22,8 @@ Please don't open a public issue. Use GitHub's **Report a vulnerability** (Secur
 ## Deployment checklist
 
 - [ ] Serve over HTTPS and set `SESSION_COOKIE_SECURE=true`.
+- [ ] Expose only the Next.js server; keep the API on a private network (`API_INTERNAL_URL`).
+- [ ] Set `TRUST_PROXY_HEADERS=true` on the frontend only behind a load balancer that overwrites `X-Forwarded-For`, and limit the API's `FORWARDED_ALLOW_IPS` to the frontend's address.
 - [ ] Set `FRONTEND_ORIGIN` to the real app origin.
 - [ ] Keep the admin API private (it binds to 127.0.0.1 outside containers) and set a long `ADMIN_TOKEN`.
 - [ ] `ENABLE_SIMULATOR=false`.

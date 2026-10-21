@@ -4,30 +4,34 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "start": "next start --port 3000",
     "lint": "oxlint src",
-    "preview": "vite preview"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",
     "@fontsource/atkinson-hyperlegible-mono": "^5.3.0",
     "@fontsource/atkinson-hyperlegible-next": "^5.3.0",
-    "@tailwindcss/vite": "^4.3.3",
     "axios": "^1.20.0",
     "lucide-react": "^1.61.0",
     "motion": "^14.5.0",
+    "next": "^16.4.2",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "@vitejs/plugin-react": "^6.1.2",
     "oxlint": "^1.88.0",
-    "typescript": "~6.0.3",
-    "vite": "^8.3.4"
+    "postcss": "^8.5.31",
+    "typescript": "~6.0.3"
+  },
+  "engines": {
+    "node": ">=20.9"
   }
 }

@@ -1,10 +1,10 @@
 # Architecture
 
-Superaide has three parts: a React frontend, a FastAPI backend that serves only JSON, and Postgres. Chat channels (Telegram, Slack) talk to the backend directly. The backend calls Claude for language and keeps every decision about identity, access and actions in code.
+Superaide has three parts: a Next.js frontend, a FastAPI backend that serves only JSON, and Postgres. Chat channels (Telegram, Slack) talk to the backend directly. The backend calls Claude for language and keeps every decision about identity, access and actions in code.
 
 ```text
- Browser ── HTTPS/JSON (Axios, cookie session) ──┐
-                                                 ▼
+ Browser ── HTTPS ──► Next.js (:3000) ── /api/* forwarded ──┐
+                       pages, SSR                            ▼
  Telegram ── webhook or long polling ──►  FastAPI backend ──► Claude API
  Slack ───── Socket Mode or Events API ─►  (one process)        (spend-capped)
                                                  │
@@ -14,7 +14,7 @@ Superaide has three parts: a React frontend, a FastAPI backend that serves only 
 
 ## Request paths
 
-**The app.** The frontend signs in with `/auth/*` and gets an httpOnly session cookie. App calls under `/app/*` resolve the signed-in account, then the agent hire, then the owner's `Person`. Every state-changing request must carry `X-Requested-With`; together with the SameSite=Lax cookie and a CORS policy limited to `FRONTEND_ORIGIN`, that blocks cross-site request forgery.
+**The app.** The browser talks only to the Next.js server. Public pages (marketplace, agent profiles) are rendered there with data fetched from the API, and private pages are rendered in the browser. `proxy.ts` redirects signed-out visitors away from private pages. API calls go to `/api/*` on the same origin. A route handler forwards them to FastAPI, passing cookies through and dropping client-supplied `X-Forwarded-For` unless `TRUST_PROXY_HEADERS=true`. The frontend signs in with `/api/auth/*` and gets an httpOnly session cookie for its own origin. App calls under `/app/*` resolve the signed-in account, then the agent hire, then the owner's `Person`. Every state-changing request must carry `X-Requested-With`; together with the SameSite=Lax cookie and a CORS policy limited to `FRONTEND_ORIGIN`, that blocks cross-site request forgery.
 
 **A chat message** (from any channel, including the app's own chat) goes through `pipeline.py`:
 

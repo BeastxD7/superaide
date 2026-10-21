@@ -1,0 +1,31 @@
+// Server-side calls to the backend API, used while rendering pages on the server.
+// The browser never calls these URLs directly; it goes through /api (see app/api/[...path]/route.ts).
+import { cookies } from 'next/headers'
+import type { Account, AgentCard } from '@/lib/api'
+
+export const API_INTERNAL_URL = (process.env.API_INTERNAL_URL ?? 'http://127.0.0.1:8000').replace(/\/$/, '')
+export const SESSION_COOKIE = process.env.SESSION_COOKIE_NAME ?? 'superaide_session'
+
+async function get<T>(path: string, cookie?: string): Promise<T | null> {
+  try {
+    const res = await fetch(`${API_INTERNAL_URL}${path}`, {
+      headers: cookie ? { cookie } : undefined,
+      cache: 'no-store',
+      signal: AbortSignal.timeout(5000),
+    })
+    return res.ok ? ((await res.json()) as T) : null
+  } catch {
+    return null // the API is down or slow: render the page and let the browser retry
+  }
+}
+
+// The signed-in account for this request, or null.
+export async function currentAccount(): Promise<Account | null> {
+  const token = (await cookies()).get(SESSION_COOKIE)?.value
+  if (!token) return null
+  return get<Account>('/auth/me', `${SESSION_COOKIE}=${token}`)
+}
+
+export async function agentCatalog(): Promise<AgentCard[] | null> {
+  return get<AgentCard[]>('/app/agents')
+}

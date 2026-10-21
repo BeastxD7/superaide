@@ -1,7 +1,6 @@
 node_modules
-dist
-.env
-.env.*
+.next
+.env*
 !.env.example
 *.log
 Dockerfile

@@ -28,8 +28,9 @@ Types: `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `build`, `ci`, `chore`
 
 ## Frontend
 
-- React with TypeScript and Tailwind CSS. Lint with `npm run lint`; `npm run build` type-checks.
-- Talk to the API only through `src/http.ts` (Axios).
+- Next.js 16 (App Router) with React 19, TypeScript (strict) and Tailwind CSS. `npm run lint`, `npm run typecheck`, `npm run build`.
+- Routes live in `src/app/`; screens in `src/features/`. Mark components that use state, effects or browser APIs with `'use client'`. Render public pages on the server; keep private screens client-side.
+- Talk to the API only through `src/lib/api.ts` (Axios to `/api`), or `src/lib/server.ts` from server components. Never call the backend's port from the browser.
 
 ## Secrets and personal data
 

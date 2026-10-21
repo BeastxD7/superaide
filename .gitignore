@@ -33,3 +33,6 @@ frontend/dist/
 .vscode/*
 !.vscode/extensions.json
 *.swp
+
+# start.command installs Node here when the Mac has none
+.tools/

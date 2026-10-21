@@ -8,7 +8,7 @@
 # Three parts, the usual way:
 #   database  Postgres 17 + pgvector in Docker (or an embedded Postgres without Docker)
 #   backend/  FastAPI, a JSON API only, on http://127.0.0.1:8000  (docs at /docs)
-#   frontend/ React + Vite on http://localhost:3000, calling the API with Axios
+#   frontend/ Next.js on http://localhost:3000; the browser calls /api there, which forwards to the API
 set -euo pipefail
 cd "$(dirname "$0")"
 ROOT="$(pwd)"
@@ -27,7 +27,7 @@ for arg in "$@"; do
 done
 
 # 0. Stop a copy that is already running (this one, or the older agi-agent folder).
-OURS="(superaide|agi-agent) (serve|telegram-poll|slack-socket)|node_modules/.bin/vite --port $WEB_PORT|http.server $WEB_PORT"
+OURS="(superaide|agi-agent) (serve|telegram-poll|slack-socket)|node_modules/.bin/(vite|next) .*--port $WEB_PORT|next-server|http.server $WEB_PORT"
 if pgrep -f "$OURS" >/dev/null 2>&1; then
   bold "Stopping the copy of the agent that was already running…"
   pkill -f "$OURS" 2>/dev/null || true
@@ -133,33 +133,42 @@ PIDS+=($!)
 if grep -Eq '^TELEGRAM_BOT_TOKEN=.+' "$ENV_FILE"; then bold "Telegram: connected from backend/.env"; fi
 if grep -Eq '^SLACK_BOT_TOKEN=.+' "$ENV_FILE"; then bold "Slack: connected from backend/.env"; fi
 
-# 6. Frontend on :3000. Vite dev server when Node 20+ is installed; otherwise a
-#    prebuilt frontend/dist from a plain static server. Either way it calls the API.
-NODE_OK=0
-if command -v npm >/dev/null 2>&1 && node -e 'process.exit(+process.versions.node.split(".")[0] >= 20 ? 0 : 1)' 2>/dev/null; then
-  NODE_OK=1
+# 6. Frontend: Next.js on :3000. It needs Node 20.9+; without it, a private copy
+#    of Node (checked against nodejs.org's published checksums) goes into .tools/.
+node_ok() { command -v node >/dev/null 2>&1 && node -e 'const [a,b]=process.versions.node.split(".").map(Number);process.exit(a>20||(a===20&&b>=9)?0:1)' 2>/dev/null; }
+if ! node_ok && [ -x "$ROOT/.tools/node/bin/node" ]; then export PATH="$ROOT/.tools/node/bin:$PATH"; fi
+if ! node_ok; then
+  bold "Installing Node.js 22 for the frontend (one time, into .tools/)…"
+  case "$(uname -s)-$(uname -m)" in
+    Darwin-arm64) PLATFORM=darwin-arm64 ;;
+    Darwin-x86_64) PLATFORM=darwin-x64 ;;
+    Linux-x86_64) PLATFORM=linux-x64 ;;
+    Linux-aarch64) PLATFORM=linux-arm64 ;;
+    *) echo "Install Node.js 22 from https://nodejs.org and run this again."; exit 1 ;;
+  esac
+  DIST=https://nodejs.org/dist/latest-v22.x
+  SUMS="$(curl -fsSL "$DIST/SHASUMS256.txt")"
+  FILE="$(printf '%s\n' "$SUMS" | awk '{print $2}' | grep -E "^node-v22\.[0-9.]+-$PLATFORM\.tar\.gz$" | head -1)"
+  [ -n "$FILE" ] || { echo "Couldn't find Node for $PLATFORM. Install it from https://nodejs.org."; exit 1; }
+  TMP="$(mktemp -d)"
+  curl -fsSL "$DIST/$FILE" -o "$TMP/$FILE"
+  WANT="$(printf '%s\n' "$SUMS" | awk -v f="$FILE" '$2 == f {print $1}')"
+  GOT="$(shasum -a 256 "$TMP/$FILE" 2>/dev/null || sha256sum "$TMP/$FILE")"
+  [ "${GOT%% *}" = "$WANT" ] || { echo "Node download failed its checksum; not installing it."; exit 1; }
+  mkdir -p "$ROOT/.tools/node"
+  tar -xzf "$TMP/$FILE" -C "$ROOT/.tools/node" --strip-components 1
+  export PATH="$ROOT/.tools/node/bin:$PATH"
 fi
-if [ "$NODE_OK" = 1 ]; then
-  if [ ! -d frontend/node_modules ] || [ frontend/package-lock.json -nt frontend/node_modules/.package-lock.json ]; then
-    bold "Installing frontend dependencies (first run takes a minute)…"
-    (cd frontend && npm ci --no-audit --no-fund --loglevel=error)
-  fi
-  bold "Starting the frontend (Vite) on http://localhost:$WEB_PORT …"
-  (cd frontend && exec ./node_modules/.bin/vite --port "$WEB_PORT" --strictPort --clearScreen false) &
-  PIDS+=($!)
-elif [ -f frontend/dist/index.html ]; then
-  bold "Node 20+ isn't installed, so serving the prebuilt frontend on http://localhost:$WEB_PORT …"
-  echo "(Install Node with: brew install node, to get the live-reloading dev server.)"
-  (cd "$ROOT/backend" && exec uv run --quiet python -m http.server "$WEB_PORT" --bind 127.0.0.1 --directory "$ROOT/frontend/dist" >/dev/null 2>&1) &
-  PIDS+=($!)
-else
-  bold "The frontend needs Node 20 or newer."
-  echo "Install it with: brew install node   (or from https://nodejs.org), then run this again."
-  exit 1
+if [ ! -d frontend/node_modules ] || [ frontend/package-lock.json -nt frontend/node_modules/.package-lock.json ]; then
+  bold "Installing frontend dependencies (first run takes a minute)…"
+  (cd frontend && npm ci --no-audit --no-fund --loglevel=error)
 fi
+bold "Starting the frontend (Next.js) on http://localhost:$WEB_PORT …"
+(cd frontend && API_INTERNAL_URL="http://127.0.0.1:$API_PORT" exec ./node_modules/.bin/next dev --port "$WEB_PORT") &
+PIDS+=($!)
 
 # Wait for both, then open the app.
-for _ in $(seq 1 60); do
+for _ in $(seq 1 120); do
   curl -fs "http://127.0.0.1:$API_PORT/health" >/dev/null 2>&1 && curl -fs "http://127.0.0.1:$WEB_PORT/" >/dev/null 2>&1 && break
   sleep 1
 done
@@ -167,7 +176,7 @@ APP_URL="http://localhost:$WEB_PORT/"
 bold "Ready."
 echo "  App (frontend):    $APP_URL"
 echo "  API (backend):     http://127.0.0.1:$API_PORT   (interactive docs: http://127.0.0.1:$API_PORT/docs)"
-echo "  Operator console:  http://localhost:$WEB_PORT/#/console?token=$TOKEN"
+echo "  Operator console:  http://localhost:$WEB_PORT/console?token=$TOKEN"
 echo "  Forgot your password? Run: (cd backend && uv run superaide reset-password --email you@example.com)"
 echo "  Hire from scratch? Press Ctrl+C, then run: bash start.command --reset"
 echo "Keep this window open. Ctrl+C stops everything."

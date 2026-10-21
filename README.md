@@ -15,21 +15,21 @@ You can't be everywhere at once. **Ava**, the first Superaide, fields the people
 - **Identity you can trust.** People are recognised by immutable platform IDs, never display names. Unknown accounts get stranger mode. A new channel is linked only with a one-time code sent to an existing trusted channel.
 - **Connections in the app.** Connect Claude, Telegram and Slack without editing files. Each credential is checked with the service, encrypted (AES-256-GCM, master key in the OS keychain), shown only as a hint, and applied at once. WhatsApp is listed as unavailable: Meta's business terms restrict general-purpose AI assistants.
 - **Spend cap and kill switch.** Every Claude call reserves its worst-case price first and is refused if it could exceed `MAX_SPEND_USD`. One switch stops all model calls.
-- **Operator console** at `#/console`: people and trust tiers, conversations, safety log, spend, the pause switch and an impostor simulator.
+- **Operator console** at `/console`: people and trust tiers, conversations, safety log, spend, the pause switch and an impostor simulator.
 
 ## Architecture
 
 | Part | Stack | Runs on |
 | --- | --- | --- |
-| [`frontend/`](frontend) | React 19, Vite 8, Tailwind CSS 4, Motion, Axios | http://localhost:3000 |
+| [`frontend/`](frontend) | Next.js 16 (App Router), React 19, Tailwind CSS 4, Motion, Axios | http://localhost:3000 |
 | [`backend/`](backend) | Python 3.14, FastAPI (JSON API only), SQLAlchemy 2, Alembic, Claude | http://127.0.0.1:8000 (OpenAPI docs at `/docs`) |
 | Database | Postgres 17 with pgvector | localhost:5432 |
 
-The frontend calls the API over HTTP with Axios ([`frontend/src/http.ts`](frontend/src/http.ts)). The API accepts browser requests only from `FRONTEND_ORIGIN`. Telegram and Slack connect to the backend directly; their listeners run inside the API process. More in [docs/architecture.md](docs/architecture.md).
+The browser only ever talks to the Next.js server. Pages that should be public (the marketplace, agent profiles) render on the server; signed-in screens render in the browser. API calls go to `/api/*` on the same origin, and a route handler forwards them to FastAPI ([`frontend/src/app/api/[...path]/route.ts`](frontend/src/app/api/%5B...path%5D/route.ts)), so the session cookie always belongs to the app's own origin. Telegram and Slack connect to the backend directly; their listeners run inside the API process. More in [docs/architecture.md](docs/architecture.md).
 
 ## Run it
 
-**On a Mac, no setup:** double-click `start.command` (or run `bash start.command`). It installs [uv](https://docs.astral.sh/uv/) if needed and starts Postgres: in Docker if Docker Desktop is installed, otherwise an embedded Postgres. It then starts the API and the frontend and opens http://localhost:3000. Without a Claude key, Ava runs in offline mode and nothing is spent. Connect Claude later under **Connections** in the app.
+**On a Mac, no setup:** double-click `start.command` (or run `bash start.command`). It installs [uv](https://docs.astral.sh/uv/) and, if your Mac has no Node.js 20.9+, a private copy of Node (checksum-verified) in `.tools/`. It starts Postgres: in Docker if Docker Desktop is installed, otherwise an embedded Postgres. It then starts the API and the frontend and opens http://localhost:3000. Without a Claude key, Ava runs in offline mode and nothing is spent. Connect Claude later under **Connections** in the app.
 
 - `bash start.command --reset` wipes the data first, to hire Ava from scratch.
 - `bash start.command --no-docker` always uses the embedded Postgres in `.local-db/`.
@@ -41,7 +41,7 @@ make setup                         # backend and frontend dependencies, git hook
 cp backend/.env.example backend/.env
 make db migrate                    # Postgres 17 + pgvector in Docker, then the tables
 make api                           # terminal 1: API with auto-reload on :8000
-make web                           # terminal 2: frontend on :3000
+make web                           # terminal 2: Next.js frontend on :3000
 make check                         # everything CI runs: lint, types, tests, build
 ```
 
@@ -68,8 +68,11 @@ backend/
   alembic/           database migrations
   tests/             pytest suite against a real Postgres; tests/redteam has the impostor scenarios
 frontend/
-  src/app/           the person-facing app
-  src/pages/         the operator console
+  src/app/           routes (Next.js App Router): pages, layouts, the /api proxy
+  src/features/      screens: marketplace, auth, hire, onboarding, workspace, console
+  src/components/    shared UI (buttons, nav, the agent's orb, conversation)
+  src/lib/           API client, session, server-side helpers
+  src/proxy.ts       sends signed-out visitors to log in before private pages
 deploy/postgres/     database init scripts
 docs/                architecture, decisions, research
 .github/             CI, Dependabot, templates
