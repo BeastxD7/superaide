@@ -36,3 +36,14 @@ backend tests, lint, types, the frontend checks and the full browser suite pass.
   - Found and fixed: forecasts came in °F; Ava now uses metric units and the owner's time zone.
 - Research report 2 saved: docs/research/Ava skills tools and cited memory.md. Key finding: the chat turn uses strict JSON output, which Claude can't combine with citations, so tools + citations (items 5–6) need the chat turn rewritten as a tool loop (the report's sprint 1).
 - Skill protocol (Shashank, 21 Oct night): one uniform, industry-standard contract every skill must follow: Agent Skills `SKILL.md` for instructions + MCP (with its OAuth 2.1 auth spec) for tools and connectors + a thin `superaide.json` manifest only for what those lack (version, publisher, permissions, connectors, settings, signature), with a JSON Schema and a conformance validator. Written up as `docs/decisions/0006-skill-protocol.md` in item 8.
+
+## Night of 2026-10-22 (coordinator: Claude Code)
+
+- 02:00 IST: dev checkout fast-forwarded to main; dev DB migrated 0009 → 0012.
+- E2E in Chrome with the owner's account. "plz remind me on telegrm to drnk watr in 3 mins" → Ava reasoned, called create_reminder, and saved "Drink water" with channel=telegram (typo-free, correct time).
+  - App delivery: OK.
+  - Telegram delivery FAILED: the saved bot token is rejected by Telegram (getMe 401; polling refused too).
+  - Connections still showed "Connected" and the failure was silent. A channel-health agent is assigned to surface it, tell the owner and stop Ava promising Telegram.
+  - **Owner action:** paste a fresh BotFather token under Connections → Telegram.
+- ADR 0009 (many owners, one Ava) approved. T0, T9, T10-now and T12 are building; the rest wait on 0007/0008.
+- Innovation research is in `docs/research/AGI era growth ideas.md`; top ideas for the morning are listed there (proposals only).
