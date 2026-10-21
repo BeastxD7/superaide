@@ -47,7 +47,7 @@ def warnings(caps: Capabilities, local: bool) -> list[str]:
     if not caps.native_citations:
         out.append("No built-in citations: Superaide checks every source Ava cites instead.")
     if not caps.server_web_search:
-        out.append("No built-in web search: Ava can't search the web with this provider yet.")
+        out.append("No built-in web search: Ava reads pages with Superaide's own tool, and searches with a Brave key.")
     if local:
         out.append("Local models are free and private, but slower and less reliable with tools.")
     return out

@@ -1,5 +1,17 @@
 import type { ReactNode } from 'react'
-import { siAnthropic, siClaude, siDiscord, siGithub, siInstagram, siTelegram, siWhatsapp } from 'simple-icons'
+import {
+  siAnthropic,
+  siClaude,
+  siDiscord,
+  siGithub,
+  siGooglegemini,
+  siInstagram,
+  siOllama,
+  siOpenrouter,
+  siTelegram,
+  siVllm,
+  siWhatsapp,
+} from 'simple-icons'
 
 // Every brand mark the app shows, in one place. Two sources, both CC0-1.0:
 //
@@ -7,7 +19,10 @@ import { siAnthropic, siClaude, siDiscord, siGithub, siInstagram, siTelegram, si
 //   the brand's own hex (or currentColor when `mono`).
 // - SVG Logos (gilbarbara/logos, via @iconify-json/logos 1.2.17), hand-inlined below for
 //   the official full-colour marks simple-icons doesn't carry or only has in one colour:
-//   Telegram, Slack, Google "G", Gmail and Google Calendar (2020 product icons).
+//   Telegram, Slack, Google "G", Gmail and Google Calendar (2020 product icons), and the
+//   AI providers simple-icons no longer carries: OpenAI's mark (black, or currentColor when
+//   `mono`, as OpenAI's guidelines allow), Microsoft Azure's 2021 icon (full colour only) and
+//   xAI's mark (black, or currentColor).
 //
 // The trademarks belong to their owners; we show them only to name the service. Per the
 // brand guidelines, full-colour marks are never recoloured: Google marks have no mono form
@@ -26,6 +41,13 @@ export type Brand =
   | 'whatsapp'
   | 'discord'
   | 'github'
+  | 'openai'
+  | 'azure'
+  | 'openrouter'
+  | 'xai'
+  | 'gemini'
+  | 'ollama'
+  | 'vllm'
 
 type Drawing = { viewBox: string; draw: (uid: string) => ReactNode }
 export type Mark = { title: string; colour: Drawing; mono: Drawing | null }
@@ -129,6 +151,52 @@ export const MARKS: Record<Brand, Mark> = {
   whatsapp: simple(siWhatsapp),
   discord: simple(siDiscord),
   github: { ...simple(siGithub), colour: simple(siGithub).mono! },
+  openai: {
+    title: 'OpenAI',
+    colour: { viewBox: '0 0 256 260', draw: () => <path fill="#000" d="M239.184 106.203a64.72 64.72 0 0 0-5.576-53.103C219.452 28.459 191 15.784 163.213 21.74A65.586 65.586 0 0 0 52.096 45.22a64.72 64.72 0 0 0-43.23 31.36c-14.31 24.602-11.061 55.634 8.033 76.74a64.67 64.67 0 0 0 5.525 53.102c14.174 24.65 42.644 37.324 70.446 31.36a64.72 64.72 0 0 0 48.754 21.744c28.481.025 53.714-18.361 62.414-45.481a64.77 64.77 0 0 0 43.229-31.36c14.137-24.558 10.875-55.423-8.083-76.483m-97.56 136.338a48.4 48.4 0 0 1-31.105-11.255l1.535-.87l51.67-29.825a8.6 8.6 0 0 0 4.247-7.367v-72.85l21.845 12.636c.218.111.37.32.409.563v60.367c-.056 26.818-21.783 48.545-48.601 48.601M37.158 197.93a48.35 48.35 0 0 1-5.781-32.589l1.534.921l51.722 29.826a8.34 8.34 0 0 0 8.441 0l63.181-36.425v25.221a.87.87 0 0 1-.358.665l-52.335 30.184c-23.257 13.398-52.97 5.431-66.404-17.803M23.549 85.38a48.5 48.5 0 0 1 25.58-21.333v61.39a8.29 8.29 0 0 0 4.195 7.316l62.874 36.272l-21.845 12.636a.82.82 0 0 1-.767 0L41.353 151.53c-23.211-13.454-31.171-43.144-17.804-66.405zm179.466 41.695l-63.08-36.63L161.73 77.86a.82.82 0 0 1 .768 0l52.233 30.184a48.6 48.6 0 0 1-7.316 87.635v-61.391a8.54 8.54 0 0 0-4.4-7.213m21.742-32.69l-1.535-.922l-51.619-30.081a8.39 8.39 0 0 0-8.492 0L99.98 99.808V74.587a.72.72 0 0 1 .307-.665l52.233-30.133a48.652 48.652 0 0 1 72.236 50.391zM88.061 139.097l-21.845-12.585a.87.87 0 0 1-.41-.614V65.685a48.652 48.652 0 0 1 79.757-37.346l-1.535.87l-51.67 29.825a8.6 8.6 0 0 0-4.246 7.367zm11.868-25.58L128.067 97.3l28.188 16.218v32.434l-28.086 16.218l-28.188-16.218z" /> },
+    mono: { viewBox: '0 0 256 260', draw: () => <path fill="currentColor" d="M239.184 106.203a64.72 64.72 0 0 0-5.576-53.103C219.452 28.459 191 15.784 163.213 21.74A65.586 65.586 0 0 0 52.096 45.22a64.72 64.72 0 0 0-43.23 31.36c-14.31 24.602-11.061 55.634 8.033 76.74a64.67 64.67 0 0 0 5.525 53.102c14.174 24.65 42.644 37.324 70.446 31.36a64.72 64.72 0 0 0 48.754 21.744c28.481.025 53.714-18.361 62.414-45.481a64.77 64.77 0 0 0 43.229-31.36c14.137-24.558 10.875-55.423-8.083-76.483m-97.56 136.338a48.4 48.4 0 0 1-31.105-11.255l1.535-.87l51.67-29.825a8.6 8.6 0 0 0 4.247-7.367v-72.85l21.845 12.636c.218.111.37.32.409.563v60.367c-.056 26.818-21.783 48.545-48.601 48.601M37.158 197.93a48.35 48.35 0 0 1-5.781-32.589l1.534.921l51.722 29.826a8.34 8.34 0 0 0 8.441 0l63.181-36.425v25.221a.87.87 0 0 1-.358.665l-52.335 30.184c-23.257 13.398-52.97 5.431-66.404-17.803M23.549 85.38a48.5 48.5 0 0 1 25.58-21.333v61.39a8.29 8.29 0 0 0 4.195 7.316l62.874 36.272l-21.845 12.636a.82.82 0 0 1-.767 0L41.353 151.53c-23.211-13.454-31.171-43.144-17.804-66.405zm179.466 41.695l-63.08-36.63L161.73 77.86a.82.82 0 0 1 .768 0l52.233 30.184a48.6 48.6 0 0 1-7.316 87.635v-61.391a8.54 8.54 0 0 0-4.4-7.213m21.742-32.69l-1.535-.922l-51.619-30.081a8.39 8.39 0 0 0-8.492 0L99.98 99.808V74.587a.72.72 0 0 1 .307-.665l52.233-30.133a48.652 48.652 0 0 1 72.236 50.391zM88.061 139.097l-21.845-12.585a.87.87 0 0 1-.41-.614V65.685a48.652 48.652 0 0 1 79.757-37.346l-1.535.87l-51.67 29.825a8.6 8.6 0 0 0-4.246 7.367zm11.868-25.58L128.067 97.3l28.188 16.218v32.434l-28.086 16.218l-28.188-16.218z" /> },
+  },
+  azure: {
+    title: 'Microsoft Azure',
+    colour: {
+      viewBox: '0 0 256 242',
+      draw: (uid) => (
+        <>
+          <defs>
+            <linearGradient id={`${uid}-az1`} x1="58.972%" x2="37.191%" y1="7.411%" y2="103.762%">
+              <stop offset="0%" stopColor="#114a8b" />
+              <stop offset="100%" stopColor="#0669bc" />
+            </linearGradient>
+            <linearGradient id={`${uid}-az2`} x1="59.719%" x2="52.691%" y1="52.313%" y2="54.864%">
+              <stop offset="0%" stopOpacity=".3" />
+              <stop offset="7.1%" stopOpacity=".2" />
+              <stop offset="32.1%" stopOpacity=".1" />
+              <stop offset="62.3%" stopOpacity=".05" />
+              <stop offset="100%" stopOpacity="0" />
+            </linearGradient>
+            <linearGradient id={`${uid}-az3`} x1="37.279%" x2="62.473%" y1="4.6%" y2="99.979%">
+              <stop offset="0%" stopColor="#3ccbf4" />
+              <stop offset="100%" stopColor="#2892df" />
+            </linearGradient>
+          </defs>
+          <path fill={`url(#${uid}-az1) #0669bc`} d="M182.098 8.207A12.06 12.06 0 0 0 170.67.003H86.245c5.175 0 9.773 3.301 11.428 8.204L170.94 225.3a12.062 12.062 0 0 1-11.428 15.92h84.429a12.062 12.062 0 0 0 11.425-15.92z" />
+          <path fill="#0078d4" d="M195.423 156.282H75.297a5.56 5.56 0 0 0-3.796 9.627l77.19 72.047a12.14 12.14 0 0 0 8.28 3.26h68.02z" />
+          <path fill={`url(#${uid}-az2)`} d="M85.343.003a11.98 11.98 0 0 0-11.471 8.376L.723 225.105a12.045 12.045 0 0 0 11.37 16.112h60.475a12.93 12.93 0 0 0 9.921-8.437l14.588-42.991l52.105 48.6a12.33 12.33 0 0 0 7.757 2.828h67.766l-29.721-84.935l-86.643.02L161.37.003z" />
+          <path fill={`url(#${uid}-az3) #2892df`} d="M85.343.003h75.753L82.457 233a12.08 12.08 0 0 1-11.442 8.216H12.06A12.06 12.06 0 0 1 .633 225.303L73.898 8.219A12.08 12.08 0 0 1 85.343 0z" />
+        </>
+      ),
+    },
+    mono: null,
+  },
+  openrouter: simple(siOpenrouter),
+  xai: {
+    title: 'xAI',
+    colour: { viewBox: '0 0 512 196', draw: () => <path fill="#000" d="M512 .18c-59.067 4.815-291.259 33.6-452.256 195.45H0l6.675-6.653C40.367 156.428 189.448 18.481 512 0zM155.917 138.078l79.048 57.553h-46.807l-14.198-10.328H94.687a550 550 0 0 1 16.94-14.436h42.463l-21.974-15.984a589 589 0 0 1 23.8-16.805m40.437-24.897L309.8 195.63h-46.828l-92.261-67.16a635 635 0 0 1 25.642-15.29M17.839 71.77l46.764.022l36.094 26.23A645 645 0 0 0 75.46 113.67z" /> },
+    mono: { viewBox: '0 0 512 196', draw: () => <path fill="currentColor" d="M512 .18c-59.067 4.815-291.259 33.6-452.256 195.45H0l6.675-6.653C40.367 156.428 189.448 18.481 512 0zM155.917 138.078l79.048 57.553h-46.807l-14.198-10.328H94.687a550 550 0 0 1 16.94-14.436h42.463l-21.974-15.984a589 589 0 0 1 23.8-16.805m40.437-24.897L309.8 195.63h-46.828l-92.261-67.16a635 635 0 0 1 25.642-15.29M17.839 71.77l46.764.022l36.094 26.23A645 645 0 0 0 75.46 113.67z" /> },
+  },
+  gemini: simple(siGooglegemini),
+  ollama: simple(siOllama),
+  vllm: simple(siVllm),
 }
 
 export function isBrand(value: string | null | undefined): value is Brand {

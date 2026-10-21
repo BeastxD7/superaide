@@ -2,6 +2,7 @@
 
 import { CheckCircle2, ExternalLink, KeyRound, Loader2, PlugZap, Server } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { BrandIcon, type Brand } from '@/components/BrandIcon'
 import { Notice } from '@/components/site'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -11,6 +12,18 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useAppData } from '@/features/dashboard/data'
 import { AppError, call, type ConnectionTest, type ModelSettings, type ProviderPreset, type RoleName } from '@/lib/api'
 import { useSession } from '@/lib/session-context'
+
+// Each provider's own mark (components/brands/marks.tsx); servers without one keep a generic icon.
+const PROVIDER_BRAND: Record<string, Brand> = {
+  anthropic: 'claude',
+  openai: 'openai',
+  azure: 'azure',
+  openrouter: 'openrouter',
+  xai: 'xai',
+  gemini: 'gemini',
+  ollama: 'ollama',
+  vllm: 'vllm',
+}
 
 const ROLES: { id: RoleName; label: string; why: string }[] = [
   { id: 'chat', label: 'Conversation', why: 'Replies to you and the people you work with.' },
@@ -117,9 +130,15 @@ function ProviderCard({
   return (
     <li className="flex flex-col rounded-xl border border-line bg-white p-4" aria-label={preset.label}>
       <div className="flex items-start gap-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-lilac-100 text-violet-600">
-          {preset.local ? <Server className="size-4.5" aria-hidden /> : <PlugZap className="size-4.5" aria-hidden />}
-        </span>
+        {PROVIDER_BRAND[preset.id] ? (
+          <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-line bg-white text-ink">
+            <BrandIcon brand={PROVIDER_BRAND[preset.id]} size={20} mono={preset.id === 'xai'} decorative />
+          </span>
+        ) : (
+          <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-lilac-100 text-violet-600">
+            {preset.local ? <Server className="size-4.5" aria-hidden /> : <PlugZap className="size-4.5" aria-hidden />}
+          </span>
+        )}
         <div className="min-w-0 flex-1">
           <p className="flex flex-wrap items-center gap-1.5 font-medium text-ink">
             {preset.label}
