@@ -14,12 +14,13 @@ from typing import Any
 from urllib.parse import quote
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from superaide.app.routes import owner_person_id, telegram_username
 from superaide.auth.routes import current_user_id, require_csrf_header
 from superaide.db.session import session_scope
+from superaide.knowledge.ingest import read_pending
 from superaide.vault import check, store
 from superaide.vault.crypto import master_key
 
@@ -112,9 +113,16 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
 
     @router.post("/anthropic")
     def connect_anthropic(
-        body: AnthropicBody, _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
+        body: AnthropicBody,
+        background: BackgroundTasks,
+        owner_id: uuid.UUID = Depends(owner_person_id),
+        user_id: uuid.UUID = Depends(current_user_id),
     ) -> dict[str, Any]:
-        return connect("anthropic", checked_or_400(lambda: check.check_anthropic(body.api_key, http_client())), user_id)
+        checked = checked_or_400(lambda: check.check_anthropic(body.api_key, http_client()))
+        result = connect("anthropic", checked, user_id)
+        # Files and links saved while offline get read now that there is a brain.
+        background.add_task(read_pending, get_agent(), owner_id)
+        return result
 
     @router.post("/telegram")
     def connect_telegram(

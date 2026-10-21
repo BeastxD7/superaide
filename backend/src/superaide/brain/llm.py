@@ -7,17 +7,19 @@ and offline demos cost nothing.
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any, Protocol, TypeVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from superaide.brain.budget import BudgetGuard
 from superaide.brain.pricing import UsageCounts, worst_case_cost
 
 T = TypeVar("T", bound=BaseModel)
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -33,6 +35,7 @@ class LLMResult:
     model: str
     usage: UsageCounts
     cost_usd: Decimal = Decimal(0)
+    stop_reason: str | None = None
 
 
 class LLM(Protocol):
@@ -95,24 +98,46 @@ class ClaudeLLM:
             "system": system_param,
             "messages": messages,
         }
+        output_config: dict[str, Any] = {}
         if effort:
-            kwargs["output_config"] = {"effort": effort}
+            output_config["effort"] = effort
+        if output_model is not None:
+            from anthropic import transform_schema
+
+            output_config["format"] = {
+                "type": "json_schema",
+                "schema": transform_schema(output_model.model_json_schema()),
+            }
+        if output_config:
+            kwargs["output_config"] = output_config
 
         try:
-            if output_model is not None:
-                response = self.client.messages.parse(output_format=output_model, **kwargs)
-                parsed = getattr(response, "parsed_output", None)
-            else:
-                response = self.client.messages.create(**kwargs)
-                parsed = None
+            response = self.client.messages.create(**kwargs)
         except Exception as exc:  # the API did not return a billable response
             self.guard.fail(entry_id, f"{type(exc).__name__}: {exc}")
             raise
 
+        # Settle before looking at the output: a cut-off or invalid answer is still billed.
         usage = UsageCounts.from_api(response.usage)
         cost = self.guard.settle(entry_id, model=model, usage=usage, request_id=getattr(response, "_request_id", None))
         text = "".join(getattr(b, "text", "") for b in response.content if getattr(b, "type", "") == "text")
-        return LLMResult(text=text, parsed=parsed, model=model, usage=usage, cost_usd=cost)
+        stop_reason = getattr(response, "stop_reason", None)
+        parsed = None
+        if output_model is not None:
+            if stop_reason == "max_tokens":
+                log.warning("%s: output cut off at max_tokens=%s; nothing parsed", purpose, max_tokens)
+            else:
+                try:
+                    parsed = output_model.model_validate_json(text)
+                except ValidationError as exc:
+                    log.warning(
+                        "%s: output did not match %s (stop_reason=%s): %s",
+                        purpose,
+                        output_model.__name__,
+                        stop_reason,
+                        exc,
+                    )
+        return LLMResult(text=text, parsed=parsed, model=model, usage=usage, cost_usd=cost, stop_reason=stop_reason)
 
 
 Responder = Callable[[str, list[SystemBlock], list[dict[str, Any]], type[BaseModel] | None], Any]

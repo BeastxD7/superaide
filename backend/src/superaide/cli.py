@@ -112,7 +112,8 @@ def _hello(_: argparse.Namespace) -> None:
         model=settings.model_triage,
         system=[SystemBlock("Reply in one short sentence.")],
         messages=[{"role": "user", "content": "Say hello to the superaide project."}],
-        max_tokens=40,
+        max_tokens=1000,  # the model thinks first, and that counts against max_tokens
+        effort="low",
     )
     print(result.text)
     print(f"Cost: US${result.cost_usd:.6f}")

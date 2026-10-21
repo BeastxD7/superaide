@@ -76,7 +76,7 @@ def ingest(agent: Any, owner_id: uuid.UUID, extracted: Extracted, *, size_bytes:
         owner = require(s, Person, owner_id)
         doc = require(s, Document, doc_id)
         n = 0
-        for f in facts:
+        for f in facts or []:
             if remember_fact(
                 s,
                 owner=owner,
@@ -87,7 +87,9 @@ def ingest(agent: Any, owner_id: uuid.UUID, extracted: Extracted, *, size_bytes:
                 confidence=f.confidence,
             ):
                 n += 1
-        if uses_real_model(agent.settings):
+        if facts is None:  # reading failed: keep it as saved so it is tried again
+            message = f"I've saved {title}, but couldn't read it just now. I'll try again shortly."
+        elif uses_real_model(agent.settings):
             doc.status = "read"
             message = (
                 f"I've read {title}. I picked up {n} {'thing' if n == 1 else 'things'}; they're in my notebook."
@@ -117,6 +119,8 @@ def read_pending(agent: Any, owner_id: uuid.UUID) -> int:
         owner_name = require(s, Person, owner_id).display_name
     for doc_id, title, text, kind in pending:
         facts = extract_facts(agent, owner_name=owner_name, text=text, source=title)
+        if facts is None:
+            continue  # still saved, tried again next time
         with session_scope() as s:
             owner, doc = require(s, Person, owner_id), require(s, Document, doc_id)
             for f in facts:
