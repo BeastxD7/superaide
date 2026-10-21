@@ -1,0 +1,248 @@
+# Reminders: set, list, move, cancel; relative times, after-midnight "tomorrow", time zones, delivery.
+- id: rem-tomorrow-fast-path
+  category: reminders
+  severity: high
+  title: '"Remind me … tomorrow at 10am" is set for tomorrow 10:00 and confirmed'
+  clock: "15:00"
+  turns:
+    - say: "remind me to submit the expense report tomorrow at 10am"
+      expect:
+        - reply_contains: ["tomorrow at 10:00 am"]
+  checks:
+    - reminder: {text_any: ["expense report"], due: {day: 1, at: "10:00"}}
+
+- id: rem-after-midnight-fast-path
+  category: reminders
+  severity: critical
+  title: 'At 00:40, "tomorrow at 9am" means this coming morning'
+  based_on: "wrong-day reminder after midnight (2026-10-21)"
+  clock: "00:40"
+  turns:
+    - say: "remind me to call the bank tomorrow at 9am"
+      expect:
+        - honest_about_memory: true
+  checks:
+    - reminder: {text_any: ["bank"], due: {day: 0, at: "09:00"}}
+
+- id: rem-after-midnight-model-path
+  category: reminders
+  severity: critical
+  title: 'At 00:30, "ping me tomorrow at 8" (no "remind me") lands this morning and says so'
+  based_on: "wrong-day reminder after midnight (2026-10-21)"
+  clock: "00:30"
+  turns:
+    - say: "can you ping me tomorrow at 8 to take my vitamins"
+      expect:
+        - tool_called: create_reminder
+        - judge: "The owner is writing just after midnight. Pass only if Ava's reply confirms a reminder at 8:00 am later this same morning (not the day after) and the reminder in the database matches."
+  checks:
+    - reminder: {text_any: ["vitamin"], due: {day: 0, at: "08:00"}}
+
+- id: rem-typo-two-minutes
+  category: reminders
+  severity: high
+  title: '"please remind me thatt i need to deinnk water in 2mins" → "Drink water" in 2 minutes'
+  based_on: "owner's live session, 2026-10-22"
+  clock: "11:00"
+  turns:
+    - say: "please remind me thatt i need to deinnk water in 2mins"
+  checks:
+    - reminder: {text_any: ["water"], text_is: "Drink water", due: {minutes: 2}, tolerance_min: 1}
+
+- id: rem-telegram-delivery
+  category: reminders
+  severity: high
+  title: '"remind me in telegram that i need to go to washroom in 1min" is delivered on Telegram'
+  based_on: "owner's live session, 2026-10-22"
+  known_gap: "Telegram delivery per reminder is being built (reminders channel work)"
+  clock: "11:00"
+  turns:
+    - say: "remind me in telegram that i need to go to washroom in 1min"
+    - advance: "+3m"
+  checks:
+    - reminder: {text_any: ["washroom"], text_is: "Go to the washroom", status: null}
+    - delivered: {text_any: ["washroom"], via: telegram}
+
+- id: rem-delete-it-typo
+  category: reminders
+  severity: critical
+  title: '"dlete it pleae" right after setting a reminder cancels that one'
+  based_on: "owner's live session, 2026-10-22"
+  clock: "12:00"
+  world:
+    reminders:
+      - text: "Water the plants"
+        due: {day: 1, at: "08:00"}
+  turns:
+    - say: "remind me to buy milk at 6pm"
+      expect:
+        - reply_contains: ["6:00 pm"]
+    - say: "dlete it pleae"
+      expect:
+        - honest_about_memory: true
+  checks:
+    - no_reminder: ["milk"]
+    - reminder: {text_any: ["plants"]}
+
+- id: rem-move-to-3pm
+  category: reminders
+  severity: high
+  title: Moving a reminder changes its time and keeps one reminder
+  clock: "10:00"
+  world:
+    reminders:
+      - text: "Dentist appointment"
+        due: {day: 1, at: "11:00"}
+  turns:
+    - say: "move my dentist reminder to 3pm"
+      expect:
+        - tool_called: update_reminder
+        - honest_about_memory: true
+        - reply_contains_any: ["3:00 pm", "3 ?pm", "15:00"]
+  checks:
+    - reminder: {text_any: ["dentist"], due: {day: 1, at: "15:00"}}
+    - reminder_count: 1
+
+- id: rem-list-without-doubt
+  category: reminders
+  severity: high
+  title: Listing reminders states them plainly, without doubting they exist
+  based_on: "doubting a reminder it had set (2026-10-21)"
+  clock: "09:00"
+  world:
+    reminders:
+      - text: "Pay rent"
+        due: {day: 1, at: "09:00"}
+      - text: "Call the plumber"
+        due: {day: 0, at: "17:30"}
+  turns:
+    - say: "what reminders do I have?"
+      expect:
+        - tool_called: list_reminders
+        - reply_contains: ["rent", "plumber"]
+        - reply_not_contains: ["I don't see", "may not have", "not sure (if|whether)", "can't (see|access)"]
+
+- id: rem-set-then-doubted
+  category: reminders
+  severity: critical
+  title: '"Did you actually set it?" gets a confident, checked yes'
+  based_on: "doubting a reminder it had set (2026-10-21)"
+  clock: "13:00"
+  turns:
+    - say: "remind me to stretch at 5pm"
+      expect:
+        - reply_contains: ["5:00 pm"]
+    - say: "did you actually set that reminder? I don't trust it"
+      expect:
+        - reply_contains_any: ["\\byes\\b", "it's set", "is set", "set for"]
+        - reply_contains_any: ["5:00 ?pm", "5 ?pm", "17:00"]
+        - reply_not_contains: ["I don't (see|have)", "wasn't set", "may not", "can't confirm", "not able to confirm"]
+        - honest_about_memory: true
+
+- id: rem-cancel-one-of-two
+  category: reminders
+  severity: high
+  title: '"Cancel the plumber one" cancels only that reminder'
+  clock: "09:00"
+  world:
+    reminders:
+      - text: "Pay rent"
+        due: {day: 1, at: "09:00"}
+      - text: "Call the plumber"
+        due: {day: 1, at: "12:00"}
+  turns:
+    - say: "cancel the plumber one"
+      expect:
+        - tool_called: cancel_reminder
+        - honest_about_memory: true
+  checks:
+    - no_reminder: ["plumber"]
+    - reminder: {text_any: ["rent"], due: {day: 1, at: "09:00"}}
+
+- id: rem-new-york-zone
+  category: reminders
+  severity: high
+  title: An owner in New York gets 7am New York time
+  clock: "20:00"
+  world:
+    timezone: America/New_York
+  turns:
+    - say: "remind me at 7am to check the flight status"
+      expect:
+        - reply_contains_any: ["7:00 am", "7 ?am"]
+  checks:
+    - reminder: {text_any: ["flight"], due: {day: 1, at: "07:00"}}
+
+- id: rem-weekday-monday
+  category: reminders
+  severity: medium
+  title: 'On a Friday, "on Monday at 9" is three days out'
+  clock: "10:00"
+  weekday: friday
+  turns:
+    - say: "remind me on Monday at 9 to send the invoice"
+  checks:
+    - reminder: {text_any: ["invoice"], due: {day: 3, at: "09:00"}}
+
+- id: rem-quiet-hours-still-delivered
+  category: reminders
+  severity: high
+  title: A reminder the owner asked for during quiet hours is still delivered
+  based_on: "owner's live session, 2026-10-22"
+  clock: "22:30"
+  turns:
+    - say: "remind me in 5 minutes to take out the trash"
+      expect:
+        - reply_contains_any: ["10:35 pm", "5 minutes"]
+    - advance: "+8m"
+  checks:
+    - delivered: {text_any: ["trash"]}
+
+- id: rem-two-hours-model-path
+  category: reminders
+  severity: medium
+  title: '"Ping me in 2 hours" (model path) is set two hours out'
+  clock: "14:00"
+  turns:
+    - say: "ping me in 2 hours to check the oven"
+      expect:
+        - tool_called: create_reminder
+        - honest_about_memory: true
+  checks:
+    - reminder: {text_any: ["oven"], due: {minutes: 120}}
+
+- id: rem-reword-never-says-cannot
+  category: reminders
+  severity: critical
+  title: Rewording a reminder works, and Ava never says she can't edit reminders
+  based_on: "owner's live session, 2026-10-22"
+  clock: "09:00"
+  world:
+    reminders:
+      - text: "Gym"
+        due: {day: 0, at: "18:00"}
+  turns:
+    - say: "can you change my gym reminder to say yoga class instead?"
+      expect:
+        - honest_about_memory: true
+        - tool_called: update_reminder
+  checks:
+    - reminder: {text_any: ["yoga"], due: {day: 0, at: "18:00"}}
+    - no_reminder: ["^gym$"]
+
+- id: rem-no-contradiction-after-tool
+  category: reminders
+  severity: critical
+  title: After setting a reminder, Ava doesn't later deny or contradict it
+  based_on: "owner's live session, 2026-10-22"
+  clock: "10:00"
+  turns:
+    - say: "can you remind me to renew my passport next monday at 11"
+      expect:
+        - tool_called: create_reminder
+    - say: "ok and can you also cancel reminders if I change my mind?"
+      expect:
+        - honest_about_memory: true
+        - reply_contains_any: ["\\byes\\b", "can cancel", "i can"]
+  checks:
+    - reminder: {text_any: ["passport"]}

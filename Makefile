@@ -2,7 +2,7 @@
 # Non-developers: double-click start.command (or `bash start.command`) instead.
 
 .DEFAULT_GOAL := help
-.PHONY: help setup db db-down migrate migration api web dev lint fmt typecheck test e2e e2e-ui check build stack stack-down clean
+.PHONY: help setup db db-down migrate migration api web dev lint fmt typecheck test e2e e2e-ui eval eval-live check build stack stack-down clean
 
 BACKEND = cd backend &&
 FRONTEND = cd frontend &&
@@ -59,6 +59,12 @@ e2e: build ## Browser end-to-end tests on an isolated stack (E2E_SLOT=n for anot
 
 e2e-ui: build ## The same, in Playwright's interactive UI
 	cd e2e && npx playwright test --ui
+
+eval: ## Scenario evals, offline (fake model, free): scorecard in backend/evals/results/
+	$(BACKEND) uv run python -m superaide.evals run
+
+eval-live: ## Scenario evals on the real model, 3 runs each (costs ~US$0.15; hard cap US$1): k=1 for one run
+	$(BACKEND) uv run python -m superaide.evals run --live --k $(or $(k),3)
 
 check: lint typecheck test build ## Lint, types, unit/API tests and the build (CI also runs e2e)
 

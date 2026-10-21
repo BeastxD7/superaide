@@ -40,3 +40,10 @@ frontend/dist/
 
 # Production database dumps (deploy/backup.sh)
 backups/
+
+# Scenario evals: raw per-run output stays local; the committed scorecards are scorecard-*.{md,json}
+backend/evals/results/*
+!backend/evals/results/scorecard-live.md
+!backend/evals/results/scorecard-live.json
+!backend/evals/results/scorecard-offline.md
+!backend/evals/results/scorecard-offline.json

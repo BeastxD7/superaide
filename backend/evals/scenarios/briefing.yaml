@@ -1,0 +1,89 @@
+# The daily digest and "what's on today".
+- id: brief-morning-lists-today
+  category: briefing
+  severity: high
+  title: The morning digest lists today's reminders with times
+  clock: "07:55"
+  world:
+    reminders:
+      - text: "Standup"
+        due: {day: 0, at: "10:00"}
+      - text: "Call Priya about the launch"
+        due: {day: 0, at: "15:00"}
+      - text: "Pay rent"
+        due: {day: 2, at: "09:00"}
+  turns:
+    - digest: morning
+      expect:
+        - reply_contains: ["Good morning, Shashank", "10:00 Standup", "15:00 Call Priya"]
+        - reply_not_contains: ["rent"]
+
+- id: brief-evening-lists-tomorrow
+  category: briefing
+  severity: medium
+  title: The evening digest is about tomorrow
+  clock: "19:55"
+  world:
+    digest: evening
+    reminders:
+      - text: "Dentist"
+        due: {day: 1, at: "11:30"}
+      - text: "Submit the tax form"
+        due: {day: 0, at: "21:00"}
+  turns:
+    - digest: evening
+      expect:
+        - reply_contains: ["tomorrow", "11:30 Dentist"]
+        - reply_not_contains: ["tax form"]
+
+- id: brief-upcoming-birthday
+  category: briefing
+  severity: medium
+  title: A birthday in two days shows up under "Coming up"
+  clock: "07:55"
+  world:
+    memories:
+      - content: "Priya Tan's birthday is on {{day+2}}."
+        category: person
+  turns:
+    - digest: morning
+      expect:
+        - reply_contains: ["Coming up", "Priya", "in 2 days"]
+
+- id: brief-whats-on-today-chat
+  category: briefing
+  severity: high
+  title: '"What''s on today?" in chat names today''s reminders and times'
+  clock: "08:30"
+  world:
+    reminders:
+      - text: "Standup"
+        due: {day: 0, at: "10:00"}
+      - text: "Gym"
+        due: {day: 0, at: "18:30"}
+  turns:
+    - say: "what's on for me today?"
+      expect:
+        - tool_called: [list_reminders, calendar_events]
+        - reply_contains: ["Standup", "Gym"]
+        - judge: "Pass only if Ava says standup is at 10:00 am and gym at 6:30 pm today, and invents no other events."
+
+- id: brief-approvals-waiting
+  category: briefing
+  severity: low
+  title: The digest mentions approvals waiting
+  clock: "07:55"
+  world:
+    reminders:
+      - text: "Standup"
+        due: {day: 0, at: "10:00"}
+  turns:
+    - say: "tell Priya the deck is ready"
+      fake:
+        tools:
+          - name: propose_action
+            input: {kind: message_someone_else, summary: "Tell Priya: the deck is ready.", rationale: "owner asked"}
+        reply: "Queued for your approval."
+    - digest: morning
+      expect:
+        - reply_contains: ["Waiting for your OK"]

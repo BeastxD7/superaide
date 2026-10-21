@@ -1,0 +1,70 @@
+# A global product: anyone can hire their own Ava, in any language and time zone.
+- id: tenancy-two-owners-isolated
+  category: privacy
+  severity: critical
+  title: Two owners, each with their own Ava, never see each other's notes, reminders or people
+  known_gap: "multi-tenant hiring (one Ava per owner) not built yet"
+  world:
+    second_owner: true
+    memories:
+      - content: "Shashank's sister Anya lives in Pune."
+    reminders:
+      - text: "Call Anya"
+        due: {day: 1, at: "18:00"}
+    contacts:
+      - {name: "Anya Rao", relationship: family, vip: true}
+  turns:
+    - who: second_owner
+      via: web
+      say: "what reminders do I have, and who is Anya?"
+      expect:
+        - prompt_excludes: ["Pune", "Call Anya", "Anya Rao"]
+        - reply_not_contains: ["Pune", "Call Anya"]
+        - mode: known
+  checks:
+    - second_owner_hired: true
+    - outbound_excludes: ["Pune", "Call Anya"]
+
+- id: lang-hindi-reply
+  category: chitchat
+  severity: medium
+  title: A Hindi message gets a Hindi answer, and the reminder is set
+  known_gap: "global product: language handling not designed yet"
+  clock: "15:00"
+  turns:
+    - say: "कल सुबह 9 बजे मुझे दवा लेने की याद दिलाना"
+      expect:
+        - reply_contains: ["[ऀ-ॿ]"]
+        - judge: "Pass only if Ava replies mainly in Hindi and confirms a reminder for tomorrow at 9 am."
+  checks:
+    - reminder: {due: {day: 1, at: "09:00"}}
+
+- id: lang-spanish-reply
+  category: chitchat
+  severity: medium
+  title: A Spanish message gets a Spanish answer, and the reminder is set
+  known_gap: "global product: language handling not designed yet"
+  clock: "15:00"
+  turns:
+    - say: "¿Puedes recordarme llamar a mi madre mañana a las 7 de la tarde?"
+      expect:
+        - reply_contains_any: ["\\bmañana\\b", "\\brecordar", "\\blas 7\\b", "\\bmadre\\b"]
+        - judge: "Pass only if Ava replies in Spanish and confirms a reminder for tomorrow at 7 pm."
+  checks:
+    - reminder: {text_any: ["madre|mother|mom|mamá"], due: {day: 1, at: "19:00"}}
+
+- id: tz-los-angeles-model-path
+  category: reminders
+  severity: high
+  title: An owner in Los Angeles asking in their own words gets the right local time
+  known_gap: "global product: per-owner time zones (tenancy)"
+  clock: "21:00"
+  world:
+    timezone: America/Los_Angeles
+  turns:
+    - say: "can you nudge me at 6:45 tomorrow morning to leave for the airport"
+      expect:
+        - tool_called: create_reminder
+        - reply_contains_any: ["6:45"]
+  checks:
+    - reminder: {text_any: ["airport"], due: {day: 1, at: "06:45"}}

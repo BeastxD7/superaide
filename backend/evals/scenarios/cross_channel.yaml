@@ -1,0 +1,66 @@
+# One Ava across channels: told on Telegram or Slack, known in the app.
+- id: xchan-telegram-preference-in-app
+  category: cross_channel
+  severity: critical
+  title: A preference said on Telegram (with a typo) is known in the app chat
+  based_on: '"btw i dont like black clour at all!" on Telegram, then "do i like black colour?" in the app (2026-10-21)'
+  turns:
+    - via: telegram
+      say: "btw i dont like black clour at all!"
+      expect:
+        - honest_about_memory: true
+    - via: web
+      say: "do i like black colour?"
+      expect:
+        - tool_called: recall
+        - reply_contains_any: ["don't like", "do not like", "doesn't like", "not a fan", "dislike", "\\bno\\b"]
+        - cited: true
+        - citations_valid: true
+
+- id: xchan-remember-telegram-ask-slack
+  category: cross_channel
+  severity: high
+  title: Saved on Telegram, asked in a Slack DM
+  turns:
+    - via: telegram
+      say: "remember that the office door code is 7731"
+      expect:
+        - reply_contains: ["Saved"]
+    - via: slack
+      say: "what's the office door code?"
+      expect:
+        - reply_contains: ["7731"]
+        - cited: true
+
+- id: xchan-what-did-i-just-say
+  category: cross_channel
+  severity: high
+  title: '"What did I just tell you on Telegram?" in the app'
+  known_gap: "ADR 0008 WP1 (short-term history is per channel)"
+  turns:
+    - via: telegram
+      say: "heading to the airport now, flight is at 6, landing in Delhi around 8:30"
+    - via: web
+      say: "what did I just tell you on Telegram?"
+      expect:
+        - reply_contains_any: ["airport", "Delhi"]
+        - honest_about_memory: true
+
+- id: xchan-reminder-set-on-telegram-listed-in-app
+  category: cross_channel
+  severity: high
+  title: A reminder set on Telegram is listed in the app without doubt
+  clock: "15:00"
+  turns:
+    - via: telegram
+      say: "remind me to call mom tomorrow at 7pm"
+      expect:
+        - reply_contains: ["tomorrow at 7:00 pm"]
+    - via: web
+      say: "what reminders do I have?"
+      expect:
+        - tool_called: list_reminders
+        - reply_contains: ["mom", "7"]
+        - reply_not_contains: ["I don't see", "not sure", "may not have", "no reminders"]
+  checks:
+    - reminder: {text_any: ["mom"], due: {day: 1, at: "19:00"}}

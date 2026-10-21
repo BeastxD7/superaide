@@ -1,0 +1,124 @@
+# Remember and recall, including paraphrase, spelling and things said in passing.
+- id: recall-colour-vs-color
+  category: recall
+  severity: high
+  title: A note spelled "colour" is found when asked with "color"
+  based_on: 'missing "black colour" vs "color" (2026-10-21)'
+  world:
+    memories:
+      - content: "Shashank does not like the colour black."
+        category: preference
+  turns:
+    - say: "do i like black color?"
+      expect:
+        - tool_called: recall
+        - reply_contains_any: ["don't like", "do not like", "doesn't like", "not a fan", "dislike", "\\bno\\b", "isn't (one of|among) your fav"]
+        - cited: true
+        - citations_valid: true
+        - honest_about_memory: true
+
+- id: recall-typo-question
+  category: recall
+  severity: medium
+  title: A misspelled question still finds the note
+  world:
+    memories:
+      - content: "Shashank's favourite cuisine is Thai food."
+        category: preference
+  turns:
+    - say: "whats my favrite cusine again"
+      expect:
+        - reply_contains: ["Thai"]
+        - cited: true
+        - citations_valid: true
+
+- id: recall-paraphrase-allergy
+  category: recall
+  severity: high
+  title: '"Food to avoid" finds the peanut allergy'
+  world:
+    memories:
+      - content: "Shashank is allergic to peanuts."
+  turns:
+    - say: "is there any food I should stay away from?"
+      expect:
+        - reply_contains: ["peanut"]
+        - cited: true
+
+- id: remember-then-recall
+  category: recall
+  severity: high
+  title: '"Remember that …" is saved, then recalled exactly'
+  turns:
+    - say: "remember that my home wifi password is Tulip-42"
+      expect:
+        - reply_contains: ["Saved"]
+    - say: "what's my home wifi password?"
+      expect:
+        - reply_contains: ["Tulip-42"]
+        - cited: true
+        - citations_valid: true
+        - honest_about_memory: true
+  checks:
+    - memory: ["Tulip-42"]
+
+- id: said-in-passing-is-saved
+  category: recall
+  severity: critical
+  title: A fact said in passing is learned, and Ava doesn't claim it may forget
+  based_on: '"Noted" without saving; "I may not keep this beyond this chat" moments before learning the fact'
+  turns:
+    - say: "btw my sister Anya's birthday is on 14 March, she turns 30 this year"
+      expect:
+        - honest_about_memory: true
+        - reply_not_contains: ["\\bnoted\\b(?!.*(sav|note|remember))"]
+    - say: "when is Anya's birthday?"
+      expect:
+        - reply_contains: ["14"]
+        - reply_contains: ["March"]
+        - cited: true
+  checks:
+    - memory: [["Anya", "14 March|March 14"]]
+
+- id: recall-unknown-says-so
+  category: recall
+  severity: high
+  title: Asked for something never told, Ava says she has no note instead of guessing
+  turns:
+    - say: "what's my dentist's name?"
+      expect:
+        - tool_called: recall
+        - cited: false
+        - reply_contains_any: ["don't have", "do not have", "no note", "haven't (told|mentioned|shared)", "couldn't find", "can't find", "not (sure|seeing)", "nothing"]
+        - judge: "Pass only if Ava does not state or guess any dentist's name and says she doesn't have it."
+
+- id: recall-two-facts-one-question
+  category: recall
+  severity: medium
+  title: One question needing two notes gets both
+  world:
+    memories:
+      - content: "Priya Tan's birthday is 14 November."
+        category: person
+      - content: "Priya Tan loves lilies."
+        category: person
+  turns:
+    - say: "what should I get Priya for her birthday and when is it?"
+      expect:
+        - reply_contains: ["lil(y|ies)", "14 Nov|Nov(ember)? 14"]
+        - cited: true
+        - citations_valid: true
+
+- id: recall-conflict-gives-both
+  category: recall
+  severity: medium
+  title: Conflicting notes are flagged, not silently merged
+  world:
+    memories:
+      - content: "Shashank's gym is Cult Fit in Indiranagar."
+      - content: "Shashank moved to Gold's Gym in Koramangala."
+  turns:
+    - say: "which gym do I go to?"
+      expect:
+        - reply_contains: ["Gold"]
+        - judge: "Pass only if Ava says the owner goes to Gold's Gym in Koramangala, or presents both gyms and flags that they conflict. Fail if she only names Cult Fit."
