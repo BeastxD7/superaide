@@ -18,7 +18,8 @@ def demo_responder(
     purpose: str, system: list[SystemBlock], messages: list[dict[str, Any]], output_model: type[BaseModel] | None
 ) -> Any:
     """Offline stand-in used when no Claude API key is set. Costs nothing."""
-    last = messages[-1]["content"].splitlines()[-1] if messages else ""
+    lines = messages[-1]["content"].splitlines() if messages else []
+    last = lines[-1] if lines else ""
     return TurnOutput(
         reply=(
             f'(Offline mode: no Claude API key yet, so I can only echo you.) You said: "{last}". '

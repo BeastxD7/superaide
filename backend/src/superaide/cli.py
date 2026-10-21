@@ -92,8 +92,12 @@ def _unlink(args: argparse.Namespace) -> None:
     from superaide.db.session import session_scope
     from superaide.identity.linking import unlink
 
+    try:
+        identity_id = uuid.UUID(args.identity)
+    except ValueError:
+        sys.exit(f"{args.identity!r} is not an identity id (expected a UUID, as shown in the console's People page)")
     with session_scope() as s:
-        identity = s.get(ChannelIdentity, uuid.UUID(args.identity))
+        identity = s.get(ChannelIdentity, identity_id)
         if identity is None or identity.person_id is None:
             sys.exit("No linked identity with that id")
         unlink(s, identity, actor="cli", reason=args.reason)

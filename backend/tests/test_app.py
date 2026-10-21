@@ -235,3 +235,9 @@ def test_urgent_topics_keep_names_mid_sentence(topic, expected):
     from superaide.app.onboarding import _mid_sentence
 
     assert _mid_sentence(topic) == expected
+
+
+def test_a_blank_chat_message_is_refused_instead_of_crashing(client):
+    _hire(client)
+    r = client.post("/app/chat", json={"text": "   "})
+    assert r.status_code == 422 and r.json()["detail"] == "Type a message first."
