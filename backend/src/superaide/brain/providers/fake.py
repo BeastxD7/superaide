@@ -13,7 +13,6 @@ from superaide.brain.providers.types import (
     Completion,
     ContentPart,
     Effort,
-    HostedTool,
     HostedToolCall,
     HostedToolFinished,
     HostedToolResult,
@@ -27,9 +26,9 @@ from superaide.brain.providers.types import (
     SystemBlock,
     Text,
     TextDelta,
+    Tool,
     ToolCall,
     ToolCallReady,
-    ToolSpec,
     Usage,
 )
 
@@ -70,13 +69,12 @@ class FakeProvider:
         model: str,
         system: list[SystemBlock],
         messages: list[Message],
-        tools: list[ToolSpec],
-        hosted: list[HostedTool],
+        tools: list[Tool],
         max_tokens: int,
         effort: Effort | None = None,
         on_event: OnStreamEvent | None = None,
     ) -> Step:
-        self.calls.append({"purpose": purpose, "model": model, "messages": messages, "tools": tools, "hosted": hosted})
+        self.calls.append({"purpose": purpose, "model": model, "messages": messages, "tools": tools})
         out = self.responder(purpose, system, messages, None)
         if isinstance(out, Step):
             step = out
@@ -109,3 +107,11 @@ class FakeProvider:
         else:
             text = str(out)
         return Completion(text=text, parsed=parsed, model=model, usage=Usage())
+
+
+def from_legacy(blocks: list[dict[str, Any]]) -> list[ContentPart]:
+    """Translate a test script written in the old Anthropic block shape into neutral parts,
+    so tests can move to the neutral interface one file at a time. Remove once none use it."""
+    from superaide.brain.providers.anthropic import part_from_wire
+
+    return [part_from_wire(dict(b)) for b in blocks]

@@ -1,0 +1,779 @@
+{
+ "complete_plain": {
+  "budget": [
+   {
+    "model": "claude-haiku-5-5",
+    "reserve": "chat_turn",
+    "worst_case_usd": "0.0024084"
+   },
+   {
+    "request_id": "req_wire",
+    "settle": "claude-haiku-5-5",
+    "usage": {
+     "cache_read_tokens": 900,
+     "cache_write_1h_tokens": 0,
+     "cache_write_5m_tokens": 300,
+     "input_tokens": 1200,
+     "output_tokens": 80,
+     "web_search_requests": 1
+    }
+   }
+  ],
+  "requests": [
+   {
+    "call": "create",
+    "max_tokens": 4000,
+    "messages": [
+     {
+      "content": "hi",
+      "role": "user"
+     }
+    ],
+    "model": "claude-haiku-5-5",
+    "system": [
+     {
+      "cache_control": {
+       "type": "ephemeral"
+      },
+      "text": "You are Ava. Rules.",
+      "type": "text"
+     },
+     {
+      "text": "You are talking to your owner.",
+      "type": "text"
+     }
+    ]
+   }
+  ],
+  "result": {
+   "stop_reason": "end_turn",
+   "text": "Nothing else."
+  }
+ },
+ "complete_structured_effort": {
+  "budget": [
+   {
+    "model": "claude-haiku-5-5",
+    "reserve": "intro_facts",
+    "worst_case_usd": "0.0011742"
+   },
+   {
+    "request_id": "req_wire",
+    "settle": "claude-haiku-5-5",
+    "usage": {
+     "cache_read_tokens": 900,
+     "cache_write_1h_tokens": 0,
+     "cache_write_5m_tokens": 300,
+     "input_tokens": 1200,
+     "output_tokens": 80,
+     "web_search_requests": 1
+    }
+   }
+  ],
+  "requests": [
+   {
+    "call": "create",
+    "max_tokens": 1500,
+    "messages": [
+     {
+      "content": "a resume",
+      "role": "user"
+     }
+    ],
+    "model": "claude-haiku-5-5",
+    "output_config": {
+     "effort": "low",
+     "format": {
+      "schema": {
+       "additionalProperties": false,
+       "properties": {
+        "facts": {
+         "items": {
+          "type": "string"
+         },
+         "title": "Facts",
+         "type": "array"
+        }
+       },
+       "required": [
+        "facts"
+       ],
+       "title": "Answer",
+       "type": "object"
+      },
+      "type": "json_schema"
+     }
+    },
+    "system": [
+     {
+      "cache_control": {
+       "type": "ephemeral"
+      },
+      "text": "You are Ava. Rules.",
+      "type": "text"
+     },
+     {
+      "text": "You are talking to your owner.",
+      "type": "text"
+     }
+    ]
+   }
+  ],
+  "result": {
+   "stop_reason": "end_turn",
+   "text": "{\"facts\": [\"Leads AI\"]}"
+  }
+ },
+ "step_first_with_tools": {
+  "budget": [
+   {
+    "model": "claude-haiku-5-5",
+    "reserve": "chat_turn",
+    "worst_case_usd": "0.0310734"
+   },
+   {
+    "request_id": "req_wire",
+    "settle": "claude-haiku-5-5",
+    "usage": {
+     "cache_read_tokens": 900,
+     "cache_write_1h_tokens": 0,
+     "cache_write_5m_tokens": 300,
+     "input_tokens": 1200,
+     "output_tokens": 80,
+     "web_search_requests": 1
+    }
+   }
+  ],
+  "requests": [
+   {
+    "call": "create",
+    "max_tokens": 1200,
+    "messages": [
+     {
+      "content": "When is my flight?",
+      "role": "user"
+     }
+    ],
+    "model": "claude-haiku-5-5",
+    "system": [
+     {
+      "cache_control": {
+       "type": "ephemeral"
+      },
+      "text": "You are Ava. Rules.",
+      "type": "text"
+     },
+     {
+      "text": "You are talking to your owner.",
+      "type": "text"
+     }
+    ],
+    "tools": [
+     {
+      "description": "Search the owner's notes and messages.",
+      "input_schema": {
+       "properties": {
+        "query": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "query"
+       ],
+       "type": "object"
+      },
+      "name": "recall"
+     },
+     {
+      "max_uses": 3,
+      "name": "web_search",
+      "type": "web_search_20250305"
+     },
+     {
+      "citations": {
+       "enabled": true
+      },
+      "max_uses": 3,
+      "name": "web_fetch",
+      "type": "web_fetch_20250910"
+     },
+     {
+      "description": "Ask the owner to approve something.",
+      "input_schema": {
+       "additionalProperties": false,
+       "properties": {
+        "kind": {
+         "enum": [
+          "publish_post"
+         ],
+         "type": "string"
+        },
+        "summary": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "kind",
+        "summary"
+       ],
+       "type": "object"
+      },
+      "name": "propose_action"
+     }
+    ]
+   }
+  ],
+  "result": {
+   "content": [
+    {
+     "text": "Checking.",
+     "type": "text"
+    },
+    {
+     "id": "toolu_9",
+     "input": {
+      "query": "x"
+     },
+     "name": "recall",
+     "type": "tool_use"
+    }
+   ],
+   "stop_reason": "tool_use"
+  }
+ },
+ "step_history_effort_low": {
+  "budget": [
+   {
+    "model": "claude-haiku-5-5",
+    "reserve": "chat_turn",
+    "worst_case_usd": "0.0312518"
+   },
+   {
+    "request_id": "req_wire",
+    "settle": "claude-haiku-5-5",
+    "usage": {
+     "cache_read_tokens": 900,
+     "cache_write_1h_tokens": 0,
+     "cache_write_5m_tokens": 300,
+     "input_tokens": 1200,
+     "output_tokens": 80,
+     "web_search_requests": 1
+    }
+   }
+  ],
+  "requests": [
+   {
+    "call": "create",
+    "max_tokens": 1200,
+    "messages": [
+     {
+      "content": "Earlier question",
+      "role": "user"
+     },
+     {
+      "content": "[Tools used for this reply: Searching]\nEarlier answer",
+      "role": "assistant"
+     },
+     {
+      "content": "When is my flight? And the weather there?",
+      "role": "user"
+     },
+     {
+      "content": [
+       {
+        "signature": "sig-abc==",
+        "thinking": "Look it up.",
+        "type": "thinking"
+       },
+       {
+        "text": "Let me check.",
+        "type": "text"
+       },
+       {
+        "id": "toolu_1",
+        "input": {
+         "query": "flight"
+        },
+        "name": "recall",
+        "type": "tool_use"
+       },
+       {
+        "id": "toolu_2",
+        "input": {
+         "kind": "x"
+        },
+        "name": "propose_action",
+        "type": "tool_use"
+       },
+       {
+        "id": "srvtoolu_1",
+        "input": {
+         "query": "BLR weather"
+        },
+        "name": "web_search",
+        "type": "server_tool_use"
+       },
+       {
+        "content": [
+         {
+          "encrypted_content": "enc==",
+          "page_age": null,
+          "title": "Weather",
+          "type": "web_search_result",
+          "url": "https://example.com/w"
+         }
+        ],
+        "tool_use_id": "srvtoolu_1",
+        "type": "web_search_tool_result"
+       }
+      ],
+      "role": "assistant"
+     },
+     {
+      "content": [
+       {
+        "content": [
+         {
+          "citations": {
+           "enabled": true
+          },
+          "content": [
+           {
+            "text": "Flight to Bangalore on 3 Nov, 07:10.",
+            "type": "text"
+           }
+          ],
+          "source": "ava://memory/123",
+          "title": "Flight to BLR",
+          "type": "search_result"
+         }
+        ],
+        "tool_use_id": "toolu_1",
+        "type": "tool_result"
+       },
+       {
+        "content": "Refused: not allowed.",
+        "is_error": true,
+        "tool_use_id": "toolu_2",
+        "type": "tool_result"
+       }
+      ],
+      "role": "user"
+     },
+     {
+      "content": [
+       {
+        "citations": [
+         {
+          "cited_text": "Flight to Bangalore on 3 Nov, 07:10.",
+          "end_block_index": 1,
+          "search_result_index": 0,
+          "source": "ava://memory/123",
+          "start_block_index": 0,
+          "title": "Flight to BLR",
+          "type": "search_result_location"
+         }
+        ],
+        "text": "Your flight is on 3 Nov.",
+        "type": "text"
+       },
+       {
+        "citations": [
+         {
+          "cited_text": "Warm",
+          "encrypted_index": "ix==",
+          "title": "Weather",
+          "type": "web_search_result_location",
+          "url": "https://example.com/w"
+         }
+        ],
+        "text": " It will be warm.",
+        "type": "text"
+       }
+      ],
+      "role": "assistant"
+     },
+     {
+      "content": "Thanks. Anything else?",
+      "role": "user"
+     }
+    ],
+    "model": "claude-haiku-5-5",
+    "output_config": {
+     "effort": "low"
+    },
+    "system": [
+     {
+      "cache_control": {
+       "type": "ephemeral"
+      },
+      "text": "You are Ava. Rules.",
+      "type": "text"
+     },
+     {
+      "text": "You are talking to your owner.",
+      "type": "text"
+     }
+    ],
+    "tools": [
+     {
+      "description": "Search the owner's notes and messages.",
+      "input_schema": {
+       "properties": {
+        "query": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "query"
+       ],
+       "type": "object"
+      },
+      "name": "recall"
+     },
+     {
+      "max_uses": 3,
+      "name": "web_search",
+      "type": "web_search_20250305"
+     },
+     {
+      "citations": {
+       "enabled": true
+      },
+      "max_uses": 3,
+      "name": "web_fetch",
+      "type": "web_fetch_20250910"
+     },
+     {
+      "description": "Ask the owner to approve something.",
+      "input_schema": {
+       "additionalProperties": false,
+       "properties": {
+        "kind": {
+         "enum": [
+          "publish_post"
+         ],
+         "type": "string"
+        },
+        "summary": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "kind",
+        "summary"
+       ],
+       "type": "object"
+      },
+      "name": "propose_action"
+     }
+    ]
+   }
+  ],
+  "result": {
+   "content": [
+    {
+     "text": "Nothing else.",
+     "type": "text"
+    }
+   ],
+   "stop_reason": "end_turn"
+  }
+ },
+ "step_no_tools": {
+  "budget": [
+   {
+    "model": "claude-haiku-5-5",
+    "reserve": "verify",
+    "worst_case_usd": "0.0007096"
+   },
+   {
+    "request_id": "req_wire",
+    "settle": "claude-haiku-5-5",
+    "usage": {
+     "cache_read_tokens": 900,
+     "cache_write_1h_tokens": 0,
+     "cache_write_5m_tokens": 300,
+     "input_tokens": 1200,
+     "output_tokens": 80,
+     "web_search_requests": 1
+    }
+   }
+  ],
+  "requests": [
+   {
+    "call": "create",
+    "max_tokens": 600,
+    "messages": [
+     {
+      "content": "Revise this.",
+      "role": "user"
+     }
+    ],
+    "model": "claude-haiku-5-5",
+    "system": [
+     {
+      "cache_control": {
+       "type": "ephemeral"
+      },
+      "text": "You are Ava. Rules.",
+      "type": "text"
+     },
+     {
+      "text": "You are talking to your owner.",
+      "type": "text"
+     }
+    ]
+   }
+  ],
+  "result": {
+   "content": [
+    {
+     "text": "Nothing else.",
+     "type": "text"
+    }
+   ],
+   "stop_reason": "end_turn"
+  }
+ },
+ "step_streaming_history": {
+  "budget": [
+   {
+    "model": "claude-sonnet-5-5",
+    "reserve": "chat_turn",
+    "worst_case_usd": "0.055036"
+   },
+   {
+    "request_id": "req_wire",
+    "settle": "claude-sonnet-5-5",
+    "usage": {
+     "cache_read_tokens": 900,
+     "cache_write_1h_tokens": 0,
+     "cache_write_5m_tokens": 300,
+     "input_tokens": 1200,
+     "output_tokens": 80,
+     "web_search_requests": 1
+    }
+   }
+  ],
+  "requests": [
+   {
+    "call": "stream",
+    "max_tokens": 1200,
+    "messages": [
+     {
+      "content": "Earlier question",
+      "role": "user"
+     },
+     {
+      "content": "[Tools used for this reply: Searching]\nEarlier answer",
+      "role": "assistant"
+     },
+     {
+      "content": "When is my flight? And the weather there?",
+      "role": "user"
+     },
+     {
+      "content": [
+       {
+        "signature": "sig-abc==",
+        "thinking": "Look it up.",
+        "type": "thinking"
+       },
+       {
+        "text": "Let me check.",
+        "type": "text"
+       },
+       {
+        "id": "toolu_1",
+        "input": {
+         "query": "flight"
+        },
+        "name": "recall",
+        "type": "tool_use"
+       },
+       {
+        "id": "toolu_2",
+        "input": {
+         "kind": "x"
+        },
+        "name": "propose_action",
+        "type": "tool_use"
+       },
+       {
+        "id": "srvtoolu_1",
+        "input": {
+         "query": "BLR weather"
+        },
+        "name": "web_search",
+        "type": "server_tool_use"
+       },
+       {
+        "content": [
+         {
+          "encrypted_content": "enc==",
+          "page_age": null,
+          "title": "Weather",
+          "type": "web_search_result",
+          "url": "https://example.com/w"
+         }
+        ],
+        "tool_use_id": "srvtoolu_1",
+        "type": "web_search_tool_result"
+       }
+      ],
+      "role": "assistant"
+     },
+     {
+      "content": [
+       {
+        "content": [
+         {
+          "citations": {
+           "enabled": true
+          },
+          "content": [
+           {
+            "text": "Flight to Bangalore on 3 Nov, 07:10.",
+            "type": "text"
+           }
+          ],
+          "source": "ava://memory/123",
+          "title": "Flight to BLR",
+          "type": "search_result"
+         }
+        ],
+        "tool_use_id": "toolu_1",
+        "type": "tool_result"
+       },
+       {
+        "content": "Refused: not allowed.",
+        "is_error": true,
+        "tool_use_id": "toolu_2",
+        "type": "tool_result"
+       }
+      ],
+      "role": "user"
+     },
+     {
+      "content": [
+       {
+        "citations": [
+         {
+          "cited_text": "Flight to Bangalore on 3 Nov, 07:10.",
+          "end_block_index": 1,
+          "search_result_index": 0,
+          "source": "ava://memory/123",
+          "start_block_index": 0,
+          "title": "Flight to BLR",
+          "type": "search_result_location"
+         }
+        ],
+        "text": "Your flight is on 3 Nov.",
+        "type": "text"
+       },
+       {
+        "citations": [
+         {
+          "cited_text": "Warm",
+          "encrypted_index": "ix==",
+          "title": "Weather",
+          "type": "web_search_result_location",
+          "url": "https://example.com/w"
+         }
+        ],
+        "text": " It will be warm.",
+        "type": "text"
+       }
+      ],
+      "role": "assistant"
+     },
+     {
+      "content": "Thanks. Anything else?",
+      "role": "user"
+     }
+    ],
+    "model": "claude-sonnet-5-5",
+    "system": [
+     {
+      "cache_control": {
+       "type": "ephemeral"
+      },
+      "text": "You are Ava. Rules.",
+      "type": "text"
+     },
+     {
+      "text": "You are talking to your owner.",
+      "type": "text"
+     }
+    ],
+    "thinking": {
+     "display": "summarized",
+     "type": "adaptive"
+    },
+    "tools": [
+     {
+      "description": "Search the owner's notes and messages.",
+      "input_schema": {
+       "properties": {
+        "query": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "query"
+       ],
+       "type": "object"
+      },
+      "name": "recall"
+     },
+     {
+      "max_uses": 3,
+      "name": "web_search",
+      "type": "web_search_20250305"
+     },
+     {
+      "citations": {
+       "enabled": true
+      },
+      "max_uses": 3,
+      "name": "web_fetch",
+      "type": "web_fetch_20250910"
+     },
+     {
+      "description": "Ask the owner to approve something.",
+      "input_schema": {
+       "additionalProperties": false,
+       "properties": {
+        "kind": {
+         "enum": [
+          "publish_post"
+         ],
+         "type": "string"
+        },
+        "summary": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "kind",
+        "summary"
+       ],
+       "type": "object"
+      },
+      "name": "propose_action"
+     }
+    ]
+   }
+  ],
+  "result": {
+   "content": [
+    {
+     "text": "Nothing else.",
+     "type": "text"
+    }
+   ],
+   "stop_reason": "pause_turn"
+  }
+ }
+}

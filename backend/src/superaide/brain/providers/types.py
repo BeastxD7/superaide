@@ -130,6 +130,10 @@ class HostedTool:
     max_uses: int = 3
 
 
+# One ordered list: the order is part of the cached prompt prefix, so it is kept as given.
+Tool = ToolSpec | HostedTool
+
+
 @dataclass
 class Usage:
     input_tokens: int = 0

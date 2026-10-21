@@ -78,11 +78,11 @@ def test_the_fake_provider_scripts_steps_streams_and_structured_output():
     fake = FakeProvider(lambda purpose, system, messages, output_model: next(script))
     events: list = []
     first = fake.step(purpose="chat_turn", model="m", system=[], messages=[Message("user", [Text("hi")])],
-                      tools=[], hosted=[], max_tokens=10, on_event=events.append)  # fmt: skip
+                      tools=[], max_tokens=10, on_event=events.append)  # fmt: skip
     assert first.stop == "tool_calls" and isinstance(first.parts[1], ToolCall)
     assert isinstance(events[0], TextDelta) and any(isinstance(e, ToolCallReady) for e in events)
     assert sum(isinstance(e, PartDone) for e in events) == 2
-    second = fake.step(purpose="chat_turn", model="m", system=[], messages=[], tools=[], hosted=[], max_tokens=10)
+    second = fake.step(purpose="chat_turn", model="m", system=[], messages=[], tools=[], max_tokens=10)
     assert second.stop == "end" and second.parts == [Text("Done.")]
 
     structured = FakeProvider(lambda *a: {"facts": ["a"]})

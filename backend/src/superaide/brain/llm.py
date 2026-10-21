@@ -1,26 +1,23 @@
-"""Claude client wrapper. Every call goes through the budget guard.
+"""The model interface the tool loop uses today (Messages API dicts). Every call goes through the budget guard.
 
-ClaudeLLM talks to the real API. FakeLLM returns scripted outputs so tests
-and offline demos cost nothing.
+ClaudeLLM is a thin shim over the Anthropic provider (brain/providers/anthropic.py). FakeLLM returns
+scripted outputs so tests and offline demos cost nothing. See docs/decisions/0007-pluggable-providers.md.
 """
 
 from __future__ import annotations
 
-import json
-import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any, Protocol, TypeVar
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 
 from superaide.brain.budget import BudgetGuard
-from superaide.brain.pricing import WEB_SEARCH_USD, UsageCounts, worst_case_cost
+from superaide.brain.pricing import UsageCounts
 from superaide.brain.providers.types import SystemBlock
 
 T = TypeVar("T", bound=BaseModel)
-log = logging.getLogger(__name__)
 
 # Live progress from a streaming step: ("text", {"delta"}), ("thinking", {"delta"}), and
 # ("block", {"block"}) as each content block completes (server tool calls and results).
@@ -76,38 +73,15 @@ class LLM(Protocol):
     ) -> LLMResult: ...
 
 
-def _prompt_chars(
-    system: list[SystemBlock], messages: list[dict[str, Any]], output_model: type[BaseModel] | None
-) -> int:
-    chars = sum(len(b.text) for b in system) + len(json.dumps(messages, default=str))
-    if output_model is not None:
-        chars += len(json.dumps(output_model.model_json_schema()))
-    return chars
-
-
-def _system_param(system: list[SystemBlock]) -> list[dict[str, Any]]:
-    out: list[dict[str, Any]] = []
-    for block in system:
-        item: dict[str, Any] = {"type": "text", "text": block.text}
-        if block.cache:
-            item["cache_control"] = {"type": "ephemeral"}
-        out.append(item)
-    return out
-
-
-def _block_dict(block: Any) -> dict[str, Any]:
-    return block.model_dump(exclude_none=True) if hasattr(block, "model_dump") else dict(block)
-
-
 class ClaudeLLM:
-    def __init__(self, guard: BudgetGuard, api_key: str = "", client: Any = None) -> None:
-        if client is None:
-            import anthropic
+    """The tool loop's dict interface on top of the Anthropic provider (brain/providers/anthropic.py).
+    Kept until the loop speaks neutral parts; requests are identical either way."""
 
-            if not api_key:
-                raise RuntimeError("ANTHROPIC_API_KEY is not set; add it to .env or set FAKE_LLM=true")
-            client = anthropic.Anthropic(api_key=api_key, max_retries=2)
-        self.client = client
+    def __init__(self, guard: BudgetGuard, api_key: str = "", client: Any = None) -> None:
+        from superaide.brain.providers.anthropic import AnthropicProvider
+
+        self.provider = AnthropicProvider(guard, api_key=api_key, client=client)
+        self.client = self.provider.client
         self.guard = guard
 
     def step(
@@ -123,45 +97,11 @@ class ClaudeLLM:
         max_web_searches: int = 0,
         on_event: OnEvent | None = None,
     ) -> StepResult:
-        prompt_chars = _prompt_chars(system, messages, None) + len(json.dumps(tools))
-        worst = worst_case_cost(model, prompt_chars, max_tokens) + Decimal(max_web_searches) * WEB_SEARCH_USD
-        entry_id = self.guard.reserve(purpose=purpose, model=model, worst_case_usd=worst)
-        kwargs: dict[str, Any] = {
-            "model": model,
-            "max_tokens": max_tokens,
-            "system": _system_param(system),
-            "messages": messages,
-        }
-        if tools:
-            kwargs["tools"] = tools
-        if effort:
-            kwargs["output_config"] = {"effort": effort}
-        try:
-            if on_event is None:
-                response = self.client.messages.create(**kwargs)
-            else:
-                # Streamed, with Claude's reasoning summarised so the owner can watch it work.
-                kwargs["thinking"] = {"type": "adaptive", "display": "summarized"}
-                response = self._stream(kwargs, on_event)
-        except Exception as exc:
-            self.guard.fail(entry_id, f"{type(exc).__name__}: {exc}")
-            raise
-        usage = UsageCounts.from_api(response.usage)
-        cost = self.guard.settle(entry_id, model=model, usage=usage, request_id=getattr(response, "_request_id", None))
-        content = [_block_dict(b) for b in response.content]
-        return StepResult(content=content, stop_reason=response.stop_reason or "end_turn", usage=usage, cost_usd=cost)
-
-    def _stream(self, kwargs: dict[str, Any], on_event: OnEvent) -> Any:
-        with self.client.messages.stream(**kwargs) as stream:
-            for event in stream:
-                if event.type == "content_block_delta":
-                    if event.delta.type == "text_delta":
-                        on_event("text", {"delta": event.delta.text})
-                    elif event.delta.type == "thinking_delta":
-                        on_event("thinking", {"delta": event.delta.thinking})
-                elif event.type == "content_block_stop":
-                    on_event("block", {"block": _block_dict(stream.current_message_snapshot.content[event.index])})
-            return stream.get_final_message()
+        content, stop_reason, usage, cost = self.provider.step_wire(
+            purpose=purpose, model=model, system=system, messages=messages, tools=tools, max_tokens=max_tokens,
+            effort=effort, max_web_searches=max_web_searches, on_event=on_event,
+        )  # fmt: skip
+        return StepResult(content=content, stop_reason=stop_reason, usage=usage, cost_usd=cost)
 
     def complete(
         self,
@@ -174,54 +114,10 @@ class ClaudeLLM:
         output_model: type[BaseModel] | None = None,
         effort: str | None = None,
     ) -> LLMResult:
-        worst = worst_case_cost(model, _prompt_chars(system, messages, output_model), max_tokens)
-        entry_id = self.guard.reserve(purpose=purpose, model=model, worst_case_usd=worst)
-
-        kwargs: dict[str, Any] = {
-            "model": model,
-            "max_tokens": max_tokens,
-            "system": _system_param(system),
-            "messages": messages,
-        }
-        output_config: dict[str, Any] = {}
-        if effort:
-            output_config["effort"] = effort
-        if output_model is not None:
-            from anthropic import transform_schema
-
-            output_config["format"] = {
-                "type": "json_schema",
-                "schema": transform_schema(output_model.model_json_schema()),
-            }
-        if output_config:
-            kwargs["output_config"] = output_config
-
-        try:
-            response = self.client.messages.create(**kwargs)
-        except Exception as exc:  # the API did not return a billable response
-            self.guard.fail(entry_id, f"{type(exc).__name__}: {exc}")
-            raise
-
-        # Settle before looking at the output: a cut-off or invalid answer is still billed.
-        usage = UsageCounts.from_api(response.usage)
-        cost = self.guard.settle(entry_id, model=model, usage=usage, request_id=getattr(response, "_request_id", None))
-        text = "".join(getattr(b, "text", "") for b in response.content if getattr(b, "type", "") == "text")
-        stop_reason = getattr(response, "stop_reason", None)
-        parsed = None
-        if output_model is not None:
-            if stop_reason == "max_tokens":
-                log.warning("%s: output cut off at max_tokens=%s; nothing parsed", purpose, max_tokens)
-            else:
-                try:
-                    parsed = output_model.model_validate_json(text)
-                except ValidationError as exc:
-                    log.warning(
-                        "%s: output did not match %s (stop_reason=%s): %s",
-                        purpose,
-                        output_model.__name__,
-                        stop_reason,
-                        exc,
-                    )
+        text, parsed, usage, cost, stop_reason = self.provider.complete_wire(
+            purpose=purpose, model=model, system=system, messages=messages, max_tokens=max_tokens,
+            output_model=output_model, effort=effort,
+        )  # fmt: skip
         return LLMResult(text=text, parsed=parsed, model=model, usage=usage, cost_usd=cost, stop_reason=stop_reason)
 
 

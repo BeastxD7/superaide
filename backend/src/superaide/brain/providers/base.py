@@ -15,12 +15,11 @@ from superaide.brain.providers.types import (
     Capabilities,
     Completion,
     Effort,
-    HostedTool,
     Message,
     OnStreamEvent,
     Step,
     SystemBlock,
-    ToolSpec,
+    Tool,
 )
 
 
@@ -54,8 +53,7 @@ class LLMProvider(Protocol):
         model: str,
         system: list[SystemBlock],
         messages: list[Message],
-        tools: list[ToolSpec],
-        hosted: list[HostedTool],
+        tools: list[Tool],
         max_tokens: int,
         effort: Effort | None = None,
         on_event: OnStreamEvent | None = None,
