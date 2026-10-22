@@ -12,6 +12,7 @@ owner lets VIPs through), nothing is sent.
 
 from __future__ import annotations
 
+import logging
 import re
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -33,6 +34,7 @@ from superaide.knowledge.store import preferences_for
 from superaide.proactive.notify import notify_owner
 from superaide.skills import calendar
 
+log = logging.getLogger(__name__)
 JOB_KIND = "meeting_prep"
 SCAN_KIND = "scan_meetings"
 LEAD = timedelta(minutes=15)
@@ -222,5 +224,11 @@ def scan(session: Session, job: Job) -> None:
     # transaction rolls back, and the chain must not end with it (issue #86).
     with session_scope() as booking:
         schedule_scan(booking, require(booking, Person, owner.id), now + timedelta(seconds=1))
+    from superaide.proactive import calendar_watch
+
+    try:
+        calendar_watch.ensure(session, owner, now)  # push (when on) makes this scan run at once; never needed
+    except Exception:
+        log.warning("couldn't keep the calendar push channel", exc_info=True)
     events = calendar.events_between(session, owner, now, now + LOOKAHEAD)
     schedule_preps(session, owner, events, now)

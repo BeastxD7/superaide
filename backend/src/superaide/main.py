@@ -247,6 +247,34 @@ def create_app(agent: Agent | None = None) -> FastAPI:
         return {"ok": True}
 
     @app.post(
+        "/webhooks/google/calendar",
+        tags=["Webhooks"],
+        summary="Google Calendar push",
+        description=(
+            "Google calls this when an owner's calendar changes (events.watch). Each channel carries its own "
+            "token in `X-Goog-Channel-Token`; anything else is refused and audited. `404` while "
+            "GOOGLE_CALENDAR_PUSH is off. The half-hourly scan runs either way."
+        ),
+    )
+    def google_calendar_webhook(request: Request) -> dict[str, bool]:
+        from superaide.proactive import calendar_watch
+
+        if not settings.google_calendar_push:
+            raise HTTPException(404, "Not Found")
+        h = request.headers
+        ok = calendar_watch.handle_notification(
+            h.get("x-goog-channel-id"),
+            h.get("x-goog-channel-token"),
+            h.get("x-goog-resource-id"),
+            h.get("x-goog-resource-state"),
+        )
+        if not ok:
+            with session_scope() as s:
+                audit(s, "webhook", "rejected", provider="google_calendar", reason="bad channel or token")
+            raise HTTPException(401, "bad channel")
+        return {"ok": True}
+
+    @app.post(
         "/webhooks/slack",
         tags=["Webhooks"],
         summary="Slack events",

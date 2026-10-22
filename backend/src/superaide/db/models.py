@@ -641,6 +641,20 @@ class InstalledSkill(Scoped, Base):
     removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class CalendarWatch(Scoped, Base):
+    """One Google Calendar push channel (events.watch) on an owner's primary calendar. Google calls
+    the webhook with the channel's token when events change; see proactive/calendar_watch.py."""
+
+    __tablename__ = "calendar_watch"
+    __table_args__ = (UniqueConstraint("channel_id", name="uq_calendar_watch_channel"),)
+
+    owner_person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), index=True)
+    channel_id: Mapped[str] = mapped_column(String(64))  # starts with the instance id; see calendar_watch.py
+    resource_id: Mapped[str] = mapped_column(String(200), default="")
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(10), default="active")  # active | stopped | expired
+
+
 # Tables defined in their own modules, imported here so every user of Base (Alembic,
 # the tests' create_all) sees them.
 from superaide.asklink import models as _asklink_models  # noqa: E402, F401

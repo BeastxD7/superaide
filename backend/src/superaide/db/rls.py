@@ -31,6 +31,7 @@ TABLES: tuple[str, ...] = (
     "agent_state",
     "approval",
     "audit_log",
+    "calendar_watch",  # Google Calendar push channels
     "channel_identity",
     "channel_invite",
     "contact",

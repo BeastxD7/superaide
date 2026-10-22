@@ -216,6 +216,16 @@ Skills. Replace `ava.example.com` with your domain throughout.
    scope is needed, and a short video of the consent flow). It takes from a few days to a few
    weeks. Until it passes, people see an "unverified app" warning and the app is capped at 100 users.
 
+**Calendar push (optional).** By default Ava notices new or moved meetings at the next half-hourly
+scan. With `GOOGLE_CALENDAR_PUSH=true` and `PUBLIC_BASE_URL=https://ava.example.com`, each owner's
+calendar also gets a Google watch channel, so Google calls
+`https://ava.example.com/webhooks/google/calendar` the moment something changes. Needs: the
+`/webhooks/*` block in `deploy/caddy/Caddyfile` uncommented (so the API is reachable from Google),
+and the domain added under **Authorised domains** and verified in Google Search Console. Every call
+carries its channel's own token, an HMAC under the vault's master key; a call without a valid one is
+refused (401) and audited. Channels last 7 days and renew a day early; if push is off, Google refuses
+a channel, or a notification is lost, the half-hourly scan still runs.
+
 How an account is matched: by Google's account id once someone has signed in with Google, else
 by their Google-verified email, which links the Google account to the existing account. If that
 account's email was never verified, its password is removed and its sessions end when Google is
