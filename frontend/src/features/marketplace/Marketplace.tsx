@@ -117,11 +117,11 @@ export function Marketplace({ session, initialAgents = null }: { session: Sessio
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.35, duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-          className="mx-auto max-w-6xl overflow-hidden rounded-[28px] bg-[radial-gradient(90%_70%_at_50%_0%,#5b4bc4_0%,transparent_60%),linear-gradient(180deg,#2a2160,#120e2a)] pt-12 text-white lg:pt-28"
+          className="mx-auto max-w-6xl [container-type:inline-size] overflow-hidden rounded-[28px] bg-[radial-gradient(90%_70%_at_50%_0%,#5b4bc4_0%,transparent_60%),linear-gradient(180deg,#2a2160,#120e2a)] pt-12 text-white lg:pt-28"
         >
           <p
             aria-hidden
-            className="bg-gradient-to-b from-white/85 to-white/10 bg-clip-text px-4 text-center text-[15vw] leading-[0.95] font-medium whitespace-nowrap text-transparent tight lg:text-[150px]"
+            className="bg-gradient-to-b from-white/85 to-white/10 bg-clip-text px-4 text-center [font-size:calc((100cqw-2rem)/6.2)] leading-[0.95] font-medium whitespace-nowrap text-transparent tight lg:text-[150px]"
           >
             Infant to Adult
           </p>
