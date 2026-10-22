@@ -48,6 +48,10 @@ SELF_TESTS = [
     "triage-unacked-climbs-then-expires",
     "triage-ack-stops-the-ladder",
     "triage-owner-and-stranger-untouched",
+    "triage-ack-by-a-colleague-is-refused",
+    "triage-budget-exhausted-holds",
+    "triage-fake-quote-is-discarded",
+    "triage-granted-intent-needs-approval-at-infant",
 ]
 
 

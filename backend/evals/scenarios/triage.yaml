@@ -241,3 +241,194 @@
       expect:
         - mode: stranger
         - triage_decision: {none: true}
+
+- id: triage-granted-intent-handle-at-adolescent
+  category: triage
+  severity: high
+  title: A granted, answerable request is handled at Adolescent without approval
+  known_gap: "ADR 0010 TR5: handle is recorded only; nothing is sent on the owner's behalf yet"
+  world:
+    triage_enabled: true
+    triage_model: true
+    stage: adolescent
+    triage_settings: {autonomy_grants: ["share_doc_link"]}
+  turns:
+    - who: colleague
+      via: slack
+      say: "Can you send me the deck link?"
+      fake:
+        triage: {category: request, urgency: normal, needs_owner: false, can_answer: from_notes,
+                 answer_intent: share_doc_link, evidence: ["send me the deck link"], confidence: 0.9}
+      expect:
+        - triage_decision: {decision: handle, features: {needs_approval: false}}
+
+- id: triage-granted-intent-needs-approval-at-infant
+  category: triage
+  severity: high
+  title: At Infant the same request is a draft for the owner to approve
+  known_gap: "ADR 0010 TR5: the Approval (reply_on_behalf) isn't created yet"
+  world:
+    triage_enabled: true
+    triage_model: true
+    triage_settings: {autonomy_grants: ["share_doc_link"]}
+  turns:
+    - who: colleague
+      via: slack
+      say: "Can you send me the deck link?"
+      fake:
+        triage: {category: request, urgency: normal, needs_owner: false, can_answer: from_notes,
+                 answer_intent: share_doc_link, evidence: ["send me the deck link"], confidence: 0.9}
+      expect:
+        - triage_decision: {decision: handle, features: {needs_approval: true}}
+
+- id: triage-vip-name-on-unlinked-account
+  category: triage
+  severity: critical
+  title: A VIP's name on an unlinked Telegram account gets the stranger reply and no triage
+  known_gap: "ADR 0010 TR5: the impersonation flag isn't shown to the owner yet"
+  world:
+    triage_enabled: true
+    urgent_topics: ["server down"]
+  turns:
+    - who: stranger
+      via: telegram
+      say: "Hi, it's Dana Lee. The server is down, call me now."
+      expect:
+        - mode: stranger
+        - triage_decision: {none: true}
+        - interrupt_count: 0
+
+- id: triage-ack-by-a-colleague-is-refused
+  category: triage
+  severity: critical
+  title: Someone other than the owner pressing Ack is refused and audited
+  known_gap: "ADR 0010 TR4: the press arrives from a forwarded Telegram button"
+  clock: "14:00"
+  world:
+    triage_enabled: true
+    interrupt_channel: telegram
+    urgent_topics: ["server down"]
+  turns:
+    - who: vip
+      via: slack
+      say: "The server is down."
+    - press: {verb: ack, via: telegram, id: "cb-forwarded", by: colleague}
+      expect:
+        - escalation_state: {state: notifying}
+        - escalation_acks: 0
+        - audit_logged: escalation_ack_refused
+
+- id: triage-seen-is-not-an-ack
+  category: triage
+  severity: high
+  title: The owner chatting with Ava about something else doesn't acknowledge the item
+  known_gap: "ADR 0010 TR4: replying in the item's own thread will count as an ack"
+  clock: "14:00"
+  world:
+    triage_enabled: true
+    interrupt_channel: telegram
+    urgent_topics: ["server down"]
+  turns:
+    - who: vip
+      via: slack
+      say: "The server is down."
+    - who: owner
+      via: web
+      say: "what's on my calendar today?"
+      expect:
+        - escalation_state: {state: notifying}
+        - escalation_acks: 0
+
+- id: triage-has-seen-never-before-an-ack
+  category: triage
+  severity: high
+  title: Nothing told to the sender says the owner has seen it
+  known_gap: "ADR 0010 TR5: sender templates; today the sender gets a model reply"
+  world:
+    triage_enabled: true
+    interrupt_channel: telegram
+    urgent_topics: ["server down"]
+  turns:
+    - who: vip
+      via: slack
+      say: "The server is down."
+  checks:
+    - outbound_excludes: ["has seen this", "has read", "saw your message"]
+
+- id: triage-not-urgent-twice-is-recorded
+  category: triage
+  severity: medium
+  title: '"Not urgent" twice on a sender is recorded as feedback'
+  known_gap: "ADR 0010 TR6: two of these should suggest a sender_ceiling rule"
+  clock: "14:00"
+  world:
+    triage_enabled: true
+    interrupt_channel: telegram
+    urgent_topics: ["server down"]
+  turns:
+    - who: vip
+      via: slack
+      say: "The server is down."
+    - press: {verb: not_urgent, via: app}
+    - advance: "+1h"
+    - who: vip
+      via: slack
+      say: "Server down again (staging this time)."
+    - press: {verb: not_urgent, via: app}
+      expect:
+        - triage_feedback: {feedback: not_urgent, count: 2}
+        - escalation_state: {state: resolved}
+
+- id: triage-should-have-told-me
+  category: triage
+  severity: medium
+  title: '"You should have told me" on a held item is recorded'
+  known_gap: "ADR 0010 TR6: it should add a sender_floor rule and lower recall in the metrics"
+  world:
+    triage_enabled: true
+  turns:
+    - who: colleague
+      via: slack
+      say: "The client demo is in 20 minutes and the build is broken"
+      expect:
+        - triage_decision: {decision: hold}
+    - press: {verb: should_have_told, via: app}
+      expect:
+        - triage_feedback: {feedback: should_have_told, count: 1}
+
+- id: triage-budget-exhausted-holds
+  category: triage
+  severity: high
+  title: With the triage budget spent, the message is held and the fallback audited
+  known_gap: "ADR 0010 TR5: the sender still gets a model reply"
+  world:
+    triage_enabled: true
+    triage_model: true
+  turns:
+    - who: colleague
+      via: slack
+      say: "The launch is blocked on your sign-off"
+      fake: {triage: budget}
+      expect:
+        - triage_decision: {decision: hold, rule_any: ["classifier:budget"]}
+        - audit_logged: triage_budget_fallback
+
+- id: triage-fake-quote-is-discarded
+  category: triage
+  severity: high
+  title: A classifier quote that isn't in the message throws the answer away
+  known_gap: "ADR 0010 TR5: the sender still gets a model reply"
+  world:
+    triage_enabled: true
+    triage_model: true
+    stage: adult
+  turns:
+    - who: colleague
+      via: slack
+      say: "The launch is blocked on your sign-off"
+      fake:
+        triage: {category: request, urgency: critical, needs_owner: true, can_answer: "no",
+                 evidence: ["the building is on fire"], confidence: 0.99}
+      expect:
+        - triage_decision: {decision: hold, rule_any: ["classifier:bad_quote"]}
+        - interrupt_count: 0

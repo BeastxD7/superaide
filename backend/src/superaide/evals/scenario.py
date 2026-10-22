@@ -96,6 +96,9 @@ class World(Strict):
     away_visibility: Literal["everyone", "colleagues", "nobody"] = "colleagues"
     stranger_intake: bool = False
     triage_settings: dict[str, Any] = Field(default_factory=dict)  # any other triage_settings column
+    # Offline, the triage classifier isn't connected (rules only). True: it is, and answers with each
+    # turn's `fake.triage` (a TriageOutput as a dict, or "budget" for a refusal).
+    triage_model: bool = False
 
 
 class FakeTool(Strict):
@@ -109,15 +112,18 @@ class FakeTurn(Strict):
 
     tools: list[FakeTool] = Field(default_factory=list)
     reply: str = "OK."
+    triage: dict[str, Any] | Literal["budget"] | None = None  # the triage classifier's answer (world.triage_model)
 
 
 class Press(Strict):
     """The owner presses a button on the latest escalation (TR4 will bring Telegram and Slack buttons;
     until then the press is applied as it would arrive)."""
 
-    verb: Literal["ack", "reply", "call", "not_urgent", "snooze_30m", "snooze_2h", "done"] = "ack"
+    # should_have_told: the owner's feedback on the latest held item (from the Needs-you inbox)
+    verb: Literal["ack", "reply", "call", "not_urgent", "snooze_30m", "snooze_2h", "done", "should_have_told"] = "ack"
     via: Literal["app", "telegram", "slack"] = "app"
     id: str = ""  # the press's own id: the same id twice is one press
+    by: Literal["owner", "colleague"] = "owner"  # anyone but the owner is refused (and audited)
 
 
 class Turn(Strict):

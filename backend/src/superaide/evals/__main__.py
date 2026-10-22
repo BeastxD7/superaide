@@ -1,4 +1,4 @@
-"""`uv run python -m superaide.evals run [--category X] [--live] [--k 3]`
+"""`uv run python -m superaide.evals run [--category X] [--live] [--k 3]`, or `... triage [--live]`
 
 Offline (the default) uses the fake model and costs nothing: it checks the harness and grades
 everything that doesn't depend on what the model writes. `--live` uses the real chat model with
@@ -65,7 +65,27 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--name", help="scorecard file name (default scorecard-<mode>)")
     r.add_argument("--wipe-ledger", action="store_true", help="forget earlier eval spend (resets the cap)")
     sub.add_parser("list", help="list scenarios")
+    t = sub.add_parser("triage", help="triage precision and recall on the labelled set (ADR 0010)")
+    t.add_argument("--live", action="store_true", help="use the triage model (costs money)")
+    t.add_argument("--cap", type=float, default=0.25, help="hard spend cap in US$ over the evals ledger")
+    t.add_argument("--env-file", help="where the API key is (default backend/.env)")
+    t.add_argument("--name", help="report file name (default triage-<mode>)")
+    t.add_argument("--out", help="where to write the report (default backend/evals/results)")
     args = p.parse_args(argv)
+
+    if args.cmd == "triage":
+        from superaide.evals import triage_report
+
+        key = _env(args) if args.live else ""
+        s = triage_report.run(live=args.live, key=key, cap=args.cap, name=args.name or "",
+                              out_dir=Path(args.out) if args.out else None)  # fmt: skip
+        tell = s["tell_now"]
+        print(
+            f"{s['labels']} labels, {s['mode']}: acceptable {s['acceptable']}, tell-now precision "
+            f"{tell['precision']} recall {tell['recall']}, verify recall {s['verify_recall']}, "
+            f"US${s['cost_usd']:.4f}"
+        )
+        return 0
 
     if args.cmd == "list":
         from superaide.evals.scenario import load_all

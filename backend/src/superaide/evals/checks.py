@@ -59,6 +59,7 @@ KNOWN: dict[str, Check] = {}
 CODE_ONLY = {
     "prompt_excludes", "no_model_call", "outbound_excludes", "mode",
     "triage_decision", "escalation_state", "escalation_pushed", "escalation_acks", "interrupt_count",
+    "audit_logged", "triage_feedback",
 }  # fmt: skip
 
 
@@ -419,6 +420,9 @@ def triage_decision(ctx: Ctx, value: Any) -> tuple[bool, str]:
         return False, "no triage decision for this turn"
     if "decision" in value and d.decision != value["decision"]:
         return False, f"decided {d.decision} ({', '.join(d.rule_hits)}), expected {value['decision']}"
+    for k, v in (value.get("features") or {}).items():
+        if (d.features or {}).get(k) != v:
+            return False, f"feature {k} is {(d.features or {}).get(k)!r}, expected {v!r}"
     wanted = _list(value.get("rule_any", []))
     if wanted and not any(any(h.startswith(w) for h in d.rule_hits) for w in wanted):
         return False, f"rule hits {d.rule_hits}, expected one of {wanted}"
@@ -466,6 +470,26 @@ def interrupt_count(ctx: Ctx, value: Any) -> tuple[bool, str]:
         n = len(set(s.scalars(select(EscalationDelivery.escalation_id).where(
             EscalationDelivery.step >= 1, EscalationDelivery.status == "sent"))))  # fmt: skip
     return n == int(value), f"{n} interrupts, expected {value}"
+
+
+@check("audit_logged")
+def audit_logged(ctx: Ctx, value: Any) -> tuple[bool, str]:
+    """An audit row with this action exists (e.g. triage_budget_fallback, escalation_ack_refused)."""
+    from superaide.db.models import AuditLog
+
+    with session_scope() as s:
+        found = s.scalar(select(AuditLog.id).where(AuditLog.action == str(value)).limit(1))
+    return found is not None, f"no {value} in the audit log"
+
+
+@check("triage_feedback")
+def triage_feedback(ctx: Ctx, value: Any) -> tuple[bool, str]:
+    """How many decisions carry this feedback: `{feedback, count}`."""
+    from superaide.triage.models import TriageDecision
+
+    with session_scope() as s:
+        n = len(list(s.scalars(select(TriageDecision.id).where(TriageDecision.feedback == value["feedback"]))))
+    return n == int(value["count"]), f"{n} with {value['feedback']}, expected {value['count']}"
 
 
 # --- fuzzy -------------------------------------------------------------------------------

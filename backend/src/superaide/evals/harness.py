@@ -134,6 +134,16 @@ class OfflineModel:
         from superaide.knowledge.facts import FactList
 
         fake = self.turn or FakeTurn()
+        from superaide.triage.types import TriageOutput
+
+        if output_model is TriageOutput:
+            if fake.triage == "budget":
+                from superaide.brain.budget import BudgetExceeded
+
+                raise BudgetExceeded("today's triage limit would be passed", "bucket")
+            if fake.triage is None:
+                raise ValueError("no scripted triage answer")
+            return TriageOutput.model_validate(fake.triage)
         if output_model is FactList:
             return FactList(facts=[])
         if output_model is not None:
@@ -456,7 +466,9 @@ def _out_sources(reply: str) -> list[dict[str, Any]]:
 
 
 @contextmanager
-def patched(llm: LLM, outbox: dict[str, FakeMessenger], live: bool, triage: bool = False) -> Iterator[None]:
+def patched(
+    llm: LLM, outbox: dict[str, FakeMessenger], live: bool, triage: bool = False, triage_model: bool = False
+) -> Iterator[None]:
     """Background jobs build their own model client and Telegram sender: point both at ours.
     Live, Ava has a model connected (`brain_ready`), so she handles reminders herself; offline she
     doesn't, so the code-only paths run, as they do for an owner with no model connected."""
@@ -472,6 +484,8 @@ def patched(llm: LLM, outbox: dict[str, FakeMessenger], live: bool, triage: bool
     if live:
         factory.brain_ready = lambda settings: True
     notify.send_telegram = send_telegram  # type: ignore[assignment]
+    if triage_model and not live:  # the scripted triage classifier counts as a connected model
+        factory.brain_ready = lambda settings: True
     if triage:  # escalations push to the owner on Slack too: catch those in the outbox
         notify.messenger_for = lambda provider: outbox.get(provider)
         notify.confirmed_here = lambda provider, identity: True
@@ -507,7 +521,7 @@ def run_scenario(sc: Scenario, *, inner: LLM | None = None, judge: Judge | None 
     traveller = time_machine.travel(run.start, tick=True)
     clock = traveller.start()
     try:
-        with patched(rec, outbox, live, sc.world.triage_enabled):
+        with patched(rec, outbox, live, sc.world.triage_enabled, sc.world.triage_model):
             clock.shift(timedelta(days=-1))
             run.owner_id = build_world(sc, run.start, run)
             _seed_messages(agent, sc, run.owner_id)
@@ -517,6 +531,7 @@ def run_scenario(sc: Scenario, *, inner: LLM | None = None, judge: Judge | None 
                     clock.shift(parse_shift(turn.advance))
                     _drain_jobs()
                 if turn.press is not None:
+                    offline.turn = turn.fake
                     _press(run, turn)
                     if turn.run_jobs:
                         _drain_jobs()
@@ -578,13 +593,26 @@ def _press(run: Run, turn: Turn) -> None:
     from superaide.triage.models import Escalation
 
     assert turn.press is not None
+    if turn.press.verb == "should_have_told":
+        from superaide.triage.models import TriageDecision
+
+        with session_scope() as s:
+            d = s.scalar(select(TriageDecision).order_by(TriageDecision.created_at.desc()).limit(1))
+            assert d is not None, "no decision to give feedback on"
+            escalate.record_feedback(s, d, "should_have_told", via=turn.press.via)
+        return
     with session_scope() as s:
         esc = s.scalar(select(Escalation).order_by(Escalation.created_at.desc()).limit(1))
-        owner = s.get(Person, run.owner_id)
+        presser = s.get(Person, run.owner_id)
+        if turn.press.by == "colleague":
+            presser = s.scalar(select(Person).where(Person.display_name == "Priya Tan"))
         assert esc is not None, "nothing to press: no escalation yet"
-        assert owner is not None
-        escalate.ack(s, esc.id, source=turn.press.via, external_id=turn.press.id or uuid.uuid4().hex,
-                     verb=turn.press.verb, actor=owner)  # fmt: skip
+        assert presser is not None
+        try:
+            escalate.ack(s, esc.id, source=turn.press.via, external_id=turn.press.id or uuid.uuid4().hex,
+                         verb=turn.press.verb, actor=presser)  # fmt: skip
+        except escalate.AckRefused:
+            pass  # refused and audited; the check reads the audit log
 
 
 def _seed_messages(agent: Any, sc: Scenario, owner_id: uuid.UUID) -> None:
