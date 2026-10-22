@@ -212,6 +212,10 @@ class MemoryItem(Scoped, Base):
     # source: chat | intro_chat | intro_call | document | link | telegram | slack | owner_edit
     source: Mapped[str] = mapped_column(String(30), default="chat", server_default="chat")
     document_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("document.id"), nullable=True, index=True)
+    # Further documents that say the same thing: erasing one keeps the fact while another still supports it.
+    source_document_ids: Mapped[list[uuid.UUID]] = mapped_column(
+        ARRAY(UUID(as_uuid=True)), default=list, server_default="{}"
+    )
     confidence: Mapped[float] = mapped_column(Float, default=1.0, server_default="1")
     # The import lease this card came in under (imports/lease.py, #133); ending the lease deletes the row.
     lease_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("import_lease.id"), nullable=True, index=True)

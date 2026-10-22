@@ -23,7 +23,7 @@ from superaide.knowledge import chunking
 from superaide.knowledge.extract import Extracted
 from superaide.knowledge.facts import extract_from_chunks
 from superaide.knowledge.learn import neighbours
-from superaide.knowledge.store import lock_document, remember_fact, supersede
+from superaide.knowledge.store import find_same_fact, lock_document, remember_fact, supersede
 from superaide.proactive.notify import notify_owner
 
 log = logging.getLogger(__name__)
@@ -158,6 +158,13 @@ def store_chunks(session: Any, doc: Document) -> list[tuple[uuid.UUID, str]]:
     return [(c.id, c.text) for c in existing]
 
 
+def _also_from(item: MemoryItem | None, doc: Document) -> None:
+    """Record that `doc` says this known fact too, so erasing the other source keeps it."""
+    if item is None or item.document_id == doc.id or doc.id in (item.source_document_ids or []):
+        return
+    item.source_document_ids = [*(item.source_document_ids or []), doc.id]
+
+
 def save_facts(
     session: Any, owner: Person, doc: Document, facts: list[Any], source: str, known_ids: dict[int, uuid.UUID]
 ) -> int:
@@ -169,12 +176,15 @@ def save_facts(
     for f in facts:
         f, chunk_id = f if isinstance(f, tuple) else (f, None)
         if f.same_as:
-            continue  # already known: saying it again adds nothing
+            same = session.get(MemoryItem, known_ids[f.same_as]) if f.same_as in known_ids else None
+            _also_from(same, doc)  # already known: it now has this document as a further source
+            continue
         item = remember_fact(
             session, owner=owner, content=f.content, category=f.category, source=source, document=doc,
             confidence=f.confidence, importance=f.importance, time_bound=f.time_bound,
         )  # fmt: skip
         if item is None:
+            _also_from(find_same_fact(session, owner, f.content, similarity=None), doc)
             continue
         n += 1
         item.chunk_id = chunk_id

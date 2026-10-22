@@ -147,9 +147,9 @@ def extract_from_chunks(
             continue
         any_read = True
         for f in facts:
-            if f.same_as:
-                continue  # already known, or already read from an earlier passage
-            out.append((f, best_chunk(f.content, group)))
+            if f.same_as and f.same_as > len(base):
+                continue  # already read from an earlier passage of this document
+            out.append((f, best_chunk(f.content, group)))  # a known fact is kept: this document supports it too
             seen.append(f.content)
     if not any_read and complete is False:
         return None
