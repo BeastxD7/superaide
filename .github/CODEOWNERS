@@ -1,5 +1,33 @@
-# Reviews are requested from these people for changes to the matching paths.
-*                                   @BeastxD7
-/backend/src/superaide/auth/        @BeastxD7
-/backend/src/superaide/vault/       @BeastxD7
-/backend/alembic/versions/          @BeastxD7
+# Code owners: GitHub requests a review from these people for changes to matching paths.
+# The last matching line wins, so specific paths come after the default.
+# Syntax: https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default: everything
+*                                          @BeastxD7
+
+# Security-critical backend code
+/backend/src/superaide/auth/               @BeastxD7
+/backend/src/superaide/vault/              @BeastxD7
+/backend/src/superaide/security/           @BeastxD7
+/backend/src/superaide/tenancy/            @BeastxD7
+/backend/src/superaide/policy/             @BeastxD7
+/backend/src/superaide/db/rls.py           @BeastxD7
+/backend/src/superaide/brain/budget.py     @BeastxD7
+/backend/src/superaide/brain/pricing.py    @BeastxD7
+/backend/src/superaide/skills/             @BeastxD7
+
+# Database migrations
+/backend/alembic/versions/                 @BeastxD7
+
+# Frontend: the API proxy and the sign-in redirect
+/frontend/src/app/api/                     @BeastxD7
+/frontend/src/proxy.ts                     @BeastxD7
+
+# Deployment, CI and repository settings
+/deploy/                                   @BeastxD7
+/docker-compose.prod.yml                   @BeastxD7
+/.github/                                  @BeastxD7
+
+# Decisions and policies
+/docs/decisions/                           @BeastxD7
+/SECURITY.md                               @BeastxD7

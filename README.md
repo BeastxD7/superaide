@@ -113,7 +113,7 @@ Run from `backend/` with `uv run superaide <command>`:
 
 ## Contributing and security
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and conventions, and [SECURITY.md](SECURITY.md) for the security model and how to report a problem.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and conventions, [SECURITY.md](SECURITY.md) for the security model and how to report a vulnerability, [SUPPORT.md](SUPPORT.md) for where to get help, and the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Roadmap
 
