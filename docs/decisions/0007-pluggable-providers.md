@@ -371,7 +371,7 @@ class Registry(Generic[P]):
 2. **M2, provider config.** Add the `llm_provider` / `model_role` / `model_price` tables and migration. A data
    migration turns an existing `anthropic/api_key` vault row into an `anthropic` provider with roles from
    `.env`; `ANTHROPIC_API_KEY` still works as a fallback, and the owner does nothing. Add `app/providers.py`
-   routes and keep `POST /app/connections/anthropic` as a delegating alias.
+   routes and (Superseded: `POST /app/connections/anthropic` was removed; the AI model page and `/app/providers` are the only place to connect a provider.)
 3. **M3, OpenAI-compatible adapter** with presets, the citation marker parser and verifier, and structured
    output fallback. Add the frontend Brain page.
 4. **M4, Superaide's own web search and fetch** for providers without hosted search, plus the 0006 manifest

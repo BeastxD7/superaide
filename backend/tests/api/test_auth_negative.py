@@ -467,7 +467,7 @@ def test_the_gmail_routes_need_the_csrf_header_and_refuse_bad_input(browser, own
 ALLOWED = "http://localhost:3000"
 
 
-@pytest.mark.parametrize("path", ["/auth/login", "/auth/signup", "/app/hire", "/app/connections/anthropic"])
+@pytest.mark.parametrize("path", ["/auth/login", "/auth/signup", "/app/hire", "/app/providers/anthropic"])
 def test_preflight_from_the_frontend_is_allowed(browser, path):
     r = browser().options(
         path,

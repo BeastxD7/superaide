@@ -191,7 +191,7 @@ def test_connecting_claude_reads_what_was_saved_while_offline(client, monkeypatc
     monkeypatch.setattr(connections.check, "check_anthropic", lambda key, http: Checked(values={"api_key": key}))
     upload(client, "resume.txt", b"Shashank Rao")
     monkeypatch.setattr(connections.get_settings(), "fake_llm", False)
-    r = client.post("/app/connections/anthropic", json={"api_key": "sk-ant-api03-" + "x" * 40})
+    r = client.post("/app/providers/anthropic", json={"api_key": "sk-ant-api03-" + "x" * 40})
     assert r.status_code == 200, r.text
     with session_scope() as s:  # the reading itself is covered in tests/test_read_pending.py
         assert [j.kind for j in s.scalars(select(Job).where(Job.kind == "read_pending"))] == ["read_pending"]

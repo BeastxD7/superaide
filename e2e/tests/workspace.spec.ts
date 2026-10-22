@@ -526,7 +526,7 @@ test.describe('workspace: privacy between accounts', () => {
       const writes: [string, unknown][] = [
         ['/app/chat', { text: 'What did my boss tell you?' }],
         [`/app/notebook/${secret.id}/forget`, {}],
-        ['/app/connections/anthropic', { api_key: 'not-a-claude-key-at-all' }],
+        ['/app/providers/anthropic', { api_key: 'not-a-claude-key-at-all' }],
         ['/app/connections/telegram/disconnect', {}],
       ]
       for (const [path, data] of writes) {
@@ -717,7 +717,6 @@ test.describe('connections', () => {
   test('the connections API refuses wrong-format keys without storing them', async ({ api, owner }) => {
     void owner
     const cases: [string, Record<string, string>, string][] = [
-      ['anthropic', { api_key: 'sk_ant_with_underscores' }, 'Keys start with sk-ant-.'],
       ['telegram', { bot_token: '123:shorttoken' }, "doesn't look like a bot token"],
       ['telegram', { bot_token: '<script>alert(1)</script>' }, "doesn't look like a bot token"],
       ['slack', { bot_token: 'xoxp-user-token-wrong-kind', app_token: 'not-reached-either' }, 'should start with xoxb-'],
@@ -730,8 +729,8 @@ test.describe('connections', () => {
       for (const v of Object.values(body)) expect(detail).not.toContain(v)
     }
     // Too short, too long, or missing fields: refused before any check.
-    expect((await api.post('/app/connections/anthropic', { api_key: 'short' })).status()).toBe(422)
-    expect((await api.post('/app/connections/anthropic', { api_key: 'k'.repeat(301) })).status()).toBe(422)
+    // Claude is not a connection any more: the AI model page (/app/providers) is the only place to connect it.
+    expect([404, 405]).toContain((await api.post('/app/connections/anthropic', { api_key: 'k'.repeat(40) })).status())
     expect((await api.post('/app/connections/slack', { bot_token: 'only-the-bot-token' })).status()).toBe(422)
     expect((await api.post('/app/connections/whatsapp', { token: 'anything-at-all' })).status()).toBe(404)
     expect(await storedSecrets()).toEqual([])

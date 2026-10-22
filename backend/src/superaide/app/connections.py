@@ -1,4 +1,4 @@
-"""/app/connections: connect Claude, Telegram, Slack and Google Calendar from the app.
+"""/app/connections: connect Telegram, Slack and Google Calendar from the app.
 
 Owner only. A credential is checked with its service, encrypted, saved, and
 applied at once (the agent and listeners are rebuilt). Responses never contain
@@ -28,7 +28,6 @@ from superaide.channels import health
 from superaide.config import get_settings
 from superaide.connectors import google
 from superaide.db.session import session_scope
-from superaide.knowledge.pending import brain_became_ready
 from superaide.tenancy import endpoints
 from superaide.tenancy.context import InstanceScope, scope_or_default, use_instance
 from superaide.tenancy.models import PlatformState
@@ -84,10 +83,6 @@ def http_client() -> httpx.Client:
     return httpx.Client(timeout=15)
 
 
-class AnthropicBody(BaseModel):
-    api_key: str = Field(min_length=10, max_length=300)
-
-
 class TelegramBody(BaseModel):
     bot_token: str = Field(min_length=10, max_length=100)
 
@@ -107,15 +102,6 @@ class SlackBody(BaseModel):
 
 
 GUIDES = {
-    "anthropic": {
-        "url": "https://platform.claude.com/dashboard",
-        "steps": [
-            "Open the Claude Console and sign in.",
-            "Create a workspace for Ava and set a monthly spend limit (for example US$10).",
-            "In that workspace, create an API key and copy it.",
-            "Paste it here. I check it, then keep it encrypted.",
-        ],
-    },
     "telegram": {
         "url": "https://t.me/BotFather",
         "steps": [
@@ -187,6 +173,7 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
         settings = get_agent().settings
         with session_scope() as s:
             result = store.status(s, settings)
+        result.pop("anthropic", None)  # the AI model is connected on /app/providers, not here
         _, where = master_key()
         guides = {k: dict(v) for k, v in GUIDES.items()}
         guides["slack"]["url"] = slack_manifest_url()
@@ -233,24 +220,6 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
     )
     def status(_: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         return view()
-
-    @router.post(
-        "/anthropic",
-        summary="Connect Claude",
-        description=(
-            "Checks the API key with Anthropic, stores it encrypted and switches the brain on. Files saved while "
-            "offline are then read."
-        ),
-    )
-    def connect_anthropic(
-        body: AnthropicBody,
-        _: uuid.UUID = Depends(owner_person_id),
-        user_id: uuid.UUID = Depends(current_user_id),
-    ) -> dict[str, Any]:
-        checked = checked_or_400(lambda: check.check_anthropic(body.api_key, http_client()))
-        result = connect("anthropic", checked, user_id)
-        brain_became_ready()  # files and links saved while offline get read now that there is a brain
-        return result
 
     @router.post(
         "/telegram",
@@ -397,13 +366,13 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
         summary="Disconnect a service",
         description=(
             "Deletes the stored credential and stops its listener. "
-            "`provider` is `anthropic`, `telegram`, `slack`, `google`, `deepgram` or `elevenlabs`."
+            "`provider` is `telegram`, `slack`, `google`, `deepgram` or `elevenlabs`."
         ),
     )
     def disconnect(
         provider: str, _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
     ) -> dict[str, Any]:
-        if provider not in {"anthropic", "telegram", "slack", "google", "deepgram", "elevenlabs"}:
+        if provider not in {"telegram", "slack", "google", "deepgram", "elevenlabs"}:
             raise HTTPException(404, "Unknown connection")
         with session_scope() as s:
             store.remove(s, provider, user_id=user_id)

@@ -20,6 +20,8 @@ export function DashboardShell({ defaultOpen, children }: { defaultOpen: boolean
   const router = useRouter()
   const pathname = usePathname() ?? '/dashboard'
   const me = session.me
+  // The one page open during the introduction: the AI model page, where the brain step sends people to connect a provider.
+  const openDuringIntro = pathname === '/dashboard/models'
 
   // A failed read of the agent's state is not "not hired": stay put and offer a retry. The
   // state we have may be out of date too, so it is not used to redirect either.
@@ -30,12 +32,12 @@ export function DashboardShell({ defaultOpen, children }: { defaultOpen: boolean
     if (session.loading || loadProblem) return
     if (!session.account) router.replace(`/login?next=${encodeURIComponent(pathname)}`)
     else if (!session.account.hire) router.replace('/')
-    else if (me && !me.onboarding.done) router.replace('/meet')
-  }, [session.loading, session.account, me, loadProblem, pathname, router])
+    else if (me && !me.onboarding.done && !openDuringIntro) router.replace('/meet')
+  }, [session.loading, session.account, me, loadProblem, pathname, router, openDuringIntro])
 
   if (!session.loading && loadProblem) return <SessionProblem session={session} dark />
 
-  if (session.loading || !session.account || !me || !me.onboarding.done) {
+  if (session.loading || !session.account || !me || (!me.onboarding.done && !openDuringIntro)) {
     return <div className="min-h-dvh bg-sidebar" aria-busy="true" />
   }
 
