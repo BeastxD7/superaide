@@ -50,6 +50,7 @@ TABLES: tuple[str, ...] = (
     "never_ask_topic",  # One Good Question (#121)
     "owner_question",
     "memory_origin",  # independent origins of a belief (#137)
+    "memory_influence",  # which notes changed a reply (#122)
     "model_role",
     "onboarding",
     "owner_model_price",

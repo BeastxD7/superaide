@@ -83,6 +83,7 @@ class Settings(BaseSettings):
             "triage": 0.05,
             "voice": 0.30,
             "receptionist": 0.10,
+            "learning": 0.10,
         }
     )
     # These limits apply to each hired Ava on its own; an instance may set its own (agent_instance.spend_limits).
@@ -202,6 +203,11 @@ class Settings(BaseSettings):
     # One Good Question (#121, tracking #142). Off: /app/question answers 404. On: Ava may ask the owner at most
     # one clarifying question a day (a database rule), chosen in code by uncertainty times impact.
     one_good_question_enabled: bool = False
+    # "Why did you say that?" (#122, tracking #142). Off: /app/why/* answers 404. On: the owner can ask which notes
+    # changed one of Ava's replies; each request costs at most replay_max_ablations + 1 small-model calls, all inside
+    # the spend cap.
+    why_replay_enabled: bool = False
+    replay_max_ablations: int = 8
     gmail_poll_minutes: int = 5
     # The owner's Gmail sign-in (same OAuth client as Calendar); kept per instance in the vault.
     gmail_refresh_token: str = ""

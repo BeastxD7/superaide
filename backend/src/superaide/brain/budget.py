@@ -61,6 +61,9 @@ BUCKETS = {
     "voice_asr": "voice",
     "voice_tts": "voice",
     "receptionist": "receptionist",  # ADR 0010 TR5: chats with people Ava doesn't know
+    # Learning and trust features (#142): replay ablations and memory-free second opinions
+    "replay": "learning",
+    "second_opinion": "learning",
 }
 
 
