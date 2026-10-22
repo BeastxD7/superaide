@@ -147,6 +147,16 @@ def resolve(session: Session, approval: Approval, *, approve: bool, decided_by: 
     approval.decided_at = datetime.now(UTC)
     payload = dict(approval.payload or {})
     if approve:
+        from superaide.policy.breaker import allow
+
+        if not allow(session, approval.kind):
+            # Too many deletes or sends in a burst: Ava is frozen and this one is left for the owner.
+            approval.status = "pending"
+            approval.decided_by = None
+            approval.decided_at = None
+            payload["result"] = "Held: too many sends or deletes in a short time. Ava is paused; review and resume."
+            approval.payload = payload
+            return approval
         _load_executors()
         executor = EXECUTORS.get(approval.kind)
         payload["result"] = executor(session, approval) if executor else "Approved. Nothing can carry this out yet."

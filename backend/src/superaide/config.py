@@ -43,6 +43,14 @@ class Settings(BaseSettings):
     # mismatch is not sent.
     approval_binding: Literal["off", "record", "strict"] = "record"
 
+    # Circuit breaker (#140). Off by default. When on, more than `circuit_breaker_limit` deletes or sends
+    # carried out inside `circuit_breaker_window_seconds` freeze this owner's Ava (the kill switch), and the
+    # owner's own message that is exactly `halt_word` freezes her before any model sees it.
+    circuit_breaker_enabled: bool = False
+    circuit_breaker_limit: int = Field(default=5, ge=1)
+    circuit_breaker_window_seconds: int = Field(default=60, ge=1)
+    halt_word: str = "halt"
+
     # Tenancy
     tenant_id: uuid.UUID = DEFAULT_TENANT_ID
     agent_id: uuid.UUID = DEFAULT_AGENT_ID
