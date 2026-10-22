@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CATEGORY_LABEL, SOURCE_LABEL, useAppData } from '@/features/dashboard/data'
-import { call, type Memory } from '@/lib/api'
+import { call, type Conflict, type ConflictCard, type Memory } from '@/lib/api'
 import { errorMessage } from '@/lib/action'
 import { formatDay } from '@/lib/dates'
 import { useSession } from '@/lib/session-context'
@@ -17,6 +17,7 @@ import { useSession } from '@/lib/session-context'
 export function NotebookPage() {
   const { me } = useSession()
   const { data, error, reload } = useAppData<{ memories: Memory[] }>('/notebook')
+  const conflicts = useAppData<{ conflicts: Conflict[] }>('/notebook/conflicts')
   const [filter, setFilter] = useState<string>('all')
   const [where, setWhere] = useState<string>('all')
   const [query, setQuery] = useState('')
@@ -55,11 +56,63 @@ export function NotebookPage() {
     }
   }
 
+  async function decide(id: string, choice: 'keep' | 'new') {
+    setActionError(null)
+    try {
+      await call(`/notebook/conflicts/${id}/resolve`, { method: 'POST', json: { choice } })
+      await Promise.all([conflicts.reload(), reload()])
+    } catch (e) {
+      setActionError(errorMessage(e))
+    }
+  }
+
+  const origin = (c: ConflictCard) => c.document ?? (SOURCE_LABEL[c.source] ?? 'from chat').replace(/^from /, '')
+
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 lg:py-8">
         <h1 className="text-3xl font-medium text-ink tight">{name}&apos;s notebook</h1>
         <p className="mt-1 text-body">Everything {name} remembers about you, and where she learned it. Only you can see it.</p>
+
+        {(conflicts.data?.conflicts.length ?? 0) > 0 && (
+          <section aria-label="Which is current?" className="mt-6 space-y-2">
+            <h2 className="text-lg font-medium text-ink">Which is current?</h2>
+            <p className="text-sm text-body">
+              These came from a source {name} trusts less than you. {name} isn&apos;t using them until you decide.
+            </p>
+            {conflicts.data?.conflicts.map(({ claim, current }) => (
+              <div key={claim.id} className="rounded-xl border border-violet-200 bg-violet-50/40 p-4">
+                {current && (
+                  <p className="text-sm text-ink">
+                    <span className="text-xs text-muted">Now: from {origin(current)}</span>
+                    <br />
+                    {current.text}
+                  </p>
+                )}
+                <p className="mt-2 text-sm text-ink">
+                  <span className="text-xs text-muted">{current ? 'Another source says' : 'Held for your review'}: from {origin(claim)}</span>
+                  <br />
+                  {claim.text}
+                </p>
+                <div className="mt-3 flex gap-2">
+                  {current && (
+                    <Button size="sm" variant="outline" onClick={() => void decide(claim.id, 'keep')}>
+                      Keep what I have
+                    </Button>
+                  )}
+                  <Button size="sm" onClick={() => void decide(claim.id, 'new')}>
+                    {current ? 'Use the new one' : 'Use this'}
+                  </Button>
+                  {!current && (
+                    <Button size="sm" variant="ghost" onClick={() => void decide(claim.id, 'keep')}>
+                      Discard
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </section>
+        )}
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative sm:w-72">

@@ -225,6 +225,13 @@ class MemoryItem(Scoped, Base):
     last_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     verify_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     recheck_asked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Who wins when facts disagree (knowledge/trust.py): 1 = owner on a verified channel … 5 = other web.
+    trust_rank: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    author_person_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("person.id"), nullable=True)
+    superseded_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("memory_item.id"), nullable=True)
+    # none | pending (a weaker claim against a stronger fact) | review (a link fact outside about/work) | resolved
+    conflict_status: Mapped[str] = mapped_column(String(10), default="none", server_default="none")
+    conflicts_with_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("memory_item.id"), nullable=True)
 
 
 class MemoryOrigin(Scoped, Base):

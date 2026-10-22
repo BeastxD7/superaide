@@ -31,6 +31,7 @@ from superaide.db.session import session_scope
 from superaide.identity import linking
 from superaide.identity.resolver import Sender, resolve
 from superaide.intentions.when import is_reminder_request
+from superaide.knowledge import trust
 from superaide.knowledge.profile import owner_brief
 from superaide.memory.store import (
     get_or_create_context,
@@ -225,7 +226,10 @@ class Agent:
                 if self._is_owner(s, sender) and (set_reminder := self._remind_from_fact(s, sender, inbound, fact)):
                     self._reply(s, ctx, aud, set_reminder, thread, meta=reminder_meta(set_reminder))
                     return HandleResult("known", set_reminder, ["reminder"])
-                remember(s, content=fact, sender=sender, context=ctx, audience=aud, source_event=inbound)
+                rank = trust.OWNER_VERIFIED if self._is_owner(s, sender) else trust.THIRD_PARTY
+                remember(
+                    s, content=fact, sender=sender, context=ctx, audience=aud, source_event=inbound, trust_rank=rank
+                )
                 # Honest about what happened, without sending the private text back over a channel.
                 reply = "Saved to your notebook. Only you can see it."
                 self._reply(s, ctx, aud, reply, thread)
