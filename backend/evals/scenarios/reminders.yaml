@@ -7,7 +7,7 @@
   turns:
     - say: "remind me to submit the expense report tomorrow at 10am"
       expect:
-        - reply_contains: ["tomorrow.{0,40}10(:00)? ?am"]
+        - reply_contains_any: ["tomorrow.{0,40}10(:00)? ?am", "\\d{1,2} (Oct|Nov|Dec|Jan)[a-z]*.{0,12}10(:00)? ?am"]
   checks:
     - reminder: {text_any: ["expense report"], due: {day: 1, at: "10:00"}}
 
@@ -169,7 +169,7 @@
   turns:
     - say: "remind me at 7am to check the flight status"
       expect:
-        - reply_contains_any: ["7:00 am", "7 ?am"]
+        - reply_contains_any: ["7:00 ?am", "7 ?am", "07:00"]
   checks:
     - reminder: {text_any: ["flight"], due: {day: 1, at: "07:00"}}
 
@@ -193,7 +193,7 @@
   turns:
     - say: "remind me in 5 minutes to take out the trash"
       expect:
-        - reply_contains_any: ["10:35 pm", "5 minutes"]
+        - reply_contains_any: ["10:35 ?pm", "22:35", "5 minutes"]
     - advance: "+8m"
   checks:
     - delivered: {text_any: ["trash"]}

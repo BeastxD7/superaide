@@ -532,7 +532,11 @@ class OwnerTurn:
                 + "\nThese already went off; don't call them upcoming. Offer to clear them: cancel_reminder "
                 "marks a delivered one done."
             )
-        return "\n\n".join(parts), False
+        # The first line is what later turns see of this call (turn.tools_used): make it the summary.
+        summary = f"{len(found)} open reminder{'s' if len(found) != 1 else ''}: {len(ahead)} upcoming, " + (
+            f"{len(sent)} already delivered (not marked done)."
+        )
+        return summary + "\n\n" + "\n\n".join(parts), False
 
     def _update_reminder(self, args: dict[str, Any]) -> tuple[str, bool]:
         assert self.sender.person is not None

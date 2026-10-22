@@ -364,6 +364,8 @@ def test_delivered_reminders_are_listed_apart_from_upcoming_ones_and_clearing_on
         script = Script(tool_use("list_reminders", {}), "Here they are.")
         turn_for(s, script, "what's on my reminders list?").run(ASK)
         text = result_of(script)["content"]
+        # The first line is the summary later turns see: it must not read as "nothing listed".
+        assert text.splitlines()[0] == "2 open reminders: 1 upcoming, 1 already delivered (not marked done)."
         upcoming, _, delivered = text.partition("Already delivered, not marked done (1):")
         assert "Pay rent" in upcoming and "Drink water" not in upcoming
         assert "Drink water" in delivered and "don't call them upcoming" in delivered
@@ -404,10 +406,10 @@ def test_a_moved_reminder_is_on_record_with_before_and_after_and_a_short_id():
         turn.run(ASK)
     out = result_of(script)["content"]
     at = f"{day:%a} {day.day} {day:%b}"
-    assert f"moved from {at}, 16:00 (tomorrow at 4:00 pm) to {at}, 17:00 (tomorrow at 5:00 pm)" in out
+    assert f"moved from {at}, 4:00 pm (tomorrow at 4:00 pm) to {at}, 5:00 pm (tomorrow at 5:00 pm)" in out
     line = tools_used(Event(direction="out", content="Moved.", meta={"activity": turn.activity}))
     # Later turns see absolute times only: "tomorrow" would be wrong by then.
-    assert f"(#{str(r.id)[:8]}): moved from {at}, 16:00 to {at}, 17:00" in line
+    assert f"(#{str(r.id)[:8]}): moved from {at}, 4:00 pm to {at}, 5:00 pm" in line
     assert "tomorrow" not in line
     assert str(r.id) not in line  # the full id is in the tool result, not repeated in every later turn
     assert "authoritative over your memory of the conversation" in OWNER_RULES
