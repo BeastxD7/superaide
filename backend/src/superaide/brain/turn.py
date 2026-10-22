@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any, Literal
 
@@ -72,14 +73,24 @@ def build_system(
     ]
 
 
+_UUID = re.compile(r"\b([0-9a-f]{8})-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b")
+
+
 def tools_used(ev: Event) -> str:
-    """A record of the tools an earlier reply used, so the next turn knows what was actually done."""
-    done = [
-        f"{a.get('label', '')} -> {a.get('detail', '')}".strip(" ->")
-        for a in (ev.meta or {}).get("activity", [])
-        if a.get("kind") == "tool"
-    ]
+    """A record of the tools an earlier reply used, so the next turn knows what was actually done.
+    What the tool reported (with before → after for a change) leads; ids are shortened to #abcd1234
+    so a long thread stays readable."""
+    done = []
+    for a in (ev.meta or {}).get("activity", []):
+        if a.get("kind") != "tool" or a.get("name") == "verify":
+            continue
+        detail = _UUID.sub(r"#\1", str(a.get("detail", "")).replace("(id ", "(").strip())
+        done.append(detail if detail and a.get("name") in REMINDER_TOOLS else f"{a.get('label', '')} -> {detail}")
+    done = [d.strip(" ->") for d in done if d.strip(" ->")]
     return f"[Tools used for this reply: {'; '.join(done)}]" if done else ""
+
+
+REMINDER_TOOLS = {"create_reminder", "update_reminder", "cancel_reminder", "list_reminders"}
 
 
 LABELLED_CHARS = 600  # a turn from another channel is context, not the conversation itself

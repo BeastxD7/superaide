@@ -6,6 +6,15 @@ Generated 2026-10-21T22:09:53+00:00 · model `claude-haiku-5-5` · k = 3 run(s) 
 
 Measured US$0.0006 per scenario run; a full 91×3 run projects to US$0.17.
 
+> **Live confirmation after the fixes (k=3, US$0.025): 18/18.**
+> - rem-after-midnight-model-path, hard-contra-diet-change, hard-amb-next-friday,
+>   hard-amb-morning-new-york, hard-amb-tonight-london and hard-long-reminder-thread each passed 3/3.
+>   Fixed: the after-midnight note, the newer-note-wins rule, and the tool history now shows before → after
+>   with short ids and is authoritative over Ava's memory of the conversation.
+> - Taking each scenario's latest runs, the 78 scenarios in this run all pass (100% mean, 100% pass^3).
+>   This combines two runs and isn't a single fresh full pass. rem-cancel-one-of-two had only 1 run here
+>   before the cap; the 7 reminder scenarios this run didn't reach come from the previous round, also 3/3.
+
 > **About this run (round 3).**
 > - The US$0.15 cap stopped it after 78 of the 85 scenarios that aren't known gaps (232 runs,
 >   US$0.146). The 7 reminder scenarios it didn't reach (rem-cancel-one-of-two runs 2–3,

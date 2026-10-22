@@ -258,7 +258,7 @@ def test_a_reminder_set_without_the_model_is_on_record_for_the_next_turn(owner):
     with session_scope() as s:
         out = s.scalar(select(Event).where(Event.direction == "out").order_by(Event.created_at.desc()))
         assert out is not None
-        assert tools_used(out).startswith("[Tools used for this reply: Setting a reminder: Stretch, ")
+        assert tools_used(out).startswith("[Tools used for this reply: Reminder set: Stretch, ")
     owner.post("/app/chat", json={"text": "remind me to stretch"})  # asks when: nothing on record
     with session_scope() as s:
         out = s.scalar(select(Event).where(Event.direction == "out").order_by(Event.created_at.desc()))

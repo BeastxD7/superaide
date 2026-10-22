@@ -381,3 +381,30 @@ def test_the_owner_prompt_says_the_chat_is_their_verified_account():
         turn = turn_for(s, Script("Hi!"), "btw I'm Shashank")
         prompt = "\n".join(b.text for b in turn.system())
         assert "verified by the app through a linked identity" in prompt and "never doubt" in prompt
+
+
+def test_a_moved_reminder_is_on_record_with_before_and_after_and_a_short_id():
+    # Live eval 2026-10-22: eight turns after moving a reminder from 4 pm to 5 pm, the model
+    # "corrected" itself: "The reminder was never set for 4:00 pm."
+    from superaide.brain.loop import OWNER_RULES
+    from superaide.brain.turn import tools_used
+    from superaide.db.models import Event
+    from superaide.intentions.when import zone
+
+    with session_scope() as s:
+        owner = hired_owner(s)
+        assert owner is not None
+        tz = zone(intentions.owner_zone(s, owner))
+        day = (datetime.now(UTC).astimezone(tz) + timedelta(days=1)).date()
+        r = intentions.create(
+            s, owner, text="Call the landlord", due_at=datetime(day.year, day.month, day.day, 16, 0, tzinfo=tz)
+        )
+        script = Script(tool_use("update_reminder", {"id": str(r.id), "when": "5pm"}), "Moved to 5 pm.")
+        turn = turn_for(s, script, "make it 5pm instead")
+        turn.run(ASK)
+    out = result_of(script)["content"]
+    assert "moved from tomorrow at 4:00 pm to tomorrow at 5:00 pm" in out
+    line = tools_used(Event(direction="out", content="Moved.", meta={"activity": turn.activity}))
+    assert f"(#{str(r.id)[:8]}): moved from tomorrow at 4:00 pm to tomorrow at 5:00 pm" in line
+    assert str(r.id) not in line  # the full id is in the tool result, not repeated in every later turn
+    assert "authoritative over your memory of the conversation" in OWNER_RULES
