@@ -66,7 +66,10 @@ def owner(agent):
 
 
 def test_a_morning_digest_lists_today_dates_with_context_and_approvals(owner):
-    now = datetime.now(UTC).astimezone(SG)
+    # Due a few minutes from the real clock (a reminder in the past is refused), with the digest run
+    # pinned to 07:00 that same local day, so the test cannot fail when it happens to run near midnight.
+    due = (datetime.now(UTC) + timedelta(minutes=5)).astimezone(SG)
+    now = due.replace(hour=7, minute=0, second=0, microsecond=0)
     with session_scope() as s:
         person = hired_owner(s)
         assert person is not None
@@ -77,7 +80,7 @@ def test_a_morning_digest_lists_today_dates_with_context_and_approvals(owner):
             s,
             person,
             text="Call the bank",
-            due_at=now.replace(hour=23, minute=0) if now.hour < 23 else now + timedelta(minutes=5),
+            due_at=due,
         )
         s.add(Approval(kind="publish_post", payload={"summary": "x"}))
         s.flush()
