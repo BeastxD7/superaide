@@ -11,10 +11,27 @@ updates:
         update-types: [minor, patch]
 
   - package-ecosystem: npm
-    directories: [/frontend, /e2e]
+    directory: /frontend
     schedule:
       interval: weekly
     labels: [dependencies, "area:frontend"]
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # TypeScript 7 (the Go-based compiler) is held by owner decision; revisit later.
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
+      # @types/node tracks the Node major we run (24, Active LTS). Bump it by hand
+      # together with the Docker image and CI node-version.
+      - dependency-name: "@types/node"
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: npm
+    directory: /e2e
+    schedule:
+      interval: weekly
+    labels: [dependencies, "area:ci"]
     groups:
       npm-minor-and-patch:
         update-types: [minor, patch]
