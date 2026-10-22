@@ -55,7 +55,6 @@ test.describe('the marketplace and the profile', () => {
     await expect(page.getByText('Personal assistant').first()).toBeVisible()
     await expect(page.getByText("Hi, I'm Ava. New here, keen to learn.")).toBeVisible()
     await page.screenshot({ path: `${QA}/hero-orb-label.png` })
-    test.fail(true, 'BUG: the hero orb is labelled "Ava, an AI content strategist" (Leo\'s role), not a personal assistant')
     await expect(page.getByLabel(/^Ava, an AI personal assistant$/i)).toHaveCount(1, { timeout: 2000 })
   })
 })

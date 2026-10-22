@@ -81,7 +81,7 @@ export function Marketplace({ session, initialAgents = null }: { session: Sessio
             transition={{ type: 'spring', stiffness: 120, damping: 14, delay: 0.15 }}
             className="relative z-10 mx-auto lg:-mb-24"
           >
-            <Orb hue="indigo" size={300} track label="Ava, an AI content strategist" />
+            <Orb hue="indigo" size={300} track label={`${ava?.name ?? 'Ava'}, an AI ${ava?.role.toLowerCase() ?? 'personal assistant'}`} />
             <motion.div
               initial={{ opacity: 0, y: 10, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
