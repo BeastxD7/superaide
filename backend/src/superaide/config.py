@@ -135,6 +135,10 @@ class Settings(BaseSettings):
     # host), e.g. "https://*.trycloudflare.com". DEV_ORIGINS (host names, set by start.command) count too.
     link_origins: str = ""
     dev_origins: str = ""
+    # Origins registered with Google as authorised redirect URIs (<origin>/api/auth/google/callback),
+    # besides FRONTEND_ORIGIN. "Continue with Google" works from FRONTEND_ORIGIN and these only (comma-
+    # separated, exact origins, no wildcards); each must also be allowed by LINK_ORIGINS/DEV_ORIGINS.
+    google_redirect_origins: str = ""
     # Dev only: lets the dashboard inject fake messages to try impostor scenarios.
     enable_simulator: bool = False
     # The interactive API docs (/docs, /redoc, /openapi.json). Turn off on a public server.

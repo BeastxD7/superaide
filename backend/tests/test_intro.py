@@ -54,7 +54,7 @@ def test_offline_a_resume_is_kept_and_read_later(client):
     r = upload(client, "resume.txt", b"Shashank Rao\nApplied AI lead, PebbleRoad, Singapore")
     assert r.status_code == 200, r.text
     body = r.json()
-    assert body["status"] == "stored" and body["facts"] == 0 and "once my Claude brain is connected" in body["message"]
+    assert body["status"] == "stored" and body["facts"] == 0 and "once an AI model is connected" in body["message"]
     docs = client.get("/app/intro/documents").json()
     assert docs[0]["title"] == "resume.txt" and docs[0]["status"] == "stored"
     # Ava tells you in the conversation, and sharing the same file twice is spotted.
@@ -185,15 +185,16 @@ def test_a_failed_read_is_retried_later_and_never_marked_read(agent, client, bro
 
 def test_connecting_claude_reads_what_was_saved_while_offline(client, monkeypatch):
     from superaide.app import connections
+    from superaide.db.models import Job
     from superaide.vault.check import Checked
 
-    calls: list = []
     monkeypatch.setattr(connections.check, "check_anthropic", lambda key, http: Checked(values={"api_key": key}))
-    monkeypatch.setattr(connections, "read_pending", lambda agent, owner_id: calls.append(owner_id))
     upload(client, "resume.txt", b"Shashank Rao")
+    monkeypatch.setattr(connections.get_settings(), "fake_llm", False)
     r = client.post("/app/connections/anthropic", json={"api_key": "sk-ant-api03-" + "x" * 40})
     assert r.status_code == 200, r.text
-    assert len(calls) == 1
+    with session_scope() as s:  # the reading itself is covered in tests/test_read_pending.py
+        assert [j.kind for j in s.scalars(select(Job).where(Job.kind == "read_pending"))] == ["read_pending"]
 
 
 def test_a_chat_introduction_carries_on_when_reading_fails(client, broken_brain):
