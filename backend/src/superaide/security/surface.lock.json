@@ -39,6 +39,9 @@
   "backend/src/superaide/brain/pricing.py": "b578c0f4669183292a8ce597b92f1e81e57696c41cd6cb450ed3b50c8da789d5",
   "backend/src/superaide/context/audience.py": "536d28cf73c10b3012424db46fa13887f5ea5ab300a43141e931507a774fdd50",
   "backend/src/superaide/db/rls.py": "7cbe1ad1a212eb155e2b59fc75bad7624ef2c69dccfc5130f63a4af01fab4ca5",
+  "backend/src/superaide/drills/__init__.py": "818175c4f7d8e1d8412da5f976d723c7f00be6dca0d5bb822a21a2f7451d16d5",
+  "backend/src/superaide/drills/poison.py": "287a87eed7357fe035a6b01531f6640f9a0028288476ba1de9c470a298fbac8c",
+  "backend/src/superaide/drills/sparring.py": "fcf74d51c4acfcaea7adb080b3a001943e7d68d6fd8010c1ab15fbf0ffe4e5cc",
   "backend/src/superaide/evals/__init__.py": "9332d0c3a029ddf902dc6fc2453172e95f073b80eb0dfde704ff081050ce0d9a",
   "backend/src/superaide/evals/__main__.py": "c297d3e189c78f7b95813146d1df96ab685f7d78f4a43304344dd2fa2dd75673",
   "backend/src/superaide/evals/checks.py": "b3df6c48a1bcad24a1e9632e516e727b874bf389a0d95e07142c8def668eeeda",
@@ -56,7 +59,7 @@
   "backend/src/superaide/security/deploy.py": "c905d4fb3c63f584cddf3e9f7a5e4bb4e008b8ffbc97afa38675f197563f4757",
   "backend/src/superaide/security/logredact.py": "06fe3e1a63e9744cd4bbbf042ae8ca378e86b5a48ef9376fa1e82453c90552cf",
   "backend/src/superaide/security/surface.py": "7a795624b6a66863abf608b347b4a606f1e84b0d69d3ee4c89567884a7ae9062",
-  "backend/src/superaide/security/surface.toml": "7fe705aa2734d9a8aac3f075f249a0d67e9fc5cf5404783a51628440fbfbb346",
+  "backend/src/superaide/security/surface.toml": "55f500ee0b589ba32a5299e4050890f3964969ed4fac1b2c250b5e8bd6fc30b6",
   "backend/src/superaide/security/urls.py": "239a8c26a225779dbbe107e6110324974715058c756075332fcf22dd76f0c347",
   "backend/src/superaide/skills/manifest.py": "f79d664ad105614e0de764b96d2bdcc64bcb24b1a0689e6b5c75d94ff5e06dec",
   "backend/src/superaide/skills/manifest.schema.json": "cac30e73c40598fcf879528499cf1545280586ee95734b77b5d46f6a2fa3739b",
@@ -64,6 +67,8 @@
   "backend/src/superaide/triage/policy.py": "dc4e26b0067e888a0e59f34f94ef49bd21943f48f970f6935dace6a7fb8dfbc1",
   "backend/src/superaide/triage/store.py": "e7da61116e86a880748f784a4e690cbbc74e23d24b17e58e84e0a802127ea079",
   "backend/tests/redteam/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "backend/tests/redteam/regressions.jsonl": "bd225aae46ab208d7b5ac54556a06001c7edcc381d27033a0b32cceba66edeb6",
   "backend/tests/redteam/test_canaries.py": "fda3e8c14a63a4b7f05d0229bed323f30cb0d8294759ff62361506c267d106a8",
-  "backend/tests/redteam/test_impostors.py": "db4782d5d9f54715c5a1480ea45c4ff76542d8c55b288e0b0ecc9afd632fa7cd"
+  "backend/tests/redteam/test_impostors.py": "db4782d5d9f54715c5a1480ea45c4ff76542d8c55b288e0b0ecc9afd632fa7cd",
+  "backend/tests/redteam/test_poison_drills.py": "385c0c083bb68cc6774f29435ad1f560b6ea838253bb2f3e483c3e30e252ee86"
 }
