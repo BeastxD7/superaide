@@ -40,7 +40,7 @@ Migrations live in `backend/alembic/versions/`. CI checks that they match the mo
 ## Where knowledge comes from
 
 - **The owner, in the app:** introduction answers become typed settings (`owner_preference`, `contact`) and notebook facts with source `chat` or `call`.
-- **Files and links:** `knowledge/extract.py` reads PDF, DOCX and text files and fetches web pages with SSRF guards. GitHub profiles use the GitHub API; LinkedIn and X are refused with guidance. `knowledge/ingest.py` stores the document, then asks Claude Haiku for structured facts (no transaction stays open during the call), then links each fact to its document.
+- **Files and links:** `knowledge/extract.py` reads PDF, DOCX and text files and fetches web pages with SSRF guards. GitHub profiles use the GitHub API; LinkedIn and X are refused with guidance. `knowledge/ingest.py` stores the document, then asks Claude Haiku for structured facts (no transaction stays open during the call), then links each fact to its document. A file shared before any AI is connected stays `stored`. `knowledge/pending.py` has one hook, `brain_became_ready()`, that queues a per-instance `read_pending` job; it runs after Claude or a provider is connected, a model is chosen, or credits are switched on, and the worker's sweep (at start-up and every 10 minutes) covers anything else, such as the operator's own key. Ava tells the owner in chat when each document has been read.
 - **Other people:** messages are logged as episodes. Today, third parties can't write facts about the owner.
 
 ## Credentials

@@ -95,7 +95,6 @@ test.describe('changing your email', () => {
   })
 
   test('when the hourly email limit refuses the change, the email is not changed', async ({ page, owner, api }) => {
-    test.fail(true, 'BUG: the 429 from the email limit is raised after the address was changed, and run() commits it anyway')
     // Sign-up sent one link; four resends reach the limit of five an hour.
     for (let i = 0; i < 4; i++) expect((await api.post('/auth/verify-email/send')).status()).toBe(200)
     const moved = `moved-${owner.email}`
@@ -112,7 +111,6 @@ test.describe('changing your email', () => {
   test('the link for the new address points at the address the person is using', async ({ page, owner }) => {
     const log = process.env.QA_API_LOG
     test.skip(!log, 'set QA_API_LOG to the API log file to read the emailed link')
-    test.fail(true, 'BUG: POST /auth/email calls start_verification without request_origin(request), so the link uses FRONTEND_ORIGIN')
     const origin = `http://127.0.0.1:${WEB_PORT}`
     const headers = { 'X-Requested-With': 'superaide-e2e', Origin: origin }
     await page.request.post(`${origin}/api/auth/login`, { headers, data: { email: owner.email, password: owner.password } })
@@ -161,7 +159,6 @@ test.describe('emailed links', () => {
   })
 
   test('a reset link still works after reloading the page once a weak password was refused', async ({ page, owner, api }) => {
-    test.fail(true, 'BUG: useFragmentToken clears #token from the URL, so a reload shows "missing its code" although the link is still valid')
     await api.post('/auth/logout')
     const token = await emailLink(owner.email, 'reset_password')
     await page.goto(`/reset-password#token=${token}`)
@@ -215,7 +212,6 @@ test.describe('a session that ends while a page is open', () => {
 test.describe('the log-in page and its ?google= reason', () => {
   for (const mode of ['login', 'signup'] as const) {
     test(`/${mode}?google=__proto__ still shows the form with the general message`, async ({ page, api }) => {
-      test.fail(true, 'BUG: GOOGLE_PROBLEMS[reason] reads Object.prototype for "__proto__", and React crashes rendering it')
       void api
       const errors: string[] = []
       page.on('pageerror', (e) => errors.push(e.message))
@@ -228,7 +224,6 @@ test.describe('the log-in page and its ?google= reason', () => {
   }
 
   test('an unknown reason (constructor) shows the general message, not an empty box', async ({ page, api }) => {
-    test.fail(true, 'BUG: GOOGLE_PROBLEMS["constructor"] is Object, a function React drops, so the error box is empty')
     void api
     await page.goto('/login?google=constructor')
     await expect(page.getByRole('button', { name: 'Log in', exact: true })).toBeVisible()
@@ -261,7 +256,6 @@ test.describe('Sign in with Google', () => {
   })
 
   test('cancelling on Google keeps where you were heading', async ({ page, api }) => {
-    test.fail(true, 'BUG: the callback sends every failure to /login?google=<reason> and drops the pending next=')
     void api
     await page.goto(`/signup?next=${encodeURIComponent('/agents/ava/hire')}`)
     await page.getByRole('button', { name: 'Continue with Google' }).click()
@@ -272,7 +266,6 @@ test.describe('Sign in with Google', () => {
   })
 
   test('opened as 127.0.0.1 (as the log-in tests do), Google sign-in works', async ({ page, api }) => {
-    test.fail(true, 'BUG: redirect_uri is always FRONTEND_ORIGIN (localhost), where the 127.0.0.1 sign-in cookie is absent, so it fails as "expired"')
     void api
     const origin = `http://127.0.0.1:${WEB_PORT}`
     await page.goto(`${origin}/login`)
@@ -283,14 +276,13 @@ test.describe('Sign in with Google', () => {
   })
 
   test('an owner who signs in only with Google is not told their password is wrong when changing email', async ({ page, api }) => {
-    test.fail(true, 'BUG: Settings asks a Google-only owner (no password) for a password, then says "Your password isn\'t right."')
     await page.goto('/signup')
     await googleAs(page)
     await expect(page).toHaveURL(/\/$/)
     await api.hire()
     await api.completeIntroduction()
     const status = await changeEmailInSettings(page, 'gita-new@example.com', 'anything I could think of')
-    expect(status).toBe(401)
+    expect(status).toBe(400) // refused, but not as a wrong password
     await expect(emailForm(page).getByText(/./).last()).toBeVisible()
     await shot(page, 'google-only-change-email')
     await expect(emailForm(page).getByText("Your password isn't right.")).toHaveCount(0, { timeout: 1_000 })
