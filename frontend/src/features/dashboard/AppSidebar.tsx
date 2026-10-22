@@ -122,13 +122,16 @@ function UserMenu({ session }: { session: Session }) {
             <SidebarMenuButton
               size="lg"
               className="data-[state=open]:bg-sidebar-accent"
-              aria-label={`Account: signed in as ${account.user.name}`}
+              aria-label={`Account: signed in as ${account.user.name} ${account.user.email}`}
             >
-              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-lilac-200 text-sm font-semibold text-violet-700">
-                {initial}
-              </span>
+              {/* The initial is drawn by CSS, so it is not text a speech-control user could mistake for the button's name. */}
+              <span
+                aria-hidden
+                data-initial={initial}
+                className="grid size-8 shrink-0 place-items-center rounded-lg bg-lilac-200 text-sm font-semibold text-violet-700 before:content-[attr(data-initial)]"
+              />
               <span className="grid min-w-0 flex-1 text-left leading-tight">
-                <span className="truncate font-medium text-ink">{account.user.name}</span>
+                <span className="truncate font-medium text-ink">{account.user.name}</span>{' '}
                 <span className="truncate text-xs text-muted">{account.user.email}</span>
               </span>
               <ChevronsUpDown className="ml-auto size-4" />

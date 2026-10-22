@@ -695,7 +695,7 @@ function RolePicker({
                   <Label htmlFor={`${role.id}-provider`}>Provider</Label>
                   <select
                     id={`${role.id}-provider`}
-                    className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm"
+                    className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-base focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 md:text-sm"
                     value={c.provider}
                     onChange={(e) =>
                       update(role.id, { provider: e.target.value, model: modelsFor(e.target.value)[0] ?? '' })

@@ -61,7 +61,7 @@ function Frame({ title, children }: { title: string; children: ReactNode }) {
 }
 
 const INPUT =
-  'mt-2 w-full rounded-2xl border border-white bg-white px-4 py-3.5 text-ink outline-none placeholder:text-muted/60 focus:border-violet-400'
+  'mt-2 w-full rounded-2xl border border-white bg-white px-4 py-3.5 text-ink outline-none placeholder:text-muted focus:border-violet-400'
 
 export function VerifyEmail() {
   const [token] = useFragmentToken()

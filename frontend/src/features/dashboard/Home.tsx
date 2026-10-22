@@ -241,7 +241,7 @@ function PeopleCard({ state }: { state: LoadState<{ people: PersonCard[] }> }) {
                     <span className="grid size-7 place-items-center rounded-full bg-mist text-xs font-semibold text-violet-700">
                       {p.name.charAt(0).toUpperCase()}
                     </span>
-                    <span className="font-medium text-ink">{p.name}</span>
+                    <span className="min-w-0 font-medium text-ink [overflow-wrap:anywhere]">{p.name}</span>
                     <span className="text-muted">{capitalise(p.relationship)}</span>
                     {p.vip && (
                       <Badge className="ml-auto gap-1">
@@ -275,15 +275,15 @@ function RulesCard({ name, state }: { name: string; state: LoadState<Preferences
         <Loadable state={state} what="your rules">
           {(prefs) => (
             <dl className="space-y-3 text-sm">
-              <div className="flex gap-2">
-                <Clock className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden />
-                <div>
-                  <dt className="sr-only">Quiet hours</dt>
-                  <dd className="text-ink">
+              <div>
+                <dt className="sr-only">Quiet hours</dt>
+                <dd className="flex gap-2 text-ink">
+                  <Clock className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden />
+                  <span>
                     Quiet {prefs.quiet_start}–{prefs.quiet_end}
                     <span className="text-muted"> ({prefs.timezone})</span>
-                  </dd>
-                </div>
+                  </span>
+                </dd>
               </div>
               <div>
                 <dt className="text-xs text-muted">Interrupts you for</dt>
