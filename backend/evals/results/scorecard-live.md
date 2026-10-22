@@ -6,6 +6,11 @@ Generated 2026-10-21T22:09:53+00:00 · model `claude-haiku-5-5` · k = 3 run(s) 
 
 Measured US$0.0006 per scenario run; a full 91×3 run projects to US$0.17.
 
+> **Time-gap fix, live confirmation (k=3, US$0.009): 12/12.** The new
+> rem-eight-hours-later-no-clock-doubt (reminders listed, 8 hours pass, "Cool!") passed 3/3, with no
+> clock-mismatch talk. rem-list-separates-delivered, rem-move-to-3pm and rem-set-then-doubted, whose
+> tool text now uses absolute times, each passed 3/3.
+
 > **Live confirmation after the fixes (k=3, US$0.025): 18/18.**
 > - rem-after-midnight-model-path, hard-contra-diet-change, hard-amb-next-friday,
 >   hard-amb-morning-new-york, hard-amb-tonight-london and hard-long-reminder-thread each passed 3/3.
