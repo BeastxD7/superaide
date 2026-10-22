@@ -264,13 +264,13 @@ export async function streamChat(text: string, onEvent: (e: ChatEvent) => void, 
 }
 
 // Read a Server-Sent Events body, calling onEvent for each event as it arrives.
-async function readEvents(body: NonNullable<Response['body']>, onEvent: (event: string, data: unknown) => void): Promise<void> {
+export async function readEvents(body: NonNullable<Response['body']>, onEvent: (event: string, data: unknown) => void): Promise<void> {
   const reader = body.pipeThrough(new TextDecoderStream()).getReader()
   let buffer = ''
   for (;;) {
     const { value, done } = await reader.read()
     if (done) break
-    buffer += value
+    buffer += value.replace(/\r\n/g, '\n') // servers may end lines with CRLF
     let cut: number
     while ((cut = buffer.indexOf('\n\n')) >= 0) {
       const chunk = buffer.slice(0, cut)

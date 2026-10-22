@@ -104,6 +104,8 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run lint
       - run: npm run typecheck
+      - name: Unit tests
+        run: npm test
       - name: Build
         run: npm run build
         env:
