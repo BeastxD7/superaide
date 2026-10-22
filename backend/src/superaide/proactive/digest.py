@@ -186,6 +186,13 @@ def compose(
     from superaide.triage.digest import digest_lines  # ADR 0010: [] while TRIAGE_ENABLED is off
 
     lines += digest_lines(session, owner, now)
+    from superaide.config import get_settings
+
+    if not get_settings().triage_enabled:  # with triage on, messages taken are in its sections
+        from superaide.reception.service import digest_lines as reception_lines
+        from superaide.triage.digest import last_digest_at
+
+        lines += reception_lines(session, owner, last_digest_at(session, owner, now), now)
     from superaide.asklink.service import digest_lines as ask_lines  # [] while ASK_LINK_ENABLED is off
 
     lines += ask_lines(session, owner, now)

@@ -140,7 +140,7 @@ def _app_note(session: Session, owner: Person, row: TriageDecision) -> None:
     name = sender.display_name if sender else ""
     if not name:  # an email from someone who isn't a contact: the name on the email
         event = session.get(Event, row.inbound_event_id)
-        name = str(((event.meta if event is not None else None) or {}).get("from_name") or "Someone")
+        name = str(((event.meta if event is not None else None) or {}).get("from_name") or "Someone new")
     text = f"{head}: {name}: {row.reason}"
     notify_owner(session, owner, text, {"kind": "triage", "decision_id": str(row.id)}, channel="app")
 

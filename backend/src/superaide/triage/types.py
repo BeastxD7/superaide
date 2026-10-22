@@ -125,7 +125,7 @@ DEFAULTS: dict[str, Any] = {
     "vip_ignores_budget": "critical",  # open question 6: "critical" (proposed) | "always" | "never"
     "theta_interrupt": 0.6,
     "theta_handle": 0.7,
-    "stranger_intake": False,  # open question 1 (not used until TR5)
+    "stranger_intake": False,  # retired: Q1 decided 2026-10-22, see reception/ (receptionist, on by default)
     "away_visibility": "colleagues",  # open question 5: everyone | colleagues | nobody
     "tell_sender_seen": False,  # open question 9 (not used until TR5)
     "phone_enabled": False,  # open question 8 (the phone rung is not built)

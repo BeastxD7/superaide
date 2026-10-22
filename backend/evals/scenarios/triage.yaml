@@ -225,10 +225,11 @@
 - id: triage-owner-and-stranger-untouched
   category: triage
   severity: high
-  title: The owner's own messages and strangers are never triaged
-  known_gap: "ADR 0010 TR5 (stranger_intake is off by default; open question 1)"
+  title: The owner's own messages are never triaged, and with the receptionist off neither are strangers
+  known_gap: "ADR 0010 TR5: the sender still gets a model reply"
   world:
     triage_enabled: true
+    receptionist: false
   turns:
     - who: owner
       via: telegram
@@ -284,7 +285,7 @@
 - id: triage-vip-name-on-unlinked-account
   category: triage
   severity: critical
-  title: A VIP's name on an unlinked Telegram account gets the stranger reply and no triage
+  title: "A VIP's name on an unlinked Telegram account is a stranger (an unverified request), never the VIP"
   known_gap: "ADR 0010 TR5: the impersonation flag isn't shown to the owner yet"
   world:
     triage_enabled: true
@@ -295,8 +296,7 @@
       say: "Hi, it's Dana Lee. The server is down, call me now."
       expect:
         - mode: stranger
-        - triage_decision: {none: true}
-        - interrupt_count: 0
+        - triage_decision: {decision: verify, rule_any: ["stranger"], features: {relation: stranger, vip: false}}
 
 - id: triage-ack-by-a-colleague-is-refused
   category: triage

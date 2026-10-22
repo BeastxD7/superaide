@@ -139,6 +139,12 @@ def test_on_the_reply_is_unchanged_and_a_decision_is_recorded(world, on, model):
 
 
 def test_owner_and_strangers_are_not_triaged(world, on):
+    """The triage job skips the owner and people Ava doesn't know. (With the receptionist on, a stranger's
+    message is taken and filed by reception/, not triaged: see tests/test_reception.py.)"""
+    from superaide.reception.service import settings_for
+
+    with session_scope() as s:
+        settings_for(s, s.get(Person, world["owner_id"])).enabled = False
     on.handle(sl("U_SOMEONE", "the server is down"))
     with session_scope() as s:
         boss = s.get(Person, world["owner_id"])

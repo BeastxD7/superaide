@@ -128,10 +128,13 @@ def test_the_ladder_and_catch_up_stay_in_the_instance(daytime, two):
     with session_scope() as s:
         esc = s.scalar(select(Escalation))
         assert esc is not None and esc.state == "expired" and esc.agent_id == sb.agent_id
+        # More than one can exist (a message in quiet hours queues its own for when they end): the one
+        # this test queued for +1 minute has run, and every one belongs to B.
         catchups = s.scalars(select(Job).where(Job.kind == "triage_catchup")).all()
-        assert [(j.agent_id, j.status) for j in catchups] == [(sb.agent_id, "done")]
-        notes = s.scalars(select(Event).where(Event.meta["kind"].astext == "triage_catchup")).all()
-        assert [n.agent_id for n in notes] == [sb.agent_id]
+        assert catchups and {j.agent_id for j in catchups} == {sb.agent_id}
+        assert any(j.status == "done" for j in catchups)
+        note = s.scalar(select(Event).where(Event.meta["kind"].astext == "triage_catchup"))
+        assert note is not None and note.agent_id == sb.agent_id
         assert s.scalars(select(Job).where(Job.agent_id == sa.agent_id, Job.kind.like("%escalation%"))).all() == []
 
 

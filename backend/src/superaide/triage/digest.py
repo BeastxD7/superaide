@@ -56,7 +56,7 @@ def last_digest_at(session: Session, owner: Person, now: datetime) -> datetime:
 
 def _who(session: Session, d: TriageDecision) -> str:
     p = session.get(Person, d.sender_person_id) if d.sender_person_id else None
-    return p.display_name if p else "Someone"
+    return p.display_name if p else "Someone new"
 
 
 def _quote(d: TriageDecision) -> str:

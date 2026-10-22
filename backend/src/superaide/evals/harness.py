@@ -45,7 +45,7 @@ VIP_TG, VIP_SLACK = "7003", "U_DANA"
 CONTACT_TG, CONTACT_SLACK = "7004", "U_SAM"
 TEAM = "T_OURS"
 GROUP_TG, GROUP_SLACK = "-100777", "C_TEAM"
-CHAT_PURPOSES = {"chat_turn", "verify"}
+CHAT_PURPOSES = {"chat_turn", "verify", "receptionist"}
 
 
 # --- recording every model call -----------------------------------------------------------
@@ -144,6 +144,13 @@ class OfflineModel:
             if fake.triage is None:
                 raise ValueError("no scripted triage answer")
             return TriageOutput.model_validate(fake.triage)
+        from superaide.reception.turn import ReceptionTurn, TakenMessage
+
+        if output_model is ReceptionTurn:
+            return ReceptionTurn(
+                reply=fake.reply if self.turn else "Hello! I can pass a message on if you like.",
+                take_message=TakenMessage.model_validate(fake.take) if fake.take else None,
+            )
         if output_model is FactList:
             return FactList(facts=[])
         if output_model is not None:
@@ -329,9 +336,22 @@ def build_world(sc: Scenario, start: datetime, run: Run | None = None) -> uuid.U
             intentions.create(s, person, text=r.text, due_at=due, source="chat")
         if w.second_owner and run is not None:
             _second_owner(s, run)
+        _reception_world(s, sc, person)
         if w.triage_enabled:
             _triage_world(s, sc, person, start)
         return person.id
+
+
+def _reception_world(s: Any, sc: Scenario, owner: Person) -> None:
+    """The owner's receptionist settings: on unless the scenario turns it off."""
+    from superaide.reception.service import settings_for
+
+    rs = settings_for(s, owner)
+    rs.enabled, rs.public_profile, rs.show_first_name = (
+        sc.world.receptionist, sc.world.reception_profile, sc.world.reception_show_name,
+    )  # fmt: skip
+    for k, v in sc.world.reception_limits.items():
+        setattr(rs, k, v)
 
 
 def _triage_world(s: Any, sc: Scenario, owner: Person, start: datetime) -> None:
@@ -355,7 +375,7 @@ def _triage_world(s: Any, sc: Scenario, owner: Person, start: datetime) -> None:
     else:  # no quiet hours in the way unless the scenario asks for them
         pref.quiet_start = pref.quiet_end = "00:00"
     ts = settings_for(s, owner)
-    ts.stranger_intake, ts.away_visibility = w.stranger_intake, w.away_visibility
+    ts.away_visibility = w.away_visibility
     if w.away_days:
         ts.away_until = start + timedelta(days=w.away_days)
     for k, v in w.triage_settings.items():

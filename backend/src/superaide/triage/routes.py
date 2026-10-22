@@ -62,7 +62,6 @@ class SettingsBody(BaseModel):
     silenced_people: list[uuid.UUID] | None = Field(default=None, max_length=500)
     silenced_topics: list[str] | None = Field(default=None, max_length=100)
     autonomy_grants: list[str] | None = Field(default=None, max_length=50)
-    stranger_intake: bool | None = None
     away_visibility: Literal["everyone", "colleagues", "nobody"] | None = None
     tell_sender_seen: bool | None = None
 
@@ -83,7 +82,7 @@ def settings_view(ts: TriageSettings) -> dict[str, Any]:
         "theta_interrupt": ts.theta_interrupt, "theta_handle": ts.theta_handle,
         "silenced_people": [str(p) for p in ts.silenced_people or []],
         "silenced_topics": list(ts.silenced_topics or []),
-        "autonomy_grants": list(ts.autonomy_grants or []), "stranger_intake": ts.stranger_intake,
+        "autonomy_grants": list(ts.autonomy_grants or []), 
         "away_until": ts.away_until.isoformat() if ts.away_until else None, "away_visibility": ts.away_visibility,
         "busy_until": ts.busy_until.isoformat() if ts.busy_until else None, "tell_sender_seen": ts.tell_sender_seen,
         "phone_enabled": ts.phone_enabled,
@@ -94,8 +93,27 @@ def _iso(d: datetime | None) -> str | None:
     return d.isoformat() if d else None
 
 
+def _stranger_view(s: Any, d: TriageDecision) -> tuple[str, dict[str, Any] | None]:
+    """Someone Ava doesn't know left a message: their own words, shown only here, marked unverified."""
+    from superaide.reception.models import ReceptionMessage
+
+    raw = (d.features or {}).get("reception_message_id")
+    try:
+        m = s.get(ReceptionMessage, uuid.UUID(str(raw))) if raw else None
+    except ValueError:
+        m = None
+    if m is None:
+        return "Someone new (unverified)", None
+    who = m.name or m.handle or "Someone new"
+    where = f" on {m.provider}" + (f", {m.handle}" if m.handle and m.name else "")
+    taken = {"name": m.name, "contact": m.contact, "topic": m.topic, "message": m.message,
+             "deadline_text": m.deadline_text, "claimed_urgency": m.claimed_urgency}  # fmt: skip
+    return f"{who} (unverified{where})", taken
+
+
 def item_view(s: Any, d: TriageDecision, esc: Escalation | None) -> dict[str, Any]:
     sender = s.get(Person, d.sender_person_id) if d.sender_person_id else None
+    stranger, taken = (None, None) if sender is not None or d.sender_person_id else _stranger_view(s, d)
     flags = set((d.classifier or {}).get("risk_flags") or [])
     quotes = [] if flags & HIDDEN_QUOTES else list((d.classifier or {}).get("evidence") or [])[:3]
     email = (d.features or {}).get("provider") == "email"
@@ -109,13 +127,13 @@ def item_view(s: Any, d: TriageDecision, esc: Escalation | None) -> dict[str, An
         quotes = quotes if quotable(d, str(meta.get("subject") or "")) else []
     out: dict[str, Any] = {
         "id": str(d.id), "decision": d.decision, "reason": d.reason,
-        "sender": sender.display_name if sender else str(meta.get("from_name") or ""),
+        "sender": sender.display_name if sender else (stranger or str(meta.get("from_name") or "")),
         "source": "email" if email else "message",
         "subject": str(meta.get("subject") or "") if email and quotable(d, str(meta.get("subject") or "")) else None,
         "quotes": quotes, "rule_hits": list(d.rule_hits or []), "stage": d.stage_at_time,
         "maybe_urgent": bool((d.features or {}).get("maybe_urgent")),
         "shadow_decision": (d.features or {}).get("shadow_decision"), "feedback": d.feedback,
-        "created_at": d.created_at.isoformat(), "escalation": None,
+        "created_at": d.created_at.isoformat(), "escalation": None, "taken": taken,
     }  # fmt: skip
     if esc is not None:
         rows = s.scalars(

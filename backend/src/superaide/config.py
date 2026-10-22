@@ -60,7 +60,7 @@ class Settings(BaseSettings):
     budget_monthly_usd: float = 5.00  # any 30 days
     # Per purpose bucket, any 24 hours (chat replies, memory reading, web research).
     budget_daily_by_bucket: dict[str, float] = Field(
-        default_factory=lambda: {"chat": 0.40, "memory": 0.15, "research": 0.25, "triage": 0.05, "voice": 0.30}
+        default_factory=lambda: {"chat": 0.40, "memory": 0.15, "research": 0.25, "triage": 0.05, "voice": 0.30, "receptionist": 0.10}
     )
     # These limits apply to each hired Ava on its own; an instance may set its own (agent_instance.spend_limits).
     # Platform-wide, per UTC day, for calls paid with Superaide's own model key (ADR 0009). Owners'
