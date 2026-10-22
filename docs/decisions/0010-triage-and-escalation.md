@@ -1,6 +1,7 @@
 # 0010: Triage and escalation
 
-Status: proposed (2026-10-22). Design only; nothing here is built yet.
+Status: partially built (flag off), 2026-10-22. TR0–TR3 and TR7–TR10 are on main behind `TRIAGE_ENABLED`
+(default false); see "As built" below. The open questions are still open.
 
 ## Context
 
@@ -559,6 +560,62 @@ user-facing ships.
 - Cost rises by about $1–2 a month per busy owner for classification, offset by fewer chat turns.
 - Risk: false negatives in rules-only mode. This is mitigated by holding (not dropping), "should have
   told me" on every held item, and shadow-measured recall before any promotion.
+
+## As built (2026-10-22)
+
+Everything below is behind `TRIAGE_ENABLED`, which is **off by default**. With it off, nothing
+changes: every known non-owner still gets a model reply from `_think`, the digest reads nothing
+new, and the owner routes answer the signed-in owner 404 (others get 401/403 as on any owner
+route). Paths are relative to `backend/src/superaide/`.
+
+**Shadow mode.** TR5 isn't built, so with the flag on triage runs in shadow: a known non-owner's
+message gets a recorded decision and the owner gets escalations, but the sender is still answered
+by `_think`. The pipeline hook is one guarded line before `_think` that queues a `triage_inbound`
+job; a triage failure can't touch the reply.
+
+| WP | Landed | Where |
+|---|---|---|
+| TR0 | Six per-instance tables under RLS (migrations 0020, and 0023 for `escalation_delivery.cycle`), `TriageOutput`, the defaults below | `triage/{models,types,store}.py` |
+| TR1 | Features from typed data only; R2–R9; score; stage caps; Infant shadow decision; bounded deferral | `triage/{features,rules,policy}.py` |
+| TR2 | Classifier on the `triage` role and its own daily bucket (`BUCKETS["triage"]`, `budget_daily_by_bucket["triage"] = 0.05`); quote and deadline checks; resampling; rules-only fallbacks | `triage/classify.py` |
+| TR3 | The ladder (app → interrupt channel → other channel → expired), idempotent step jobs under a row lock, delivery rows, explicit owner-only acks, snooze cycles, quiet hours, rejected channels, the interrupt budget | `triage/{escalate,service}.py` |
+| TR7 | `GET /app/needs-you`, `POST /app/needs-you/{id}/action` and `/feedback`, `GET/PUT /app/triage/settings`, `POST /app/triage/away` and `/busy` | `triage/routes.py` |
+| TR8 | Digest sections (Needs your decision, Escalations, Handled for you, Messages taken, FYI, Couldn't sort) and one catch-up note when quiet hours end | `triage/digest.py`, one hook in `proactive/digest.py` |
+| TR9 | The Needs-you inbox and a settings panel at `/dashboard/needs-you`; the sidebar item appears only when the API answers | `frontend/src/features/needs-you/` |
+| TR10 | 22 scenarios in `backend/evals/scenarios/triage.yaml` (all known gaps, so the scored scorecard doesn't move), 52 synthetic labels in `backend/evals/triage_labels.jsonl`, `python -m superaide.evals triage [--live]` | `evals/` |
+
+**Defaults standing in for the open questions.** These are proposals stored per owner in
+`triage_settings` (from `triage/types.py` `DEFAULTS`), editable through `PUT /app/triage/settings`.
+
+| Question | Default |
+|---|---|
+| 1. Strangers | `stranger_intake` off: fixed reply, no model call (not used until TR5) |
+| 3. Ladder | app at once; the interrupt channel after 180 s (at once when the owner chose a chat channel); the other channel after 300 s; expired 600 s later |
+| 5. Away visibility | colleagues |
+| 6. Interrupt budget | 2 an hour, 6 a day; a verified VIP gets past it only when critical (`vip_ignores_budget`) |
+| 8. Phone | off (the rung isn't built) |
+| 9. "Has seen" | off (`tell_sender_seen`, not used until TR5) |
+| Thresholds | θ_interrupt 0.6, θ_handle 0.7 |
+
+**First numbers.** On the labelled set, offline and rules only: tell-now precision 100%, recall 38%,
+verify recall 100%, 96% acceptable decisions. The recall gap is what the classifier is for; run
+`--live` to measure it.
+
+**Not built yet, and why**
+
+- TR4 (buttons on Telegram and Slack): after ADR 0009 T4. Pushes are plain text today; the press
+  tokens are already stored on each delivery.
+- TR5 (the pipeline hook proper): the sender templates, `reply_on_behalf` drafts and their
+  executor, `stranger_intake`. Today `handle` is recorded only, and the sender's reply is unchanged.
+- TR6 (learning, metrics, stage gates): feedback is recorded, but no `triage_rule` is suggested
+  yet. The stage is read from `agent_state["stage"]` and defaults to Infant.
+- TR8: the away handover digest isn't built.
+- TR11 (the phone rung).
+- Known limits: a `verify` gets an in-app note, never the ladder (the "interrupt-worthy if it
+  otherwise would be" part isn't built). Triage and escalation jobs run unscoped, like every other
+  job, until ADR 0009 T5 scopes jobs. The interrupt budget counts chat-channel pushes, so an owner
+  with no linked chat channel never uses it up. Scenario 20 (two instances) is covered by the API
+  test `test_another_owner_never_sees_or_touches_the_items` and RLS rather than a scenario.
 
 ## Open questions for the owner
 
