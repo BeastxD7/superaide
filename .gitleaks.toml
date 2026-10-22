@@ -32,3 +32,9 @@ description = "A made-up OpenRouter-style key in the provider settings tests"
 condition = "AND"
 paths = ['''(^|/)tests/test_providers_config\.py$''']
 regexes = ['''^sk-or-v1-test-secret-key-0123456789$''']
+
+[[allowlists]]
+description = "A made-up opaque escalation token in the push payload tests"
+condition = "AND"
+paths = ['''(^|/)tests/test_push\.py$''']
+regexes = ['''^AbCdEfGh1234$''']
