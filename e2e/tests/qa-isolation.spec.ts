@@ -105,7 +105,6 @@ test.describe('owner B with A’s ids', () => {
 
 test.describe('accounts that have not hired', () => {
   test('a sign-up is not stored inside the first owner’s Ava', async ({ browser }) => {
-    test.fail(true, 'BUG: sign-up runs with no instance in scope, so a new account’s Person and its "signup" audit lines are written into the first owner’s instance')
     const a = await introduced(browser, 'Shashank Rao')
     const instanceA = await instanceOf(a)
     const b = await account(browser, 'Bella Tan') // signs up, never hires
@@ -140,26 +139,21 @@ test.describe('accounts that have not hired', () => {
   })
 
   test('a second owner’s password and email changes are logged in their own Ava, not the first owner’s', async ({ browser }) => {
-    test.fail(true, 'BUG: /auth/* runs with no instance in scope, so owner B’s password_changed and email_changed audit lines land in owner A’s safety log')
     const a = await introduced(browser, 'Shashank Rao')
     const b = await introduced(browser, 'Bella Tan')
     const [instanceA, instanceB] = [await instanceOf(a), await instanceOf(b)]
     const [{ id: userB }] = await query<{ id: string }>('SELECT id FROM user_account WHERE email = $1', [b.person.email])
     await b.api.ok(b.api.post('/auth/password', { current: b.person.password, new: 'another correct horse staple 2' }))
     await b.api.ok(b.api.post('/auth/email', { email: `new-${b.person.email}`, password: 'another correct horse staple 2' }))
-    // Screenshot: the console's Safety log for the first owner's Ava (the console's default instance).
+    // The operator, reading the first owner's Safety log with a reason, sees nothing of B's account.
+    const operator = { ...OPERATOR, 'X-Operator-Reason': 'qa: checking owner A safety log' }
     const ctx = await browser.newContext({ baseURL: BASE_URL })
-    const page = await ctx.newPage()
-    await page.goto(`/console?token=${ADMIN_TOKEN}`)
-    await page.getByRole('navigation', { name: 'Sections' }).getByRole('button', { name: 'Safety log', exact: true }).click()
-    const open = page.getByRole('button', { name: "Open, and record it in the owner's log" })
-    if (await open.isVisible()) {
-      await page.getByLabel(/^Reason/).fill('qa: checking owner A safety log')
-      await open.click()
-    }
-    await expect(page.getByText(/password_changed|Password changed/i).first()).toBeVisible()
-    await page.screenshot({ path: `${QA}/owner-b-auth-events-in-a-safety-log.png`, fullPage: true })
+    const auditA = await (await ctx.request.get('/api/api/audit', { headers: { ...operator, 'X-Operator-Instance': instanceA } })).text()
+    const auditB = await (await ctx.request.get('/api/api/audit', { headers: { ...operator, 'X-Operator-Instance': instanceB } })).text()
     await ctx.close()
+    expect(auditA).not.toContain(userB)
+    expect(auditB).toContain('password_changed')
+    expect(auditB).toContain('email_changed')
     const rows = await query<{ agent_id: string; action: string }>(
       "SELECT agent_id, action FROM audit_log WHERE action IN ('password_changed', 'email_changed') AND detail->>'user_id' = $1",
       [userB],
