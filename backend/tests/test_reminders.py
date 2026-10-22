@@ -9,7 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from superaide.db.models import ChannelIdentity, Event, Intention, Job, OwnerPreference
+from superaide.db.models import ChannelIdentity, Event, Intention, Job, OwnerPreference, Person
 from superaide.db.session import session_scope
 from superaide.intentions.when import parse_reminder, zone
 from superaide.jobs.handlers import load
@@ -263,3 +263,46 @@ def test_a_reminder_set_without_the_model_is_on_record_for_the_next_turn(owner):
     with session_scope() as s:
         out = s.scalar(select(Event).where(Event.direction == "out").order_by(Event.created_at.desc()))
         assert out is not None and tools_used(out) == ""
+
+
+def _crowd_with_delivered_open_reminders(owner_client, n: int) -> None:
+    """The owner never taps 'done': n old reminders went off and stay open (issue #85)."""
+    ahead = datetime.now(UTC) + timedelta(days=1)
+    owner_client.post("/app/reminders", json={"text": "Renew the lease", "due_at": ahead.isoformat()})
+    [mine] = intentions()
+    now = datetime.now(UTC)
+    with session_scope() as s:
+        for k in range(n):
+            due = now - timedelta(days=n - k)
+            s.add(
+                Intention(
+                    owner_person_id=mine.owner_person_id,
+                    kind="reminder",
+                    text=f"Old {k}",
+                    due_at=due,
+                    timezone="Asia/Singapore",
+                    source="chat",
+                    delivered_at=due,
+                    delivered_via=["app"],
+                )
+            )
+
+
+def test_many_delivered_open_reminders_do_not_push_newer_ones_off_the_list(owner):
+    _crowd_with_delivered_open_reminders(owner, 120)
+    texts = [r["text"] for r in owner.get("/app/reminders").json()["reminders"]]
+    assert "Renew the lease" in texts  # the dashboard shows up to 100
+    assert texts[0] == "Renew the lease"  # what is still ahead comes before what already went off
+    assert len(texts) == 100
+    assert texts[1] == "Old 119"  # then the most recent delivered ones, newest first
+
+
+def test_the_list_reminders_cap_of_50_still_shows_the_upcoming_one(owner):
+    from superaide.intentions import service as intentions_service
+
+    _crowd_with_delivered_open_reminders(owner, 60)
+    with session_scope() as s:
+        me = s.get(Person, intentions()[0].owner_person_id)
+        assert me is not None
+        [first, *_] = intentions_service.upcoming(s, me, limit=50)
+        assert first.text == "Renew the lease" and first.delivered_at is None
