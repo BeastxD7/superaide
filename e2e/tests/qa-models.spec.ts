@@ -10,6 +10,7 @@
 import { execFileSync } from 'node:child_process'
 import { createServer, type Server } from 'node:http'
 import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import type { AddressInfo } from 'node:net'
 import type { Page } from '@playwright/test'
 import { expect, newPerson, query, test } from '../src/fixtures'
@@ -17,8 +18,9 @@ import { DATABASE_URL, SLOT } from '../src/env'
 import { Admin, composer, goToDashboardPage, openChat, sendButton } from '../src/helpers/workspace'
 
 const QA = `${process.env.QA_SHOTS_DIR ?? 'test-results/qa-shots'}/models`
-const HELPERS = resolve(__dirname, '../scripts/qa-models')
-const BACKEND_DIR = resolve(__dirname, '../../backend')
+const HERE = fileURLToPath(new URL('.', import.meta.url))
+const HELPERS = resolve(HERE, '../scripts/qa-models')
+const BACKEND_DIR = resolve(HERE, '../../backend')
 const CREDITS = process.env.E2E_QA_CREDITS === '1'
 // The default stack with DEPLOY_MODE=hosted passed through to the API (E2E_QA_HOSTED=1 DEPLOY_MODE=hosted).
 const HOSTED = process.env.E2E_QA_HOSTED === '1' && process.env.DEPLOY_MODE === 'hosted'
