@@ -65,4 +65,12 @@ def check(raw: str) -> str:
 
 
 def suggest() -> str:
-    return "ava-" + "".join(secrets.choice(_SUGGEST) for _ in range(6))
+    """A pseudonymous handle that passes `check`: random letters can spell a rude word (or a reserved
+    one), so a suggestion is tried against the same rules an owner's own handle must meet."""
+    for _ in range(100):
+        candidate = "ava-" + "".join(secrets.choice(_SUGGEST) for _ in range(6))
+        try:
+            return check(candidate)
+        except HandleError:
+            continue
+    raise RuntimeError("couldn't generate a handle that passes the handle rules")  # not reachable in practice
