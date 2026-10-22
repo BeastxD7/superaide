@@ -297,6 +297,13 @@ def test_many_delivered_open_reminders_do_not_push_newer_ones_off_the_list(owner
     assert texts[1] == "Old 119"  # then the most recent delivered ones, newest first
 
 
+def test_an_absurdly_far_reminder_is_refused_with_a_reason_not_a_server_error(owner):
+    r = owner.post("/app/reminders", json={"text": "Renew in 99999999 days"})
+    assert r.status_code == 422
+    chat = owner.post("/app/chat", json={"text": "remind me in 99999999 days to renew"})
+    assert chat.status_code == 200 and "When should I remind you?" in chat.json()["reply"]
+
+
 def test_the_list_reminders_cap_of_50_still_shows_the_upcoming_one(owner):
     from superaide.intentions import service as intentions_service
 
