@@ -182,9 +182,35 @@ const client = createClient(API_URL, { withCredentials: true })
 
 type Init = { method?: 'GET' | 'POST' | 'PUT'; json?: unknown }
 
+// A 401 from /app/* means the session has ended (signed out elsewhere, expired, password changed).
+// The session provider registers one handler that clears the signed-in state and sends the person
+// to log in, so no page has to handle it. Wrong-password answers from /auth/* are not session
+// endings and never reach it.
+let onSignedOut: (() => void) | null = null
+
+export function setSignedOutHandler(handler: () => void): () => void {
+  onSignedOut = handler
+  return () => {
+    if (onSignedOut === handler) onSignedOut = null
+  }
+}
+
+export function isUnauthorized(e: unknown): boolean {
+  return e instanceof ApiError && e.status === 401
+}
+
+function sessionEnded(e: unknown, url: string): void {
+  if (url.startsWith('/app/') && isUnauthorized(e)) onSignedOut?.()
+}
+
 async function request<T>(url: string, init?: Init): Promise<T> {
-  const res = await client.request<T>({ url, method: init?.method ?? 'GET', data: init?.json })
-  return res.data
+  try {
+    const res = await client.request<T>({ url, method: init?.method ?? 'GET', data: init?.json })
+    return res.data
+  } catch (e) {
+    sessionEnded(e, url)
+    throw e
+  }
 }
 
 // The app's endpoints (/app/...).
@@ -209,7 +235,9 @@ export async function streamChat(text: string, onEvent: (e: ChatEvent) => void, 
   }
   if (!res.ok || !res.body) {
     const body = (await res.json().catch(() => null)) as { detail?: unknown } | null
-    throw errorFromDetail(res.status, body?.detail, `Request failed (${res.status})`)
+    const err = errorFromDetail(res.status, body?.detail, `Request failed (${res.status})`)
+    sessionEnded(err, '/app/chat/stream')
+    throw err
   }
   const reader = res.body.pipeThrough(new TextDecoderStream()).getReader()
   let buffer = ''
@@ -236,8 +264,13 @@ export async function streamChat(text: string, onEvent: (e: ChatEvent) => void, 
 export async function upload<T>(path: string, file: File): Promise<T> {
   const form = new FormData()
   form.append('file', file)
-  const res = await client.post<T>(`/app${path}`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
-  return res.data
+  try {
+    const res = await client.post<T>(`/app${path}`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
+    return res.data
+  } catch (e) {
+    sessionEnded(e, `/app${path}`)
+    throw e
+  }
 }
 
 // Accounts (/auth/...).

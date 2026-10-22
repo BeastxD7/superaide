@@ -115,7 +115,6 @@ test.describe('hired, not yet introduced', () => {
       await settlesOn(page, '/')
       await page.screenshot({ path: `${QA}/me-fails-bounce.png`, fullPage: true })
     }
-    test.fail(true, 'BUG: a failed /app/me is treated as "not hired": /meet silently bounces to the marketplace, in a loop')
     await expect(page).toHaveURL(/\/meet$/, { timeout: 1000 })
     await expect(page.getByText(/can't reach|couldn't|try again/i)).toBeVisible({ timeout: 3000 })
   })
@@ -134,7 +133,6 @@ test.describe('hired, not yet introduced', () => {
     await expect(page).toHaveURL(/\/dashboard$/)
     await settlesOn(page, '/meet', 3500)
     await page.screenshot({ path: `${QA}/finish-slow-me-bounce.png`, fullPage: true })
-    test.fail(true, 'BUG: Start working is shown before session.refresh() finishes; the dashboard reads the stale "not done" and sends you back to /meet')
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 1000 })
   })
 
@@ -148,12 +146,12 @@ test.describe('hired, not yet introduced', () => {
     for (const [i, q] of CALL_QUESTIONS.entries()) await typeAnswer(dialog, q, `Answer number ${i + 1}.`)
     await expect(dialog.getByText('Call ended').first()).toBeVisible()
     const closedOrExplained = async () => {
-      await expect(callDialog(page).or(page.getByText(/couldn't|try again|went wrong/i).first())).toBeVisible()
+      // .first(): the call screen staying open WITH a message is a fine answer, and matches both.
+      await expect(callDialog(page).or(page.getByText(/couldn't|try again|went wrong/i).first()).first()).toBeVisible()
       return !(await callDialog(page).isVisible()) || (await page.getByText(/couldn't|try again|went wrong/i).count()) > 0
     }
     await expect.poll(closedOrExplained, { timeout: 4000 }).toBe(true).catch(() => undefined)
     await page.screenshot({ path: `${QA}/call-finish-error-stuck.png`, fullPage: true })
-    test.fail(true, 'BUG: endCall() awaits /intro/call/finish with no catch: on an error the call screen stays on "Call ended" with no message')
     expect(await closedOrExplained()).toBe(true)
   })
 
@@ -195,7 +193,6 @@ test.describe('introduced', () => {
     await page.goto('/dashboard')
     await settlesOn(page, '/')
     await page.screenshot({ path: `${QA}/me-fails-dashboard-bounce.png`, fullPage: true })
-    test.fail(true, 'BUG: a failed /app/me is treated as "not hired": the dashboard silently bounces to the marketplace')
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 1000 })
     await expect(page.getByText(/can't reach|couldn't|try again/i)).toBeVisible({ timeout: 3000 })
   })

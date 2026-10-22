@@ -46,7 +46,9 @@ export type VideoCallProps = {
   agentName: string
   firstQuestion: CallQuestion
   onAnswer: (questionId: string, transcript: string) => Promise<CallTurnResult>
-  onFinish: () => void // called when there is no next question and the closing line has been spoken
+  // Called when there is no next question and the closing line has been spoken. If it rejects, the
+  // call stays open on "Call ended" with a message, so the person can try again or close it.
+  onFinish: () => Promise<void>
   onCancel: () => void // user hangs up early
 }
 
@@ -122,6 +124,8 @@ export function VideoCall({ agentName, firstQuestion, onAnswer, onFinish, onCanc
   const [error, setError] = useState<string | null>(null)
   const [voiceBlocked, setVoiceBlocked] = useState(false)
   const [confirmLeave, setConfirmLeave] = useState(false)
+  const [finishFailed, setFinishFailed] = useState(false)
+  const [finishing, setFinishing] = useState(false)
   const [seconds, setSeconds] = useState(0)
   const big = useMedia('(min-width: 768px) and (min-height: 700px)')
   const wide = useMedia('(min-width: 768px)')
@@ -378,7 +382,19 @@ export function VideoCall({ agentName, firstQuestion, onAnswer, onFinish, onCanc
     if (!current(my)) return
     setPhase('ended')
     stopCamera()
-    cb.current.onFinish()
+    await finish()
+  }
+
+  async function finish() {
+    setFinishing(true)
+    setFinishFailed(false)
+    try {
+      await cb.current.onFinish()
+    } catch {
+      setFinishFailed(true)
+    } finally {
+      setFinishing(false)
+    }
   }
 
   async function repeat() {
@@ -805,6 +821,30 @@ export function VideoCall({ agentName, firstQuestion, onAnswer, onFinish, onCanc
 
           {/* Your answer */}
           <div className="flex flex-col rounded-[22px] bg-white/5 p-4 ring-1 ring-white/10 md:min-h-[9rem]">
+            {ended && finishFailed && (
+              <div className="mb-3">
+                <Notice tone="error">
+                  <p>Couldn't finish the call. Your answers are saved.</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void finish()}
+                      disabled={finishing}
+                      className="rounded-full bg-danger px-3.5 py-1.5 text-xs font-medium text-white hover:bg-[#a83150] disabled:opacity-60"
+                    >
+                      Try again
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => cb.current.onCancel()}
+                      className="rounded-full bg-white px-3.5 py-1.5 text-xs font-medium text-danger ring-1 ring-danger/30 hover:bg-[#fff5f7]"
+                    >
+                      Close the call
+                    </button>
+                  </div>
+                </Notice>
+              </div>
+            )}
             {phase === 'failed' && error && (
               <div className="mb-3">
                 <Notice tone="error">
