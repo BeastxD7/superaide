@@ -308,6 +308,10 @@ class Settings(BaseSettings):
     # also records, in `features["knn"]`, how urgent the owner's own past feedback says similar messages
     # were. It never changes the decision; it is a shadow score to compare against the model's.
     triage_knn_enabled: bool = False
+    # Ava School (#57), local part only: the owner writes generic lessons, consents to each one, and exports
+    # them to a file to review, or imports a file from another Ava. Nothing is sent over the network and
+    # nothing here changes how Ava answers. Off: /app/school/* answer 404.
+    school_enabled: bool = False
     # The owner's Gmail sign-in (same OAuth client as Calendar); kept per instance in the vault.
     gmail_refresh_token: str = ""
 
