@@ -1,7 +1,7 @@
 """mandate: signed narrowing tokens the owner issued (issue 112)
 
-Revision ID: 0038
-Revises: 0037
+Revision ID: 0043
+Revises: 0042
 Create Date: 2026-10-23 15:00:00.000000
 
 """
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 from alembic import op
 from superaide.db.rls import disable, enable
 
-revision: str = "0038"
-down_revision: str | Sequence[str] | None = "0037"
+revision: str = "0043"
+down_revision: str | Sequence[str] | None = "0042"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
