@@ -115,6 +115,19 @@ def gap_line(before: datetime, after: datetime, tz: Any) -> str:
     return f"[\u2014 {span} later, {after.astimezone(tz):%a %H:%M} \u2014]"
 
 
+# Notes Ava posts to the owner's chat that quote text written by outsiders (calendar invite titles and attendee
+# names, a contact's message, a classifier's reason). The model reads logged outbound events as its own earlier
+# turns, which it trusts more than a tool result, so their words never go back into the prompt (issue #90).
+OUTSIDER_TEXT_KINDS = frozenset({"meeting_prep", "digest", "triage", "triage_catchup", "escalation"})
+
+
+def neutral_note(ev: Event) -> str | None:
+    kind = (ev.meta or {}).get("kind")
+    if ev.direction == "out" and kind in OUTSIDER_TEXT_KINDS:
+        return f"[I posted a {str(kind).replace('_', ' ')} note to the owner here. Its text is not repeated.]"
+    return None
+
+
 def build_messages(
     history: list[Event], current_text: str, labels: dict[Any, str] | None = None, tz: Any = None
 ) -> list[dict[str, Any]]:
@@ -125,7 +138,7 @@ def build_messages(
     prev: datetime | None = None
     for ev in history:
         role = "user" if ev.direction == "in" else "assistant"
-        content = ev.content
+        content = neutral_note(ev) or ev.content
         if role == "assistant" and (used := tools_used(ev)):
             content = used + "\n" + content
         at = ev.created_at
