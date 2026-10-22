@@ -260,6 +260,17 @@ def _is_quote(text: str, citations: list[dict[str, Any]]) -> bool:
     return bool(quoted) and _norm(text) == _norm(quoted)
 
 
+def _bot_handle(session: Session, provider: str) -> str:
+    """ " (bot @ava_helper_bot)" from the details saved when the token was checked, or ""."""
+    if provider != "telegram":
+        return ""
+    from superaide.vault.store import stored
+
+    row = stored(session).get(("telegram", "bot_token"))
+    name = str(((row.meta if row is not None else None) or {}).get("username") or "")
+    return f" (bot @{name})" if name else ""
+
+
 class OwnerTurn:
     """Everything one owner turn needs; tools run inside the caller's database session."""
 
@@ -389,6 +400,12 @@ class OwnerTurn:
             + ", ".join(CHANNEL_NAMES[c] for c in usable)
             + ". A reminder can be sent to any of these as well as the app: pass channel to create_reminder or "
             "update_reminder when the owner says where."
+            + "".join(
+                f" {CHANNEL_NAMES[c]} is linked{_bot_handle(self.s, c)}: if they ask, say so plainly "
+                f'("Yes, {CHANNEL_NAMES[c]} is linked").'
+                for c in usable
+                if c in EXTERNAL
+            )
             + "".join(
                 f" {CHANNEL_NAMES[c]} is linked but its {'bot token' if c == 'telegram' else 'token'} was rejected, "
                 f"so nothing can be sent there right now; ask the owner to reconnect it under Connections, and "

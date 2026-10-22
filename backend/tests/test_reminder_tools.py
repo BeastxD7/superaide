@@ -413,3 +413,20 @@ def test_a_moved_reminder_is_on_record_with_before_and_after_and_a_short_id():
     assert "tomorrow" not in line
     assert str(r.id) not in line  # the full id is in the tool result, not repeated in every later turn
     assert "authoritative over your memory of the conversation" in OWNER_RULES
+
+
+def test_ava_is_told_plainly_that_telegram_is_linked_with_the_bot_handle():
+    # Live eval: asked about Telegram while it was linked, Ava hedged instead of saying "yes, it's linked".
+    from superaide.db.models import IntegrationSecret
+
+    with session_scope() as s:
+        link(s, "telegram")
+        s.add(
+            IntegrationSecret(provider="telegram", name="bot_token", ciphertext="x", meta={"username": "ava_test_bot"})
+        )
+        s.flush()
+        prompt = turn_for(s, Script("Yes.")).system()[1].text
+        assert (
+            'Telegram is linked (bot @ava_test_bot): if they ask, say so plainly ("Yes, Telegram is linked").' in prompt
+        )
+        assert "Slack is linked" not in prompt  # not linked: no such claim

@@ -197,6 +197,7 @@ class Run:
     owner_id: uuid.UUID = field(default_factory=uuid.uuid4)
     second_owner_id: uuid.UUID | None = None
     second_hire_error: str = ""  # why the second account couldn't hire its own Ava
+    second_scope: Any = None  # the second owner's instance (ADR 0009); their turns run inside it
     turns: list[TurnRecord] = field(default_factory=list)
     outcomes: list[checks.Outcome] = field(default_factory=list)
     cost: Decimal = Decimal(0)
@@ -364,8 +365,10 @@ def _triage_world(s: Any, sc: Scenario, owner: Person, start: datetime) -> None:
 
 
 def _second_owner(s: Any, run: Run) -> None:
-    """Another person signs up and hires their own Ava. Single-tenant today, so this is refused."""
+    """Another person signs up and hires their own Ava, in an instance of their own (the harness
+    switches ALLOW_MANY_OWNERS on for this). Refused, and recorded, if many owners aren't supported."""
     from superaide.app.accounts import AlreadyHired, hire
+    from superaide.tenancy.service import membership, scope_of
 
     other = Person(display_name="Maria Lopez", relation="unknown", channel_prefs={"routine": "web"})
     s.add(other)
@@ -379,9 +382,13 @@ def _second_owner(s: Any, run: Run) -> None:
     run.second_owner_id = other.id
     try:
         with s.begin_nested():
-            hire(s, user)
+            person = hire(s, user)
     except AlreadyHired as exc:
         run.second_hire_error = f"AlreadyHired({exc.owner})"
+        return
+    run.second_owner_id = person.id  # the owner's Person inside their own instance
+    found = membership(s, user.id, "ava")
+    run.second_scope = scope_of(found[0]) if found else None
 
 
 def dated(text_: str, start: datetime, tz: str) -> str:
@@ -521,7 +528,10 @@ def run_scenario(sc: Scenario, *, inner: LLM | None = None, judge: Judge | None 
     traveller = time_machine.travel(run.start, tick=True)
     clock = traveller.start()
     try:
-        with patched(rec, outbox, live, sc.world.triage_enabled, sc.world.triage_model):
+        with (
+            patched(rec, outbox, live, sc.world.triage_enabled, sc.world.triage_model),
+            _many_owners(sc.world.second_owner),
+        ):
             clock.shift(timedelta(days=-1))
             run.owner_id = build_world(sc, run.start, run)
             _seed_messages(agent, sc, run.owner_id)
@@ -558,20 +568,22 @@ def run_scenario(sc: Scenario, *, inner: LLM | None = None, judge: Judge | None 
                 if turn.digest:
                     rec_turn.reply, rec_turn.mode = _digest(run.owner_id, turn.digest), "digest"
                 else:
-                    with session_scope() as s:
-                        who = run.second_owner_id if turn.who == "second_owner" else run.owner_id
-                        owner = s.get(Person, who)
-                        assert owner is not None, f"no {turn.who} in this world"
-                        again = next((t.message_id for t in run.turns if t.index == turn.same_id_as), "")
-                        msg = inbound(turn, owner, turn.say or "", again)
-                        rec_turn.message_id = msg.message_id
-                    result = agent.handle(msg)
-                    rec_turn.reply, rec_turn.mode, rec_turn.notes = result.reply or "", result.mode, list(result.notes)
-                    rec_turn.sources = _out_sources(rec_turn.reply)
+                    with _scope_for(run, turn.who):
+                        with session_scope() as s:
+                            who = run.second_owner_id if turn.who == "second_owner" else run.owner_id
+                            owner = s.get(Person, who)
+                            assert owner is not None, f"no {turn.who} in this world"
+                            again = next((t.message_id for t in run.turns if t.index == turn.same_id_as), "")
+                            msg = inbound(turn, owner, turn.say or "", again)
+                            rec_turn.message_id = msg.message_id
+                        result = agent.handle(msg)
+                        rec_turn.reply, rec_turn.mode = result.reply or "", result.mode
+                        rec_turn.notes = list(result.notes)
+                        rec_turn.sources = _out_sources(rec_turn.reply)
+                        if turn.run_jobs:
+                            _drain_jobs()
                     if "budget" in rec_turn.notes:
                         run.budget_stop = True
-                    if turn.run_jobs:
-                        _drain_jobs()
                 rec_turn.calls = list(rec.calls)
                 run.turns.append(rec_turn)
                 for item in turn.expect:
@@ -613,6 +625,32 @@ def _press(run: Run, turn: Turn) -> None:
                          verb=turn.press.verb, actor=presser)  # fmt: skip
         except escalate.AckRefused:
             pass  # refused and audited; the check reads the audit log
+
+
+@contextmanager
+def _scope_for(run: Run, who: str) -> Iterator[None]:
+    """The second owner's turns run in their own instance, as the app's routes run their requests."""
+    if who != "second_owner" or run.second_scope is None:
+        yield
+        return
+    from superaide.tenancy.context import use_instance
+
+    with use_instance(run.second_scope):
+        yield
+
+
+@contextmanager
+def _many_owners(on: bool) -> Iterator[None]:
+    if not on:
+        yield
+        return
+    settings = get_settings()
+    saved = settings.allow_many_owners
+    settings.allow_many_owners = True
+    try:
+        yield
+    finally:
+        settings.allow_many_owners = saved
 
 
 def _seed_messages(agent: Any, sc: Scenario, owner_id: uuid.UUID) -> None:

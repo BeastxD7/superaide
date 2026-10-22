@@ -111,3 +111,15 @@ def test_the_clock_starts_at_the_next_local_time_asked_for():
     now = datetime(2026, 10, 21, 12, 0, tzinfo=UTC)  # a Wednesday
     local = start_time(sc, now).astimezone(ZoneInfo(sc.world.timezone))
     assert (local.strftime("%A"), local.hour, local.minute) == ("Friday", 10, 0)
+
+
+def test_the_two_owner_isolation_check_would_catch_a_leak():
+    # The same scripted turn, asked by owner A (whose data it is), must surface A's notes and
+    # reminders: so when B asks and they don't appear, that's isolation, not a search that finds nothing.
+    sc = BY_ID["tenancy-two-owners-isolated"]
+    turns = [t.model_dump() for t in sc.turns]
+    turns[0]["who"] = "owner"
+    turns[0]["expect"] = [{"prompt_excludes": ["Pune", "Call Anya"]}]
+    run = run_scenario(_with(sc, turns=turns, checks=[]))
+    assert [o.status for o in run.outcomes] == ["fail"]
+    assert "Pune" in run.outcomes[0].reason and "Call Anya" in run.outcomes[0].reason
