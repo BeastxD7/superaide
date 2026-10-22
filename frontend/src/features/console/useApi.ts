@@ -3,38 +3,44 @@ import { api, ApiError, type Connection } from '@/features/console/api'
 
 // Fetches a path and refreshes it every `everyMs` while the tab is visible.
 export function useApi<T>(conn: Connection, path: string, everyMs = 5000) {
-  const [data, setData] = useState<T | null>(null)
-  const [error, setError] = useState<ApiError | null>(null)
-  const alive = useRef(true)
+  const [state, setState] = useState<{ path: string; data: T | null; error: ApiError | null }>({
+    path,
+    data: null,
+    error: null,
+  })
+  // Only the newest request may write: a slow answer for the previous path (or connection) must
+  // never land on the new one, which would show another owner's messages under it.
+  const latest = useRef(0)
 
-  // State is set only once the request settles (written with .then so the effect lint can see that).
-  const load = useCallback(
-    () =>
-      api<T>(conn, path).then(
-        (result) => {
-          if (alive.current) {
-            setData(result)
-            setError(null)
-          }
-        },
-        (e) => {
-          if (alive.current) setError(e instanceof ApiError ? e : new ApiError(0, String(e)))
-        },
-      ),
-    [conn, path],
-  )
+  const invalidate = () => {
+    latest.current += 1
+  }
+
+  const load = useCallback(() => {
+    const id = ++latest.current
+    return api<T>(conn, path).then(
+      (result) => {
+        if (id === latest.current) setState({ path, data: result, error: null })
+      },
+      (e) => {
+        if (id === latest.current)
+          setState((s) => ({ path, data: s.path === path ? s.data : null, error: e instanceof ApiError ? e : new ApiError(0, String(e)) }))
+      },
+    )
+  }, [conn, path])
 
   useEffect(() => {
-    alive.current = true
     void load()
     const timer = window.setInterval(() => {
       if (document.visibilityState === 'visible') void load()
     }, everyMs)
     return () => {
-      alive.current = false
+      invalidate() // anything still in flight is stale now
       window.clearInterval(timer)
     }
-  }, [load, everyMs])
+  }, [load, everyMs])  // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { data, error, reload: load }
+  // Data from another path is never shown: the new path reads as loading until it answers.
+  const current = state.path === path
+  return { data: current ? state.data : null, error: current ? state.error : null, reload: load }
 }

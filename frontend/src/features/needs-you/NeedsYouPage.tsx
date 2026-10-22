@@ -101,13 +101,18 @@ export function NeedsYouPage() {
         </div>
 
         {(error || problem) && (
-          <div className="mt-4">
+          <div className="mt-4 space-y-2">
             <Notice tone="error">{problem ?? error}</Notice>
+            {error && !data && (
+              <Button size="sm" variant="outline" onClick={() => void reload()}>
+                Try again
+              </Button>
+            )}
           </div>
         )}
 
         <ul className="mt-4 space-y-2" aria-label={TABS.find((t) => t.id === tab)?.label}>
-          {!items &&
+          {!items && !error &&
             [0, 1].map((i) => (
               <li key={i} className="rounded-xl border border-line bg-white p-4">
                 <Skeleton className="h-4 w-2/3" />
