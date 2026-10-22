@@ -70,3 +70,12 @@ class AgreementLog(Scoped, Base):
     flagged: Mapped[bool] = mapped_column(
         Boolean, default=False
     )  # reply validated but the memory-free reader disagreed
+
+
+class EmotionalUse(Scoped, Base):
+    """One emotionally heavy or "what are you really?" turn (#124): when and which kind, never the words."""
+
+    __tablename__ = "emotional_use"
+
+    person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(10))  # crisis | heavy | meta

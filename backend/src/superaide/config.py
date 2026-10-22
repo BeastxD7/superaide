@@ -199,6 +199,10 @@ class Settings(BaseSettings):
     # strongest case for the other side. At most two small-model calls per judged owner message, inside the cap.
     second_opinion_enabled: bool = False
     agreement_limit: float = 0.75
+    # Relationship safety and a steady voice (#124, tracking #142). Off: replies are as before. On: emotionally
+    # heavy or "do you love me?" owner messages get a fixed human-written reply with no model call, any reply
+    # that claims love or feelings is rewritten, and a reach-out-to-a-person rule applies. All in code.
+    relationship_safety_enabled: bool = False
     # Rubber-Stamp Brake (#134, tracking #142). Off: approvals work as before. On: when the owner's recent
     # approvals are all yes and faster than a card can be read, high-risk cards need a typed reason and only
     # a few cards show at once. It can only add friction, never remove it.

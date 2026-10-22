@@ -116,6 +116,10 @@ class SkipQuestionBody(BaseModel):
     never: bool = False
 
 
+class CounterBody(BaseModel):
+    on: bool
+
+
 class ReminderBody(BaseModel):
     text: str = Field(min_length=1, max_length=500)
     # Either an exact moment, or a time in the text ("Call Priya tomorrow at 5").
@@ -698,6 +702,40 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 raise HTTPException(exc.status, str(exc)) from exc
             s.flush()
             return _why_view(replay.stored(s, owner, event_id), run.stopped)
+
+    def safety_on(person_id: uuid.UUID = Depends(owner_person_id)) -> uuid.UUID:
+        if not get_settings().relationship_safety_enabled:
+            raise HTTPException(404, "Not found")
+        return person_id
+
+    @router.get(
+        "/relationship-safety",
+        tags=["Owner: people & rules"],
+        summary="Heavy-conversation counter",
+        description=(
+            "RELATIONSHIP_SAFETY_ENABLED (off by default; 404 while off): whether Ava counts emotionally heavy turns "
+            "(the kind only, never the words) and this week's count against the reach-out threshold and weekly cap."
+        ),
+    )
+    def safety_state(person_id: uuid.UUID = Depends(safety_on)) -> dict[str, Any]:
+        from superaide.trust import companion
+
+        with session_scope() as s:
+            owner = require(s, Person, person_id)
+            return {"counter_on": companion.counter_on(s), **companion.trend(s, owner)}
+
+    @router.post(
+        "/relationship-safety",
+        tags=["Owner: people & rules"],
+        summary="Switch the counter on or off",
+        description="Off also forgets what was counted. The fixed replies and the feelings filter stay on either way.",
+    )
+    def safety_switch(body: CounterBody, person_id: uuid.UUID = Depends(safety_on)) -> dict[str, Any]:
+        from superaide.trust import companion
+
+        with session_scope() as s:
+            companion.set_counter(s, body.on)
+            return {"counter_on": body.on}
 
     @router.post(
         "/notebook/{memory_id}/forget",
