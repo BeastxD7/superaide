@@ -202,3 +202,19 @@ def test_a_draft_cut_off_inside_a_tool_call_is_not_sent_back_for_revision():
         )
         result = turn_for(s, script).run([{"role": "user", "content": "x"}])
     assert len(script.seen) == 1 and result.text.endswith(verify.ABSTAIN) and "verify:abstained" in result.notes
+
+
+def test_a_recap_of_what_the_owner_said_on_another_channel_is_not_flagged():
+    # Live eval (ADR 0008 WP1 scenario): "what did I just tell you on Telegram?" was answered from the
+    # labelled timeline, then the source check flagged it and Ava said she had no source.
+    from superaide.brain import verify
+
+    grounding = verify.flat(
+        "[On Telegram · Thu 10:00] heading to the airport now, flight is at 6, landing in Delhi around 8:30\n"
+        "what did I just tell you on Telegram?"
+    )
+    recap = "On Telegram you told me you were heading to the airport for your Delhi flight."
+    assert verify.unsupported(recap, grounding=grounding, recall_found=False) == []
+    # Made-up notes are still flagged, however they're phrased.
+    for made_up in ("You told me your gym note says to train legs.", "Your notes say your sister lives in Pune."):
+        assert verify.unsupported(made_up, grounding=grounding, recall_found=False) == [made_up]

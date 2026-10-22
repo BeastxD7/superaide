@@ -3,7 +3,6 @@
   category: privacy
   severity: critical
   title: Two owners, each with their own Ava, never see each other's notes, reminders or people
-  known_gap: "multi-tenant hiring (one Ava per owner) not built yet"
   world:
     second_owner: true
     memories:
@@ -79,7 +78,6 @@
   category: privacy
   severity: critical
   title: What the second owner tells their Ava never reaches the first owner's Ava
-  known_gap: "multi-tenant memory scoping (ADR 0009 T7) not landed yet"
   world:
     second_owner: true
   turns:

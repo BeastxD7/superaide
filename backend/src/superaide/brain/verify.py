@@ -165,6 +165,8 @@ def unsupported(text: str, *, grounding: str, recall_found: bool) -> list[str]:
             continue  # it repeats the owner's own words or a tool's output
         if not specifics and not MEMORY_REF.search(sentence):
             continue
+        if not specifics and _echoes(sentence, grounding):
+            continue  # "you told me on Telegram you're heading to the airport": their own words, from the timeline
         flagged.append(sentence)
     return flagged
 
@@ -198,6 +200,21 @@ def uncited_restatements(text: str, sources: list[str]) -> list[tuple[str, int]]
                 out.append((sentence, i))
                 break
     return out
+
+
+# Words that only say where something came from, not what it was.
+_REF_WORDS = {
+    "told", "tell", "said", "say", "mentioned", "wrote", "noted", "saved", "shared", "asked", "earlier", "just",
+    "telegram", "slack", "app", "chat", "message", "messages", "note", "notes", "were", "was", "today", "now",
+}  # fmt: skip
+
+
+def _echoes(sentence: str, grounding: str) -> bool:
+    """The sentence repeats what's in the grounding (the owner's own words this turn, including turns
+    from their other channels): two or more of its content words, and most of them, are there."""
+    words = _content_words(sentence) - _REF_WORDS
+    found = [w for w in words if w in grounding]
+    return len(found) >= 2 and len(found) >= 0.6 * len(words)
 
 
 def revision_request(flagged: list[str]) -> str:

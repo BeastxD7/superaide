@@ -35,7 +35,6 @@
   category: cross_channel
   severity: high
   title: '"What did I just tell you on Telegram?" in the app'
-  known_gap: "ADR 0008 WP1 (short-term history is per channel)"
   turns:
     - via: telegram
       say: "heading to the airport now, flight is at 6, landing in Delhi around 8:30"
