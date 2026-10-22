@@ -68,6 +68,9 @@ services:
       FRONTEND_ORIGIN: ${PUBLIC_URL:-https://${DOMAIN:?Set DOMAIN in .env}}
       # Fixed for a public server, whatever .env says.
       SESSION_COOKIE_SECURE: "true"
+      # Sign-up is open, so each owner brings their own model key: the keys in .env are never used
+      # for an owner, and owner-typed provider addresses may not point at private hosts (issue #82).
+      DEPLOY_MODE: "hosted"
       ENABLE_SIMULATOR: "false"
       ENABLE_API_DOCS: "false"
       # Jobs and the Telegram/Slack listeners run in the `worker` service below.
@@ -107,6 +110,7 @@ services:
       MIGRATION_DATABASE_URL: ""
       SECRETS_MASTER_KEY: ${SECRETS_MASTER_KEY:?Set SECRETS_MASTER_KEY in .env (openssl rand -base64 32)}
       FRONTEND_ORIGIN: ${PUBLIC_URL:-https://${DOMAIN:?Set DOMAIN in .env}}
+      DEPLOY_MODE: "hosted"  # same as the api service: reminders and digests also use each owner's own keys
       ENABLE_SIMULATOR: "false"
     command: ["superaide", "worker"]
     healthcheck:

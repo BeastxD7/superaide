@@ -88,6 +88,22 @@ def test_a_morning_digest_lists_today_dates_with_context_and_approvals(owner):
     assert "**Waiting for your OK:** 1" in text
 
 
+def test_the_morning_digest_does_not_list_reminders_that_already_went_off(owner):
+    now = datetime.now(UTC).astimezone(SG)
+    later = now + timedelta(minutes=5)
+    with session_scope() as s:
+        person = hired_owner(s)
+        assert person is not None
+        gone = intentions.create(s, person, text="Call Priya", due_at=later)
+        intentions.create(s, person, text="Pay the rent", due_at=later)
+        gone.delivered_at = now  # it went off and nobody tapped done
+        gone.delivered_via = ["app"]
+        s.flush()
+        text = digest.compose(s, person, now, "morning")
+    assert text is not None and "Pay the rent" in text
+    assert "Call Priya" not in text
+
+
 def test_nothing_worth_saying_sends_nothing(owner):
     with session_scope() as s:
         person = hired_owner(s)

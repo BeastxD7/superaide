@@ -97,6 +97,10 @@ def learn(session: Session, job: Job) -> None:
         if same is not None and _owner_only(same, owner):
             if event.id not in (same.source_event_ids or []):  # said again: one fact, both sources
                 same.source_event_ids = [*(same.source_event_ids or []), event.id]
+            if same.document_id is not None:
+                # The owner has now said it themselves. Taking the file away must not retire what
+                # they confirmed, so the fact no longer belongs to the document.
+                same.document_id = None
             merged += 1
             continue
         item = remember_fact(
