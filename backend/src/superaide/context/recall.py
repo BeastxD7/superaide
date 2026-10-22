@@ -149,7 +149,9 @@ def _memory_sources(session: Session, found: list[MemoryItem], channel: str | No
     out = []
     for m in found:
         where = contexts.get(m.origin_context_id) if m.origin_context_id else None
-        if m.source == "chat" and where is not None:
+        if m.source in CHANNEL_NAMES:  # said on a channel: "from Telegram", not "from telegram"
+            src = f" · from {channel_name(m.source)}"
+        elif m.source == "chat" and where is not None:
             src = f" · from {channel_name(where.provider)}"
         else:
             src = f" · from {m.source}" if m.source else ""
