@@ -80,7 +80,7 @@ def test_duplicate_email_in_any_case_or_spacing_is_refused(browser, variant):
     assert signup(browser()).status_code == 200
     again = signup(browser(), email=variant, name="Someone Else", password="another long passphrase")
     assert again.status_code == 409 and again.json()["detail"]["field"] == "email"
-    assert _count(UserAccount) == 1 and _count(Person) == 1  # no orphan person row for the refused sign-up
+    assert _count(UserAccount) == 1 and _count(Person) == 0  # a refused sign-up leaves no person row (none until hire)
     # The original account still works with its own password, and only with it.
     assert login(browser()).status_code == 200
     assert login(browser(), password="another long passphrase").status_code == 401

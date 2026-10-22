@@ -267,10 +267,10 @@ def test_a_token_that_fails_a_check_signs_nobody_in(browser, google, claims, why
     assert reason(sign_in(c, google)) == "failed"
     assert c.get("/auth/me").status_code == 401 and account() is None
     assert events("google_fail") == 1
-    from superaide.db.models import AuditLog
+    from superaide.db.models import AccountAudit
 
-    with session_scope() as s:
-        logged = s.scalars(select(AuditLog).where(AuditLog.action == "google_signin_refused")).all()
+    with session_scope() as s:  # nobody signed in, so the line is in the platform's account log
+        logged = s.scalars(select(AccountAudit).where(AccountAudit.action == "google_signin_refused")).all()
         assert [row.detail.get("reason") for row in logged] == [why]
 
 

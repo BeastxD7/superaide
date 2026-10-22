@@ -46,8 +46,8 @@ def test_signup_sets_a_safe_cookie_and_stores_only_a_hash(client):
         user = s.scalar(select(UserAccount))
         assert user.email_normalized == "shashank@example.com"
         assert user.password_hash.startswith("$argon2id$") and PASSWORD not in user.password_hash
-        # The account is one person in the agents' world too.
-        assert s.get(Person, user.person_id).display_name == "Shashank Rao"
+        # An account belongs to no Ava until it hires, so there is no Person in the agents' world yet.
+        assert user.person_id is None and s.scalar(select(Person)) is None
         token = client.cookies.get("superaide_session")
         stored = s.scalar(select(UserSession.token_hash))
         assert token not in stored and stored == service.token_hash(token)
