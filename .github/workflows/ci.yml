@@ -57,6 +57,13 @@ jobs:
           uv python install
           uv sync --locked
 
+      # Two migrations with the same parent (say, two 0022s from parallel branches) leave
+      # several heads and break `alembic upgrade head`; catch it before the slower steps.
+      - name: One migration head
+        run: |
+          uv run alembic heads
+          test "$(uv run alembic heads | wc -l)" -eq 1 || { echo "::error::alembic has more than one head; renumber or merge the new migration"; exit 1; }
+
       - name: Lint
         run: uv run ruff check --output-format=github .
 
