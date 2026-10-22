@@ -211,7 +211,12 @@ export async function streamChat(text: string, onEvent: (e: ChatEvent) => void, 
     const body = (await res.json().catch(() => null)) as { detail?: unknown } | null
     throw errorFromDetail(res.status, body?.detail, `Request failed (${res.status})`)
   }
-  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader()
+  await readEvents(res.body, (event, data) => onEvent({ event, data } as ChatEvent))
+}
+
+// Read a Server-Sent Events body, calling onEvent for each event as it arrives.
+async function readEvents(body: NonNullable<Response['body']>, onEvent: (event: string, data: unknown) => void): Promise<void> {
+  const reader = body.pipeThrough(new TextDecoderStream()).getReader()
   let buffer = ''
   for (;;) {
     const { value, done } = await reader.read()
@@ -227,9 +232,42 @@ export async function streamChat(text: string, onEvent: (e: ChatEvent) => void, 
         if (line.startsWith('event:')) event = line.slice(6).trim()
         else if (line.startsWith('data:')) data.push(line.slice(5).trimStart())
       }
-      if (data.length) onEvent({ event, data: JSON.parse(data.join('\n')) } as ChatEvent)
+      if (data.length) onEvent(event, JSON.parse(data.join('\n')))
     }
   }
+}
+
+// POST to an /app endpoint that answers with Server-Sent Events (the voice call). `body` is JSON or
+// a multipart form (an utterance's audio). Same-origin, through the /api proxy, with the CSRF header.
+export async function streamApp(
+  path: string,
+  body: FormData | Record<string, unknown>,
+  onEvent: (event: string, data: Record<string, unknown>) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const form = body instanceof FormData
+  let res: Response
+  try {
+    res = await fetch(`${API_URL}/app${path}`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'X-Requested-With': 'superaide',
+        Accept: 'text/event-stream',
+        ...(form ? {} : { 'Content-Type': 'application/json' }),
+      },
+      body: form ? body : JSON.stringify(body),
+      signal,
+    })
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'AbortError') throw e
+    throw new ApiError(0, "Can't reach Superaide. Check your connection, or that start.command is still running.")
+  }
+  if (!res.ok || !res.body) {
+    const detail = (await res.json().catch(() => null)) as { detail?: unknown } | null
+    throw errorFromDetail(res.status, detail?.detail, `Request failed (${res.status})`)
+  }
+  await readEvents(res.body, (event, data) => onEvent(event, data as Record<string, unknown>))
 }
 
 // Upload a file to an /app endpoint (multipart form).

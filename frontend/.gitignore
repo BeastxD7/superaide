@@ -6,3 +6,6 @@ next-env.d.ts
 *.log
 .env*.local
 .DS_Store
+
+# Voice activity detector files, copied from node_modules (scripts/copy-vad-assets.mjs)
+/public/vad/
