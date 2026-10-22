@@ -206,6 +206,10 @@ class Settings(BaseSettings):
     # Skill Ratchet (#120, tracking #142). Off: /app/playbooks answers 404. On: Ava can draft playbooks, only ones
     # the owner edited can go live (database rule), at most 50 are active, and a playbook retires when it stops helping.
     skill_ratchet_enabled: bool = False
+    # Overnight Tuner (#118, tracking #142). Off: /app/tuner answers 404 and the built-in triage prompt is always
+    # used. On: the owner can run a tuning pass that PROPOSES a better triage prompt (judged on a held-out week and
+    # an invariant suite); nothing changes until the owner approves, and the owner can roll back.
+    overnight_tuner_enabled: bool = False
     # Rubber-Stamp Brake (#134, tracking #142). Off: approvals work as before. On: when the owner's recent
     # approvals are all yes and faster than a card can be read, high-risk cards need a typed reason and only
     # a few cards show at once. It can only add friction, never remove it.

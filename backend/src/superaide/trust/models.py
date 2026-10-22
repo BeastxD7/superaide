@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 
 from sqlalchemy import (
@@ -11,6 +11,7 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     Date,
+    DateTime,
     Float,
     ForeignKey,
     Integer,
@@ -142,3 +143,24 @@ CREATE TRIGGER playbook_active_cap BEFORE INSERT OR UPDATE ON playbook
 """
     ).execute_if(dialect="postgresql"),
 )
+
+
+class PromptVersion(Scoped, Base):
+    """One version of a prompt Ava may tune (#118). Only the owner moves a version to `active`."""
+
+    __tablename__ = "prompt_version"
+    __table_args__ = (UniqueConstraint("agent_id", "key", "version", name="uq_prompt_version"),)
+
+    key: Mapped[str] = mapped_column(String(40))  # one of trust.surface.WRITABLE_PROMPTS
+    version: Mapped[int] = mapped_column(Integer)
+    text: Mapped[str] = mapped_column(Text)
+    parent_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # proposed (waiting for the owner) | rejected (failed a gate, or the owner said no) | active | superseded
+    status: Mapped[str] = mapped_column(String(12), default="proposed")
+    base_score: Mapped[float | None] = mapped_column(Float, nullable=True)  # held-out accuracy of the parent
+    cand_score: Mapped[float | None] = mapped_column(Float, nullable=True)  # held-out accuracy of this version
+    held_out: Mapped[int] = mapped_column(Integer, default=0)  # how many held-out examples scored both
+    invariants: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)  # {"ok": bool, "failed": [...]}
+    rationale: Mapped[str] = mapped_column(Text, default="")
+    decided_by_person_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("person.id"), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
