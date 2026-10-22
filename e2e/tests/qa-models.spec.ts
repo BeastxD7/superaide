@@ -114,7 +114,6 @@ test.describe('credits', () => {
   })
 
   test('the daily allowance the card shows can all be used for conversation', async ({ page, owner }) => {
-    test.fail(true, "BUG: with the default limits, credits stop at US$0.40 a day (the chat bucket) and Ava says \"I've used today's thinking budget\", though the card shows US$0.10 left")
     void owner
     await optIn(page)
     await spentCredits(0.4) // four fifths of the US$0.50 the card offers
@@ -128,7 +127,6 @@ test.describe('credits', () => {
   })
 
   test('when today\'s credits are used up, Ava says so and points to the AI model page', async ({ page, owner }) => {
-    test.fail(true, "BUG: the owner's general daily budget refuses first, so the reply is \"I've used today's thinking budget\" instead of the credits message")
     void owner
     await optIn(page)
     await spentCredits(0.5) // the whole US$0.50 daily allowance
@@ -168,7 +166,6 @@ test.describe('credits', () => {
   })
 
   test('after this month\'s credits are used, the owner\'s own key carries on, as Ava advises', async ({ page, owner }) => {
-    test.fail(true, "BUG: credit-paid spend counts against the owner's own budget, so their own key is refused too once the credits are used")
     void owner
     await optIn(page)
     await spentCredits(5, 72) // the whole US$5 monthly allowance, three days ago

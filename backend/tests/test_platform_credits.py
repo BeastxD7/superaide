@@ -168,3 +168,61 @@ def test_the_operators_own_ava_uses_the_server_key_as_its_own(owner_client, cred
     assert SERVER_KEY not in owner_client.get("/app/providers").text
     with use_instance(B):  # anyone else's Ava never gets it
         assert runtime_settings().anthropic_api_key == ""
+
+
+# --- who pays decides which limits count (#60, #61) -------------------------------------------------
+
+
+def owner_guard(scope: InstanceScope, **limits) -> BudgetGuard:
+    return BudgetGuard(10, limits=Limits(**limits), scope=scope, key_source="owner")
+
+
+def test_credit_spend_never_uses_up_the_owners_own_key_limits(credits, monkeypatch):
+    """Using the month's credits and then adding their own key, as Ava advises, must work."""
+    monkeypatch.setattr(credits, "platform_owner_daily_usd", 0.0)  # only the monthly US$5 allowance
+    monkeypatch.setattr(credits, "platform_owner_monthly_usd", 5.0)
+    monthly = Limits(daily_usd=Decimal("0.50"), monthly_usd=Decimal("5"), daily_by_bucket={"chat": Decimal("0.40")})
+    spend(credit_guard(A), "4.90")  # nearly all of a US$5 month, paid by credits
+    own = BudgetGuard(10, limits=monthly, scope=A, key_source="owner")
+    spend(own, "0.30")  # the owner's own key still answers: none of the credits count against its limits
+    with session_scope() as s:
+        assert {r.key_source for r in s.scalars(select(SpendEntry))} == {"platform", "owner"}
+
+
+def test_the_owners_own_limits_still_hold_for_their_own_key(credits):
+    own = owner_guard(A, monthly_usd=Decimal("0.05"))
+    spend(own, "0.04")
+    with pytest.raises(BudgetExceeded) as month:
+        spend(own, "0.04")
+    assert month.value.period == "month"
+    bucketed = owner_guard(B, daily_by_bucket={"chat": Decimal("0.02")})
+    with pytest.raises(BudgetExceeded) as bucket:
+        spend(bucketed, "0.03")
+    assert bucket.value.period == "bucket"
+
+
+def test_the_card_allowance_is_the_credits_real_limit(credits, monkeypatch):
+    """The owner's chat bucket (US$0.40) and daily budget (US$0.50) don't stop credits short of the allowance."""
+    monkeypatch.setattr(credits, "platform_owner_daily_usd", 0.50)
+    monkeypatch.setattr(credits, "platform_owner_monthly_usd", 5.0)
+    g = BudgetGuard(
+        10,
+        limits=Limits(daily_usd=Decimal("0.40"), daily_by_bucket={"chat": Decimal("0.40")}),
+        scope=A,
+        key_source="platform",
+    )
+    spend(g, "0.45")  # past the owner's chat bucket and daily limit, within the credits allowance
+    spend(g, "0.05")  # exactly the allowance
+    with pytest.raises(BudgetExceeded) as used_up:
+        spend(g, "0.01")
+    assert used_up.value.period == "platform_day"  # the credits message, not the generic one
+
+
+def test_the_lifetime_cap_still_counts_every_call_whoever_paid(credits):
+    spend(BudgetGuard(0.05, scope=A, key_source="platform"), "0.04")
+    with pytest.raises(BudgetExceeded) as cap:
+        spend(BudgetGuard(0.05, scope=A, key_source="owner"), "0.02")
+    assert cap.value.period == "lifetime"
+    with pytest.raises(BudgetExceeded) as cap2:
+        spend(BudgetGuard(0.05, scope=A, key_source="platform"), "0.02")
+    assert cap2.value.period == "lifetime"
