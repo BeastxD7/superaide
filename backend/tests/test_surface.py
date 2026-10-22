@@ -34,6 +34,9 @@ def test_a_changed_protected_file_is_caught_and_a_new_one_too(tmp_path, monkeypa
     for rel in [*surface.protected_files(), "backend/src/superaide/security/surface.toml"]:
         (root / rel).parent.mkdir(parents=True, exist_ok=True)
         (root / rel).write_bytes((REPO / rel).read_bytes())
+    lock = tmp_path / "lock.json"  # a lock made for this copy, so the real lock's freshness doesn't matter here
+    lock.write_text(json.dumps(surface.current(root)))
+    monkeypatch.setattr(surface, "LOCK", lock)
     assert surface.differences(root) == []
     (root / "backend/src/superaide/policy/actions.py").write_text("# the optimiser was here\n")
     (root / "backend/src/superaide/policy/extra.py").write_text("x = 1\n")
