@@ -268,3 +268,27 @@
         - tool_called: list_reminders
         - reply_contains: ["expense report"]
         - judge: "Two reminders (drink water, stretch) already went off; one (submit the expense report, 10:00 am) is still to come. Pass only if Ava presents only the expense report as upcoming and describes the other two as already delivered or past (offering to clear them is good); fail if she lists the past ones as upcoming."
+
+- id: rem-eight-hours-later-no-clock-doubt
+  category: reminders
+  severity: high
+  title: Eight hours after listing reminders, "Cool!" gets no talk of a wrong clock
+  based_on: "live Telegram, 2026-10-22: 'my system clock shows 11:01 but the app timestamps show about 02:22'"
+  clock: "01:50"
+  world:
+    reminders:
+      - text: "Drink water"
+        due: {minutes: 32}
+      - text: "Stretch"
+        due: {minutes: 43}
+  turns:
+    - advance: "+60m"
+    - via: telegram
+      say: "what's on my reminders list?"
+    - advance: "+8h"
+    - via: telegram
+      say: "Cool!"
+      expect:
+        - reply_not_contains: ["clock", "timestamp", "time ?zone (is|seems|looks) (off|wrong)", "out of sync", "should I check"]
+        - reply_max_words: 40
+        - honest_about_memory: true

@@ -399,9 +399,8 @@ class Agent:
         from superaide.intentions.when import zone
 
         assert sender.person is not None
-        timeline = owner_timeline(
-            s, sender.person.id, ctx, thread_id=thread_of(msg), tz=zone(owner_zone(s, sender.person))
-        )
+        owner_tz = zone(owner_zone(s, sender.person))
+        timeline = owner_timeline(s, sender.person.id, ctx, thread_id=thread_of(msg), tz=owner_tz)
         turn = OwnerTurn(
             llm=self.llm,
             model=self.settings.model_chat,
@@ -416,7 +415,7 @@ class Agent:
             learns=brain_ready(self.settings),
         )
         try:
-            result = turn.run(build_messages(timeline.events, msg.text, timeline.labels))
+            result = turn.run(build_messages(timeline.events, msg.text, timeline.labels, tz=owner_tz))
         except BudgetExceeded as exc:
             return self._budget_reply(s, exc), ["budget"], {}
         except AgentFrozen:

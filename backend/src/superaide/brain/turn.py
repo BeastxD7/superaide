@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal
 
@@ -73,6 +74,7 @@ def build_system(
     ]
 
 
+_RELATIVE = re.compile(r" \((?:today|tomorrow|\w{3} \d{1,2} \w{3}) at [^)]*\)")
 _UUID = re.compile(r"\b([0-9a-f]{8})-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b")
 
 
@@ -85,6 +87,7 @@ def tools_used(ev: Event) -> str:
         if a.get("kind") != "tool" or a.get("name") == "verify":
             continue
         detail = _UUID.sub(r"#\1", str(a.get("detail", "")).replace("(id ", "(").strip())
+        detail = _RELATIVE.sub("", detail)  # "(today at 2:22 am)" is stale by the next turn; the date stays
         done.append(detail if detail and a.get("name") in REMINDER_TOOLS else f"{a.get('label', '')} -> {detail}")
     done = [d.strip(" ->") for d in done if d.strip(" ->")]
     return f"[Tools used for this reply: {'; '.join(done)}]" if done else ""
@@ -96,17 +99,39 @@ REMINDER_TOOLS = {"create_reminder", "update_reminder", "cancel_reminder", "list
 LABELLED_CHARS = 600  # a turn from another channel is context, not the conversation itself
 
 
+GAP = timedelta(minutes=30)
+
+
+def gap_line(before: datetime, after: datetime, tz: Any) -> str:
+    """ "[— 8 hours later, Thu 11:01 —]": time passed between two turns, so "today at 2:22 am" in
+    the earlier one isn't read as now."""
+    minutes = int((after - before).total_seconds() // 60)
+    if minutes < 90:
+        span = f"{minutes} minutes"
+    elif minutes < 48 * 60:
+        span = f"{round(minutes / 60)} hours"
+    else:
+        span = f"{round(minutes / 1440)} days"
+    return f"[\u2014 {span} later, {after.astimezone(tz):%a %H:%M} \u2014]"
+
+
 def build_messages(
-    history: list[Event], current_text: str, labels: dict[Any, str] | None = None
+    history: list[Event], current_text: str, labels: dict[Any, str] | None = None, tz: Any = None
 ) -> list[dict[str, Any]]:
     """Map the episodic log to alternating user/assistant turns. `labels` marks turns that
-    happened on another channel ("[On Telegram · Wed 19:13] …")."""
+    happened on another channel ("[On Telegram · Wed 19:13] …"). With the owner's `tz`, a turn
+    that follows a gap of 30 minutes or more starts with a gap line."""
     turns: list[dict[str, Any]] = []
+    prev: datetime | None = None
     for ev in history:
         role = "user" if ev.direction == "in" else "assistant"
         content = ev.content
         if role == "assistant" and (used := tools_used(ev)):
             content = used + "\n" + content
+        at = ev.created_at
+        if tz is not None and prev is not None and at is not None and at - prev >= GAP:
+            content = gap_line(prev, at, tz) + "\n" + content
+        prev = at or prev
         if labels and (label := labels.get(ev.id)):
             if len(content) > LABELLED_CHARS:
                 content = content[: LABELLED_CHARS - 1] + "…"

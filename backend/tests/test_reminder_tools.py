@@ -403,8 +403,11 @@ def test_a_moved_reminder_is_on_record_with_before_and_after_and_a_short_id():
         turn = turn_for(s, script, "make it 5pm instead")
         turn.run(ASK)
     out = result_of(script)["content"]
-    assert "moved from tomorrow at 4:00 pm to tomorrow at 5:00 pm" in out
+    at = f"{day:%a} {day.day} {day:%b}"
+    assert f"moved from {at}, 16:00 (tomorrow at 4:00 pm) to {at}, 17:00 (tomorrow at 5:00 pm)" in out
     line = tools_used(Event(direction="out", content="Moved.", meta={"activity": turn.activity}))
-    assert f"(#{str(r.id)[:8]}): moved from tomorrow at 4:00 pm to tomorrow at 5:00 pm" in line
+    # Later turns see absolute times only: "tomorrow" would be wrong by then.
+    assert f"(#{str(r.id)[:8]}): moved from {at}, 16:00 to {at}, 17:00" in line
+    assert "tomorrow" not in line
     assert str(r.id) not in line  # the full id is in the tool result, not repeated in every later turn
     assert "authoritative over your memory of the conversation" in OWNER_RULES

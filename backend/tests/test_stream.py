@@ -4,6 +4,7 @@ and what she did is saved with the reply and remembered on the next turn."""
 from __future__ import annotations
 
 import json
+from datetime import timedelta
 from typing import Any
 
 from superaide.app.stream import sse, stream_turn
@@ -174,3 +175,31 @@ def test_the_next_turn_is_told_what_tools_the_last_reply_used():
         "role": "assistant",
         "content": "[Tools used for this reply: Setting a reminder: Gym, 7pm -> Reminder set]\nDone.",
     }
+
+
+def test_a_gap_of_hours_is_marked_so_old_relative_times_are_not_read_as_now():
+    # Live Telegram 2026-10-22: reminders listed at 03:01 as "today at 2:22 am"; at 11:01 "Cool!"
+    # got "my system clock shows 11:01 but the app timestamps show 02:22… should I check?"
+    from datetime import UTC, datetime
+
+    from superaide.intentions.when import zone
+
+    tz = zone("Asia/Kolkata")
+    t0 = datetime(2026, 10, 22, 3, 0, tzinfo=tz).astimezone(UTC)
+    history = [
+        Event(direction="in", content="what's on my list?", created_at=t0),
+        Event(direction="out", content="Drink water, today at 2:22 am.", created_at=t0 + timedelta(minutes=1)),
+        Event(direction="in", content="ok", created_at=t0 + timedelta(minutes=5)),  # under 30 min: no line
+        Event(direction="in", content="Cool!", created_at=t0 + timedelta(hours=8, minutes=1)),
+    ]
+    msgs = build_messages(history, "Cool!", tz=tz)
+    assert msgs[-1]["content"] == "ok\n[— 8 hours later, Thu 11:01 —]\nCool!"
+    assert "later" not in msgs[0]["content"] and "later" not in msgs[1]["content"]
+    assert build_messages(history, "Cool!")[-1]["content"] == "ok\nCool!"  # no zone, no lines
+
+
+def test_a_gap_line_the_model_echoes_is_stripped():
+    from superaide.brain.loop import render
+
+    text, _ = render([{"type": "text", "text": "[— 8 hours later, Thu 11:01 —]\nGlad it helps!"}])
+    assert text == "Glad it helps!"

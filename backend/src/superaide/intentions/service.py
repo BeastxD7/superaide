@@ -68,6 +68,13 @@ def describe_due(due: datetime, tz: str, now: datetime | None = None) -> str:
     return f"{local.strftime('%a')} {local.day} {local.strftime('%b')} at {clock}"
 
 
+def describe_at(due: datetime, tz: str, now: datetime | None = None) -> str:
+    """An absolute moment with the relative one after it: "Thu 22 Oct, 02:22 (today at 2:22 am)".
+    The absolute part stays true when the line is read hours later; the relative part doesn't."""
+    local = due.astimezone(zone(tz))
+    return f"{local:%a} {local.day} {local:%b}, {local:%H:%M} ({describe_due(due, tz, now)})"
+
+
 def create(
     session: Session,
     owner: Person,
