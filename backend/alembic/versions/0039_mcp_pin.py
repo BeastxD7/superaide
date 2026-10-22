@@ -1,7 +1,7 @@
 """mcp_pin: the hash of each MCP tool as the owner approved it (issue 116)
 
-Revision ID: 0036
-Revises: 0035
+Revision ID: 0039
+Revises: 0038
 Create Date: 2026-10-23 16:00:00.000000
 
 """
@@ -14,8 +14,8 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 from superaide.db.rls import disable, enable
 
-revision: str = "0036"
-down_revision: str | Sequence[str] | None = "0035"
+revision: str = "0039"
+down_revision: str | Sequence[str] | None = "0038"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
