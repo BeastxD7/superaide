@@ -5,10 +5,13 @@ Bot API reference: https://core.telegram.org/bots/api
 
 from __future__ import annotations
 
+import contextvars
 import hmac
 import logging
 import threading
+from collections import deque
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 import httpx
@@ -224,6 +227,47 @@ def set_webhook(token: str, url: str, secret: str, client: httpx.Client | None =
     return ok
 
 
+POLL_WORKERS = 4
+
+
+class _ChatQueues:
+    """Hands updates to a small pool so a slow turn never blocks polling or button presses (BE-15, #91).
+    Updates of one chat run one at a time, in order; different chats run side by side. Each runs in a copy
+    of the poller's context, so it stays inside the same hired instance."""
+
+    def __init__(self, workers: int = POLL_WORKERS) -> None:
+        self._pool = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="telegram-update")
+        self._lock = threading.Lock()
+        self._pending: dict[str, deque[Callable[[], None]]] = {}
+
+    def submit(self, key: str, job: Callable[[], None]) -> None:
+        ctx = contextvars.copy_context()
+        run = lambda: ctx.run(job)  # noqa: E731  (one context copy per job: a Context can't be entered twice at once)
+        with self._lock:
+            queue = self._pending.get(key)
+            if queue is not None:
+                queue.append(run)
+                return
+            self._pending[key] = deque([run])
+        self._pool.submit(self._drain, key)
+
+    def _drain(self, key: str) -> None:
+        while True:
+            with self._lock:
+                queue = self._pending[key]
+                if not queue:
+                    del self._pending[key]
+                    return
+                run = queue.popleft()
+            try:
+                run()
+            except Exception:  # keep going even if one update is malformed or fails
+                log.exception("failed to handle telegram update")
+
+    def close(self) -> None:
+        self._pool.shutdown(wait=True)  # finish what was already taken off Telegram's queue
+
+
 def poll_forever(token: str, handle: Callable[[InboundMessage], Any], stop: threading.Event | None = None) -> None:
     """Long-polling for local development (no public URL needed).
 
@@ -241,6 +285,14 @@ def poll_forever(token: str, handle: Callable[[InboundMessage], Any], stop: thre
     backoff = 3.0
     known = ""  # the health this poller last recorded, so a healthy loop doesn't write every poll
     log.info("Telegram polling started")
+    queues = _ChatQueues()
+    try:
+        _poll_loop(http, base, token, handle, stop, queues, offset, backoff, known)
+    finally:
+        queues.close()
+
+
+def _poll_loop(http, base, token, handle, stop, queues, offset, backoff, known) -> None:
     while not stop.is_set():
         try:
             # Named explicitly: a setWebhook's allowed_updates would otherwise carry over to polling.
@@ -277,8 +329,8 @@ def poll_forever(token: str, handle: Callable[[InboundMessage], Any], stop: thre
             try:
                 msg = parse_update(update, verified=True, bot=bot_id(token))
                 if msg is not None:
-                    handle(msg)
+                    queues.submit(f"chat:{msg.chat_id}", lambda msg=msg: handle(msg))
                 elif (action := parse_callback(update, verified=True, bot=bot_id(token))) is not None:
-                    _handle_press(token, action)
-            except Exception:  # keep polling even if one update is malformed or fails
+                    queues.submit("press", lambda action=action: _handle_press(token, action))
+            except Exception:  # keep polling even if one update is malformed
                 log.exception("failed to handle telegram update")
