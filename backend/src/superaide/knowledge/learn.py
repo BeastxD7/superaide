@@ -111,6 +111,7 @@ def learn(session: Session, job: Job) -> None:
         item = remember_fact(
             session, owner=owner, content=f.content, category=f.category, source=source,
             confidence=f.confidence, origin_context_id=event.context_id,
+            importance=f.importance, time_bound=f.time_bound,
         )  # fmt: skip
         if item is None:
             continue

@@ -99,6 +99,8 @@ def ingest(agent: Any, owner_id: uuid.UUID, extracted: Extracted, *, size_bytes:
                 source=source_kind,
                 document=doc,
                 confidence=f.confidence,
+                importance=f.importance,
+                time_bound=f.time_bound,
             ):
                 n += 1
         if facts is None:  # reading failed: keep it as saved so it is tried again
@@ -178,6 +180,8 @@ def read_documents(agent: Any, owner_id: uuid.UUID) -> list[ReadResult]:
                     source=source,
                     document=doc,
                     confidence=f.confidence,
+                    importance=f.importance,
+                    time_bound=f.time_bound,
                 )
             )
             doc.status = "read"

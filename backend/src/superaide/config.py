@@ -232,6 +232,12 @@ class Settings(BaseSettings):
     # /app/ask-link/* answer 404 (owner routes still 401/403 first). On: an owner can publish a
     # pseudonymous /a/<handle> page where anyone can leave a request. No model call for the visitor.
     ask_link_enabled: bool = False
+
+    # Spaced "is this still true?" (#49). Off: Ava never asks. On: the digest may carry a few facts that
+    # matter and don't fade ("Still true that you don't eat shellfish?"), at most this many a week, never
+    # as an interruption; the owner answers Yes / No / Changed.
+    memory_recheck_enabled: bool = False
+    memory_recheck_per_week: int = 2
     # Signs the public form's token (time-to-submit and same-form check). Blank: a random key per
     # process, so a restart only means a visitor reloads the page.
     ask_form_secret: str = ""

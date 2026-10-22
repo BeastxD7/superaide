@@ -12,7 +12,7 @@ import uuid
 from collections.abc import AsyncIterator, Callable
 from datetime import UTC, datetime
 from functools import lru_cache
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
@@ -142,6 +142,11 @@ class ReminderBody(BaseModel):
 class InstallBody(BaseModel):
     # The permissions the owner saw on the consent screen; must match what the skill needs.
     accepted: list[str] = Field(default_factory=list, max_length=10)
+
+
+class RecheckBody(BaseModel):
+    answer: Literal["yes", "no", "changed"]
+    new_content: str = Field(default="", max_length=2000)  # what is true now, for "changed"
 
 
 class OptionBody(BaseModel):
@@ -854,6 +859,28 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
 
             audit(s, "app", "memory_forgotten", memory_id=m.id, person_id=person_id)
         return {"status": "forgotten"}
+
+    @router.post(
+        "/notebook/{memory_id}/recheck",
+        tags=["Owner: chat & notebook"],
+        summary='Answer "is this still true?"',
+        description="yes keeps the note and asks again later; no retires it; changed retires it and saves "
+        "`new_content` in its place.",
+    )
+    def recheck(
+        memory_id: uuid.UUID, body: RecheckBody, person_id: uuid.UUID = Depends(owner_person_id)
+    ) -> dict[str, Any]:
+        from superaide.memory import recheck as recheck_mod
+
+        with session_scope() as s:
+            owner = s.get(Person, person_id)
+            try:
+                m = recheck_mod.answer(s, owner, memory_id, body.answer, body.new_content)  # type: ignore[arg-type]
+            except LookupError:
+                raise HTTPException(404, "Not found in your notebook") from None
+            except ValueError as exc:
+                raise HTTPException(422, str(exc)) from None
+            return {"status": body.answer, "id": str(m.id)}
 
     @router.get(
         "/skills",

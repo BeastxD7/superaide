@@ -216,6 +216,16 @@ class MemoryItem(Scoped, Base):
     # fact | hearsay (#137): hearsay came from outside the owner and has fewer than two independent roots.
     belief_state: Mapped[str] = mapped_column(String(10), default="fact", server_default="fact")
 
+    # How much the fact matters (0..1), set in code at extraction. Ranks it in recall; and facts that
+    # matter and last are re-checked with the owner now and then (knowledge/recheck.py).
+    importance: Mapped[float] = mapped_column(Float, default=0.5, server_default="0.5")
+    # Availability, plans, events: true means the fact fades as it ages. Everything else never decays.
+    time_bound: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    # Spaced "is this still true?": when the owner last confirmed it, how many times, and when we last asked.
+    last_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    verify_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    recheck_asked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
 
 class MemoryOrigin(Scoped, Base):
     """One root origin of a belief (#137). Repeats of the same root are one row, so they count once."""

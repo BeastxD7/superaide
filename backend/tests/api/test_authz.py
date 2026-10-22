@@ -289,3 +289,17 @@ def test_calendar_actions_switch_is_an_owner_route(app, browser, owner_data):
     r = stranger.post("/app/skills/superaide/google-calendar/options", json={"setting": "actions", "on": True})
     assert r.status_code == 403
     _assert_no_owner_data(r, owner_data)
+
+
+def test_the_owner_cannot_answer_a_recheck_for_someone_elses_fact_and_bad_answers_are_refused(owner, owner_data):
+    _doc_id, fact_id = _other_persons_rows()
+    r = owner.post(f"/app/notebook/{fact_id}/recheck", json={"answer": "no"})
+    assert r.status_code == 404 and "surprise" not in r.text
+    with session_scope() as s:
+        assert s.get(MemoryItem, uuid.UUID(fact_id)).valid_to is None
+    mine = f"/app/notebook/{owner_data['memory_id']}/recheck"
+    assert owner.post(mine, json={"answer": "maybe"}).status_code == 422
+    assert owner.post(mine, json={"answer": "changed"}).status_code == 422  # says nothing about what changed
+    assert owner.post(mine, json={"answer": "yes"}).status_code == 200
+    assert owner.post(mine, json={"answer": "changed", "new_content": "Bluebird moved to Q4."}).status_code == 200
+    assert owner.post(mine, json={"answer": "yes"}).status_code == 404  # retired by the change

@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from superaide.audit import audit
 from superaide.db.models import Contact, Document, MemoryItem, OwnerPreference, Person, UserAccount
 from superaide.db.session import rows_affected
+from superaide.memory import importance as weigh
 
 CATEGORIES = ("about", "work", "person", "preference", "urgency", "availability", "sharing", "other")
 SOURCES = ("chat", "intro_chat", "intro_call", "document", "link", "telegram", "slack", "owner_edit")
@@ -75,6 +76,8 @@ def remember_fact(
     origin_url: str | None = None,
     origin_author: str | None = None,
     quote_chain: tuple[str, ...] = (),
+    importance: float | None = None,
+    time_bound: bool | None = None,
 ) -> MemoryItem | None:
     """Store one fact about the owner. Returns None if the same fact is already known (with the Echo Filter
     on, a repeat from a *different* root origin is still noted on the known fact)."""
@@ -107,6 +110,8 @@ def remember_fact(
         source=source if source in SOURCES else "chat",
         document_id=document.id if document else None,
         confidence=max(0.0, min(1.0, confidence)),
+        importance=weigh.score(category, importance),
+        time_bound=weigh.is_time_bound(category, content) if time_bound is None else time_bound,
     )
     session.add(item)
     session.flush()
