@@ -84,12 +84,11 @@ export function NeedsYouPage() {
 
         <AskRequests className="mt-6" />
 
-        <div role="tablist" aria-label="Lists" className="mt-6 flex flex-wrap gap-1.5">
+        <div role="group" aria-label="Lists" className="mt-6 flex flex-wrap gap-1.5">
           {TABS.map((t) => (
             <Button
               key={t.id}
-              role="tab"
-              aria-selected={tab === t.id}
+              aria-pressed={tab === t.id}
               size="sm"
               variant={tab === t.id ? 'default' : 'outline'}
               onClick={() => setTab(t.id)}

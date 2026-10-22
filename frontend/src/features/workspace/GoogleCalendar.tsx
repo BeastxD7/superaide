@@ -256,7 +256,7 @@ function ClientForm({
             placeholder="1234…-abc.apps.googleusercontent.com"
             autoComplete="off"
             spellCheck={false}
-            className="mt-1 w-full rounded-xl bg-mist px-3 py-2.5 font-mono text-sm text-ink outline-none focus:ring-2 focus:ring-violet-400/50"
+            className="mt-1 w-full rounded-xl bg-mist px-3 py-2.5 font-mono text-base text-ink outline-none md:text-sm focus:ring-2 focus:ring-violet-400/50"
           />
         </label>
         <label className="block">
@@ -268,7 +268,7 @@ function ClientForm({
             placeholder="GOCSPX-…"
             autoComplete="off"
             spellCheck={false}
-            className="mt-1 w-full rounded-xl bg-mist px-3 py-2.5 font-mono text-sm text-ink outline-none focus:ring-2 focus:ring-violet-400/50"
+            className="mt-1 w-full rounded-xl bg-mist px-3 py-2.5 font-mono text-base text-ink outline-none md:text-sm focus:ring-2 focus:ring-violet-400/50"
           />
         </label>
         {error && <Notice tone="error">{error}</Notice>}

@@ -108,14 +108,14 @@ export function NotebookPage() {
                     {new Date(m.at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
                   </time>
                 </div>
-                <p className="whitespace-pre-wrap text-sm text-ink">{m.text}</p>
+                <p className="whitespace-pre-wrap text-sm text-ink [overflow-wrap:anywhere]">{m.text}</p>
                 {confirm === m.id ? (
                   <div className="mt-3 flex items-center gap-2 text-xs">
                     <span className="text-muted">{name} won&apos;t use this again.</span>
                     <Button size="sm" variant="destructive" onClick={() => void forget(m.id)}>
                       Forget
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setConfirm(null)}>
+                    <Button size="sm" variant="ghost" autoFocus onClick={() => setConfirm(null)}>
                       Keep
                     </Button>
                   </div>

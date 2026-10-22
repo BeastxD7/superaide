@@ -223,7 +223,7 @@ export function ChatPage() {
               onKeyDown={onKey}
               placeholder={`Message ${name}`}
               aria-label={`Message ${name}`}
-              className="max-h-[220px] flex-1 resize-none bg-transparent py-2.5 text-ink outline-none placeholder:text-muted/70"
+              className="max-h-[220px] flex-1 resize-none bg-transparent py-2.5 text-ink outline-none placeholder:text-muted"
             />
             <motion.button
               whileTap={{ scale: 0.9 }}

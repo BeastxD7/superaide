@@ -143,6 +143,7 @@ export function AccountMenu({ session }: { session: Session }) {
   const account = session.account
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const trigger = useRef<HTMLButtonElement>(null)
   const menuId = useId()
 
   useEffect(() => {
@@ -151,7 +152,10 @@ export function AccountMenu({ session }: { session: Session }) {
       if (!ref.current?.contains(e.target as Node)) setOpen(false)
     }
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false)
+      if (e.key === 'Escape') {
+        setOpen(false)
+        trigger.current?.focus() // keyboard users land back on the button that opened it
+      }
     }
     document.addEventListener('pointerdown', onPointer)
     document.addEventListener('keydown', onKey)
@@ -166,6 +170,7 @@ export function AccountMenu({ session }: { session: Session }) {
   return (
     <div ref={ref} className="relative">
       <button
+        ref={trigger}
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
@@ -192,7 +197,8 @@ export function AccountMenu({ session }: { session: Session }) {
               setOpen(false)
               void session.logOut()
             }}
-            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-ink hover:bg-mist"
+            autoFocus
+            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-ink hover:bg-mist focus-visible:outline-2 focus-visible:outline-violet-500"
           >
             <LogOut className="size-4" />
             Log out

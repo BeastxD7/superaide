@@ -81,7 +81,7 @@ export function Conversation({
               transition={{ type: 'spring', stiffness: 300, damping: 26 }}
               className={`flex justify-end ${firstOfRun ? 'mt-3' : ''}`}
             >
-              <p className="max-w-[80%] rounded-3xl rounded-br-md bg-gradient-to-br from-violet-400 to-violet-500 px-4 py-2.5 whitespace-pre-wrap [overflow-wrap:anywhere] text-white shadow-[0_10px_24px_-16px_rgba(103,71,238,0.9)]">
+              <p className="max-w-[80%] rounded-3xl rounded-br-md bg-gradient-to-br from-violet-600 to-violet-700 px-4 py-2.5 whitespace-pre-wrap [overflow-wrap:anywhere] text-white shadow-[0_10px_24px_-16px_rgba(103,71,238,0.9)]">
                 {m.text}
               </p>
             </motion.div>

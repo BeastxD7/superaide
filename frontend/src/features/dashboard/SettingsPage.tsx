@@ -34,7 +34,7 @@ export function SettingsPage() {
           <CardContent>
             <dl className="grid gap-3 text-sm sm:grid-cols-[10rem_1fr]">
               <dt className="text-muted">Name</dt>
-              <dd className="text-ink">{account.user.name}</dd>
+              <dd className="text-ink [overflow-wrap:anywhere]">{account.user.name}</dd>
               <dt className="text-muted">Email</dt>
               <dd className="text-ink">{account.user.email}</dd>
               <dt className="text-muted">Member since</dt>
@@ -57,7 +57,7 @@ export function SettingsPage() {
               {(rules) => (
                 <dl className="grid gap-3 text-sm sm:grid-cols-[10rem_1fr]">
                   <dt className="text-muted">Interrupt me for</dt>
-                  <dd className="text-ink">{rules.urgent_topics.join('; ') || 'Nothing yet'}</dd>
+                  <dd className="text-ink [overflow-wrap:anywhere]">{rules.urgent_topics.join('; ') || 'Nothing yet'}</dd>
                   <dt className="text-muted">Reach me</dt>
                   <dd className="text-ink">{CHANNEL_LABEL[rules.interrupt_channel] ?? rules.interrupt_channel}</dd>
                   <dt className="text-muted">Quiet hours</dt>
@@ -68,9 +68,9 @@ export function SettingsPage() {
                   <dt className="text-muted">Digest</dt>
                   <dd className="text-ink">{DIGEST_LABEL[rules.digest] ?? rules.digest}</dd>
                   <dt className="text-muted">Others may know</dt>
-                  <dd className="text-ink">{rules.shareable.map((s) => s.label).join('; ') || 'Nothing beyond your name'}</dd>
+                  <dd className="text-ink [overflow-wrap:anywhere]">{rules.shareable.map((s) => s.label).join('; ') || 'Nothing beyond your name'}</dd>
                   <dt className="text-muted">Never share</dt>
-                  <dd className="text-ink">{rules.never_share || 'Nothing listed'}</dd>
+                  <dd className="text-ink [overflow-wrap:anywhere]">{rules.never_share || 'Nothing listed'}</dd>
                 </dl>
               )}
             </Loadable>

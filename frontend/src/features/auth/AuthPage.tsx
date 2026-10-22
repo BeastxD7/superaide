@@ -182,7 +182,7 @@ export function AuthPage({
                   maxLength={120}
                   placeholder="e.g. Shashank Rao"
                   aria-invalid={error?.field === 'name'}
-                  className="mt-2 w-full rounded-2xl border border-white bg-white px-4 py-3.5 text-ink outline-none placeholder:text-muted/60 focus:border-violet-400"
+                  className="mt-2 w-full rounded-2xl border border-white bg-white px-4 py-3.5 text-ink outline-none placeholder:text-muted focus:border-violet-400"
                 />
                 {fieldError('name')}
               </label>
@@ -197,7 +197,7 @@ export function AuthPage({
                 autoComplete={mode === 'signup' ? 'email' : 'username'}
                 placeholder="you@company.com"
                 aria-invalid={error?.field === 'email'}
-                className="mt-2 w-full rounded-2xl border border-white bg-white px-4 py-3.5 text-ink outline-none placeholder:text-muted/60 focus:border-violet-400"
+                className="mt-2 w-full rounded-2xl border border-white bg-white px-4 py-3.5 text-ink outline-none placeholder:text-muted focus:border-violet-400"
               />
               {fieldError('email')}
             </label>

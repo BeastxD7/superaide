@@ -57,7 +57,7 @@ export function PeoplePage() {
                       <span className="grid size-8 shrink-0 place-items-center rounded-full bg-lilac-100 text-xs font-semibold text-violet-700">
                         {p.name.charAt(0).toUpperCase()}
                       </span>
-                      <span className="font-medium text-ink">{p.name}</span>
+                      <span className="min-w-0 font-medium text-ink [overflow-wrap:anywhere]">{p.name}</span>
                     </span>
                   </td>
                   <td className="px-4 py-3 text-body">{capitalise(p.relationship)}</td>

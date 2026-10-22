@@ -13,7 +13,7 @@
   --color-night-800: #2a2160;
   --color-night-600: #4b3f9e;
   --color-body: #4a4566;
-  --color-muted: #77729a;
+  --color-muted: #6a658d;
   --color-line: #e7e4f3;
   --color-canvas: #ffffff;
   --color-mist: #f7f6fc;
@@ -32,9 +32,9 @@
   --color-kai: #3d6fe0;
   --color-rhea: #c2448f;
 
-  --color-ok: #4a6fe3;
-  --color-warn: #b06a12;
-  --color-danger: #c03a5b;
+  --color-ok: #3a5bc7;
+  --color-warn: #9a5a0c;
+  --color-danger: #b3304e;
 
   --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
 
