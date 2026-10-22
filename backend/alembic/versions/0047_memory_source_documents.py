@@ -1,7 +1,7 @@
 """memory_item.source_document_ids: further documents that support a fact (issue #48)
 
-Revision ID: 0037
-Revises: 0036
+Revision ID: 0047
+Revises: 0046
 Create Date: 2026-10-23 14:00:00
 
 Erasing a document keeps a fact another document (or the owner's own words) still supports.
@@ -14,8 +14,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision: str = "0037"
-down_revision: str | Sequence[str] | None = "0036"
+revision: str = "0047"
+down_revision: str | Sequence[str] | None = "0046"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
