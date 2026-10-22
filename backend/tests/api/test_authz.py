@@ -29,6 +29,7 @@ FLAG_GATED = {
     ("GET", "/app/approvals/brake"),  # RUBBER_STAMP_BRAKE_ENABLED (#134)
     ("GET", "/app/question"),  # ONE_GOOD_QUESTION_ENABLED (#121)
     ("GET", "/app/why/{event_id}"),  # WHY_REPLAY_ENABLED (#122)
+    ("GET", "/app/twin"),  # OWNER_TWIN_ENABLED (#119)
     # The "Ask my Ava" link (ASK_LINK_ENABLED); its public side is checked in test_public_ask_routes below.
     ("GET", "/app/ask-link"),
     ("GET", "/app/ask-link/requests"),

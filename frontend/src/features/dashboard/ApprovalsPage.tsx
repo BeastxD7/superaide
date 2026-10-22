@@ -1,6 +1,7 @@
 'use client'
 
 import { ApprovalsCard } from '@/features/dashboard/Approvals'
+import { TwinCard } from '@/features/dashboard/TwinCard'
 import { useSession } from '@/lib/session-context'
 
 // Approvals on their own page (ADR 0011 section 2), for the phone's tab bar. The same card
@@ -21,6 +22,7 @@ export function ApprovalsPage() {
             </p>
           }
         />
+        <TwinCard name={name} />
       </div>
     </div>
   )

@@ -936,6 +936,25 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 "pending_cap": brake.PENDING_CAP,
             }
 
+    @router.get(
+        "/twin",
+        tags=["Owner: approvals"],
+        summary="How well Ava can predict your approvals",
+        description=(
+            "Owner Twin (OWNER_TWIN_ENABLED, off by default; 404 while off): a predictor of your approve or reject "
+            "choices, scored on your past decisions, with a calibration table and the gate it must pass."
+        ),
+    )
+    def twin(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        if not get_settings().owner_twin_enabled:
+            raise HTTPException(404, "Not found")
+        from dataclasses import asdict
+
+        from superaide.trust import twin as owner_twin
+
+        with session_scope() as s:
+            return asdict(owner_twin.calibration(s))
+
     @router.post(
         "/approvals/{approval_id}/{verdict}",
         tags=["Owner: approvals"],

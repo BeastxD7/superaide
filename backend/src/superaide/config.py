@@ -208,6 +208,9 @@ class Settings(BaseSettings):
     # the spend cap.
     why_replay_enabled: bool = False
     replay_max_ablations: int = 8
+    # Owner Twin (#119, tracking #142). Off: /app/twin answers 404. On: a calibration page scores a small
+    # predictor of the owner's approve/reject choices. It reads approvals only and grants nothing.
+    owner_twin_enabled: bool = False
     gmail_poll_minutes: int = 5
     # The owner's Gmail sign-in (same OAuth client as Calendar); kept per instance in the vault.
     gmail_refresh_token: str = ""
