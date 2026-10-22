@@ -69,6 +69,8 @@ async function telegramRejected(page: Page, opts: { ownerLinked: boolean }) {
     const body = await res.json()
     body.channels.telegram = opts.ownerLinked
     body.channels.telegram_available = true
+    // What the API now sends for a refused token (channels/health.py), the same verdict Connections shows.
+    body.channels.health = { telegram: { status: 'auth_failed', last_error: 'Unauthorized', since }, slack: { status: 'ok' } }
     await route.fulfill({ response: res, json: body })
   })
 }
@@ -84,7 +86,6 @@ test.describe('dashboard: home', () => {
   })
 
   test('a card whose data cannot be loaded says so instead of loading forever', async ({ page, owner }) => {
-    test.fail(true, 'BUG: Home ignores useAppData().error, so a failed /notebook or /preferences leaves a skeleton spinning forever')
     await page.route('**/api/app/notebook', serverError)
     await page.route('**/api/app/preferences', (r) => r.abort('connectionrefused'))
     await page.goto('/dashboard')
@@ -156,7 +157,6 @@ test.describe('dashboard: session', () => {
 
 test.describe('dashboard: notebook', () => {
   test('forgetting the last note of a kind while that kind is filtered leaves a way back', async ({ page, owner }) => {
-    test.fail(true, 'BUG: the kind filter outlives its last note: the chip disappears, nothing is listed, and the page says "Nothing matches that search" with no search typed')
     void owner
     await openNotebookPage(page)
     // Pick a kind with exactly one note from the introduction (labels as the page shows them).
@@ -193,7 +193,6 @@ test.describe('dashboard: notebook', () => {
 
 test.describe('dashboard: settings', () => {
   test('if your rules cannot be loaded, Settings says so instead of loading forever', async ({ page, owner }) => {
-    test.fail(true, 'BUG: SettingsPage never reads prefs.error, so a failed /preferences leaves the "Your rules" skeleton up forever with no message')
     void owner
     await page.route('**/api/app/preferences', serverError)
     let asked = false
@@ -221,7 +220,6 @@ test.describe('dashboard: settings', () => {
 
 test.describe('dashboard: connections', () => {
   test('if Disconnect fails, the person is told and the service still shows as connected', async ({ page, owner }) => {
-    test.fail(true, 'BUG: ConnectForm.disconnect() has try/finally but no catch, so a failed disconnect shows nothing at all')
     void owner
     await plantSecret('anthropic', 'api_key', 'sk-ant-e2e-planted-placeholder-not-real-9q2b')
     const errors: string[] = []
@@ -255,7 +253,6 @@ test.describe('dashboard: connections', () => {
   })
 
   test('home does not say Telegram is working while its token is rejected', async ({ page, owner }) => {
-    test.fail(true, 'BUG: Home\'s "Where people reach Ava" card reads only me.channels, so it shows a green "Linked to you" for a Telegram whose token Telegram refuses')
     await telegramRejected(page, { ownerLinked: true })
     await openConnections(page)
     await expect(page.getByRole('button', { name: /^Telegram/ })).toContainText('Token rejected')
@@ -269,7 +266,6 @@ test.describe('dashboard: connections', () => {
   })
 
   test('if linking your own Telegram fails, the person is told', async ({ page, owner }) => {
-    test.fail(true, 'BUG: TelegramPairing\'s "Link my Telegram" onClick has no catch, so a refused POST /channels/telegram shows nothing')
     void owner
     await page.route('**/api/app/connections', async (route) => {
       const res = await route.fetch()
@@ -287,7 +283,6 @@ test.describe('dashboard: connections', () => {
   })
 
   test('a crafted ?google=connected link does not announce a connection that does not exist', async ({ page, owner }) => {
-    test.fail(true, 'BUG: Connections shows the ?google= outcome from the URL as is, so /dashboard/connections?google=connected says "Google Calendar is connected" when it is not')
     void owner
     await page.goto('/dashboard/connections?google=connected')
     await expect(page.getByRole('heading', { level: 1, name: 'Connections' })).toBeVisible()

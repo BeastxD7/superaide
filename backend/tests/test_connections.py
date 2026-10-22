@@ -144,6 +144,24 @@ def test_a_rejected_telegram_token_shows_on_connections_until_a_new_one_is_saved
     assert r["services"]["telegram"]["health"]["status"] == "ok"
 
 
+def test_me_carries_each_channels_health_without_asking_the_service(owner, monkeypatch):
+    from superaide.app import routes
+    from superaide.channels import health
+
+    def no_network(*args, **kwargs):
+        raise AssertionError("GET /app/me must not call Telegram or Slack")
+
+    monkeypatch.setattr(httpx, "get", no_network)
+    monkeypatch.setattr(httpx, "post", no_network)
+    routes.telegram_username.cache_clear()
+    h = owner.get("/app/me").json()["channels"]["health"]
+    assert h["telegram"]["status"] == "ok" and h["slack"]["status"] == "ok"  # nothing has failed
+    health.record("telegram", health.AUTH_FAILED, "Telegram rejected the bot token (401)")
+    h = owner.get("/app/me").json()["channels"]["health"]
+    assert h["telegram"]["status"] == "auth_failed" and h["telegram"]["since"]
+    assert h["slack"]["status"] == "ok"  # one channel's verdict is not the other's
+
+
 def test_only_the_owner_can_see_or_change_connections(owner, agent):
     other = TestClient(owner.app_, headers={"X-Requested-With": "superaide"})
     assert other.get("/app/connections").status_code == 401

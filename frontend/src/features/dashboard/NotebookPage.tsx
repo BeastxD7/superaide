@@ -3,13 +3,14 @@
 import { Search } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useMemo, useState } from 'react'
-import { Notice } from '@/components/site'
+import { ActionError, LoadError } from '@/components/load-state'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CATEGORY_LABEL, SOURCE_LABEL, useAppData } from '@/features/dashboard/data'
-import { AppError, call, type Memory } from '@/lib/api'
+import { call, type Memory } from '@/lib/api'
+import { errorMessage } from '@/lib/action'
 import { useSession } from '@/lib/session-context'
 
 export function NotebookPage() {
@@ -23,8 +24,10 @@ export function NotebookPage() {
 
   const memories = data?.memories
   const categories = useMemo(() => [...new Set((memories ?? []).map((m) => m.category))], [memories])
+  // The kind filter can outlive its last note (forgotten, or gone after a reload): fall back to Everything.
+  const active = categories.includes(filter) ? filter : 'all'
   const shown = (memories ?? []).filter(
-    (m) => (filter === 'all' || m.category === filter) && m.text.toLowerCase().includes(query.trim().toLowerCase()),
+    (m) => (active === 'all' || m.category === active) && m.text.toLowerCase().includes(query.trim().toLowerCase()),
   )
 
   async function forget(id: string) {
@@ -34,7 +37,7 @@ export function NotebookPage() {
       setConfirm(null)
       await reload()
     } catch (e) {
-      setActionError(e instanceof AppError ? e.message : String(e))
+      setActionError(errorMessage(e))
     }
   }
 
@@ -54,8 +57,8 @@ export function NotebookPage() {
               <Button
                 key={c}
                 size="sm"
-                variant={filter === c ? 'default' : 'outline'}
-                aria-pressed={filter === c}
+                variant={active === c ? 'default' : 'outline'}
+                aria-pressed={active === c}
                 onClick={() => setFilter(c)}
               >
                 {c === 'all' ? 'Everything' : (CATEGORY_LABEL[c] ?? 'Note')}
@@ -66,12 +69,19 @@ export function NotebookPage() {
 
         {(error || actionError) && (
           <div className="mt-4">
-            <Notice tone="error">{error ?? actionError}</Notice>
+            {error && !memories ? (
+              <LoadError what="the notebook" error={error} onRetry={reload} />
+            ) : error ? (
+              <ActionError action="refresh the notebook" error={error} />
+            ) : (
+              <ActionError action="forget that" error={actionError} />
+            )}
           </div>
         )}
 
         <ul className="mt-6 space-y-2">
           {!memories &&
+            !error &&
             [0, 1, 2].map((i) => (
               <li key={i} className="rounded-xl border border-line p-4">
                 <Skeleton className="h-4 w-1/3" />
@@ -121,7 +131,22 @@ export function NotebookPage() {
             <li className="rounded-xl border border-dashed border-line p-6 text-center text-sm text-muted">
               {memories.length === 0
                 ? `Nothing yet. Tell ${name} "remember that…" in chat and it will appear here.`
-                : 'Nothing matches that search.'}
+                : query.trim()
+                  ? 'Nothing matches that search.'
+                  : 'No notes of that kind.'}
+              {memories.length > 0 && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-3 block mx-auto"
+                  onClick={() => {
+                    setQuery('')
+                    setFilter('all')
+                  }}
+                >
+                  Show everything
+                </Button>
+              )}
             </li>
           )}
         </ul>

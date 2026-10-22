@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, type FormEvent } from 'react'
+import { Loadable } from '@/components/load-state'
 import { Notice } from '@/components/site'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Skeleton } from '@/components/ui/skeleton'
 import { AskLinkCard } from '@/features/ask/AskLinkCard'
 import { AccessLogCard } from '@/features/dashboard/AccessLogCard'
 import { CHANNEL_LABEL, DIGEST_LABEL, useAppData } from '@/features/dashboard/data'
@@ -53,27 +53,27 @@ export function SettingsPage() {
             <CardDescription>What you told {name} in your introduction.</CardDescription>
           </CardHeader>
           <CardContent>
-            {!prefs.data ? (
-              <Skeleton className="h-24 w-full" />
-            ) : (
-              <dl className="grid gap-3 text-sm sm:grid-cols-[10rem_1fr]">
-                <dt className="text-muted">Interrupt me for</dt>
-                <dd className="text-ink">{prefs.data.urgent_topics.join('; ') || 'Nothing yet'}</dd>
-                <dt className="text-muted">Reach me</dt>
-                <dd className="text-ink">{CHANNEL_LABEL[prefs.data.interrupt_channel] ?? prefs.data.interrupt_channel}</dd>
-                <dt className="text-muted">Quiet hours</dt>
-                <dd className="text-ink">
-                  {prefs.data.quiet_start}–{prefs.data.quiet_end} ({prefs.data.timezone})
-                  {prefs.data.vip_breaks_quiet ? ', VIPs can break through' : ''}
-                </dd>
-                <dt className="text-muted">Digest</dt>
-                <dd className="text-ink">{DIGEST_LABEL[prefs.data.digest] ?? prefs.data.digest}</dd>
-                <dt className="text-muted">Others may know</dt>
-                <dd className="text-ink">{prefs.data.shareable.map((s) => s.label).join('; ') || 'Nothing beyond your name'}</dd>
-                <dt className="text-muted">Never share</dt>
-                <dd className="text-ink">{prefs.data.never_share || 'Nothing listed'}</dd>
-              </dl>
-            )}
+            <Loadable state={prefs} what="your rules">
+              {(rules) => (
+                <dl className="grid gap-3 text-sm sm:grid-cols-[10rem_1fr]">
+                  <dt className="text-muted">Interrupt me for</dt>
+                  <dd className="text-ink">{rules.urgent_topics.join('; ') || 'Nothing yet'}</dd>
+                  <dt className="text-muted">Reach me</dt>
+                  <dd className="text-ink">{CHANNEL_LABEL[rules.interrupt_channel] ?? rules.interrupt_channel}</dd>
+                  <dt className="text-muted">Quiet hours</dt>
+                  <dd className="text-ink">
+                    {rules.quiet_start}–{rules.quiet_end} ({rules.timezone})
+                    {rules.vip_breaks_quiet ? ', VIPs can break through' : ''}
+                  </dd>
+                  <dt className="text-muted">Digest</dt>
+                  <dd className="text-ink">{DIGEST_LABEL[rules.digest] ?? rules.digest}</dd>
+                  <dt className="text-muted">Others may know</dt>
+                  <dd className="text-ink">{rules.shareable.map((s) => s.label).join('; ') || 'Nothing beyond your name'}</dd>
+                  <dt className="text-muted">Never share</dt>
+                  <dd className="text-ink">{rules.never_share || 'Nothing listed'}</dd>
+                </dl>
+              )}
+            </Loadable>
           </CardContent>
         </Card>
 
