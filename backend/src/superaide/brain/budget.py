@@ -55,6 +55,7 @@ BUCKETS = {
     "verify": "chat",
     "intro_facts": "memory",
     "web_research": "research",
+    "rehearsal": "chat",  # #58: practice conversations draw from the chat bucket
     "triage": "triage",  # ADR 0010: the triage classifier, rules only once this is spent
     # ADR 0012: the introduction's voice call (the interviewer's turns, speech-to-text, voices)
     "voice_turn": "voice",
