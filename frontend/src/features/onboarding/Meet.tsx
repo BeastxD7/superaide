@@ -14,7 +14,7 @@ import { StepControls } from '@/features/onboarding/steps'
 import { unlockSpeech } from '@/features/onboarding/speech'
 import { VideoCall, type CallQuestion, type CallTurnResult } from '@/features/onboarding/VideoCall'
 import { VoiceIntro, type VoiceConfig } from '@/features/onboarding/voice/VoiceIntro'
-import { AccountMenu, Notice } from '@/components/site'
+import { AccountMenu, Button, Notice } from '@/components/site'
 import { SessionProblem } from '@/components/SessionProblem'
 
 export function Meet({ session }: { session: Session }) {
@@ -50,16 +50,26 @@ export function Meet({ session }: { session: Session }) {
     router.replace(session.account ? '/' : `/login?next=${encodeURIComponent('/meet')}`)
   }, [me, loadProblem, session.account, router])
 
-  useEffect(() => {
-    if (!me) return
-    Promise.all([call<StepView>('/onboarding'), call<Message[]>('/messages')])
+  // The first read of the introduction. A failure is its own state (not "All set", not "typing"): the panel offers Try again.
+  const [loadFailed, setLoadFailed] = useState(false)
+  const load = useCallback(() => {
+    setError(null)
+    setLoadFailed(false)
+    return Promise.all([call<StepView>('/onboarding'), call<Message[]>('/messages')])
       .then(([v, m]) => {
         setFresh(!m.some((x) => x.from === 'you'))
         setView(v)
         setMessages(m)
         setLoaded(true)
       })
-      .catch((e: Error) => setError(e.message))
+      .catch((e: unknown) => {
+        setError(e instanceof AppError ? e.message : e instanceof Error ? e.message : String(e))
+        setLoadFailed(true)
+      })
+  }, [])
+  useEffect(() => {
+    if (!me) return
+    void load()
     // Only on first mount; later updates come from answers.
   }, [me?.person.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -155,7 +165,13 @@ export function Meet({ session }: { session: Session }) {
           <div className="min-w-0 flex-1">
             <p className="font-medium text-ink">{agentName}</p>
             <p className="truncate text-xs text-muted">
-              {view && !view.done ? `Getting to know you. Step ${view.index + 1} of ${view.total}: ${view.labels[view.index]}` : 'All set'}
+              {view
+                ? view.done
+                  ? 'All set'
+                  : `Getting to know you. Step ${view.index + 1} of ${view.total}: ${view.labels[view.index]}`
+                : loadFailed
+                  ? "Couldn't load"
+                  : 'Getting ready…'}
             </p>
           </div>
           <AccountMenu session={session} />
@@ -219,6 +235,13 @@ export function Meet({ session }: { session: Session }) {
                   openCall={() => void openCall()}
                   refreshMe={session.refresh}
                 />
+              </motion.div>
+            ) : loadFailed && !view ? (
+              <motion.div key="retry" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex justify-center gap-2 py-2">
+                <Button tone="violet" onClick={() => void load()}>
+                  Try again
+                </Button>
+                <Button onClick={() => router.push('/')}>Leave</Button>
               </motion.div>
             ) : (
               <motion.p key="wait" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="py-2 text-center text-sm text-muted">
