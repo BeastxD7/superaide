@@ -221,9 +221,14 @@ def _reserve(guard, purpose="chat_turn", usd="0.10"):
 
 
 def _age(days: float) -> None:
-    """Move every ledger entry back in time."""
+    """Move every ledger entry back in time, as settled spend (an old unsettled reservation is an orphan
+    that the next reserve() releases)."""
     with session_scope() as s:
-        s.execute(update(SpendEntry).values(created_at=datetime.now(UTC) - timedelta(days=days)))
+        s.execute(
+            update(SpendEntry).values(
+                created_at=datetime.now(UTC) - timedelta(days=days), status="settled", cost_usd=SpendEntry.reserved_usd
+            )
+        )
 
 
 def test_the_daily_limit_refuses_a_call_that_would_pass_it_and_names_the_period():

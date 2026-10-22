@@ -94,6 +94,13 @@ class LLMProvider(Protocol):
     ) -> Completion: ...
 
 
+def mark_billable[E: BaseException](exc: E) -> E:
+    """Say that this error came after the provider began to answer (e.g. a stream that dropped midway), so the
+    call may have been billed: the guard settles it at its reservation instead of recording it as free."""
+    exc.billable = True  # type: ignore[attr-defined]
+    return exc
+
+
 def metered[R](
     guard: Guard,
     *,
@@ -105,13 +112,17 @@ def metered[R](
     provider: str = "anthropic",
 ) -> tuple[R, UsageCounts, Decimal]:
     """Reserve the worst case, make the call, settle at the real price. A call that raises is
-    marked failed (nothing billed); a response that came back is settled before anything reads
+    marked failed (nothing billed) unless it failed after the answer began (`mark_billable`), when it is
+    settled at its reservation; a response that came back is settled before anything reads
     it, so a cut-off or invalid answer is still counted against the cap."""
     entry_id = guard.reserve(purpose=purpose, model=model, worst_case_usd=worst_case_usd, provider=provider)
     try:
         response = call()
-    except Exception as exc:  # the provider did not return a billable response
-        guard.fail(entry_id, f"{type(exc).__name__}: {exc}")
+    except Exception as exc:
+        if getattr(exc, "billable", False):  # cut off mid-answer: the provider may have charged for it
+            guard.settle(entry_id, model=model, usage=UsageCounts(), request_id=None, provider=provider, known=False)
+        else:  # the provider did not return a billable response
+            guard.fail(entry_id, f"{type(exc).__name__}: {exc}")
         raise
     p = priced(response)
     cost = guard.settle(

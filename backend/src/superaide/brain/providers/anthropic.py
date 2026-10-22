@@ -22,7 +22,7 @@ from typing import Any
 from pydantic import BaseModel, ValidationError
 
 from superaide.brain.pricing import PriceRegistry, UsageCounts, tool_fee, worst_case_cost
-from superaide.brain.providers.base import CheckReport, Guard, Priced, metered
+from superaide.brain.providers.base import CheckReport, Guard, Priced, mark_billable, metered
 from superaide.brain.providers.types import (
     Capabilities,
     Citation,
@@ -334,6 +334,9 @@ def _neutral_events(on_event: OnStreamEvent) -> WireEvent:
 # --- the provider ---------------------------------------------------------------------
 
 
+CLIENT_TIMEOUT_SECONDS = 120.0  # the SDK's own default is ten minutes: a stalled call would hold a worker that long
+
+
 class AnthropicProvider:
     kind = "anthropic"
 
@@ -343,7 +346,7 @@ class AnthropicProvider:
 
             if not api_key:
                 raise RuntimeError("ANTHROPIC_API_KEY is not set; add it to .env or set FAKE_LLM=true")
-            client = anthropic.Anthropic(api_key=api_key, max_retries=2)
+            client = anthropic.Anthropic(api_key=api_key, max_retries=2, timeout=CLIENT_TIMEOUT_SECONDS)
         self.client = client
         self.guard = guard
         self.id = id
@@ -404,16 +407,23 @@ class AnthropicProvider:
         return content, response.stop_reason or "end_turn", usage, cost
 
     def _stream(self, kwargs: dict[str, Any], on_event: WireEvent) -> Any:
-        with self.client.messages.stream(**kwargs) as stream:
-            for event in stream:
-                if event.type == "content_block_delta":
-                    if event.delta.type == "text_delta":
-                        on_event("text", {"delta": event.delta.text})
-                    elif event.delta.type == "thinking_delta":
-                        on_event("thinking", {"delta": event.delta.thinking})
-                elif event.type == "content_block_stop":
-                    on_event("block", {"block": block_dict(stream.current_message_snapshot.content[event.index])})
-            return stream.get_final_message()
+        started = False
+        try:
+            with self.client.messages.stream(**kwargs) as stream:
+                for event in stream:
+                    started = True
+                    if event.type == "content_block_delta":
+                        if event.delta.type == "text_delta":
+                            on_event("text", {"delta": event.delta.text})
+                        elif event.delta.type == "thinking_delta":
+                            on_event("thinking", {"delta": event.delta.thinking})
+                    elif event.type == "content_block_stop":
+                        on_event("block", {"block": block_dict(stream.current_message_snapshot.content[event.index])})
+                return stream.get_final_message()
+        except Exception as exc:
+            if started:
+                mark_billable(exc)  # the answer had begun, so the provider may have billed for it
+            raise
 
     def complete_wire(
         self,

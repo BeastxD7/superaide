@@ -136,6 +136,9 @@ class SpendSummary:
         }
 
 
+STALE_RESERVATION = timedelta(minutes=10)  # a call that is still unsettled after this was lost to a crash
+
+
 class BudgetGuard:
     def __init__(
         self,
@@ -244,6 +247,21 @@ class BudgetGuard:
                 return BudgetExceeded(f"Superaide AI credits: {word} allowance used", period)
         return None
 
+    def _release_orphans(self, s) -> None:
+        """Give back reservations that were never settled or failed: the process died between reserve()
+        and settle(). They would otherwise count against the cap for good. Runs under the instance lock;
+        a platform-paid one also returns its share of the platform's day total."""
+        cutoff = datetime.now(UTC) - STALE_RESERVATION
+        orphans = s.scalars(
+            select(SpendEntry).where(self._mine(), SpendEntry.status == "reserved", SpendEntry.created_at < cutoff)
+        ).all()
+        for entry in orphans:
+            if entry.key_source == "platform":
+                platform.adjust(s, entry.created_at, -entry.reserved_usd)
+            entry.status = "failed"
+            entry.settled_at = datetime.now(UTC)
+            audit(s, "budget", "reservation_released", purpose=entry.purpose, reserved_usd=float(entry.reserved_usd))
+
     def summary(self) -> SpendSummary:
         with use_instance(self.scope), session_scope(self.db_url) as s:
             settled = s.scalar(
@@ -273,6 +291,7 @@ class BudgetGuard:
                     text("SELECT pg_advisory_xact_lock(:ns, hashtext(:agent))"),
                     {"ns": _LOCK_KEY, "agent": str(self.scope.agent_id)},
                 )
+                self._release_orphans(s)
                 committed = self._committed(s, all_sources=True)
                 if committed + worst_case_usd > self.cap:
                     audit(

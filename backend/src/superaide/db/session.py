@@ -14,10 +14,22 @@ from superaide.config import get_settings
 from superaide.db.rls import set_scope_sql
 from superaide.tenancy.context import across_instances, current_scope, scope_or_default
 
+# Every connection speaks UTC, so a timestamp read back and compared as text matches the one written,
+# whatever time zone the database server is set to (a deferred escalation compared isoformat strings).
+CONNECT_ARGS = {"options": "-c timezone=UTC"}
+
 
 @lru_cache
 def get_engine(url: str | None = None) -> Engine:
-    return create_engine(url or get_settings().database_url, pool_pre_ping=True)
+    settings = get_settings()
+    return create_engine(
+        url or settings.database_url,
+        pool_pre_ping=True,
+        pool_size=settings.db_pool_size,
+        max_overflow=settings.db_max_overflow,
+        pool_timeout=settings.db_pool_timeout,
+        connect_args=CONNECT_ARGS,
+    )
 
 
 @lru_cache
@@ -25,7 +37,7 @@ def lock_engine() -> Engine:
     """Connections that each hold one long-lived advisory lock (a listener's), outside the pool."""
     from sqlalchemy.pool import NullPool
 
-    return create_engine(get_settings().database_url, poolclass=NullPool)
+    return create_engine(get_settings().database_url, poolclass=NullPool, connect_args=CONNECT_ARGS)
 
 
 @lru_cache

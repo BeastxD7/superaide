@@ -15,6 +15,7 @@ def schedule_recurring() -> None:
     """Make sure each hired instance's recurring work (the daily digest, the meeting scan) is
     queued, inside that instance's scope. One instance failing never stops the others."""
     from superaide.db.session import session_scope
+    from superaide.intentions.service import reconcile as reconcile_reminders
     from superaide.proactive.digest import ensure_scheduled
     from superaide.tenancy.context import default_scope, use_instance
     from superaide.tenancy.service import active_scopes
@@ -35,6 +36,11 @@ def schedule_recurring() -> None:
                 gmail_inbox.ensure_scheduled(s)  # nothing unless Gmail triage is on and connected
         except Exception:
             log.exception("couldn't schedule the digest for instance %s", scope.agent_id)
+        try:
+            with use_instance(scope), session_scope() as s:
+                reconcile_reminders(s)
+        except Exception:
+            log.exception("couldn't check the reminders of instance %s", scope.agent_id)
     from superaide.knowledge.pending import sweep
 
     try:
@@ -44,8 +50,10 @@ def schedule_recurring() -> None:
 
 
 class JobWorker:
-    def __init__(self, interval: float = 5.0, sweep_every: float = 600.0) -> None:
+    def __init__(self, interval: float = 5.0, sweep_every: float = 600.0, recurring_every: float = 300.0) -> None:
         self.interval = interval
+        self.recurring_every = recurring_every  # seconds between passes that re-book recurring work
+        self._last_recurring: float | None = None
         self.sweep_every = sweep_every  # seconds between sweeps for documents still waiting to be read
         self._last_sweep: float | None = None
         self._stop = threading.Event()
@@ -58,7 +66,7 @@ class JobWorker:
 
         load()
         schedule_recurring()  # includes a sweep
-        self._last_sweep = time.monotonic()
+        self._last_sweep = self._last_recurring = time.monotonic()
         self._stop.clear()
         self._thread = threading.Thread(target=self._loop, name="job-worker", daemon=True)
         self._thread.start()
@@ -81,11 +89,23 @@ class JobWorker:
         sweep()
         return True
 
+    def recurring_if_due(self, now: float | None = None) -> bool:
+        """Re-book each instance's recurring work (digest, meeting scan, reminders whose job died) every
+        `recurring_every` seconds. Idempotent, so a chain whose last job gave up, or an instance hired since
+        the worker started, is back within minutes (issue #86). Returns whether it ran."""
+        now = time.monotonic() if now is None else now
+        if self._last_recurring is not None and now - self._last_recurring < self.recurring_every:
+            return False
+        self._last_recurring = now
+        schedule_recurring()
+        return True
+
     def _loop(self) -> None:
         while not self._stop.is_set():
             try:
+                self.recurring_if_due()
                 self.sweep_if_due()
-                ran = run_due()
+                ran = run_due(stop=self._stop)
             except Exception:  # the database may be briefly away; try again next tick
                 log.exception("job worker tick failed")
                 ran = 0
