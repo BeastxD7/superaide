@@ -105,10 +105,10 @@ def _slack_socket(_: argparse.Namespace) -> None:
 
 def _freeze(args: argparse.Namespace) -> None:
     from superaide.db.session import session_scope
-    from superaide.policy.killswitch import set_frozen
+    from superaide.policy.killswitch import set_platform_frozen
 
     with session_scope() as s:
-        set_frozen(s, args.on, actor="cli")
+        set_platform_frozen(s, args.on, actor="cli")  # every hired Ava on this server
     print("Agent frozen: no model calls, no replies." if args.on else "Agent running.")
 
 

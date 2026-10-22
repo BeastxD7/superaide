@@ -39,6 +39,7 @@ TABLES: tuple[str, ...] = (
     "event",
     "identity_link_event",
     "installed_skill",
+    "integration_secret",  # each instance's own credentials (T3)
     "intention",
     "job",
     "link_challenge",

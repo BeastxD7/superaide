@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
+from collections import OrderedDict
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -26,8 +28,10 @@ from superaide.config import get_settings
 from superaide.db.session import session_scope
 from superaide.jobs.worker import JobWorker
 from superaide.pipeline import Agent
+from superaide.tenancy.context import default_scope, scope_or_default, use_instance
 
 log = logging.getLogger(__name__)
+MAX_CACHED = 256  # agents kept built, one per recently active instance
 
 
 class SimulatedMessage(BaseModel):
@@ -80,29 +84,49 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     app.include_router(make_auth_router())
 
     fixed = agent  # tests pass their own agent; it is never rebuilt
-    current: dict[str, Any] = {"agent": None, "version": None}
+    # One agent per hired instance (ADR 0009 T3), each built from that instance's own connections and
+    # rebuilt when they change. Least recently used ones are dropped beyond MAX_CACHED.
+    current: OrderedDict[Any, tuple[Agent, str]] = OrderedDict()
+    cache_lock = threading.Lock()
 
     def get_agent() -> Agent:
-        """The agent, rebuilt whenever a connection (Claude, Telegram, Slack) changes in the app."""
+        """The agent of the instance in scope, rebuilt whenever its connections change in the app."""
         if fixed is not None:
             return fixed
         from superaide.factory import build_agent
         from superaide.vault.store import runtime_settings, version
 
+        key = scope_or_default().agent_id
         with session_scope() as s:
             v = version(s)
-        if current["agent"] is None or current["version"] != v:
-            current["agent"], current["version"] = build_agent(runtime_settings(settings)), v
-        return current["agent"]
+        with cache_lock:
+            cached = current.get(key)
+            if cached is not None and cached[1] == v:
+                current.move_to_end(key)
+                return cached[0]
+        built = build_agent(runtime_settings(settings))
+        with cache_lock:
+            current[key] = (built, v)
+            current.move_to_end(key)
+            while len(current) > MAX_CACHED:
+                current.popitem(last=False)
+        return built
 
-    runner = ChannelRunner(lambda msg: get_agent().handle(msg))
+    def handle_on_server_channels(msg: InboundMessage) -> Any:
+        """Telegram and Slack connected through the server's listeners belong to the server's first instance
+        until channels are routed per instance (ADR 0009 T4)."""
+        with use_instance(default_scope()):
+            return get_agent().handle(msg)
+
+    runner = ChannelRunner(handle_on_server_channels)
 
     def apply_connections() -> dict[str, bool]:
         """Use new or removed credentials now: rebuild the agent and the listeners."""
-        a = get_agent()
         if fixed is not None or not settings.run_channels_in_api:
+            get_agent()
             return {}
-        return runner.ensure(a.settings)
+        with use_instance(default_scope()):  # the listeners follow the first instance's connections (until T4)
+            return runner.ensure(get_agent().settings)
 
     worker = JobWorker()
 
@@ -180,11 +204,11 @@ def create_app(agent: Agent | None = None) -> FastAPI:
             with session_scope() as s:
                 audit(s, "webhook", "rejected", provider="telegram", reason="bad secret")
             raise HTTPException(401, "bad secret")
-        msg = telegram.parse_update(
-            await request.json(), verified=True, bot=telegram.bot_id(get_agent().settings.telegram_bot_token)
-        )
+        with use_instance(default_scope()):  # the server's bot belongs to its first instance (until T4)
+            bot = telegram.bot_id(get_agent().settings.telegram_bot_token)
+        msg = telegram.parse_update(await request.json(), verified=True, bot=bot)
         if msg is not None:
-            background.add_task(get_agent().handle, msg)
+            background.add_task(handle_on_server_channels, msg)
         return {"ok": True}
 
     @app.post(
@@ -213,7 +237,7 @@ def create_app(agent: Agent | None = None) -> FastAPI:
             return {"challenge": payload.get("challenge")}
         msg = slack.parse_event(payload, our_team_id=settings.slack_team_id, verified=True)
         if msg is not None:
-            background.add_task(get_agent().handle, msg)
+            background.add_task(handle_on_server_channels, msg)
         return {"ok": True}
 
     @app.post(

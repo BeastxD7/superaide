@@ -7,6 +7,8 @@ a credential, only a masked hint.
 
 from __future__ import annotations
 
+import contextvars
+import hashlib
 import secrets
 import uuid
 from collections.abc import Callable
@@ -19,6 +21,7 @@ import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 from superaide.app.routes import owner_person_id, telegram_username
 from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header
@@ -27,12 +30,15 @@ from superaide.config import get_settings
 from superaide.connectors import google
 from superaide.db.session import session_scope
 from superaide.knowledge.ingest import read_pending
-from superaide.policy.killswitch import get_state, set_state
+from superaide.tenancy.context import InstanceScope, scope_or_default, use_instance
+from superaide.tenancy.models import PlatformState
 from superaide.vault import check, store
 from superaide.vault.crypto import master_key
 from superaide.vault.store import runtime_settings
 
-GOOGLE_PENDING = "google_oauth_pending"
+
+def _pending_key(state: str) -> str:
+    return f"google_pending:{hashlib.sha256(state.encode()).hexdigest()[:40]}"  # fits platform_state.key
 
 
 def http_client() -> httpx.Client:
@@ -163,7 +169,8 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
         checked = checked_or_400(lambda: check.check_anthropic(body.api_key, http_client()))
         result = connect("anthropic", checked, user_id)
         # Files and links saved while offline get read now that there is a brain.
-        background.add_task(read_pending, get_agent(), owner_id)
+        # In the request's context: the owner's instance stays in scope after the response is sent.
+        background.add_task(contextvars.copy_context().run, read_pending, get_agent(), owner_id)
         return result
 
     @router.post(
@@ -230,10 +237,21 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
             raise HTTPException(409, "Save your Google OAuth client first.")
         verifier, challenge = google.pkce_pair()
         state = secrets.token_urlsafe(24)
+        scope = scope_or_default()
         with session_scope() as s:
-            set_state(
-                s, GOOGLE_PENDING,
-                {"state": state, "verifier": verifier, "user_id": str(user_id), "at": datetime.now(UTC).isoformat()},
+            # Kept platform-wide under the state's hash: the callback arrives without a session and must
+            # find which owner's Ava (ADR 0009) the sign-in belongs to. Only the latest start per instance counts.
+            for old in s.scalars(select(PlatformState).where(PlatformState.key.like("google_pending:%"))).all():
+                if (old.value or {}).get("agent_id") == str(scope.agent_id):
+                    s.delete(old)
+            s.add(
+                PlatformState(
+                    key=_pending_key(state),
+                    value={
+                        "verifier": verifier, "user_id": str(user_id), "at": datetime.now(UTC).isoformat(),
+                        "agent_id": str(scope.agent_id), "tenant_id": str(scope.tenant_id),
+                    },
+                )
             )  # fmt: skip
         return {"url": google.auth_url(settings.google_client_id, google_redirect_uri(), state, challenge)}
 
@@ -250,18 +268,25 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
         # No session check here: the one-time state, made by the owner's own /start, is the proof. That way a
         # lapsed session still lands back on Connections with a message instead of a bare 401.
         back = f"{get_settings().frontend_origin.rstrip('/')}/dashboard/connections"
+        pending: dict[str, Any] = {}
         with session_scope() as s:
-            pending = get_state(s, GOOGLE_PENDING)
-            matches = bool(state) and secrets.compare_digest(str(pending.get("state", "")), state)
-            if matches:
-                set_state(s, GOOGLE_PENDING, {})  # one use only; a stray request can't wipe a real sign-in
+            row = s.get(PlatformState, _pending_key(state)) if state else None
+            if row is not None:
+                pending = dict(row.value or {})
+                s.delete(row)  # one use only; a stray request can't wipe a real sign-in
+        matches = bool(pending)
         fresh = (
             bool(pending.get("at")) and datetime.now(UTC) - datetime.fromisoformat(pending["at"]) < google.PENDING_TTL
         )
         if error or not code:
             return RedirectResponse(f"{back}?google=cancelled", status_code=303)
-        if not matches or not fresh or not pending.get("user_id"):
+        if not matches or not fresh or not pending.get("user_id") or not pending.get("agent_id"):
             return RedirectResponse(f"{back}?google=expired", status_code=303)
+        owner_scope = InstanceScope(tenant_id=uuid.UUID(pending["tenant_id"]), agent_id=uuid.UUID(pending["agent_id"]))
+        with use_instance(owner_scope):  # the owner who started the sign-in, whoever's browser comes back
+            return _finish_google(code, pending, back)
+
+    def _finish_google(code: str, pending: dict[str, Any], back: str) -> RedirectResponse:
         settings = runtime_settings()
         try:
             tokens = google.exchange_code(

@@ -450,10 +450,16 @@ class AgentHire(TenantScoped, Base):
 
 class IntegrationSecret(TenantScoped, Base):
     """One credential for a connected service, encrypted (see superaide.vault).
-    The plaintext never leaves the server; the app only ever shows `hint`."""
+    The plaintext never leaves the server; the app only ever shows `hint`.
+    Each hired Ava has its own (ADR 0009 T3): the instance is part of the encryption's
+    associated data, so a ciphertext copied to another instance won't decrypt."""
 
     __tablename__ = "integration_secret"
-    __table_args__ = (UniqueConstraint("tenant_id", "provider", "name", name="uq_integration_secret_slot"),)
+    __table_args__ = (UniqueConstraint("agent_id", "provider", "name", name="uq_integration_secret_slot"),)
+
+    agent_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), default=_agent, index=True)
+    # "instance": sealed with the instance in its associated data; "legacy": sealed before that (resealed on use).
+    aad: Mapped[str] = mapped_column(String(10), default="instance", server_default="instance")
 
     provider: Mapped[str] = mapped_column(String(30))  # anthropic | telegram | slack
     name: Mapped[str] = mapped_column(String(40))  # api_key | bot_token | app_token | team_id

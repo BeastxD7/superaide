@@ -3,6 +3,12 @@
 Credentials saved in the app take precedence over the same setting in .env.
 `runtime_settings()` is the Settings with those credentials applied; the agent
 and the channel listeners are rebuilt from it whenever a connection changes.
+
+Each hired Ava has its own credentials (ADR 0009 T3): everything here reads and
+writes the instance in scope only, and each secret is sealed with its instance in
+the associated data. Owners bring their own model keys; on a hosted server
+(DEPLOY_MODE=hosted) the .env credentials are never used for an owner, so an owner
+with nothing connected sees "connect your AI model", never someone else's key.
 """
 
 from __future__ import annotations
@@ -18,6 +24,7 @@ from superaide.audit import audit
 from superaide.config import Settings, get_settings
 from superaide.db.models import IntegrationSecret
 from superaide.db.session import session_scope
+from superaide.tenancy.context import scope_or_default
 from superaide.vault.crypto import decrypt, encrypt, mask
 
 # Which stored credential fills which setting.
@@ -35,8 +42,35 @@ FIELDS: dict[tuple[str, str], str] = {
 SECRET_NAMES = {"api_key", "bot_token", "app_token", "client_secret", "refresh_token"}  # ids aren't secrets
 
 
-def slot(provider: str, name: str) -> str:
-    return f"{provider}/{name}"
+def slot(provider: str, name: str, agent_id: uuid.UUID | None = None) -> str:
+    """The associated data a secret is sealed with: bound to its instance, or (legacy) not."""
+    return f"{provider}/{name}" if agent_id is None else f"{agent_id}/{provider}/{name}"
+
+
+def _mine() -> Any:
+    return IntegrationSecret.agent_id == scope_or_default().agent_id
+
+
+def seal(row: IntegrationSecret, value: str) -> None:
+    """Encrypt `value` into `row`, bound to the instance in scope."""
+    scope = scope_or_default()
+    row.agent_id, row.tenant_id, row.aad = scope.agent_id, scope.tenant_id, "instance"
+    row.ciphertext = encrypt(value, slot(row.provider, row.name, row.agent_id))
+
+
+def unseal(row: IntegrationSecret) -> str:
+    """The plaintext. A legacy row (sealed before instances) is resealed to its instance on the way."""
+    if row.aad == "legacy":
+        value = decrypt(row.ciphertext, slot(row.provider, row.name))
+        row.ciphertext, row.aad = encrypt(value, slot(row.provider, row.name, row.agent_id)), "instance"
+        return value
+    return decrypt(row.ciphertext, slot(row.provider, row.name, row.agent_id))
+
+
+def find(session: Session, provider: str, name: str) -> IntegrationSecret | None:
+    return session.scalar(
+        select(IntegrationSecret).where(_mine(), IntegrationSecret.provider == provider, IntegrationSecret.name == name)
+    )
 
 
 def save(
@@ -46,13 +80,11 @@ def save(
     for name, value in values.items():
         if (provider, name) not in FIELDS:
             raise ValueError(f"unknown setting {provider}/{name}")
-        row = session.scalar(
-            select(IntegrationSecret).where(IntegrationSecret.provider == provider, IntegrationSecret.name == name)
-        )
+        row = find(session, provider, name)
         if row is None:
             row = IntegrationSecret(provider=provider, name=name, ciphertext="")
             session.add(row)
-        row.ciphertext = encrypt(value, slot(provider, name))
+        seal(row, value)
         row.hint = mask(value) if name in SECRET_NAMES else value[:40]
         row.meta = meta
         row.set_by_user_id = user_id
@@ -63,7 +95,7 @@ def save(
 
 
 def remove(session: Session, provider: str, *, user_id: uuid.UUID | None) -> int:
-    rows = session.scalars(select(IntegrationSecret).where(IntegrationSecret.provider == provider)).all()
+    rows = session.scalars(select(IntegrationSecret).where(_mine(), IntegrationSecret.provider == provider)).all()
     for r in rows:
         session.delete(r)
     audit(session, "connections", "disconnected", provider=provider, user_id=user_id)
@@ -71,15 +103,13 @@ def remove(session: Session, provider: str, *, user_id: uuid.UUID | None) -> int
 
 
 def remove_field(session: Session, provider: str, name: str) -> None:
-    row = session.scalar(
-        select(IntegrationSecret).where(IntegrationSecret.provider == provider, IntegrationSecret.name == name)
-    )
+    row = find(session, provider, name)
     if row is not None:
         session.delete(row)
 
 
 def stored(session: Session) -> dict[tuple[str, str], IntegrationSecret]:
-    return {(r.provider, r.name): r for r in session.scalars(select(IntegrationSecret))}
+    return {(r.provider, r.name): r for r in session.scalars(select(IntegrationSecret).where(_mine()))}
 
 
 def version(session: Session) -> str:
@@ -87,21 +117,31 @@ def version(session: Session) -> str:
     from superaide.db.models import LlmProvider, ModelRole, OwnerModelPrice
 
     parts = []
+    agent = scope_or_default().agent_id
     for table in (IntegrationSecret, LlmProvider, ModelRole, OwnerModelPrice):
-        latest, count = session.execute(select(func.max(table.updated_at), func.count(table.id))).one()
+        latest, count = session.execute(
+            select(func.max(table.updated_at), func.count(table.id)).where(table.agent_id == agent)
+        ).one()
         parts.append(f"{latest}:{count}")
     return "|".join(parts)
 
 
+def env_credentials_apply(settings: Settings | None = None) -> bool:
+    """Whether .env credentials stand in for an owner's own: only on a self-hosted server."""
+    return (settings or get_settings()).deploy_mode != "hosted"
+
+
 def runtime_settings(base: Settings | None = None) -> Settings:
-    """Settings with the credentials saved in the app applied over .env."""
+    """Settings with the instance's own credentials applied (over .env, when self-hosted)."""
     base = base or get_settings()
     updates: dict[str, Any] = {}
+    if not env_credentials_apply(base):
+        updates.update({field: "" for field in FIELDS.values()})  # BYOK: never the server's keys
     with session_scope() as s:
         for (provider, name), row in stored(s).items():
             field = FIELDS.get((provider, name))
             if field:
-                updates[field] = decrypt(row.ciphertext, slot(provider, name))
+                updates[field] = unseal(row)
         from superaide.brain.providers.config import overlay
 
         updates.update(overlay(s))  # model providers and roles chosen in the app
@@ -114,7 +154,7 @@ def status(session: Session, settings: Settings) -> dict[str, Any]:
 
     def entry(provider: str, names: list[str]) -> dict[str, Any]:
         mine = [rows[(provider, n)] for n in names if (provider, n) in rows]
-        from_env = all(getattr(get_settings(), FIELDS[(provider, n)]) for n in names)
+        from_env = env_credentials_apply() and all(getattr(get_settings(), FIELDS[(provider, n)]) for n in names)
         if mine and len(mine) == len(names):
             return {
                 "connected": True,

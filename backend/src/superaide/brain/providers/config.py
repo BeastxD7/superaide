@@ -20,7 +20,8 @@ from sqlalchemy.orm import Session
 from superaide.audit import audit
 from superaide.brain.providers.presets import PRESETS
 from superaide.db.models import IntegrationSecret, LlmProvider, ModelRole
-from superaide.vault.crypto import decrypt, encrypt, mask
+from superaide.tenancy.context import mine
+from superaide.vault.crypto import mask
 
 ROLES = ("chat", "triage", "deep")
 ROLE_FIELDS = {"chat": "model_chat", "triage": "model_triage", "deep": "model_deep"}
@@ -47,20 +48,20 @@ def split(model: str) -> tuple[str, str]:
 
 
 def _secret(session: Session, key: str) -> IntegrationSecret | None:
-    return session.scalar(
-        select(IntegrationSecret).where(
-            IntegrationSecret.provider == slot_provider(key), IntegrationSecret.name == "api_key"
-        )
-    )
+    from superaide.vault.store import find
+
+    return find(session, slot_provider(key), "api_key")  # the instance in scope's own key (ADR 0009)
 
 
 def key_for(session: Session, key: str) -> str:
+    from superaide.vault.store import unseal
+
     row = _secret(session, key)
-    return decrypt(row.ciphertext, f"{slot_provider(key)}/api_key") if row else ""
+    return unseal(row) if row else ""
 
 
 def endpoint(session: Session, key: str) -> LlmProvider | None:
-    return session.scalar(select(LlmProvider).where(LlmProvider.key == key))
+    return session.scalar(select(LlmProvider).where(mine(LlmProvider), LlmProvider.key == key))
 
 
 def save_provider(
@@ -98,7 +99,9 @@ def save_provider(
             if secret is None:
                 secret = IntegrationSecret(provider=slot_provider(key), name="api_key", ciphertext="")
                 session.add(secret)
-            secret.ciphertext = encrypt(api_key, f"{slot_provider(key)}/api_key")
+            from superaide.vault.store import seal
+
+            seal(secret, api_key)
             secret.hint, secret.meta, secret.set_by_user_id = mask(api_key), {}, user_id
             secret.validated_at = secret.updated_at = now
     session.flush()
@@ -110,13 +113,13 @@ def save_provider(
 
 
 def remove_provider(session: Session, key: str, *, user_id: uuid.UUID | None) -> None:
-    for row in session.scalars(select(LlmProvider).where(LlmProvider.key == key)):
+    for row in session.scalars(select(LlmProvider).where(mine(LlmProvider), LlmProvider.key == key)):
         session.delete(row)
     secret = _secret(session, key)
     if secret is not None:
         session.delete(secret)
     # Roles on this endpoint fall back to the default (Claude, from .env or Connections).
-    for role in session.scalars(select(ModelRole).where(ModelRole.provider == key)):
+    for role in session.scalars(select(ModelRole).where(mine(ModelRole), ModelRole.provider == key)):
         session.delete(role)
     audit(session, "providers", "provider_removed", provider=key, user_id=user_id)
 
@@ -124,7 +127,7 @@ def remove_provider(session: Session, key: str, *, user_id: uuid.UUID | None) ->
 def set_role(session: Session, role: str, provider: str, model: str, *, user_id: uuid.UUID | None) -> None:
     if role not in ROLES:
         raise ValueError(f"unknown role {role!r}")
-    row = session.scalar(select(ModelRole).where(ModelRole.role == role))
+    row = session.scalar(select(ModelRole).where(mine(ModelRole), ModelRole.role == role))
     if row is None:
         row = ModelRole(role=role)
         session.add(row)
@@ -136,10 +139,10 @@ def set_role(session: Session, role: str, provider: str, model: str, *, user_id:
 def overlay(session: Session) -> dict[str, Any]:
     """Settings fields from the owner's model settings (applied over .env)."""
     providers: dict[str, dict[str, str]] = {}
-    for row in session.scalars(select(LlmProvider).where(LlmProvider.enabled.is_(True))):
+    for row in session.scalars(select(LlmProvider).where(mine(LlmProvider), LlmProvider.enabled.is_(True))):
         providers[row.key] = {"preset": row.preset, "base_url": row.base_url, "api_key": key_for(session, row.key)}
     updates: dict[str, Any] = {"llm_providers": providers}
-    for role in session.scalars(select(ModelRole)):
+    for role in session.scalars(select(ModelRole).where(mine(ModelRole))):
         if role.provider == "anthropic" or role.provider in providers:
             updates[ROLE_FIELDS[role.role]] = qualified(role.provider, role.model)
     return updates
@@ -148,7 +151,7 @@ def overlay(session: Session) -> dict[str, Any]:
 def view(session: Session) -> dict[str, Any]:
     """What the model settings page shows. Never includes a key."""
     providers = []
-    for row in session.scalars(select(LlmProvider).order_by(LlmProvider.created_at)):
+    for row in session.scalars(select(LlmProvider).where(mine(LlmProvider)).order_by(LlmProvider.created_at)):
         secret = _secret(session, row.key)
         providers.append(
             {
@@ -161,7 +164,10 @@ def view(session: Session) -> dict[str, Any]:
                 "checked_at": (row.meta or {}).get("checked_at"),
             }
         )
-    roles = {r.role: {"provider": r.provider, "model": r.model} for r in session.scalars(select(ModelRole))}
+    roles = {
+        r.role: {"provider": r.provider, "model": r.model}
+        for r in session.scalars(select(ModelRole).where(mine(ModelRole)))
+    }
     return {"providers": providers, "roles": roles}
 
 

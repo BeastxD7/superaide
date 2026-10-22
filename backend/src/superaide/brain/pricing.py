@@ -250,8 +250,9 @@ def owner_prices(session: Any) -> PriceRegistry:
     from sqlalchemy import select
 
     from superaide.db.models import OwnerModelPrice
+    from superaide.tenancy.context import mine
 
-    rows = session.scalars(select(OwnerModelPrice)).all()
+    rows = session.scalars(select(OwnerModelPrice).where(mine(OwnerModelPrice))).all()
     return PriceRegistry(
         {
             (r.provider, r.model): ModelPrice(
@@ -277,11 +278,14 @@ def set_owner_price(
 
     from superaide.audit import audit
     from superaide.db.models import OwnerModelPrice
+    from superaide.tenancy.context import mine
 
     if min(input_usd_per_mtok, output_usd_per_mtok, cache_read_mult) < 0:
         raise ValueError("prices can't be negative")
     row = session.scalar(
-        select(OwnerModelPrice).where(OwnerModelPrice.provider == provider, OwnerModelPrice.model == model)
+        select(OwnerModelPrice).where(
+            mine(OwnerModelPrice), OwnerModelPrice.provider == provider, OwnerModelPrice.model == model
+        )
     )
     if row is None:
         row = OwnerModelPrice(provider=provider, model=model)

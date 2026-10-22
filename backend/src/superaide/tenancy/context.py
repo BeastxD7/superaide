@@ -17,6 +17,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
+from typing import Any
 
 from superaide.config import get_settings
 
@@ -65,3 +66,9 @@ def use_instance(scope: InstanceScope) -> Iterator[InstanceScope]:
         yield scope
     finally:
         _current.reset(token)
+
+
+def mine(model: Any) -> Any:
+    """`model.agent_id == <the instance in scope>`: the explicit filter every per-instance query adds,
+    in front of Row-Level Security (which a superuser connection skips)."""
+    return model.agent_id == scope_or_default().agent_id

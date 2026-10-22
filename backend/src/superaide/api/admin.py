@@ -31,7 +31,7 @@ from superaide.db.models import (
 from superaide.db.session import session_scope
 from superaide.factory import brain_ready
 from superaide.identity.linking import operator_link, unlink
-from superaide.policy.killswitch import is_frozen, set_frozen
+from superaide.policy.killswitch import is_frozen, set_platform_frozen
 
 admin_bearer = HTTPBearer(scheme_name="Admin token", description="`ADMIN_TOKEN` from `.env`.", auto_error=False)
 
@@ -330,11 +330,13 @@ class KillBody(BaseModel):
 
 
 @router.post(
-    "/kill", summary="Kill switch", description='`{"on": true}` stops all model calls and replies; `false` resumes.'
+    "/kill",
+    summary="Kill switch",
+    description='`{"on": true}` stops all model calls and replies of every hired Ava on this server; `false` resumes.',
 )
 def kill(body: KillBody) -> dict[str, bool]:
     with session_scope() as s:
-        set_frozen(s, body.on, actor="dashboard")
+        set_platform_frozen(s, body.on, actor="dashboard")
     return {"frozen": body.on}
 
 
