@@ -70,6 +70,7 @@ TABLES: tuple[str, ...] = (
     "escalation_ack",
     "escalation_delivery",
     "action_log",  # hash-chained gateway log (#113)
+    "mandate",  # signed narrowing tokens (#112)
     "tool_trace",  # hashes of tool calls (#110)
     "triage_decision",
     "triage_rule",

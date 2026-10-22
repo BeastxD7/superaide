@@ -402,6 +402,18 @@ class ActionLog(Scoped, Base):
     at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
+class Mandate(Scoped, Base):
+    """A mandate card the owner signed (issue #112): the token, the card text, and how often it was used."""
+
+    __tablename__ = "mandate"
+
+    token: Mapped[str] = mapped_column(Text)
+    card: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(12), default="active")  # active | revoked
+    uses: Mapped[int] = mapped_column(Integer, default=0)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class AuditLog(Scoped, Base):
     """Append-only record of decisions, model calls and refused actions."""
 

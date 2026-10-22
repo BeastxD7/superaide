@@ -77,6 +77,10 @@ class Settings(BaseSettings):
     # Refuse to start when a protected file differs from security/surface.lock.json (issue #114). Off by default.
     surface_check_on_boot: bool = False
 
+    # Mandate cards: a signed, narrowing token lets Ava do a named, limited thing without asking each time
+    # (issue #112). Off by default; never covers send or spend.
+    mandates_enabled: bool = False
+
     # Tenancy
     tenant_id: uuid.UUID = DEFAULT_TENANT_ID
     agent_id: uuid.UUID = DEFAULT_AGENT_ID
