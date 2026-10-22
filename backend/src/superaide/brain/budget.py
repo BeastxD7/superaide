@@ -52,6 +52,10 @@ BUCKETS = {
     "intro_facts": "memory",
     "web_research": "research",
     "triage": "triage",  # ADR 0010: the triage classifier, rules only once this is spent
+    # ADR 0012: the introduction's voice call (the interviewer's turns, speech-to-text, voices)
+    "voice_turn": "voice",
+    "voice_asr": "voice",
+    "voice_tts": "voice",
 }
 
 

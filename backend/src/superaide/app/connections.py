@@ -54,6 +54,10 @@ class TelegramBody(BaseModel):
     bot_token: str = Field(min_length=10, max_length=100)
 
 
+class VoiceKeyBody(BaseModel):
+    api_key: str = Field(min_length=10, max_length=300)
+
+
 class GoogleClientBody(BaseModel):
     client_id: str = Field(min_length=10, max_length=200)
     client_secret: str = Field(min_length=10, max_length=200)
@@ -95,6 +99,23 @@ GUIDES = {
             "Paste the client ID and secret here, then press Connect Google Calendar.",
             "While the app is in Testing, Google ends calendar access after 7 days: reconnect then, or publish "
             "the app.",
+        ],
+    },
+    "deepgram": {
+        "url": "https://console.deepgram.com/",
+        "steps": [
+            "Sign up at Deepgram (new accounts get free credit) and open the console.",
+            "Under API Keys, create a key with the Member role and copy it.",
+            "Paste it here. Ava then hears you on the voice call with Deepgram Nova-3, and can speak with "
+            "its Aura voices if you don't add ElevenLabs.",
+        ],
+    },
+    "elevenlabs": {
+        "url": "https://elevenlabs.io/app/settings/api-keys",
+        "steps": [
+            "Sign in to ElevenLabs and open Settings, then API Keys.",
+            "Create a key with Text to Speech access (you can leave the rest off) and copy it.",
+            "Paste it here. Ava then speaks with a natural ElevenLabs voice on the voice call.",
         ],
     },
     "slack": {
@@ -215,6 +236,28 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
             "slack", checked_or_400(lambda: check.check_slack(body.bot_token, body.app_token, http_client())), user_id
         )
 
+    @router.post(
+        "/deepgram",
+        summary="Connect Deepgram (voice call)",
+        description="Checks the API key with Deepgram and stores it encrypted. Used for speech-to-text on the call.",
+    )
+    def connect_deepgram(
+        body: VoiceKeyBody, _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
+    ) -> dict[str, Any]:
+        return connect("deepgram", checked_or_400(lambda: check.check_deepgram(body.api_key, http_client())), user_id)
+
+    @router.post(
+        "/elevenlabs",
+        summary="Connect ElevenLabs (voice call)",
+        description="Checks the API key with ElevenLabs and stores it encrypted. Used for Ava's voice on the call.",
+    )
+    def connect_elevenlabs(
+        body: VoiceKeyBody, _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
+    ) -> dict[str, Any]:
+        return connect(
+            "elevenlabs", checked_or_400(lambda: check.check_elevenlabs(body.api_key, http_client())), user_id
+        )
+
     def google_redirect_uri() -> str:
         # The browser comes back through the web app's /api proxy, so the session cookie is sent.
         return f"{get_settings().frontend_origin.rstrip('/')}/api/app/connections/google/callback"
@@ -333,13 +376,13 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
         summary="Disconnect a service",
         description=(
             "Deletes the stored credential and stops its listener. "
-            "`provider` is `anthropic`, `telegram`, `slack` or `google`."
+            "`provider` is `anthropic`, `telegram`, `slack`, `google`, `deepgram` or `elevenlabs`."
         ),
     )
     def disconnect(
         provider: str, _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
     ) -> dict[str, Any]:
-        if provider not in {"anthropic", "telegram", "slack", "google"}:
+        if provider not in {"anthropic", "telegram", "slack", "google", "deepgram", "elevenlabs"}:
             raise HTTPException(404, "Unknown connection")
         with session_scope() as s:
             store.remove(s, provider, user_id=user_id)
