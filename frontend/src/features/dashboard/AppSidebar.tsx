@@ -4,6 +4,7 @@ import { ChevronsUpDown, LogOut, Settings, Store } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { BrandMark, PRODUCT } from '@/components/site'
+import { initialOf } from '@/lib/initial'
 import { Orb } from '@/components/Orb'
 import {
   DropdownMenu,
@@ -112,7 +113,7 @@ function UserMenu({ session }: { session: Session }) {
   const { isMobile, setOpenMobile } = useSidebar()
   const account = session.account
   if (!account) return null
-  const initial = account.user.name.trim().charAt(0).toUpperCase() || '?'
+  const initial = initialOf(account.user.name)
   return (
     <SidebarMenu>
       <SidebarMenuItem>

@@ -323,7 +323,6 @@ test.describe('the account menu', () => {
   })
 
   test('a name that starts with an emoji shows the whole emoji as the initial', async ({ page, api }) => {
-    test.fail(true, 'BUG: the initial is name.charAt(0), half of a surrogate pair for an emoji, shown as a broken glyph')
     const p: Person = newPerson('😀 Sam Lee')
     await api.signup(p)
     await page.goto('/')
