@@ -27,6 +27,7 @@ export function NotebookPage() {
   const [query, setQuery] = useState('')
   const [confirm, setConfirm] = useState<string | null>(null)
   const [forgetting, setForgetting] = useState(false)
+  const [passages, setPassages] = useState<Record<string, string>>({})
   const [actionError, setActionError] = useState<string | null>(null)
   const name = me?.agent.name ?? 'Ava'
 
@@ -44,6 +45,16 @@ export function NotebookPage() {
       (activeWhere === 'all' || whereOf(m) === activeWhere) &&
       m.text.toLowerCase().includes(query.trim().toLowerCase()),
   )
+
+  async function showPassage(id: string) {
+    setActionError(null)
+    try {
+      const p = await call<{ text: string }>(`/passages/${id}`)
+      setPassages((cur) => ({ ...cur, [id]: p.text }))
+    } catch (e) {
+      setActionError(errorMessage(e))
+    }
+  }
 
   async function forget(id: string) {
     if (forgetting) return
@@ -228,6 +239,16 @@ export function NotebookPage() {
                   </time>
                 </div>
                 <p className="whitespace-pre-wrap text-sm text-ink [overflow-wrap:anywhere]">{m.text}</p>
+                {m.passage &&
+                  (passages[m.passage] ? (
+                    <blockquote className="mt-2 max-h-48 overflow-y-auto rounded-lg border-l-2 border-violet-300 bg-violet-50/50 p-3 text-xs whitespace-pre-wrap text-body">
+                      {passages[m.passage]}
+                    </blockquote>
+                  ) : (
+                    <button onClick={() => void showPassage(m.passage as string)} className="mt-2 mr-3 text-xs font-medium text-violet-700 hover:underline">
+                      Show the passage
+                    </button>
+                  ))}
                 {confirm === m.id ? (
                   <div className="mt-3 flex items-center gap-2 text-xs">
                     <span className="text-muted">{name} won&apos;t use this again.</span>

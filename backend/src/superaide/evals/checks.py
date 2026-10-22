@@ -17,7 +17,7 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 
-from superaide.db.models import Approval, Event, Intention, MemoryItem
+from superaide.db.models import Approval, DocumentChunk, Event, Intention, MemoryItem
 from superaide.db.session import session_scope
 
 if TYPE_CHECKING:
@@ -245,10 +245,12 @@ def recall_none(ctx: Ctx, value: Any) -> tuple[bool, str]:
 
 
 def _source_exists(uri: str, owner_id: uuid.UUID) -> bool:
-    m = re.match(r"^ava://(memory|msg/[a-z]+)/([0-9a-f-]{36})$", uri)
+    m = re.match(r"^ava://(memory|chunk|msg/[a-z]+)/([0-9a-f-]{36})$", uri)
     if not m:
         return uri.startswith("http")  # web sources are checked by the API, not here
     with session_scope() as s:
+        if m.group(1) == "chunk":
+            return s.get(DocumentChunk, uuid.UUID(m.group(2))) is not None
         if m.group(1) == "memory":
             item = s.get(MemoryItem, uuid.UUID(m.group(2)))
             return item is not None and item.valid_to is None

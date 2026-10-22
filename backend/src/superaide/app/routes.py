@@ -34,6 +34,7 @@ from superaide.db.models import (
     ChannelIdentity,
     Context,
     Document,
+    DocumentChunk,
     Event,
     Intention,
     MemoryItem,
@@ -544,6 +545,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                         "category": m.category,
                         "source": m.source,
                         "document": title,
+                        "passage": str(m.chunk_id) if m.chunk_id else None,
                         "shareable": m.allowed_kind == "public",
                         "private": m.allowed_kind == "persons",
                         "hearsay": m.belief_state == "hearsay",
@@ -607,6 +609,25 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 raise HTTPException(422, "Write what is true.")
             resolve_conflict(s, require(s, Person, person_id), claim, body.choice, body.text)
             return {"status": "resolved"}
+
+    @router.get(
+        "/passages/{chunk_id}",
+        tags=["Owner: chat & notebook"],
+        summary="A cited passage",
+        description="The exact passage of a shared file or page that a note or an answer cites (ava://chunk/<id>).",
+    )
+    def passage(chunk_id: uuid.UUID, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        with session_scope() as s:
+            chunk = s.get(DocumentChunk, chunk_id)
+            doc = s.get(Document, chunk.document_id) if chunk else None
+            if chunk is None or doc is None or doc.owner_person_id != person_id or doc.removed_at is not None:
+                raise HTTPException(404, "Not found")
+            return {
+                "id": str(chunk.id),
+                "ordinal": chunk.ordinal,
+                "text": chunk.text,
+                "document": {"id": str(doc.id), "title": doc.title or doc.source, "kind": doc.kind},
+            }
 
     @router.get(
         "/people",

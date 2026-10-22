@@ -118,3 +118,39 @@ def extract_facts(
     if isinstance(parsed, FactList):
         return parsed.facts[:15]
     return None
+
+
+MAX_WINDOWS = 6  # 6 x 12,000 characters covers a whole document (60,000 kept); each call reserves its cost first
+
+
+def extract_from_chunks(
+    agent: Any, *, owner_name: str, chunks: list[tuple[Any, str]], source: str, known: list[str] | None = None
+) -> tuple[list[tuple[Fact, Any]], bool] | None:
+    """Facts from every passage of a document, read in windows that each fit one model call, with each
+    fact tied to the passage it most likely came from. Every call reserves its worst-case cost against the
+    spend cap first (the model client does), so a long document can't overrun it.
+
+    Returns (facts, complete): `complete` is False when a window couldn't be read (cap, kill switch, API
+    error), so the caller keeps the document unread and tries again; what was read is still kept (saying
+    it again later is deduplicated). None when nothing at all could be read."""
+    from superaide.knowledge.chunking import best_chunk, windows
+
+    base = list(known or [])
+    seen = list(base)
+    out: list[tuple[Fact, Any]] = []
+    complete, any_read = True, False
+    for group in windows(chunks, MAX_INPUT_CHARS, MAX_WINDOWS):
+        text = "\n\n".join(t for _, t in group)
+        facts = extract_facts(agent, owner_name=owner_name, text=text, source=source, known=seen or None)
+        if facts is None:
+            complete = False
+            continue
+        any_read = True
+        for f in facts:
+            if f.same_as:
+                continue  # already known, or already read from an earlier passage
+            out.append((f, best_chunk(f.content, group)))
+            seen.append(f.content)
+    if not any_read and complete is False:
+        return None
+    return out, complete

@@ -36,7 +36,7 @@ class SourceDoc:
 
 
 def source_kind(uri: str) -> SourceKind:
-    if uri.startswith("ava://memory/"):
+    if uri.startswith(("ava://memory/", "ava://chunk/")):
         return "memory"
     if uri.startswith("ava://msg/"):
         return "message"

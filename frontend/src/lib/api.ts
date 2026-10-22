@@ -158,6 +158,7 @@ export type Memory = {
   category: string
   source: string
   document: string | null
+  passage?: string | null
   shareable: boolean
   private: boolean
   at: string
