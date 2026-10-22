@@ -1,6 +1,6 @@
 'use client'
 
-import { AlarmClock, ArrowRight, BookOpen, Check, Clock, MessageCircle, Plug, ShieldCheck, Star, Users } from 'lucide-react'
+import { AlarmClock, AlertTriangle, ArrowRight, BookOpen, Check, Clock, MessageCircle, Plug, ShieldCheck, Star, Users } from 'lucide-react'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { BrandIcon } from '@/components/BrandIcon'
@@ -128,14 +128,17 @@ function AgentCard({ me }: { me: Me }) {
 }
 
 function ReachCard({ me }: { me: Me }) {
+  // A token the service refused means nothing reaches the owner there, whatever "linked" says.
+  const refused = (provider: 'telegram' | 'slack') => me.channels[provider] && me.channels.health?.[provider]?.status === 'auth_failed'
   const rows = [
-    { key: 'web', on: me.channels.web, note: 'Always on' },
+    { key: 'web', on: me.channels.web, bad: false, note: 'Always on' },
     {
       key: 'telegram',
       on: me.channels.telegram,
+      bad: refused('telegram'),
       note: me.channels.telegram ? 'Linked to you' : me.channels.telegram_available ? 'Not linked yet' : 'Not connected',
     },
-    { key: 'slack', on: me.channels.slack, note: me.channels.slack ? 'Linked to you' : 'Not connected' },
+    { key: 'slack', on: me.channels.slack, bad: refused('slack'), note: me.channels.slack ? 'Linked to you' : 'Not connected' },
   ]
   return (
     <Card>
@@ -156,10 +159,17 @@ function ReachCard({ me }: { me: Me }) {
                 )}
               </span>
               <span className="font-medium text-ink">{CHANNEL_LABEL[r.key]}</span>
-              <span className={`ml-auto inline-flex items-center gap-1 ${r.on ? 'text-ok' : 'text-muted'}`}>
-                {r.on ? <Check className="size-3.5" aria-hidden /> : <Plug className="size-3.5" aria-hidden />}
-                {r.note}
-              </span>
+              {r.bad ? (
+                <Link href="/dashboard/connections" className="ml-auto inline-flex items-center gap-1 text-warn hover:underline">
+                  <AlertTriangle className="size-3.5" aria-hidden />
+                  Token rejected: reconnect
+                </Link>
+              ) : (
+                <span className={`ml-auto inline-flex items-center gap-1 ${r.on ? 'text-ok' : 'text-muted'}`}>
+                  {r.on ? <Check className="size-3.5" aria-hidden /> : <Plug className="size-3.5" aria-hidden />}
+                  {r.note}
+                </span>
+              )}
             </li>
           ))}
         </ul>

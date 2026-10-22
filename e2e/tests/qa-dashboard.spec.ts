@@ -69,6 +69,8 @@ async function telegramRejected(page: Page, opts: { ownerLinked: boolean }) {
     const body = await res.json()
     body.channels.telegram = opts.ownerLinked
     body.channels.telegram_available = true
+    // What the API now sends for a refused token (channels/health.py), the same verdict Connections shows.
+    body.channels.health = { telegram: { status: 'auth_failed', last_error: 'Unauthorized', since }, slack: { status: 'ok' } }
     await route.fulfill({ response: res, json: body })
   })
 }
@@ -252,7 +254,6 @@ test.describe('dashboard: connections', () => {
   })
 
   test('home does not say Telegram is working while its token is rejected', async ({ page, owner }) => {
-    test.fail(true, 'BUG: Home\'s "Where people reach Ava" card reads only me.channels, so it shows a green "Linked to you" for a Telegram whose token Telegram refuses')
     await telegramRejected(page, { ownerLinked: true })
     await openConnections(page)
     await expect(page.getByRole('button', { name: /^Telegram/ })).toContainText('Token rejected')
