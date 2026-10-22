@@ -87,6 +87,7 @@ function Dashboard({ conn, onDisconnect }: { conn: Connection; onDisconnect: () 
   const [tab, setTab] = useState<TabKey>('overview')
   const overview = useApi<OverviewData>(conn, '/api/overview')
   const [switching, setSwitching] = useState(false)
+  const [switchError, setSwitchError] = useState<string | null>(null)
   const [access, setAccess] = useState<Access | null>(null)
   const opened = useMemo<Connection>(() => (access ? { ...conn, access } : conn), [conn, access])
   const data = overview.data
@@ -94,8 +95,15 @@ function Dashboard({ conn, onDisconnect }: { conn: Connection; onDisconnect: () 
   async function togglePause() {
     if (!data) return
     setSwitching(true)
+    setSwitchError(null)
+    const verb = data.frozen ? 'resume' : 'pause'
     try {
       await api(conn, '/api/kill', { method: 'POST', body: JSON.stringify({ on: !data.frozen }) })
+      await overview.reload()
+    } catch (err) {
+      // Say so, and re-read the server's state, so the button never claims something that isn't true.
+      const why = (err instanceof Error ? err.message : String(err)).replace(/[.\s]+$/, '')
+      setSwitchError(`Couldn't ${verb} ${data.agent_name}. Nothing changed (${why}). Try again.`)
       await overview.reload()
     } finally {
       setSwitching(false)
@@ -121,6 +129,12 @@ function Dashboard({ conn, onDisconnect }: { conn: Connection; onDisconnect: () 
           </button>
         </div>
       </header>
+
+      {switchError && (
+        <p className="error" role="alert">
+          {switchError}
+        </p>
+      )}
 
       <nav className="tabs" aria-label="Sections">
         {TABS.map((t) => (
