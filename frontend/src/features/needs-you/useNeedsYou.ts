@@ -27,10 +27,14 @@ export function useNeedsYou(poll = 0) {
 
   useEffect(() => {
     void reload()
-    if (!poll) return
+  }, [reload])
+
+  // Poll only while triage is on: with it off, one 404 and nothing more.
+  useEffect(() => {
+    if (!poll || !enabled) return
     const t = setInterval(() => void reload(), poll)
     return () => clearInterval(t)
-  }, [reload, poll])
+  }, [reload, poll, enabled])
 
   return { enabled, data, error, reload }
 }
