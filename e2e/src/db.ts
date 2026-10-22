@@ -24,7 +24,17 @@ export async function resetDatabase(): Promise<void> {
   const tables = await query<{ tablename: string }>(
     "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> 'alembic_version'",
   )
-  if (tables.length) {
-    await query(`TRUNCATE ${tables.map((t) => `"${t.tablename}"`).join(', ')} RESTART IDENTITY CASCADE`)
+  if (!tables.length) return
+  const sql = `TRUNCATE ${tables.map((t) => `"${t.tablename}"`).join(', ')} RESTART IDENTITY CASCADE`
+  // The API's background worker keeps reading these tables; when Postgres resolves a
+  // deadlock with it by cancelling the TRUNCATE (SQLSTATE 40P01), try again.
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await query(sql)
+      return
+    } catch (e) {
+      if ((e as { code?: string }).code !== '40P01' || attempt >= 5) throw e
+      await new Promise((r) => setTimeout(r, 100 * attempt))
+    }
   }
 }

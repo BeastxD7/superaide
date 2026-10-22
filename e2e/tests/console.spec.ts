@@ -227,6 +227,11 @@ test.describe('console: tabs', () => {
     await tab(page, 'Spend').click()
     await expect(page.getByRole('heading', { name: 'No model calls yet' })).toBeVisible()
     await openPrivate(page, 'Safety log')
+    // Opening an owner's private pages is itself recorded (ADR 0009 T8), so the only rows on a
+    // fresh install are those records; a filtered view shows the empty state.
+    await expect(page.locator('.log-row').first()).toBeVisible()
+    await expect(page.locator('.log-row').filter({ hasNotText: 'operator access' })).toHaveCount(0)
+    await page.getByRole('group', { name: 'Filter the log' }).getByRole('button', { name: 'Refusals' }).click()
     await expect(page.getByText('Nothing here yet.')).toBeVisible()
   })
 
