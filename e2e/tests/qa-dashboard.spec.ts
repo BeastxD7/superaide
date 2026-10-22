@@ -221,16 +221,16 @@ test.describe('dashboard: settings', () => {
 test.describe('dashboard: connections', () => {
   test('if Disconnect fails, the person is told and the service still shows as connected', async ({ page, owner }) => {
     void owner
-    await plantSecret('anthropic', 'api_key', 'sk-ant-e2e-planted-placeholder-not-real-9q2b')
+    await plantSecret('deepgram', 'api_key', 'sk-e2e-planted-placeholder-not-real-9q2b')
     const errors: string[] = []
     page.on('pageerror', (e) => errors.push(e.message))
     await openConnections(page)
-    const claude = page.getByRole('button', { name: /Claude, Ava's brain/ })
+    const claude = page.getByRole('button', { name: /Deepgram, for the voice call/ })
     await expect(claude).toContainText('Connected (sk-…9q2b)')
     await claude.click()
-    await page.route('**/api/app/connections/anthropic/disconnect', serverError)
-    await page.getByRole('button', { name: 'Disconnect Claude' }).click()
-    await expect(page.getByRole('button', { name: 'Disconnect Claude' })).toBeEnabled()
+    await page.route('**/api/app/connections/deepgram/disconnect', serverError)
+    await page.getByRole('button', { name: 'Disconnect Deepgram' }).click()
+    await expect(page.getByRole('button', { name: 'Disconnect Deepgram' })).toBeEnabled()
     await shot(page, 'disconnect-fails-silently.png')
     expect(await storedSecrets()).toHaveLength(1)
     console.log('page errors:', JSON.stringify(errors))

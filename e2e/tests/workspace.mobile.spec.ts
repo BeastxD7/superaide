@@ -107,24 +107,25 @@ test.describe('dashboard on a phone', () => {
     await expect(page).toHaveURL(/\/dashboard\/connections$/)
     await expect(page.getByRole('heading', { name: 'Connections' })).toBeVisible()
     await expect(page.getByRole('heading', { name: "Ava's notebook" })).toBeHidden()
-    await page.getByRole('button', { name: /Claude, Ava's brain/ }).tap()
-    await expect(page.getByLabel('Claude API key')).toBeVisible()
-    await expect(page.getByLabel('Claude API key')).toHaveAttribute('type', 'password')
+    await expect(page.getByRole('button', { name: /Claude/ })).toHaveCount(0)
+    await page.getByRole('button', { name: /^Telegram/ }).tap()
+    await expect(page.getByLabel('Bot token from BotFather')).toBeVisible()
+    await expect(page.getByLabel('Bot token from BotFather')).toHaveAttribute('type', 'password')
     await expect(page.getByText('WhatsApp', { exact: true })).toBeVisible()
     await expectNoSidewaysScroll(page)
   })
 
-  test('the offline notice tells a phone user where Connections is', async ({ page, owner }) => {
+  test('the offline notice tells a phone user where the AI model page is', async ({ page, owner }) => {
     // W11, fixed by the dashboard: the notice no longer says "on the right"; it links to
     // /dashboard/connections (features/dashboard/ChatPage.tsx).
     void owner
     await openChat(page)
-    const notice = page.getByText("Ava's Claude brain isn't connected yet")
+    const notice = page.getByText("Ava's AI model isn't connected yet")
     await expect(notice).toBeVisible()
     await expect(notice).not.toContainText('on the right')
-    await notice.getByRole('link', { name: 'Connect Claude' }).tap()
-    await expect(page).toHaveURL(/\/dashboard\/connections$/)
-    await expect(page.getByRole('heading', { name: 'Connections' })).toBeVisible()
+    await notice.getByRole('link', { name: 'Choose an AI model' }).tap()
+    await expect(page).toHaveURL(/\/dashboard\/models$/)
+    await expect(page.getByRole('heading', { name: 'AI model' })).toBeVisible()
   })
 
   test('the sidebar tells assistive technology which page is showing', async ({ page, owner }) => {
