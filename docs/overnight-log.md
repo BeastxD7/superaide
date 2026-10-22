@@ -89,3 +89,14 @@ backend tests, lint, types, the frontend checks and the full browser suite pass.
   - PR #10 merged (8bf07e3). Dev checkout updated, frontend npm ci, dev DB at 0021, stack restarted cleanly.
   - The phone tunnel had dropped; a new quick tunnel is open.
   - The morning summary is at docs/morning-summary-2026-10-22.md.
+- 12:30 IST (the owner was presenting 11:31–12:35: no browser, no dev restarts, no local e2e audio):
+  - Landed:
+    - tenancy T7 (memory scoping), T8 (metadata-only console plus break-glass) and the owner Access log;
+    - T11 (separate worker, one listener per bot via advisory locks);
+    - mobile M0–M3 and M6 (flags off; VAPID in platform_state);
+    - triage TR4 Telegram buttons (flag off);
+    - QA's audio mute for e2e (Chromium --mute-audio plus speechSynthesis volume 0) and lint cleanup;
+    - reliability: the linked-channel line, two-owner offline evals, and a T7 regression pass with no regressions.
+  - Live triage: tell-now precision 100%, recall 100% on 52 synthetic labels (US$0.023 total).
+  - Owner decisions recorded: BYOK; each owner's own Telegram bot.
+  - Login email corrected to .com.
