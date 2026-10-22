@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, type ReactNode } from 'react'
 import { Separator } from '@/components/ui/separator'
+import { SessionProblem } from '@/components/SessionProblem'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppSidebar } from '@/features/dashboard/AppSidebar'
@@ -20,12 +21,19 @@ export function DashboardShell({ defaultOpen, children }: { defaultOpen: boolean
   const pathname = usePathname() ?? '/dashboard'
   const me = session.me
 
+  // A failed read of the agent's state is not "not hired": stay put and offer a retry. The
+  // state we have may be out of date too, so it is not used to redirect either.
+  const hired = !session.account || Boolean(session.account.hire)
+  const loadProblem = session.loadFailed && hired && (!me || !me.onboarding.done)
+
   useEffect(() => {
-    if (session.loading) return
+    if (session.loading || loadProblem) return
     if (!session.account) router.replace(`/login?next=${encodeURIComponent(pathname)}`)
-    else if (!session.account.hire || !me) router.replace('/')
-    else if (!me.onboarding.done) router.replace('/meet')
-  }, [session.loading, session.account, me, pathname, router])
+    else if (!session.account.hire) router.replace('/')
+    else if (me && !me.onboarding.done) router.replace('/meet')
+  }, [session.loading, session.account, me, loadProblem, pathname, router])
+
+  if (!session.loading && loadProblem) return <SessionProblem session={session} dark />
 
   if (session.loading || !session.account || !me || !me.onboarding.done) {
     return <div className="min-h-dvh bg-sidebar" aria-busy="true" />

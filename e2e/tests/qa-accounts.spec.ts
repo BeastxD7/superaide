@@ -178,7 +178,6 @@ test.describe('emailed links', () => {
   })
 
   test('after resetting the password in a signed-in browser, "Log in" opens the log-in page', async ({ page, owner }) => {
-    test.fail(true, 'BUG: the reset signs out every session, but the page keeps the old account in memory, so "Log in" bounces to a dead dashboard')
     await page.goto('/dashboard')
     await expect(sidebarLink(page, '/dashboard/notebook')).toBeVisible()
     const token = await emailLink(owner.email, 'reset_password')
@@ -197,10 +196,12 @@ test.describe('emailed links', () => {
 test.describe('a session that ends while a page is open', () => {
   for (const how of ['signed out on another device', 'expired'] as const) {
     test(`(${how}) the dashboard sends you to log in on your next click`, async ({ page, owner }) => {
-      test.fail(true, 'BUG: dashboard pages show "Please log in." with no way to log in; nothing handles a 401 from /app/*')
       void owner
       await page.goto('/dashboard')
       await expect(sidebarLink(page, '/dashboard/notebook')).toBeVisible()
+      // Let the Home page finish loading first: a request still in flight would see the 401 (and
+      // rightly send you to log in) before this test's click, which is not what it tests.
+      await page.waitForLoadState('networkidle')
       await query(how === 'expired' ? "UPDATE user_session SET expires_at = now() - interval '1 minute'" : 'UPDATE user_session SET revoked_at = now()')
       await sidebarLink(page, '/dashboard/notebook').click()
       await expect(page.getByText('Please log in.').first().or(page.getByRole('heading', { name: 'Welcome back' }))).toBeVisible()

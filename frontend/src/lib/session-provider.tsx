@@ -1,67 +1,97 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { auth, call, type Account, type Me } from '@/lib/api'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { auth, call, isUnauthorized, setSignedOutHandler, type Account, type Me } from '@/lib/api'
 import { PWA_ENABLED } from '@/lib/flags'
 import { SessionContext } from '@/lib/session-context'
+import { needsAccount } from '@/lib/session'
 
 type ProviderProps = { initialAccount: Account | null; hasSession: boolean; children: ReactNode }
 
 // The signed-in account comes from the server render, so every page knows at
 // once who is signed in (no logged-out flash). The hired agent's workspace state
 // is loaded in the browser. With no session cookie there is nothing to check.
+//
+// "Couldn't load" is kept apart from "not hired" and from "signed out": a failed read keeps what
+// was known and sets loadFailed, so screens can offer a retry instead of redirecting. Only a 401
+// means the session ended (here, and in lib/api.ts for every /app call).
 export function SessionProvider({ initialAccount, hasSession, children }: ProviderProps) {
   const router = useRouter()
   const [account, setAccount] = useState<Account | null>(initialAccount)
   const [me, setMe] = useState<Me | null>(null)
+  const [loadFailed, setLoadFailed] = useState(false)
   // Signed out (no cookie, no account): the server already checked, so nothing is loading.
   const [loading, setLoading] = useState(hasSession || initialAccount !== null)
+  // The latest values, for async code that must not use a stale closure.
+  const latest = useRef<{ account: Account | null; me: Me | null }>({ account: initialAccount, me: null })
 
-  const loadAgent = useCallback(async (acc: Account | null) => {
-    if (!acc?.hire) {
-      setMe(null)
-      return null
-    }
+  // Set the account, the agent state and the failure flag together, so no page ever renders
+  // a half-updated session (for example the new account with the old agent state).
+  const commit = useCallback((acc: Account | null, m: Me | null, failed: boolean) => {
+    latest.current = { account: acc, me: m }
+    setAccount(acc)
+    setMe(m)
+    setLoadFailed(failed)
+    setLoading(false)
+  }, [])
+
+  // The agent's state for an account. Not hired: null. Failed: keep what we had and say it failed.
+  const fetchAgent = useCallback(async (acc: Account | null, previous: Me | null) => {
+    if (!acc?.hire) return { account: acc, me: null, failed: false }
     try {
-      const m = await call<Me>('/me')
-      setMe(m)
-      return m
-    } catch {
-      setMe(null)
-      return null
+      return { account: acc, me: await call<Me>('/me'), failed: false }
+    } catch (e) {
+      if (isUnauthorized(e)) return { account: null, me: null, failed: false }
+      return { account: acc, me: previous, failed: true }
     }
   }, [])
 
   // Re-read both the account and the agent state from the server.
-  // State is set only once the server answers (written with .then so the effect lint can see that).
-  const refresh = useCallback(
-    () =>
-      auth
-        .me()
-        .catch(() => null)
-        .then(async (acc: Account | null) => {
-          setAccount(acc)
-          const m = await loadAgent(acc)
-          setLoading(false)
-          return m
-        }),
-    [loadAgent],
-  )
+  const refresh = useCallback(async () => {
+    let acc: Account | null
+    let failed = false
+    try {
+      acc = await auth.me()
+    } catch (e) {
+      if (isUnauthorized(e)) acc = null
+      else {
+        // Can't tell: keep who we thought was signed in rather than treating this as signed out.
+        acc = latest.current.account
+        failed = true
+      }
+    }
+    const next = await fetchAgent(acc, latest.current.me)
+    commit(next.account, next.me, failed || next.failed)
+    return next.me
+  }, [fetchAgent, commit])
 
   useEffect(() => {
     if (hasSession || initialAccount) void refresh()
   }, [refresh, hasSession, initialAccount])
 
+  // The session ended while a page was open (a 401 from any /app call): forget the account, and on
+  // a page that needs one go to log in, coming back here afterwards.
+  useEffect(
+    () =>
+      setSignedOutHandler(() => {
+        if (!latest.current.account) return
+        commit(null, null, false)
+        const path = window.location.pathname
+        if (needsAccount(path)) router.replace(`/login?next=${encodeURIComponent(path)}`)
+      }),
+    [commit, router],
+  )
+
   const signedIn = useCallback(
     async (acc: Account) => {
       // Load the agent state before announcing the account, so no page sees
       // "signed in, hired, but no agent yet" and bounces to the home page.
-      await loadAgent(acc)
-      setAccount(acc)
+      const next = await fetchAgent(acc, null)
+      commit(next.account, next.me, next.failed)
       router.refresh() // re-render server components with the new session cookie
     },
-    [loadAgent, router],
+    [fetchAgent, commit, router],
   )
 
   // A full page load to the home page: nothing from the signed-in session stays
@@ -81,8 +111,8 @@ export function SessionProvider({ initialAccount, hasSession, children }: Provid
   }, [])
 
   const value = useMemo(
-    () => ({ account, me, loading, refresh, signedIn, logOut }),
-    [account, me, loading, refresh, signedIn, logOut],
+    () => ({ account, me, loading, loadFailed, refresh, signedIn, logOut }),
+    [account, me, loading, loadFailed, refresh, signedIn, logOut],
   )
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
 }
