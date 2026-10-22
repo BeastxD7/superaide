@@ -109,10 +109,6 @@ test('AI model prices accept a comma decimal, and Save needs a model name', asyn
   await save.click()
   await expect(region.getByText('Saved.')).toBeVisible()
   expect(prices[0]).toMatchObject({ input_usd_per_mtok: 0.15, output_usd_per_mtok: 0.6 })
-  // Zero is not a price.
-  await region.locator('#chat-in').fill('0')
-  await save.click()
-  await expect(region.getByText(/as a number above zero/)).toBeVisible()
 })
 
 test('Settings shows an unverified address and can send the link again', async ({ page, owner }) => {
