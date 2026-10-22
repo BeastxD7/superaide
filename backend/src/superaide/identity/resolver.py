@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from superaide.audit import audit
@@ -69,9 +70,17 @@ def resolve(session: Session, msg: InboundMessage, *, reconfirm_after_days: int 
             risk_flags=["external"] if msg.external_sender else [],
             aux_handles={},
         )
-        session.add(identity)
-        session.flush()
-        audit(session, "identity", "new_identity", identity_id=identity.id, provider=msg.provider)
+        try:
+            with session.begin_nested():  # two first messages at once: the loser must not be dropped (BE-14)
+                session.add(identity)
+                session.flush()
+        except IntegrityError:
+            existing = find_identity(session, msg.provider, msg.tenant_scope, msg.sender_id)
+            if existing is None:
+                raise
+            identity = existing
+        else:
+            audit(session, "identity", "new_identity", identity_id=identity.id, provider=msg.provider)
     # Handles are kept for display only.
     identity.aux_handles = {
         **(identity.aux_handles or {}),
