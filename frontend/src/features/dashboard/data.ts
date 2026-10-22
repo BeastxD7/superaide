@@ -8,14 +8,20 @@ export function useAppData<T>(path: string) {
   const [data, setData] = useState<T | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const reload = useCallback(async () => {
-    try {
-      setData(await call<T>(path))
-      setError(null)
-    } catch (e) {
-      setError(e instanceof AppError ? e.message : String(e))
-    }
-  }, [path])
+  // State is set only once the request settles (written with .then so the effect lint can see that).
+  const reload = useCallback(
+    () =>
+      call<T>(path).then(
+        (d) => {
+          setData(d)
+          setError(null)
+        },
+        (e: unknown) => {
+          setError(e instanceof AppError ? e.message : String(e))
+        },
+      ),
+    [path],
+  )
 
   useEffect(() => {
     void reload()

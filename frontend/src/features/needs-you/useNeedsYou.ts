@@ -10,20 +10,26 @@ export function useNeedsYou(poll = 0) {
   const [data, setData] = useState<NeedsYou | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const reload = useCallback(async () => {
-    try {
-      setData(await call<NeedsYou>('/needs-you'))
-      setEnabled(true)
-      setError(null)
-    } catch (e) {
-      if (e instanceof AppError && e.status === 404) {
-        setEnabled(false)
-        setData(null)
-        return
-      }
-      setError(e instanceof AppError ? e.message : String(e))
-    }
-  }, [])
+  // State is set only once the request settles (written with .then so the effect lint can see that).
+  const reload = useCallback(
+    () =>
+      call<NeedsYou>('/needs-you').then(
+        (d) => {
+          setData(d)
+          setEnabled(true)
+          setError(null)
+        },
+        (e: unknown) => {
+          if (e instanceof AppError && e.status === 404) {
+            setEnabled(false)
+            setData(null)
+            return
+          }
+          setError(e instanceof AppError ? e.message : String(e))
+        },
+      ),
+    [],
+  )
 
   useEffect(() => {
     void reload()
