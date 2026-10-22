@@ -1,20 +1,31 @@
-"""Admin API for the dashboard. Localhost only, bearer token required.
+"""Admin API for the operator console. Bearer token required.
 
-Read-only except for two writes: the kill switch and unlinking an identity.
+Read-only except for the kill switch and linking or unlinking an identity.
+
+Metadata by default, content only by break-glass (ADR 0009 T8). The overview, spend,
+the list of hired instances and the kill switch show no owner's content. Anything that
+shows or changes what an owner's Ava holds (people, conversations, messages, memories,
+approvals, the safety log, linking) needs a reason (`X-Operator-Reason`, at least
+10 characters) and names the instance (`X-Operator-Instance`, else the server's first).
+Each such request is written to that owner's own audit log, which the owner can read
+(/app/access-log), and runs inside that instance only.
 """
 
 from __future__ import annotations
 
 import hmac
 import uuid
+from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Security
+from fastapi import APIRouter, Depends, HTTPException, Request, Security
+from fastapi.concurrency import run_in_threadpool
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 from sqlalchemy import func, select
 
+from superaide.audit import audit
 from superaide.brain.budget import BudgetGuard
 from superaide.config import get_settings
 from superaide.db.models import (
@@ -31,7 +42,9 @@ from superaide.db.models import (
 from superaide.db.session import session_scope
 from superaide.factory import brain_ready
 from superaide.identity.linking import operator_link, unlink
-from superaide.policy.killswitch import is_frozen, set_platform_frozen
+from superaide.policy.killswitch import instance_frozen, is_frozen, set_platform_frozen
+from superaide.tenancy.context import InstanceScope, default_scope, use_instance
+from superaide.tenancy.models import AgentInstance, ChannelEndpoint, Tenant
 
 admin_bearer = HTTPBearer(scheme_name="Admin token", description="`ADMIN_TOKEN` from `.env`.", auto_error=False)
 
@@ -47,6 +60,49 @@ def require_admin(credentials: HTTPAuthorizationCredentials | None = Security(ad
 
 router = APIRouter(prefix="/api", tags=["Operator console"], dependencies=[Depends(require_admin)])
 
+MIN_REASON = 10
+
+
+def _grant(request: Request) -> InstanceScope:
+    reason = " ".join((request.headers.get("x-operator-reason") or "").split())
+    if len(reason) < MIN_REASON:
+        raise HTTPException(
+            403,
+            {
+                "code": "reason_required",
+                "message": "Seeing an owner's content needs a reason (at least 10 characters). It is recorded "
+                "in the owner's own log.",
+            },
+        )
+    wanted = request.headers.get("x-operator-instance") or ""
+    with session_scope() as s:
+        if wanted:
+            try:
+                instance = s.get(AgentInstance, uuid.UUID(wanted))
+            except ValueError:
+                instance = None
+            if instance is None:
+                raise HTTPException(404, "No such instance")
+            scope = InstanceScope(tenant_id=instance.tenant_id, agent_id=instance.id)
+        else:
+            scope = default_scope()
+    with use_instance(scope), session_scope() as s:
+        audit(
+            s, "operator", "operator_access", path=request.url.path, method=request.method,
+            reason=reason[:500], query=str(request.url.query)[:300],
+        )  # fmt: skip
+    return scope
+
+
+async def break_glass(request: Request) -> AsyncIterator[InstanceScope]:
+    """Owner content: a reason, recorded in that owner's log, and only that instance in scope."""
+    scope = await run_in_threadpool(_grant, request)
+    with use_instance(scope):
+        yield scope
+
+
+content = [Depends(break_glass)]
+
 
 def _iso(dt: datetime | None) -> str | None:
     return dt.isoformat() if dt else None
@@ -57,6 +113,64 @@ VERIFIED_LINK_METHODS = ("code_via_trusted_channel", "operator_bootstrap", "oper
 
 def _audit_count(s: Any, *actions: str) -> int:
     return int(s.scalar(select(func.count()).select_from(AuditLog).where(AuditLog.action.in_(actions))) or 0)
+
+
+@router.get(
+    "/instances",
+    summary="Hired instances",
+    description=(
+        "Every hired Ava on this server, metadata only: when, its state, how much it holds and has spent. "
+        "No owner's name, email or content."
+    ),
+)
+def instances() -> list[dict[str, Any]]:
+    with session_scope() as s:
+        rows = s.execute(
+            select(AgentInstance, Tenant.region).join(Tenant, Tenant.id == AgentInstance.tenant_id, isouter=True)
+            .order_by(AgentInstance.created_at)
+        ).all()  # fmt: skip
+        listed = [(InstanceScope(tenant_id=i.tenant_id, agent_id=i.id), i, region) for i, region in rows]
+    day_ago = datetime.now(UTC) - timedelta(days=1)
+    out = []
+    for scope, instance, region in listed:
+        with use_instance(scope), session_scope() as s:  # counted inside the instance (RLS allows only that)
+            out.append(
+                {
+                    "id": str(instance.id),
+                    "agent": instance.agent_slug,
+                    "status": instance.status,
+                    "since": _iso(instance.created_at),
+                    "region": region or "",
+                    "key_source": instance.key_source,
+                    "frozen": instance_frozen(s, scope),
+                    "channels": sorted(
+                        {
+                            e.provider
+                            for e in s.scalars(
+                                select(ChannelEndpoint).where(ChannelEndpoint.agent_id == scope.agent_id)
+                            )
+                        }
+                    ),
+                    "counts": {
+                        "people": s.scalar(select(func.count()).select_from(Person)) or 0,
+                        "conversations": s.scalar(select(func.count()).select_from(Context)) or 0,
+                        "messages_24h": s.scalar(
+                            select(func.count()).select_from(Event).where(Event.created_at > day_ago)
+                        )
+                        or 0,
+                        "memories": s.scalar(select(func.count()).select_from(MemoryItem)) or 0,
+                    },
+                    "spend_usd": float(
+                        s.scalar(
+                            select(func.coalesce(func.sum(SpendEntry.cost_usd), 0)).where(
+                                SpendEntry.status == "settled"
+                            )
+                        )
+                        or 0
+                    ),
+                }
+            )
+    return out
 
 
 @router.get(
@@ -145,6 +259,7 @@ def overview() -> dict[str, Any]:
 
 @router.get(
     "/people",
+    dependencies=content,
     summary="People and trust",
     description="Everyone Ava knows, their relation to the owner and each linked channel identity with its trust tier.",
 )
@@ -202,7 +317,12 @@ def people() -> list[dict[str, Any]]:
         return result
 
 
-@router.get("/conversations", summary="Conversations", description="Every chat Ava is in, with its audience.")
+@router.get(
+    "/conversations",
+    dependencies=content,
+    summary="Conversations",
+    description="Every chat Ava is in, with its audience.",
+)
 def conversations() -> list[dict[str, Any]]:
     with session_scope() as s:
         rows = s.execute(
@@ -226,7 +346,10 @@ def conversations() -> list[dict[str, Any]]:
 
 
 @router.get(
-    "/events", summary="Messages", description="Recent messages, optionally for one conversation (`context_id`)."
+    "/events",
+    dependencies=content,
+    summary="Messages",
+    description="Recent messages, optionally for one conversation (`context_id`).",
 )
 def events(context_id: uuid.UUID | None = None, limit: int = 100) -> list[dict[str, Any]]:
     limit = max(1, min(limit, 500))
@@ -251,7 +374,9 @@ def events(context_id: uuid.UUID | None = None, limit: int = 100) -> list[dict[s
         ]
 
 
-@router.get("/memories", summary="Memories", description="Stored memories and who may see each one.")
+@router.get(
+    "/memories", dependencies=content, summary="Memories", description="Stored memories and who may see each one."
+)
 def memories() -> list[dict[str, Any]]:
     with session_scope() as s:
         names = {p.id: p.display_name for p in s.scalars(select(Person)).all()}
@@ -268,7 +393,9 @@ def memories() -> list[dict[str, Any]]:
         ]
 
 
-@router.get("/approvals", summary="Pending approvals", description="Actions waiting for the owner's yes.")
+@router.get(
+    "/approvals", dependencies=content, summary="Pending approvals", description="Actions waiting for the owner's yes."
+)
 def approvals() -> list[dict[str, Any]]:
     with session_scope() as s:
         names = {p.id: p.display_name for p in s.scalars(select(Person)).all()}
@@ -288,7 +415,10 @@ def approvals() -> list[dict[str, Any]]:
 
 
 @router.get(
-    "/audit", summary="Safety log", description="The audit trail: identity checks, refusals, links, spend and sign-ins."
+    "/audit",
+    dependencies=content,
+    summary="Safety log",
+    description="The audit trail: identity checks, refusals, links, spend and sign-ins.",
 )
 def audit_log(limit: int = 200) -> list[dict[str, Any]]:
     limit = max(1, min(limit, 1000))
@@ -342,6 +472,7 @@ def kill(body: KillBody) -> dict[str, bool]:
 
 @router.post(
     "/identities/{identity_id}/unlink",
+    dependencies=content,
     summary="Unlink an identity",
     description="Detaches a channel account from its person; it is treated as a stranger again.",
 )
@@ -362,6 +493,7 @@ class LinkBody(BaseModel):
 
 @router.post(
     "/identities/{identity_id}/link",
+    dependencies=content,
     summary="Link an identity",
     description="Links a channel account to a person by hand (operator override).",
 )

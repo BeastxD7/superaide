@@ -13,7 +13,8 @@ from superaide.channels.telegram import SECRET_HEADER, parse_update, verify_secr
 from superaide.main import create_app
 from tests.conftest import MANAGER_TG, tg
 
-AUTH = {"Authorization": "Bearer test-admin-token"}
+# Owner content needs a reason (ADR 0009 T8, break-glass); the tests give one.
+AUTH = {"Authorization": "Bearer test-admin-token", "X-Operator-Reason": "checking a reported problem"}
 
 
 @pytest.fixture

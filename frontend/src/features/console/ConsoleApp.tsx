@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, type FormEvent } from 'react'
-import { api, defaultBase, loadConnection, saveConnection, type Connection, type Overview as OverviewData } from '@/features/console/api'
+import { useMemo, useState, type FormEvent } from 'react'
+import { api, defaultBase, loadConnection, saveConnection, type Access, type Connection, type Overview as OverviewData } from '@/features/console/api'
+import { BreakGlass } from '@/features/console/components/BreakGlass'
 import { Conversations } from '@/features/console/pages/Conversations'
 import { Overview } from '@/features/console/pages/Overview'
 import { People } from '@/features/console/pages/People'
@@ -19,6 +20,8 @@ const TABS = [
   { key: 'simulator', label: 'Try an impostor' },
 ] as const
 type TabKey = (typeof TABS)[number]['key']
+// An owner's content: opened only by break-glass (ADR 0009).
+const PRIVATE: TabKey[] = ['people', 'conversations', 'log', 'simulator']
 
 export default function ConsoleApp() {
   const [conn, setConn] = useState<Connection | null>(() => loadConnection())
@@ -84,6 +87,8 @@ function Dashboard({ conn, onDisconnect }: { conn: Connection; onDisconnect: () 
   const [tab, setTab] = useState<TabKey>('overview')
   const overview = useApi<OverviewData>(conn, '/api/overview')
   const [switching, setSwitching] = useState(false)
+  const [access, setAccess] = useState<Access | null>(null)
+  const opened = useMemo<Connection>(() => (access ? { ...conn, access } : conn), [conn, access])
   const data = overview.data
 
   async function togglePause() {
@@ -134,11 +139,20 @@ function Dashboard({ conn, onDisconnect }: { conn: Connection; onDisconnect: () 
           <p className="error">{overview.error.message}</p>
         ) : null}
         {tab === 'overview' && data && <Overview data={data} />}
-        {tab === 'people' && <People conn={conn} />}
-        {tab === 'conversations' && <Conversations conn={conn} />}
-        {tab === 'log' && <SafetyLog conn={conn} />}
+        {PRIVATE.includes(tab) && !access && <BreakGlass conn={conn} onOpen={setAccess} />}
+        {PRIVATE.includes(tab) && access && (
+          <p className="break-glass-open">
+            Open for one owner's Ava ({access.instance ? access.instance.slice(0, 8) : "the server's first"}), recorded with your reason: “{access.reason}”.{' '}
+            <button className="link-button" onClick={() => setAccess(null)}>
+              Close
+            </button>
+          </p>
+        )}
+        {tab === 'people' && access && <People conn={opened} />}
+        {tab === 'conversations' && access && <Conversations conn={opened} />}
+        {tab === 'log' && access && <SafetyLog conn={opened} />}
         {tab === 'spend' && <SpendPage conn={conn} />}
-        {tab === 'simulator' && <Simulator conn={conn} enabled={data?.simulator ?? false} agentName={data?.agent_name ?? 'The agent'} />}
+        {tab === 'simulator' && access && <Simulator conn={opened} enabled={data?.simulator ?? false} agentName={data?.agent_name ?? 'The agent'} />}
       </main>
     </div>
   )

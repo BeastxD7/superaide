@@ -29,6 +29,7 @@ from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf
 from superaide.config import get_settings
 from superaide.db.models import (
     Approval,
+    AuditLog,
     ChannelIdentity,
     Context,
     Document,
@@ -715,5 +716,32 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 s, require(s, Person, person_id), "telegram", endpoint=bot_id(settings.telegram_bot_token)
             )
         return {"available": True, "url": f"https://t.me/{username}?start={code}", "expires_minutes": 15}
+
+    @router.get(
+        "/access-log",
+        tags=["Owner: people & rules"],
+        summary="Who at Superaide looked",
+        description=(
+            "Every time a Superaide operator opened your Ava's people, conversations, memories or log (ADR 0009): "
+            "when, what, and the reason they gave. Newest first."
+        ),
+    )
+    def access_log(person_id: uuid.UUID = Depends(owner_person_id), limit: int = 100) -> list[dict[str, Any]]:
+        limit = max(1, min(limit, 500))
+        with session_scope() as s:
+            rows = s.scalars(
+                select(AuditLog)
+                .where(AuditLog.actor == "operator", AuditLog.action == "operator_access")
+                .order_by(AuditLog.created_at.desc())
+                .limit(limit)
+            ).all()
+            return [
+                {
+                    "at": r.created_at.isoformat(),
+                    "what": (r.detail or {}).get("path", ""),
+                    "reason": (r.detail or {}).get("reason", ""),
+                }
+                for r in rows
+            ]
 
     return router

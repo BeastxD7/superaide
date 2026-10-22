@@ -3,8 +3,10 @@
 Status: accepted (2026-10-22). Built so far: T0 (instances), T1 (RLS and the app's role), T2 (accounts and
 request scope), T3 (credentials, freeze and runtime per instance), T4 (each owner's own Telegram bot), T5 (jobs),
 T6 (budget), T7 (an automatic per-instance filter on every ORM query in scope, identities and conversations per
-instance), T9 (email links), T10 "now" items and T12 (isolation e2e, marked expected-fail until many owners are
-switched on). Still to do: T8 (operator console) and T11 (worker service). `ALLOW_MANY_OWNERS` stays off until
+instance), T8 (operator console: metadata by default, break-glass with a reason recorded in the owner's own log,
+which they read at /app/access-log; operator accounts instead of ADMIN_TOKEN come later), T9 (email links), T10
+"now" items and T12 (isolation e2e, marked expected-fail until many owners are switched on). Still to do: T11
+(worker service), Slack per instance. `ALLOW_MANY_OWNERS` stays off until
 the owner decides to open hiring to everyone.
 
 ## Context

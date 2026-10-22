@@ -108,7 +108,23 @@ export type SimResult = {
 
 const STORE_KEY = 'superaide-console-v2'
 
-export type Connection = { base: string; token: string }
+// `access` is break-glass (ADR 0009): a reason and an instance, needed to see an owner's content.
+// It lives only in this tab's memory, never in storage, and every use is recorded in the owner's log.
+export type Access = { reason: string; instance: string }
+export type Connection = { base: string; token: string; access?: Access }
+
+export type InstanceRow = {
+  id: string
+  agent: string
+  status: string
+  since: string | null
+  region: string
+  key_source: string
+  frozen: boolean
+  channels: string[]
+  counts: { people: number; conversations: number; messages_24h: number; memories: number }
+  spend_usd: number
+}
 
 // The console calls the backend through the app's /api proxy, like the rest of the frontend.
 export function defaultBase(): string {
@@ -134,7 +150,7 @@ export function loadConnection(): Connection | null {
 
 export function saveConnection(c: Connection | null): void {
   try {
-    if (c) localStorage.setItem(STORE_KEY, JSON.stringify(c))
+    if (c) localStorage.setItem(STORE_KEY, JSON.stringify({ base: c.base, token: c.token }))
     else localStorage.removeItem(STORE_KEY)
   } catch {
     // Storage can be unavailable (private mode); the session still works.
@@ -146,6 +162,11 @@ export { ApiError }
 // Same Axios client as the app, authorised with the operator's ADMIN_TOKEN.
 export async function api<T>(conn: Connection, path: string, init?: { method?: 'GET' | 'POST'; body?: string }): Promise<T> {
   const client = createClient(conn.base.replace(/\/$/, ''), { token: () => conn.token })
-  const res = await client.request<T>({ url: path, method: init?.method ?? 'GET', data: init?.body })
+  const headers: Record<string, string> = {}
+  if (conn.access) {
+    headers['X-Operator-Reason'] = conn.access.reason
+    if (conn.access.instance) headers['X-Operator-Instance'] = conn.access.instance
+  }
+  const res = await client.request<T>({ url: path, method: init?.method ?? 'GET', data: init?.body, headers })
   return res.data
 }
