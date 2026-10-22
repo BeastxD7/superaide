@@ -254,7 +254,6 @@ test.describe('Sign in with Google', () => {
   })
 
   test('cancelling on Google keeps where you were heading', async ({ page, api }) => {
-    test.fail(true, 'BUG: the callback sends every failure to /login?google=<reason> and drops the pending next=')
     void api
     await page.goto(`/signup?next=${encodeURIComponent('/agents/ava/hire')}`)
     await page.getByRole('button', { name: 'Continue with Google' }).click()
@@ -265,7 +264,6 @@ test.describe('Sign in with Google', () => {
   })
 
   test('opened as 127.0.0.1 (as the log-in tests do), Google sign-in works', async ({ page, api }) => {
-    test.fail(true, 'BUG: redirect_uri is always FRONTEND_ORIGIN (localhost), where the 127.0.0.1 sign-in cookie is absent, so it fails as "expired"')
     void api
     const origin = `http://127.0.0.1:${WEB_PORT}`
     await page.goto(`${origin}/login`)
@@ -276,14 +274,13 @@ test.describe('Sign in with Google', () => {
   })
 
   test('an owner who signs in only with Google is not told their password is wrong when changing email', async ({ page, api }) => {
-    test.fail(true, 'BUG: Settings asks a Google-only owner (no password) for a password, then says "Your password isn\'t right."')
     await page.goto('/signup')
     await googleAs(page)
     await expect(page).toHaveURL(/\/$/)
     await api.hire()
     await api.completeIntroduction()
     const status = await changeEmailInSettings(page, 'gita-new@example.com', 'anything I could think of')
-    expect(status).toBe(401)
+    expect(status).toBe(400) // refused, but not as a wrong password
     await expect(emailForm(page).getByText(/./).last()).toBeVisible()
     await shot(page, 'google-only-change-email')
     await expect(emailForm(page).getByText("Your password isn't right.")).toHaveCount(0, { timeout: 1_000 })

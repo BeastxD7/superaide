@@ -13,6 +13,7 @@ import re
 import uuid
 from collections.abc import Callable
 from typing import Any
+from urllib.parse import quote
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, Security
 from fastapi.responses import RedirectResponse
@@ -187,6 +188,7 @@ class LoginBody(BaseModel):
 class GoogleStartBody(BaseModel):
     next: str | None = Field(default=None, max_length=300)  # where to go afterwards: a path on this site
     timezone: str | None = Field(default=None, max_length=64)  # for a new account, as at sign-up
+    page: str | None = Field(default=None, max_length=10)  # "login" or "signup": where it started, for a failure
 
 
 def google_enabled() -> bool:
@@ -390,7 +392,15 @@ def make_router() -> APIRouter:
         if not google_signin.configured():
             raise HTTPException(503, "Google sign-in isn't set up on this server yet.")
         client = client_of(request)
-        started = run(lambda s: google_signin.start(s, client=client, next_path=body.next, timezone=body.timezone))
+        try:
+            origin = google_signin.origin_for(request)
+        except AuthError as exc:
+            raise HTTPException(exc.status, exc.message) from exc
+        started = run(
+            lambda s: google_signin.start(
+                s, client=client, next_path=body.next, timezone=body.timezone, origin=origin, page=body.page
+            )
+        )
         response.set_cookie(
             google_signin.COOKIE, started.browser_secret,
             max_age=int(google_signin.PENDING_TTL.total_seconds()), httponly=True,
@@ -411,12 +421,19 @@ def make_router() -> APIRouter:
     def google_callback(request: Request, code: str = "", state: str = "", error: str = "") -> RedirectResponse:
         if not google_enabled():
             raise HTTPException(404, "Not Found")
-        front = get_settings().frontend_origin.rstrip("/")
+        front = get_settings().frontend_origin.rstrip("/")  # where a sign-in we can't identify goes back to
         client = client_of(request)
         browser_secret = request.cookies.get(google_signin.COOKIE)
+        known: dict[str, Any] = {}  # the pending sign-in, once found: the origin, page and next= to return to
 
         def back(reason: str) -> RedirectResponse:
-            out = RedirectResponse(f"{front}/login?google={reason}", status_code=303)
+            # Back to the page the person started on, with where they were heading (next=) kept.
+            page = known.get("page") if known.get("page") in google_signin.PAGES else "login"
+            query = f"google={reason}"
+            if known.get("next"):
+                query += f"&next={quote(str(known['next']), safe='')}"
+            origin = google_signin.pending_origin(known) if known else front
+            out = RedirectResponse(f"{origin}/{page}?{query}", status_code=303)
             out.delete_cookie(google_signin.COOKIE, path="/", httponly=True, samesite="lax")
             return out
 
@@ -427,6 +444,8 @@ def make_router() -> APIRouter:
                 return exc.reason
 
         pending = run(pending_or_reason)  # used up even when Google reports an error
+        if isinstance(pending, dict):
+            known.update(pending)
         if error or not code:
             return back("cancelled")
         if isinstance(pending, str):
@@ -451,7 +470,7 @@ def make_router() -> APIRouter:
         if isinstance(outcome, str):
             return back(outcome if outcome in {"unverified", "locked", "throttled"} else "failed")
         token, next_path = outcome
-        out = RedirectResponse(f"{front}{next_path or '/login'}", status_code=303)
+        out = RedirectResponse(f"{google_signin.pending_origin(pending)}{next_path or '/login'}", status_code=303)
         set_session_cookie(out, token)
         out.delete_cookie(google_signin.COOKIE, path="/", httponly=True, samesite="lax")
         return out

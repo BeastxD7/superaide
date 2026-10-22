@@ -60,6 +60,8 @@ export function apiEnv(): Record<string, string> {
           GOOGLE_CLIENT_ID: 'e2e-client.apps.googleusercontent.com',
           GOOGLE_CLIENT_SECRET: 'e2e-not-a-secret',
           GOOGLE_FAKE_BASE_URL: FAKE_GOOGLE_URL,
+          // The fake Google accepts any address; this one stands for a second address registered with Google.
+          GOOGLE_REDIRECT_ORIGINS: `http://127.0.0.1:${WEB_PORT}`,
         }
       : {}),
   }

@@ -71,7 +71,7 @@ export function AuthPage({
     setGoogleBusy(true)
     setError(null)
     try {
-      const { url } = await auth.googleStart(target)
+      const { url } = await auth.googleStart(target, mode)
       window.location.assign(url)
     } catch (err) {
       setError(err instanceof AppError ? { message: err.message } : { message: String(err) })
