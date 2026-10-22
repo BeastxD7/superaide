@@ -17,7 +17,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from superaide.app.accounts import owner as hired_owner
-from superaide.db.models import Document, Job
+from superaide.db.models import Document, Job, Person
 from superaide.db.session import session_scope
 from superaide.jobs.queue import enqueue, handler
 from superaide.tenancy.context import default_scope, scope_or_default, use_instance
@@ -54,15 +54,20 @@ def schedule(session: Session, owner_id: uuid.UUID) -> bool:
     return enqueue(session, JOB_KIND, {"owner_id": str(owner_id)}, dedupe_key=key, max_attempts=3) is not None
 
 
-def brain_became_ready() -> bool:
+def brain_became_ready(*, changed: bool = True) -> bool:
     """Call after anything that may have made the brain ready, inside the owner's instance scope.
     Returns whether a reading job was queued. Never raises: enabling AI must not fail because of this,
     and the sweep catches anything missed."""
+    from superaide.brain import keyhealth
     from superaide.factory import brain_ready
     from superaide.vault.store import runtime_settings
 
     try:
         with session_scope() as s:
+            if changed:
+                keyhealth.reset(s)  # a key was saved: whatever was refused before may work now
+            elif keyhealth.rejected(s):
+                return False  # the periodic sweep: don't retry a key that was refused until it changes
             owner = hired_owner(s)
             if owner is None or not waiting(s, owner.id):
                 return False
@@ -90,12 +95,13 @@ def sweep() -> int:
     queued = 0
     for scope in scopes:
         with use_instance(scope):
-            queued += brain_became_ready()
+            queued += brain_became_ready(changed=False)
     return queued
 
 
 @handler(JOB_KIND)
 def read(session: Session, job: Job) -> None:
+    from superaide.brain import keyhealth
     from superaide.factory import brain_ready, build_llm
     from superaide.knowledge.ingest import read_documents
     from superaide.vault.store import runtime_settings
@@ -103,7 +109,18 @@ def read(session: Session, job: Job) -> None:
     settings = runtime_settings()
     if not brain_ready(settings):
         return  # switched off again since it was queued; the next time the brain is ready queues it again
+    if keyhealth.rejected(session):
+        return  # the key was refused: saving a working one queues this again (brain_became_ready)
+    owner_id = uuid.UUID(job.payload["owner_id"])
     agent = SimpleNamespace(settings=settings, llm=build_llm(settings))
-    results = read_documents(agent, uuid.UUID(job.payload["owner_id"]))
+    results = read_documents(agent, owner_id)
     if any(not r.read for r in results):
+        with session_scope() as s:
+            bad = keyhealth.rejected(s)
+            if bad:  # not a passing failure: stop retrying and tell the owner once
+                owner = s.get(Person, owner_id)
+                if owner is not None:
+                    keyhealth.note_owner(s, owner, bad[0], what="your documents stay unread until then")
+        if bad:
+            return
         raise RuntimeError("couldn't read every document just now")  # the job retries later, with back-off

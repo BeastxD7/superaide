@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 
 from superaide.app.routes import owner_person_id
 from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header
+from superaide.brain import keyhealth
 from superaide.brain.pricing import PRICES, UnknownModelPrice, set_owner_price
 from superaide.brain.providers import config
 from superaide.brain.providers.base import CheckReport
@@ -178,6 +179,7 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], Any]) -> APIRo
             mine = config.view(s)
             credits_view = platform_ai.view(s)
             claude = store.status(s, settings)["anthropic"]
+            key_status = keyhealth.status_view(s)
         roles = {
             role: {
                 "provider": config.split(getattr(settings, field))[0],
@@ -219,6 +221,7 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], Any]) -> APIRo
             },
             "web_search": web_search_view(settings),
             "credits": credits_view,
+            "key_status": key_status,
             "priced": known,  # models whose price Superaide knows, per provider
         }
 

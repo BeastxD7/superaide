@@ -18,6 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.audit import audit
+from superaide.brain import keyhealth
 from superaide.db.models import Event, Job, MemoryItem, Person
 from superaide.jobs.queue import enqueue, handler
 from superaide.knowledge.facts import extract_facts
@@ -89,6 +90,8 @@ def learn(session: Session, job: Job) -> None:
         known=[m.content for m in neighbours],
     )
     if facts is None:
+        if keyhealth.rejected(session):
+            return  # a refused key won't heal by waiting; a working one is saved from the AI model page
         raise RuntimeError("couldn't read the message just now")  # the job retries later
     by_id = dict(enumerate(neighbours, 1))
     kept = merged = superseded = 0

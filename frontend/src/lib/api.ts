@@ -421,6 +421,8 @@ export type ModelSettings = {
   roles: Record<RoleName, { provider: string; model: string }>
   brain: { ready: boolean; provider: string | null; model: string }
   priced: Record<string, string[]>
+  // Providers whose key (or Superaide's credits) the service refused; "Key rejected: reconnect" when any.
+  key_status?: { rejected: string[]; message: string }
   web_search: { connected: boolean; via: 'app' | 'env' | null; key_hint: string; usd_per_call: number }
   // Superaide AI credits: the platform's own Claude key, offered only when the server turns it on.
   credits: {

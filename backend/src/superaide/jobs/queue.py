@@ -23,6 +23,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from superaide.audit import audit
+from superaide.brain import keyhealth
 from superaide.db.models import Job
 from superaide.db.session import session_scope
 from superaide.tenancy.context import InstanceScope, scope_or_default, use_instance
@@ -134,7 +135,7 @@ def _run_one(job_id: Any, kind: str) -> None:
             if job is None:
                 return
             job.last_error = f"{type(exc).__name__}: {exc}"[:2000]
-            if job.attempts >= job.max_attempts:
+            if job.attempts >= job.max_attempts or keyhealth.is_auth_error(exc):  # a rejected key won't heal
                 job.status = "failed"
                 job.finished_at = _now()
                 audit(s, "jobs", "job_failed", job_id=job.id, kind=kind, error=job.last_error[:300])

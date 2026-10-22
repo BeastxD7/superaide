@@ -15,6 +15,7 @@ from typing import Any
 from sqlalchemy import delete, select
 
 from superaide.audit import audit
+from superaide.brain import keyhealth
 from superaide.db.models import Document, MemoryItem, Person
 from superaide.db.session import require, session_scope
 from superaide.knowledge.extract import Extracted
@@ -148,6 +149,8 @@ def read_documents(agent: Any, owner_id: uuid.UUID) -> list[ReadResult]:
         facts = extract_facts(agent, owner_name=owner_name, text=text, source=title)
         if facts is None:
             results.append(ReadResult(doc_id, title, 0, False))  # still saved, tried again later
+            if keyhealth.any_rejected():
+                break  # the key was refused: the next document would be refused too
             continue
         source = "link" if kind in {"web", "github"} else "document"
         with session_scope() as s:

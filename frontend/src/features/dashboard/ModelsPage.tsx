@@ -95,6 +95,15 @@ export function ModelsPage() {
             <Notice tone="error">{error}</Notice>
           </div>
         )}
+        {data?.key_status?.message && (
+          <div className="mt-4">
+            <Notice tone="error">
+              {data.key_status.message}:{' '}
+              {data.key_status.rejected.map((p) => (p === 'credits' ? 'Superaide AI credits' : label(p))).join(', ')}.
+              Save a working key below and {name} carries on, including reading your documents.
+            </Notice>
+          </div>
+        )}
         {data && (
           <div className="mt-4">
             {data.brain.ready ? (
