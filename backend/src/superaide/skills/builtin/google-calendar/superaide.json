@@ -1,11 +1,11 @@
 {
   "$schema": "../../manifest.schema.json",
   "id": "superaide/google-calendar",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "publisher": "Superaide",
   "tier": "official",
   "title": "Google Calendar",
-  "summary": "Ava reads your calendar to answer what's on, when you're free and who you're meeting. Read-only.",
+  "summary": "Ava reads your calendar to answer what's on, when you're free and who you're meeting. Optionally, she can also add, move and decline events for you.",
   "tools": [
     {
       "name": "calendar_events",
@@ -21,10 +21,89 @@
         "additionalProperties": false
       },
       "effect": "read_private"
+    },
+    {
+      "name": "calendar_free_busy",
+      "description": "When the owner is busy and free on a day or range (working hours 08:00 to 20:00 in their time zone). Use it to suggest or check a time before proposing one.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "from": {"type": "string", "description": "First day, in words: 'today', 'tomorrow', 'Friday', '24 Oct'"},
+          "days": {"type": "integer", "description": "How many days to cover (1 to 14)", "minimum": 1, "maximum": 14}
+        },
+        "required": ["from"],
+        "additionalProperties": false
+      },
+      "effect": "read_private"
+    },
+    {
+      "name": "create_event",
+      "description": "Add an event to the owner's calendar. With no attendees it is added at once; with attendees, Google would email them an invitation, so it waits for the owner's approval first.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {"type": "string", "description": "The event's title, e.g. 'Lunch with Priya'"},
+          "when": {"type": "string", "description": "When it starts, in words: 'tomorrow at 3pm', 'Friday 10:30'"},
+          "minutes": {"type": "integer", "description": "How long, in minutes (default 30)", "minimum": 5, "maximum": 1440},
+          "attendees": {"type": "array", "items": {"type": "string"}, "maxItems": 20, "description": "Email addresses to invite. Leave out for a private event."},
+          "location": {"type": "string", "description": "Optional place or meeting link"},
+          "description": {"type": "string", "description": "Optional notes"}
+        },
+        "required": ["title", "when"],
+        "additionalProperties": false
+      },
+      "effect": "write_external",
+      "setting": "actions"
+    },
+    {
+      "name": "move_event",
+      "description": "Move one of the owner's events to a new time. If other people are invited, Google would email them the change, so it waits for the owner's approval first.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string", "description": "The event's id: the part after ava://cal/ in a calendar_events source. Never guess it."},
+          "when": {"type": "string", "description": "The new start, in words: 'tomorrow at 4pm'"},
+          "minutes": {"type": "integer", "description": "New length in minutes (default: keep the length)", "minimum": 5, "maximum": 1440}
+        },
+        "required": ["id", "when"],
+        "additionalProperties": false
+      },
+      "effect": "write_external",
+      "setting": "actions"
+    },
+    {
+      "name": "decline_event",
+      "description": "Decline an invitation on the owner's behalf. Google tells the organiser, so it always waits for the owner's approval.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string", "description": "The event's id: the part after ava://cal/ in a calendar_events source. Never guess it."},
+          "note": {"type": "string", "description": "Optional short note for the organiser"}
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      },
+      "effect": "send",
+      "setting": "actions"
     }
   ],
-  "connectors": [{"provider": "google", "scopes": ["https://www.googleapis.com/auth/calendar.readonly"]}],
+  "connectors": [
+    {"provider": "google", "scopes": ["https://www.googleapis.com/auth/calendar.readonly"]},
+    {"provider": "google", "scopes": ["https://www.googleapis.com/auth/calendar.events"], "setting": "actions"}
+  ],
   "network": ["oauth2.googleapis.com", "www.googleapis.com"],
+  "settings": {
+    "type": "object",
+    "properties": {
+      "actions": {
+        "type": "boolean",
+        "default": false,
+        "title": "Let Ava add, move and decline events",
+        "description": "Asks Google for permission to change your calendar (calendar.events). Anything that would email other people waits for your approval."
+      }
+    },
+    "additionalProperties": false
+  },
   "default_installed": false,
   "removable": true
 }

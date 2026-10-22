@@ -45,6 +45,9 @@ class Tool(BaseModel):
     server_tool: str | None = Field(default=None, description="Deprecated: use hosted")
     mcp_server: str | None = None  # or a tool served by this MCP server (a key in `connectors`)
     effect: Effect
+    # Offered only while this per-owner setting (a boolean in the manifest's `settings`) is on. Its
+    # effect isn't part of installing the skill: the owner agrees to it when they switch the setting on.
+    setting: str | None = Field(default=None, pattern=r"^[a-z][a-z0-9_]{0,39}$")
 
     @model_validator(mode="after")
     def one_source(self) -> Tool:
@@ -64,6 +67,7 @@ class Connector(BaseModel):
     provider: str = Field(pattern=r"^[a-z0-9_-]{1,40}$")
     scopes: list[str] = Field(default_factory=list)
     mcp_url: str | None = None  # a remote MCP server (Streamable HTTP), if the tools come from one
+    setting: str | None = None  # these scopes are asked for only when this setting is switched on
 
 
 class Budget(BaseModel):
@@ -101,6 +105,14 @@ class Manifest(BaseModel):
         return tools
 
     @model_validator(mode="after")
+    def settings_exist(self) -> Manifest:
+        known = set(((self.settings or {}).get("properties") or {}).keys())
+        for tool in self.tools:
+            if tool.setting is not None and tool.setting not in known:
+                raise ValueError(f"tool {tool.name} names setting {tool.setting!r}, which `settings` doesn't define")
+        return self
+
+    @model_validator(mode="after")
     def community_limits(self) -> Manifest:
         if self.tier == "community":
             if any(t.hosted for t in self.tools):
@@ -113,7 +125,19 @@ class Manifest(BaseModel):
     def permissions(self) -> list[str]:
         """The distinct effect classes this skill needs, in a stable order, for the consent screen."""
         order = list(EFFECT_LABEL)
-        return sorted({t.effect for t in self.tools}, key=order.index)
+        return sorted({t.effect for t in self.tools if t.setting is None}, key=order.index)
+
+    def option_permissions(self, setting: str) -> list[str]:
+        """What switching `setting` on adds to the consent: its tools' effects not already granted by
+        installing the skill."""
+        order = list(EFFECT_LABEL)
+        base = set(self.permissions)
+        return sorted({t.effect for t in self.tools if t.setting == setting} - base, key=order.index)
+
+    @property
+    def options(self) -> list[str]:
+        """The settings that switch on extra tools, in the manifest's order."""
+        return list(dict.fromkeys(t.setting for t in self.tools if t.setting is not None))
 
 
 class Skill(BaseModel):

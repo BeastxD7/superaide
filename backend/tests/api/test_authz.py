@@ -269,3 +269,15 @@ def test_an_owner_cannot_attach_an_address_to_someone_who_isnt_their_contact(own
         pid = str(someone.id)
     r = owner.post("/app/gmail/addresses", json={"person_id": pid, "email": "priya@example.com"})
     assert r.status_code == 404
+
+
+def test_calendar_actions_switch_is_an_owner_route(app, browser, owner_data):
+    """POST /app/skills/{publisher}/{name}/options (calendar actions' consent) is covered by the
+    enumerated 401/403 checks above; this pins it, and that a stranger can't switch it on."""
+    path = "/app/skills/{publisher}/{name}/options"
+    assert ("POST", path) in owner_routes(app)
+    stranger = browser()
+    signup(stranger, name="Mallory Tan", email="mallory@example.com")
+    r = stranger.post("/app/skills/superaide/google-calendar/options", json={"setting": "actions", "on": True})
+    assert r.status_code == 403
+    _assert_no_owner_data(r, owner_data)

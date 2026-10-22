@@ -144,6 +144,16 @@ def narrate(name: str, args: dict[str, Any]) -> str:
         return "Saving a reply draft in your Gmail"
     if name == "gmail_send":
         return "Asking for your approval to send an email"
+    if name == "calendar_free_busy":
+        return f"Checking when you're free: {str(args.get('from', 'today'))[:40]}"
+    if name == "create_event":
+        who = args.get("attendees") or []
+        invite = f", inviting {', '.join(str(a) for a in who[:3])}" if who else ""
+        return f"Adding to your calendar: {str(args.get('title', ''))[:80]}, {str(args.get('when', ''))[:40]}{invite}"
+    if name == "move_event":
+        return f"Moving a calendar event to {str(args.get('when', ''))[:40]}"
+    if name == "decline_event":
+        return "Declining a calendar invitation (needs your OK)"
     if name == "web_search":
         return f"Searching the web for \u201c{str(args.get('query', ''))[:80]}\u201d"
     if name == "web_fetch":
@@ -444,7 +454,8 @@ class OwnerTurn:
 
     def tools(self) -> list[dict[str, Any]]:
         """The installed skills' tools, plus propose_action, which every turn has."""
-        return [*registry.tools_for(self.skills(), web_allowed=self.web), ACTION_TOOL]
+        options = registry.options_on(self.s, self.skills())
+        return [*registry.tools_for(self.skills(), web_allowed=self.web, options=options), ACTION_TOOL]
 
     # --- tools ----------------------------------------------------------------
 
@@ -488,6 +499,14 @@ class OwnerTurn:
             assert self.sender.person is not None
             self.notes.append("calendar")
             return calendar_events(self.s, self.sender.person, args)
+        if name in {"calendar_free_busy", "create_event", "move_event", "decline_event"}:
+            from superaide.skills import calendar
+
+            assert self.sender.person is not None
+            if not any(s.manifest.id == calendar.SKILL_ID for s in self.skills()):
+                return f"Unknown tool {name!r}.", True
+            self.notes.append(f"calendar:{name}")
+            return calendar.run_tool(self.s, self.sender, name, args, tainted=self.tainted)
         # Tools Superaide runs for models that can't (ADR 0007): web search and fetch.
         run = getattr(self.llm, "run_substitute", None)
         if run is not None and (out := run(name, args)) is not None:

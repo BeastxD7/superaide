@@ -51,6 +51,18 @@
           ],
           "default": null,
           "title": "Mcp Url"
+        },
+        "setting": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Setting"
         }
       },
       "required": [
@@ -139,6 +151,19 @@
           ],
           "title": "Effect",
           "type": "string"
+        },
+        "setting": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z][a-z0-9_]{0,39}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Setting"
         }
       },
       "required": [

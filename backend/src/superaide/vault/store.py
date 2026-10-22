@@ -239,8 +239,9 @@ def google_status(entry: Any) -> dict[str, Any]:
     owner's own sign-in (the refresh token, saved here)."""
     client = entry("google", ["client_id", "client_secret"])
     full = entry("google", ["client_id", "client_secret", "refresh_token"])
-    if not full["connected"] and client["connected"]:
-        token = entry("google", ["refresh_token"])
-        if token["connected"]:  # the deployment's client, the owner's own sign-in
-            full = {**token, "hints": {**client["hints"], **token["hints"]}}
+    token = entry("google", ["refresh_token"])
+    if not full["connected"] and client["connected"] and token["connected"]:
+        full = {**token, "hints": {**client["hints"], **token["hints"]}}  # the deployment's client, their sign-in
+    elif full["connected"] and full["via"] == "app":
+        full = {**full, "meta": {**full["meta"], **token["meta"]}}  # the scopes Google granted
     return {**full, "client_ready": client["connected"]}

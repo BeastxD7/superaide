@@ -387,6 +387,19 @@ export type SkillCard = {
   needs_consent: boolean
   tools: string[]
   cost: string | null
+  // Settings that give the skill more tools (Google Calendar's "actions"), each with its own consent.
+  options?: SkillOption[]
+  google_url?: string | null // after switching calendar actions on: Google's consent page to finish
+}
+
+export type SkillOption = {
+  setting: string
+  title: string
+  description: string
+  on: boolean
+  permissions: { id: string; label: string }[]
+  tools: string[]
+  needs_google?: boolean
 }
 
 // /app/providers: which AI model Ava thinks with (ADR 0007). Keys never come back, only a hint.

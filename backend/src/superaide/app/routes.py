@@ -114,6 +114,25 @@ class InstallBody(BaseModel):
     accepted: list[str] = Field(default_factory=list, max_length=10)
 
 
+class OptionBody(BaseModel):
+    setting: str = Field(min_length=1, max_length=40)
+    on: bool
+    # Switching on: the extra permissions the owner saw on the consent screen.
+    accepted: list[str] = Field(default_factory=list, max_length=10)
+
+
+def skills_view(s: Any) -> list[dict[str, Any]]:
+    """The skills list, plus whether Google still has to grant what calendar actions need."""
+    from superaide.skills import calendar
+
+    cards = skill_registry.view(s)
+    for card in cards:
+        for option in card.get("options", []):
+            if card["id"] == calendar.SKILL_ID and option["setting"] == calendar.OPTION:
+                option["needs_google"] = bool(option["on"]) and not calendar.can_write(s)
+    return cards
+
+
 class SnoozeBody(BaseModel):
     minutes: int = Field(ge=1, le=60 * 24 * 30)
 
@@ -546,7 +565,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
     )
     def skills(person_id: uuid.UUID = Depends(owner_person_id)) -> list[dict[str, Any]]:
         with session_scope() as s:
-            return skill_registry.view(s)
+            return skills_view(s)
 
     @router.post(
         "/skills/{publisher}/{name}/install",
@@ -562,7 +581,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 skill_registry.install(s, f"{publisher}/{name}", body.accepted)
             except skill_registry.SkillUnavailable as exc:
                 raise HTTPException(exc.status, str(exc)) from exc
-            return next(v for v in skill_registry.view(s) if v["id"] == f"{publisher}/{name}")
+            return next(v for v in skills_view(s) if v["id"] == f"{publisher}/{name}")
 
     @router.post(
         "/skills/{publisher}/{name}/remove",
@@ -576,7 +595,44 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 skill_registry.remove(s, f"{publisher}/{name}")
             except skill_registry.SkillUnavailable as exc:
                 raise HTTPException(exc.status, str(exc)) from exc
-            return next(v for v in skill_registry.view(s) if v["id"] == f"{publisher}/{name}")
+            return next(v for v in skills_view(s) if v["id"] == f"{publisher}/{name}")
+
+    @router.post(
+        "/skills/{publisher}/{name}/options",
+        tags=["Owner: skills"],
+        summary="Switch a skill setting on or off",
+        description=(
+            "For settings that give a skill more tools, such as Google Calendar's `actions` (add, move and decline "
+            "events). Switching on needs `accepted` to list exactly the extra permissions the consent screen "
+            "showed. For calendar actions, `google_url` is Google's consent page when Google still has to grant "
+            "calendar.events; open it to finish."
+        ),
+    )
+    def skill_option(
+        publisher: str,
+        name: str,
+        body: OptionBody,
+        person_id: uuid.UUID = Depends(owner_person_id),
+        user_id: uuid.UUID = Depends(current_user_id),
+    ) -> dict[str, Any]:
+        from superaide.skills import calendar
+
+        skill_id = f"{publisher}/{name}"
+        with session_scope() as s:
+            try:
+                skill_registry.set_option(s, skill_id, body.setting, on=body.on, accepted=body.accepted)
+            except skill_registry.SkillUnavailable as exc:
+                raise HTTPException(exc.status, str(exc)) from exc
+            card = next(v for v in skills_view(s) if v["id"] == skill_id)
+            upgrade = skill_id == calendar.SKILL_ID and body.on and not calendar.can_write(s)
+        if upgrade:
+            from superaide.app.connections import begin_google
+
+            try:
+                card["google_url"] = begin_google(user_id, events=True, back="skills")
+            except HTTPException:
+                card["google_url"] = None  # no OAuth client yet: connect Google Calendar first
+        return card
 
     def _reminder_view(i: Intention, tz: str) -> dict[str, Any]:
         return {

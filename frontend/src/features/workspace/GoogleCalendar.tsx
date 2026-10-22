@@ -8,8 +8,8 @@ import { AppError, call, type SkillCard } from '@/lib/api'
 import { BrandIcon } from '@/components/BrandIcon'
 import { Button, Notice } from '@/components/site'
 
-// Google Calendar, read-only. Two steps: save the owner's own OAuth client (made in
-// Google Cloud), then sign in with Google. The backend runs the OAuth flow with PKCE
+// Google Calendar. Two steps: an OAuth client (the owner's own, or this server's), then sign in
+// with Google. Read-only unless calendar actions are switched on under Capabilities. The backend runs the OAuth flow with PKCE
 // and sends the browser back to /dashboard/connections?google=<outcome>.
 
 export type GoogleService = {
@@ -17,15 +17,18 @@ export type GoogleService = {
   via?: 'app' | 'env' | null
   hints?: Record<string, string>
   client_ready?: boolean
+  meta?: { scopes?: string[] }
 }
-export type GoogleGuide = { url: string; steps: string[]; redirect_uri?: string }
+export type GoogleGuide = { url: string; steps: string[]; redirect_uri?: string; signin_redirect_uri?: string }
+
+const EVENTS_SCOPE = 'https://www.googleapis.com/auth/calendar.events'
 type Saved = { services: { google: GoogleService } }
 
 const SKILL_ID = 'superaide/google-calendar'
 
 // What the callback's ?google= value means, for the owner.
 const OUTCOMES: Record<string, { tone: 'info' | 'error'; text: string }> = {
-  connected: { tone: 'info', text: 'Google Calendar is connected. I can read your calendar now, never change it.' },
+  connected: { tone: 'info', text: 'Google Calendar is connected. I can read your calendar now; changing it needs calendar actions, under Capabilities.' },
   cancelled: { tone: 'error', text: 'Google sign-in was cancelled, so nothing was connected. Press Connect Google Calendar to try again.' },
   expired: { tone: 'error', text: 'That sign-in had expired or was already used. Press Connect Google Calendar to start again.' },
   failed: {
@@ -33,6 +36,7 @@ const OUTCOMES: Record<string, { tone: 'info' | 'error'; text: string }> = {
     text: "Google didn't give access. Check the client ID and secret, and that the redirect URI in Google Cloud matches exactly, then try again.",
   },
   no_calendar: { tone: 'error', text: "Calendar access wasn't granted. Connect again and tick the calendar box on Google's screen." },
+  no_actions: { tone: 'error', text: "Changing your calendar wasn't allowed. Connect again and tick both calendar boxes on Google's screen." },
 }
 
 export function GoogleCalendarRow({
@@ -56,7 +60,9 @@ export function GoogleCalendarRow({
   const summary = service.connected
     ? service.via === 'env'
       ? 'Connected from the .env file'
-      : 'Connected, read-only'
+      : service.meta?.scopes?.includes(EVENTS_SCOPE)
+        ? 'Connected, can add and move events'
+        : 'Connected, read-only'
     : service.client_ready
       ? `OAuth client saved${clientHint ? ` (${clientHint})` : ''}. Sign in to finish`
       : 'What’s on, when you’re free, who you’re meeting'
@@ -234,8 +240,15 @@ function ClientForm({
         ))}
       </ol>
       {guide.redirect_uri && <RedirectUri value={guide.redirect_uri} />}
+      {guide.signin_redirect_uri && (
+        <p className="mt-2 text-xs text-muted">
+          The same client can also serve Sign in with Google; its redirect URI is{' '}
+          <span className="font-mono break-all">{guide.signin_redirect_uri}</span>.
+        </p>
+      )}
       <p className="mt-2 text-xs text-muted">
-        Scope: <span className="font-mono">calendar.readonly</span> (read-only). Google asks for it when you sign in.
+        Scopes: <span className="font-mono">calendar.readonly</span> when you connect, and{' '}
+        <span className="font-mono">calendar.events</span> only if you switch on calendar actions under Capabilities.
       </p>
       {guide.url && (
         <a

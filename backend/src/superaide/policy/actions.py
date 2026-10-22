@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -31,6 +32,13 @@ RULES: dict[str, Rule] = {
     "message_someone_else": Rule(int(Trust.LINKED), manager_only=True, needs_approval=True),
     "grant_access": Rule(int(Trust.STEPPED_UP), manager_only=True, needs_approval=True),
     "delete_memory": Rule(int(Trust.STEPPED_UP), manager_only=True, needs_approval=True),
+}
+# Actions a skill's own tool asks for (never through propose_action, whose kinds are RULES): the
+# tool fills in exactly what would be done, and approving runs it (EXECUTORS).
+TOOL_RULES: dict[str, Rule] = {
+    "calendar_create_event": Rule(int(Trust.LINKED), manager_only=True, needs_approval=True),
+    "calendar_move_event": Rule(int(Trust.LINKED), manager_only=True, needs_approval=True),
+    "calendar_decline_event": Rule(int(Trust.LINKED), manager_only=True, needs_approval=True),
 }
 # Never through a chat channel, whatever the sender's trust: these need the signed-in app (or the
 # operator's CLI). Anything not in RULES is refused too; this set names them so the refusal is explicit
@@ -54,13 +62,23 @@ class Decision:
     approval: Approval | None = None
 
 
-def decide(session: Session, *, kind: str, summary: str, requester: Sender) -> Decision:
+def decide(
+    session: Session,
+    *,
+    kind: str,
+    summary: str,
+    requester: Sender,
+    rules: dict[str, Rule] = RULES,
+    payload: dict[str, Any] | None = None,
+) -> Decision:
+    """`rules` is RULES for propose_action, TOOL_RULES for a skill tool, which also passes the
+    `payload` its executor needs."""
     if kind == "none":
         return Decision("none", "no action requested")
-    if kind in NEVER_VIA_CHAT or kind not in RULES:
+    if kind in NEVER_VIA_CHAT or kind not in rules:
         audit(session, "policy", "action_refused", kind=kind, reason="not allowed via chat", requester=requester.name)
         return Decision("refused", "not allowed via chat")
-    rule = RULES[kind]
+    rule = rules[kind]
     if rule.manager_only and requester.relation != "manager":
         audit(
             session,
@@ -87,7 +105,12 @@ def decide(session: Session, *, kind: str, summary: str, requester: Sender) -> D
         return Decision("refused", "this needs a stronger identity check; do it from the dashboard instead")
     approval = Approval(
         kind=kind,
-        payload={"summary": summary, "trust_at_request": requester.trust, "required_trust": rule.min_trust},
+        payload={
+            **(payload or {}),
+            "summary": summary,
+            "trust_at_request": requester.trust,
+            "required_trust": rule.min_trust,
+        },
         requested_by_person_id=requester.person.id if requester.person else None,
     )
     session.add(approval)
@@ -109,6 +132,7 @@ EXECUTORS: dict[str, Callable[[Session, Approval], str]] = {}
 
 def _load_executors() -> None:
     """Capabilities that carry out approved actions (imported here, not at the top: they import policy)."""
+    import superaide.skills.calendar  # noqa: F401  (registers the calendar executors)
     from superaide.skills import gmail
 
     EXECUTORS.setdefault("gmail_send", gmail.send_approved)
