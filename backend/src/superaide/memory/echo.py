@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 
 from superaide.audit import audit
 from superaide.db.models import MemoryItem
+from superaide.db.session import rows_affected
 
 HEARSAY_SOURCES = frozenset({"link", "telegram", "slack"})
 PROMOTE_AT = 2  # independent roots needed
@@ -28,7 +29,7 @@ _TRACKING = ("utm_", "fbclid", "gclid", "mc_", "ref", "igshid", "spm")
 
 
 def canonical_url(url: str) -> str:
-    """The same page, however it was linked: scheme, `www.`, default port, tracking, fragment and trailing slash gone."""
+    """The same page however it was linked: no scheme, `www.`, tracking, fragment or trailing slash."""
     parts = urlsplit(url.strip())
     host = (parts.hostname or "").lower().removeprefix("www.")
     if not host:
@@ -80,13 +81,15 @@ def roots(session: Session, item: MemoryItem) -> int:
 
 def promote(session: Session, item: MemoryItem) -> bool:
     """The SQL promotion rule: hearsay becomes fact once it has PROMOTE_AT distinct roots."""
-    done = session.execute(
-        text(
-            "UPDATE memory_item SET belief_state = 'fact' WHERE id = :m AND belief_state = 'hearsay' "
-            "AND (SELECT count(DISTINCT origin_root) FROM memory_origin WHERE memory_id = :m) >= :n"
-        ),
-        {"m": item.id, "n": PROMOTE_AT},
-    ).rowcount
+    done = rows_affected(
+        session.execute(
+            text(
+                "UPDATE memory_item SET belief_state = 'fact' WHERE id = :m AND belief_state = 'hearsay' "
+                "AND (SELECT count(DISTINCT origin_root) FROM memory_origin WHERE memory_id = :m) >= :n"
+            ),
+            {"m": item.id, "n": PROMOTE_AT},
+        )
+    )
     if done:
         session.refresh(item)
         audit(session, "memory", "hearsay_promoted", memory_id=item.id, by="independent_origins")
