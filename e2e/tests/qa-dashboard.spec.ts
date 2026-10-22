@@ -156,7 +156,6 @@ test.describe('dashboard: session', () => {
 
 test.describe('dashboard: notebook', () => {
   test('forgetting the last note of a kind while that kind is filtered leaves a way back', async ({ page, owner }) => {
-    test.fail(true, 'BUG: the kind filter outlives its last note: the chip disappears, nothing is listed, and the page says "Nothing matches that search" with no search typed')
     void owner
     await openNotebookPage(page)
     // Pick a kind with exactly one note from the introduction (labels as the page shows them).
