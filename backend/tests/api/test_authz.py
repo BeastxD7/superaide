@@ -19,6 +19,9 @@ from tests.api.conftest import OWNER, app_routes, fill_path, signup
 
 PUBLIC = {("GET", "/app/agents")}  # the marketplace
 ACCOUNT_ONLY = {("POST", "/app/hire")}  # any signed-in account (tested in test_hire_negative)
+# Owner routes behind a setting that's off by default: the owner gets 404 until it's on (ADR 0010
+# triage, TRIAGE_ENABLED). Everyone else is refused exactly as on any owner route.
+FLAG_GATED = {("GET", "/app/needs-you"), ("GET", "/app/triage/settings")}
 SECRET_NOTE = "Project Bluebird is my secret side project"
 
 
@@ -100,7 +103,8 @@ def test_before_anyone_hires_every_owner_endpoint_is_403(app, browser):
 def test_the_owner_can_read_every_owner_page(app, owner_data, owner):
     for method, path in owner_routes(app):
         if method == "GET" and not path.endswith("/callback"):  # OAuth callbacks are redirects, not pages
-            assert owner.get(fill_path(path)).status_code == 200, path
+            expected = 404 if (method, path) in FLAG_GATED else 200
+            assert owner.get(fill_path(path)).status_code == expected, path
 
 
 def test_the_admin_token_is_not_an_app_session(app, browser, owner_data):

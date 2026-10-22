@@ -3,7 +3,8 @@ triage settings, away and busy.
 
 Owner-only (the signed-in account's own instance, `owner_person_id`), CSRF-checked on every
 change, and every query is filtered to the instance in scope as well as by Row-Level Security.
-With TRIAGE_ENABLED off, every route answers 404, so the app hides the inbox.
+With TRIAGE_ENABLED off, every route answers the signed-in owner 404 (others get 401/403 as usual),
+so the app hides the inbox.
 """
 
 from __future__ import annotations
@@ -130,14 +131,17 @@ def bucket(d: TriageDecision, esc: Escalation | None) -> str:
 
 
 def make_router(get_agent: Callable[[], Any]) -> APIRouter:
-    def enabled() -> None:
+    async def owner_on(person_id: uuid.UUID = Depends(owner_person_id)) -> uuid.UUID:
+        """The owner, once triage is known to be on. Checked after CSRF and sign-in, so a caller who
+        may not use the route gets 401/403 as everywhere else, and only the owner learns it's off (404)."""
         if not get_agent().settings.triage_enabled:
             raise HTTPException(404, "Not Found")
+        return person_id
 
     router = APIRouter(
         prefix="/app",
         tags=["Owner: needs you"],
-        dependencies=[Depends(enabled), Depends(require_csrf_header), Depends(reject_nul_text)],
+        dependencies=[Depends(require_csrf_header), Depends(reject_nul_text)],
     )
 
     def _decision(s: Any, decision_id: uuid.UUID) -> tuple[TriageDecision, Escalation | None]:
@@ -155,7 +159,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         summary="The Needs-you inbox",
         description="Interrupts and unverified requests that need you, what Ava handled, and what she held.",
     )
-    def needs_you(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+    def needs_you(person_id: uuid.UUID = Depends(owner_on)) -> dict[str, Any]:
         with session_scope() as s:
             since = datetime.now(UTC) - WINDOW
             rows = s.scalars(
@@ -184,9 +188,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         summary="Act on an item",
         description="Ack, reply, call, snooze (30m or 2h), not urgent, or done. Opening the app is never an ack.",
     )
-    def act(
-        decision_id: uuid.UUID, body: ActionBody, person_id: uuid.UUID = Depends(owner_person_id)
-    ) -> dict[str, Any]:
+    def act(decision_id: uuid.UUID, body: ActionBody, person_id: uuid.UUID = Depends(owner_on)) -> dict[str, Any]:
         with session_scope() as s:
             me = require(s, Person, person_id)
             d, esc = _decision(s, decision_id)
@@ -214,7 +216,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         description="Not urgent, you should have told me, good or wrong answer. It tunes rules, not prompts.",
     )
     def feedback(
-        decision_id: uuid.UUID, body: FeedbackBody, person_id: uuid.UUID = Depends(owner_person_id)
+        decision_id: uuid.UUID, body: FeedbackBody, person_id: uuid.UUID = Depends(owner_on)
     ) -> dict[str, Any]:
         with session_scope() as s:
             d, esc = _decision(s, decision_id)
@@ -222,7 +224,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             return {"item": item_view(s, d, esc)}
 
     @router.get("/triage/settings", summary="Triage settings")
-    def get_settings_(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+    def get_settings_(person_id: uuid.UUID = Depends(owner_on)) -> dict[str, Any]:
         with session_scope() as s:
             return settings_view(settings_for(s, require(s, Person, person_id)))
 
@@ -231,7 +233,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         summary="Change triage settings",
         description="Only the fields sent change. The defaults are proposals waiting for your answers.",
     )
-    def put_settings(body: SettingsBody, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+    def put_settings(body: SettingsBody, person_id: uuid.UUID = Depends(owner_on)) -> dict[str, Any]:
         with session_scope() as s:
             ts = settings_for(s, require(s, Person, person_id))
             changes = body.model_dump(exclude_none=True)
@@ -246,7 +248,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             return settings_view(ts)
 
     @router.post("/triage/away", summary="Away", description="Set or end away mode, and who may be told.")
-    def away(body: AwayBody, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+    def away(body: AwayBody, person_id: uuid.UUID = Depends(owner_on)) -> dict[str, Any]:
         with session_scope() as s:
             ts = settings_for(s, require(s, Person, person_id))
             if body.until is not None and body.until.tzinfo is None:
@@ -259,7 +261,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
     @router.post(
         "/triage/busy", summary="Busy", description="Hold non-VIP interrupts for this many minutes (0 ends it)."
     )
-    def busy(body: BusyBody, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+    def busy(body: BusyBody, person_id: uuid.UUID = Depends(owner_on)) -> dict[str, Any]:
         with session_scope() as s:
             ts = settings_for(s, require(s, Person, person_id))
             ts.busy_until = datetime.now(UTC) + timedelta(minutes=body.minutes) if body.minutes else None
