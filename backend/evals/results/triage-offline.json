@@ -1,0 +1,253 @@
+{
+  "mode": "offline, rules only",
+  "labels": 52,
+  "synthetic": true,
+  "acceptable": 0.962,
+  "tell_now": {
+    "precision": 1.0,
+    "recall": 0.385,
+    "tp": 5,
+    "fp": 0,
+    "fn": 8
+  },
+  "verify_recall": 1.0,
+  "confusion": {
+    "defer->hold": 1,
+    "hold->hold": 29,
+    "hold->verify": 1,
+    "interrupt->hold": 7,
+    "interrupt->interrupt": 5,
+    "verify->verify": 9
+  },
+  "measured_on": "the shadow (Child) decision for Infant labels, else the decision",
+  "interrupts_at_stage": 5,
+  "cost_usd": 0.0,
+  "misses": [
+    {
+      "id": "tl-015",
+      "expected": "interrupt",
+      "got": "hold",
+      "hits": [
+        "R7_topic:t3",
+        "classifier:offline"
+      ],
+      "note": "urgent topic + deadline"
+    },
+    {
+      "id": "tl-047",
+      "expected": "interrupt",
+      "got": "hold",
+      "hits": [
+        "deadline_2h",
+        "classifier:offline"
+      ],
+      "note": "legal, imminent"
+    }
+  ],
+  "per_label": {
+    "tl-005": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-006": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-007": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-009": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-011": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-012": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-013": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-014": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-015": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-016": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-017": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-023": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-024": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-025": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-026": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-027": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-028": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-029": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-030": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-031": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-032": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-033": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-035": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-036": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-037": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-042": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-043": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-044": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-045": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-046": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-047": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-049": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-051": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    },
+    "tl-052": {
+      "output": null,
+      "agreement": null,
+      "fallback": "offline",
+      "deadline_at": null
+    }
+  }
+}

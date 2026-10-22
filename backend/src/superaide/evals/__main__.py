@@ -71,14 +71,17 @@ def main(argv: list[str] | None = None) -> int:
     t.add_argument("--env-file", help="where the API key is (default backend/.env)")
     t.add_argument("--name", help="report file name (default triage-<mode>)")
     t.add_argument("--out", help="where to write the report (default backend/evals/results)")
+    t.add_argument("--replay", help="re-decide with the classifier answers saved in this report (free)")
     args = p.parse_args(argv)
 
     if args.cmd == "triage":
         from superaide.evals import triage_report
 
         key = _env(args) if args.live else ""
-        s = triage_report.run(live=args.live, key=key, cap=args.cap, name=args.name or "",
-                              out_dir=Path(args.out) if args.out else None)  # fmt: skip
+        s = triage_report.run(
+            live=args.live, key=key, cap=args.cap, name=args.name or "",
+            out_dir=Path(args.out) if args.out else None, replay=Path(args.replay) if args.replay else None,
+        )  # fmt: skip
         tell = s["tell_now"]
         print(
             f"{s['labels']} labels, {s['mode']}: acceptable {s['acceptable']}, tell-now precision "

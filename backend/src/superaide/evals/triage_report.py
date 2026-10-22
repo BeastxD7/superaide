@@ -7,7 +7,9 @@ report runs the real features → rules → classifier → policy path on each o
 database:
 
 - offline (the default): rules only, no model, free; this is what an owner with no model gets;
-- `--live`: the triage model on the `triage` role, under a hard spend cap.
+- `--live`: the triage model on the `triage` role, under a hard spend cap;
+- `--replay FILE`: the classifier answers saved in an earlier report, re-decided for free (to tune
+  thresholds without paying for the model again).
 
 It reports precision and recall for "tell the owner now" (interrupt or defer), recall for
 "unverified request" (verify), how many decisions were acceptable, a confusion table and the cost.
@@ -31,7 +33,7 @@ from superaide.intentions.when import find_moment, zone
 from superaide.knowledge.profile import in_quiet_hours
 from superaide.triage import classify, policy, rules
 from superaide.triage.features import Features, next_local
-from superaide.triage.types import Decision, Stage
+from superaide.triage.types import Decision, Stage, TriageOutput
 
 LABELS = Path(__file__).resolve().parents[3] / "evals" / "triage_labels.jsonl"
 TZ = "Asia/Kolkata"
@@ -85,25 +87,50 @@ def features_for(label: Label) -> Features:
 @dataclass
 class Result:
     label: Label
-    decision: Decision
+    decision: Decision  # at the label's stage
     hits: list[str]
     cost: Decimal
+    shadow: Decision | None = None  # what Child would have done (at Infant the model can't interrupt alone)
+    classified: dict[str, Any] | None = None  # the classifier's checked answer, kept for --replay
+
+    @property
+    def judged(self) -> Decision:
+        """The decision the gates are measured on: the shadow decision at Infant (ADR 0010 section 8)."""
+        return self.shadow if self.label.stage == Stage.INFANT and self.shadow is not None else self.decision
 
     @property
     def ok(self) -> bool:
-        return self.decision == self.label.expected or self.decision in self.label.also_ok
+        return self.judged == self.label.expected or self.judged in self.label.also_ok
 
 
-def decide(label: Label, *, llm: Any = None, model: str = "", ready: bool = False) -> Result:
+def decide(
+    label: Label, *, llm: Any = None, model: str = "", ready: bool = False, replay: dict[str, Any] | None = None
+) -> Result:
+    """`replay`: a classifier answer saved by an earlier run (its `classified`), used instead of a call."""
     f = features_for(label)
     r = rules.evaluate(f)
-    c = classify.classify(llm, model=model, f=f, ready=ready) if r.decision is None else None
+    c: classify.Classified | None = None
+    if r.decision is None:
+        if replay is not None:
+            c = classify.Classified(model="replay", fallback=str(replay.get("fallback", "")))
+            if replay.get("output"):
+                c.output = TriageOutput.model_validate(replay["output"])
+                c.agreement = replay.get("agreement")
+                c.deadline_at = datetime.fromisoformat(replay["deadline_at"]) if replay.get("deadline_at") else None
+        else:
+            c = classify.classify(llm, model=model, f=f, ready=ready)
     o = policy.decide(
         f, r, c.output if c else None, agreement=c.agreement if c else None, deadline_at=c.deadline_at if c else None
     )
     if c is not None and c.fallback:
         o.hits.append(f"classifier:{c.fallback}")
-    return Result(label, o.decision, o.hits, c.cost_usd if c else Decimal(0))
+    kept = None
+    if c is not None:
+        kept = {
+            "output": c.output.model_dump() if c.output else None, "agreement": c.agreement, "fallback": c.fallback,
+            "deadline_at": c.deadline_at.isoformat() if c.deadline_at else None,
+        }  # fmt: skip
+    return Result(label, o.decision, o.hits, c.cost_usd if c else Decimal(0), o.shadow, kept)
 
 
 def _ratio(n: int, d: int) -> float | None:
@@ -111,12 +138,13 @@ def _ratio(n: int, d: int) -> float | None:
 
 
 def summarise(results: list[Result], *, mode: str) -> dict[str, Any]:
-    tp = sum(1 for x in results if x.decision in TELL and x.label.expected in TELL)
-    fp = sum(1 for x in results if x.decision in TELL and x.label.expected not in TELL)
-    fn = sum(1 for x in results if x.decision not in TELL and x.label.expected in TELL)
-    v_hit = sum(1 for x in results if x.decision == Decision.VERIFY and x.label.expected == Decision.VERIFY)
+    tp = sum(1 for x in results if x.judged in TELL and x.label.expected in TELL)
+    fp = sum(1 for x in results if x.judged in TELL and x.label.expected not in TELL)
+    fn = sum(1 for x in results if x.judged not in TELL and x.label.expected in TELL)
+    v_hit = sum(1 for x in results if x.judged == Decision.VERIFY and x.label.expected == Decision.VERIFY)
     v_all = sum(1 for x in results if x.label.expected == Decision.VERIFY)
-    confusion = Counter((x.label.expected.value, x.decision.value) for x in results)
+    confusion = Counter((x.label.expected.value, x.judged.value) for x in results)
+    told_now = sum(1 for x in results if x.decision in TELL)  # what actually reached the owner at the stage
     return {
         "mode": mode,
         "labels": len(results),
@@ -125,18 +153,21 @@ def summarise(results: list[Result], *, mode: str) -> dict[str, Any]:
         "tell_now": {"precision": _ratio(tp, tp + fp), "recall": _ratio(tp, tp + fn), "tp": tp, "fp": fp, "fn": fn},
         "verify_recall": _ratio(v_hit, v_all),
         "confusion": {f"{e}->{d}": n for (e, d), n in sorted(confusion.items())},
+        "measured_on": "the shadow (Child) decision for Infant labels, else the decision",
+        "interrupts_at_stage": told_now,
         "cost_usd": float(sum((x.cost for x in results), Decimal(0))),
         "misses": [
             {
                 "id": x.label.id,
                 "expected": x.label.expected.value,
-                "got": x.decision.value,
+                "got": x.judged.value,
                 "hits": x.hits,
                 "note": x.label.note,
             }
             for x in results
             if not x.ok
-        ],  # fmt: skip
+        ],
+        "per_label": {x.label.id: x.classified for x in results if x.classified is not None},
     }
 
 
@@ -149,6 +180,8 @@ def markdown(s: dict[str, Any]) -> str:
         f"# Triage report ({s['mode']})",
         "",
         f"{s['labels']} labelled messages{' (synthetic)' if s['synthetic'] else ''}. Cost US${s['cost_usd']:.4f}.",
+        f"Measured on {s['measured_on']} (ADR 0010 section 8). Interrupts that reached the owner at the "
+        f"labels' stage: {s['interrupts_at_stage']}.",
         "",
         "| Measure | Value |",
         "|---|---:|",
@@ -169,7 +202,15 @@ def markdown(s: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def run(*, live: bool, key: str = "", cap: float = 0.25, out_dir: Path | None = None, name: str = "") -> dict[str, Any]:
+def run(
+    *,
+    live: bool,
+    key: str = "",
+    cap: float = 0.25,
+    out_dir: Path | None = None,
+    name: str = "",
+    replay: Path | None = None,
+) -> dict[str, Any]:
     llm: Any = None
     model = ""
     if live:
@@ -180,8 +221,13 @@ def run(*, live: bool, key: str = "", cap: float = 0.25, out_dir: Path | None = 
 
         reset_db()  # the evals database: its schema, and its ledger for the cap
         llm, model = ClaudeLLM(BudgetGuard(cap), api_key=key), get_settings().model_triage
-    results = [decide(label, llm=llm, model=model, ready=live) for label in load()]
-    summary = summarise(results, mode="live" if live else "offline, rules only")
+    saved: dict[str, Any] | None = json.loads(replay.read_text()).get("per_label", {}) if replay else None
+    results = [
+        decide(label, llm=llm, model=model, ready=live, replay=saved.get(label.id) if saved is not None else None)
+        for label in load()
+    ]
+    mode = "live" if live else f"replay of {replay.name}" if replay else "offline, rules only"
+    summary = summarise(results, mode=mode)
     out_dir = out_dir or LABELS.parent / "results"
     out_dir.mkdir(parents=True, exist_ok=True)
     stem = name or f"triage-{'live' if live else 'offline'}"

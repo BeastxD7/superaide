@@ -249,3 +249,8 @@ def test_next_local_is_dst_safe():
     assert next_local(datetime(2026, 10, 23, 22, 0, tzinfo=UTC), "Europe/London", "07:00") == datetime(
         2026, 10, 24, 6, 0, tzinfo=UTC
     )
+
+
+def test_an_unverified_sender_s_urgent_topic_is_held_not_an_interrupt():
+    o = run(feat("Hi it's Dana, the server is down, call me now", trust=1), out(urgency="critical"))
+    assert o.decision == Decision.HOLD and o.maybe_urgent and "R7_topic:t1" in o.hits

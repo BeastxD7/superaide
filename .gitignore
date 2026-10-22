@@ -47,3 +47,6 @@ backend/evals/results/*
 !backend/evals/results/scorecard-live.json
 !backend/evals/results/scorecard-offline.md
 !backend/evals/results/scorecard-offline.json
+# Triage reports (python -m superaide.evals triage): the committed record of each measured run
+!backend/evals/results/triage-*.md
+!backend/evals/results/triage-*.json

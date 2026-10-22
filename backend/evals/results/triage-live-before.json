@@ -1,0 +1,45 @@
+{
+  "mode": "live",
+  "labels": 52,
+  "synthetic": true,
+  "acceptable": 0.962,
+  "tell_now": {
+    "precision": 1.0,
+    "recall": 0.385,
+    "tp": 5,
+    "fp": 0,
+    "fn": 8
+  },
+  "verify_recall": 1.0,
+  "confusion": {
+    "defer->hold": 1,
+    "hold->hold": 29,
+    "hold->verify": 1,
+    "interrupt->hold": 7,
+    "interrupt->interrupt": 5,
+    "verify->verify": 9
+  },
+  "cost_usd": 0.005720935,
+  "misses": [
+    {
+      "id": "tl-015",
+      "expected": "interrupt",
+      "got": "hold",
+      "hits": [
+        "R7_topic:t3",
+        "classifier:unparsed"
+      ],
+      "note": "urgent topic + deadline"
+    },
+    {
+      "id": "tl-047",
+      "expected": "interrupt",
+      "got": "hold",
+      "hits": [
+        "deadline_2h",
+        "classifier:unparsed"
+      ],
+      "note": "legal, imminent"
+    }
+  ]
+}

@@ -108,7 +108,9 @@ def _base(f: Features, r: RuleResult, out: TriageOutput | None, agreement: float
     topics = list(dict.fromkeys([*r.topic_ids, *(t for t in out.matched_topics if t in known_ids)]))
     hits += [f"R7_topic:{t}" for t in topics if f"R7_topic:{t}" not in hits]
     if topics and f.known:
-        if urgent:
+        # Only a verified sender's urgent topic interrupts by rule: an unverified account claiming an
+        # outage could be anyone (a precision miss in the live labelled run).
+        if urgent and f.verified:
             return _Base(Decision.INTERRUPT, hits, "urgent topic you asked to hear about", True, urgency=out.urgency)
         return _Base(Decision.HOLD, hits, "matches an urgent topic, but doesn't look urgent", True,
                      urgency=out.urgency, maybe_urgent=True)  # fmt: skip

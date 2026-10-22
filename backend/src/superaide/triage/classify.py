@@ -33,7 +33,7 @@ from superaide.triage.types import TriageOutput
 log = logging.getLogger(__name__)
 
 PURPOSE = "triage"  # brain/budget.py BUCKETS: its own daily bucket
-MAX_TOKENS = 300
+MAX_TOKENS = 500  # 300 cut 4 of 52 live answers off mid-JSON
 RESAMPLES = 2
 
 SYSTEM = """You sort one incoming message for a busy person's assistant. You do not reply to it.

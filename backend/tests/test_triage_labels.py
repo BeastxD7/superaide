@@ -32,3 +32,22 @@ def test_the_report_command_writes_markdown_and_json(tmp_path, capsys):
     md = (tmp_path / "t.md").read_text()
     assert "Tell-now precision" in md and "| verify |" in md
     assert "tell-now precision" in capsys.readouterr().out
+
+
+def test_replay_re_decides_saved_classifier_answers_for_free(tmp_path):
+    """A model answer saved in a report is re-decided without a call: Infant is measured on its shadow."""
+    from superaide.evals.triage_report import Decision as D
+
+    label = next(x for x in triage_report.load() if x.id == "tl-026")  # "the demo is in 20 minutes …"
+    saved = {
+        "output": {"category": "request", "urgency": "critical", "needs_owner": True, "can_answer": "no",
+                   "evidence": ["the build is broken"], "confidence": 0.9},
+        "agreement": None, "fallback": "", "deadline_at": None,
+    }  # fmt: skip
+    r = triage_report.decide(label, replay=saved)
+    assert r.decision == D.HOLD  # at Infant the model alone can't interrupt
+    assert r.shadow == D.INTERRUPT and r.judged == D.INTERRUPT and r.ok and r.cost == 0
+    report = tmp_path / "saved.json"
+    report.write_text(json.dumps({"per_label": {"tl-026": saved}}))
+    s = triage_report.run(live=False, replay=report, out_dir=tmp_path, name="r")
+    assert s["mode"] == "replay of saved.json" and s["cost_usd"] == 0

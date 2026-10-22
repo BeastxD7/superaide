@@ -597,9 +597,20 @@ job; a triage failure can't touch the reply.
 | 9. "Has seen" | off (`tell_sender_seen`, not used until TR5) |
 | Thresholds | θ_interrupt 0.6, θ_handle 0.7 |
 
-**First numbers.** On the labelled set, offline and rules only: tell-now precision 100%, recall 38%,
-verify recall 100%, 96% acceptable decisions. The recall gap is what the classifier is for; run
-`--live` to measure it.
+**First numbers** (52 synthetic labels; Infant labels are measured on the shadow decision, what Child
+would do, as section 8 says; reports in `backend/evals/results/triage-*.md`):
+
+| Run | Tell-now precision | Tell-now recall | Verify recall | Acceptable | Cost |
+|---|---:|---:|---:|---:|---:|
+| Offline, rules only | 100% | 38% | 100% | 96% | $0 |
+| Live, Haiku 5.5, `max_tokens` 300, scored on the Infant decision | 100% | 38% | 100% | 96% | $0.0057 |
+| Live, `max_tokens` 500, scored on the shadow decision | 92% | 85% | 100% | 96% | $0.0084 |
+| Same answers replayed after R7 needed a verified sender | 100% | 85% | 100% | 98% | $0 |
+
+The one false interrupt was an unverified account claiming an outage under a VIP's name; R7 now
+interrupts only for a verified sender. Two live answers were still cut off at 500 tokens and fell
+back to holding. The only remaining miss treats a non-urgent legal note as `verify` (the `legal_hr`
+flag), which is by design.
 
 **Not built yet, and why**
 

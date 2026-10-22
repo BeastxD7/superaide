@@ -1,0 +1,714 @@
+{
+  "mode": "replay of triage-live.json",
+  "labels": 52,
+  "synthetic": true,
+  "acceptable": 0.981,
+  "tell_now": {
+    "precision": 1.0,
+    "recall": 0.846,
+    "tp": 11,
+    "fp": 0,
+    "fn": 2
+  },
+  "verify_recall": 1.0,
+  "confusion": {
+    "defer->defer": 1,
+    "hold->hold": 28,
+    "hold->verify": 2,
+    "interrupt->hold": 1,
+    "interrupt->interrupt": 10,
+    "interrupt->verify": 1,
+    "verify->verify": 9
+  },
+  "measured_on": "the shadow (Child) decision for Infant labels, else the decision",
+  "interrupts_at_stage": 8,
+  "cost_usd": 0.0,
+  "misses": [
+    {
+      "id": "tl-030",
+      "expected": "hold",
+      "got": "verify",
+      "hits": [
+        "R3_classifier:legal_hr"
+      ],
+      "note": "legal, not urgent"
+    }
+  ],
+  "per_label": {
+    "tl-005": {
+      "output": {
+        "category": "social",
+        "urgency": "low",
+        "deadline_text": "",
+        "needs_owner": true,
+        "can_answer": "no",
+        "answer_intent": "",
+        "matched_topics": [],
+        "risk_flags": [],
+        "evidence": [
+          "Lunch next week?"
+        ],
+        "confidence": 0.9,
+        "reason": "Casual lunch invitation from a VIP; no deadline, no urgent topic, and only you can accept."
+      },
+      "agreement": null,
+      "fallback": "",
+      "deadline_at": null
+    },
+    "tl-006": {
+      "output": {
+        "category": "social",
+        "urgency": "low",
+        "deadline_text": "",
+        "needs_owner": false,
+        "can_answer": "no",
+        "answer_intent": "",
+        "matched_topics": [],
+        "risk_flags": [],
+        "evidence": [
+          "Thanks for yesterday, great session."
+        ],
+        "confidence": 0.9,
+        "reason": "A thank-you note after a session. No question, deadline, or action needed."
+      },
+      "agreement": null,
+      "fallback": "",
+      "deadline_at": null
+    },
+    "tl-007": {
+      "output": {
+        "category": "scheduling",
+        "urgency": "normal",
+        "deadline_text": "",
+        "needs_owner": true,
+        "can_answer": "with_action",
+        "answer_intent": "",
+        "matched_topics": [],
+        "risk_flags": [],
+        "evidence": [
+          "Can we push our Thursday catch-up by 30 min?"
+        ],
+        "confidence": 0.9,
+        "reason": "VIP asks to move Thursday catch-up 30 minutes later; needs your OK, then calendar change. No urgent topic or risk."
+      },
+      "agreement": null,
+      "fallback": "",
+      "deadline_at": null
+    },
+    "tl-009": {
+      "output": {
+        "category": "request",
+        "urgency": "critical",
+        "deadline_text": "",
+        "needs_owner": true,
+        "can_answer": "no",
+        "answer_intent": "",
+        "matched_topics": [
+          "t1"
+        ],
+        "risk_flags": [],
+        "evidence": [
+          "the server is down",
+          "call me now"
+        ],
+        "confidence": 0.85,
+        "reason": "Dana reports the server is down and asks you to call now. This is an outage and needs you directly."
+      },
+      "agreement": null,
+      "fallback": "",
+      "deadline_at": null
+    },
+    "tl-011": {
+      "output": {
+        "category": "request",
+        "urgency": "low",
+        "deadline_text": "",
+        "needs_owner": true,
+        "can_answer": "no",
+        "answer_intent": "",
+        "matched_topics": [],
+        "risk_flags": [],
+        "evidence": [
+          "URGENT!!",
+          "can you look at my slides when you get a sec"
+        ],
+        "confidence": 0.85,
+        "reason": "Colleague asks you to review their slides when convenient. Marked urgent, but the content isn't urgent and no deadline is given."
+      },
+      "agreement": null,
+      "fallback": "",
+      "deadline_at": null
+    },
+    "tl-012": {
+      "output": {
+        "category": "scheduling",
+        "urgency": "normal",
+        "deadline_text": "",
+        "needs_owner": true,
+        "can_answer": "with_action",
+        "answer_intent": "",
+        "matched_topics": [],
+        "risk_flags": [],
+        "evidence": [
+          "Can we move our 1:1 to Thursday?"
+        ],
+        "confidence": 0.9,
+        "reason": "Colleague asks to move your 1:1 to Thursday. Needs your call on the new time; no urgent topic or risk flags."
+      },
+      "agreement": null,
+      "fallback": "",
+      "deadline_at": null
+    },
+    "tl-013": {
+      "output": {
+        "category": "request",
+        "urgency": "normal",
+        "deadline_text": "",
+        "needs_owner": false,
+        "can_answer": "from_notes",
+        "answer_intent": "",
+        "matched_topics": [],
+        "risk_flags": [],
+        "evidence": [
+          "Can you send me the link to the Q3 deck?"
+        ],
+        "confidence": 0.8,
+        "reason": "A colleague asks for the link to the Q3 deck. Low-stakes request with no deadline; it can likely be answered from existing files."
+      },
+      "agreement": null,
+      "fallback": "",
+      "deadline_at": null
+    },
+    "tl-014": {
+      "output": {
+        "category": "fyi",
+        "urgency": "critical",
+        "deadline_text": "",
+        "needs_owner": false,
+        "can_answer": "no",
+        "answer_intent": "",
+        "matched_topics": [
+          "t1"
+        ],
+        "risk_flags": [],
+        "evidence": [
+          "the server is down for the EU region"
+        ],
+        "confidence": 0.85,
+        "reason": "Colleague reports an EU region server outage. It is an outage with no question or deadline attached, so it needs your awareness."
+      },
+      "agreement": null,
+      "fallback": "",
+      "deadline_at": null
+    },
+    "tl-015": {
+      "output": {
+        "category": "request",
+        "urgency": "critical",
+        "deadline_text": "within the hour",
+        "needs_owner": true,
+        "can_answer": "no",
+        "answer_intent": "",
+        "matched_topics": [
+          "t3"
+        ],
+        "risk_flags": [],
+        "evidence": [
+          "Security breach alert from our SOC",
+          "need a decision on shutting down the API within the hour"
+        ],
+        "confidence": 0.9,
+        "reason": "Security breach from the SOC needs your decision on shutting down the API within the hour."
+      },
+      "agreement": null,
+      "fallback": "",
+      "deadline_at": null
+    },
+    "tl-016": {
+      "output": {
+        "category": "fyi",
+        "urgency": "low",
+        "deadline_text": "",
+        "needs_owner": false,
+        "can_answer": "from_notes",
+        "answer_intent": "",
+        "matched_topics": [],
+        "risk_flags": [],
+        "evidence": [
+          "FYI the offsite agenda is in the shared drive."
+        ],
+        "confidence": 0.9,
+        "reason": "Colleague says the offsite agenda is in the shared drive; no action or deadline needed."
+      },
+      "agreement": null,
+      "fallback": "",
+      "deadline_at": null
+    },
+    "tl-017": {
+      "output": {
+        "category": "request",
+        "urgency": "high",
+        "deadline_text": "by 6pm",
+        "needs_owner": true,
+        "can_answer": "no",
+        "answer_intent": "",
+        "matched_topics": [],
+        "risk_flags": [],
+        "evidence": [
+          "can you approve the PO by 6pm?",
+          "Vendor ships tomorrow otherwise."
+        ],
+        "confidence": 0.85,
+        "reason": "Colleague needs you to approve a PO by 6pm today or the vendor ships tomorrow. Only you can approve it."
+      },
+      "agreement": 1.0,
+      "fallback": "",
+      "deadline_at": "2026-10-22T12:30:00+00:00"
+    },
+    "tl-023": {
+      "output": {
+        "category": "request",
+        "urgency": "high",
+        "deadline_text": "tonight",
+        "needs_owner": false,
+        "can_answer": "with_action",
+        "answer_intent": "",
+        "matched_topics": [
+          "t2"
+        ],
+        "risk_flags": [],
+        "evidence": [
+          "Payroll file failed validation",
+          "can someone look tonight?"
+        ],
+        "confidence": 0.8,
+        "reason": "A colleague reports the payroll file failed validation and asks for someone to look at it tonight."
+      },
+      "agreement": 1.0,
+      "fallback": "",
+      "deadline_at": "2026-10-23T14:30:00+00:00"
+    },
+    "tl-024": {
+      "output": {
+        "category": "social",
+        "urgency": "low",
+        "deadline_text": "",
+        "needs_owner": false,
+        "can_answer": "no",
+        "answer_intent": "",
+        "matched_topics": [],
+        "risk_flags": [],
+        "evidence": [
+          "Congrats on the launch!"
+        ],
+        "confidence": 0.95,
+        "reason": "Friendly congratulations on a launch; no question, deadline, or action needed."
+      },
+      "agreement": null,
+      "fallback": "",
+      "deadline_at": null
+    },
+    "tl-025": {
+      "output": {
+        "category": "scheduling",
+        "urgency": "normal",
+        "deadline_text": "today",
+        "needs_owner": true,
+        "can_answer": "no",
+        "answer_intent": "",
+        "matched_topics": [],
+        "risk_flags": [],
+        "evidence": [
+          "Do you have 5 minutes today to review the hiring plan?"
+        ],
+        "confidence": 0.85,
+        "reason": "A colleague wants 5 minutes today to review the hiring plan. Only you can do this, so it needs your time. Not urgent."
+      },
+      "agreement": null,
+      "fallback": "",
+      "deadline_at": "2026-10-23T03:30:00+00:00"
+    },
+    "tl-026": {
+      "output": {
+        "category": "request",
+        "urgency": "critical",
+        "deadline_text": "in 20 minutes",
+        "needs_owner": true,
+        "can_answer": "no",
+        "answer_intent": "",
+        "matched_topics": [],
+        "risk_flags": [],
+        "evidence": [
+          "The demo with Acme is in 20 minutes",
+          "the build is broken",
+          "need a go/no-go"
+        ],
+        "confidence": 0.85,
+        "reason": "Colleague needs a go/no-go decision in 20 minutes because the build is broken before the Acme demo."
+      },
+      "agreement": null,
+      "fallback": "",
+      "deadline_at": "2026-10-22T10:20:00+00:00"
+    },
+    "tl-027": {
+      "output": {
+        "category": "fyi",
+        "urgency": "normal",
+        "deadline_text": "end of month",
+        "needs_owner": false,
+        "can_answer": "no",
+        "answer_intent": "",
+        "matched_topics": [],
+        "risk_flags": [],
+        "evidence": [
+          "Reminder: expense reports due end of month."
+        ],
+        "confidence": 0.85,
+        "reason": "Colleague reminder that expense reports are due at end of month. No question or action asked of you."
+      },
+      "agreement": null,
+      "fallback": "",
+      "deadline_at": null
+    },
+    "tl-028": {
+      "output": {
+        "category": "scheduling",
+        "urgency": "normal",
+        "deadline_text": "",
+        "needs_owner": true,
+        "can_answer": "no",
+        "answer_intent": "",
+        "matched_topics": [],
+        "risk_flags": [],
+        "evidence": [
+          "Is the 3pm still on?"
+        ],
+        "confidence": 0.8,
+        "reason": "A colleague is asking whether the 3pm meeting is still on. Only you can confirm, so it needs your reply."
+      },
+      "agreement": null,
+      "fallback": "",
+      "deadline_at": null
+    },
+    "tl-029": {
+      "output": {
+        "category": "request",
+        "urgency": "high",
+        "deadline_text": "tonight",
+        "needs_owner": true,
+        "can_answer": "no",
+        "answer_intent": "",
+        "matched_topics": [],
+        "risk_flags": [],
+        "evidence": [
+          "they're threatening to cancel unless we call them tonight"
+        ],
+        "confidence": 0.8,
+        "reason": "A client is threatening to cancel unless someone calls them tonight. This needs the person directly and is time-sensitive."
+      },
+      "agreement": 1.0,
+      "fallback": "",
+      "deadline_at": "2026-10-22T14:30:00+00:00"
+    },
+    "tl-030": {
+      "output": {
+        "category": "request",
+        "urgency": "normal",
+        "deadline_text": "by next week",
+        "needs_owner": true,
+        "can_answer": "no",
+        "answer_intent": "",
+        "matched_topics": [],
+        "risk_flags": [
+          "legal_hr"
+        ],
+        "evidence": [
+          "we need your signature on the NDA amendment",
+          "no rush, by next week"
+        ],
+        "confidence": 0.9,
+        "reason": "Colleague needs your signature on an NDA amendment from Legal, not urgent, due by next week. Only you can sign."
+      },
+      "agreement": null,
+      "fallback": "",
+      "deadline_at": "2026-10-29T04:30:00+00:00"
+    },
+    "tl-031": {
+      "output": {
+        "category": "social",
+        "urgency": "low",
+        "deadline_text": "",
+        "needs_owner": false,
+        "can_answer": "no",
+        "answer_intent": "",
+        "matched_topics": [],
+        "risk_flags": [],
+        "evidence": [
+          "Loved the talk yesterday!"
+        ],
+        "confidence": 0.95,
+        "reason": "Friendly compliment about a talk yesterday; no question, request, or deadline."
+      },
+      "agreement": null,
+      "fallback": "",
+      "deadline_at": null
+    },
+    "tl-032": {
+      "output": {
+        "category": "scheduling",
+        "urgency": "low",
+        "deadline_text": "",
+        "needs_owner": true,
+        "can_answer": "no",
+        "answer_intent": "",
+        "matched_topics": [],
+        "risk_flags": [],
+        "evidence": [
+          "Are you free for coffee next month?"
+        ],
+        "confidence": 0.9,
+        "reason": "A friend asks if you're free for coffee next month. Only you can check your calendar and reply."
+      },
+      "agreement": null,
+      "fallback": "",
+      "deadline_at": null
+    },
+    "tl-033": {
+      "output": {
+        "category": "sales",
+        "urgency": "low",
+        "deadline_text": "today only",
+        "needs_owner": false,
+        "can_answer": "no",
+        "answer_intent": "",
+        "matched_topics": [],
+        "risk_flags": [],
+        "evidence": [
+          "limited offer on our CRM, 50% off today only"
+        ],
+        "confidence": 0.9,
+        "reason": "Sales pitch for a CRM discount ending today. No urgent topic and no action needed from you."
+      },
+      "agreement": null,
+      "fallback": "",
+      "deadline_at": "2026-10-23T03:30:00+00:00"
+    },
+    "tl-035": {
+      "output": {
+        "category": "request",
+        "urgency": "normal",
+        "deadline_text": "",
+        "needs_owner": true,
+        "can_answer": "no",
+        "answer_intent": "",
+        "matched_topics": [],
+        "risk_flags": [],
+        "evidence": [
+          "Following up on my email from last week about the partnership."
+        ],
+        "confidence": 0.8,
+        "reason": "Follow-up on a partnership email from last week; it needs your own decision, and no granted intent covers it."
+      },
+      "agreement": null,
+      "fallback": "",
+      "deadline_at": null
+    },
+    "tl-036": {
+      "output": {
+        "category": "question",
+        "urgency": "low",
+        "deadline_text": "",
+        "needs_owner": true,
+        "can_answer": "no",
+        "answer_intent": "",
+        "matched_topics": [],
+        "risk_flags": [],
+        "evidence": [
+          "Hey are you awake?"
+        ],
+        "confidence": 0.8,
+        "reason": "A casual check-in asking if you are awake; no urgent topic or deadline mentioned."
+      },
+      "agreement": null,
+      "fallback": "",
+      "deadline_at": null
+    },
+    "tl-037": {
+      "output": null,
+      "agreement": null,
+      "fallback": "unparsed",
+      "deadline_at": null
+    },
+    "tl-042": {
+      "output": {
+        "category": "request",
+        "urgency": "normal",
+        "deadline_text": "",
+        "needs_owner": true,
+        "can_answer": "no",
+        "answer_intent": "",
+        "matched_topics": [],
+        "risk_flags": [],
+        "evidence": [
+          "Urgent: call me please"
+        ],
+        "confidence": 0.6,
+        "reason": "Colleague asks for a call. Marked urgent, but no outage, payroll, breach, or deadline is mentioned, so only you can respond."
+      },
+      "agreement": null,
+      "fallback": "",
+      "deadline_at": null
+    },
+    "tl-043": {
+      "output": {
+        "category": "request",
+        "urgency": "normal",
+        "deadline_text": "",
+        "needs_owner": true,
+        "can_answer": "no",
+        "answer_intent": "",
+        "matched_topics": [],
+        "risk_flags": [],
+        "evidence": [
+          "Really urgent, call me"
+        ],
+        "confidence": 0.7,
+        "reason": "VIP asks for a call and calls it urgent, but no outage, payroll, breach, or deadline is named. Only you can take the call."
+      },
+      "agreement": null,
+      "fallback": "",
+      "deadline_at": null
+    },
+    "tl-044": {
+      "output": {
+        "category": "request",
+        "urgency": "low",
+        "deadline_text": "",
+        "needs_owner": false,
+        "can_answer": "from_notes",
+        "answer_intent": "",
+        "matched_topics": [],
+        "risk_flags": [],
+        "evidence": [
+          "Could you share the parking info for the office with the new hire?"
+        ],
+        "confidence": 0.85,
+        "reason": "A colleague asks for office parking info for a new hire. Routine request that an assistant can likely answer from notes."
+      },
+      "agreement": null,
+      "fallback": "",
+      "deadline_at": null
+    },
+    "tl-045": {
+      "output": null,
+      "agreement": null,
+      "fallback": "unparsed",
+      "deadline_at": null
+    },
+    "tl-046": {
+      "output": {
+        "category": "fyi",
+        "urgency": "low",
+        "deadline_text": "",
+        "needs_owner": false,
+        "can_answer": "no",
+        "answer_intent": "",
+        "matched_topics": [],
+        "risk_flags": [],
+        "evidence": [
+          "Train delayed, I'll miss the 8am standup."
+        ],
+        "confidence": 0.9,
+        "reason": "A colleague says their train is delayed and they will miss the 8am standup. No action is requested."
+      },
+      "agreement": null,
+      "fallback": "",
+      "deadline_at": null
+    },
+    "tl-047": {
+      "output": {
+        "category": "request",
+        "urgency": "high",
+        "deadline_text": "in 30 min",
+        "needs_owner": true,
+        "can_answer": "no",
+        "answer_intent": "",
+        "matched_topics": [],
+        "risk_flags": [
+          "legal_hr"
+        ],
+        "evidence": [
+          "We just got a subpoena",
+          "legal needs you on a call in 30 min"
+        ],
+        "confidence": 0.9,
+        "reason": "Legal needs you on a call in 30 min about a subpoena. Only you can join, so keep the time free."
+      },
+      "agreement": 0.3333,
+      "fallback": "",
+      "deadline_at": "2026-10-22T09:00:00+00:00"
+    },
+    "tl-049": {
+      "output": {
+        "category": "request",
+        "urgency": "normal",
+        "deadline_text": "",
+        "needs_owner": true,
+        "can_answer": "no",
+        "answer_intent": "",
+        "matched_topics": [],
+        "risk_flags": [],
+        "evidence": [
+          "Can you approve my leave for next Friday?"
+        ],
+        "confidence": 0.9,
+        "reason": "A colleague asks you to approve their leave for next Friday. Only you can decide this, so it needs your personal answer."
+      },
+      "agreement": null,
+      "fallback": "",
+      "deadline_at": null
+    },
+    "tl-051": {
+      "output": {
+        "category": "question",
+        "urgency": "normal",
+        "deadline_text": "",
+        "needs_owner": false,
+        "can_answer": "no",
+        "answer_intent": "",
+        "matched_topics": [],
+        "risk_flags": [],
+        "evidence": [
+          "The server is slow today, anyone else?"
+        ],
+        "confidence": 0.8,
+        "reason": "A colleague reports the server is slow today and asks if others see it too. Not a confirmed outage, so normal urgency. No action needed from you beyond checking."
+      },
+      "agreement": null,
+      "fallback": "",
+      "deadline_at": null
+    },
+    "tl-052": {
+      "output": {
+        "category": "question",
+        "urgency": "low",
+        "deadline_text": "",
+        "needs_owner": true,
+        "can_answer": "no",
+        "answer_intent": "",
+        "matched_topics": [
+          "t2"
+        ],
+        "risk_flags": [],
+        "evidence": [
+          "Payroll question for next month's cycle"
+        ],
+        "confidence": 0.8,
+        "reason": "Colleague has a payroll question for next month's cycle, no deadline given. Needs your answer when you have time."
+      },
+      "agreement": null,
+      "fallback": "",
+      "deadline_at": null
+    }
+  }
+}
