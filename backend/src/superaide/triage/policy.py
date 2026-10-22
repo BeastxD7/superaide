@@ -46,6 +46,9 @@ class Outcome:
     defer_until: datetime | None = None
     deadline_at: datetime | None = None
     app_note: bool = False  # a model-only interrupt the stage held back: an in-app note, no push (rung 0)
+    # A verify that would otherwise have interrupted: escalated (as "unverified request"), never handled.
+    escalate: bool = False
+    shadow_escalate: bool = False
 
 
 def time_factor(deadline: datetime | None, now: datetime) -> float:
@@ -78,6 +81,7 @@ class _Base:
     maybe_urgent: bool = False
     vip_rule: bool = False
     handle_intent: str = ""
+    otherwise: _Base | None = None  # for a verify: what the same answer without its risk flags decides
 
 
 def _base(f: Features, r: RuleResult, out: TriageOutput | None, agreement: float | None, deadline) -> _Base:
@@ -98,8 +102,10 @@ def _base(f: Features, r: RuleResult, out: TriageOutput | None, agreement: float
 
     if out.risk_flags:
         hits += [f"R3_classifier:{flag}" for flag in out.risk_flags]
+        # Never handled, but still interrupt-worthy if it otherwise would be (ADR 0010 section 2, R3).
+        otherwise = _base(f, r, out.model_copy(update={"risk_flags": []}), agreement, deadline)
         return _Base(Decision.VERIFY, hits, "unverified request: " + ", ".join(out.risk_flags), True,
-                     urgency=out.urgency)  # fmt: skip
+                     urgency=out.urgency, otherwise=otherwise)  # fmt: skip
     urgent = URGENCY_RANK[out.urgency] >= URGENCY_RANK["high"]
     if f.vip and (urgent or r.urgent_signal):
         hits.append("R5_vip")
@@ -199,8 +205,17 @@ def decide(
                 o.decision, o.defer_until = Decision.DEFER, until
         if maybe and b.decision == Decision.INTERRUPT and decision == Decision.HOLD:
             o.reason, o.app_note = f"maybe urgent: {b.reason}", True
+        if decision == Decision.VERIFY and b.otherwise is not None:
+            # The same stage cap and breakpoints as the interrupt it would have been.
+            would, _, steps = _cap(b.otherwise, stage, f)
+            if would == Decision.INTERRUPT:
+                until, hits = _deferral(f, b.otherwise, deadline)
+                o.escalate, o.max_step, o.defer_until = True, steps, until
+                o.hits += hits
+                o.breaks_quiet = b.otherwise.vip_rule and f.vip_breaks_quiet
         return o
 
     outcome = finish(f.stage)
-    outcome.shadow = finish(Stage.CHILD).decision if f.stage == Stage.INFANT else outcome.decision
+    child = finish(Stage.CHILD) if f.stage == Stage.INFANT else outcome
+    outcome.shadow, outcome.shadow_escalate = child.decision, child.escalate
     return outcome

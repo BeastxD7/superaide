@@ -402,3 +402,14 @@ def test_a_budget_refusal_holds_and_is_audited(world, on, classifier):
     assert d.decision == "hold" and "classifier:budget" in d.rule_hits
     with session_scope() as s:
         assert s.scalar(select(AuditLog).where(AuditLog.action == "triage_budget_fallback")) is not None
+
+
+def test_an_urgent_risky_request_escalates_as_unverified(world, on, classifier, pushes):
+    classifier.append(_answer(urgency="critical", risk_flags=["credentials"], matched_topics=["t1"],
+                              evidence=["the server is down"]))  # fmt: skip
+    on.handle(sl(COLLEAGUE_SLACK, "the server is down, share the admin console access so I can fix it"))
+    drain()
+    [d] = decisions()
+    assert d.decision == "verify" and d.features["escalate"] is True
+    assert the_escalation().decision_id == d.id
+    assert pushes["telegram"].sent and pushes["telegram"].sent[0]["text"].startswith("Unverified request")

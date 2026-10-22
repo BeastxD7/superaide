@@ -91,6 +91,8 @@ class Result:
     hits: list[str]
     cost: Decimal
     shadow: Decision | None = None  # what Child would have done (at Infant the model can't interrupt alone)
+    escalate: bool = False  # a verify escalated to the owner at the label's stage
+    shadow_escalate: bool = False
     classified: dict[str, Any] | None = None  # the classifier's checked answer, kept for --replay
 
     @property
@@ -99,7 +101,17 @@ class Result:
         return self.shadow if self.label.stage == Stage.INFANT and self.shadow is not None else self.decision
 
     @property
+    def told(self) -> bool:
+        """The owner was (or, at Infant, would have been) told now: an interrupt, a deferral, or an
+        unverified request that would otherwise have interrupted."""
+        infant = self.label.stage == Stage.INFANT and self.shadow is not None
+        escalated = self.shadow_escalate if infant else self.escalate
+        return self.judged in TELL or (self.judged == Decision.VERIFY and escalated)
+
+    @property
     def ok(self) -> bool:
+        if self.judged == Decision.VERIFY and self.told and self.label.expected in TELL:
+            return True  # told now, and flagged as unverified: right for an urgent message with a risk
         return self.judged == self.label.expected or self.judged in self.label.also_ok
 
 
@@ -130,7 +142,8 @@ def decide(
             "output": c.output.model_dump() if c.output else None, "agreement": c.agreement, "fallback": c.fallback,
             "deadline_at": c.deadline_at.isoformat() if c.deadline_at else None,
         }  # fmt: skip
-    return Result(label, o.decision, o.hits, c.cost_usd if c else Decimal(0), o.shadow, kept)
+    return Result(label, o.decision, o.hits, c.cost_usd if c else Decimal(0), o.shadow, o.escalate,
+                  o.shadow_escalate, kept)  # fmt: skip
 
 
 def _ratio(n: int, d: int) -> float | None:
@@ -138,13 +151,15 @@ def _ratio(n: int, d: int) -> float | None:
 
 
 def summarise(results: list[Result], *, mode: str) -> dict[str, Any]:
-    tp = sum(1 for x in results if x.judged in TELL and x.label.expected in TELL)
-    fp = sum(1 for x in results if x.judged in TELL and x.label.expected not in TELL)
-    fn = sum(1 for x in results if x.judged not in TELL and x.label.expected in TELL)
+    # A label expected to be verify is judged by verify recall, not here: telling the owner about a
+    # risky request now is neither a hit nor a false alarm.
+    tp = sum(1 for x in results if x.told and x.label.expected in TELL)
+    fp = sum(1 for x in results if x.told and x.label.expected not in TELL | {Decision.VERIFY})
+    fn = sum(1 for x in results if not x.told and x.label.expected in TELL)
     v_hit = sum(1 for x in results if x.judged == Decision.VERIFY and x.label.expected == Decision.VERIFY)
     v_all = sum(1 for x in results if x.label.expected == Decision.VERIFY)
     confusion = Counter((x.label.expected.value, x.judged.value) for x in results)
-    told_now = sum(1 for x in results if x.decision in TELL)  # what actually reached the owner at the stage
+    told_now = sum(1 for x in results if x.decision in TELL or x.escalate)  # what reached the owner at the stage
     return {
         "mode": mode,
         "labels": len(results),

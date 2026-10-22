@@ -90,7 +90,7 @@ def triage_event(
     features = f.snapshot()
     features.update(
         shadow_decision=str(o.shadow or o.decision), maybe_urgent=o.maybe_urgent, score=o.score,
-        needs_approval=o.needs_approval, from_rule=o.from_rule, urgency=o.urgency,
+        needs_approval=o.needs_approval, from_rule=o.from_rule, urgency=o.urgency, escalate=o.escalate,
         defer_until=o.defer_until.isoformat() if o.defer_until else None,
     )  # fmt: skip
     row = TriageDecision(
@@ -108,10 +108,11 @@ def triage_event(
         from superaide.triage.digest import schedule_catchup
 
         schedule_catchup(session, owner, f.quiet_end_at)
-    if o.decision in (Decision.INTERRUPT, Decision.DEFER):
+    if o.decision in (Decision.INTERRUPT, Decision.DEFER) or o.escalate:
         open_escalation(
             session, row, owner, max_step=o.max_step, breaks_quiet=o.breaks_quiet,
-            defer_until=o.defer_until if o.decision == Decision.DEFER else None, deadline_at=o.deadline_at, now=now,
+            defer_until=o.defer_until if o.decision == Decision.DEFER or o.escalate else None,
+            deadline_at=o.deadline_at, now=now,
         )  # fmt: skip
     elif o.decision == Decision.VERIFY or o.app_note:
         # Shown to the owner in the app (rung 0), never pushed: an unverified request, or a

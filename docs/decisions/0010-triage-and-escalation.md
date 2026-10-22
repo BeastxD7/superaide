@@ -606,10 +606,16 @@ would do, as section 8 says; reports in `backend/evals/results/triage-*.md`):
 | Live, Haiku 5.5, `max_tokens` 300, scored on the Infant decision | 100% | 38% | 100% | 96% | $0.0057 |
 | Live, `max_tokens` 500, scored on the shadow decision | 92% | 85% | 100% | 96% | $0.0084 |
 | Same answers replayed after R7 needed a verified sender | 100% | 85% | 100% | 98% | $0 |
+| Live, `effort: low`, `max_tokens` 350, terse reason (no answer cut off) | 100% | 77% | 100% | 96% | $0.0045 |
+| Same answers replayed after a risky urgent request escalates as unverified | 100% | 100% | 100% | 98% | $0 |
 
 The one false interrupt was an unverified account claiming an outage under a VIP's name; R7 now
-interrupts only for a verified sender. Two live answers were still cut off at 500 tokens and fell
-back to holding. The only remaining miss treats a non-urgent legal note as `verify` (the `legal_hr`
+interrupts only for a verified sender. Claude Haiku 5.5 thinks by default (effort `medium`) and its
+thinking counts against `max_tokens`, which is why answers were cut off at 300 and 500 tokens; the
+classifier now asks for `effort: low` and a terse answer, and none was cut off at 350. At low effort
+the model flagged three urgent messages as risky (an impersonation claim, a leaked key, a subpoena);
+they are now `verify` *and* escalated, because a risky request that would otherwise interrupt still
+does, as an unverified request (R3). The only remaining miss treats a non-urgent legal note as `verify` (the `legal_hr`
 flag), which is by design.
 
 **Not built yet, and why**
@@ -622,8 +628,8 @@ flag), which is by design.
   yet. The stage is read from `agent_state["stage"]` and defaults to Infant.
 - TR8: the away handover digest isn't built.
 - TR11 (the phone rung).
-- Known limits: a `verify` gets an in-app note, never the ladder (the "interrupt-worthy if it
-  otherwise would be" part isn't built). Triage and escalation jobs run unscoped, like every other
+- Known limits: a `verify` from the regex risk screen (no classifier run) gets an in-app note,
+  never the ladder; one from the classifier escalates when it would otherwise interrupt. Triage and escalation jobs run unscoped, like every other
   job, until ADR 0009 T5 scopes jobs. The interrupt budget counts chat-channel pushes, so an owner
   with no linked chat channel never uses it up. Scenario 20 (two instances) is covered by the API
   test `test_another_owner_never_sees_or_touches_the_items` and RLS rather than a scenario.

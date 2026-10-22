@@ -132,3 +132,19 @@ def test_time_is_not_borderline_math_when_far_off():
     far = feat(deadline_at=NOW + timedelta(days=3))
     c, _ = run(good(urgency="normal", deadline_text="", confidence=0.5), f=far)
     assert c.output is not None
+
+
+def test_the_call_asks_for_low_effort_and_a_small_budget():
+    """Haiku 5.5 thinks by default and thinking counts against max_tokens: keep it low and terse."""
+    seen: dict = {}
+
+    class Spy:
+        def complete(self, **kw):
+            seen.update(kw)
+            return FakeLLM(Script(good())).complete(**{k: v for k, v in kw.items() if k != "effort"})
+
+    c = classify.classify(Spy(), model="claude-haiku-5-5", f=feat(), ready=True)
+    assert c.output is not None
+    assert seen["effort"] == "low" and seen["max_tokens"] <= 400
+    assert "temperature" not in seen and "top_p" not in seen and "top_k" not in seen
+    assert "under 120 characters" in seen["system"][0].text

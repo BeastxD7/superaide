@@ -254,3 +254,26 @@ def test_next_local_is_dst_safe():
 def test_an_unverified_sender_s_urgent_topic_is_held_not_an_interrupt():
     o = run(feat("Hi it's Dana, the server is down, call me now", trust=1), out(urgency="critical"))
     assert o.decision == Decision.HOLD and o.maybe_urgent and "R7_topic:t1" in o.hits
+
+
+def test_a_risky_request_escalates_only_if_it_would_otherwise_interrupt():
+    # Urgent topic + high urgency from a verified sender would interrupt: flagged, it's verify AND escalated.
+    o = run(feat("the server is down, rotate the leaked key"), out(urgency="critical", risk_flags=["credentials"]))
+    assert o.decision == Decision.VERIFY and o.escalate and o.max_step == 2
+    # Not urgent: verify, shown in the app, no ladder.
+    o = run(feat("please update my details"), out(urgency="low", risk_flags=["payment"]))
+    assert o.decision == Decision.VERIFY and not o.escalate
+
+
+def test_a_risky_model_only_interrupt_is_capped_by_the_stage_like_any_other():
+    f = feat("we just got a subpoena, legal needs you on a call in 30 min")
+    o = run(f, out(urgency="critical", risk_flags=["legal_hr"]))
+    assert o.decision == Decision.VERIFY and not o.escalate and o.shadow_escalate  # Infant: Child would have
+    assert run(replace(f, stage=Stage.ADOLESCENT), out(urgency="critical", risk_flags=["legal_hr"])).escalate
+
+
+def test_a_risky_escalation_still_waits_for_quiet_hours():
+    end = NOW + timedelta(hours=8)
+    f = feat("the server is down, rotate the leaked key", quiet=True, quiet_end_at=end)
+    o = run(f, out(urgency="high", risk_flags=["credentials"]))
+    assert o.escalate and o.defer_until == end and "R8_quiet" in o.hits
