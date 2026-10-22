@@ -479,6 +479,15 @@ class OwnerTurn:
             replay=self.replay is not None,
         )  # fmt: skip
         self._seq += 1
+        from superaide.actionlog import chain
+        from superaide.tooltrace.effects import effect_of
+        from superaide.tooltrace.recorder import digest
+
+        if self.replay is None:  # a rehearsal did nothing, so it is not part of what Ava did
+            chain.append(
+                self.s, kind="call", tool=name, effect=effect_of(name), args_hash=digest(args),
+                result_hash=digest(content), turn_id=self.inbound.id,
+            )  # fmt: skip
 
     def _dispatch(self, name: str, args: dict[str, Any]) -> tuple[Any, bool]:
         if name == "recall":

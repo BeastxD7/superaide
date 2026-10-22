@@ -180,6 +180,29 @@ def _approval_report(_: argparse.Namespace) -> None:
     )
 
 
+def _witness(args: argparse.Namespace) -> None:
+    """Verify each Ava's action log and freeze any Ava whose log looks wrong (issue #113)."""
+    from datetime import UTC, datetime
+
+    from superaide.actionlog import chain, witness
+    from superaide.db.session import rescope, session_scope
+    from superaide.tenancy.context import default_scope, use_instance
+    from superaide.tenancy.service import active_scopes
+
+    with session_scope() as s:
+        scopes = active_scopes(s) or [default_scope()]
+    for scope in scopes:
+        with use_instance(scope), session_scope() as s:
+            rescope(s)
+            report = witness.run(s) if not args.dry_run else None
+            findings = report.findings if report else witness.inspect(s)
+            root = chain.daily_root(s, datetime.now(UTC).date())
+            state = "FROZEN" if report and report.frozen else "ok" if not findings else "problems"
+            print(f"Ava {scope.agent_id}: {chain.count(s)} entries, today's root {root[:16]}, {state}")
+            for f in findings:
+                print(f"  {f.rule} (entry {f.seq}): {f.detail}")
+
+
 def _push_keys(_: argparse.Namespace) -> None:
     """Show the web push public key, making the pair once if PUSH_ENABLED is on (ADR 0011). Never rotates."""
     from superaide.db.session import session_scope
@@ -346,6 +369,9 @@ def main() -> None:
     sub.add_parser("approval-report", help="would strict approval binding have refused a real approval?").set_defaults(
         func=_approval_report
     )
+    p = sub.add_parser("witness", help="check every Ava's action log; freeze one whose log looks wrong")
+    p.add_argument("--dry-run", action="store_true", help="report only, freeze nothing")
+    p.set_defaults(func=_witness)
     sub.add_parser("spend", help="show Claude API spend against the cap").set_defaults(func=_spend)
     sub.add_parser("push-keys", help="show the web push key, making it once when PUSH_ENABLED is on").set_defaults(
         func=_push_keys

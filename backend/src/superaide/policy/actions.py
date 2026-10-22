@@ -187,6 +187,14 @@ def _binding_blocks(session: Session, approval: Approval) -> str | None:
     return None
 
 
+def _log_executed(session: Session, approval: Approval) -> None:
+    from superaide.actionlog import chain
+    from superaide.tooltrace.effects import effect_of
+
+    tool = approval.kind
+    chain.append(session, kind="executed", tool=tool, effect=effect_of(tool), approval_id=approval.id)
+
+
 def resolve(session: Session, approval: Approval, *, approve: bool, decided_by: str, via: str = "") -> Approval:
     """Record the owner's yes or no on a pending approval, then carry it out if it can be.
 
@@ -232,6 +240,7 @@ def resolve(session: Session, approval: Approval, *, approve: bool, decided_by: 
             approval.payload = payload
             return approval
         _load_executors()
+        _log_executed(session, approval)
         executor = EXECUTORS.get(approval.kind)
         payload["result"] = executor(session, approval) if executor else "Approved. Nothing can carry this out yet."
     approval.payload = payload

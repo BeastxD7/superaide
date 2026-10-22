@@ -71,6 +71,9 @@ class Settings(BaseSettings):
     # Every tool call is recorded as hashes only (tool, effect class, argument and result hashes; issue #110).
     trace_recorder: bool = True
 
+    # Hash-chained log of tool calls and executed approvals (issue #113). Off by default.
+    action_log: bool = False
+
     # Tenancy
     tenant_id: uuid.UUID = DEFAULT_TENANT_ID
     agent_id: uuid.UUID = DEFAULT_AGENT_ID
