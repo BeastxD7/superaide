@@ -119,6 +119,55 @@ def test_running_out_of_credits_gets_an_honest_reply(agent, period):
     assert "Superaide credits" in reply and "own AI key" in reply
 
 
+def test_the_shared_cap_is_not_blamed_on_the_owners_own_credits(agent):
+    with session_scope() as s:
+        own = agent._budget_reply(s, BudgetExceeded("used", "platform_day"))
+        shared = agent._budget_reply(s, BudgetExceeded("used", "platform"))
+    assert shared != own and "Everyone" in shared and "shared" in shared
+    assert "Superaide credits. Add your own AI key on the AI model page" in shared
+
+
+@pytest.mark.parametrize(
+    "period", ["platform_day", "platform", "platform_month", "day", "bucket", "month", "lifetime"]
+)
+def test_a_contact_is_never_given_the_owners_budget_message(agent, period):
+    with session_scope() as s:
+        reply = agent._budget_reply(s, BudgetExceeded("used", period), owner=False)
+    assert "can't help with this right now" in reply
+    for leak in ("credits", "AI key", "AI model", "budget", "cap", "US$", "month", "today"):
+        assert leak not in reply
+
+
+@pytest.mark.parametrize("period", ["platform_day", "platform", "platform_month", "month"])
+def test_a_known_contact_whose_reply_hits_a_limit_gets_a_neutral_line(model, outbox, settings, colleague, period):
+    from superaide.brain.llm import FakeLLM
+    from superaide.pipeline import Agent
+    from tests.conftest import sl
+
+    def refuse(purpose, system, messages, output_model):
+        raise BudgetExceeded("used", period)
+
+    ava = Agent(llm=FakeLLM(refuse), messengers=outbox, settings=settings)
+    result = ava.handle(sl("U_PRIYA", "Is he free on Friday?"))
+    sent = " ".join(m["text"] for m in outbox["slack"].sent)
+    assert "can't help with this right now" in sent
+    assert not any(w in sent for w in ("credits", "AI key", "AI model page", "budget"))
+    assert result.mode == "known"
+
+
+def test_the_owner_still_hears_which_limit_was_reached(model, outbox, settings, manager):
+    from superaide.brain.llm import FakeLLM
+    from superaide.pipeline import Agent
+    from tests.conftest import MANAGER_TG, tg
+
+    def refuse(purpose, system, messages, output_model):
+        raise BudgetExceeded("used", "platform_day")
+
+    ava = Agent(llm=FakeLLM(refuse), messengers=outbox, settings=settings)
+    ava.handle(tg(MANAGER_TG, "hello"))
+    assert any("Add your own AI key on the AI model page" in m["text"] for m in outbox["telegram"].sent)
+
+
 def test_one_owners_opt_in_never_reaches_another(owner_client, credits):  # noqa: F811
     from superaide.tenancy.context import use_instance
 

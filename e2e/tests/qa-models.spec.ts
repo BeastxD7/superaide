@@ -185,7 +185,6 @@ test.describe('credits', () => {
   })
 
   test('a contact writing in when the credits have run out is not told to add an AI key', async ({ page, owner }) => {
-    test.fail(true, "BUG: a contact on Telegram gets the owner's message \"You've used today's Superaide credits. Add your own AI key on the AI model page\"")
     void owner
     await optIn(page)
     const admin = new Admin(page.request)
@@ -211,7 +210,6 @@ test.describe('credits', () => {
   })
 
   test('when Superaide\'s shared daily cap is used up, the owner is not told they used their own credits', async ({ page, owner }) => {
-    test.fail(true, "BUG: the platform-wide cap being reached is reported as \"You've used today's Superaide credits\"")
     void owner
     await optIn(page)
     // Other owners have used the server's whole shared allowance (PLATFORM_DAILY_CAP_USD=5) today.

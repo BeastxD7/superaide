@@ -380,10 +380,20 @@ class Agent:
 
     # --- known people ----------------------------------------------------------
 
-    def _budget_reply(self, s, exc: BudgetExceeded) -> str:
-        audit(s, "pipeline", "budget_cap_reached", period=exc.period)
-        if exc.period in {"platform_day", "platform"}:
+    def _budget_reply(self, s, exc: BudgetExceeded, *, owner: bool = True) -> str:
+        """What to say when a spending limit stops a model call. The owner hears which limit and what to
+        do about it; anyone else gets a neutral line, because they can't act on it and it would show
+        how the owner pays for the assistant."""
+        audit(s, "pipeline", "budget_cap_reached", period=exc.period, audience="owner" if owner else "other")
+        if not owner:
+            return "Sorry, I can't help with this right now. Please try again a little later."
+        if exc.period == "platform_day":
             return "You've used today's Superaide credits. Add your own AI key on the AI model page, or try tomorrow."
+        if exc.period == "platform":
+            return (
+                "Everyone's used up today's shared Superaide credits. "
+                "Add your own AI key on the AI model page, or try tomorrow."
+            )
         if exc.period == "platform_month":
             return "You've used this month's Superaide credits. Add your own AI key on the AI model page to carry on."
         if exc.period in {"day", "bucket"}:
@@ -461,7 +471,7 @@ class Agent:
                 output_model=TurnOutput,
             )
         except BudgetExceeded as exc:
-            return self._budget_reply(s, exc), ["budget"]
+            return self._budget_reply(s, exc, owner=is_owner), ["budget"]
         except AgentFrozen:
             return ("I'm paused right now.", ["frozen"])
 
