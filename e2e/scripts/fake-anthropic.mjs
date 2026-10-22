@@ -22,12 +22,27 @@ createServer((req, res) => {
   req.on('end', () => {
     calls += 1
     let wantsJson = false
+    let parsed = {}
     try {
-      wantsJson = Boolean(JSON.parse(body)?.output_config?.format)
+      parsed = JSON.parse(body)
+      wantsJson = Boolean(parsed?.output_config?.format)
     } catch {
       // not JSON: treat as plain
     }
-    const text = wantsJson ? JSON.stringify(FACTS) : 'Hello from the fake Claude.'
+    const system = JSON.stringify(parsed?.system ?? '')
+    let text = wantsJson ? JSON.stringify(FACTS) : 'Hello from the fake Claude.'
+    if (system.includes('This is a rehearsal')) {
+      // The rehearsal room (#58): the other side raises an objection.
+      text = 'That is a big ask. What has changed since your last review?'
+    } else if (system.includes('three-point debrief')) {
+      // Three points, each quoting the first words the person said (taken from the transcript).
+      const said = /PERSON: ([^\\]+)/.exec(JSON.stringify(parsed?.messages ?? ''))?.[1] ?? ''
+      const quote = said.split(' ').slice(0, 6).join(' ')
+      const heads = ['What worked', 'What to tighten', 'What to prepare for']
+      text = JSON.stringify({
+        points: heads.map((heading) => ({ heading, advice: 'Be specific about what you want and why.', quote })),
+      })
+    }
     res.writeHead(200, { 'content-type': 'application/json', 'request-id': `req_fake_${calls}` })
     res.end(
       JSON.stringify({
