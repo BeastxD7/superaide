@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 
 from superaide.jobs.queue import run_due
 
@@ -30,11 +31,19 @@ def schedule_recurring() -> None:
                 ensure_scheduled(s)
         except Exception:
             log.exception("couldn't schedule the digest for instance %s", scope.agent_id)
+    from superaide.knowledge.pending import sweep
+
+    try:
+        sweep()  # documents shared while no AI was connected, for any brain that is ready now (issue #12)
+    except Exception:
+        log.exception("couldn't queue reading of the waiting documents")
 
 
 class JobWorker:
-    def __init__(self, interval: float = 5.0) -> None:
+    def __init__(self, interval: float = 5.0, sweep_every: float = 600.0) -> None:
         self.interval = interval
+        self.sweep_every = sweep_every  # seconds between sweeps for documents still waiting to be read
+        self._last_sweep: float | None = None
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
 
@@ -44,7 +53,8 @@ class JobWorker:
         from superaide.jobs.handlers import load
 
         load()
-        schedule_recurring()
+        schedule_recurring()  # includes a sweep
+        self._last_sweep = time.monotonic()
         self._stop.clear()
         self._thread = threading.Thread(target=self._loop, name="job-worker", daemon=True)
         self._thread.start()
@@ -55,9 +65,22 @@ class JobWorker:
         if self._thread:
             self._thread.join(timeout=self.interval + 5)
 
+    def sweep_if_due(self, now: float | None = None) -> bool:
+        """The safety net for issue #12: every `sweep_every` seconds, queue reading for any instance whose
+        brain is ready while documents still wait. Returns whether it swept."""
+        from superaide.knowledge.pending import sweep
+
+        now = time.monotonic() if now is None else now
+        if self._last_sweep is not None and now - self._last_sweep < self.sweep_every:
+            return False
+        self._last_sweep = now
+        sweep()
+        return True
+
     def _loop(self) -> None:
         while not self._stop.is_set():
             try:
+                self.sweep_if_due()
                 ran = run_due()
             except Exception:  # the database may be briefly away; try again next tick
                 log.exception("job worker tick failed")

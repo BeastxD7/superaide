@@ -23,6 +23,7 @@ from superaide.brain.providers.base import CheckReport
 from superaide.brain.providers.presets import PRESETS, Preset
 from superaide.brain.providers.types import Capabilities
 from superaide.db.session import session_scope
+from superaide.knowledge.pending import brain_became_ready
 from superaide.security import urls
 from superaide.vault import check, store
 from superaide.vault.store import runtime_settings
@@ -277,6 +278,7 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], Any]) -> APIRo
         with session_scope() as s:
             platform_ai.set_opt_in(s, body.on, user_id=user_id)
         apply()
+        brain_became_ready()
         return view()
 
     @router.post(
@@ -366,6 +368,7 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], Any]) -> APIRo
                     user_id=user_id, models=report.models, prices=report.prices,
                 )  # fmt: skip
         apply()
+        brain_became_ready()
         return view()
 
     @router.post(
@@ -413,6 +416,7 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], Any]) -> APIRo
             for role, choice in chosen.items():
                 config.set_role(s, role, choice.provider, choice.model, user_id=user_id)
         apply()
+        brain_became_ready()
         return view()
 
     return router
