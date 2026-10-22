@@ -428,7 +428,9 @@ class UserAccount(TenantScoped, Base):
         return value
 
     display_name: Mapped[str] = mapped_column(String(120))
-    person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), unique=True)
+    # The account's own Person inside the Ava it hired; none until it hires (a Person belongs to one
+    # agent instance, and an account that has not hired belongs to none).
+    person_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("person.id"), unique=True, nullable=True)
     role: Mapped[str] = mapped_column(String(20), default="user")  # user | admin
     status: Mapped[str] = mapped_column(String(20), default="active")  # active | disabled
     timezone: Mapped[str] = mapped_column(String(64), default="UTC")  # set from the browser at sign-up
@@ -466,6 +468,23 @@ class AuthEvent(TenantScoped, Base):
     email_normalized: Mapped[str] = mapped_column(String(320), default="", index=True)
     ip: Mapped[str] = mapped_column(String(64), default="", index=True)
     user_agent: Mapped[str] = mapped_column(String(300), default="")
+
+
+class AccountAudit(Base):
+    """Append-only record of events about an account that belongs to no Ava (yet): sign-up, e-mail checks,
+    password changes before the first hire. Platform-level, so it has no agent_id and no isolation policy;
+    once the account hires, the same kind of line goes to its own Ava's audit_log (superaide.audit)."""
+
+    __tablename__ = "account_audit"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    actor: Mapped[str] = mapped_column(String(100))
+    action: Mapped[str] = mapped_column(String(60), index=True)
+    detail: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now()
+    )
 
 
 class AgentHire(TenantScoped, Base):

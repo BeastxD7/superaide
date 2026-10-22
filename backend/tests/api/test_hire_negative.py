@@ -98,7 +98,7 @@ def test_in_single_owner_mode_a_second_account_gets_409_and_learns_nothing_about
     with session_scope() as s:
         assert s.get(Person, owner_account.person_id).relation == "manager"
         other_account = s.get(UserAccount, me["user"]["id"])
-        assert s.get(Person, other_account.person_id).relation == "unknown"
+        assert other_account.person_id is None  # no Person until it hires
 
 
 def test_in_single_owner_mode_two_accounts_hiring_at_once_get_a_clean_409(browser, owner, single_owner, monkeypatch):
