@@ -1,5 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
-import { BRAIN, FAKE_ANTHROPIC_PORT, FAKE_ANTHROPIC_URL, API_PORT, API_URL, PROXY, PROXY_A, PROXY_B, PROXY_C, UPSTREAM_PORT, BASE_URL, DB_NAME, FAKE_GOOGLE_PORT, FAKE_GOOGLE_URL, GOOGLE, PG_ADMIN_URL, SLOT, WEB_PORT, apiEnv } from './src/env'
+import { BRAIN, FAKE_ANTHROPIC_PORT, FAKE_ANTHROPIC_URL, API_PORT, API_URL, DEV, DEV_PORT, DEV_URL, PROXY, PROXY_A, PROXY_B, PROXY_C, UPSTREAM_PORT, BASE_URL, DB_NAME, FAKE_GOOGLE_PORT, FAKE_GOOGLE_URL, GOOGLE, PG_ADMIN_URL, SLOT, WEB_PORT, apiEnv } from './src/env'
 
 // One slot = one API, one Next.js server and one database (see src/env.ts).
 // Tests inside a slot run one at a time because they reset the shared database;
@@ -27,10 +27,12 @@ export default defineConfig({
     launchOptions: { args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--mute-audio'] },
   },
   projects: [
-    { name: 'desktop', use: { ...devices['Desktop Chrome'] }, testIgnore: /\.(mobile|proxy)\.spec\.ts$/ },
+    { name: 'desktop', use: { ...devices['Desktop Chrome'] }, testIgnore: /\.(mobile|dev|proxy)\.spec\.ts$/ },
     { name: 'mobile', use: { ...devices['Pixel 7'] }, testMatch: /\.mobile\.spec\.ts$/ },
     // The /api proxy against a fake upstream (E2E_PROXY=1): no browser, no database.
     ...(PROXY ? [{ name: 'proxy', testMatch: /\.proxy\.spec\.ts$/ }] : []),
+    // Against `next dev` (E2E_DEV=1): React runs every effect twice there, which the production build never does.
+    ...(DEV ? [{ name: 'dev', use: { ...devices['Desktop Chrome'], baseURL: DEV_URL }, testMatch: /\.dev\.spec\.ts$/ }] : []),
   ],
   webServer: [
     // A fake Google for the "Continue with Google" tests (E2E_GOOGLE=1 only).
@@ -108,6 +110,20 @@ export default defineConfig({
             stdout: 'ignore' as const,
             stderr: 'pipe' as const,
           })),
+        ]
+      : []),
+    ...(DEV
+      ? [
+          {
+            command: `npx next dev --port ${DEV_PORT}`,
+            cwd: '../frontend',
+            url: `http://127.0.0.1:${DEV_PORT}/api/health`,
+            env: { ...process.env, API_INTERNAL_URL: API_URL, NEXT_TELEMETRY_DISABLED: '1', NEXT_DIST_DIR: `.next-dev-${SLOT}` },
+            reuseExistingServer: !process.env.CI,
+            timeout: 180_000,
+            stdout: 'ignore' as const,
+            stderr: 'pipe' as const,
+          },
         ]
       : []),
   ],

@@ -39,7 +39,7 @@ const ROLES: { id: RoleName; label: string; why: string }[] = [
 // it is sent (a comma or letters would otherwise reach the server as something it can't read).
 const PRICE_HELP = 'Enter the price as a number with a dot, like 1.50.'
 function parsePrice(text: string): number | null {
-  const t = text.trim()
+  const t = text.trim().replace(',', '.') // many keyboards and locales type 0,15
   if (!/^\d+(\.\d+)?$/.test(t)) return null
   const n = Number(t)
   return n <= 1000 ? n : null
@@ -618,6 +618,13 @@ function RolePicker({
       }),
     ) as Record<RoleName, Choice>
   const [choices, setChoices] = useState<Record<RoleName, Choice>>(initial)
+  // The saved roles changed under us (a reload, a provider removed): show them, not what was chosen before.
+  const rolesNow = JSON.stringify(settings.roles)
+  const [rolesSeen, setRolesSeen] = useState(rolesNow)
+  if (rolesSeen !== rolesNow) {
+    setRolesSeen(rolesNow)
+    setChoices(initial())
+  }
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
@@ -637,9 +644,6 @@ function RolePicker({
         if (!connected.includes(c.provider)) continue
         if (c.model.trim() === '') throw new Error(`Choose a model for ${role.label}.`)
         if (!isPriced(c)) {
-          if (c.input === '' || c.output === '') {
-            throw new Error(`Enter the price of ${c.model} (from ${label(c.provider)}'s price page) first.`)
-          }
           const input = parsePrice(c.input)
           const output = parsePrice(c.output)
           if (input === null || output === null) throw new Error(PRICE_HELP)
@@ -759,7 +763,7 @@ function RolePicker({
         </div>
       )}
       <div className="mt-3 flex items-center gap-3">
-        <Button disabled={busy} onClick={() => void save()}>
+        <Button disabled={busy || ROLES.some((r) => connected.includes(choices[r.id].provider) && !choices[r.id].model.trim())} onClick={() => void save()}>
           {busy && <Loader2 className="animate-spin" aria-hidden />} Save models
         </Button>
         {saved && <span className="text-sm text-muted">Saved.</span>}

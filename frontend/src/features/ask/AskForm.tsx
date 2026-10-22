@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useRef, useState, type FormEvent } from 'react'
+import { useRef, useState, useSyncExternalStore, type FormEvent } from 'react'
 import { BrandMark } from '@/components/site'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,6 +21,8 @@ function today(): string {
 
 // What the API's error body says, and which field it's about.
 function problemOf(status: number, detail: unknown): { text: string; field?: Field } {
+  // A link turned off while the form was open: the API's bare "Not Found" is not for people.
+  if (status === 404) return { text: 'This link has just been turned off.' }
   if (detail && typeof detail === 'object' && 'message' in detail) {
     const d = detail as { message: string; field?: Field }
     return { text: d.message, field: d.field }
@@ -31,7 +33,6 @@ function problemOf(status: number, detail: unknown): { text: string; field?: Fie
     return { text: 'Check this field and try again.', field }
   }
   if (typeof detail === 'string') return { text: detail }
-  if (status === 404) return { text: 'This link has just been turned off.' }
   return { text: "That didn't go through. Try again in a minute." }
 }
 
@@ -42,6 +43,12 @@ export function AskForm({ page }: { page: AskPage }) {
   const [problem, setProblem] = useState<{ text: string; field?: Field } | null>(null)
   const summary = useRef<HTMLDivElement>(null)
   const done = useRef<HTMLHeadingElement>(null)
+  // Today in the visitor's own zone. The server has no idea of it, so nothing is rendered there (no `min` until the page is live).
+  const minDate = useSyncExternalStore(
+    () => () => {},
+    today,
+    () => undefined,
+  )
   const url = `/api/p/ask/${encodeURIComponent(page.handle)}`
 
   async function submit(e: FormEvent<HTMLFormElement>) {
@@ -150,7 +157,6 @@ export function AskForm({ page }: { page: AskPage }) {
                 required
                 maxLength={page.limits.contact}
                 autoComplete="email"
-                inputMode="email"
                 className="min-h-11"
                 aria-invalid={invalid('contact')}
                 aria-describedby={describedBy('contact', 'ask-contact-hint')}
@@ -177,7 +183,7 @@ export function AskForm({ page }: { page: AskPage }) {
 
             <div className="grid gap-1.5">
               <Label htmlFor="ask-deadline">Deadline, if there is one</Label>
-              <Input id="ask-deadline" name="deadline" type="date" min={today()} className="min-h-11 sm:max-w-56" aria-invalid={invalid('deadline')} aria-describedby={describedBy('deadline')} />
+              <Input id="ask-deadline" name="deadline" type="date" min={minDate} className="min-h-11 sm:max-w-56" aria-invalid={invalid('deadline')} aria-describedby={describedBy('deadline')} />
             </div>
 
             {/* For bots only: people never see or reach this field. */}

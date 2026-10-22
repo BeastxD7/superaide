@@ -54,7 +54,8 @@ test('unknown and revoked handles show the same page', async ({ page, owner }) =
   await page.getByLabel('Pick a handle').fill('e2e-revoke-me')
   await page.getByRole('button', { name: 'Publish link' }).click()
   await expect(page.getByText('Your link is live.')).toBeVisible()
-  await page.getByRole('button', { name: 'Revoke' }).click()
+  await page.getByRole('button', { name: 'Revoke', exact: true }).click()
+  await page.getByRole('button', { name: 'Yes, revoke it for good' }).click()
   await expect(page.getByText(/Revoked/)).toBeVisible()
 
   const revoked = await page.request.get('/a/e2e-revoke-me')
@@ -63,4 +64,30 @@ test('unknown and revoked handles show the same page', async ({ page, owner }) =
   expect(unknown.status()).toBe(404)
   await page.goto('/a/e2e-revoke-me')
   await expect(page.getByRole('heading', { name: "There's no page here" })).toBeVisible()
+})
+
+test('a link revoked while the form is open says so in words, and the date picker starts today in the visitor zone', async ({ page, owner, api, browser }) => {
+  void owner
+  await page.goto('/dashboard/settings')
+  await page.getByLabel('Pick a handle').fill('e2e-revoked')
+  await page.getByRole('button', { name: 'Publish link' }).click()
+  await expect(page.getByText('Your link is live.')).toBeVisible()
+
+  const visitor = await browser.newContext()
+  const v = await visitor.newPage()
+  await v.goto('/a/e2e-revoked')
+  await v.getByLabel(/Your name/).fill('Lee Wong')
+  await v.getByLabel(/How to reach you/).fill('+65 8123 4567')
+  await v.getByLabel(/What it.s about/).fill('Speaking at our conference')
+  const now = new Date()
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  await expect(v.getByLabel('Deadline, if there is one')).toHaveAttribute('min', today)
+  expect(await v.getByLabel(/How to reach you/).getAttribute('inputmode')).toBeNull() // a phone number is allowed too
+
+  expect((await api.post('/app/ask-link/revoke')).ok()).toBeTruthy()
+  await v.waitForTimeout(1200)
+  await v.getByRole('button', { name: 'Send to Ava' }).click()
+  await expect(v.getByText('This link has just been turned off.')).toBeVisible()
+  await expect(v.getByText('Not Found')).toHaveCount(0)
+  await visitor.close()
 })

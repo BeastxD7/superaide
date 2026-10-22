@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CHANNEL_LABEL, capitalise, useAppData } from '@/features/dashboard/data'
 import type { PersonCard } from '@/lib/api'
+import { initialOf } from '@/lib/initial'
 import { useSession } from '@/lib/session-context'
 
 export function PeoplePage() {
@@ -55,7 +56,7 @@ export function PeoplePage() {
                   <td className="px-4 py-3">
                     <span className="flex items-center gap-2.5">
                       <span className="grid size-8 shrink-0 place-items-center rounded-full bg-lilac-100 text-xs font-semibold text-violet-700">
-                        {p.name.charAt(0).toUpperCase()}
+                        {initialOf(p.name)}
                       </span>
                       <span className="min-w-0 font-medium text-ink [overflow-wrap:anywhere]">{p.name}</span>
                     </span>

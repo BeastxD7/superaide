@@ -11,6 +11,8 @@ import { AskRequests } from '@/features/ask/AskRequests'
 import { CHANNEL_LABEL } from '@/features/dashboard/data'
 import { useNeedsYou } from '@/features/needs-you/useNeedsYou'
 import { AppError, call, type NeedsYouItem, type TriageFeedback, type TriageSettings, type TriageVerb } from '@/lib/api'
+import { formatWhen } from '@/lib/dates'
+import { wholeNumber } from '@/lib/numbers'
 import { useSession } from '@/lib/session-context'
 
 type Tab = 'needs_you' | 'handled' | 'held'
@@ -29,10 +31,7 @@ const STATE_LABEL: Record<string, string> = {
   expired: 'Not acknowledged',
 }
 
-function when(iso: string | null): string {
-  if (!iso) return ''
-  return new Date(iso).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })
-}
+const when = formatWhen
 
 export function NeedsYouPage() {
   const { me } = useSession()
@@ -233,6 +232,7 @@ function SettingsPanel({ name }: { name: string }) {
   const [topics, setTopics] = useState('')
   const [problem, setProblem] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [loadedAt, setLoadedAt] = useState(0) // when the settings last came back: away/busy are compared to it
 
   useEffect(() => {
@@ -248,6 +248,7 @@ function SettingsPanel({ name }: { name: string }) {
   async function save(path: string, json: unknown, method: 'POST' | 'PUT' = 'POST') {
     setProblem(null)
     setSaved(false)
+    setSaving(true)
     try {
       const s = await call<TriageSettings>(path, { method, json })
       setSettings(s)
@@ -255,6 +256,8 @@ function SettingsPanel({ name }: { name: string }) {
       setSaved(true)
     } catch (e) {
       setProblem(e instanceof AppError ? e.message : String(e))
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -302,12 +305,25 @@ function SettingsPanel({ name }: { name: string }) {
         className="mt-4 grid gap-3 sm:grid-cols-2"
         onSubmit={(e) => {
           e.preventDefault()
+          if (saving) return
           const form = new FormData(e.currentTarget)
+          // A blank field is not zero: zero would silence every interruption, with a success message.
+          const hour = wholeNumber(form.get('per_hour'), 0, 60)
+          const day = wholeNumber(form.get('per_day'), 0, 200)
+          if (hour === null || day === null) {
+            setSaved(false)
+            setProblem(
+              hour === null
+                ? 'Enter a whole number from 0 to 60 for interrupts per hour.'
+                : 'Enter a whole number from 0 to 200 for interrupts per day.',
+            )
+            return
+          }
           void save(
             '/triage/settings',
             {
-              max_per_hour: Number(form.get('per_hour')),
-              max_per_day: Number(form.get('per_day')),
+              max_per_hour: hour,
+              max_per_day: day,
               silenced_topics: topics
                 .split(',')
                 .map((t) => t.trim())
@@ -319,18 +335,18 @@ function SettingsPanel({ name }: { name: string }) {
       >
         <label className="text-sm text-body">
           Interrupts per hour, at most
-          <Input name="per_hour" type="number" min={0} max={60} defaultValue={settings.max_per_hour} />
+          <Input name="per_hour" type="number" inputMode="numeric" required min={0} max={60} step={1} defaultValue={settings.max_per_hour} />
         </label>
         <label className="text-sm text-body">
           Interrupts per day, at most
-          <Input name="per_day" type="number" min={0} max={200} defaultValue={settings.max_per_day} />
+          <Input name="per_day" type="number" inputMode="numeric" required min={0} max={200} step={1} defaultValue={settings.max_per_day} />
         </label>
         <label className="text-sm text-body sm:col-span-2">
           Never interrupt me about (comma separated)
           <Input value={topics} onChange={(e) => setTopics(e.target.value)} placeholder="golf, newsletters" maxLength={2000} />
         </label>
         <div className="flex items-center gap-3 sm:col-span-2">
-          <Button type="submit" size="sm">
+          <Button type="submit" size="sm" disabled={saving}>
             Save
           </Button>
           {saved && <span className="text-xs text-muted">Saved.</span>}

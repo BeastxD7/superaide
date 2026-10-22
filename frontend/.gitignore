@@ -9,3 +9,4 @@ next-env.d.ts
 
 # Voice activity detector files, copied from node_modules (scripts/copy-vad-assets.mjs)
 /public/vad/
+.next-dev-*

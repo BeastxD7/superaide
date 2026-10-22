@@ -15,6 +15,7 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Loadable, type LoadState } from '@/components/load-state'
 import { CATEGORY_LABEL, DIGEST_LABEL, CHANNEL_LABEL, capitalise, useAppData } from '@/features/dashboard/data'
 import type { Me, Memory, Message, PersonCard, Preferences, Reminder } from '@/lib/api'
+import { initialOf } from '@/lib/initial'
 import { useSession } from '@/lib/session-context'
 
 function greeting(): string {
@@ -239,7 +240,7 @@ function PeopleCard({ state }: { state: LoadState<{ people: PersonCard[] }> }) {
                 {people.slice(0, 5).map((p) => (
                   <li key={p.id} className="flex items-center gap-2 text-sm">
                     <span className="grid size-7 place-items-center rounded-full bg-mist text-xs font-semibold text-violet-700">
-                      {p.name.charAt(0).toUpperCase()}
+                      {initialOf(p.name)}
                     </span>
                     <span className="min-w-0 font-medium text-ink [overflow-wrap:anywhere]">{p.name}</span>
                     <span className="text-muted">{capitalise(p.relationship)}</span>

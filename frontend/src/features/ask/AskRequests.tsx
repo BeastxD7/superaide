@@ -9,6 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useAsk } from '@/features/ask/useAsk'
+import { announceApprovalsChanged, useApprovalsChanged } from '@/lib/approvals-sync'
+import { formatDay, formatWhen } from '@/lib/dates'
 import { AppError, call, type AskRank, type AskRequestCard } from '@/lib/api'
 
 const RANK: Record<AskRank, { label: string; className: string } | null> = {
@@ -18,15 +20,14 @@ const RANK: Record<AskRank, { label: string; className: string } | null> = {
   low: { label: 'A topic you silenced', className: 'bg-haze-100 text-muted' },
 }
 
-function when(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
-}
+const when = formatWhen
 
 // Requests people left on the owner's "Ask my Ava" link. Everything the visitor typed is shown as plain
 // text (React escapes it), never as markup or links. Renders nothing while the feature is off.
 export function AskRequests({ title = 'Requests from your link', className }: { title?: string; className?: string }) {
   const { enabled, data, reload } = useAsk<{ requests: AskRequestCard[] }>('/ask-link/requests')
   const [problem, setProblem] = useState<string | null>(null)
+  useApprovalsChanged(reload)
   if (!enabled || !data) return null
   const items = data.requests
 
@@ -66,10 +67,11 @@ function RequestItem({ item, onChange, onError }: { item: AskRequestCard; onChan
     onError(null)
     try {
       await fn()
-      onChange()
     } catch (e) {
       onError(e instanceof AppError ? e.message : String(e))
     } finally {
+      onChange() // read again even after a failure: the list may have been stale
+      announceApprovalsChanged()
       setBusy(false)
     }
   }
@@ -99,7 +101,7 @@ function RequestItem({ item, onChange, onError }: { item: AskRequestCard; onChan
           {item.contact_kind === 'email' ? <Mail className="size-3.5" aria-hidden /> : <Phone className="size-3.5" aria-hidden />}
           {item.contact} <span className="sr-only">(not verified)</span>
         </span>
-        {item.deadline && <span>Deadline {new Date(`${item.deadline}T00:00:00`).toLocaleDateString(undefined, { dateStyle: 'medium' })}</span>}
+        {item.deadline && <span>Deadline {formatDay(`${item.deadline}T00:00:00`)}</span>}
         <span>Not verified</span>
       </p>
 

@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { CATEGORY_LABEL, SOURCE_LABEL, useAppData } from '@/features/dashboard/data'
 import { call, type Memory } from '@/lib/api'
 import { errorMessage } from '@/lib/action'
+import { formatDay } from '@/lib/dates'
 import { useSession } from '@/lib/session-context'
 
 export function NotebookPage() {
@@ -19,6 +20,7 @@ export function NotebookPage() {
   const [filter, setFilter] = useState<string>('all')
   const [query, setQuery] = useState('')
   const [confirm, setConfirm] = useState<string | null>(null)
+  const [forgetting, setForgetting] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const name = me?.agent.name ?? 'Ava'
 
@@ -31,13 +33,17 @@ export function NotebookPage() {
   )
 
   async function forget(id: string) {
+    if (forgetting) return
     setActionError(null)
+    setForgetting(true)
     try {
       await call(`/notebook/${id}/forget`, { method: 'POST' })
       setConfirm(null)
       await reload()
     } catch (e) {
       setActionError(errorMessage(e))
+    } finally {
+      setForgetting(false)
     }
   }
 
@@ -105,14 +111,14 @@ export function NotebookPage() {
                   <span>{m.document ? `from ${m.document}` : (SOURCE_LABEL[m.source] ?? 'from chat')}</span>
                   {m.shareable && <Badge variant="outline">Shareable</Badge>}
                   <time className="ml-auto" dateTime={m.at}>
-                    {new Date(m.at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                    {formatDay(m.at)}
                   </time>
                 </div>
                 <p className="whitespace-pre-wrap text-sm text-ink [overflow-wrap:anywhere]">{m.text}</p>
                 {confirm === m.id ? (
                   <div className="mt-3 flex items-center gap-2 text-xs">
                     <span className="text-muted">{name} won&apos;t use this again.</span>
-                    <Button size="sm" variant="destructive" onClick={() => void forget(m.id)}>
+                    <Button size="sm" variant="destructive" disabled={forgetting} onClick={() => void forget(m.id)}>
                       Forget
                     </Button>
                     <Button size="sm" variant="ghost" autoFocus onClick={() => setConfirm(null)}>
