@@ -148,7 +148,9 @@ class BudgetGuard:
         self.cap = Decimal(str(cap_usd))
         self.db_url = db_url
         self.limits = limits or Limits()
-        self.prices = prices or DEFAULT_PRICES
+        # Superaide pays for credit calls, so they are priced from the built-in tables only: never from
+        # a price the owner typed in (an owner price of 0 must not make Superaide's calls free).
+        self.prices = DEFAULT_PRICES if key_source == "platform" else (prices or DEFAULT_PRICES)
         self.scope = scope or scope_or_default()  # the instance whose ledger this guards
         self.key_source = key_source
 

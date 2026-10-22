@@ -138,7 +138,6 @@ test.describe('credits', () => {
   })
 
   test('credit-paid calls are charged at Superaide\'s price, whatever price the owner sets', async ({ page, owner, api }) => {
-    test.fail(true, 'BUG: an owner can price claude-haiku-5-5 at US$0, and credit-paid calls then cost nothing against the allowance and the platform cap')
     void owner
     await optIn(page)
     // The owner's own price table, through the same API the page uses (any signed-in owner can send it).

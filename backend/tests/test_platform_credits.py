@@ -170,6 +170,32 @@ def test_the_operators_own_ava_uses_the_server_key_as_its_own(owner_client, cred
         assert runtime_settings().anthropic_api_key == ""
 
 
+# --- Superaide's credits are priced by Superaide, never by the owner (#59) ---------------------------
+
+
+def test_an_owner_price_of_zero_cannot_make_credit_paid_calls_free(owner_client, credits):  # noqa: F811
+    from superaide.brain.pricing import PriceRegistry, worst_case_cost
+
+    owner_client.post("/app/providers/credits", json={"on": True})
+    priced = owner_client.post(
+        "/app/providers/prices",
+        json={"provider": "anthropic", "model": "claude-haiku-5-5", "input_usd_per_mtok": 0, "output_usd_per_mtok": 0},
+    )
+    assert priced.status_code == 200  # the owner's own table, for their own key
+    settings = live(runtime_settings())
+    llm = build_llm(settings)
+    assert isinstance(llm, RoutedLLM)
+    guard = llm.routes["platform"].guard
+    assert guard.key_source == "platform"
+    price = guard.prices.price_for("claude-haiku-5-5", "anthropic")
+    assert (price.input, price.output) == (Decimal("0.10"), Decimal("0.50"))  # Superaide's price
+    assert worst_case_cost("claude-haiku-5-5", 1000, 4000, prices=guard.prices) > 0
+    # Even a guard handed the owner's table uses the built-in prices when credits pay.
+    free = PriceRegistry(owner={("anthropic", "claude-haiku-5-5"): price.__class__(Decimal(0), Decimal(0))})
+    assert BudgetGuard(10, prices=free, key_source="platform").prices.price_for("claude-haiku-5-5").input > 0
+    assert BudgetGuard(10, prices=free, key_source="owner").prices.price_for("claude-haiku-5-5").input == 0
+
+
 # --- who pays decides which limits count (#60, #61) -------------------------------------------------
 
 

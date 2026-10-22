@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from superaide.brain.budget import BudgetGuard
 from superaide.brain.llm import LLM, ClaudeLLM, FakeLLM, ProviderLLM, RoutedLLM, SystemBlock
-from superaide.brain.pricing import PriceRegistry, owner_prices
+from superaide.brain.pricing import DEFAULT_PRICES, PriceRegistry, owner_prices
 from superaide.brain.turn import Prediction, RequestedAction, TurnOutput
 from superaide.channels.base import FakeMessenger, Messenger, WebMessenger
 from superaide.config import Settings, get_settings
@@ -140,7 +140,8 @@ def build_llm(settings: Settings) -> LLM:
     if any(split(m)[0] == platform_ai.ROUTE for m in (settings.model_chat, settings.model_triage, settings.model_deep)):
         # Paid by Superaide AI credits: its own guard records key_source="platform" and reserves against
         # the owner's allowance and the platform's daily cap. The key never enters the owner's settings.
-        credits = BudgetGuard.for_instance(settings, prices=load_prices(settings), key_source="platform")
+        # Priced from the built-in tables only, never from prices the owner set (BudgetGuard enforces it too).
+        credits = BudgetGuard.for_instance(settings, prices=DEFAULT_PRICES, key_source="platform")
         routes[platform_ai.ROUTE] = ClaudeLLM(credits, api_key=platform_ai.platform_key())
     roles = {split(m)[0] for m in (settings.model_chat, settings.model_triage, settings.model_deep)}
     if set(routes) == {"anthropic"} and roles == {"anthropic"}:
