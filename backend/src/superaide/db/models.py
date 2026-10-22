@@ -414,6 +414,20 @@ class Mandate(Scoped, Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
+class McpPin(Scoped, Base):
+    """The hash and text of one MCP tool as the owner approved it (issue #116)."""
+
+    __tablename__ = "mcp_pin"
+    __table_args__ = (UniqueConstraint("agent_id", "skill_id", "server", "tool", name="uq_mcp_pin"),)
+
+    skill_id: Mapped[str] = mapped_column(String(120))
+    server: Mapped[str] = mapped_column(String(300))
+    tool: Mapped[str] = mapped_column(String(64))
+    hash: Mapped[str] = mapped_column(String(64))
+    snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    approved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class AuditLog(Scoped, Base):
     """Append-only record of decisions, model calls and refused actions."""
 

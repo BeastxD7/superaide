@@ -81,6 +81,10 @@ class Settings(BaseSettings):
     # (issue #112). Off by default; never covers send or spend.
     mandates_enabled: bool = False
 
+    # An MCP tool whose description, schema or annotations differ from what the owner approved is blocked
+    # (issue #116). The MCP client calls mcp.pin.may_call; off by default until that client exists.
+    mcp_pinning: bool = False
+
     # Tenancy
     tenant_id: uuid.UUID = DEFAULT_TENANT_ID
     agent_id: uuid.UUID = DEFAULT_AGENT_ID
