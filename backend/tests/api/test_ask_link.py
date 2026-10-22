@@ -501,3 +501,13 @@ def test_needs_you_includes_requests_when_triage_is_on(owner, browser, monkeypat
     r = owner.get("/app/needs-you")
     assert r.status_code == 200, r.text
     assert [c["name"] for c in r.json()["ask_link"]] == ["Lee Wong"]
+
+
+def test_an_owner_cannot_probe_handles_without_limit(owner, monkeypatch):
+    """Claiming a handle answers "taken" or "yours", so guessing many is an enumeration: capped per owner (SEC-10)."""
+    monkeypatch.setattr(get_settings(), "ask_handle_tries_per_day", 4)
+    codes = [owner.put("/app/ask-link", json={"handle": f"guess-{n:03d}"}).status_code for n in range(7)]
+    assert codes[:4] == [200] * 4
+    assert codes[4:] == [429] * 3
+    # Editing something else about the link is not a handle try.
+    assert owner.put("/app/ask-link", json={"show_first_name": False}).status_code == 200

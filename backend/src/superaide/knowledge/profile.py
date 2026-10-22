@@ -87,12 +87,10 @@ def owner_brief(session: Session, sender: Sender, audience: Audience, now: datet
     private = audience.person_ids == {owner.id} and not audience.has_unknown
     lines = [f"You work for {owner.display_name} (your owner)."]
 
-    if pref is not None:
-        quiet, local = _in_quiet_hours(pref, now)
-        lines.append(f"It's {local} for {owner.display_name}" + (", inside their quiet hours." if quiet else "."))
-
     if is_owner and private:
         if pref is not None:
+            quiet, local = _in_quiet_hours(pref, now)
+            lines.append(f"It's {local} for {owner.display_name}" + (", inside their quiet hours." if quiet else "."))
             if pref.urgent_topics:
                 lines.append("They want to be interrupted only for: " + "; ".join(pref.urgent_topics) + ".")
             lines.append(
@@ -127,6 +125,15 @@ def owner_brief(session: Session, sender: Sender, audience: Audience, now: datet
     # already filtered out of their prompt by the audience gate.
     if pref is not None:
         shared = [SHARE_LABELS.get(v, v) for v in pref.shareable]
+        if "availability" in pref.shareable:
+            # Worded here, in code, from a setting the owner chose to share: never the clock time or the
+            # name of the setting, which the model could repeat (issue #93, SEC-8).
+            quiet, _ = _in_quiet_hours(pref, now)
+            lines.append(
+                "Right now is outside your owner's usual hours: they probably won't answer soon."
+                if quiet
+                else "Right now is within your owner's usual hours."
+            )
         lines.append(
             "You may tell this person: "
             + ("; ".join(shared) if shared else "nothing about them beyond their name")

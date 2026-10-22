@@ -231,6 +231,16 @@ def make_owner_router(get_agent: Callable[[], Any] | None = None) -> APIRouter:
         with session_scope() as s:
             return _view(s, person_id)
 
+    def self_limit(scope: Any) -> None:
+        """Every try at a new handle is counted (in its own transaction, so a refused try still counts): the
+        answer "taken" or "yours" would otherwise let an owner list who holds which handle (SEC-10)."""
+        with session_scope() as counting:
+            tries = service.hit(counting, f"handle-try:{scope.agent_id}", timedelta(days=1), datetime.now(UTC))
+        if tries > get_settings().ask_handle_tries_per_day:
+            raise HTTPException(
+                429, {"message": "Too many handles tried today. Try again tomorrow.", "field": "handle"}
+            )
+
     @router.put(
         "",
         summary="Create or change your Ask link",
@@ -250,6 +260,7 @@ def make_owner_router(get_agent: Callable[[], Any] | None = None) -> APIRouter:
                 if link is None and wanted is None:
                     raise _invalid("Pick a handle for your link.", "handle")
                 if wanted is not None and (link is None or wanted != link.handle or link.revoked_at is not None):
+                    self_limit(scope)
                     taken = s.scalar(select(AskHandle).where(AskHandle.handle == wanted))
                     if taken is not None and taken.agent_id != scope.agent_id:
                         raise HTTPException(409, {"message": "That handle is taken. Try another.", "field": "handle"})

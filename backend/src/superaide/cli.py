@@ -267,6 +267,9 @@ def _reset_db(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
+    from superaide.security import logredact
+
+    logredact.install()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     parser = argparse.ArgumentParser(prog="superaide")
     sub = parser.add_subparsers(dest="cmd", required=True)

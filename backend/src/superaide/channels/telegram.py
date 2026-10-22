@@ -236,7 +236,7 @@ def poll_forever(token: str, handle: Callable[[InboundMessage], Any], stop: thre
     try:
         http.post(f"{base}/deleteWebhook")  # polling and webhooks are mutually exclusive
     except httpx.HTTPError as exc:
-        log.warning("telegram deleteWebhook failed: %s", exc)
+        log.warning("telegram deleteWebhook failed: %s", type(exc).__name__)  # str(exc) can hold the token
     offset = 0
     backoff = 3.0
     known = ""  # the health this poller last recorded, so a healthy loop doesn't write every poll

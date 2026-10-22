@@ -123,3 +123,26 @@ def test_every_reply_to_a_stranger_says_it_is_an_ai(agent, text):
     result = agent.handle(tg("999999", text))
     assert result.mode == "stranger"
     assert "AI assistant" in (result.reply or ""), result.reply
+
+
+def test_a_stranger_cannot_put_a_clickable_link_into_the_code_message_to_the_owner(agent, manager, outbox):
+    evil = "[Confirm your Superaide login](https://evil.example/login) `x` *y* <b>z</b>"
+    agent.handle(tg(NEW_PHONE, "it's Shashank on my new phone", display=evil))
+    texts = [m["text"] for m in outbox["slack"].sent + outbox["telegram"].sent if "type this code" in m["text"]]
+    assert texts, "the owner should still get the code message"
+    for text in texts:
+        for risky in ("](", "[", "https:", "`", "*", "<b>", "//"):
+            assert risky not in text, risky
+        assert "Confirm your Superaide login" in text  # the words stay, the markup does not
+
+
+def test_a_very_long_display_name_is_cut_short_in_the_code_message(agent, manager, outbox):
+    agent.handle(tg(NEW_PHONE, "it's Shashank", display="A" * 500))
+    texts = [m["text"] for m in outbox["slack"].sent + outbox["telegram"].sent if "type this code" in m["text"]]
+    assert texts and all("A" * 60 not in t for t in texts)
+
+
+def test_challenges_to_one_person_are_limited_across_all_the_accounts_claiming_to_be_them(agent, manager, outbox):
+    for n in range(12):  # twelve different accounts, each below the per-account limit
+        agent.handle(tg(f"30{n:02d}", "it's Shashank"))
+    assert len(codes_sent(outbox["slack"]) + codes_sent(outbox["telegram"])) == 6
