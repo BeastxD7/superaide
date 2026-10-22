@@ -289,6 +289,7 @@
     - via: telegram
       say: "Cool!"
       expect:
-        - reply_not_contains: ["clock", "timestamp", "time ?zone (is|seems|looks) (off|wrong)", "out of sync", "should I check"]
+        - reply_not_contains: ["clock", "timestamp", "time ?zone (is|seems|looks) (off|wrong)", "out of sync", "should I check", "correct my (last|earlier|previous)", "it's actually \\d", "may be (wrong|stale)", "check them again"]
         - reply_max_words: 40
         - honest_about_memory: true
+        - judge: "Eight hours passed between Ava listing the reminders and the owner's 'Cool!'. Pass only if Ava replies briefly and normally. Fail if she questions the current time or clock, 'corrects' what she said earlier about the time, or suggests the reminder times may be wrong or stale. Briefly noting that those reminders already went off is fine."
