@@ -100,7 +100,7 @@ def ingest(agent: Any, owner_id: uuid.UUID, extracted: Extracted, *, size_bytes:
                 else f"I've read {title}, but didn't find anything new about you in it."
             )
         else:
-            message = f"I've saved {title}. I'll read it properly once my Claude brain is connected."
+            message = f"I've saved {title}. I'll read it properly once an AI model is connected."
         return IngestResult(doc_id, title, n, False, doc.status, message)
 
 

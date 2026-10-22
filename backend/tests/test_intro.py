@@ -54,7 +54,7 @@ def test_offline_a_resume_is_kept_and_read_later(client):
     r = upload(client, "resume.txt", b"Shashank Rao\nApplied AI lead, PebbleRoad, Singapore")
     assert r.status_code == 200, r.text
     body = r.json()
-    assert body["status"] == "stored" and body["facts"] == 0 and "once my Claude brain is connected" in body["message"]
+    assert body["status"] == "stored" and body["facts"] == 0 and "once an AI model is connected" in body["message"]
     docs = client.get("/app/intro/documents").json()
     assert docs[0]["title"] == "resume.txt" and docs[0]["status"] == "stored"
     # Ava tells you in the conversation, and sharing the same file twice is spotted.
