@@ -108,6 +108,14 @@ class DecideBody(BaseModel):
     reason: str | None = Field(default=None, max_length=500)
 
 
+class AnswerQuestionBody(BaseModel):
+    answer: str = Field(max_length=2000)
+
+
+class SkipQuestionBody(BaseModel):
+    never: bool = False
+
+
 class ReminderBody(BaseModel):
     text: str = Field(min_length=1, max_length=500)
     # Either an exact moment, or a time in the text ("Call Priya tomorrow at 5").
@@ -549,6 +557,77 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 "shareable": [{"value": v, "label": SHARE_LABELS.get(v, v)} for v in pref.shareable],
                 "never_share": pref.never_share,
             }
+
+    def question_on(person_id: uuid.UUID = Depends(owner_person_id)) -> uuid.UUID:
+        """The owner, once One Good Question is on (404 otherwise; sign-in and ownership are checked first)."""
+        if not get_settings().one_good_question_enabled:
+            raise HTTPException(404, "Not found")
+        return person_id
+
+    def _question_view(q: Any) -> dict[str, Any] | None:
+        if q is None:
+            return None
+        return {"id": str(q.id), "topic": q.topic, "question": q.question, "status": q.status, "answer": q.answer}
+
+    @router.get(
+        "/question",
+        tags=["Owner: chat & notebook"],
+        summary="Today's question",
+        description=(
+            "One Good Question (ONE_GOOD_QUESTION_ENABLED, off by default; 404 while off): the one clarifying "
+            "question Ava may ask today, if she has asked it."
+        ),
+    )
+    def question_today(person_id: uuid.UUID = Depends(question_on)) -> dict[str, Any]:
+        from superaide.trust import questions
+
+        with session_scope() as s:
+            owner = require(s, Person, person_id)
+            return {"question": _question_view(questions.today(s, owner))}
+
+    @router.post(
+        "/question/ask",
+        tags=["Owner: chat & notebook"],
+        summary="Ask today's question",
+        description="Today's question, chosen if the day's budget is unspent: at most one a day, or null.",
+    )
+    def question_ask(person_id: uuid.UUID = Depends(question_on)) -> dict[str, Any]:
+        from superaide.trust import questions
+
+        with session_scope() as s:
+            owner = require(s, Person, person_id)
+            return {"question": _question_view(questions.ask(s, owner))}
+
+    @router.post("/question/{question_id}/answer", tags=["Owner: chat & notebook"], summary="Answer the question")
+    def question_answer(
+        question_id: uuid.UUID, body: AnswerQuestionBody, person_id: uuid.UUID = Depends(question_on)
+    ) -> dict[str, Any]:
+        from superaide.trust import questions
+
+        with session_scope() as s:
+            owner = require(s, Person, person_id)
+            try:
+                return {"question": _question_view(questions.answer(s, owner, question_id, body.answer))}
+            except questions.QuestionError as exc:
+                raise HTTPException(exc.status, str(exc)) from exc
+
+    @router.post(
+        "/question/{question_id}/skip",
+        tags=["Owner: chat & notebook"],
+        summary="Skip the question",
+        description="`never` also stops Ava asking about that topic again.",
+    )
+    def question_skip(
+        question_id: uuid.UUID, body: SkipQuestionBody, person_id: uuid.UUID = Depends(question_on)
+    ) -> dict[str, Any]:
+        from superaide.trust import questions
+
+        with session_scope() as s:
+            owner = require(s, Person, person_id)
+            try:
+                return {"question": _question_view(questions.skip(s, owner, question_id, never=body.never))}
+            except questions.QuestionError as exc:
+                raise HTTPException(exc.status, str(exc)) from exc
 
     @router.post(
         "/notebook/{memory_id}/confirm",

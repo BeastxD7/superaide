@@ -199,6 +199,9 @@ class Settings(BaseSettings):
     # Echo Filter (#137, tracking #142). Off: facts are stored as before. On: a fact from a link, Telegram or
     # Slack is stored as hearsay with its root origin; a second independent root, or the owner, makes it a fact.
     echo_filter_enabled: bool = False
+    # One Good Question (#121, tracking #142). Off: /app/question answers 404. On: Ava may ask the owner at most
+    # one clarifying question a day (a database rule), chosen in code by uncertainty times impact.
+    one_good_question_enabled: bool = False
     gmail_poll_minutes: int = 5
     # The owner's Gmail sign-in (same OAuth client as Calendar); kept per instance in the vault.
     gmail_refresh_token: str = ""
