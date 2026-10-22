@@ -110,6 +110,8 @@ test('while a reply streams the transcript is not a live region; one hidden stat
   await expect(page.getByTestId('live-reply').locator('[aria-live], [role="status"]')).toHaveCount(0)
   await expect(page.locator('main [aria-live]')).toHaveCount(0)
   release()
+  await expect(page.getByTestId('live-reply')).toHaveCount(0)
+  await expect(page.getByTestId('chat-status')).toHaveText('Ava replied')
 })
 
 const NEEDS_YOU = { needs_you: [], handled: [], held: [], counts: { needs_you: 0, handled: 0, held: 0 }, stage: 'infant' }

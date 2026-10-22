@@ -27,6 +27,7 @@ test('while Ava works you see her reasoning, each tool call and the answer as it
         ['tool', { id: 't2', name: 'create_reminder', state: 'running', label: 'Setting a reminder: Gym, 7pm', detail: '' }],
         ['text', { delta: 'Your gym is ' }],
         ['text', { delta: 'Cult Fit.' }],
+        ['done', { mode: 'chat' }],
       ]),
     }),
   )

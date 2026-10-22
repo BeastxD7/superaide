@@ -29,8 +29,8 @@ export function Conversation({
   const endRef = useRef<HTMLDivElement>(null)
 
   // One small hidden status instead of a live region over the whole transcript and the streaming
-  // bubble (a screen reader would re-read it on every token): say she is working, then read the
-  // finished reply once.
+  // bubble (a screen reader would re-read it on every token): say she is working, then that she
+  // replied, once. The reply itself is the last message in the transcript, one step up from the box.
   const working = Boolean(live) || typing
   const [finished, setFinished] = useState(false)
   const [wasWorking, setWasWorking] = useState(false)
@@ -39,8 +39,7 @@ export function Conversation({
     if (working) setFinished(false)
     else setFinished(true)
   }
-  const lastAgent = [...messages].reverse().find((m) => m.from === 'agent')
-  const announcement = working ? `${agentName} is working` : finished && lastAgent ? `${agentName} said: ${lastAgent.text}` : ''
+  const announcement = working ? `${agentName} is working` : finished && messages.some((m) => m.from === 'agent') ? `${agentName} replied` : ''
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' })
