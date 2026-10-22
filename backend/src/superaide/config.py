@@ -339,6 +339,10 @@ class Settings(BaseSettings):
     sleep_job_hour: int = 3  # local hour in the owner's time zone
     memory_recheck_enabled: bool = False
     memory_recheck_per_week: int = 2
+    # "The Mirror": a weekly note of patterns in the owner's own reminders and messages, each with receipts.
+    # Off: /app/mirror/* answer 404 (owner routes still 401/403 first). On: an owner may opt in. The patterns
+    # are counted in code and worded from templates, so it makes no model call at all.
+    mirror_enabled: bool = False
     # Signs the public form's token (time-to-submit and same-form check). Blank: a random key per
     # process, so a restart only means a visitor reloads the page.
     ask_form_secret: str = ""
