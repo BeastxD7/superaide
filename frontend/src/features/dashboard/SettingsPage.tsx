@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
+import { AccessLogCard } from '@/features/dashboard/AccessLogCard'
 import { CHANNEL_LABEL, DIGEST_LABEL, useAppData } from '@/features/dashboard/data'
 import { AppError, auth, type Preferences } from '@/lib/api'
 import { useSession } from '@/lib/session-context'
@@ -72,6 +73,8 @@ export function SettingsPage() {
             )}
           </CardContent>
         </Card>
+
+        <AccessLogCard name={name} />
       </div>
     </div>
   )
