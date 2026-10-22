@@ -197,7 +197,12 @@ class Agent:
                 # information only. None: off, not a DM, or a linking code, so the fixed reply as before.
                 from superaide.reception.service import handle_stranger
 
-                received = handle_stranger(self, s, sender, ctx, msg, inbound)
+                try:
+                    with s.begin_nested():
+                        received = handle_stranger(self, s, sender, ctx, msg, inbound)
+                except Exception as exc:  # the fixed reply still goes out (issue #83)
+                    self._turn_failed(s, exc, msg)
+                    received = None
                 if received == "":
                     return HandleResult("stranger", None, ["rate_limited"])
                 reply = received if received is not None else self._ai_notice(self._stranger(s, sender, msg))
@@ -226,7 +231,11 @@ class Agent:
                 return HandleResult("known", reply, ["remembered"])
 
             if ctx.kind == "dm" and self._is_owner(s, sender):
-                reply, notes, meta = self._owner_turn(s, sender, ctx, aud, msg, inbound, emit)
+                try:
+                    with s.begin_nested():  # a failed turn undoes its own half-done work, not the inbound record
+                        reply, notes, meta = self._owner_turn(s, sender, ctx, aud, msg, inbound, emit)
+                except Exception as exc:
+                    reply, notes, meta = self._turn_failed(s, exc, msg), ["failed"], {"failed": type(exc).__name__}
                 self._reply(s, ctx, aud, reply, thread, meta=meta)
                 from superaide.knowledge import learn
 
@@ -235,9 +244,21 @@ class Agent:
 
             if self.settings.triage_enabled:  # ADR 0010, shadow until TR5: the reply below is unchanged
                 self._shadow_triage(s, sender, inbound)
-            reply, notes = self._think(s, sender, ctx, aud, msg)
+            try:
+                with s.begin_nested():
+                    reply, notes = self._think(s, sender, ctx, aud, msg)
+            except Exception as exc:
+                reply, notes = self._turn_failed(s, exc, msg), ["failed"]
             self._reply(s, ctx, aud, reply, thread)
             return HandleResult("known", reply, notes)
+
+    @staticmethod
+    def _turn_failed(s, exc: Exception, msg: InboundMessage) -> str:
+        """Anything the model phase raises (provider overload or timeout, a tool error) ends in a short
+        apology instead of silence, a 500, or a rolled-back inbound message (issue #83)."""
+        log.error("turn failed on %s: %s", msg.provider, type(exc).__name__, exc_info=exc)
+        audit(s, "pipeline", "turn_failed", provider=msg.provider, error=type(exc).__name__)
+        return "I couldn't think that through just now. Please try again in a moment."
 
     def _shadow_triage(self, s, sender: Sender, inbound) -> None:
         """Queue a recorded triage decision for a known non-owner's message. A failure here never
@@ -585,4 +606,8 @@ class Agent:
             log.warning("reply not delivered on %s: %s", ctx.provider, exc.kind)
             audit(s, "pipeline", "reply_not_delivered", provider=ctx.provider, reason=exc.kind)
             meta = {**(meta or {}), "undelivered": exc.kind}
+        except Exception as exc:  # e.g. a Slack rate limit: the turn's work and its record are kept
+            log.error("reply not sent on %s: %s", ctx.provider, type(exc).__name__)
+            audit(s, "pipeline", "reply_not_delivered", provider=ctx.provider, reason=type(exc).__name__)
+            meta = {**(meta or {}), "undelivered": type(exc).__name__}
         log_event(s, context=ctx, direction="out", content=text, audience=aud, thread_id=thread, meta=meta)
