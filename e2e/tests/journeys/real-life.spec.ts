@@ -1,5 +1,5 @@
 // The messy things real people do: stop halfway and come back on another device,
-// forget a password, press Back, share a resume, and try to hire someone else's Ava.
+// forget a password, press Back, share a resume, and hire their own Ava alongside someone else's.
 import { expect, newPerson, test } from '../../src/fixtures'
 
 test.describe('coming back later', () => {
@@ -81,25 +81,25 @@ test.describe('passwords', () => {
 test.describe('someone else', () => {
   test.use({ ownerState: 'introduced' })
 
-  test('a second person sees Ava is taken and cannot hire her', async ({ page, owner, browser }) => {
+  test('a second person can hire their own Ava and never sees the first owner', async ({ page, owner, browser }) => {
+    // Many owners is the default (ADR 0009, 23e3430): Ava is never "taken".
     void page
     const other = newPerson('Priya Nair')
     const ctx = await browser.newContext()
     const p2 = await ctx.newPage()
     await p2.goto('/agents/ava')
-    await expect(p2.getByText('Ava already works for someone.')).toBeVisible()
+    await expect(p2.getByText('Available now', { exact: true })).toBeVisible()
+    await expect(p2.getByText('Ava already works for someone.')).toHaveCount(0)
     await expect(p2.getByText(owner.name.split(' ')[0])).toHaveCount(0)
-    await expect(p2.getByRole('button', { name: 'Hire Ava' })).toHaveCount(0)
-    // Going straight to the hire page doesn't work either.
     await p2.goto('/signup')
     await p2.getByLabel('Your name').fill(other.name)
     await p2.getByLabel('Email').fill(other.email)
     await p2.getByLabel('Password', { exact: true }).fill(other.password)
     await p2.getByRole('button', { name: 'Create account' }).click()
+    await expect(p2).not.toHaveURL(/\/signup/)
     await p2.goto('/agents/ava/hire')
-    await expect(p2.getByRole('button', { name: 'Hire Ava' })).toHaveCount(0)
-    await p2.goto('/dashboard')
-    await expect(p2).not.toHaveURL(/\/dashboard/)
+    await expect(p2.getByRole('button', { name: 'Hire Ava' })).toBeVisible()
+    await expect(p2.getByText(owner.name.split(' ')[0])).toHaveCount(0)
     await ctx.close()
   })
 })

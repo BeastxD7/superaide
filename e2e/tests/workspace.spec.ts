@@ -510,13 +510,9 @@ test.describe('workspace: privacy between accounts', () => {
     try {
       await other.api.signup({ name: 'Mallory Ng', email: `e2e-mallory-${Date.now()}@example.com`, password: owner.password })
 
-      const hire = await other.api.post('/app/hire', { agent: 'ava', accepted_notice: true })
-      expect(hire.status()).toBe(409)
-      // dc2e12a: a second account is no longer told the owner's name.
-      const refusal = (await hire.json()).detail as string
-      expect(refusal).toBe('Ava already works for someone else.')
-      expect(refusal).not.toContain(owner.name.split(' ')[0])
-
+      // A signed-in account that hasn't hired is refused everything. (Many owners is the default since
+      // 23e3430, so a second hire now succeeds; isolation.spec covers two owners side by side, and the
+      // single-owner 409 is in backend/tests/api/test_hire_negative.py.)
       for (const path of ['/app/messages', '/app/notebook', '/app/me', '/app/connections']) {
         const r = await other.api.get(path)
         expect(r.status(), path).toBe(403)
