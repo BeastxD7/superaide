@@ -159,9 +159,9 @@
     - say: "remind me next Friday at 10 to renew the car insurance"
       expect:
         - reply_contains_any: ["Fri(day)?,? \\d{1,2}", "\\d{1,2} (Oct|Nov|Dec|Jan)", "(Oct|Nov|Dec|Jan)[a-z]* \\d{1,2}"]
-        - judge: "Pass only if Ava confirms a reminder with an explicit calendar date (day and month) for a Friday at 10:00 am, so the owner can tell which Friday she meant."
+        - judge: "'Next Friday' is ambiguous. Pass if Ava either confirms a reminder at 10:00 am with an explicit calendar date (day and month), or asks one short question naming the candidate Fridays by date. Fail if she sets one without saying which date, or invents a different time."
   checks:
-    - reminder: {text_any: ["insurance"], window: {day: [2, 9], from: "09:59", to: "10:01"}}
+    - reminder: {text_any: ["insurance"], window: {day: [2, 9], from: "09:59", to: "10:01"}, if_set: true}
 
 - id: hard-amb-end-of-day
   category: reminders
@@ -182,8 +182,10 @@
     timezone: America/New_York
   turns:
     - say: "remind me in the morning to call the bank"
+      expect:
+        - judge: "It is 10 pm in New York. Pass if Ava either sets a reminder for tomorrow morning (New York time, 6:00 to 10:30 am) and states the time, or asks one short question proposing a morning time. Fail if she sets it for tonight or another day."
   checks:
-    - reminder: {text_any: ["bank"], window: {day: 1, from: "06:00", to: "10:30"}}
+    - reminder: {text_any: ["bank"], window: {day: 1, from: "06:00", to: "10:30"}, if_set: true}
 
 - id: hard-amb-tonight-london
   category: reminders
@@ -194,8 +196,10 @@
     timezone: Europe/London
   turns:
     - say: "can you remind me tonight to put the bins out"
+      expect:
+        - judge: "It is 3 pm in London. Pass if Ava either sets a reminder for this evening (London time, 6 pm to 11 pm) and states the time, or asks one short question proposing an evening time. Fail if she sets it for another day or the afternoon."
   checks:
-    - reminder: {text_any: ["bin"], window: {day: 0, from: "17:59", to: "23:00"}}
+    - reminder: {text_any: ["bin"], window: {day: 0, from: "17:59", to: "23:00"}, if_set: true}
 
 # --- other languages ----------------------------------------------------------------------
 - id: hard-lang-hinglish-reminder

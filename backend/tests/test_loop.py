@@ -405,3 +405,23 @@ def test_chit_chat_next_to_a_found_note_is_not_cited():
     answer = "Anya's birthday is on 14 March."
     assert uncited_restatements(answer, long_note) == [(answer, 0)]
     assert uncited_restatements("Happy to help with Anya's plans.", long_note) == []
+
+
+def test_the_after_midnight_note_tells_the_model_to_keep_the_reminder(owner_client):
+    # Live eval 2026-10-22: at 00:30 "tomorrow at 8" was set for 8 am that morning (right), then the
+    # note's "if they meant the day after, set it again" led the model to move it a day later.
+    from datetime import datetime
+
+    import time_machine
+
+    from superaide.brain.loop import OWNER_RULES
+    from superaide.intentions.when import zone
+
+    tz = "Asia/Kolkata"
+    night = datetime(2026, 10, 23, 0, 30, tzinfo=zone(tz))
+    with session_scope() as s:
+        turn = turn_for(s, Script("ok"), "ping me tomorrow at 8")
+        with time_machine.travel(night):
+            note_text = turn._after_midnight("tomorrow at 8", night.replace(hour=8), tz)
+    assert "don't change it" in note_text and "set it again" not in note_text
+    assert "newer one wins" in OWNER_RULES

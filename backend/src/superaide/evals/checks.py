@@ -256,12 +256,14 @@ def _describe(rows: list[Intention], tz: str) -> str:
 @check("reminder")
 def reminder(ctx: Ctx, value: Any) -> tuple[bool, str]:
     """{text_any: [...], due: {day, at} | {minutes}, window: {day, from, to}, status: open,
-    text_is: "Drink water", tolerance_min: 3}"""
+    text_is: "Drink water", tolerance_min: 3, if_set: true (none at all also passes)}"""
     spec = dict(value)
     rows = _intentions(spec.get("status", "open"))
     tz = ctx.run.scenario.world.timezone
     pats = _list(spec.get("text_any", [".*"]))
     hits = [r for r in rows if _matches(r.text, pats)]
+    if not hits and spec.get("if_set"):
+        return True, ""  # asking first is fine; a reminder that does exist must be right
     if not hits:
         have = _describe(_intentions(None), tz)
         return False, f"no {spec.get('status', 'open')} reminder matching {pats}; have: {have}"
