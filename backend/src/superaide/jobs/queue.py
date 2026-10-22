@@ -14,6 +14,7 @@ owner's. `dedupe_key` is unique per instance.
 from __future__ import annotations
 
 import logging
+import threading
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -102,15 +103,52 @@ def _backoff(attempts: int) -> timedelta:
     return timedelta(seconds=min(30 * 2 ** (attempts - 1), 3600))
 
 
-def run_due(now: datetime | None = None, limit: int = 20) -> int:
-    """Run every job that is due. Returns how many ran (succeeded or failed)."""
+def run_due(now: datetime | None = None, limit: int = 20, stop: threading.Event | None = None) -> int:
+    """Run every job that is due. Returns how many ran (succeeded or failed).
+
+    When `stop` is set (a shutdown) between jobs, the claims that haven't started are given back at once,
+    instead of staying "running" until they go stale."""
     now = now or _now()
     with session_scope() as s:
         claimed = _claim(s, now, limit)
-    for job_id, kind, scope in claimed:
+    for done, (job_id, kind, scope) in enumerate(claimed):
+        if stop is not None and stop.is_set():
+            for rest_id, _kind, rest_scope in claimed[done:]:
+                with use_instance(rest_scope):
+                    _release(rest_id)
+            return done
         with use_instance(scope):  # the job runs as its own owner's work
             _run_one(job_id, kind)
     return len(claimed)
+
+
+def _release(job_id: Any) -> None:
+    """Give a claimed job that never started back to the queue, as if it had not been claimed."""
+    try:
+        with session_scope() as s:
+            job = s.get(Job, job_id)
+            if job is not None and job.status == "running":
+                job.status, job.locked_at = "queued", None
+                job.attempts = max(0, job.attempts - 1)
+    except Exception:
+        log.exception("couldn't give back job %s; it will be picked up when its claim goes stale", job_id)
+
+
+def _start(job_id: Any, kind: str) -> bool:
+    """Refresh the claim (a batch is claimed at once, so a late job's lock is old) and refuse a job whose
+    attempts are spent: one that crashes the worker is reclaimed as stale, which counts as an attempt."""
+    with session_scope() as s:
+        job = s.get(Job, job_id)
+        if job is None:
+            log.info("job %s (%s) is gone; skipped", job_id, kind)
+            return False
+        if job.attempts > job.max_attempts:
+            job.status, job.finished_at = "failed", _now()
+            job.last_error = f"gave up: {job.max_attempts} attempts used, the worker stopped during each of them"
+            audit(s, "jobs", "job_failed", job_id=job.id, kind=kind, error=job.last_error[:300])
+            return False
+        job.locked_at = _now()
+    return True
 
 
 def _run_one(job_id: Any, kind: str) -> None:
@@ -119,6 +157,8 @@ def _run_one(job_id: Any, kind: str) -> None:
     try:
         if fn is None:
             raise LookupError(f"no handler for job kind {kind!r}")
+        if not _start(job_id, kind):
+            return
         with session_scope() as s:
             job = s.get(Job, job_id)
             if job is None:  # deleted since it was claimed (a database reset): nothing to run

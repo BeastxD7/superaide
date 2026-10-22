@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import logging
 import re
+import threading
 from dataclasses import dataclass, field
+from functools import lru_cache
 
 from sqlalchemy.exc import IntegrityError
 
@@ -21,7 +23,7 @@ from superaide.brain.turn import TurnOutput, build_messages, build_system
 from superaide.channels.base import InboundMessage, Messenger
 from superaide.channels.format import strip_citations
 from superaide.channels.health import DeliveryFailed
-from superaide.config import Settings
+from superaide.config import Settings, get_settings
 from superaide.context.audience import Audience, audience_for, visible_memories
 from superaide.db.models import Context
 from superaide.db.session import session_scope
@@ -88,6 +90,16 @@ def reminder_meta(reply: str) -> dict | None:
     return {"activity": [activity]}
 
 
+def max_concurrent_turns() -> int:
+    settings = get_settings()
+    return max(1, (settings.db_pool_size + settings.db_max_overflow) // 2 - 1)
+
+
+@lru_cache
+def _turn_slots() -> threading.BoundedSemaphore:
+    return threading.BoundedSemaphore(max_concurrent_turns())
+
+
 @dataclass
 class HandleResult:
     mode: str  # dropped | duplicate | frozen | stranger | unconfirmed | known
@@ -105,7 +117,15 @@ class Agent:
     # --- entry point -----------------------------------------------------------
 
     def handle(self, msg: InboundMessage, emit: Emit | None = None) -> HandleResult:
-        """`emit`, when given, receives live progress of an owner turn (the web chat streams it)."""
+        """`emit`, when given, receives live progress of an owner turn (the web chat streams it).
+
+        Only `max_concurrent_turns()` turns run at once: each holds a database connection for the whole
+        turn and the spend guard takes a second one for every model call, so more turns than connections
+        would all wait for each other until the pool timed out (issue #84)."""
+        with _turn_slots():
+            return self._handle(msg, emit)
+
+    def _handle(self, msg: InboundMessage, emit: Emit | None = None) -> HandleResult:
         if not msg.verified:
             with session_scope() as s:
                 audit(s, "pipeline", "dropped_unverified", provider=msg.provider)

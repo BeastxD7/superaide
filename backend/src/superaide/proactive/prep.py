@@ -24,6 +24,7 @@ from superaide.audit import audit
 from superaide.context.audience import Audience
 from superaide.context.recall import Source, recall
 from superaide.db.models import Contact, Job, Person
+from superaide.db.session import require, session_scope
 from superaide.intentions.service import owner_zone
 from superaide.intentions.when import zone
 from superaide.jobs.queue import enqueue, handler
@@ -217,6 +218,9 @@ def scan(session: Session, job: Job) -> None:
     if owner is None:
         return
     now = max(datetime.now(UTC), job.run_at)
+    # The next look is booked first and in its own transaction: if the work below fails, this job's
+    # transaction rolls back, and the chain must not end with it (issue #86).
+    with session_scope() as booking:
+        schedule_scan(booking, require(booking, Person, owner.id), now + timedelta(seconds=1))
     events = calendar.events_between(session, owner, now, now + LOOKAHEAD)
     schedule_preps(session, owner, events, now)
-    schedule_scan(session, owner, now + timedelta(seconds=1))

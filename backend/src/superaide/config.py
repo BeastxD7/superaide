@@ -28,6 +28,12 @@ class Settings(BaseSettings):
     def owner_database_url(self) -> str:
         return self.migration_database_url or self.database_url
 
+    # The connection pool. A chat turn holds one connection and the spend guard briefly takes another, so
+    # at most (size + overflow) // 2 turns run at once (pipeline.max_concurrent_turns) and never starve each other.
+    db_pool_size: int = Field(default=10, ge=1)
+    db_max_overflow: int = Field(default=20, ge=0)
+    db_pool_timeout: float = Field(default=30.0, gt=0)
+
     # self_hosted: one owner's own machine (local model servers allowed). hosted: many owners on our
     # servers, so no owner-typed address may reach private, loopback, link-local or metadata ranges.
     deploy_mode: Literal["self_hosted", "hosted"] = "self_hosted"
