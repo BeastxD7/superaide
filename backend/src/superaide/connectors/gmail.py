@@ -169,6 +169,12 @@ def create_draft(client: httpx.Client, token: str, raw: str, thread_id: str) -> 
     return _post(client, token, "/drafts", {"message": {"raw": raw, "threadId": thread_id}})
 
 
+def get_draft(client: httpx.Client, token: str, draft_id: str) -> dict[str, Any] | None:
+    """The draft as it is in Gmail right now (its message, in full), or None if it is gone."""
+    data = _get(client, token, f"/drafts/{draft_id}", {"format": "full"})
+    return (data.get("message") or None) if data else None
+
+
 def send_draft(client: httpx.Client, token: str, draft_id: str) -> dict[str, Any]:
     return _post(client, token, "/drafts/send", {"id": draft_id})
 

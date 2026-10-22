@@ -28,9 +28,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.audit import audit
+from superaide.config import get_settings
 from superaide.connectors import gmail as api
 from superaide.connectors import google
 from superaide.db.models import Approval, InstalledSkill, Person
+from superaide.policy.binding import content_hash
 
 SKILL_ID = "superaide/gmail"
 SLOT = ("google", "gmail_refresh_token")
@@ -267,12 +269,19 @@ def send(session: Session, owner: Person, args: dict[str, Any], *, tainted: bool
         return str(exc), True
     except google.GoogleError as exc:
         return str(exc), True
-    text = str(args.get("text") or "").strip()
+    text = str(args.get("text") or "").strip()[:5000]  # what _draft saved, so the card shows all of it
     name = api.sender(original)[0]
+    bound = ""
+    if get_settings().approval_binding != "off":
+        try:
+            bound = _draft_hash(api.get_draft(api.http_client(), token(session), str(draft.get("id", ""))))
+        except google.GoogleError as exc:
+            return str(exc), True
     approval = Approval(
         kind="gmail_send",
         payload={
-            "summary": f"Email {name + ' ' if name else ''}<{to}>, “{api.subject(original)}”: {text[:400]}",
+            "summary": f"Email {name + ' ' if name else ''}<{to}>, “{api.subject(original)}”: {text}",
+            "content_hash": bound,
             "draft_id": str(draft.get("id", "")),
             "thread_id": str(original.get("threadId", "")),
             "to": [to],
@@ -290,6 +299,18 @@ def send(session: Session, owner: Person, args: dict[str, Any], *, tainted: bool
     ), False
 
 
+def _draft_hash(msg: dict[str, Any] | None) -> str:
+    """The canonical hash of a draft as Gmail holds it (recipients, thread, subject, text)."""
+    if msg is None:
+        return ""
+    return content_hash(
+        to=api.recipients(msg),
+        thread_id=str(msg.get("threadId") or ""),
+        subject=api.headers(msg).get("subject", ""),
+        text=api.body_text(msg),
+    )
+
+
 def send_approved(session: Session, approval: Approval) -> str:
     """The executor for an approved `gmail_send`: send exactly the draft the owner saw."""
     draft_id = str((approval.payload or {}).get("draft_id") or "")
@@ -297,6 +318,19 @@ def send_approved(session: Session, approval: Approval) -> str:
         return "Approved, but there was no draft to send."
     if not can_draft(session):
         return "Approved, but Gmail can't send right now: reconnect Gmail with drafts on, then send it from Gmail."
+    mode = get_settings().approval_binding
+    if mode != "off":
+        expected = str((approval.payload or {}).get("content_hash") or "")
+        try:
+            actual = _draft_hash(api.get_draft(api.http_client(), token(session), draft_id))
+        except (NotReady, google.GoogleError) as exc:
+            return f"Approved, but it couldn't be checked before sending: {exc} The draft is still in Gmail."
+        if not expected or actual != expected:
+            audit(
+                session, "policy", "approval_payload_mismatch", approval_id=approval.id, kind=approval.kind, mode=mode
+            )
+            if mode == "strict":
+                return "Not sent: the draft changed after you approved it. Ask Ava to write it again."
     try:
         sent = api.send_draft(api.http_client(), token(session), draft_id)
     except (NotReady, google.GoogleError) as exc:

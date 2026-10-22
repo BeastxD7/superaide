@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     # servers, so no owner-typed address may reach private, loopback, link-local or metadata ranges.
     deploy_mode: Literal["self_hosted", "hosted"] = "self_hosted"
 
+    # Approvals are bound to the content the owner saw (#111). off: not checked. record: a mismatch is
+    # audited but the send goes ahead (until the check is calibrated against real Gmail). strict: a
+    # mismatch is not sent.
+    approval_binding: Literal["off", "record", "strict"] = "record"
+
     # Tenancy
     tenant_id: uuid.UUID = DEFAULT_TENANT_ID
     agent_id: uuid.UUID = DEFAULT_AGENT_ID
