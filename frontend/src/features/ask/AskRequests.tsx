@@ -11,7 +11,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { useAsk } from '@/features/ask/useAsk'
 import { announceApprovalsChanged, useApprovalsChanged } from '@/lib/approvals-sync'
 import { formatDay, formatWhen } from '@/lib/dates'
-import { AppError, call, type AskRank, type AskRequestCard } from '@/lib/api'
+import { call, type AskRank, type AskRequestCard } from '@/lib/api'
+import { errorMessage } from '@/lib/action'
 
 const RANK: Record<AskRank, { label: string; className: string } | null> = {
   unverified: { label: 'Unverified: asks for money, codes or secrecy', className: 'bg-[#fbe8ea] text-danger' },
@@ -68,7 +69,7 @@ function RequestItem({ item, onChange, onError }: { item: AskRequestCard; onChan
     try {
       await fn()
     } catch (e) {
-      onError(e instanceof AppError ? e.message : String(e))
+      onError(errorMessage(e))
     } finally {
       onChange() // read again even after a failure: the list may have been stale
       announceApprovalsChanged()

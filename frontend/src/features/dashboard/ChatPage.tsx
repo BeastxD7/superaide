@@ -7,9 +7,10 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { Conversation, type LiveTurn } from '@/components/Conversation'
 import { useReveal } from '@/hooks/use-reveal'
 import { Notice } from '@/components/site'
-import { AppError, call, streamChat, type ChatEvent, type Message, type WorkStep } from '@/lib/api'
+import { call, streamChat, type ChatEvent, type Message, type WorkStep } from '@/lib/api'
 import { isSendKey } from '@/lib/keys'
 import { useSession } from '@/lib/session-context'
+import { errorMessage } from '@/lib/action'
 
 const QUICK = [
   { icon: Lightbulb, label: 'How would you handle…', prefill: 'If someone messages you saying ' },
@@ -138,7 +139,7 @@ export function ChatPage() {
         // Not sent: take the bubble back and give you your words to try again.
         setMessages((m) => m.filter((x) => x.id !== localId))
         setDraft((d) => d || t)
-        setError(e instanceof AppError ? e.message : String(e))
+        setError(errorMessage(e))
       }
     } finally {
       refreshedWhileSending.current = false

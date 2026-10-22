@@ -8,9 +8,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAppData } from '@/features/dashboard/data'
-import { AppError, call, type ApprovalItem } from '@/lib/api'
+import { call, type ApprovalItem } from '@/lib/api'
 import { announceApprovalsChanged, useApprovalsChanged } from '@/lib/approvals-sync'
 import { formatWhen } from '@/lib/dates'
+import { errorMessage } from '@/lib/action'
 
 const KIND_LABEL: Record<string, string> = {
   publish_post: 'Publish a post',
@@ -37,7 +38,7 @@ export function ApprovalsCard({ name, empty = null }: { name: string; empty?: Re
     try {
       await call(`/approvals/${id}/${verdict}`, { method: 'POST', json: { reason: reasons[id] ?? null } })
     } catch (e) {
-      setError(e instanceof AppError ? e.message : String(e))
+      setError(errorMessage(e))
     } finally {
       // Read again even when it failed: "already decided" means this list was stale.
       await reload()

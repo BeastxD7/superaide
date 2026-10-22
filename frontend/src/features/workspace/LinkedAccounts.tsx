@@ -2,8 +2,9 @@
 
 import { ExternalLink, ShieldAlert } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { AppError, call } from '@/lib/api'
+import { call } from '@/lib/api'
 import { Notice } from '@/components/site'
+import { errorMessage } from '@/lib/action'
 
 // The chat accounts linked to people, and which bot or app each one was confirmed on (backend
 // app/linked.py). A linked account that writes through a new bot gets a fixed reply until it's
@@ -66,7 +67,7 @@ export function LinkedAccounts({
         await onChanged()
       }
     } catch (e) {
-      setError(e instanceof AppError ? e.message : String(e))
+      setError(errorMessage(e))
     } finally {
       setBusy(null)
     }
@@ -79,7 +80,7 @@ export function LinkedAccounts({
       await call(`/channels/linked/${a.id}/unlink`, { method: 'POST' })
       await onChanged()
     } catch (e) {
-      setError(e instanceof AppError ? e.message : String(e))
+      setError(errorMessage(e))
     } finally {
       setBusy(null)
     }

@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { useAppData } from '@/features/dashboard/data'
-import { AppError, call, type ReceptionistSettings } from '@/lib/api'
+import { call, type ReceptionistSettings } from '@/lib/api'
+import { errorMessage } from '@/lib/action'
 
 // Settings → "People you don't know": whether Ava talks with them for you, what she may say, and whether
 // she may use your first name. On by default; she only ever uses what you write here and notes you marked public.
@@ -27,7 +28,7 @@ export function ReceptionistCard({ agentName }: { agentName: string }) {
       setProfile(null)
       setResult({ tone: 'info', text: done })
     } catch (e) {
-      setResult({ tone: 'error', text: e instanceof AppError ? e.message : String(e) })
+      setResult({ tone: 'error', text: errorMessage(e) })
     } finally {
       setBusy(false)
     }

@@ -26,11 +26,12 @@ import {
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from 'react'
-import { AppError, call, upload, type IngestResult, type Me, type SharedDoc, type StepInput } from '@/lib/api'
+import { browserTimeZone, call, upload, type IngestResult, type Me, type SharedDoc, type StepInput } from '@/lib/api'
 import { Connections } from '@/features/workspace/Connections'
 import { BrandIcon } from '@/components/BrandIcon'
 import { Button, Notice } from '@/components/site'
 import { isSendKey } from '@/lib/keys'
+import { errorMessage } from '@/lib/action'
 
 // The answer panel for each step of the introduction. Each control calls
 // onAnswer(payload, whatYouSaid); intro actions (files, links, the call) talk to
@@ -232,7 +233,7 @@ function BrainPicker({
     try {
       await onAnswer({ choice }, said)
     } catch (e) {
-      setProblem(e instanceof AppError ? e.message : String(e))
+      setProblem(errorMessage(e))
     } finally {
       setBusy(false)
     }
@@ -413,7 +414,7 @@ function FilesAndLinks({ documents, reload, onContinue }: { documents: SharedDoc
       if (r.warnings.length) setNote(r.warnings.join(' '))
       await reload()
     } catch (e) {
-      setError(e instanceof AppError ? e.message : String(e))
+      setError(errorMessage(e))
     } finally {
       working.current = false
       setBusy(null)
@@ -435,7 +436,7 @@ function FilesAndLinks({ documents, reload, onContinue }: { documents: SharedDoc
       setUrl('')
       await reload()
     } catch (e) {
-      setError(e instanceof AppError ? e.message : String(e))
+      setError(errorMessage(e))
     } finally {
       working.current = false
       setBusy(null)
@@ -647,7 +648,7 @@ function UrgentPicker({ input, onAnswer }: { input: Extract<StepInput, { kind: '
 // --- Reaching you ---------------------------------------------------------------------
 
 function ReachPicker({ input, onAnswer }: { input: Extract<StepInput, { kind: 'reach' }>; onAnswer: Answer }) {
-  const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone || input.timezone
+  const browserTz = browserTimeZone() || input.timezone
   const [channel, setChannel] = useState(input.channel)
   const [start, setStart] = useState(input.quiet_start)
   const [end, setEnd] = useState(input.quiet_end)

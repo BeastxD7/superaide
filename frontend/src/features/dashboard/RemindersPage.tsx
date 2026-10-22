@@ -8,8 +8,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAppData } from '@/features/dashboard/data'
-import { AppError, call, type Reminder } from '@/lib/api'
+import { call, type Reminder } from '@/lib/api'
 import { useSession } from '@/lib/session-context'
+import { errorMessage } from '@/lib/action'
 
 const SNOOZES = [
   { label: '1 hour', minutes: 60 },
@@ -31,7 +32,7 @@ export function RemindersPage() {
       await fn()
       await reload()
     } catch (e) {
-      setProblem(e instanceof AppError ? e.message : String(e))
+      setProblem(errorMessage(e))
     } finally {
       setBusy(false)
     }

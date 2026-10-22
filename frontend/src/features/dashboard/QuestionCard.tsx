@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { useAppData } from '@/features/dashboard/data'
-import { AppError, call } from '@/lib/api'
+import { call } from '@/lib/api'
+import { errorMessage } from '@/lib/action'
 
 type Question = { id: string; topic: string; question: string; status: 'asked' | 'answered' | 'skipped'; answer: string }
 
@@ -26,7 +27,7 @@ export function QuestionCard({ name }: { name: string }) {
       setAnswer('')
       await reload()
     } catch (e) {
-      setProblem(e instanceof AppError ? e.message : String(e))
+      setProblem(errorMessage(e))
     }
   }
 

@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useAppData } from '@/features/dashboard/data'
 import { AppError, call, type ConnectionTest, type ModelSettings, type ProviderPreset, type RoleName } from '@/lib/api'
 import { useSession } from '@/lib/session-context'
+import { errorMessage } from '@/lib/action'
 
 // Each provider's own mark (components/brands/marks.tsx); servers without one keep a generic icon.
 const PROVIDER_BRAND: Record<string, Brand> = {
@@ -47,7 +48,7 @@ function parsePrice(text: string): number | null {
 }
 
 function errorText(e: unknown): string {
-  return e instanceof AppError ? e.message : String(e)
+  return errorMessage(e)
 }
 
 export function ModelsPage() {

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { AppError, call, type NeedsYou } from '@/lib/api'
+import { errorMessage } from '@/lib/action'
 
 // The Needs-you inbox. `enabled` is false while the backend has triage turned off (it answers
 // 404), so callers render nothing and the app looks exactly as it did before.
@@ -25,7 +26,7 @@ export function useNeedsYou(poll = 0) {
             setData(null)
             return
           }
-          setError(e instanceof AppError ? e.message : String(e))
+          setError(errorMessage(e))
         },
       ),
     [],
