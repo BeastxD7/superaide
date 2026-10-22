@@ -388,14 +388,6 @@ function FilesAndLinks({ documents, reload, onContinue }: { documents: SharedDoc
   const working = useRef(false)
   async function sendFile(file: File) {
     if (working.current) return
-    if (!/\.(pdf|docx|txt|md)$/i.test(file.name)) {
-      setError('That file type is not supported. Use a PDF, Word, text or Markdown file.')
-      return
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      setError(`${file.name} is larger than 10 MB.`)
-      return
-    }
     working.current = true
     setBusy(`Reading ${file.name}…`)
     setError(null)
