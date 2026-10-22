@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { auth, call, type Account, type Me } from '@/lib/api'
+import { PWA_ENABLED } from '@/lib/flags'
 import { SessionContext } from '@/lib/session-context'
 
 type ProviderProps = { initialAccount: Account | null; hasSession: boolean; children: ReactNode }
@@ -66,6 +67,11 @@ export function SessionProvider({ initialAccount, hasSession, children }: Provid
   // A full page load to the home page: nothing from the signed-in session stays
   // in memory, and pages that need an account don't race to redirect elsewhere.
   const logOut = useCallback(async () => {
+    if (PWA_ENABLED) {
+      // This device stops getting the owner's pushes (ADR 0011 section 3.6).
+      const { dropSubscription } = await import('@/features/pwa/push')
+      await dropSubscription().catch(() => undefined)
+    }
     try {
       await auth.logout()
     } catch {

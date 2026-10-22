@@ -7,6 +7,9 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/s
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppSidebar } from '@/features/dashboard/AppSidebar'
 import { agentStatus, navItemFor } from '@/features/dashboard/nav'
+import { MobileTabBar } from '@/features/mobile/TabBar'
+import { InstallHint } from '@/features/pwa/install'
+import { MOBILE_TABS_ENABLED, PWA_ENABLED } from '@/lib/flags'
 import { useSession } from '@/lib/session-context'
 
 // The signed-in app: a sidebar for moving around, and the page beside it.
@@ -47,7 +50,10 @@ export function DashboardShell({ defaultOpen, children }: { defaultOpen: boolean
               {me.agent.name}: {status.label.toLowerCase()}
             </span>
           </header>
+          {PWA_ENABLED && <InstallHint />}
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">{children}</div>
+          {/* Phones only (below md), behind NEXT_PUBLIC_MOBILE_TABS; desktop is unchanged. */}
+          {MOBILE_TABS_ENABLED && <MobileTabBar />}
         </SidebarInset>
       </SidebarProvider>
     </TooltipProvider>

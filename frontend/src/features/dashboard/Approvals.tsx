@@ -1,7 +1,7 @@
 'use client'
 
 import { Check, ShieldQuestion, X } from 'lucide-react'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Notice } from '@/components/site'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -17,12 +17,12 @@ const KIND_LABEL: Record<string, string> = {
 }
 
 // What Ava was asked to do that needs your yes first. Shown only while something is waiting.
-export function ApprovalsCard({ name }: { name: string }) {
+export function ApprovalsCard({ name, empty = null }: { name: string; empty?: ReactNode }) {
   const { data, reload } = useAppData<ApprovalItem[]>('/approvals')
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const pending = (data ?? []).filter((a) => a.status === 'pending')
-  if (!pending.length) return null
+  if (!pending.length) return data ? empty : null
 
   async function decide(id: string, verdict: 'approve' | 'reject') {
     setBusy(id)

@@ -20,7 +20,18 @@ const nextConfig: NextConfig = {
   devIndicators: { position: 'bottom-right' },
   reactStrictMode: true,
   async headers() {
-    return [{ source: '/:path*', headers: securityHeaders }]
+    return [
+      { source: '/:path*', headers: securityHeaders },
+      // The service worker (ADR 0011): always fetched fresh, so a fix reaches every installed app.
+      {
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+          { key: 'Content-Type', value: 'application/javascript; charset=utf-8' },
+          { key: 'Service-Worker-Allowed', value: '/' },
+        ],
+      },
+    ]
   },
 }
 

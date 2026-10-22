@@ -1,4 +1,16 @@
-import { AlarmClock, BookOpen, Brain, House, Inbox, MessageCircle, Plug, Puzzle, Settings, Users } from 'lucide-react'
+import {
+  AlarmClock,
+  BookOpen,
+  Brain,
+  House,
+  Inbox,
+  MessageCircle,
+  Plug,
+  Puzzle,
+  Settings,
+  ShieldQuestion,
+  Users,
+} from 'lucide-react'
 import type { Me } from '@/lib/api'
 
 // `triage`: shown only while the backend has triage turned on (ADR 0010).
@@ -27,8 +39,13 @@ export const NAV: { group: string; items: NavItem[] }[] = [
   },
 ]
 
+// Pages reached from the phone's tab bar but not listed in the sidebar (the header still names them).
+const EXTRA: NavItem[] = [{ href: '/dashboard/approvals', label: 'Approvals', icon: ShieldQuestion }]
+
 export function navItemFor(pathname: string): NavItem | undefined {
-  return NAV.flatMap((g) => g.items).find((i) => (i.href === '/dashboard' ? pathname === i.href : pathname.startsWith(i.href)))
+  return [...NAV.flatMap((g) => g.items), ...EXTRA].find((i) =>
+    i.href === '/dashboard' ? pathname === i.href : pathname.startsWith(i.href),
+  )
 }
 
 export function agentStatus(me: Me): { label: string; dot: string } {
