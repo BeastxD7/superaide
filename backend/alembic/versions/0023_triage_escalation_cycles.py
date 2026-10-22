@@ -31,6 +31,13 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # A snooze sent the same rung again in a later cycle; the old index allows one row per rung.
+    # Keep the latest cycle's row (the most recent send) and drop the earlier ones, so this succeeds.
+    op.execute(
+        "DELETE FROM escalation_delivery d USING escalation_delivery newer "
+        "WHERE d.escalation_id = newer.escalation_id AND d.step = newer.step AND d.provider = newer.provider "
+        "AND (d.cycle < newer.cycle OR (d.cycle = newer.cycle AND d.id < newer.id))"
+    )
     op.drop_constraint("uq_escalation_delivery_step", "escalation_delivery", type_="unique")
     op.create_unique_constraint(
         op.f("uq_escalation_delivery_step"), "escalation_delivery", ["escalation_id", "step", "provider"]
