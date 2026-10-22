@@ -238,6 +238,10 @@ class Settings(BaseSettings):
     # marked as voice-origin; it can be approved only by a tap in a text channel, never by what is said, and the
     # call reads it back as a structured proposal and never says it is done. The voice shell holds no tools.
     voice_two_channel: bool = False
+    # Airlock (#128, pure-code half). Off: nothing changes. On: before a conversation goes to a model, contact
+    # details, cards and ID-like numbers in it become placeholders, and the reply gets the originals back.
+    # The on-device model and device attestation are not built.
+    airlock_enabled: bool = False
     gmail_poll_minutes: int = 5
     # The owner's Gmail sign-in (same OAuth client as Calendar); kept per instance in the vault.
     gmail_refresh_token: str = ""
