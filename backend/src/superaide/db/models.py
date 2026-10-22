@@ -221,6 +221,10 @@ class MemoryItem(Scoped, Base):
     lease_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("import_lease.id"), nullable=True, index=True)
     # fact | hearsay (#137): hearsay came from outside the owner and has fewer than two independent roots.
     belief_state: Mapped[str] = mapped_column(String(10), default="fact", server_default="fact")
+    # Set when the fact came in with a memory passport: erasing that import deletes it (passport/importer.py).
+    import_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("memory_import.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
     # How much the fact matters (0..1), set in code at extraction. Ranks it in recall; and facts that
     # matter and last are re-checked with the owner now and then (knowledge/recheck.py).
@@ -295,6 +299,21 @@ class ConsolidationRun(Scoped, Base):
     restored_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class MemoryImport(Scoped, Base):
+    """One memory passport the owner imported: what came in, so it can be previewed and erased as a set."""
+
+    __tablename__ = "memory_import"
+
+    owner_person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), index=True)
+    label: Mapped[str] = mapped_column(String(200), default="")  # the file name the owner chose
+    assistant: Mapped[str] = mapped_column(String(100), default="")  # what made the passport, from its manifest
+    schema_version: Mapped[int] = mapped_column(Integer, default=1)
+    fact_count: Mapped[int] = mapped_column(Integer, default=0)
+    source_count: Mapped[int] = mapped_column(Integer, default=0)
+    people_count: Mapped[int] = mapped_column(Integer, default=0)
+    erased_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class Document(Scoped, Base):
     """Something the owner shared for the agent to read: a file or a link.
 
@@ -316,6 +335,9 @@ class Document(Scoped, Base):
     status: Mapped[str] = mapped_column(String(20), default="stored")
     warnings: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
     removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    import_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("memory_import.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
 
 class DocumentChunk(Scoped, Base):
@@ -349,6 +371,9 @@ class Contact(Scoped, Base):
     vip: Mapped[bool] = mapped_column(Boolean, default=False)  # can always get through, even in quiet hours
     notes: Mapped[str] = mapped_column(Text, default="")
     removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    import_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("memory_import.id", ondelete="SET NULL"), nullable=True, index=True
+    )
 
 
 class OwnerPreference(Scoped, Base):

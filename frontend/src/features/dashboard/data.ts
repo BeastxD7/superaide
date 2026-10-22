@@ -51,6 +51,7 @@ export const SOURCE_LABEL: Record<string, string> = {
   telegram: 'from Telegram',
   slack: 'from Slack',
   owner_edit: 'added by you',
+  imported: 'from a memory passport',
 }
 
 export const CHANNEL_LABEL: Record<string, string> = {

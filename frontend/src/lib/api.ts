@@ -349,6 +349,47 @@ export async function upload<T>(path: string, file: File): Promise<T> {
   }
 }
 
+// Upload a file with extra form fields (the memory passport's preview and confirm).
+export async function uploadForm<T>(path: string, file: File, fields: Record<string, string> = {}): Promise<T> {
+  const form = new FormData()
+  form.append('file', file)
+  for (const [k, v] of Object.entries(fields)) form.append(k, v)
+  try {
+    const res = await client.post<T>(`/app${path}`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
+    return res.data
+  } catch (e) {
+    sessionEnded(e, `/app${path}`)
+    throw e
+  }
+}
+
+export type PassportPreview = {
+  imported: boolean
+  assistant: string
+  facts: number
+  new_facts: number
+  already_known_facts: number
+  sources: number
+  new_sources: number
+  people: number
+  new_people: number
+  skipped: string[]
+  skipped_count: number
+  samples: string[]
+}
+
+export type PassportImport = {
+  id: string
+  label: string
+  assistant: string
+  at: string
+  facts: number
+  sources: number
+  people: number
+  facts_left: number
+  erased: boolean
+}
+
 // Accounts (/auth/...).
 export const auth = {
   me: () => request<Account>('/auth/me'),

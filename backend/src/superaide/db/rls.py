@@ -51,6 +51,7 @@ TABLES: tuple[str, ...] = (
     "link_challenge",
     "llm_provider",
     "memory_embedding",  # outside the ORM metadata (context/vectors.py); only where pgvector exists
+    "memory_import",  # memory passport imports
     "memory_item",
     "never_ask_topic",  # One Good Question (#121)
     "owner_question",
