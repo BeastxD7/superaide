@@ -19,7 +19,7 @@ from pydantic import BaseModel, ValidationError
 
 from superaide.brain import citations
 from superaide.brain.pricing import PriceRegistry, UsageCounts, worst_case_cost
-from superaide.brain.providers.base import CheckReport, Guard, Priced, metered
+from superaide.brain.providers.base import CheckReport, Guard, Priced, mark_billable, metered
 from superaide.brain.providers.presets import Preset
 from superaide.brain.providers.types import (
     Capabilities,
@@ -353,29 +353,37 @@ class OpenAICompatProvider:
         acc = _Accumulated()
         markers = citations.MarkerFilter()  # the owner sees the text without [ava://…] markers as it streams
         stream = self.client.chat.completions.create(**request, stream=True, stream_options={"include_usage": True})
-        for chunk in stream:
-            acc.id = acc.id or _get(chunk, "id")
-            if _get(chunk, "usage") is not None:
-                acc.usage = _get(chunk, "usage")
-            for choice in _get(chunk, "choices") or []:
-                delta = _get(choice, "delta")
-                if _get(choice, "finish_reason"):
-                    acc.finish = _get(choice, "finish_reason")
-                text = _get(delta, "content")
-                if text:
-                    acc.content += text
-                    if shown := markers.feed(text):
-                        on_event(TextDelta(shown))
-                thought = _get(delta, "reasoning_content") or _get(delta, "reasoning")
-                if thought:
-                    acc.reasoning += thought
-                    on_event(ReasoningDelta(thought))
-                for call in _get(delta, "tool_calls") or []:
-                    slot = acc.calls.setdefault(int(_get(call, "index") or 0), {"id": "", "name": "", "arguments": ""})
-                    fn = _get(call, "function")
-                    slot["id"] = _get(call, "id") or slot["id"]
-                    slot["name"] = _get(fn, "name") or slot["name"]
-                    slot["arguments"] += _get(fn, "arguments") or ""
+        started = False
+        try:
+            for chunk in stream:
+                started = True
+                acc.id = acc.id or _get(chunk, "id")
+                if _get(chunk, "usage") is not None:
+                    acc.usage = _get(chunk, "usage")
+                for choice in _get(chunk, "choices") or []:
+                    delta = _get(choice, "delta")
+                    if _get(choice, "finish_reason"):
+                        acc.finish = _get(choice, "finish_reason")
+                    text = _get(delta, "content")
+                    if text:
+                        acc.content += text
+                        if shown := markers.feed(text):
+                            on_event(TextDelta(shown))
+                    thought = _get(delta, "reasoning_content") or _get(delta, "reasoning")
+                    if thought:
+                        acc.reasoning += thought
+                        on_event(ReasoningDelta(thought))
+                    for call in _get(delta, "tool_calls") or []:
+                        index = int(_get(call, "index") or 0)
+                        slot = acc.calls.setdefault(index, {"id": "", "name": "", "arguments": ""})
+                        fn = _get(call, "function")
+                        slot["id"] = _get(call, "id") or slot["id"]
+                        slot["name"] = _get(fn, "name") or slot["name"]
+                        slot["arguments"] += _get(fn, "arguments") or ""
+        except Exception as exc:
+            if started:
+                mark_billable(exc)  # the answer had begun, so the provider may have billed for it
+            raise
         if rest := markers.flush():
             on_event(TextDelta(rest))
         return acc

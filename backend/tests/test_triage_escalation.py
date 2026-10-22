@@ -413,3 +413,26 @@ def test_an_urgent_risky_request_escalates_as_unverified(world, on, classifier, 
     assert d.decision == "verify" and d.features["escalate"] is True
     assert the_escalation().decision_id == d.id
     assert pushes["telegram"].sent and pushes["telegram"].sent[0]["text"].startswith("Unverified request")
+
+
+def test_a_deferred_escalation_fires_when_the_database_writes_its_time_in_another_offset(world, on, pushes):
+    # The timer carries next_at as text; a database running in another time zone hands the same moment
+    # back with a different offset, which must not make the timer ignore it (issue #91, BE-21).
+    from datetime import timezone
+
+    make_vip(world)
+    with session_scope() as s:
+        pref = preferences_for(s, s.get(Person, world["owner_id"]))
+        pref.quiet_start, pref.quiet_end = _quiet_window(pref.timezone, quiet_now=True)
+        pref.vip_breaks_quiet = False
+    on.handle(sl(COLLEAGUE_SLACK, "the server is down"))
+    drain()
+    esc = the_escalation()
+    assert esc.state == "deferred" and esc.next_at is not None
+    with session_scope() as s:
+        job = s.scalar(select(Job).where(Job.kind == "escalation_step"))
+        assert job is not None
+        ist = timezone(timedelta(hours=5, minutes=30))
+        job.payload = {**job.payload, "at": esc.next_at.astimezone(ist).isoformat()}
+    drain(esc.next_at + timedelta(seconds=1))
+    assert deliveries()  # the owner was told

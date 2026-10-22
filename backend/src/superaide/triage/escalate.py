@@ -95,6 +95,14 @@ def _queue(session: Session, esc: Escalation) -> None:
     enqueue(session, JOB_KIND, payload, run_at=esc.next_at, dedupe_key=step_key(esc.id, esc.step, esc.cycle))
 
 
+def _same_moment(text: Any, moment: datetime) -> bool:
+    """Whether the timer's `at` names the escalation's next_at, however the database wrote its offset."""
+    try:
+        return datetime.fromisoformat(str(text)) == moment
+    except ValueError:
+        return False
+
+
 # --- one step --------------------------------------------------------------------------------
 
 
@@ -223,7 +231,7 @@ def run_step(session: Session, payload: dict[str, Any], now: datetime | None = N
     if esc.step != step or esc.cycle != cycle:
         return  # a stale timer: the ladder moved on (or was acked)
     if esc.state == EscalationState.DEFERRED:
-        if esc.next_at is None or payload.get("at") != esc.next_at.isoformat():
+        if esc.next_at is None or not _same_moment(payload.get("at"), esc.next_at):
             return
         esc.state = EscalationState.NOTIFYING
     elif esc.state != EscalationState.NOTIFYING:

@@ -25,6 +25,7 @@ from superaide.audit import audit
 from superaide.connectors.google import event_text
 from superaide.context.audience import Audience, memory_filter
 from superaide.db.models import Approval, Intention, Job, MemoryItem, Person
+from superaide.db.session import require, session_scope
 from superaide.intentions.service import owner_zone
 from superaide.intentions.when import zone
 from superaide.jobs.queue import enqueue, handler
@@ -234,6 +235,10 @@ def send(session: Session, job: Job) -> None:
         return
     slot = str(job.payload.get("slot", "morning"))
     now = max(datetime.now(UTC), job.run_at)  # never schedule the next one before this one's own time
+    # The next one is booked first and in its own transaction: if the work below fails, this job's
+    # transaction rolls back, and the chain must not end with it (issue #86).
+    with session_scope() as booking:
+        schedule(booking, require(booking, Person, owner.id), now + timedelta(minutes=1))
     if slot in slots_for(preferences_for(session, owner).digest):  # they may have changed their mind
         start, end = day_window(session, owner, now, slot)
         events = calendar.events_between(session, owner, start, end)
@@ -244,4 +249,3 @@ def send(session: Session, job: Job) -> None:
             audit(session, "proactive", "digest_sent", slot=slot, via=via)
         else:
             audit(session, "proactive", "digest_skipped_empty", slot=slot)
-    schedule(session, owner, now + timedelta(minutes=1))  # the next one

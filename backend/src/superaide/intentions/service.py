@@ -22,6 +22,7 @@ from superaide.intentions.when import zone
 from superaide.jobs.queue import cancel, enqueue, handler
 from superaide.knowledge.store import preferences_for
 from superaide.proactive.notify import CHANNEL_NAMES, CHANNELS, EXTERNAL, identity_for, notify_owner
+from superaide.tenancy.context import scope_or_default
 
 log = logging.getLogger(__name__)
 
@@ -44,12 +45,31 @@ def _schedule(session: Session, intention: Intention) -> None:
     key = _job_key(intention)
     if enqueue(session, JOB_KIND, payload, run_at=intention.due_at, dedupe_key=key) is not None:
         return
-    # Moved back to a time it had before: that job was cancelled, so bring it back.
-    job = session.scalar(select(Job).where(Job.dedupe_key == key))
-    if job is not None and job.status == "cancelled":
-        job.status, job.run_at, job.attempts = "queued", intention.due_at, 0
+    # Moved back to a time it had before (that job was cancelled), or its delivery gave up after its
+    # retries (failed): bring it back.
+    job = session.scalar(select(Job).where(Job.agent_id == scope_or_default().agent_id, Job.dedupe_key == key))
+    if job is not None and job.status in ("cancelled", "failed"):
+        job.status, job.run_at, job.attempts = "queued", max(intention.due_at, datetime.now(UTC)), 0
         job.finished_at = job.locked_at = None
         job.last_error = None
+
+
+def reconcile(session: Session) -> int:
+    """Re-queue the delivery of every open, undelivered reminder whose job is missing or gave up (a deploy
+    with a bug can fail every reminder that fell due while it ran). Runs in one instance's scope, from the
+    worker's recurring pass. Returns how many were put back."""
+    open_ones = session.scalars(
+        select(Intention).where(Intention.status == "open", Intention.delivered_at.is_(None))
+    ).all()
+    fixed = 0
+    for item in open_ones:
+        job = session.scalar(select(Job).where(Job.agent_id == item.agent_id, Job.dedupe_key == _job_key(item)))
+        if job is None or job.status in ("failed", "cancelled"):
+            _schedule(session, item)
+            fixed += 1
+    if fixed:
+        audit(session, "intentions", "reminders_requeued", count=fixed)
+    return fixed
 
 
 def owner_zone(session: Session, owner: Person) -> str:

@@ -409,9 +409,7 @@ class Onboarder:
             pref = preferences_for(session, person)
             pref.urgent_topics = topics
             pref.digest = digest
-            from superaide.proactive.digest import schedule as schedule_digest
-
-            schedule_digest(session, person)
+            schedule_for_new_hire(session, person)
             label = next(d["label"] for d in DIGESTS if d["value"] == digest).lower()
             self._hear(session, person, f"Urgent: {'; '.join(topics)}. Digest: {label}.")
             remember_fact(
@@ -583,6 +581,16 @@ class Onboarder:
             session, context=ctx, direction="in", content=text, audience=aud, sender=sender,
             meta={"onboarding": True, "via": via},
         )  # fmt: skip
+
+
+def schedule_for_new_hire(session: Session, person: Person) -> None:
+    """Queue the new owner's recurring work now (the morning/evening digest and the meeting scan), so it
+    doesn't wait for the worker's next pass (issue #86)."""
+    from superaide.proactive import prep
+    from superaide.proactive.digest import schedule as schedule_digest
+
+    schedule_digest(session, person)
+    prep.schedule_scan(session, person)
 
 
 def facts_count(session: Session, person: Person) -> int:
