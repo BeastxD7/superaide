@@ -20,7 +20,8 @@ from superaide.db.models import Document, MemoryItem, Person
 from superaide.db.session import require, session_scope
 from superaide.knowledge.extract import Extracted
 from superaide.knowledge.facts import extract_facts
-from superaide.knowledge.store import lock_document, remember_fact
+from superaide.knowledge.learn import neighbours
+from superaide.knowledge.store import lock_document, remember_fact, supersede
 from superaide.proactive.notify import notify_owner
 
 
@@ -70,10 +71,11 @@ def ingest(agent: Any, owner_id: uuid.UUID, extracted: Extracted, *, size_bytes:
         s.add(doc)
         s.flush()
         doc_id, title, owner_name = doc.id, doc.title or doc.source, owner.display_name
+        known = [(m.id, m.content) for m in neighbours(s, owner, f"{title} {extracted.text[:300]}")]
         audit(s, "knowledge", "document_added", document_id=doc.id, kind=doc.kind, chars=len(doc.text))
 
     # 2. Read it (no transaction open while the model works).
-    facts = extract_facts(agent, owner_name=owner_name, text=extracted.text, source=title)
+    facts = extract_facts(agent, owner_name=owner_name, text=extracted.text, source=title, known=[k for _, k in known])
 
     # 3. Keep the facts, linked to the document.
     with session_scope() as s:
@@ -89,18 +91,7 @@ def ingest(agent: Any, owner_id: uuid.UUID, extracted: Extracted, *, size_bytes:
                 f"{title} was removed while I was reading it. I kept nothing from it.",
             )
         doc = locked
-        n = 0
-        for f in facts or []:
-            if remember_fact(
-                s,
-                owner=owner,
-                content=f.content,
-                category=safe_category(f.category, source_kind),
-                source=source_kind,
-                document=doc,
-                confidence=f.confidence,
-            ):
-                n += 1
+        n = save_facts(s, owner, doc, facts or [], source_kind, dict(enumerate((i for i, _ in known), 1)))
         if facts is None:  # reading failed: keep it as saved so it is tried again
             message = f"I've saved {title}, but couldn't read it just now. I'll try again shortly."
         elif brain_ready(agent.settings):
@@ -115,13 +106,29 @@ def ingest(agent: Any, owner_id: uuid.UUID, extracted: Extracted, *, size_bytes:
         return IngestResult(doc_id, title, n, False, doc.status, message)
 
 
-# Rules about urgency, sharing and availability come from the owner, never from a web
-# page: a page anyone can edit must not be able to tell Ava what is urgent or shareable.
-RULE_CATEGORIES = {"preference", "urgency", "availability", "sharing"}
-
-
-def safe_category(category: str, source: str) -> str:
-    return "about" if source == "link" and category in RULE_CATEGORIES else category
+def save_facts(
+    session: Any, owner: Person, doc: Document, facts: list[Any], source: str, known_ids: dict[int, uuid.UUID]
+) -> int:
+    """Keep a document's facts. A fact that says a known one is untrue retires it only when the document is
+    at least as trusted (knowledge/trust.py); otherwise it waits for the owner. A page's urgency, sharing
+    or availability "rules" are never applied: they wait in the review queue (a page anyone can edit must
+    not tell Ava what is urgent or shareable)."""
+    n = 0
+    for f in facts:
+        if f.same_as:
+            continue  # already known: saying it again adds nothing
+        item = remember_fact(
+            session, owner=owner, content=f.content, category=f.category, source=source, document=doc,
+            confidence=f.confidence,
+        )  # fmt: skip
+        if item is None:
+            continue
+        n += 1
+        old_id = known_ids.get(f.replaces or 0)
+        old = session.get(MemoryItem, old_id) if old_id else None
+        if old is not None and item.conflict_status == "none":
+            supersede(session, old, item)
+    return n
 
 
 @dataclass
@@ -167,19 +174,7 @@ def read_documents(agent: Any, owner_id: uuid.UUID) -> list[ReadResult]:
             owner, doc = require(s, Person, owner_id), lock_document(s, doc_id)
             if doc is None or doc.status != "stored" or doc.removed_at is not None:
                 continue  # read or removed while the model worked
-            n = sum(
-                1
-                for f in facts
-                if remember_fact(
-                    s,
-                    owner=owner,
-                    content=f.content,
-                    category=safe_category(f.category, source),
-                    source=source,
-                    document=doc,
-                    confidence=f.confidence,
-                )
-            )
+            n = save_facts(s, owner, doc, facts, source, {})
             doc.status = "read"
             note = (
                 f"I've read {title}: {n} {'fact' if n == 1 else 'facts'} saved."

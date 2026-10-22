@@ -160,6 +160,17 @@ export type Memory = {
   at: string
 }
 
+export type ConflictCard = {
+  id: string
+  text: string
+  category: string
+  source: string
+  document: string | null
+  at: string
+}
+
+export type Conflict = { claim: ConflictCard; current: ConflictCard | null }
+
 export type PersonCard = {
   id: string
   name: string

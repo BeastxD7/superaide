@@ -68,6 +68,8 @@ def memory_filter(aud: Audience, now: datetime | None = None) -> ColumnElement[b
         or_(public, org, persons),
         MemoryItem.min_trust <= aud.min_trust if not aud.has_unknown else MemoryItem.allowed_kind == "public",
         or_(MemoryItem.valid_to.is_(None), MemoryItem.valid_to > now),
+        # A weaker claim waiting for the owner's decision, or a link fact in review, is never used.
+        MemoryItem.conflict_status == "none",
     )
 
 

@@ -216,6 +216,14 @@ class MemoryItem(Scoped, Base):
     # fact | hearsay (#137): hearsay came from outside the owner and has fewer than two independent roots.
     belief_state: Mapped[str] = mapped_column(String(10), default="fact", server_default="fact")
 
+    # Who wins when facts disagree (knowledge/trust.py): 1 = owner on a verified channel … 5 = other web.
+    trust_rank: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    author_person_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("person.id"), nullable=True)
+    superseded_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("memory_item.id"), nullable=True)
+    # none | pending (a weaker claim against a stronger fact) | review (a link fact outside about/work) | resolved
+    conflict_status: Mapped[str] = mapped_column(String(10), default="none", server_default="none")
+    conflicts_with_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("memory_item.id"), nullable=True)
+
 
 class MemoryOrigin(Scoped, Base):
     """One root origin of a belief (#137). Repeats of the same root are one row, so they count once."""
