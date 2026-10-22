@@ -79,6 +79,13 @@ def sections(session: Session, owner: Person, since: datetime, now: datetime) ->
     ).all()
     if not rows:
         return []
+    email = [d for d in rows if (d.features or {}).get("provider") == "email"]
+    rows = [d for d in rows if (d.features or {}).get("provider") != "email"]
+    from superaide.skills.gmail_inbox import digest_section
+
+    mail_lines = digest_section(session, email)  # counts and top items; never quotes money, legal or codes
+    if not rows:
+        return [*mail_lines, _SOONER] if mail_lines else []
     escs = {
         e.decision_id: e
         for e in session.scalars(select(Escalation).where(Escalation.decision_id.in_([d.id for d in rows])))
@@ -130,9 +137,13 @@ def sections(session: Session, owner: Person, since: datetime, now: datetime) ->
         lines.append(f"**FYI:** {fyi} from automated or silenced senders")
     if low:
         lines.append(f"**Couldn't sort:** {low}, held for you to look at")
+    lines += mail_lines
     if lines:
-        lines.append("_Anything I should have told you sooner? Mark it in Needs you._")
+        lines.append(_SOONER)
     return lines
+
+
+_SOONER = "_Anything I should have told you sooner? Mark it in Needs you._"
 
 
 def digest_lines(session: Session, owner: Person, now: datetime) -> list[str]:

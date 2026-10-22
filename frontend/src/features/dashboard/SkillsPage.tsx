@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAppData } from '@/features/dashboard/data'
+import { GmailPanel } from '@/features/dashboard/GmailPanel'
 import { AppError, call, type SkillCard } from '@/lib/api'
 import { useSession } from '@/lib/session-context'
 
@@ -143,6 +144,7 @@ export function SkillsPage() {
                     {s.installed && !s.removable && <span className="text-xs text-muted">Always on</span>}
                   </div>
                 )}
+                {s.installed && s.id === 'superaide/gmail' && !asking && <GmailPanel name={name} />}
               </li>
             )
           })}

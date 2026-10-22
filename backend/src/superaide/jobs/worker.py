@@ -29,6 +29,10 @@ def schedule_recurring() -> None:
         try:
             with use_instance(scope), session_scope() as s:
                 ensure_scheduled(s)
+            with use_instance(scope), session_scope() as s:
+                from superaide.skills import gmail_inbox
+
+                gmail_inbox.ensure_scheduled(s)  # nothing unless Gmail triage is on and connected
         except Exception:
             log.exception("couldn't schedule the digest for instance %s", scope.agent_id)
     from superaide.knowledge.pending import sweep

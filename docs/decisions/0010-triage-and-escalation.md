@@ -636,6 +636,22 @@ flag), which is by design.
   with no linked chat channel never uses it up. Scenario 20 (two instances) is covered by the API
   test `test_another_owner_never_sees_or_touches_the_items` and RLS rather than a scenario.
 
+### Email (the Gmail capability, 2026-10-22)
+
+Behind `GMAIL_TRIAGE_ENABLED` (and `TRIAGE_ENABLED`), both off by default. A per-instance `gmail_poll`
+job reads new inbox mail with history.list every `GMAIL_POLL_MINUTES` (5); watch + Pub/Sub push is
+not built. The first poll only records where the inbox is. Each email becomes an inbound `event` in
+an `email` context (one per Gmail thread) whose content is the subject plus the start of the message's
+own text, cleaned and redacted, with an **empty audience**, so recall never returns it. The sender is a
+known person only through an email identity the owner attached (`POST /app/gmail/addresses`), and is
+verified (trust from that identity) only when Gmail's Authentication-Results show DMARC passed for the
+From domain; otherwise trust is HINT, so a forged From line can never be a VIP. Lists and no-reply
+senders are R4. The classifier runs only for a verified known sender; strangers and lists are
+rules-only, so they cost nothing. Decisions are ordinary `triage_decision` rows (`features.provider =
+"email"`), shown in Needs you with an Email tag; the digest gets one **Email** line ("3 emails need you;
+12 handled; 40 newsletters held") and up to three items, never quoting a subject that is about money,
+security or legal matters. Code: `skills/gmail_inbox.py`; the shared step is `triage/service.decide`.
+
 ## Open questions for the owner
 
 1. **Strangers.** Should strangers' messages be classified (take-a-message, one cheap model call,

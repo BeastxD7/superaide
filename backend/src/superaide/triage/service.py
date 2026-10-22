@@ -74,6 +74,16 @@ def triage_event(
 
     now = now or datetime.now(UTC)
     f = gather(session, event=event, owner=owner, now=now)
+    return decide(session, event, owner, sender, f, llm=llm, model=model, ready=ready, now=now)
+
+
+def decide(
+    session: Session, event: Event, owner: Person, sender: Person | None, f: Any, *, llm: Any, model: str,
+    ready: bool, now: datetime | None = None,
+) -> TriageDecision:  # fmt: skip
+    """Rules → classifier → policy → record → tell the owner, for one inbound item whose features
+    are gathered (a message here, an email in skills/gmail_inbox.py). `ready` False: rules only."""
+    now = now or datetime.now(UTC)
     r = rules.evaluate(f)
     # The classifier runs when the rules didn't decide, or for a VIP over budget (only a critical one gets past).
     wants_model = r.decision is None or (r.vip_rule and f.budget_left <= 0)
@@ -94,7 +104,8 @@ def triage_event(
         defer_until=o.defer_until.isoformat() if o.defer_until else None,
     )  # fmt: skip
     row = TriageDecision(
-        inbound_event_id=event.id, sender_person_id=sender.id, context_id=event.context_id, features=features,
+        inbound_event_id=event.id, sender_person_id=sender.id if sender else None, context_id=event.context_id,
+        features=features,
         rule_hits=o.hits, classifier=out.model_dump() if out else None, classifier_model=c.model if c else "",
         cost_usd=c.cost_usd if c else 0, agreement=c.agreement if c else None, decision=str(o.decision),
         reason=o.reason[:500], stage_at_time=str(f.stage), policy_version=POLICY_VERSION,
@@ -126,7 +137,11 @@ def _app_note(session: Session, owner: Person, row: TriageDecision) -> None:
 
     sender = session.get(Person, row.sender_person_id) if row.sender_person_id else None
     head = "Unverified request" if row.decision == Decision.VERIFY else "Maybe urgent"
-    text = f"{head}: {sender.display_name if sender else 'Someone'}: {row.reason}"
+    name = sender.display_name if sender else ""
+    if not name:  # an email from someone who isn't a contact: the name on the email
+        event = session.get(Event, row.inbound_event_id)
+        name = str(((event.meta if event is not None else None) or {}).get("from_name") or "Someone")
+    text = f"{head}: {name}: {row.reason}"
     notify_owner(session, owner, text, {"kind": "triage", "decision_id": str(row.id)}, channel="app")
 
 
