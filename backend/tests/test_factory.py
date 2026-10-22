@@ -107,7 +107,8 @@ def test_demo_responder_echoes_only_the_last_line_of_the_last_message():
     assert 'You said: "What\'s on today?"' in out.reply
     assert "earlier line" not in out.reply
     assert "Offline mode" in out.reply
-    assert "Connections" in out.reply
+    assert "AI model page" in out.reply
+    assert "Connections" not in out.reply
     assert out.requested_action.kind == "none"
     assert 0 <= out.prediction.confidence <= 1
 
