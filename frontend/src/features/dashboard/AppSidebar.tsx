@@ -109,7 +109,7 @@ export function AppSidebar({ session, me }: { session: Session; me: Me }) {
 }
 
 function UserMenu({ session }: { session: Session }) {
-  const { isMobile } = useSidebar()
+  const { isMobile, setOpenMobile } = useSidebar()
   const account = session.account
   if (!account) return null
   const initial = account.user.name.trim().charAt(0).toUpperCase() || '?'
@@ -147,13 +147,13 @@ function UserMenu({ session }: { session: Session }) {
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <Link href="/dashboard/settings">
+                <Link href="/dashboard/settings" onClick={() => setOpenMobile(false)}>
                   <Settings />
                   Settings
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/">
+                <Link href="/" onClick={() => setOpenMobile(false)}>
                   <Store />
                   Browse agents
                 </Link>
