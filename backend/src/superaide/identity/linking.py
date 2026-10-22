@@ -43,6 +43,14 @@ def detect_claimed_name(text: str) -> str | None:
     return m.group(1).strip() if m else None
 
 
+def plain_name(raw: object, limit: int = 40) -> str:
+    """A name taken from a platform profile, safe to put into a message Ava sends: letters, digits, spaces,
+    hyphens, apostrophes and @ only, cut short. No brackets, backticks, asterisks, colons or slashes, so the
+    name can't form a link or markup in the owner's own chat (issue #93, SEC-9)."""
+    cleaned = re.sub(r"[^\w\s@'\-]|_", "", str(raw or ""))
+    return " ".join(cleaned.split())[:limit].strip()
+
+
 def _hash(salt: str, code: str) -> str:
     return hashlib.sha256((salt + code).encode()).hexdigest()
 
@@ -116,6 +124,14 @@ def start_challenge(
     if (recent or 0) >= settings.link_challenges_per_identity_per_day:
         audit(session, "identity", "link_rate_limited", identity_id=new_identity.id)
         return None
+    asked_of_them = session.scalar(
+        select(func.count())
+        .select_from(LinkChallenge)
+        .where(LinkChallenge.person_id == person.id, LinkChallenge.created_at > now - timedelta(days=1))
+    )
+    if (asked_of_them or 0) >= settings.link_challenges_per_person_per_day:  # many accounts, one target
+        audit(session, "identity", "link_rate_limited", identity_id=new_identity.id, scope="person")
+        return None
     candidates = [
         i
         for i in trusted_identities(session, person)
@@ -139,7 +155,8 @@ def start_challenge(
     )
     session.add(challenge)
     session.flush()
-    handle = new_identity.aux_handles.get("username") or new_identity.aux_handles.get("display_name") or "an account"
+    handle = plain_name(new_identity.aux_handles.get("username") or new_identity.aux_handles.get("display_name"))
+    handle = handle or "an account"
     try:
         messengers[via.provider].send_dm(
             via,

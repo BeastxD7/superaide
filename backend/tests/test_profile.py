@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
@@ -12,6 +14,8 @@ from superaide.identity.trust import Trust
 from superaide.knowledge.store import add_contact, preferences_for
 from superaide.main import create_app
 from tests.conftest import sl, tg
+
+CLOCK = re.compile(r"It's [A-Z][a-z]{2} \d\d:\d\d")  # "It's Sat 03:10 for ..."
 
 
 def _setup(agent):
@@ -112,3 +116,34 @@ def test_pinned_facts_stay_within_their_budget(agent, model):
     c.post("/app/chat", json={"text": "hello"})
     pinned = [line for line in model.systems[-1].splitlines() if "preference number" in line]
     assert 0 < len(pinned) <= PINNED_MAX and sum(len(p) for p in pinned) <= PINNED_CHARS + 2 * len(pinned)
+
+
+def test_a_colleague_is_not_told_the_owners_local_time_or_quiet_hours_unless_availability_is_shared(
+    agent, model, colleague
+):
+    _setup(agent)
+    with session_scope() as s:
+        pref = preferences_for(s, owner(s))
+        pref.shareable = ["company_role"]  # not availability
+        pref.quiet_start, pref.quiet_end = "00:00", "23:59"  # quiet right now, whenever this runs
+    agent.handle(sl("U_PRIYA", "Is Shashank around right now?"))
+    system = model.systems[-1]
+    assert "quiet hours" not in system and not CLOCK.search(system)
+    assert "usual hours" not in system
+
+
+def test_with_availability_shared_a_colleague_gets_a_worded_state_without_the_clock(agent, model, colleague):
+    _setup(agent)  # shares availability
+    with session_scope() as s:
+        pref = preferences_for(s, owner(s))
+        pref.quiet_start, pref.quiet_end = "00:00", "23:59"
+    agent.handle(sl("U_PRIYA", "Is Shashank around right now?"))
+    system = model.systems[-1]
+    assert "outside your owner's usual hours" in system
+    assert "quiet hours" not in system and not CLOCK.search(system)  # no clock time, no setting names
+
+
+def test_the_owner_still_sees_the_local_time_line(agent, model):
+    c = _setup(agent)
+    c.post("/app/chat", json={"text": "What do you know about my week?"})
+    assert CLOCK.search(model.systems[-1])
