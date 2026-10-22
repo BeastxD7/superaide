@@ -32,7 +32,7 @@ from fastapi import Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
+from superaide.audit import account_audit
 from superaide.auth import service
 from superaide.auth.service import AuthError, Client
 from superaide.config import get_settings
@@ -189,7 +189,7 @@ def identify(pending: dict[str, Any], code: str, http: httpx.Client) -> GoogleId
 
 def fail(session: Session, client: Client, reason: str, *, user_id: Any = None, email: str = "") -> None:
     service._event(session, "google_fail", client, user_id=user_id, email=email)
-    audit(session, "auth", "google_signin_refused", reason=reason, user_id=user_id)
+    account_audit(session, user_id, "google_signin_refused", reason=reason)
 
 
 def sign_in(session: Session, who: GoogleIdentity, *, client: Client, timezone: str | None) -> tuple[UserAccount, str]:
@@ -223,7 +223,7 @@ def sign_in(session: Session, who: GoogleIdentity, *, client: Client, timezone: 
                 user.email_verified_at = now
             user.google_sub = who.sub
             kind = "google_linked"
-            audit(session, "auth", "google_linked", user_id=user.id, password_removed=takeover_guard)
+            account_audit(session, user.id, "google_linked", password_removed=takeover_guard)
         else:
             if service.signups_throttled(session, client):
                 raise SignInError("throttled")
@@ -233,7 +233,7 @@ def sign_in(session: Session, who: GoogleIdentity, *, client: Client, timezone: 
                 google_sub=who.sub, verified=True,
             )  # fmt: skip
             service._event(session, "signup", client, user_id=user.id, email=email)
-            audit(session, "auth", "signup", user_id=user.id, via="google")
+            account_audit(session, user.id, "signup", via="google")
             kind = "google_signup"
     if user.status != "active":
         raise SignInError("failed")

@@ -193,10 +193,12 @@ test.describe('emailed links', () => {
 test.describe('a session that ends while a page is open', () => {
   for (const how of ['signed out on another device', 'expired'] as const) {
     test(`(${how}) the dashboard sends you to log in on your next click`, async ({ page, owner }) => {
-      test.fail(true, 'BUG: dashboard pages show "Please log in." with no way to log in; nothing handles a 401 from /app/*')
       void owner
       await page.goto('/dashboard')
       await expect(sidebarLink(page, '/dashboard/notebook')).toBeVisible()
+      // Let the Home page finish loading first: a request still in flight would see the 401 (and
+      // rightly send you to log in) before this test's click, which is not what it tests.
+      await page.waitForLoadState('networkidle')
       await query(how === 'expired' ? "UPDATE user_session SET expires_at = now() - interval '1 minute'" : 'UPDATE user_session SET revoked_at = now()')
       await sidebarLink(page, '/dashboard/notebook').click()
       await expect(page.getByText('Please log in.').first().or(page.getByRole('heading', { name: 'Welcome back' }))).toBeVisible()
@@ -314,7 +316,6 @@ test.describe('the account menu', () => {
   })
 
   test('a name that starts with an emoji shows the whole emoji as the initial', async ({ page, api }) => {
-    test.fail(true, 'BUG: the initial is name.charAt(0), half of a surrogate pair for an emoji, shown as a broken glyph')
     const p: Person = newPerson('😀 Sam Lee')
     await api.signup(p)
     await page.goto('/')

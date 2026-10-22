@@ -426,3 +426,60 @@ def test_the_after_midnight_note_tells_the_model_to_keep_the_reminder(owner_clie
     assert "don't change it" in note_text and "set it again" not in note_text
     assert "newer one wins" in OWNER_RULES
     assert "Don't volunteer corrections of your earlier replies" in OWNER_RULES
+
+
+# --- a reply cut off at max_tokens (issue #88) ----------------------------------------------------------
+
+
+def cut(*blocks: dict[str, Any]) -> dict[str, Any]:
+    return {"content": list(blocks), "stop_reason": "max_tokens"}
+
+
+def said(text: str) -> dict[str, Any]:
+    return {"type": "text", "text": text}
+
+
+def test_a_reply_cut_off_at_max_tokens_is_retried_with_more_room(owner_client):
+    with session_scope() as s:
+        script = Script(
+            cut(said("Happy to help. Here is a plan: first we gather what we know, and the")),
+            "Happy to help. Here is a plan: first we gather what we know, then we decide.",
+        )
+        turn = turn_for(s, script)
+        calls: list[int] = []
+        real = turn.llm.step
+        turn.llm.step = lambda **kw: (calls.append(kw["max_tokens"]), real(**kw))[1]  # type: ignore[method-assign]
+        result = turn.run([{"role": "user", "content": "When is my flight?"}])
+    assert result.text == "Happy to help. Here is a plan: first we gather what we know, then we decide."
+    assert len(calls) == 2 and calls[1] > calls[0]  # the second try gets a bigger budget
+    assert "max_tokens_retry" in result.notes
+    assert len(script.seen) == 2 and script.seen[0] == script.seen[1]  # same question, not the half answer
+
+
+def test_a_reply_still_cut_off_after_the_retry_says_so_instead_of_passing_as_complete(owner_client):
+    with session_scope() as s:
+        script = Script(
+            cut(said("Happy to help. Here is a plan: first we gather what we know, and the")),
+            cut(said("Happy to help. Here is a plan: first we gather what we know, and the")),
+        )
+        result = turn_for(s, script).run([{"role": "user", "content": "When is my flight?"}])
+    assert result.text.startswith("Happy to help. Here is a plan: first we gather what we know, and the")
+    assert "ran out of room" in result.text and "carry on" in result.text
+    assert "max_tokens" in result.notes
+
+
+def test_an_answer_that_spent_its_whole_budget_thinking_is_never_sent_as_an_ellipsis(owner_client):
+    thinking = {"type": "thinking", "thinking": "hmm " * 50, "signature": "sig"}
+    with session_scope() as s:
+        script = Script(cut(thinking), cut(thinking))
+        result = turn_for(s, script).run([{"role": "user", "content": "When is my flight?"}])
+    assert result.text != "…" and "ran out of room" in result.text
+
+
+def test_a_tool_call_cut_off_at_max_tokens_is_not_run(owner_client):
+    half = {"type": "tool_use", "id": "toolu_9", "name": "create_reminder", "input": {"task": "Call"}}
+    with session_scope() as s:
+        script = Script(cut(said("Setting that up."), half), cut(said("Setting that up."), half))
+        result = turn_for(s, script, "remind me to call Priya").run([{"role": "user", "content": "x"}])
+        assert s.scalar(select(Intention.text)) is None  # a half-written call is never carried out
+    assert "ran out of room" in result.text

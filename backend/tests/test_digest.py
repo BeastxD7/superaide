@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, date, datetime, timedelta
 
 import pytest
+import time_machine
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
@@ -65,7 +66,16 @@ def owner(agent):
     return c
 
 
-def test_a_morning_digest_lists_today_dates_with_context_and_approvals(owner):
+@pytest.fixture
+def daytime():
+    """09:00 UTC (17:00 for the Singapore owner): these tests put a reminder "later today", which on the
+    wall clock slips into tomorrow in the last minutes before the owner's midnight (CI failed at 23:57 SGT).
+    Ask for it after `owner`, so the sign-up has happened and only the test body runs at the frozen time."""
+    with time_machine.travel(datetime(2026, 10, 22, 9, 0, tzinfo=UTC), tick=True):
+        yield
+
+
+def test_a_morning_digest_lists_today_dates_with_context_and_approvals(owner, daytime):
     now = datetime.now(UTC).astimezone(SG)
     with session_scope() as s:
         person = hired_owner(s)
@@ -86,6 +96,22 @@ def test_a_morning_digest_lists_today_dates_with_context_and_approvals(owner):
     assert "Call the bank" in text and "**Today**" in text
     assert "Priya's birthday in 3 days" in text and "really into pottery" in text
     assert "**Waiting for your OK:** 1" in text
+
+
+def test_the_morning_digest_does_not_list_reminders_that_already_went_off(owner, daytime):
+    now = datetime.now(UTC).astimezone(SG)
+    later = now + timedelta(minutes=5)
+    with session_scope() as s:
+        person = hired_owner(s)
+        assert person is not None
+        gone = intentions.create(s, person, text="Call Priya", due_at=later)
+        intentions.create(s, person, text="Pay the rent", due_at=later)
+        gone.delivered_at = now  # it went off and nobody tapped done
+        gone.delivered_via = ["app"]
+        s.flush()
+        text = digest.compose(s, person, now, "morning")
+    assert text is not None and "Pay the rent" in text
+    assert "Call Priya" not in text
 
 
 def test_nothing_worth_saying_sends_nothing(owner):

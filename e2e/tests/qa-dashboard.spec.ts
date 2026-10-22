@@ -114,7 +114,6 @@ test.describe('dashboard: home', () => {
 
 test.describe('dashboard: session', () => {
   test('a reload while the agent API is briefly failing keeps the owner in the dashboard', async ({ page, owner }) => {
-    test.fail(true, 'BUG: a failed GET /app/me sets me=null, and DashboardShell then router.replace("/") sends a hired, introduced owner to the marketplace')
     await page.goto('/dashboard/notebook')
     await expect(page.getByRole('heading', { level: 1, name: "Ava's notebook" })).toBeVisible()
     let failures = 0

@@ -11,12 +11,13 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 PARTS_OF_DAY = {"morning": (9, 0), "noon": (12, 0), "midday": (12, 0), "afternoon": (15, 0), "evening": (18, 0)}
 DEFAULT_TIME = (9, 0)
+MAX_AHEAD = timedelta(days=3660)  # "in 5000000 days" is not a reminder anyone meant
 
 REMIND_RE = re.compile(
     r"^\s*(?:please\s+)?remind\s+me\s+(?:to\s+|about\s+|that\s+)?(?P<rest>.+?)\s*[.!]?\s*$", re.I | re.S
@@ -104,18 +105,26 @@ def when(text: str, now: datetime) -> tuple[datetime, str] | None:
     m = _IN.search(rest)
     if m:
         raw = m.group("n").lower()
+        if raw.isdigit() and len(raw) > 6:
+            return None  # "in 99999999999 days": nobody means it, and the maths would overflow
         n = 0.5 if raw.startswith("half") else _WORD_N.get(raw) or int(raw)
         unit = m.group("unit").lower()
-        delta = (
-            timedelta(minutes=n)
-            if unit.startswith("min")
-            else timedelta(hours=n)
-            if unit.startswith(("hour", "hr"))
-            else timedelta(days=n)
-            if unit.startswith("day")
-            else timedelta(weeks=n)
-        )
-        return now + delta, rest[: m.start()] + rest[m.end() :]
+        if unit.startswith(("min", "hour", "hr")):
+            # A length of time is real time: add it to the instant, not to the wall clock, so it is
+            # right across a clock change (1:30 am + 3 hours when the clocks fall back).
+            span = timedelta(minutes=n) if unit.startswith("min") else timedelta(hours=n)
+        else:
+            span = timedelta(days=n) if unit.startswith("day") else timedelta(weeks=n)
+        if span > MAX_AHEAD:
+            return None
+        try:
+            if unit.startswith(("min", "hour", "hr")):
+                due = (now.astimezone(UTC) + span).astimezone(now.tzinfo)
+            else:
+                due = now + span  # days and weeks keep the same time on the wall clock
+        except OverflowError, ValueError:
+            return None
+        return due, rest[: m.start()] + rest[m.end() :]
 
     day: datetime | None = None
     hm: tuple[int, int] | None = None
@@ -204,8 +213,17 @@ def _fallback(text: str, now: datetime) -> tuple[datetime, str] | None:
 
 def find_moment(text: str, now: datetime) -> tuple[datetime, str] | None:
     """The moment in `text` and the text without it; one reader for chat, tools and the dashboard.
-    An explicit calendar date ("24 Oct", "3/11") is better read by dateparser."""
-    return (_fallback(text, now) if _DATE.search(text) else None) or when(text, now) or _fallback(text, now)
+    An explicit calendar date ("24 Oct", "3/11") is better read by dateparser. A moment too far
+    away to be real ("in 99999999 days") is no moment at all."""
+    try:
+        if _DATE.search(text) and (dated := _fallback(text, now)):
+            return dated
+        found = when(text, now)
+        if found is None and _IN.search(text):
+            return None  # "in N days" that is out of range: don't let dateparser guess something else
+        return found or _fallback(text, now)
+    except OverflowError, ValueError:
+        return None
 
 
 def parse_reminder(text: str, now: datetime) -> Parsed | None:

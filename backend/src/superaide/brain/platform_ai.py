@@ -12,9 +12,12 @@ Settings, vault, logs or API responses, and is never used for an owner who didn'
 
 from __future__ import annotations
 
+import logging
+import re
 import uuid
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from functools import lru_cache
 from typing import Any
 
 from sqlalchemy import case, func, select
@@ -24,6 +27,8 @@ from superaide.audit import audit
 from superaide.config import Settings, get_settings
 from superaide.db.models import SpendEntry
 from superaide.tenancy.context import scope_or_default
+
+log = logging.getLogger(__name__)
 
 ROUTE = "platform"  # the route name in RoutedLLM and the ledger's provider for credit-paid calls
 
@@ -101,14 +106,31 @@ def view(session: Session) -> dict[str, Any]:
     }
 
 
+@lru_cache(maxsize=4)  # read on every agent build: warn about a bad entry once, not every time
+def listed_owner_emails(raw: str) -> frozenset[str]:
+    """The addresses in PLATFORM_KEY_OWNER_EMAILS (separated by commas, semicolons or spaces).
+    An entry that isn't a valid address is skipped with a warning: one typo in .env must not make
+    every agent build and every background job fail."""
+    from superaide.auth.service import AuthError, normalize_email
+
+    found: set[str] = set()
+    for entry in re.split(r"[,;\s]+", raw):
+        if not entry:
+            continue
+        try:
+            found.add(normalize_email(entry))
+        except AuthError:
+            log.warning("PLATFORM_KEY_OWNER_EMAILS: ignoring %r, which is not a valid email address", entry)
+    return frozenset(found)
+
+
 def server_key_is_own(session: Session) -> bool:
     """The instance in scope belongs to an account listed in PLATFORM_KEY_OWNER_EMAILS (the operator's
     own Ava): it uses the server's ANTHROPIC_API_KEY as its own key."""
-    from superaide.auth.service import normalize_email
     from superaide.db.models import UserAccount
     from superaide.tenancy.models import AgentInstance, InstanceMember
 
-    listed = {normalize_email(e) for e in get_settings().platform_key_owner_emails.split(",") if e.strip()}
+    listed = listed_owner_emails(get_settings().platform_key_owner_emails)
     if not listed:
         return False
     agent_id = scope_or_default().agent_id

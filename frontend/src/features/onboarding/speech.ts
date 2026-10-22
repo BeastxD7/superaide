@@ -113,22 +113,56 @@ export function recognitionLang(): string {
 
 // ---------- Synthesis ----------
 
-const PREFERRED_VOICES = ['Samantha', 'Ava', 'Google UK English Female', 'Google US English']
+export type VoiceStyle = 'formal_female' | 'formal_male' | 'neutral'
 
-/** A natural-sounding English voice if the device has one, else null (browser default). */
-export function pickVoice(voices: readonly SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
-  const english = voices.filter((v) => v.lang.toLowerCase().replace('_', '-').startsWith('en'))
-  for (const name of PREFERRED_VOICES) {
-    const match = english.find((v) => v.name.includes(name))
-    if (match) return match
+// Calm, professional voices that ship with common systems, best first. Edge's "Online (Natural)"
+// voices and Apple's Premium/Enhanced ones are neural and sound far less robotic than the defaults.
+const FORMAL_FEMALE = ['Sonia', 'Libby', 'Aria', 'Jenny', 'Serena', 'Kate', 'Samantha', 'Google UK English Female', 'Karen', 'Moira', 'Tessa', 'Ava', 'Allison', 'Susan', 'Zira']
+const FORMAL_MALE = ['Ryan', 'Guy', 'Daniel', 'Arthur', 'Oliver', 'Google UK English Male', 'Thomas', 'Aaron', 'Tom', 'Evan', 'Alex', 'David', 'Mark']
+// Apple's novelty voices: never for a professional assistant.
+const NOVELTY = /\b(albert|bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|fred|junior|ralph|grandma|grandpa|rocko|shelley|sandy|flo|eddy|reed|kathy|princess|deranged|hysterical)\b/i
+const QUALITY = /\b(premium|enhanced|natural|neural|online)\b/i
+
+function baseLang(lang: string): string {
+  return lang.toLowerCase().replace('_', '-').split('-')[0]
+}
+
+/** How well a voice suits Ava: right language, natural quality, a formal voice of the chosen style. */
+export function scoreVoice(v: SpeechSynthesisVoice, style: VoiceStyle = 'formal_female', lang = 'en-US'): number {
+  const vlang = v.lang.toLowerCase().replace('_', '-')
+  if (baseLang(vlang) !== baseLang(lang)) return -1000
+  if (NOVELTY.test(v.name)) return -500
+  let score = 0
+  if (vlang === lang.toLowerCase()) score += 15
+  if (QUALITY.test(v.name)) score += 40
+  const female = FORMAL_FEMALE.findIndex((n) => v.name.includes(n))
+  const male = FORMAL_MALE.findIndex((n) => v.name.includes(n))
+  const wanted = style === 'formal_male' ? male : female
+  const other = style === 'formal_male' ? female : male
+  if (wanted >= 0) score += 30 - wanted
+  else if (other >= 0) score += style === 'neutral' ? 25 - other : 5
+  if (v.localService) score += 3 // no 15-second cut-off, works offline
+  if (v.default) score += 1
+  return score
+}
+
+/** A natural-sounding voice for `style` in `lang` if the device has one, else null (browser default). */
+export function pickVoice(
+  voices: readonly SpeechSynthesisVoice[],
+  style: VoiceStyle = 'formal_female',
+  lang = 'en-US',
+): SpeechSynthesisVoice | null {
+  let best: SpeechSynthesisVoice | null = null
+  let bestScore = -1
+  for (const v of voices) {
+    const sc = scoreVoice(v, style, lang)
+    if (sc > bestScore) {
+      best = v
+      bestScore = sc
+    }
   }
-  return (
-    english.find((v) => /natural/i.test(v.name)) ??
-    english.find((v) => v.default) ??
-    english.find((v) => v.lang === 'en-US') ??
-    english[0] ??
-    null
-  )
+  if (best || baseLang(lang) === 'en') return best
+  return pickVoice(voices, style, 'en-US') // no voice for their language: English rather than nothing
 }
 
 // Chrome loads its voice list lazily and announces it with `voiceschanged`.
@@ -182,8 +216,10 @@ export type SpeakResult = {
 export type SpeakOptions = {
   rate?: number
   pitch?: number
-  /** Used only when no English voice is found. */
+  /** The language to speak; the best voice for it is chosen. */
   lang?: string
+  style?: VoiceStyle
+  volume?: number
   onStart?: () => void
   /** Called exactly once when the line has finished or failed, never after cancel. */
   onEnd?: (result: SpeakResult) => void
@@ -195,7 +231,7 @@ const inFlight = new Set<SpeechSynthesisUtterance>()
 
 /** Say `text` aloud. Returns a function that stops it (and suppresses onEnd). */
 export function speak(text: string, options: SpeakOptions = {}): () => void {
-  const { rate = 1, pitch = 1, lang = 'en-US', onStart, onEnd } = options
+  const { rate = 1, pitch = 1, lang = 'en-US', style = 'formal_female', volume = 1, onStart, onEnd } = options
   let done = false
   let utterance: SpeechSynthesisUtterance | null = null
   let poll = 0
@@ -238,12 +274,12 @@ export function speak(text: string, options: SpeakOptions = {}): () => void {
   void loadVoices().then((voices) => {
     if (done) return
     const u = new SpeechSynthesisUtterance(text)
-    const voice = pickVoice(voices)
+    const voice = pickVoice(voices, style, lang)
     if (voice) u.voice = voice
     u.lang = voice?.lang ?? lang
     u.rate = rate
     u.pitch = pitch
-    u.volume = 1
+    u.volume = volume
 
     let started = false
     let quietTicks = 0

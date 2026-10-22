@@ -13,7 +13,9 @@ import { Orb } from '@/components/Orb'
 import { StepControls } from '@/features/onboarding/steps'
 import { unlockSpeech } from '@/features/onboarding/speech'
 import { VideoCall, type CallQuestion, type CallTurnResult } from '@/features/onboarding/VideoCall'
+import { VoiceIntro, type VoiceConfig } from '@/features/onboarding/voice/VoiceIntro'
 import { AccountMenu, Notice } from '@/components/site'
+import { SessionProblem } from '@/components/SessionProblem'
 
 export function Meet({ session }: { session: Session }) {
   const router = useRouter()
@@ -39,11 +41,17 @@ export function Meet({ session }: { session: Session }) {
     return () => ro.disconnect()
   }, [loaded])
 
+  // Without the agent's state there is nothing to show. Not signed in or not hired: go where the
+  // person belongs. A failed read is neither, so stay and offer a retry (SessionProblem below).
+  const hired = Boolean(session.account?.hire)
+  const loadProblem = !me && session.loadFailed && (hired || !session.account)
   useEffect(() => {
-    if (!me) {
-      router.push(session.account ? '/' : `/login?next=${encodeURIComponent('/meet')}`)
-      return
-    }
+    if (me || loadProblem) return
+    router.replace(session.account ? '/' : `/login?next=${encodeURIComponent('/meet')}`)
+  }, [me, loadProblem, session.account, router])
+
+  useEffect(() => {
+    if (!me) return
     Promise.all([call<StepView>('/onboarding'), call<Message[]>('/messages')])
       .then(([v, m]) => {
         setFresh(!m.some((x) => x.from === 'you'))
@@ -68,7 +76,9 @@ export function Meet({ session }: { session: Session }) {
         const m = await call<Message[]>('/messages')
         setView(v)
         setMessages(m)
-        if (v.done) void session.refresh()
+        // Wait for the account and the agent's state to say "introduced" before the dashboard
+        // is offered: its guard reads that state and would send the owner back here.
+        if (v.done) await session.refresh()
       } catch (e) {
         setError(e instanceof AppError ? e.message : String(e))
         setMessages((m) => m.filter((x) => !x.id.startsWith('local-')))
@@ -91,8 +101,24 @@ export function Meet({ session }: { session: Session }) {
 
   const [callCount, setCallCount] = useState(0)
 
+  const [voice, setVoice] = useState<VoiceConfig | null>(null)
+
   const openCall = useCallback(async () => {
     unlockSpeech() // must run inside the click, or Safari won't let Ava speak
+    // The voice call v2 (ADR 0012) when it's switched on; the original call otherwise (404).
+    try {
+      const cfg = await call<VoiceConfig>(`/intro/voice?lang=${encodeURIComponent(navigator.language || 'en-US')}`)
+      if (cfg.enabled) {
+        setVoice(cfg)
+        setCallCount((n) => n + 1)
+        return
+      }
+    } catch (e) {
+      if (!(e instanceof AppError) || e.status !== 404) {
+        setError(e instanceof AppError ? e.message : String(e))
+        return
+      }
+    }
     try {
       const r = await call<{ first: CallQuestion }>('/intro/call')
       setFirstQuestion(r.first)
@@ -105,14 +131,20 @@ export function Meet({ session }: { session: Session }) {
 
   const endCall = useCallback(
     async (finished: boolean) => {
+      // If finishing fails this throws, and the call screen says so and offers to try again or
+      // close (the answers were saved one by one, so nothing is lost).
       if (finished) await call('/intro/call/finish', { method: 'POST' })
       setCalling(false)
-      await reload()
+      try {
+        await reload()
+      } catch (e) {
+        setError(e instanceof AppError ? e.message : String(e))
+      }
     },
     [reload],
   )
 
-  if (!me) return null
+  if (!me) return loadProblem ? <SessionProblem session={session} /> : null
   const agentName = me.agent.name
 
   return (
@@ -196,6 +228,21 @@ export function Meet({ session }: { session: Session }) {
           </AnimatePresence>
         </div>
       </div>
+      {voice && (
+        <VoiceIntro
+          key={`voice-${callCount}`}
+          agentName={agentName}
+          config={voice}
+          onDone={() => {
+            setVoice(null)
+            void reload()
+          }}
+          onCancel={() => {
+            setVoice(null)
+            void reload()
+          }}
+        />
+      )}
       {calling && firstQuestion && (
         <VideoCall
           key={callCount}
@@ -204,7 +251,7 @@ export function Meet({ session }: { session: Session }) {
           onAnswer={(questionId, transcript) =>
             call<CallTurnResult>('/intro/call/answer', { method: 'POST', json: { question_id: questionId, transcript } })
           }
-          onFinish={() => void endCall(true)}
+          onFinish={() => endCall(true)}
           onCancel={() => void endCall(false)}
         />
       )}

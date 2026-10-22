@@ -1,6 +1,6 @@
 'use client'
 
-import { AlertTriangle, Check, ChevronDown, ExternalLink, KeyRound, ShieldAlert } from 'lucide-react'
+import { AlertTriangle, AudioLines, Check, ChevronDown, ExternalLink, KeyRound, ShieldAlert } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { call, type Me } from '@/lib/api'
@@ -11,7 +11,7 @@ import { Button, Notice } from '@/components/site'
 import { GoogleCalendarRow, type GoogleGuide, type GoogleService } from '@/features/workspace/GoogleCalendar'
 import { LinkedAccounts, type LinkedAccount } from '@/features/workspace/LinkedAccounts'
 
-// Connect Claude, Telegram, Slack and Google Calendar from the app. Keys are checked with the
+// Connect Claude, Telegram, Slack, Google Calendar and the voice call's speech services from the app. Keys are checked with the
 // service, then kept encrypted on this computer; the app only ever shows a hint.
 
 type Service = {
@@ -29,7 +29,7 @@ type Service = {
 const rejected = (s: Service) => s.connected && s.health?.status === 'auth_failed'
 
 type Status = {
-  services: Record<'anthropic' | 'telegram' | 'slack' | 'whatsapp', Service> & { google: GoogleService }
+  services: Record<'anthropic' | 'telegram' | 'slack' | 'whatsapp' | 'deepgram' | 'elevenlabs', Service> & { google: GoogleService }
   guides: Record<string, { url: string; steps: string[] }> & { google: GoogleGuide }
   keys_kept_in: string
 }
@@ -41,11 +41,24 @@ const FIELDS: Record<string, { name: string; label: string; placeholder: string 
     { name: 'bot_token', label: 'Bot User OAuth Token', placeholder: 'xoxb-…' },
     { name: 'app_token', label: 'App-level token', placeholder: 'xapp-…' },
   ],
+  deepgram: [{ name: 'api_key', label: 'Deepgram API key', placeholder: 'Paste your Deepgram key' }],
+  elevenlabs: [{ name: 'api_key', label: 'ElevenLabs API key', placeholder: 'sk_…' }],
 }
+const NAMES: Record<Provider, string> = {
+  anthropic: 'Claude',
+  telegram: 'Telegram',
+  slack: 'Slack',
+  deepgram: 'Deepgram',
+  elevenlabs: 'ElevenLabs',
+}
+type Provider = 'anthropic' | 'telegram' | 'slack' | 'deepgram' | 'elevenlabs'
+const VOICE: ReadonlySet<Provider> = new Set(['deepgram', 'elevenlabs'])
 const OPEN_LABEL: Record<string, string> = {
   anthropic: 'Open the Claude Console',
   telegram: 'Open BotFather',
   slack: 'Create my Slack app',
+  deepgram: 'Open the Deepgram console',
+  elevenlabs: 'Open ElevenLabs API keys',
 }
 
 export function Connections({ agentName, me, refreshMe }: { agentName: string; me: Me; refreshMe: () => Promise<Me | null> }) {
@@ -110,6 +123,9 @@ export function Connections({ agentName, me, refreshMe }: { agentName: string; m
     { key: 'anthropic', brand: 'claude', name: `Claude, ${agentName}'s brain`, why: 'Real replies and reading your files' },
     { key: 'telegram', brand: 'telegram', name: 'Telegram', why: 'Message me from your phone' },
     { key: 'slack', brand: 'slack', name: 'Slack', why: 'Your team can reach me in Slack' },
+    // The voice call (ADR 0012). Optional: without them, your browser's own speech is used.
+    { key: 'deepgram', brand: null, name: 'Deepgram, for the voice call', why: 'Hears you on the call (and a voice, in English)' },
+    { key: 'elevenlabs', brand: null, name: 'ElevenLabs, for the voice call', why: `A natural voice for ${agentName}` },
   ] as const
   // Where the vault's master key lives (backend vault/crypto.py): the Keychain on a Mac, settings on a server.
   const KEY_PLACES: Record<string, string> = {
@@ -133,7 +149,7 @@ export function Connections({ agentName, me, refreshMe }: { agentName: string; m
               className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-lilac-50"
             >
               <span className="grid size-9 shrink-0 place-items-center rounded-full bg-lilac-100">
-                <BrandIcon brand={brand} size={18} decorative />
+                {brand ? <BrandIcon brand={brand} size={18} decorative /> : <AudioLines className="size-[18px] text-violet-700" aria-hidden />}
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-medium text-ink">{name}</span>
@@ -237,7 +253,7 @@ function ConnectForm({
   linked,
   onLinkedChanged,
 }: {
-  provider: 'anthropic' | 'telegram' | 'slack'
+  provider: Provider
   service: Service
   guide: { url: string; steps: string[] }
   where: string
@@ -252,7 +268,7 @@ function ConnectForm({
   const { run, busy, error } = useAction()
   const [failed, setFailed] = useState<'save' | 'disconnect'>('save')
   const fields = FIELDS[provider]
-  const label = provider === 'anthropic' ? 'Claude' : provider === 'telegram' ? 'Telegram' : 'Slack'
+  const label = NAMES[provider]
 
   function save(e: FormEvent) {
     e.preventDefault()
@@ -283,7 +299,7 @@ function ConnectForm({
           </Notice>
         </div>
       )}
-      {provider !== 'anthropic' && service.connected && (
+      {(provider === 'telegram' || provider === 'slack') && service.connected && (
         <LinkedAccounts provider={provider} accounts={linked} onChanged={onLinkedChanged} />
       )}
       {provider === 'telegram' && service.connected && !rejected(service) && !linked.some((a) => a.provider === 'telegram' && a.mine) && (
@@ -299,6 +315,9 @@ function ConnectForm({
               </li>
             ))}
           </ol>
+          {VOICE.has(provider) && (
+            <p className="mt-2 text-xs text-muted">Optional. Without it, {"the voice call uses your browser's own speech"}. Audio is never stored.</p>
+          )}
           {guide.url && (
             <a
               href={guide.url}
@@ -335,7 +354,7 @@ function ConnectForm({
         <ActionError action={failed === 'save' ? `connect ${label}` : `disconnect ${label}`} error={error} />
       </div>
       {service.connected && service.via === 'app' && (
-        <button onClick={disconnect} disabled={busy} className="mt-3 w-full rounded-full py-2 text-sm text-muted hover:text-danger">
+        <button onClick={() => void disconnect()} disabled={busy} className="mt-3 w-full rounded-full py-2 text-sm text-muted hover:text-danger">
           Disconnect {label}
         </button>
       )}

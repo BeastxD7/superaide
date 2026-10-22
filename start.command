@@ -197,6 +197,7 @@ if [ -n "$LAN_IP" ]; then
   export DEV_ORIGINS="${DEV_ORIGINS:+$DEV_ORIGINS,}$LAN_IP"
   echo "On your phone (same Wi-Fi): http://$LAN_IP:$WEB_PORT"
 fi
+(cd frontend && node scripts/copy-vad-assets.mjs >/dev/null 2>&1 || true)  # the voice call's detector files
 (cd frontend && API_INTERNAL_URL="http://127.0.0.1:$API_PORT" exec ./node_modules/.bin/next dev --port "$WEB_PORT") &
 PIDS+=($!)
 

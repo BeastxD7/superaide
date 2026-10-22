@@ -7,6 +7,10 @@ export type Session = {
   account: Account | null // who is signed in (null when logged out)
   me: Me | null // the hired agent's workspace state, when this account hired one
   loading: boolean // true until the first check with the server finishes
+  // True when the last attempt to read the account or the agent's state failed for a reason other
+  // than "signed out" (a network blip, a 5xx). It is different from "not hired" (me is null and
+  // there is no error), so screens show a retry instead of sending the owner away.
+  loadFailed: boolean
   refresh: () => Promise<Me | null>
   signedIn: (account: Account) => Promise<void>
   logOut: () => Promise<void>

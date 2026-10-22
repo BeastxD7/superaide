@@ -94,3 +94,35 @@ def check_slack(bot_token: str, app_token: str, client: httpx.Client | None = No
         values={"bot_token": bot, "app_token": app, "team_id": str(auth.get("team_id", ""))},
         meta={"team": auth.get("team"), "bot_user": auth.get("user")},
     )
+
+
+def check_deepgram(api_key: str, client: httpx.Client | None = None) -> Checked:
+    """Deepgram, for speech-to-text (and its Aura voices) on the voice call."""
+    key = api_key.strip()
+    if not re.fullmatch(r"[A-Za-z0-9_.-]{20,200}", key):
+        raise CheckFailed("That doesn't look like a Deepgram API key. Copy it again from the Deepgram console.")
+    try:
+        r = _client(client).get("https://api.deepgram.com/v1/projects", headers={"Authorization": f"Token {key}"})
+    except httpx.HTTPError as exc:
+        raise CheckFailed("Couldn't reach Deepgram. Check your internet connection and try again.") from exc
+    if r.status_code in (401, 403):
+        raise CheckFailed("Deepgram didn't accept that key. Copy it again from the Deepgram console.")
+    if r.status_code >= 400:
+        raise CheckFailed(f"Deepgram answered with an error ({r.status_code}). Try again in a minute.")
+    return Checked(values={"api_key": key})
+
+
+def check_elevenlabs(api_key: str, client: httpx.Client | None = None) -> Checked:
+    """ElevenLabs, for Ava's natural voice on the voice call."""
+    key = api_key.strip()
+    if not re.fullmatch(r"[A-Za-z0-9_-]{20,200}", key):
+        raise CheckFailed("That doesn't look like an ElevenLabs API key. Copy it again from your ElevenLabs settings.")
+    try:
+        r = _client(client).get("https://api.elevenlabs.io/v1/models", headers={"xi-api-key": key})
+    except httpx.HTTPError as exc:
+        raise CheckFailed("Couldn't reach ElevenLabs. Check your internet connection and try again.") from exc
+    if r.status_code in (401, 403):
+        raise CheckFailed("ElevenLabs didn't accept that key. Check it has text-to-speech access.")
+    if r.status_code >= 400:
+        raise CheckFailed(f"ElevenLabs answered with an error ({r.status_code}). Try again in a minute.")
+    return Checked(values={"api_key": key})

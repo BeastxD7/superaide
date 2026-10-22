@@ -90,6 +90,22 @@ def test_a_suggested_handle_is_pseudonymous_and_valid():
         assert handles.check(h) == h and h.startswith("ava-")
 
 
+def test_a_suggestion_that_spells_a_rude_word_is_replaced_not_returned(monkeypatch):
+    """Random letters can spell a word the handle rules refuse ("ava-wank23" folds to a rude root). The
+    first draw is forced to do exactly that; the suggestion must be a different, valid handle."""
+    forced = iter("wank23")  # the first suggestion's six characters
+    real = handles.secrets.choice
+
+    def rigged(alphabet):
+        return next(forced, None) or real(alphabet)
+
+    with pytest.raises(handles.HandleError):
+        handles.check("ava-wank23")  # the rigged draw really would be refused
+    monkeypatch.setattr(handles.secrets, "choice", rigged)
+    suggestion = handles.suggest()
+    assert suggestion != "ava-wank23" and handles.check(suggestion) == suggestion
+
+
 def test_handles_are_case_folded(owner):
     assert publish(owner, "Shashank-K")["link"]["handle"] == "shashank-k"
 

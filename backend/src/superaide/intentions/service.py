@@ -12,7 +12,7 @@ import logging
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import and_, not_, select
 from sqlalchemy.orm import Session
 
 from superaide.audit import audit
@@ -229,10 +229,20 @@ def change(
 
 
 def upcoming(session: Session, owner: Person, *, include_closed: bool = False, limit: int = 100) -> list[Intention]:
+    """What is still ahead (soonest first), then the open reminders that already went off (newest first).
+
+    A delivered reminder stays open until the owner marks it done, so a plain "oldest first" list
+    with a cap would fill up with old, delivered ones and hide the ones still to come (issue #85)."""
     q = select(Intention).where(Intention.owner_person_id == owner.id)
     if not include_closed:
         q = q.where(Intention.status == "open")
-    return list(session.scalars(q.order_by(Intention.due_at).limit(limit)))
+    went_off = and_(Intention.status == "open", Intention.delivered_at.is_not(None))
+    ahead = list(session.scalars(q.where(not_(went_off)).order_by(Intention.due_at).limit(limit)))
+    room = limit - len(ahead)
+    if room <= 0:
+        return ahead
+    sent = session.scalars(q.where(went_off).order_by(Intention.due_at.desc()).limit(room))
+    return ahead + list(sent)
 
 
 # --- delivery ----------------------------------------------------------------------
