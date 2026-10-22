@@ -75,7 +75,7 @@ test('Needs-you dates carry the year once they are older than a week', async ({ 
   void owner
   await mockNeedsYou(page, [item('h1', iso(40)), item('h2', iso(0))])
   await page.goto('/dashboard/needs-you')
-  await page.getByRole('tab', { name: /Handled for you/ }).click()
+  await page.locator('button, [role="tab"]').filter({ hasText: /^Handled for you/ }).click()
   const year = new Date(iso(40)).getFullYear().toString()
   await expect(page.getByText(new RegExp(`${year}, `))).toBeVisible()
   await expect(page.getByText(/Today, /)).toBeVisible()
