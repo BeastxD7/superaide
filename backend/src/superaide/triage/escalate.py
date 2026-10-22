@@ -172,7 +172,10 @@ def _deliver(session: Session, esc: Escalation, decision: TriageDecision, owner:
         if identity is None:
             row.status, row.error = "skipped", "not linked"
         else:
-            sent, why = notify._push(provider, identity, text_for(session, esc, decision, push=True))
+            if provider == "telegram":
+                sent, why = _push_with_buttons(identity, text_for(session, esc, decision, push=True), row)
+            else:
+                sent, why = notify._push(provider, identity, text_for(session, esc, decision, push=True))
             row.status, row.error = ("sent", "") if sent else ("failed", why[:500])
             if sent:
                 row.sent_at = now
@@ -187,6 +190,26 @@ def _deliver(session: Session, esc: Escalation, decision: TriageDecision, owner:
         escalation_id=esc.id, step=esc.step, provider=provider, status=row.status,
     )  # fmt: skip
     return row.status
+
+
+def _push_with_buttons(identity: Any, text: str, row: EscalationDelivery) -> tuple[bool, str]:
+    """A Telegram push with Acknowledge / Snooze / Not urgent buttons (TR4). The message's
+    "chat_id:message_id" is kept on the delivery so it can be edited once someone answers."""
+    from superaide.channels import health
+    from superaide.proactive import notify
+    from superaide.triage.buttons import keyboard
+
+    messenger = notify.messenger_for("telegram")
+    if messenger is None or not hasattr(messenger, "send_buttons") or not notify.confirmed_here("telegram", identity):
+        return notify._push("telegram", identity, text)  # explains why not, or sends plain text
+    try:
+        ref = messenger.send_buttons(identity.stable_key, text, keyboard(row.token))
+    except health.DeliveryFailed as exc:
+        return False, health.describe("telegram", {"status": exc.kind})
+    if ref is None:
+        return False, "Telegram didn't accept the message."
+    row.external_ref = str(ref)[:200]
+    return True, ""
 
 
 def run_step(session: Session, payload: dict[str, Any], now: datetime | None = None) -> None:
@@ -300,6 +323,10 @@ def ack(
     else:  # ack | reply | call
         esc.state, esc.acked_at, esc.acked_via = EscalationState.ACKED, now, source
     audit(session, "triage", "escalation_acked", escalation_id=esc.id, source=source, verb=verb, state=esc.state)
+    from superaide.triage.buttons import refresh
+
+    via = {"app": "the app", "telegram": "Telegram", "slack": "Slack"}.get(source, source)
+    refresh(session, esc, verb=verb, via=via)  # stale buttons go, on every copy
     return True
 
 

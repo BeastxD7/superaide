@@ -15,7 +15,7 @@ import httpx
 
 from superaide.channels import format as fmt
 from superaide.channels import health
-from superaide.channels.base import InboundMessage, Sources
+from superaide.channels.base import Button, InboundAction, InboundMessage, Sources
 from superaide.db.models import ChannelIdentity, Context
 
 log = logging.getLogger(__name__)
@@ -23,6 +23,7 @@ SECRET_HEADER = "X-Telegram-Bot-Api-Secret-Token"
 # Telegram answers 401 for a revoked token and 404 for one that isn't a token at all.
 AUTH_STATUSES = (401, 404)
 AUTH_BACKOFF = 300.0  # seconds between getUpdates tries once the token is rejected
+ALLOWED_UPDATES = '["message", "callback_query"]'  # callback_query: escalation buttons (ADR 0010)
 
 
 def verify_secret(received: str | None, expected: str) -> bool:
@@ -67,6 +68,34 @@ def parse_update(update: dict[str, Any], *, verified: bool, bot: str = "") -> In
         endpoint=bot,
         raw=update,
     )
+
+
+def parse_callback(update: dict[str, Any], *, verified: bool, bot: str = "") -> InboundAction | None:
+    """A button press (callback_query) on one of our messages, or None."""
+    q = update.get("callback_query")
+    if not isinstance(q, dict) or not q.get("id"):
+        return None
+    sender = q.get("from") or {}
+    if not sender.get("id") or sender.get("is_bot"):
+        return None
+    message = q.get("message") or {}
+    return InboundAction(
+        provider="telegram",
+        sender_id=str(sender["id"]),
+        action_id=str(q["id"]),
+        data=str(q.get("data") or "")[:64],
+        chat_id=str((message.get("chat") or {}).get("id", "")),
+        message_id=str(message.get("message_id", "")),
+        endpoint=bot,
+        verified=verified,
+    )
+
+
+def _handle_press(token: str, action: InboundAction) -> None:
+    """Escalation buttons (ADR 0010): handled by triage, in the instance this poller runs in."""
+    from superaide.triage.buttons import on_telegram_press
+
+    on_telegram_press(token, action)
 
 
 class TelegramMessenger:
@@ -118,6 +147,52 @@ class TelegramMessenger:
         health.record("telegram", health.OK)
         return True
 
+    def _call(self, method: str, body: dict[str, Any]) -> httpx.Response | None:
+        try:
+            return self.http.post(f"{self.base}/{method}", json=body)
+        except httpx.HTTPError as exc:  # the message would hold the URL, and so the token
+            log.warning("telegram %s failed: %s", method, type(exc).__name__)
+            return None
+
+    def send_buttons(self, chat_id: str, text: str, buttons: list[Button]) -> str | None:
+        """Plain text with one row of inline buttons. Returns "chat_id:message_id" (for edits) when
+        Telegram took it, None when it refused this message; raises DeliveryFailed when the channel is down."""
+        body = {
+            "chat_id": chat_id,
+            "text": fmt.to_plain(text)[: fmt.TELEGRAM_LIMIT],
+            "reply_markup": {"inline_keyboard": [[{"text": label, "callback_data": data} for label, data in buttons]]},
+        }
+        r = self._post(body)
+        if r.status_code != 200:
+            log.warning("telegram send failed: %s %s", r.status_code, r.text[:200])
+            if r.status_code in AUTH_STATUSES:
+                health.record("telegram", health.AUTH_FAILED, f"Telegram rejected the bot token ({r.status_code})")
+                raise health.DeliveryFailed("telegram", health.AUTH_FAILED, "the bot token was rejected")
+            if r.status_code >= 500:
+                health.record("telegram", health.UNREACHABLE, f"Telegram answered {r.status_code}")
+                raise health.DeliveryFailed("telegram", health.UNREACHABLE, f"Telegram answered {r.status_code}")
+            return None
+        health.record("telegram", health.OK)
+        try:
+            message_id = r.json()["result"]["message_id"]
+        except ValueError, KeyError, TypeError:
+            return f"{chat_id}:"
+        return f"{chat_id}:{message_id}"
+
+    def edit_message(self, ref: str, text: str) -> bool:
+        """Replace a sent message's text and drop its buttons (no reply_markup), so they can't be pressed again."""
+        chat_id, _, message_id = ref.partition(":")
+        if not chat_id or not message_id.isdigit():
+            return False
+        body = {"chat_id": chat_id, "message_id": int(message_id), "text": fmt.to_plain(text)[: fmt.TELEGRAM_LIMIT]}
+        r = self._call("editMessageText", body)
+        return r is not None and r.status_code == 200
+
+    def answer_callback(self, callback_id: str, text: str = "") -> bool:
+        """Stop the client's spinner. Telegram expects this for every press, refused ones too."""
+        r = self._call("answerCallbackQuery", {"callback_query_id": callback_id, "text": text[:200]})
+        return r is not None and r.status_code == 200
+
     def send_dm(self, identity: ChannelIdentity, text: str) -> bool:
         # In a private chat the chat ID equals the user ID. The user must have
         # started the bot once, or Telegram refuses the message.
@@ -133,7 +208,12 @@ def set_webhook(token: str, url: str, secret: str, client: httpx.Client | None =
     try:
         r = http.post(
             f"https://api.telegram.org/bot{token}/setWebhook",
-            json={"url": url, "secret_token": secret, "allowed_updates": ["message"], "drop_pending_updates": False},
+            json={
+                "url": url,
+                "secret_token": secret,
+                "allowed_updates": ["message", "callback_query"],  # callback_query: escalation buttons
+                "drop_pending_updates": False,
+            },
         )
         ok = r.status_code == 200 and bool(r.json().get("ok"))
     except (httpx.HTTPError, ValueError) as exc:
@@ -163,7 +243,9 @@ def poll_forever(token: str, handle: Callable[[InboundMessage], Any], stop: thre
     log.info("Telegram polling started")
     while not stop.is_set():
         try:
-            r = http.get(f"{base}/getUpdates", params={"timeout": 20, "offset": offset})
+            # Named explicitly: a setWebhook's allowed_updates would otherwise carry over to polling.
+            params: dict[str, str | int] = {"timeout": 20, "offset": offset, "allowed_updates": ALLOWED_UPDATES}
+            r = http.get(f"{base}/getUpdates", params=params)
             data = r.json()
         except (httpx.HTTPError, ValueError) as exc:
             log.warning("telegram poll error: %s", type(exc).__name__)  # str(exc) can hold the URL and token
@@ -196,5 +278,7 @@ def poll_forever(token: str, handle: Callable[[InboundMessage], Any], stop: thre
                 msg = parse_update(update, verified=True, bot=bot_id(token))
                 if msg is not None:
                     handle(msg)
+                elif (action := parse_callback(update, verified=True, bot=bot_id(token))) is not None:
+                    _handle_press(token, action)
             except Exception:  # keep polling even if one update is malformed or fails
                 log.exception("failed to handle telegram update")

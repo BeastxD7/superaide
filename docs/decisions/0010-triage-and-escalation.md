@@ -1,6 +1,6 @@
 # 0010: Triage and escalation
 
-Status: partially built (flag off), 2026-10-22. TR0–TR3 and TR7–TR10 are on main behind `TRIAGE_ENABLED`
+Status: partially built (flag off), 2026-10-22. TR0–TR4 (Telegram) and TR7–TR10 are on main behind `TRIAGE_ENABLED`
 (default false); see "As built" below. The open questions are still open.
 
 ## Context
@@ -579,6 +579,7 @@ job; a triage failure can't touch the reply.
 | TR1 | Features from typed data only; R2–R9; score; stage caps; Infant shadow decision; bounded deferral | `triage/{features,rules,policy}.py` |
 | TR2 | Classifier on the `triage` role and its own daily bucket (`BUCKETS["triage"]`, `budget_daily_by_bucket["triage"] = 0.05`); quote and deadline checks; resampling; rules-only fallbacks | `triage/classify.py` |
 | TR3 | The ladder (app → interrupt channel → other channel → expired), idempotent step jobs under a row lock, delivery rows, explicit owner-only acks, snooze cycles, quiet hours, rejected channels, the interrupt budget | `triage/{escalate,service}.py` |
+| TR4 | Telegram buttons on escalation pushes (Acknowledge, Snooze 30 min, Not urgent); `callback_query` from the per-bot pollers and both webhook routes; owner-only presses on the confirmed bot; repeated presses are no-ops; every press answered; every Telegram copy edited once answered (from Telegram or the app) | `triage/buttons.py`, `channels/telegram.py` |
 | TR7 | `GET /app/needs-you`, `POST /app/needs-you/{id}/action` and `/feedback`, `GET/PUT /app/triage/settings`, `POST /app/triage/away` and `/busy` | `triage/routes.py` |
 | TR8 | Digest sections (Needs your decision, Escalations, Handled for you, Messages taken, FYI, Couldn't sort) and one catch-up note when quiet hours end | `triage/digest.py`, one hook in `proactive/digest.py` |
 | TR9 | The Needs-you inbox and a settings panel at `/dashboard/needs-you`; the sidebar item appears only when the API answers | `frontend/src/features/needs-you/` |
@@ -608,6 +609,7 @@ would do, as section 8 says; reports in `backend/evals/results/triage-*.md`):
 | Same answers replayed after R7 needed a verified sender | 100% | 85% | 100% | 98% | $0 |
 | Live, `effort: low`, `max_tokens` 350, terse reason (no answer cut off) | 100% | 77% | 100% | 96% | $0.0045 |
 | Same answers replayed after a risky urgent request escalates as unverified | 100% | 100% | 100% | 98% | $0 |
+| Live confirmation of that change (k=1) | 100% | 100% | 100% | 98% | $0.0045 |
 
 The one false interrupt was an unverified account claiming an outage under a VIP's name; R7 now
 interrupts only for a verified sender. Claude Haiku 5.5 thinks by default (effort `medium`) and its
@@ -620,8 +622,8 @@ flag), which is by design.
 
 **Not built yet, and why**
 
-- TR4 (buttons on Telegram and Slack): after ADR 0009 T4. Pushes are plain text today; the press
-  tokens are already stored on each delivery.
+- TR4 on Slack (`block_actions` through Socket Mode, `chat.update`, interactivity in the manifest): Slack
+  pushes are plain text; acknowledge them in the app or on Telegram.
 - TR5 (the pipeline hook proper): the sender templates, `reply_on_behalf` drafts and their
   executor, `stranger_intake`. Today `handle` is recorded only, and the sender's reply is unchanged.
 - TR6 (learning, metrics, stage gates): feedback is recorded, but no `triage_rule` is suggested

@@ -235,9 +235,17 @@ def create_app(agent: Agent | None = None) -> FastAPI:
             raise HTTPException(401, "bad secret")
         with use_instance(default_scope()):  # the server's bot belongs to its first instance (until T4)
             bot = telegram.bot_id(get_agent().settings.telegram_bot_token)
-        msg = telegram.parse_update(await request.json(), verified=True, bot=bot)
+        update = await request.json()
+        msg = telegram.parse_update(update, verified=True, bot=bot)
         if msg is not None:
             background.add_task(handle_on_server_channels, msg)
+        elif (press := telegram.parse_callback(update, verified=True, bot=bot)) is not None:
+
+            def press_in_scope(p: Any = press) -> None:  # escalation buttons (ADR 0010)
+                with use_instance(default_scope()):
+                    telegram._handle_press(get_agent().settings.telegram_bot_token, p)
+
+            background.add_task(press_in_scope)
         return {"ok": True}
 
     @app.post(
@@ -261,7 +269,8 @@ def create_app(agent: Agent | None = None) -> FastAPI:
             with session_scope() as s:
                 audit(s, "webhook", "rejected", provider="telegram", reason="bad endpoint or secret")
             raise HTTPException(401, "bad secret")
-        msg = telegram.parse_update(await request.json(), verified=True, bot=bot)
+        update = await request.json()
+        msg = telegram.parse_update(update, verified=True, bot=bot)
         if msg is not None:
 
             def handle_in_scope(m: InboundMessage = msg, sc: Any = scope) -> Any:
@@ -269,6 +278,15 @@ def create_app(agent: Agent | None = None) -> FastAPI:
                     return get_agent().handle(m)
 
             background.add_task(handle_in_scope)
+        elif (press := telegram.parse_callback(update, verified=True, bot=bot)) is not None:
+
+            def press_in_scope(p: Any = press, sc: Any = scope) -> None:  # escalation buttons (ADR 0010)
+                from superaide.vault.store import runtime_settings
+
+                with use_instance(sc):
+                    telegram._handle_press(runtime_settings().telegram_bot_token, p)
+
+            background.add_task(press_in_scope)
         return {"ok": True}
 
     @app.post(

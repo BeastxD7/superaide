@@ -29,7 +29,24 @@ class InboundMessage:
     raw: dict[str, Any] = field(default_factory=dict)
 
 
+@dataclass
+class InboundAction:
+    """A button pressed on one of our messages (Telegram callback_query; later Slack block_actions).
+    Who pressed it is the platform's immutable id, checked against the database like a message."""
+
+    provider: str  # telegram | slack
+    sender_id: str  # immutable platform user ID of the presser
+    action_id: str  # the press's own id (callback_query.id): the same press twice is one press
+    data: str  # what the button carries (callback_data); opaque, never trusted beyond a lookup
+    chat_id: str = ""
+    message_id: str = ""
+    endpoint: str = ""  # which bot received it
+    verified: bool = False
+
+
 Sources = list[dict[str, Any]]
+# A button on an outbound message: (label, data). Telegram's callback_data is 1-64 bytes.
+Button = tuple[str, str]
 
 
 class Messenger(Protocol):
@@ -51,6 +68,23 @@ class FakeMessenger:
     """Records outbound messages instead of sending them (tests and dry runs)."""
 
     sent: list[dict[str, Any]] = field(default_factory=list)
+    edits: list[dict[str, Any]] = field(default_factory=list)
+    answers: list[dict[str, Any]] = field(default_factory=list)
+
+    def send_buttons(self, chat_id: str, text: str, buttons: list[Button]) -> str:
+        """Like TelegramMessenger.send_buttons: returns "chat_id:message_id" for later edits."""
+        ref = f"{chat_id}:{len(self.sent) + 1}"
+        self.sent.append({"to_chat": chat_id, "stable_key": chat_id, "text": text, "buttons": list(buttons),
+                          "ref": ref})  # fmt: skip
+        return ref
+
+    def edit_message(self, ref: str, text: str) -> bool:
+        self.edits.append({"ref": ref, "text": text})
+        return True
+
+    def answer_callback(self, callback_id: str, text: str = "") -> bool:
+        self.answers.append({"callback_id": callback_id, "text": text})
+        return True
 
     def send_dm(self, identity: ChannelIdentity, text: str) -> None:
         self.sent.append({"to_identity": str(identity.id), "stable_key": identity.stable_key, "text": text})
