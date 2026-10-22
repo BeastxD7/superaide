@@ -26,6 +26,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    event,
     func,
     text,
 )
@@ -49,6 +50,19 @@ def _agent() -> uuid.UUID:
 
 class Base(DeclarativeBase):
     pass
+
+
+@event.listens_for(Base, "init", propagate=True)
+def _belongs_to_the_instance_in_scope(target: Any, args: Any, kwargs: dict[str, Any]) -> None:
+    """A new row takes the agent instance in scope when it is created, not when it is flushed
+    (which can be after the code has left that instance's scope). Values passed explicitly win."""
+    mapper_columns = type(target).__mapper__.columns
+    if "agent_id" in mapper_columns and "agent_id" not in kwargs:
+        kwargs["agent_id"] = _agent()
+    if "tenant_id" in mapper_columns and "tenant_id" not in kwargs and "agent_id" in mapper_columns:
+        kwargs["tenant_id"] = _tenant()
+    elif "tenant_id" in mapper_columns and "tenant_id" not in kwargs and type(target).__tablename__ != "tenant":
+        kwargs["tenant_id"] = _tenant()
 
 
 class Scoped:
@@ -82,7 +96,7 @@ class Person(Scoped, Base):
 
 class ChannelIdentity(Scoped, Base):
     __tablename__ = "channel_identity"
-    __table_args__ = (UniqueConstraint("tenant_id", "provider", "tenant_scope", "stable_key", name="uq_identity_key"),)
+    __table_args__ = (UniqueConstraint("agent_id", "provider", "tenant_scope", "stable_key", name="uq_identity_key"),)
 
     person_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("person.id"), nullable=True, index=True)
     provider: Mapped[str] = mapped_column(String(20))  # telegram | slack | email | ...
@@ -130,7 +144,7 @@ class LinkChallenge(Scoped, Base):
 
 class Context(Scoped, Base):
     __tablename__ = "context"
-    __table_args__ = (UniqueConstraint("tenant_id", "provider", "tenant_scope", "external_id", name="uq_context_key"),)
+    __table_args__ = (UniqueConstraint("agent_id", "provider", "tenant_scope", "external_id", name="uq_context_key"),)
 
     provider: Mapped[str] = mapped_column(String(20))
     tenant_scope: Mapped[str] = mapped_column(String(100), default="")

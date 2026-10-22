@@ -35,6 +35,7 @@ class NoScope(LookupError):
 
 
 _current: ContextVar[InstanceScope | None] = ContextVar("superaide_instance_scope", default=None)
+_everywhere: ContextVar[bool] = ContextVar("superaide_all_instances", default=False)
 
 
 def current_scope() -> InstanceScope | None:
@@ -72,3 +73,19 @@ def mine(model: Any) -> Any:
     """`model.agent_id == <the instance in scope>`: the explicit filter every per-instance query adds,
     in front of Row-Level Security (which a superuser connection skips)."""
     return model.agent_id == scope_or_default().agent_id
+
+
+@contextmanager
+def all_instances() -> Iterator[None]:
+    """Platform code (operator views, migrations' helpers, tests) that reads across instances on
+    purpose: the automatic per-instance filter (db/session.py) is off inside. Row-Level Security
+    still applies to the app's own database role."""
+    token = _everywhere.set(True)
+    try:
+        yield
+    finally:
+        _everywhere.reset(token)
+
+
+def across_instances() -> bool:
+    return _everywhere.get()

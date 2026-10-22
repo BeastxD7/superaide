@@ -8,11 +8,11 @@ from functools import lru_cache
 from typing import Any, cast
 
 from sqlalchemy import Connection, CursorResult, Engine, Result, create_engine, event, text
-from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
+from sqlalchemy.orm import ORMExecuteState, Session, SessionTransaction, sessionmaker, with_loader_criteria
 
 from superaide.config import get_settings
 from superaide.db.rls import set_scope_sql
-from superaide.tenancy.context import scope_or_default
+from superaide.tenancy.context import across_instances, current_scope, scope_or_default
 
 
 @lru_cache
@@ -32,6 +32,45 @@ def _scope_transaction(session: Session, transaction: SessionTransaction, connec
     never carries one request's instance into the next."""
     scope = scope_or_default()  # T2 onwards: every entry point sets the scope; until then, the dev instance
     connection.execute(text(set_scope_sql()), {"agent": str(scope.agent_id), "tenant": str(scope.tenant_id)})
+
+
+def _per_instance_classes() -> list[type]:
+    """Every mapped class whose rows belong to one agent instance (it has agent_id), except the
+    routing tables read before an instance is known (db/rls.py EXEMPT)."""
+    from superaide.db.models import Base
+    from superaide.db.rls import EXEMPT
+
+    return [
+        m.class_
+        for m in Base.registry.mappers
+        if "agent_id" in m.columns and getattr(m.local_table, "name", "") not in EXEMPT
+    ]
+
+
+@event.listens_for(Session, "do_orm_execute")
+def _only_this_instance(state: ORMExecuteState) -> None:
+    """The first line of tenancy (ADR 0009 T7): while an instance is in scope (every owner request,
+    job, poller and webhook), every ORM read, update and delete of per-instance rows gets
+    `agent_id = <that instance>`, joins and relationships included, so a query that forgot to filter
+    can't see another owner's rows. Row-Level Security is the second line."""
+    if not (state.is_select or state.is_update or state.is_delete):
+        return
+    scope = current_scope()
+    if scope is None or across_instances() or state.execution_options.get("all_instances"):
+        return  # nothing chosen (platform code, the operator, the server's own channels use the default)
+    agent = scope.agent_id
+    state.statement = state.statement.options(
+        *(with_loader_criteria(cls, lambda c: c.agent_id == agent, include_aliases=True) for cls in _classes())
+    )
+
+
+@lru_cache
+def _classes_cached() -> tuple[type, ...]:
+    return tuple(_per_instance_classes())
+
+
+def _classes() -> tuple[type, ...]:
+    return _classes_cached()
 
 
 def rescope(session: Session) -> None:

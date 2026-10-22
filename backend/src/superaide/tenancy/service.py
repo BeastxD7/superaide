@@ -108,7 +108,10 @@ def join_as_owner(session: Session, user: UserAccount, scope: InstanceScope) -> 
         person = session.get(Person, member.person_id)
         assert person is not None
         return person
-    person = session.get(Person, user.person_id)
+    from superaide.tenancy.context import all_instances
+
+    with all_instances():  # the sign-up Person may live in another instance (where sign-up happened)
+        person = session.get(Person, user.person_id)
     if person is None or person.agent_id != scope.agent_id:
         # The Person made at sign-up lives in whichever instance was in scope then; the owner gets
         # a fresh one here, and the unused sign-up one is removed.

@@ -1,6 +1,11 @@
 # 0009: Many owners, one Ava product
 
-Status: proposed (2026-10-22). Phase 1 only: diagnosis, research and design. Nothing here is built yet.
+Status: accepted (2026-10-22). Built so far: T0 (instances), T1 (RLS and the app's role), T2 (accounts and
+request scope), T3 (credentials, freeze and runtime per instance), T4 (each owner's own Telegram bot), T5 (jobs),
+T6 (budget), T7 (an automatic per-instance filter on every ORM query in scope, identities and conversations per
+instance), T9 (email links), T10 "now" items and T12 (isolation e2e, marked expected-fail until many owners are
+switched on). Still to do: T8 (operator console) and T11 (worker service). `ALLOW_MANY_OWNERS` stays off until
+the owner decides to open hiring to everyone.
 
 ## Context
 

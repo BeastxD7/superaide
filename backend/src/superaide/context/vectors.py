@@ -39,6 +39,7 @@ from superaide.brain.embed import Embedder, LocalEmbedder, get_embedder
 from superaide.config import get_settings
 from superaide.db.models import Job, MemoryItem
 from superaide.jobs.queue import enqueue, handler
+from superaide.tenancy.context import scope_or_default
 
 log = logging.getLogger(__name__)
 
@@ -125,7 +126,7 @@ def meaning_arm(session: Session, base: Callable[[], Select[Any]], query: str, l
         base()
         .join(
             memory_embedding,
-            and_(me.memory_id == MemoryItem.id, me.model == emb.name, me.agent_id == get_settings().agent_id),
+            and_(me.memory_id == MemoryItem.id, me.model == emb.name, me.agent_id == scope_or_default().agent_id),
         )
         .where(distance <= 1 - emb.min_similarity)
         .order_by(distance)
@@ -157,7 +158,6 @@ def embed_missing(session: Session, max_rounds: int = 20) -> int:
     emb = embedder()
     if emb.name == "none" or not vectors_ready(session):
         return 0
-    settings = get_settings()
     me = memory_embedding.c
     done = 0
     for _ in range(max_rounds):
@@ -165,7 +165,7 @@ def embed_missing(session: Session, max_rounds: int = 20) -> int:
             select(MemoryItem)
             .where(
                 MemoryItem.valid_to.is_(None),
-                MemoryItem.agent_id == settings.agent_id,
+                MemoryItem.agent_id == scope_or_default().agent_id,
                 ~exists().where(me.memory_id == MemoryItem.id, me.model == emb.name),
             )
             .order_by(MemoryItem.created_at)
