@@ -142,6 +142,7 @@ def credits(monkeypatch):
     monkeypatch.setattr(env, "deploy_mode", "hosted")
     monkeypatch.setattr(env, "platform_ai_enabled", True)
     monkeypatch.setattr(env, "platform_anthropic_api_key", PLATFORM_KEY)
+    monkeypatch.setattr(env, "platform_daily_cap_usd", 5.0)  # a cap of 0 means credits are not offered
     return env
 
 
