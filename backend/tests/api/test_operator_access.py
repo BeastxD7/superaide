@@ -108,3 +108,31 @@ def test_an_unknown_instance_is_refused(browser, owners, instance):
         "/api/memories", headers=ADMIN | {"X-Operator-Reason": REASON, "X-Operator-Instance": instance}
     )
     assert r.status_code == 404 and accesses() == []
+
+
+TYPED = "The owner’s reminder never arrived — Priya Sharma, Delhi (क) 100%"
+
+
+def test_a_percent_encoded_reason_is_recorded_as_typed(browser, owners):
+    from urllib.parse import quote
+
+    headers = ADMIN | {"X-Operator-Reason": quote(TYPED), "X-Operator-Reason-Encoding": "uri"}
+    assert browser(csrf=False).get("/api/memories", headers=headers).status_code == 200
+    [row] = accesses()
+    assert row.detail["reason"] == TYPED
+
+
+def test_a_plain_reason_with_a_percent_sign_is_not_decoded(browser, owners):
+    # Without the encoding marker the header is taken literally (older clients, curl).
+    reason = "100%25 of reminders were late"
+    r = browser(csrf=False).get("/api/memories", headers=ADMIN | {"X-Operator-Reason": reason})
+    assert r.status_code == 200
+    [row] = accesses()
+    assert row.detail["reason"] == reason
+
+
+def test_an_encoded_reason_that_is_too_short_is_still_refused(browser, owners):
+    headers = ADMIN | {"X-Operator-Reason": "%20%20short%20%20", "X-Operator-Reason-Encoding": "uri"}
+    r = browser(csrf=False).get("/api/memories", headers=headers)
+    assert r.status_code == 403 and r.json()["detail"]["code"] == "reason_required"
+    assert accesses() == []

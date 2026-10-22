@@ -27,6 +27,11 @@ from superaide.db.session import rows_affected
 
 # Only refresh last_used_at/expiry this often, so reads don't write on every request.
 TOUCH_EVERY = timedelta(minutes=5)
+# An account made with Google has no password until its owner sets one with the reset link.
+NO_PASSWORD = (
+    "This account signs in with Google and has no password yet. To set one, choose "
+    "\u201cForgot your password?\u201d on the log-in page and use the link we email you."
+)
 
 
 class AuthError(Exception):
@@ -282,6 +287,8 @@ def change_email(session: Session, user: UserAccount, *, new_email: str, passwor
     window = timedelta(minutes=settings.login_lock_minutes)
     if _recent(session, "email_change_fail", window, user_id=user.id) >= settings.login_max_failures:
         raise AuthError(429, f"Too many wrong passwords. Try again in {settings.login_lock_minutes} minutes.")
+    if not user.password_hash:
+        raise AuthError(400, NO_PASSWORD)  # no password to check; not counted as a wrong guess
     ok, _ = verify_password(user.password_hash, password)
     if not ok:
         _event(session, "email_change_fail", client, user_id=user.id)
@@ -306,6 +313,8 @@ def change_password(
     window = timedelta(minutes=settings.login_lock_minutes)
     if _recent(session, "password_change_fail", window, user_id=user.id) >= settings.login_max_failures:
         raise AuthError(429, f"Too many wrong passwords. Try again in {settings.login_lock_minutes} minutes.")
+    if not user.password_hash:
+        raise AuthError(400, NO_PASSWORD)
     ok, _ = verify_password(user.password_hash, current)
     if not ok:
         _event(session, "password_change_fail", client, user_id=user.id)

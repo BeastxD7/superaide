@@ -164,7 +164,10 @@ export async function api<T>(conn: Connection, path: string, init?: { method?: '
   const client = createClient(conn.base.replace(/\/$/, ''), { token: () => conn.token })
   const headers: Record<string, string> = {}
   if (conn.access) {
-    headers['X-Operator-Reason'] = conn.access.reason
+    // A header can only carry Latin-1: a curly quote or a dash would be dropped or refused. Send it
+    // percent-encoded and say so; the API decodes it before recording it in the owner's log.
+    headers['X-Operator-Reason'] = encodeURIComponent(conn.access.reason)
+    headers['X-Operator-Reason-Encoding'] = 'uri'
     if (conn.access.instance) headers['X-Operator-Instance'] = conn.access.instance
   }
   const res = await client.request<T>({ url: path, method: init?.method ?? 'GET', data: init?.body, headers })

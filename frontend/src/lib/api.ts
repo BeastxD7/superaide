@@ -249,8 +249,9 @@ export const auth = {
   logout: () => request<{ status: string }>('/auth/logout', { method: 'POST' }),
   // Continue with Google (only when the server has it on): start returns Google's URL to open.
   googleEnabled: () => request<{ enabled: boolean }>('/auth/google'),
-  googleStart: (next: string | null) =>
-    request<{ url: string }>('/auth/google/start', { method: 'POST', json: { next, timezone: browserTimeZone() } }),
+  // `page`: where this started, so a cancelled or failed sign-in comes back to it with `next` kept.
+  googleStart: (next: string | null, page: 'login' | 'signup') =>
+    request<{ url: string }>('/auth/google/start', { method: 'POST', json: { next, page, timezone: browserTimeZone() } }),
   changePassword: (current: string, next: string) =>
     request<{ status: string }>('/auth/password', { method: 'POST', json: { current, new: next } }),
   changeEmail: (email: string, password: string) =>
