@@ -30,3 +30,17 @@ test('the old Skills address lands on Capabilities', async ({ page, owner }) => 
   await expect(page).toHaveURL(/\/dashboard\/capabilities$/)
   await expect(page.getByRole('heading', { name: 'Capabilities', level: 1 })).toBeVisible()
 })
+
+test('Gmail asks before it can send, then points to the Google client before connecting', async ({ page, owner }) => {
+  void owner
+  await page.goto('/dashboard/capabilities')
+  const gmail = page.getByRole('list', { name: 'Capabilities' }).getByRole('listitem', { name: 'Gmail' })
+  await gmail.getByRole('button', { name: 'Install' }).click()
+  const consent = gmail.getByRole('group', { name: 'Permissions for Gmail' })
+  await expect(consent.getByText('Send messages or post on your behalf (asks you first)')).toBeVisible()
+  await consent.getByRole('button', { name: 'Allow and install' }).click()
+  await expect(gmail.getByText('Installed')).toBeVisible()
+  const settings = gmail.getByRole('group', { name: 'Gmail settings' })
+  await expect(settings.getByText('Add your Google OAuth client under Connections first')).toBeVisible()
+  await expect(settings.getByRole('button', { name: 'Connect Gmail' })).toHaveCount(0)
+})

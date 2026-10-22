@@ -98,8 +98,20 @@ def item_view(s: Any, d: TriageDecision, esc: Escalation | None) -> dict[str, An
     sender = s.get(Person, d.sender_person_id) if d.sender_person_id else None
     flags = set((d.classifier or {}).get("risk_flags") or [])
     quotes = [] if flags & HIDDEN_QUOTES else list((d.classifier or {}).get("evidence") or [])[:3]
+    email = (d.features or {}).get("provider") == "email"
+    meta: dict[str, Any] = {}
+    if email:
+        from superaide.db.models import Event
+        from superaide.skills.gmail_inbox import quotable
+
+        event = s.get(Event, d.inbound_event_id)
+        meta = dict(event.meta or {}) if event is not None else {}
+        quotes = quotes if quotable(d, str(meta.get("subject") or "")) else []
     out: dict[str, Any] = {
-        "id": str(d.id), "decision": d.decision, "reason": d.reason, "sender": sender.display_name if sender else "",
+        "id": str(d.id), "decision": d.decision, "reason": d.reason,
+        "sender": sender.display_name if sender else str(meta.get("from_name") or ""),
+        "source": "email" if email else "message",
+        "subject": str(meta.get("subject") or "") if email and quotable(d, str(meta.get("subject") or "")) else None,
         "quotes": quotes, "rule_hits": list(d.rule_hits or []), "stage": d.stage_at_time,
         "maybe_urgent": bool((d.features or {}).get("maybe_urgent")),
         "shadow_decision": (d.features or {}).get("shadow_decision"), "feedback": d.feedback,

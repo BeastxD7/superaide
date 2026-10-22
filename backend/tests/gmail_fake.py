@@ -172,3 +172,19 @@ def connect(*, scopes: tuple[str, ...] = (api.READONLY,), drafts: bool = False, 
             skill = registry.catalog()[gmail.SKILL_ID]
             row = registry.install(s, gmail.SKILL_ID, skill.manifest.permissions)
             row.settings = {"drafts": drafts}
+
+
+@pytest.fixture(name="owner_client")
+def owner_client_fixture(agent):
+    """A signed-in owner who has hired Ava (the first hire: the instance tests run in)."""
+    from fastapi.testclient import TestClient
+
+    from superaide.main import create_app
+
+    c = TestClient(create_app(agent), headers={"X-Requested-With": "superaide"})
+    r = c.post(
+        "/auth/signup", json={"name": "Shashank Rao", "email": "s@example.com", "password": "correct horse battery"}
+    )
+    assert r.status_code == 200
+    assert c.post("/app/hire", json={"agent": "ava", "accepted_notice": True}).status_code == 200
+    return c

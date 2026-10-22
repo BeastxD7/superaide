@@ -1,6 +1,6 @@
 'use client'
 
-import { BellOff, Check, Clock, Plane, ShieldAlert, ThumbsDown, ThumbsUp } from 'lucide-react'
+import { BellOff, Check, Clock, Mail, Plane, ShieldAlert, ThumbsDown, ThumbsUp } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Notice } from '@/components/site'
 import { Badge } from '@/components/ui/badge'
@@ -153,10 +153,16 @@ function Item({
             <ShieldAlert aria-hidden /> Unverified request
           </Badge>
         )}
+        {item.source === 'email' && (
+          <Badge variant="outline">
+            <Mail aria-hidden /> Email
+          </Badge>
+        )}
         {item.maybe_urgent && <Badge variant="outline">Maybe urgent</Badge>}
         {esc && <Badge variant="secondary">{STATE_LABEL[esc.state] ?? esc.state}</Badge>}
         <span className="ml-auto text-xs text-muted">{when(item.created_at)}</span>
       </div>
+      {item.subject && <p className="mt-1 text-sm font-medium [overflow-wrap:anywhere] text-ink">{item.subject}</p>}
       <p className="mt-1 text-sm [overflow-wrap:anywhere] text-body">{item.reason}</p>
       {item.quotes.map((q) => (
         <blockquote key={q} className="mt-1 border-l-2 border-line pl-2 text-sm [overflow-wrap:anywhere] text-muted">

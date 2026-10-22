@@ -362,8 +362,19 @@ export type TriageDecision = 'handle' | 'hold' | 'interrupt' | 'defer' | 'verify
 export type TriageVerb = 'ack' | 'reply' | 'call' | 'not_urgent' | 'snooze_30m' | 'snooze_2h' | 'done'
 export type TriageFeedback = 'useful' | 'not_urgent' | 'should_have_told' | 'wrong_handle' | 'good_handle'
 
+export type GmailStatus = {
+  installed: boolean
+  client_ready: boolean
+  connected: boolean
+  address: string
+  drafts: boolean
+  drafts_allowed: boolean
+}
+
 export type NeedsYouItem = {
   id: string
+  source?: 'email' | 'message'
+  subject?: string | null
   decision: TriageDecision
   reason: string
   sender: string
