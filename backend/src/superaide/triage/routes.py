@@ -23,7 +23,7 @@ from superaide.auth.routes import reject_nul_text, require_csrf_header
 from superaide.db.models import Person
 from superaide.db.session import require, session_scope
 from superaide.tenancy.context import scope_or_default
-from superaide.triage import escalate
+from superaide.triage import escalate, promotion
 from superaide.triage.models import Escalation, EscalationDelivery, TriageDecision, TriageSettings
 from superaide.triage.store import current_stage, settings_for
 from superaide.triage.types import AWAY_VISIBILITY, Decision, EscalationState, Feedback
@@ -257,6 +257,29 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             d, esc = _decision(s, decision_id)
             escalate.record_feedback(s, d, body.feedback, via="app")
             return {"item": item_view(s, d, esc)}
+
+    @router.delete(
+        "/needs-you/{decision_id}/feedback",
+        summary="Take a correction back",
+        description="Erases your feedback on this item. It no longer counts for anything Ava learns or measures.",
+    )
+    def clear_feedback(decision_id: uuid.UUID, person_id: uuid.UUID = Depends(owner_on)) -> dict[str, Any]:
+        with session_scope() as s:
+            d, esc = _decision(s, decision_id)
+            changed = escalate.clear_feedback(s, d)
+            return {"changed": changed, "item": item_view(s, d, esc)}
+
+    @router.get(
+        "/triage/promotion",
+        summary="How close Ava is to her next stage",
+        description=(
+            "Interrupt precision from your own feedback, with the lower end of a 95% interval and the gate it "
+            "has to clear. Advice only: Ava never changes her own stage."
+        ),
+    )
+    def promotion_view(person_id: uuid.UUID = Depends(owner_on)) -> dict[str, Any]:
+        with session_scope() as s:
+            return promotion.measure(s, current_stage(s))
 
     @router.get("/triage/settings", summary="Triage settings")
     def get_settings_(person_id: uuid.UUID = Depends(owner_on)) -> dict[str, Any]:

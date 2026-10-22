@@ -239,6 +239,10 @@ class Settings(BaseSettings):
     # call reads it back as a structured proposal and never says it is done. The voice shell holds no tools.
     voice_two_channel: bool = False
     gmail_poll_minutes: int = 5
+    # Deletable kNN triage head (#117). Off: nothing changes. On (needs TRIAGE_ENABLED): each triage decision
+    # also records, in `features["knn"]`, how urgent the owner's own past feedback says similar messages
+    # were. It never changes the decision; it is a shadow score to compare against the model's.
+    triage_knn_enabled: bool = False
     # The owner's Gmail sign-in (same OAuth client as Calendar); kept per instance in the vault.
     gmail_refresh_token: str = ""
 

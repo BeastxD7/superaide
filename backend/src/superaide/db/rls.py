@@ -69,6 +69,7 @@ TABLES: tuple[str, ...] = (
     "escalation_ack",
     "escalation_delivery",
     "triage_decision",
+    "triage_label_vector",
     "triage_rule",
     "triage_settings",
     "reception_message",  # receptionist (ADR 0010 TR5)

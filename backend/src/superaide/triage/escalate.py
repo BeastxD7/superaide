@@ -344,3 +344,16 @@ def record_feedback(
 ) -> None:
     decision.feedback, decision.feedback_at, decision.feedback_via = str(feedback), now or _now(), via
     audit(session, "triage", "triage_feedback", decision_id=decision.id, feedback=str(feedback), via=via)
+
+
+def clear_feedback(session: Session, decision: TriageDecision) -> bool:
+    """The owner takes a correction back (#117): the label is erased, and with it its influence on the
+    kNN head. Returns whether there was one."""
+    if decision.feedback is None:
+        return False
+    from superaide.triage import knn
+
+    decision.feedback, decision.feedback_at, decision.feedback_via = None, None, None
+    knn.forget(session, decision.id)
+    audit(session, "triage", "triage_feedback_cleared", decision_id=decision.id)
+    return True
