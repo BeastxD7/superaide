@@ -292,7 +292,6 @@ test.describe('AI model page', () => {
   test.skip(!DEFAULT_PASS, 'runs on the default stack')
 
   test('a second endpoint cannot take another provider\'s name', async ({ page, owner, api }) => {
-    test.fail(true, 'BUG: POST /app/providers/custom accepts key "openai" (or "anthropic", "platform"), so a local server shows up as OpenAI, Claude or Superaide AI credits')
     void owner
     const { server, url } = await fakeModelServer()
     try {
@@ -313,7 +312,6 @@ test.describe('AI model page', () => {
   })
 
   test('after connecting only a local server, Save models works without touching the pickers', async ({ page, owner }) => {
-    test.fail(true, 'BUG: the pickers start on Claude, which is not connected, and Save models says "Connect anthropic first."')
     void owner
     const { server, url } = await fakeModelServer()
     try {
@@ -337,7 +335,6 @@ test.describe('AI model page', () => {
   })
 
   test('a price that is not a number gets a plain message', async ({ page, owner }) => {
-    test.fail(true, 'BUG: "abc" or "1,5" as a price shows "Decimal input should be an integer, float, string or Decimal object"')
     void owner
     // The page as it is with OpenRouter connected and a model whose price Superaide doesn't know
     // (stubbed in the browser: connecting OpenRouter for real would call openrouter.ai).
