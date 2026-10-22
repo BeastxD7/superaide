@@ -493,6 +493,8 @@ export type NeedsYouItem = {
   shadow_decision: string | null
   feedback: TriageFeedback | null
   created_at: string
+  // Set when someone Ava doesn't know left it: their own words, unverified.
+  taken: { name: string; contact: string; topic: string; message: string; deadline_text: string; claimed_urgency: string } | null
   escalation: {
     id: string
     state: 'deferred' | 'notifying' | 'acked' | 'resolved' | 'expired'
@@ -525,7 +527,6 @@ export type TriageSettings = {
   silenced_people: string[]
   silenced_topics: string[]
   autonomy_grants: string[]
-  stranger_intake: boolean
   away_until: string | null
   away_visibility: 'everyone' | 'colleagues' | 'nobody'
   busy_until: string | null
@@ -566,4 +567,30 @@ export type AskRequestCard = {
   status: 'new' | 'replied' | 'dismissed' | 'spam'
   created_at: string
   reply: null | { approval_id: string; status: 'pending' | 'approved' | 'rejected'; text: string }
+}
+
+// Receptionist mode (ADR 0010 TR5): Ava talks with people she doesn't know, on the owner's behalf.
+export type ReceptionistSettings = {
+  enabled: boolean
+  show_first_name: boolean
+  public_profile: string
+  per_hour: number
+  per_day: number
+  greeting: string
+}
+
+export type TakenMessageView = {
+  id: string
+  provider: string
+  handle: string
+  name: string
+  contact: string
+  topic: string
+  message: string
+  deadline_text: string
+  claimed_urgency: string
+  rank: 'unverified' | 'urgent' | 'normal' | 'low'
+  source: 'model' | 'code'
+  status: 'new' | 'done' | 'dismissed' | 'spam'
+  created_at: string
 }
