@@ -181,6 +181,9 @@ def compose(
     if waiting:
         lines.append(f"**Waiting for your OK:** {waiting} on your dashboard")
 
+    from superaide.triage.digest import digest_lines  # ADR 0010: [] while TRIAGE_ENABLED is off
+
+    lines += digest_lines(session, owner, now)
     if not lines:
         return None
     first = owner.display_name.split()[0]

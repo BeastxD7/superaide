@@ -104,6 +104,10 @@ def triage_event(
     audit(session, "triage", "decided", decision_id=row.id, decision=row.decision, rule_hits=o.hits,
           stage=str(f.stage))  # fmt: skip
 
+    if f.quiet and f.quiet_end_at is not None:  # one note when quiet hours end, if anything came in
+        from superaide.triage.digest import schedule_catchup
+
+        schedule_catchup(session, owner, f.quiet_end_at)
     if o.decision in (Decision.INTERRUPT, Decision.DEFER):
         open_escalation(
             session, row, owner, max_step=o.max_step, breaks_quiet=o.breaks_quiet,
