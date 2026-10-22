@@ -568,7 +568,7 @@ function PeoplePicker({ input, onAnswer }: { input: Extract<StepInput, { kind: '
                 value={r.relationship}
                 onChange={(e) => set(i, { relationship: e.target.value })}
                 aria-label={`Person ${i + 1} relationship`}
-                className="rounded-xl bg-mist px-2 py-2 text-base md:text-sm text-ink outline-none"
+                className="rounded-xl bg-mist px-2 py-2 text-base md:text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-violet-400/60"
               >
                 {input.relationships.map((rel) => (
                   <option key={rel}>{rel}</option>
@@ -682,9 +682,9 @@ function ReachPicker({ input, onAnswer }: { input: Extract<StepInput, { kind: 'r
           <Moon className="size-4 text-violet-600" /> Quiet hours
         </p>
         <div className="mt-2 flex items-center gap-2 text-sm text-body">
-          <input type="time" value={start} onChange={(e) => setStart(e.target.value)} aria-label="Quiet hours start" className="rounded-xl bg-mist px-3 py-2 text-ink outline-none" />
+          <input type="time" value={start} onChange={(e) => setStart(e.target.value)} aria-label="Quiet hours start" className="rounded-xl bg-mist px-3 py-2 text-ink outline-none focus-visible:ring-2 focus-visible:ring-violet-400/60" />
           to
-          <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} aria-label="Quiet hours end" className="rounded-xl bg-mist px-3 py-2 text-ink outline-none" />
+          <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} aria-label="Quiet hours end" className="rounded-xl bg-mist px-3 py-2 text-ink outline-none focus-visible:ring-2 focus-visible:ring-violet-400/60" />
           <span className="ml-auto truncate text-xs text-muted">{browserTz}</span>
         </div>
         <label className="mt-3 flex items-center justify-between gap-3 text-sm text-body">

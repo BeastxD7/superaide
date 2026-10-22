@@ -519,7 +519,7 @@ export function VoiceIntro({
               </p>
             )}
             {typing && (
-              <form onSubmit={sendTyped} className="flex items-end gap-2 rounded-[20px] bg-white p-1.5 pl-4">
+              <form onSubmit={sendTyped} className="flex items-end gap-2 rounded-[20px] bg-white p-1.5 pl-4 focus-within:ring-2 focus-within:ring-violet-400/60">
                 <label htmlFor={draftId} className="sr-only">
                   Type your answer
                 </label>

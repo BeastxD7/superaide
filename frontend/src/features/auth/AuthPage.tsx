@@ -182,7 +182,7 @@ export function AuthPage({
                   maxLength={120}
                   placeholder="e.g. Shashank Rao"
                   aria-invalid={error?.field === 'name'}
-                  className="mt-2 w-full rounded-2xl border border-white bg-white px-4 py-3.5 text-ink outline-none placeholder:text-muted focus:border-violet-400"
+                  className="mt-2 w-full rounded-2xl border border-white bg-white px-4 py-3.5 text-ink outline-none placeholder:text-muted focus:border-violet-400 focus:ring-2 focus:ring-violet-400/60"
                 />
                 {fieldError('name')}
               </label>
@@ -197,7 +197,7 @@ export function AuthPage({
                 autoComplete={mode === 'signup' ? 'email' : 'username'}
                 placeholder="you@company.com"
                 aria-invalid={error?.field === 'email'}
-                className="mt-2 w-full rounded-2xl border border-white bg-white px-4 py-3.5 text-ink outline-none placeholder:text-muted focus:border-violet-400"
+                className="mt-2 w-full rounded-2xl border border-white bg-white px-4 py-3.5 text-ink outline-none placeholder:text-muted focus:border-violet-400 focus:ring-2 focus:ring-violet-400/60"
               />
               {fieldError('email')}
             </label>
@@ -215,7 +215,7 @@ export function AuthPage({
                   minLength={mode === 'signup' ? 10 : undefined}
                   aria-invalid={error?.field === 'password'}
                   aria-describedby={mode === 'signup' ? 'auth-password-hint' : undefined}
-                  className="w-full rounded-2xl border border-white bg-white py-3.5 pr-12 pl-4 text-ink outline-none focus:border-violet-400"
+                  className="w-full rounded-2xl border border-white bg-white py-3.5 pr-12 pl-4 text-ink outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/60"
                 />
                 <button
                   type="button"
