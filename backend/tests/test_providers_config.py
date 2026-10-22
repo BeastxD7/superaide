@@ -311,7 +311,9 @@ def test_a_custom_endpoint_cannot_take_another_providers_name(owner_client, serv
 
 def test_a_provider_may_still_use_its_own_name_and_a_numbered_one(owner_client, service):  # noqa: F811
     assert owner_client.post("/app/providers/openrouter", json={"api_key": KEY, "key": "openrouter"}).status_code == 200
-    numbered = owner_client.post("/app/providers/custom", json={"key": "custom-2", "base_url": "http://localhost:8000/v1"})
+    numbered = owner_client.post(
+        "/app/providers/custom", json={"key": "custom-2", "base_url": "http://localhost:8000/v1"}
+    )
     assert numbered.status_code == 200
 
 

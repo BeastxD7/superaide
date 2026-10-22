@@ -127,9 +127,7 @@ def test_the_shared_cap_is_not_blamed_on_the_owners_own_credits(agent):
     assert "Superaide credits. Add your own AI key on the AI model page" in shared
 
 
-@pytest.mark.parametrize(
-    "period", ["platform_day", "platform", "platform_month", "day", "bucket", "month", "lifetime"]
-)
+@pytest.mark.parametrize("period", ["platform_day", "platform", "platform_month", "day", "bucket", "month", "lifetime"])
 def test_a_contact_is_never_given_the_owners_budget_message(agent, period):
     with session_scope() as s:
         reply = agent._budget_reply(s, BudgetExceeded("used", period), owner=False)

@@ -396,6 +396,11 @@ explicitly). RLS makes a forgotten filter fail closed instead of leaking.
      RETURNING ...`, released or adjusted on settle. No global lock.
 - The advisory lock becomes per instance: `pg_advisory_xact_lock(hashtext('spend:' || agent_id))`.
   Owners stop serialising behind each other.
+- Who pays decides which limits count (updated 2026-10-22). The lifetime cap counts every call, whoever paid.
+  The owner's day, month and bucket limits count only what their own key paid. Credit-paid calls answer
+  to the credits allowance and the platform guard instead, and are always priced from the built-in
+  tables, never an owner's price. So using up the credits never blocks the owner's own key, and the
+  owner's limits never cut the credits short of the allowance the AI model page shows.
 - Spend on the owner's own key is capped by the owner's own limits; the platform still applies rate
   limits (calls per minute per instance) so a runaway loop cannot hog workers.
 - Billing hooks for later: a `usage_record` per settled entry (instance, tenant, provider, cost in USD,

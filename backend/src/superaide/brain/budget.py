@@ -236,7 +236,8 @@ class BudgetGuard:
                     s, "budget", "llm_call_refused", reason=period, purpose=purpose, committed_usd=float(spent),
                     request_usd=float(worst), cap_usd=float(cap),
                 )  # fmt: skip
-                return BudgetExceeded(f"Superaide AI credits: {'daily' if period == 'platform_day' else 'monthly'} allowance used", period)
+                word = "daily" if period == "platform_day" else "monthly"
+                return BudgetExceeded(f"Superaide AI credits: {word} allowance used", period)
         return None
 
     def summary(self) -> SpendSummary:
