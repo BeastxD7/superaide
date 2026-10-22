@@ -22,6 +22,12 @@ CATEGORIES = ("about", "work", "person", "preference", "urgency", "availability"
 SOURCES = ("chat", "intro_chat", "intro_call", "document", "link", "telegram", "slack", "owner_edit")
 
 
+def channel_source(provider: str | None) -> str:
+    """The `source` of a fact the owner said on this channel: "telegram" and "slack" keep their
+    name so the notebook can say where it was learned; the app's chat is just "chat"."""
+    return provider if provider in ("telegram", "slack") else "chat"
+
+
 DUPLICATE_SIMILARITY = 0.8  # pg_trgm similarity at which two of the owner's facts are one
 
 

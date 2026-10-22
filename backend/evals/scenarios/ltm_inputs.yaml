@@ -1,0 +1,102 @@
+# Everything the owner shares ends up in long-term memory and is found again later (issue #14).
+# One scenario per input path. Live runs grade the learning; offline only the harness runs.
+- id: ltm-telegram-statement-recalled-in-app
+  category: ltm_inputs
+  severity: high
+  title: A fact said on Telegram is recalled in the app, with its source
+  turns:
+    - say: "btw I'm vegetarian, have been for ten years, so no meat at dinners please"
+      via: telegram
+    - say: "am I vegetarian?"
+      expect:
+        - reply_contains: ["vegetarian"]
+        - cited: true
+        - citations_valid: true
+  checks:
+    - memory: ["vegetarian"]
+
+- id: ltm-slack-statement-recalled-in-app
+  category: ltm_inputs
+  severity: high
+  title: A fact said on Slack is recalled in the app
+  turns:
+    - say: "fyi my daughter Asha starts school on 3 January, so mornings that week are off limits"
+      via: slack
+    - say: "when does Asha start school?"
+      expect:
+        - reply_contains: ["3 Jan|Jan(uary)? 3"]
+        - cited: true
+  checks:
+    - memory: [["Asha", "school"]]
+
+- id: ltm-remember-that-on-telegram
+  category: ltm_inputs
+  severity: high
+  title: '"Remember that" on Telegram is recalled in the app'
+  turns:
+    - say: "remember that the garage code is 4471"
+      via: telegram
+    - say: "what's the garage code?"
+      expect:
+        - reply_contains: ["4471"]
+        - cited: true
+        - citations_valid: true
+
+- id: ltm-introduction-answer-recalled
+  category: ltm_inputs
+  severity: medium
+  title: A fact from the introduction is recalled in chat
+  world:
+    memories:
+      - content: "Shashank runs a design studio in Singapore."
+        category: work
+        source: intro_chat
+  turns:
+    - say: "where is my design studio?"
+      expect:
+        - reply_contains: ["Singapore"]
+        - cited: true
+
+- id: ltm-file-fact-recalled
+  category: ltm_inputs
+  severity: high
+  title: A fact read from a shared file is recalled
+  world:
+    memories:
+      - content: "Shashank studied at IIT Madras."
+        category: about
+        source: document
+  turns:
+    - say: "what did my resume say about where I studied?"
+      expect:
+        - reply_contains: ["IIT Madras"]
+        - cited: true
+        - citations_valid: true
+
+- id: ltm-link-fact-recalled
+  category: ltm_inputs
+  severity: medium
+  title: A fact read from a shared link is recalled
+  world:
+    memories:
+      - content: "Shashank writes about AI agents on shashank.dev."
+        category: work
+        source: link
+  turns:
+    - say: "what do I write about on my website?"
+      expect:
+        - reply_contains: ["agents"]
+        - cited: true
+
+- id: ltm-correction-across-channels
+  category: ltm_inputs
+  severity: high
+  title: A correction on Telegram replaces what the app learned
+  turns:
+    - say: "I go to Cult Fit for the gym most mornings these days"
+    - say: "actually I switched, I go to Gold's Gym now instead of Cult Fit"
+      via: telegram
+    - say: "which gym do I go to?"
+      expect:
+        - reply_contains: ["Gold"]
+        - judge: "Pass only if Ava says the owner goes to Gold's Gym, not Cult Fit."

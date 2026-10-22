@@ -18,6 +18,7 @@ export function NotebookPage() {
   const { me } = useSession()
   const { data, error, reload } = useAppData<{ memories: Memory[] }>('/notebook')
   const [filter, setFilter] = useState<string>('all')
+  const [where, setWhere] = useState<string>('all')
   const [query, setQuery] = useState('')
   const [confirm, setConfirm] = useState<string | null>(null)
   const [forgetting, setForgetting] = useState(false)
@@ -28,8 +29,15 @@ export function NotebookPage() {
   const categories = useMemo(() => [...new Set((memories ?? []).map((m) => m.category))], [memories])
   // The kind filter can outlive its last note (forgotten, or gone after a reload): fall back to Everything.
   const active = categories.includes(filter) ? filter : 'all'
+  // Where it was learned: a shared file or link by name, otherwise the channel or step.
+  const whereOf = (m: Memory) => m.document ?? (SOURCE_LABEL[m.source] ?? 'from chat').replace(/^from /, '')
+  const origins = useMemo(() => [...new Set((memories ?? []).map(whereOf))], [memories])
+  const activeWhere = origins.includes(where) ? where : 'all'
   const shown = (memories ?? []).filter(
-    (m) => (active === 'all' || m.category === active) && m.text.toLowerCase().includes(query.trim().toLowerCase()),
+    (m) =>
+      (active === 'all' || m.category === active) &&
+      (activeWhere === 'all' || whereOf(m) === activeWhere) &&
+      m.text.toLowerCase().includes(query.trim().toLowerCase()),
   )
 
   async function forget(id: string) {
@@ -72,6 +80,17 @@ export function NotebookPage() {
             ))}
           </div>
         </div>
+
+        {origins.length > 1 && (
+          <div className="mt-3 flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter by where it was learned">
+            <span className="text-xs text-muted">Learned from</span>
+            {['all', ...origins].map((o) => (
+              <Button key={o} size="sm" variant={activeWhere === o ? 'default' : 'outline'} aria-pressed={activeWhere === o} onClick={() => setWhere(o)}>
+                {o === 'all' ? 'Anywhere' : o}
+              </Button>
+            ))}
+          </div>
+        )}
 
         {(error || actionError) && (
           <div className="mt-4">
@@ -148,6 +167,7 @@ export function NotebookPage() {
                   onClick={() => {
                     setQuery('')
                     setFilter('all')
+                    setWhere('all')
                   }}
                 >
                   Show everything

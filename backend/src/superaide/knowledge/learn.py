@@ -19,10 +19,10 @@ from sqlalchemy.orm import Session
 
 from superaide.audit import audit
 from superaide.brain import keyhealth
-from superaide.db.models import Event, Job, MemoryItem, Person
+from superaide.db.models import Context, Event, Job, MemoryItem, Person
 from superaide.jobs.queue import enqueue, handler
 from superaide.knowledge.facts import extract_facts
-from superaide.knowledge.store import find_same_fact, remember_fact
+from superaide.knowledge.store import channel_source, find_same_fact, remember_fact
 
 log = logging.getLogger(__name__)
 
@@ -93,6 +93,8 @@ def learn(session: Session, job: Job) -> None:
         if keyhealth.rejected(session):
             return  # a refused key won't heal by waiting; a working one is saved from the AI model page
         raise RuntimeError("couldn't read the message just now")  # the job retries later
+    context = session.get(Context, event.context_id)
+    source = channel_source(context.provider if context else None)
     by_id = dict(enumerate(neighbours, 1))
     kept = merged = superseded = 0
     for f in facts:
@@ -107,7 +109,7 @@ def learn(session: Session, job: Job) -> None:
             merged += 1
             continue
         item = remember_fact(
-            session, owner=owner, content=f.content, category=f.category, source="chat",
+            session, owner=owner, content=f.content, category=f.category, source=source,
             confidence=f.confidence, origin_context_id=event.context_id,
         )  # fmt: skip
         if item is None:

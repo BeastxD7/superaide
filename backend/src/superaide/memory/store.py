@@ -16,6 +16,7 @@ from superaide.channels.base import InboundMessage
 from superaide.context.audience import Audience
 from superaide.db.models import Context, Event, MemoryItem
 from superaide.identity.resolver import Sender
+from superaide.knowledge.store import channel_source
 
 REMEMBER_RE = re.compile(r"^\s*remember(?:\s+that)?[:,]?\s+(.+)$", re.IGNORECASE | re.DOTALL)
 
@@ -238,6 +239,7 @@ def remember(
         allowed_kind="persons",
         allowed_person_ids=audience_ids,
         min_trust=2,
+        source=channel_source(context.provider),
     )
     session.add(item)
     session.flush()

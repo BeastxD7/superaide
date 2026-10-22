@@ -319,3 +319,17 @@ Changes from the design above:
 - **WP1:** the current conversation is kept whole. Only the other channels share the remaining ~2,000-token budget.
 - **Tenancy (ADR 0009):** new queries filter on the instance's `agent_id` (from settings until T1 adds the scope context variable): the timeline, pinned facts, the meaning arm, backfill and dedupe.
 - **WP6:** offline only. The live run against Haiku waits for the owner's go-ahead.
+
+## Addendum (October 2026): what reaches long-term memory (issue #14)
+
+Everything the owner says reaches long-term memory, owner-only by default, with its `source`:
+
+| Input | Where it lands | `source` |
+|---|---|---|
+| Chat in the app, Telegram or Slack | facts via `learn_from_turn`; "remember that" via `remember` | `chat`, `telegram`, `slack` |
+| Introduction (typed or confirmed on the call) | the raw answer plus extracted facts | `intro_chat`, `intro_call` |
+| Files and links | facts linked to the document; the text itself becomes searchable chunks (issue #47) | `document`, `link` |
+| Corrections | the old fact is superseded, never edited (issue #46 adds the trust rule) | channel of the correction |
+| Calendar and Gmail | **not stored.** Looked up live with `ava://cal` and `ava://mail` citations. Copying a mailbox or calendar into memory is an owner decision and is not built. | none |
+
+The `ltm_inputs` eval category has one scenario per path.

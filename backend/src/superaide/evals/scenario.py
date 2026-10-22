@@ -27,6 +27,7 @@ Category = Literal[
     "chitchat",
     "triage",
     "receptionist",
+    "ltm_inputs",
 ]
 CATEGORIES: tuple[str, ...] = Category.__args__  # type: ignore[attr-defined]
 Severity = Literal["critical", "high", "medium", "low"]
