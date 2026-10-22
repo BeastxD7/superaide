@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from superaide.audit import audit
 from superaide.channels import health
+from superaide.config import get_settings
 from superaide.db.models import Intention, Job, Person
 from superaide.intentions.when import zone
 from superaide.jobs.queue import cancel, enqueue, handler
@@ -70,6 +71,29 @@ def reconcile(session: Session) -> int:
     if fixed:
         audit(session, "intentions", "reminders_requeued", count=fixed)
     return fixed
+
+
+def auto_close_delivered(session: Session) -> int:
+    """Close (as done) the open reminders that went off more than `reminder_auto_close_days` ago, so they do
+    not pile up for ever (issue #85). Runs in one instance's scope, from the worker's recurring pass."""
+    days = get_settings().reminder_auto_close_days
+    if days <= 0:
+        return 0
+    now = datetime.now(UTC)
+    stale = session.scalars(
+        select(Intention).where(
+            Intention.status == "open",
+            Intention.delivered_at.is_not(None),
+            Intention.delivered_at < now - timedelta(days=days),
+        )
+    ).all()
+    for item in stale:
+        item.status = "done"
+        item.closed_at = now
+        cancel(session, _job_key(item))
+    if stale:
+        audit(session, "intentions", "reminders_auto_closed", count=len(stale), after_days=days)
+    return len(stale)
 
 
 def owner_zone(session: Session, owner: Person) -> str:

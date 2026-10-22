@@ -313,3 +313,17 @@ def test_the_list_reminders_cap_of_50_still_shows_the_upcoming_one(owner):
         assert me is not None
         [first, *_] = intentions_service.upcoming(s, me, limit=50)
         assert first.text == "Renew the lease" and first.delivered_at is None
+
+
+def test_delivered_reminders_are_closed_after_the_grace_period(owner):
+    from superaide.intentions.service import auto_close_delivered
+
+    _crowd_with_delivered_open_reminders(owner, 12)  # delivered 1..12 days ago; the default grace is 7 days
+    with session_scope() as s:
+        assert auto_close_delivered(s) == 6  # the ones delivered 7 to 12 days ago
+    rows = {i.text: i for i in intentions()}
+    assert rows["Old 11"].status == "open"  # delivered 1 day ago
+    assert rows["Old 0"].status == "done" and rows["Old 0"].closed_at is not None
+    assert rows["Renew the lease"].status == "open"  # still ahead: untouched
+    with session_scope() as s:
+        assert auto_close_delivered(s) == 0

@@ -15,6 +15,7 @@ def schedule_recurring() -> None:
     """Make sure each hired instance's recurring work (the daily digest, the meeting scan) is
     queued, inside that instance's scope. One instance failing never stops the others."""
     from superaide.db.session import session_scope
+    from superaide.intentions.service import auto_close_delivered
     from superaide.intentions.service import reconcile as reconcile_reminders
     from superaide.proactive.digest import ensure_scheduled
     from superaide.tenancy.context import default_scope, use_instance
@@ -39,6 +40,7 @@ def schedule_recurring() -> None:
         try:
             with use_instance(scope), session_scope() as s:
                 reconcile_reminders(s)
+                auto_close_delivered(s)
         except Exception:
             log.exception("couldn't check the reminders of instance %s", scope.agent_id)
     from superaide.knowledge.pending import sweep

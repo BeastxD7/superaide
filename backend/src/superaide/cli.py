@@ -81,6 +81,9 @@ def _worker(args: argparse.Namespace) -> None:
     from superaide.runtime import Runtime
 
     settings = get_settings()
+    from superaide.security import deploy
+
+    deploy.check(settings)
     stop = threading.Event()
     for sig in (signal.SIGTERM, signal.SIGINT):
         signal.signal(sig, lambda *_: stop.set())

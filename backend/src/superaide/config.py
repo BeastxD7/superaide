@@ -38,6 +38,14 @@ class Settings(BaseSettings):
     # servers, so no owner-typed address may reach private, loopback, link-local or metadata ranges.
     deploy_mode: Literal["self_hosted", "hosted"] = "self_hosted"
 
+    # Set only to run a self-hosted server with open sign-up and this server's own credentials on a
+    # public address anyway (the startup check in security/deploy.py refuses otherwise).
+    allow_unsafe_public_self_hosted: bool = False
+
+    # A reminder that went off stays open until the owner marks it done; after this many days it is closed
+    # for them (marked done, audited). 0 keeps delivered reminders open forever.
+    reminder_auto_close_days: int = Field(default=7, ge=0)
+
     # Approvals are bound to the content the owner saw (#111). off: not checked. record: a mismatch is
     # audited but the send goes ahead (until the check is calibrated against real Gmail). strict: a
     # mismatch is not sent.

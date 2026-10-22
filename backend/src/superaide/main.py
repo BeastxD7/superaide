@@ -104,6 +104,10 @@ def create_app(agent: Agent | None = None) -> FastAPI:
         from superaide.brain import platform_ai
 
         platform_ai.warn_if_unusable()
+        if fixed is None:
+            from superaide.security import deploy
+
+            deploy.check(settings)
         if fixed is None and settings.run_channels_in_api:
             try:
                 started = apply_connections()
