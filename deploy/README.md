@@ -180,6 +180,14 @@ Skills. Replace `ava.example.com` with your domain throughout.
      - calendar: `https://ava.example.com/api/app/connections/google/callback`
    - For a local install add `http://localhost:3000` as an origin and the same two paths on
      `http://localhost:3000` as redirect URIs. Only `localhost` may use plain `http`.
+   - **Which addresses "Continue with Google" works at.** Google only sends people back to the redirect
+     URIs registered here, so sign-in works at `FRONTEND_ORIGIN` and nowhere else. Opened at another
+     address (`http://127.0.0.1:3000` instead of `localhost`, a LAN address, a tunnel), "Continue with
+     Google" says so and names the right address, instead of failing after the Google screen. To allow
+     another address, register its `/api/auth/google/callback` as one more redirect URI (and its origin
+     as a JavaScript origin), then list the origin in `GOOGLE_REDIRECT_ORIGINS` (comma-separated). The
+     address must also be one the app already accepts (`LINK_ORIGINS` or `DEV_ORIGINS`, or the
+     `localhost`/`127.0.0.1` pair of `FRONTEND_ORIGIN`). Anything else is never used.
    - Press **Create** and copy the **client ID** and **client secret** (download the JSON: the
      secret is shown in full only once).
 7. In `/opt/superaide/.env` set the client and switch sign-in on, then restart:

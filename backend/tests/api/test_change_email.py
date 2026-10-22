@@ -62,3 +62,38 @@ def test_the_database_refuses_a_hand_edit_that_splits_the_two_columns(browser):
     signup(browser())
     with pytest.raises(IntegrityError), session_scope() as s:
         s.execute(text("UPDATE user_account SET email = 'shashank@example.cmo'"))
+
+
+def test_a_refused_change_at_the_hourly_email_limit_leaves_the_address_alone(browser, outbox):  # noqa: F811
+    from superaide.config import get_settings
+
+    c = browser()
+    signup(c)
+    for _ in range(get_settings().email_links_per_account_per_hour - 1):  # sign-up sent one; resends reach the limit
+        assert c.post("/auth/verify-email/send").status_code == 200
+    sent = len(outbox)
+    r = c.post("/auth/email", json={"email": "moved@example.com", "password": PASSWORD})
+    assert r.status_code == 429 and "several emails" in r.json()["detail"]
+    assert user("moved@example.com") is None and user(OWNER["email"]) is not None  # nothing was changed
+    assert len(outbox) == sent
+    assert login(browser(), OWNER["email"]).status_code == 200  # the old address still logs in
+    # The refusal does not reveal whether the password was right.
+    assert c.post("/auth/email", json={"email": "moved@example.com", "password": "wrong password"}).status_code == 429
+
+
+def test_the_link_for_the_new_address_points_at_the_address_in_use(browser, outbox):  # noqa: F811
+    c = browser()
+    signup(c)
+    r = c.post(
+        "/auth/email",
+        json={"email": "moved@example.com", "password": PASSWORD},
+        headers={"Origin": "http://127.0.0.1:3000"},
+    )
+    assert r.status_code == 200
+    assert "http://127.0.0.1:3000/verify-email#token=" in outbox[-1].text
+    r = c.post(
+        "/auth/email",
+        json={"email": "again@example.com", "password": PASSWORD},
+        headers={"Origin": "https://evil.example"},
+    )
+    assert r.status_code == 200 and "https://evil.example" not in outbox[-1].text  # never someone else's site
