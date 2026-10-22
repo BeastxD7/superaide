@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/BeastxD7/superaide/blob/main/SECURITY.md
+    about: Never in a public issue. Follow the private reporting steps in SECURITY.md.
+  - name: Get help
+    url: https://github.com/BeastxD7/superaide/blob/main/SUPPORT.md
+    about: Setup problems and questions about running Superaide.
+  - name: Read the docs
+    url: https://github.com/BeastxD7/superaide/tree/main/docs
+    about: Architecture, decision records (ADRs) and research.

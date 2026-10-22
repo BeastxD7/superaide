@@ -1,0 +1,118 @@
+name: Feature request
+description: Something Ava, the app or the console should do.
+title: "feat: "
+labels: ["type:feature", "status:triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the problem first, then the idea. For a new Capability (a skill with its own tools or connectors), use the **Capability proposal** form instead.
+
+  # --- Summary ---------------------------------------------------------------
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What can't someone do today, or what is harder than it should be?
+      placeholder: When I'm in a meeting, people on Slack wait an hour because Ava doesn't know my calendar.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What should happen instead? Describe the behaviour, not the implementation.
+      placeholder: Ava tells colleagues when I'm free next and offers to hold a message for then.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: audience
+    attributes:
+      label: Who benefits
+      multiple: true
+      options:
+        - "Owner: the person who hired Ava"
+        - "Sender: someone contacting the owner through Ava"
+        - "Operator: whoever runs the Superaide service"
+        - "Contributor: people working on this repository"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Pick all that apply. Each maps to an `area:*` label.
+      multiple: true
+      options:
+        - "backend: API, pipeline, database, migrations"
+        - "frontend: app, dashboard, operator console"
+        - "channels: Telegram, Slack, web chat"
+        - "memory: recall, citations, audience gate"
+        - "reminders: reminders, jobs, digests"
+        - "triage: triage and escalation"
+        - "providers: AI model, prompts"
+        - "capabilities: skills, connectors"
+        - "spend: billing, spend cap, ledger"
+        - "auth: accounts, sessions, identity"
+        - "deploy: Docker, Caddy, VPS, start.command"
+        - "ci: CI, end-to-end tests, evals"
+    validations:
+      required: true
+
+  # --- Safety ----------------------------------------------------------------
+  - type: textarea
+    id: privacy
+    attributes:
+      label: Privacy and safety impact
+      description: |
+        Superaide decides identity, access and actions in code, never in prompts. Say how this feature fits.
+      placeholder: |
+        - What new data does Ava see or store, and who may it be shown to?
+        - Could a sender or impostor use it to learn something private?
+        - Does it act on anyone's behalf? Which actions need the owner's approval?
+        - Does it read untrusted content (web pages, emails, files)?
+        - Does it change spend? Roughly how much per use?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: effects
+    attributes:
+      label: Effect classes
+      description: If this adds something Ava can do, which effect classes (ADR 0006) does it need?
+      multiple: true
+      options:
+        - "None: no new capability"
+        - "read_public: public information"
+        - "read_private: the owner's private data"
+        - "write_own: changes inside Superaide"
+        - "write_external: changes in another service"
+        - "send: messages someone outside Superaide"
+        - "spend: costs money"
+
+  # --- Context ---------------------------------------------------------------
+  - type: textarea
+    id: mockup
+    attributes:
+      label: Mockup, screenshot or example
+      description: Drag and drop a sketch, a screenshot, or a link to a product that does this well.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other ways to solve it, including doing nothing, and why they fall short.
+
+  # --- Checks ----------------------------------------------------------------
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you submit
+      options:
+        - label: I searched the existing issues and this isn't a duplicate.
+          required: true
+        - label: I removed personal data, tokens and keys from everything above.
+          required: true
