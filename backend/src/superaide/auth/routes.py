@@ -304,12 +304,16 @@ def make_router() -> APIRouter:
         body: EmailBody, request: Request, background: BackgroundTasks, user_id: uuid.UUID = Depends(current_user_id)
     ) -> dict[str, Any]:
         client = client_of(request)
+        base = request_origin(request)
 
         def go(s: Any) -> tuple[dict[str, Any], Mail | None]:
             user = s.get(UserAccount, user_id)
+            # Before anything changes: run() commits what an AuthError left behind, so a refusal after the
+            # change would keep the new address while telling the person it failed.
+            emails.ensure_can_send(s, user)
             service.change_email(s, user, new_email=body.email, password=body.password, client=client)
             s.flush()
-            return user_view(s, user), emails.start_verification(s, user)
+            return user_view(s, user), emails.start_verification(s, user, base)
 
         view, mail = run(go)
         background.add_task(deliver, mail)

@@ -95,7 +95,6 @@ test.describe('changing your email', () => {
   })
 
   test('when the hourly email limit refuses the change, the email is not changed', async ({ page, owner, api }) => {
-    test.fail(true, 'BUG: the 429 from the email limit is raised after the address was changed, and run() commits it anyway')
     // Sign-up sent one link; four resends reach the limit of five an hour.
     for (let i = 0; i < 4; i++) expect((await api.post('/auth/verify-email/send')).status()).toBe(200)
     const moved = `moved-${owner.email}`
@@ -112,7 +111,6 @@ test.describe('changing your email', () => {
   test('the link for the new address points at the address the person is using', async ({ page, owner }) => {
     const log = process.env.QA_API_LOG
     test.skip(!log, 'set QA_API_LOG to the API log file to read the emailed link')
-    test.fail(true, 'BUG: POST /auth/email calls start_verification without request_origin(request), so the link uses FRONTEND_ORIGIN')
     const origin = `http://127.0.0.1:${WEB_PORT}`
     const headers = { 'X-Requested-With': 'superaide-e2e', Origin: origin }
     await page.request.post(`${origin}/api/auth/login`, { headers, data: { email: owner.email, password: owner.password } })
