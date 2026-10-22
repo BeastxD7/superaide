@@ -24,11 +24,18 @@ const SKIP = new Set([
   'content-encoding',
 ])
 
+// `.`, `..` and empty segments are never part of a real API path. Left in, fetch() would tidy them
+// away and the request could land on a different route than the one checked above (for example
+// /auth/%2e%2e/docs becoming /docs). `api` stays: the operator console calls /api/api/*.
+function isPlainPath(path: string[]): boolean {
+  return path.every((segment) => segment !== '' && segment !== '.' && segment !== '..')
+}
+
 type Context = { params: Promise<{ path: string[] }> }
 
 async function forward(req: NextRequest, { params }: Context): Promise<Response> {
   const { path } = await params
-  if (!path.length || !ALLOWED.has(path[0])) {
+  if (!path.length || !isPlainPath(path) || !ALLOWED.has(path[0])) {
     return Response.json({ detail: 'Not Found' }, { status: 404 })
   }
   const target = `${API_INTERNAL_URL}/${path.map(encodeURIComponent).join('/')}${req.nextUrl.search}`
