@@ -220,7 +220,6 @@ test.describe('dashboard: settings', () => {
 
 test.describe('dashboard: connections', () => {
   test('if Disconnect fails, the person is told and the service still shows as connected', async ({ page, owner }) => {
-    test.fail(true, 'BUG: ConnectForm.disconnect() has try/finally but no catch, so a failed disconnect shows nothing at all')
     void owner
     await plantSecret('anthropic', 'api_key', 'sk-ant-e2e-planted-placeholder-not-real-9q2b')
     const errors: string[] = []
@@ -268,7 +267,6 @@ test.describe('dashboard: connections', () => {
   })
 
   test('if linking your own Telegram fails, the person is told', async ({ page, owner }) => {
-    test.fail(true, 'BUG: TelegramPairing\'s "Link my Telegram" onClick has no catch, so a refused POST /channels/telegram shows nothing')
     void owner
     await page.route('**/api/app/connections', async (route) => {
       const res = await route.fetch()
@@ -286,7 +284,6 @@ test.describe('dashboard: connections', () => {
   })
 
   test('a crafted ?google=connected link does not announce a connection that does not exist', async ({ page, owner }) => {
-    test.fail(true, 'BUG: Connections shows the ?google= outcome from the URL as is, so /dashboard/connections?google=connected says "Google Calendar is connected" when it is not')
     void owner
     await page.goto('/dashboard/connections?google=connected')
     await expect(page.getByRole('heading', { level: 1, name: 'Connections' })).toBeVisible()

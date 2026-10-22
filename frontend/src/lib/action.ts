@@ -3,9 +3,12 @@
 import { useCallback, useState } from 'react'
 import { AppError } from '@/lib/api'
 
+/** An error whose message is already written for the person to read. */
+export class UserError extends Error {}
+
 /** What to show a person for a failed request: the API's own words, or a plain line when it never answered. */
 export function errorMessage(e: unknown): string {
-  return e instanceof AppError ? e.message : 'We could not reach the server. Check your connection.'
+  return e instanceof AppError || e instanceof UserError ? e.message : 'We could not reach the server. Check your connection.'
 }
 
 /** Run an action with a busy flag and an error to show: `run(fn)` never throws. Returns true if it worked. */
