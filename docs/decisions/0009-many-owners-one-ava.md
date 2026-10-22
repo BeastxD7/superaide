@@ -553,15 +553,25 @@ FTS -> T8, T11, T12. Nothing ships to a public URL as "hosted" until T1-T7 and t
 - Owners who want Telegram today still create a bot with BotFather until managed bots ship.
 - In-flight ADRs 0007 and 0008 need small amendments (instance keys, hosted-mode SSRF rule).
 
+## Decided by the owner (2026-10-22)
+
+- **Model keys: bring your own (BYOK).** Each owner connects their own AI provider key (Claude, or any
+  provider on the AI model page). There is no platform-paid model key: `PLATFORM_DAILY_CAP_USD` stays
+  0 and `key_source` is always `owner` for model calls (the platform allowance of section 7 stays in
+  the code, unused). An owner with no key connected sees a clear "Connect your AI model" state; their
+  Ava never falls back to another owner's key, and in hosted mode never to the `.env` key, which
+  remains only for self-hosted and development (`DEPLOY_MODE=self_hosted`). Affects T3 (credentials
+  per instance) and T6 (done; no change needed).
+- **Telegram: each owner's own bot.** The owner pastes their BotFather token in Connections; it is
+  stored per instance (T3), and T4 makes one channel endpoint per owner bot, with webhooks keyed by a
+  per-bot secret (the "Now" row of section 9). Managed bots and a shared Superaide bot are out of scope.
+
 ## Open questions for the owner
 
-1. **Pricing and billing**: free tier? monthly plan with an included model allowance, or pay-as-you-go
-   on usage? Which currencies first? (Stripe assumed.)
-2. **Whose Claude key**: platform-provided by default (we pay, cap per plan), bring-your-own, or both?
-   The design supports both; the default changes onboarding and the risk we carry.
-3. **Telegram**: default to managed bots (one tap, each owner gets their own `@…Bot`), keep BYO
-   BotFather, or a shared Superaide bot for owner-only use? Is Telegram Business (Premium only) worth
-   supporting?
+1. **Pricing and billing** for Superaide itself: free tier? monthly plan or pay-as-you-go? Which
+   currencies first? (Stripe assumed.)
+2. ~~Whose Claude key~~: decided above (BYOK).
+3. ~~Telegram~~: decided above (each owner's own bot).
 4. **One Ava per account?** Or can one account run several Avas (e.g. work and personal)? And can a
    company workspace have several members managing one Ava?
 5. **Hosted and self-hosted both?** Keep the one-VPS deploy as a supported self-hosted edition?
