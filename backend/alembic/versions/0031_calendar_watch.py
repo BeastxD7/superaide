@@ -3,8 +3,8 @@
 One row per events.watch channel on an owner's primary calendar (nothing writes it unless
 GOOGLE_CALENDAR_PUSH is on). Per-instance table under the Row-Level Security policy (ADR 0009).
 
-Revision ID: 0030
-Revises: 0029
+Revision ID: 0031
+Revises: 0030
 Create Date: 2026-10-22 20:00:00.000000
 
 """
@@ -16,8 +16,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0030"
-down_revision: str | Sequence[str] | None = "0029"
+revision: str = "0031"
+down_revision: str | Sequence[str] | None = "0030"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
