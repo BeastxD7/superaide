@@ -62,7 +62,7 @@ test('set up the OAuth client, go to Google, and come back cancelled', async ({ 
   await expect(row).toHaveAttribute('aria-expanded', 'true')
 
   // Step 1: the help, the exact redirect URI with a copy button, and the read-only scope.
-  await expect(page.getByText('create an OAuth client ID of type Web application', { exact: false })).toBeVisible()
+  await expect(page.getByText('Create a client of type Web application', { exact: false })).toBeVisible()
   await expect(page.getByLabel('Redirect URI')).toHaveText(REDIRECT_URI)
   await page.getByRole('button', { name: 'Copy' }).click()
   await expect(page.getByRole('button', { name: 'Copied' })).toBeVisible()

@@ -232,7 +232,8 @@ test.describe('workspace: chat', () => {
     await sendButton(page).dblclick()
     await expect(page.getByText(`You said: "${text}"`)).toBeVisible()
     await expect(page.getByText(text, { exact: true })).toHaveCount(1)
-    expect(await eventsWithText(text)).toHaveLength(1)
+    // Polled: the row can land a moment after the reply shows (it flaked once on slot 1 with 0 rows).
+    await expect.poll(async () => (await eventsWithText(text)).length).toBe(1)
   })
 
   test('if the API cannot be reached, the person is told and can send again', async ({ page, owner }) => {
@@ -510,9 +511,7 @@ test.describe('workspace: privacy between accounts', () => {
     try {
       await other.api.signup({ name: 'Mallory Ng', email: `e2e-mallory-${Date.now()}@example.com`, password: owner.password })
 
-      // A signed-in account that hasn't hired is refused everything. (Many owners is the default since
-      // 23e3430, so a second hire now succeeds; isolation.spec covers two owners side by side, and the
-      // single-owner 409 is in backend/tests/api/test_hire_negative.py.)
+      // Before hiring, a signed-in account is refused everything.
       for (const path of ['/app/messages', '/app/notebook', '/app/me', '/app/connections']) {
         const r = await other.api.get(path)
         expect(r.status(), path).toBe(403)
@@ -537,6 +536,25 @@ test.describe('workspace: privacy between accounts', () => {
       for (const path of ['/dashboard/chat', '/dashboard/notebook', '/workspace']) {
         await other.page.goto(path)
         await expect(other.page).toHaveURL(/\/$/)
+        await expect(other.page.getByText('the acquisition closes in May')).toHaveCount(0)
+        await expect(other.page.getByText('PebbleRoad')).toHaveCount(0)
+      }
+
+      // Many owners is the default (23e3430), so they can hire their own Ava. Everything they read
+      // then comes from their own instance, and the first owner's notebook stays out of reach.
+      // (Single-owner mode's 409 is in backend/tests/api/test_hire_negative.py.)
+      expect((await other.api.post('/app/hire', { agent: 'ava', accepted_notice: true })).status()).toBe(200)
+      for (const path of ['/app/messages', '/app/notebook', '/app/me', '/app/connections']) {
+        const r = await other.api.get(path)
+        expect(r.status(), path).toBe(200)
+        const body = await r.text()
+        expect(body, path).not.toContain('acquisition')
+        expect(body, path).not.toContain('PebbleRoad')
+      }
+      expect((await other.api.post(`/app/notebook/${secret.id}/forget`, {})).status()).toBe(404)
+      expect((await memories()).find((m) => m.id === secret.id)?.valid_to).toBeNull()
+      for (const path of ['/dashboard/notebook', '/dashboard/chat']) {
+        await other.page.goto(path)
         await expect(other.page.getByText('the acquisition closes in May')).toHaveCount(0)
         await expect(other.page.getByText('PebbleRoad')).toHaveCount(0)
       }
