@@ -8,6 +8,13 @@ if (!Number.isInteger(SLOT) || SLOT < 0 || SLOT > 99) throw new Error('E2E_SLOT 
 export const API_PORT = 8100 + SLOT
 export const WEB_PORT = 3100 + SLOT
 export const BASE_URL = process.env.E2E_BASE_URL ?? `http://localhost:${WEB_PORT}`
+// Opt-in (E2E_PROXY=1): three `next start` servers in front of scripts/fake-upstream.mjs, for *.proxy.spec.ts.
+//   A: defaults        B: TRUST_PROXY_HEADERS=true        C: the upstream is not there at all
+export const PROXY = process.env.E2E_PROXY === '1'
+export const UPSTREAM_PORT = 8400 + SLOT
+export const PROXY_A = 3500 + SLOT
+export const PROXY_B = 3600 + SLOT
+export const PROXY_C = 3700 + SLOT
 export const API_URL = `http://127.0.0.1:${API_PORT}`
 // "Continue with Google" against a fake Google (scripts/fake-google.mjs). Muted by default: only with
 // E2E_GOOGLE=1, which also starts the fake and switches Google sign-in on in the API.

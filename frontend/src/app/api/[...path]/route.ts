@@ -28,7 +28,9 @@ const SKIP = new Set([
 // away and the request could land on a different route than the one checked above (for example
 // /auth/%2e%2e/docs becoming /docs). `api` stays: the operator console calls /api/api/*.
 function isPlainPath(path: string[]): boolean {
-  return path.every((segment) => segment !== '' && segment !== '.' && segment !== '..')
+  // A segment that decoded to something holding a slash or backslash (`..%2Fdocs`) is a path in disguise:
+  // it would reach the API as one odd segment today, but nothing downstream should have to be right about that.
+  return path.every((segment) => segment !== '' && segment !== '.' && segment !== '..' && !/[/\\\u0000]/.test(segment))
 }
 
 type Context = { params: Promise<{ path: string[] }> }
