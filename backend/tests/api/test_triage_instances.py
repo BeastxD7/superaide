@@ -6,6 +6,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
+import time_machine
 from sqlalchemy import select
 
 from superaide.config import get_settings
@@ -63,6 +64,18 @@ def vip_message(scope: InstanceScope, owner: Person, text: str) -> Event:
 
 
 @pytest.fixture
+def daytime():
+    """09:00 UTC (17:00 for the Singapore owners these tests sign up): well clear of quiet hours (22:00-07:00).
+
+    The catch-up window is built from the owner's own clock, so a test that runs on the wall clock fails
+    whenever the owner's quiet-hours boundary falls inside it (CI hit 21:59 Singapore time). Ask for this
+    before `two` so the sign-ups happen at the frozen time too.
+    """
+    with time_machine.travel(datetime(2026, 10, 22, 9, 0, tzinfo=UTC), tick=True):
+        yield
+
+
+@pytest.fixture
 def two(browser, monkeypatch):
     monkeypatch.setattr(get_settings(), "allow_many_owners", True)
     a, b = browser(), browser()
@@ -101,8 +114,11 @@ def test_triage_runs_in_the_owners_instance(two):
         assert audits and {a.agent_id for a in audits} == {sb.agent_id}
 
 
-def test_the_ladder_and_catch_up_stay_in_the_instance(two):
+def test_the_ladder_and_catch_up_stay_in_the_instance(daytime, two):
     sa, pa, sb, pb = two
+    with use_instance(sb), session_scope() as s:  # whatever zone B signed up in, 09:00 UTC is a UTC daytime
+        pref = preferences_for(s, pb)
+        pref.timezone, pref.quiet_start, pref.quiet_end = "UTC", "22:00", "07:00"
     vip_message(sb, pb, "The server is down")
     drain()
     drain(datetime.now(UTC) + timedelta(minutes=30))  # rung 2 and expiry run as B's jobs
@@ -112,10 +128,10 @@ def test_the_ladder_and_catch_up_stay_in_the_instance(two):
     with session_scope() as s:
         esc = s.scalar(select(Escalation))
         assert esc is not None and esc.state == "expired" and esc.agent_id == sb.agent_id
-        catchup = s.scalar(select(Job).where(Job.kind == "triage_catchup"))
-        assert catchup is not None and catchup.agent_id == sb.agent_id and catchup.status == "done"
-        note = s.scalar(select(Event).where(Event.meta["kind"].astext == "triage_catchup"))
-        assert note is not None and note.agent_id == sb.agent_id
+        catchups = s.scalars(select(Job).where(Job.kind == "triage_catchup")).all()
+        assert [(j.agent_id, j.status) for j in catchups] == [(sb.agent_id, "done")]
+        notes = s.scalars(select(Event).where(Event.meta["kind"].astext == "triage_catchup")).all()
+        assert [n.agent_id for n in notes] == [sb.agent_id]
         assert s.scalars(select(Job).where(Job.agent_id == sa.agent_id, Job.kind.like("%escalation%"))).all() == []
 
 
