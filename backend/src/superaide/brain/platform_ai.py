@@ -24,6 +24,7 @@ from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
 from superaide.audit import audit
+from superaide.brain import platform_spend
 from superaide.config import Settings, get_settings
 from superaide.db.models import SpendEntry
 from superaide.tenancy.context import scope_or_default
@@ -42,8 +43,19 @@ def platform_key(settings: Settings | None = None) -> str:
 
 
 def available() -> bool:
-    """Credits can be offered: the switch is on and there is a key."""
-    return bool(platform_key())
+    """Credits can be offered: the switch is on, there is a key, and the platform's daily cap is above
+    zero (a cap of 0 refuses every credit-paid call, so offering them would only mislead)."""
+    return bool(platform_key()) and platform_spend.cap_usd() > 0
+
+
+def warn_if_unusable() -> None:
+    """Tell the operator at startup when credits are switched on but can never pay for a call."""
+    env = get_settings()
+    if env.platform_ai_enabled and platform_key() and platform_spend.cap_usd() <= 0:
+        log.warning(
+            "PLATFORM_AI_ENABLED is on but PLATFORM_DAILY_CAP_USD is 0, so Superaide AI credits are not offered. "
+            "Set PLATFORM_DAILY_CAP_USD above 0 to offer them."
+        )
 
 
 def opted_in(session: Session) -> bool:
@@ -101,7 +113,11 @@ def view(session: Session) -> dict[str, Any]:
         "available": available(),
         "opted_in": opted_in(session),
         "model": env.platform_model,
-        "allowance": {"daily_usd": float(day_cap or 0), "monthly_usd": float(month_cap or 0)},
+        # None means no limit of that kind for this owner (only the platform's shared cap applies).
+        "allowance": {
+            "daily_usd": float(day_cap) if day_cap is not None else None,
+            "monthly_usd": float(month_cap) if month_cap is not None else None,
+        },
         "used": {"today_usd": float(day), "month_usd": float(month)},
     }
 

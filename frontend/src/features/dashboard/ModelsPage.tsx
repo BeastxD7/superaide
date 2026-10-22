@@ -501,6 +501,17 @@ function CreditsCard({ settings, onChanged }: { settings: ModelSettings; onChang
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const usd = (n: number) => `US$${n.toFixed(2)}`
+  // A missing limit means none of your own (only Superaide's shared daily limit applies), never US$0.00.
+  const daily = c.allowance.daily_usd
+  const monthly = c.allowance.monthly_usd
+  const limitText =
+    daily !== null && monthly !== null
+      ? ` up to ${usd(daily)} a day and ${usd(monthly)} a month`
+      : daily !== null
+        ? ` up to ${usd(daily)} a day`
+        : monthly !== null
+          ? ` up to ${usd(monthly)} a month`
+          : ', with no limit of your own (Superaide shares a daily limit across everyone)'
 
   async function toggle() {
     setBusy(true)
@@ -527,12 +538,13 @@ function CreditsCard({ settings, onChanged }: { settings: ModelSettings; onChang
           )}
         </p>
         <p className="mt-1 text-sm text-body">
-          No key needed: use Superaide&apos;s own Claude ({c.model}) up to {usd(c.allowance.daily_usd)} a day and{' '}
-          {usd(c.allowance.monthly_usd)} a month. If you also connect your own key below, your key is used first.
+          No key needed: use Superaide&apos;s own Claude ({c.model}){limitText}. If you also connect your own key
+          below, your key is used first.
         </p>
         <p className="mt-1 text-xs text-muted">
-          Used in the last 24 hours: {usd(c.used.today_usd)} of {usd(c.allowance.daily_usd)} · last 30 days:{' '}
-          {usd(c.used.month_usd)} of {usd(c.allowance.monthly_usd)}
+          Used in the last 24 hours: {usd(c.used.today_usd)}
+          {daily !== null && ` of ${usd(daily)}`} · last 30 days: {usd(c.used.month_usd)}
+          {monthly !== null && ` of ${usd(monthly)}`}
         </p>
         {problem && (
           <div className="mt-3">

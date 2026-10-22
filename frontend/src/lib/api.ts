@@ -349,7 +349,8 @@ export type ModelSettings = {
     available: boolean
     opted_in: boolean
     model: string
-    allowance: { daily_usd: number; monthly_usd: number }
+    // null: no limit of that kind for this owner
+    allowance: { daily_usd: number | null; monthly_usd: number | null }
     used: { today_usd: number; month_usd: number }
   }
 }

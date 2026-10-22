@@ -219,6 +219,49 @@ def test_the_operators_own_ava_uses_the_server_key_as_its_own(owner_client, cred
         assert runtime_settings().anthropic_api_key == ""
 
 
+# --- credits are only offered when they can pay for a call (#64), and the card says so honestly (#65) ---
+
+
+def test_credits_are_not_offered_while_the_platform_cap_is_zero(owner_client, credits, monkeypatch, caplog):  # noqa: F811
+    from superaide.brain import platform_ai
+
+    monkeypatch.setattr(credits, "platform_daily_cap_usd", 0.0)
+    assert platform_ai.available() is False
+    assert owner_client.get("/app/providers").json()["credits"]["available"] is False
+    refused = owner_client.post("/app/providers/credits", json={"on": True})
+    assert refused.status_code == 409
+    settings = live(runtime_settings())
+    assert settings.use_platform_ai is False and not brain_status(settings).ready
+    with caplog.at_level("WARNING"):
+        platform_ai.warn_if_unusable()
+    assert "PLATFORM_DAILY_CAP_USD is 0" in caplog.text
+    monkeypatch.setattr(credits, "platform_daily_cap_usd", 1.0)
+    assert platform_ai.available() is True
+    assert owner_client.post("/app/providers/credits", json={"on": True}).status_code == 200
+
+
+def test_no_startup_warning_when_credits_are_off_or_the_cap_is_set(credits, monkeypatch, caplog):
+    from superaide.brain import platform_ai
+
+    with caplog.at_level("WARNING"):
+        platform_ai.warn_if_unusable()  # cap 5: fine
+        monkeypatch.setattr(credits, "platform_ai_enabled", False)
+        monkeypatch.setattr(credits, "platform_daily_cap_usd", 0.0)
+        platform_ai.warn_if_unusable()  # switched off: nothing to say
+    assert "PLATFORM_DAILY_CAP_USD" not in caplog.text
+
+
+@pytest.mark.parametrize(
+    ("daily", "monthly", "expected"),
+    [(0.5, 5.0, (0.5, 5.0)), (0.0, 5.0, (None, 5.0)), (0.5, 0.0, (0.5, None)), (0.0, 0.0, (None, None))],
+)
+def test_no_limit_is_sent_as_null_never_as_zero(owner_client, credits, monkeypatch, daily, monthly, expected):  # noqa: F811
+    monkeypatch.setattr(credits, "platform_owner_daily_usd", daily)
+    monkeypatch.setattr(credits, "platform_owner_monthly_usd", monthly)
+    allowance = owner_client.get("/app/providers").json()["credits"]["allowance"]
+    assert (allowance["daily_usd"], allowance["monthly_usd"]) == expected
+
+
 # --- Superaide's credits are priced by Superaide, never by the owner (#59) ---------------------------
 
 

@@ -230,7 +230,6 @@ test.describe('credits with no per-owner allowance', () => {
   test.skip(!UNLIMITED, 'needs the credits API with PLATFORM_OWNER_DAILY_USD=0 (E2E_QA_UNLIMITED=1)')
 
   test('the card does not say the allowance is US$0.00 when there is no per-owner limit', async ({ page, owner }) => {
-    test.fail(true, 'BUG: an allowance of 0 means "no limit" to the budget guard, but the card says "up to US$0.00 a day and US$0.00 a month"')
     void owner
     const card = await optIn(page)
     // The guard really has no per-owner limit: with US$0.30 of credits used today, a reply still goes through.
@@ -249,7 +248,6 @@ test.describe('credits switched on with the platform cap left at 0', () => {
   test.skip(!NO_CAP, 'needs the credits API with PLATFORM_DAILY_CAP_USD unset (E2E_QA_NOCAP=1)')
 
   test('credits that can never pay for a call are not offered', async ({ page, owner }) => {
-    test.fail(true, 'BUG: with PLATFORM_DAILY_CAP_USD at its default 0 the page still offers credits, and every message then gets "You\'ve used today\'s Superaide credits"')
     void owner
     await openModels(page)
     const card = page.getByRole('region', { name: 'Superaide AI credits' })
