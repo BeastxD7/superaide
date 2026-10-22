@@ -51,3 +51,11 @@ def test_a_send_failure_other_than_delivery_failed_does_not_lose_the_turn(manage
 @pytest.mark.parametrize("text", ["hi"])
 def test_the_guard_is_quiet_when_nothing_fails(manager, agent, text):
     assert "try again" not in (agent.handle(tg(MANAGER_TG, text)).reply or "")
+
+
+def test_a_failing_receptionist_falls_back_to_the_fixed_stranger_reply(agent, monkeypatch):
+    import superaide.reception.service as reception
+
+    monkeypatch.setattr(reception, "handle_stranger", boom)
+    result = agent.handle(tg("999", "hello"))
+    assert result.mode == "stranger" and "AI assistant" in (result.reply or "")

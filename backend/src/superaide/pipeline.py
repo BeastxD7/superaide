@@ -197,7 +197,12 @@ class Agent:
                 # information only. None: off, not a DM, or a linking code, so the fixed reply as before.
                 from superaide.reception.service import handle_stranger
 
-                received = handle_stranger(self, s, sender, ctx, msg, inbound)
+                try:
+                    with s.begin_nested():
+                        received = handle_stranger(self, s, sender, ctx, msg, inbound)
+                except Exception as exc:  # the fixed reply still goes out (issue #83)
+                    self._turn_failed(s, exc, msg)
+                    received = None
                 if received == "":
                     return HandleResult("stranger", None, ["rate_limited"])
                 reply = received if received is not None else self._ai_notice(self._stranger(s, sender, msg))
