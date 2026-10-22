@@ -338,3 +338,25 @@ def test_polling_that_works_again_marks_telegram_healthy(fake_telegram):
     assert got == ["back"]
     with session_scope() as s:
         assert health.get(s, "telegram")["status"] == health.OK
+
+
+def test_a_slow_turn_does_not_block_polling_or_other_chats(fake_telegram):
+    release = threading.Event()
+    done: list[str] = []
+
+    def handle(msg):
+        if msg.text == "slow":
+            assert release.wait(10)
+        else:
+            if msg.text == "quick":
+                release.set()  # the slow turn can only finish once another chat was served
+        done.append(msg.text)
+
+    slow_chat = {"id": 2001, "type": "private"}
+    fake = fake_telegram(
+        [[update("slow", update_id=1, chat=slow_chat), update("again", update_id=2, chat=slow_chat)],
+         [update("quick", update_id=3)]]
+    )  # fmt: skip
+    poll_forever(TOKEN, handle, fake.stop)
+    assert fake.offsets == [0, 3]  # polling went on past the slow turn
+    assert done.index("quick") < done.index("slow") < done.index("again")  # one chat stays in order
