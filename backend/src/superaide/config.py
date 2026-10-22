@@ -59,6 +59,10 @@ class Settings(BaseSettings):
     # theirs. Off by default. The key is PLATFORM_ANTHROPIC_API_KEY, else ANTHROPIC_API_KEY; it is
     # never shown, logged or stored in an owner's vault, and only used for owners who opted in.
     platform_ai_enabled: bool = False
+    # Accounts (comma-separated emails) whose Ava uses this server's ANTHROPIC_API_KEY as its own key, even
+    # when hosted: the operator's own Ava. Normal per-instance budget, not the credits allowance or the
+    # platform cap. Emails aren't verified, so only list accounts that already exist.
+    platform_key_owner_emails: str = ""
     platform_anthropic_api_key: str = Field(default="", exclude=True)  # never serialised
     platform_model: str = "claude-haiku-5-5"  # every role runs on this model when credits pay
     # Each owner's share of the credits, rolling 24 hours and 30 days, inside PLATFORM_DAILY_CAP_USD.

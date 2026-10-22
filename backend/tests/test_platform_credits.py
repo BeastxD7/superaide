@@ -128,3 +128,34 @@ def test_one_owners_opt_in_never_reaches_another(owner_client, credits):  # noqa
         other = live(runtime_settings())
         assert other.use_platform_ai is False and not brain_status(other).ready
         assert with_credits(other).model_chat == other.model_chat
+
+
+SERVER_KEY = "sk-ant-server-env-key-111111111111111"
+
+
+@pytest.mark.parametrize(
+    ("listed", "own"), [("S@Example.com , ops@example.com", True), ("s@exampel.com", False), ("", False)]
+)
+def test_the_operators_own_ava_uses_the_server_key_as_its_own(owner_client, credits, monkeypatch, listed, own):  # noqa: F811
+    from decimal import Decimal
+
+    from superaide.brain import platform_spend
+    from superaide.tenancy.context import use_instance
+
+    monkeypatch.setattr(credits, "platform_ai_enabled", False)
+    monkeypatch.setattr(credits, "anthropic_api_key", SERVER_KEY)
+    monkeypatch.setattr(credits, "platform_key_owner_emails", listed)
+    monkeypatch.setattr(credits, "platform_daily_cap_usd", 0.0)  # no credits at all: the key is theirs
+    monkeypatch.setattr(credits, "platform_owner_daily_usd", 0.01)
+    settings = live(runtime_settings())
+    assert (settings.anthropic_api_key == SERVER_KEY) is own and brain_status(settings).ready is own
+    if own:
+        llm = build_llm(settings)
+        assert isinstance(llm, ClaudeLLM) and llm.guard.key_source == "owner"
+        # More than this owner's credit allowance (set to US$0.01 above), within the normal budget.
+        llm.guard.reserve(purpose="chat_turn", model="claude-haiku-5-5", worst_case_usd=Decimal("0.05"))
+        with session_scope() as s:
+            assert platform_spend.committed_today(s) == 0  # not counted in the platform cap
+    assert SERVER_KEY not in owner_client.get("/app/providers").text
+    with use_instance(B):  # anyone else's Ava never gets it
+        assert runtime_settings().anthropic_api_key == ""

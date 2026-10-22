@@ -99,3 +99,20 @@ def view(session: Session) -> dict[str, Any]:
         "allowance": {"daily_usd": float(day_cap or 0), "monthly_usd": float(month_cap or 0)},
         "used": {"today_usd": float(day), "month_usd": float(month)},
     }
+
+
+def server_key_is_own(session: Session) -> bool:
+    """The instance in scope belongs to an account listed in PLATFORM_KEY_OWNER_EMAILS (the operator's
+    own Ava): it uses the server's ANTHROPIC_API_KEY as its own key."""
+    from superaide.auth.service import normalize_email
+    from superaide.db.models import UserAccount
+    from superaide.tenancy.models import AgentInstance
+
+    listed = {normalize_email(e) for e in get_settings().platform_key_owner_emails.split(",") if e.strip()}
+    if not listed:
+        return False
+    instance = session.get(AgentInstance, scope_or_default().agent_id)
+    if instance is None:
+        return False
+    account = session.get(UserAccount, instance.owner_user_id)
+    return account is not None and account.email_normalized in listed

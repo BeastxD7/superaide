@@ -143,6 +143,12 @@ def runtime_settings(base: Settings | None = None) -> Settings:
     if not env_credentials_apply(base):
         updates.update({field: "" for field in FIELDS.values()})  # BYOK: never the server's keys
     with session_scope() as s:
+        from superaide.brain import platform_ai
+
+        if not env_credentials_apply(base) and platform_ai.server_key_is_own(s):
+            # The operator's own Ava (PLATFORM_KEY_OWNER_EMAILS): the server's Claude key is its own key.
+            env = get_settings()
+            updates["anthropic_api_key"] = env.anthropic_api_key or env.platform_anthropic_api_key
         for (provider, name), row in stored(s).items():
             field = FIELDS.get((provider, name))
             if field:
