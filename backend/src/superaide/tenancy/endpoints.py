@@ -29,6 +29,7 @@ from superaide.tenancy.models import ChannelEndpoint
 
 log = logging.getLogger(__name__)
 TELEGRAM = "telegram"
+SLACK = "slack"
 
 
 class EndpointTaken(Exception):
@@ -59,41 +60,61 @@ def owner_of(session: Session, provider: str, external_key: str) -> ChannelEndpo
     )
 
 
-def check_free(session: Session, bot: str) -> None:
-    """Raise EndpointTaken if this Telegram bot serves another instance."""
-    found = owner_of(session, TELEGRAM, bot)
+def check_free(session: Session, key: str, provider: str = TELEGRAM) -> None:
+    """Raise EndpointTaken if this bot (or Slack app) serves another instance."""
+    found = owner_of(session, provider, key)
     if found is not None and found.agent_id != scope_or_default().agent_id:
-        raise EndpointTaken(bot)
+        raise EndpointTaken(key)
 
 
-def register_telegram(session: Session, bot: str) -> ChannelEndpoint:
-    """This bot now serves the instance in scope (replacing any other bot it had)."""
+def register(session: Session, provider: str, key: str, kind: str) -> ChannelEndpoint:
+    """This bot or app now serves the instance in scope (replacing any other of that provider it had)."""
     scope = scope_or_default()
-    check_free(session, bot)
+    check_free(session, key, provider)
     session.execute(
         delete(ChannelEndpoint).where(
             ChannelEndpoint.agent_id == scope.agent_id,
-            ChannelEndpoint.provider == TELEGRAM,
-            ChannelEndpoint.external_key != bot,
+            ChannelEndpoint.provider == provider,
+            ChannelEndpoint.external_key != key,
         )
     )
-    row = owner_of(session, TELEGRAM, bot)
+    row = owner_of(session, provider, key)
     if row is None:
         row = ChannelEndpoint(
-            tenant_id=scope.tenant_id, agent_id=scope.agent_id, provider=TELEGRAM, kind="own_bot", external_key=bot
+            tenant_id=scope.tenant_id, agent_id=scope.agent_id, provider=provider, kind=kind, external_key=key
         )
         session.add(row)
         session.flush()
-        audit(session, "channels", "endpoint_registered", provider=TELEGRAM, endpoint_id=row.id, bot=bot)
+        audit(session, "channels", "endpoint_registered", provider=provider, endpoint_id=row.id, key=key)
     return row
 
 
-def remove_telegram(session: Session) -> None:
+def register_telegram(session: Session, bot: str) -> ChannelEndpoint:
+    return register(session, TELEGRAM, bot, "own_bot")
+
+
+def remove(session: Session, provider: str) -> None:
     session.execute(
         delete(ChannelEndpoint).where(
-            ChannelEndpoint.agent_id == scope_or_default().agent_id, ChannelEndpoint.provider == TELEGRAM
+            ChannelEndpoint.agent_id == scope_or_default().agent_id, ChannelEndpoint.provider == provider
         )
     )
+
+
+def remove_telegram(session: Session) -> None:
+    remove(session, TELEGRAM)
+
+
+def slack_key(team_id: str, app_token: str) -> str:
+    """The same "<team>/<app>" key the identity layer binds Slack links to (channels/slack.py
+    endpoint_of). The app id is part of the app-level token: xapp-1-<APP_ID>-<n>-<secret>."""
+    parts = app_token.split("-")
+    app_id = parts[2] if len(parts) > 3 and parts[0] == "xapp" else ""
+    return f"{team_id}/{app_id}" if app_id else team_id
+
+
+def register_slack(session: Session, team_id: str, app_token: str) -> ChannelEndpoint:
+    return register(session, SLACK, slack_key(team_id, app_token), "own_app")
 
 
 def scope_of(endpoint: ChannelEndpoint) -> InstanceScope:
@@ -132,3 +153,34 @@ def sync_telegram() -> dict[str, InstanceScope]:
                 continue
             bots[token] = scope
     return bots
+
+
+def sync_slack() -> dict[str, tuple[InstanceScope, str, str]]:
+    """Every active instance's own Slack app: app token -> (instance, bot token, team id),
+    registering endpoints as needed. An app saved in two instances keeps the first."""
+    from superaide.db.session import session_scope
+    from superaide.tenancy.context import default_scope
+    from superaide.tenancy.service import active_scopes
+    from superaide.vault.store import runtime_settings
+
+    with session_scope() as s:
+        scopes = active_scopes(s) or [default_scope()]
+    apps: dict[str, tuple[InstanceScope, str, str]] = {}
+    for scope in scopes:
+        with use_instance(scope):
+            try:
+                settings = runtime_settings()
+            except Exception:
+                log.exception("couldn't read the Slack tokens of instance %s", scope.agent_id)
+                continue
+            bot, app, team = settings.slack_bot_token, settings.slack_app_token, settings.slack_team_id
+            if not (bot and app):
+                continue
+            try:
+                with session_scope() as s:
+                    register_slack(s, team, app)
+            except EndpointTaken:
+                log.warning("a Slack app already serves another instance; not started for %s", scope.agent_id)
+                continue
+            apps[app] = (scope, bot, team)
+    return apps

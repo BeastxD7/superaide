@@ -140,6 +140,13 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
                     raise HTTPException(
                         409, "This bot is already connected to another Ava. Create a new bot with @BotFather."
                     ) from exc
+            if provider == "slack":  # each owner's own Slack app, serving their Ava only
+                try:
+                    endpoints.register_slack(s, checked.values.get("team_id", ""), checked.values["app_token"])
+                except endpoints.EndpointTaken as exc:
+                    raise HTTPException(
+                        409, "This Slack app is already connected to another Ava. Create a new Slack app for yours."
+                    ) from exc
             store.save(s, provider, checked.values, user_id=user_id, meta=checked.meta)
             if provider in health.PROVIDERS:
                 health.reset(s, provider)  # the service just accepted this token
@@ -328,8 +335,8 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
             raise HTTPException(404, "Unknown connection")
         with session_scope() as s:
             store.remove(s, provider, user_id=user_id)
-            if provider == "telegram":
-                endpoints.remove_telegram(s)
+            if provider in ("telegram", "slack"):
+                endpoints.remove(s, provider)
             if provider in health.PROVIDERS:
                 health.reset(s, provider)
         telegram_username.cache_clear()

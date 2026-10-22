@@ -67,12 +67,12 @@ class Runtime:
         return built
 
     def handle_on_server_channels(self, msg: InboundMessage) -> Any:
-        """Slack (one app per server for now) and the legacy Telegram webhook: the server's first instance."""
+        """The server's legacy Telegram and Slack webhooks belong to the server's first instance."""
         with use_instance(default_scope()):
             return self.get_agent().handle(msg)
 
     def handle_listened(self, msg: InboundMessage) -> Any:
-        """From a listener: an owner bot's poller runs inside its owner's instance (ADR 0009 T4)."""
+        """From a listener: an owner's bot poller or Slack app runs inside its owner's instance."""
         if current_scope() is not None:
             return self.get_agent().handle(msg)
         return self.handle_on_server_channels(msg)
@@ -85,8 +85,9 @@ class Runtime:
         if self.fixed is not None or not listen:
             self.get_agent()
             return {}
-        with use_instance(default_scope()):  # Slack: one app per server, the first instance's
-            started = self.runner.ensure(self.get_agent().settings.model_copy(update={"telegram_bot_token": ""}))
+        from superaide.tenancy.endpoints import sync_slack
+
+        started: dict[str, bool] = {"slack": bool(self.runner.ensure_slack_apps(sync_slack()))}
         bots = sync_telegram()  # each owner's own bot, registered to their instance
         base = self.settings.telegram_webhook_base_url
         if base:

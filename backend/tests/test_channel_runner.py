@@ -255,6 +255,15 @@ def live_app(monkeypatch):
                 raise RuntimeError("listener exploded on start")
             return {"telegram": False, "slack": False}
 
+        def ensure_slack_apps(self, apps):  # each owner's own Slack app (ADR 0009)
+            calls["ensure"].append(apps)
+            if SpyRunner.crash:
+                raise RuntimeError("listener exploded on start")
+            return []
+
+        def ensure_bots(self, bots):
+            return []
+
         def stop(self):
             calls["stop"].append(True)
 

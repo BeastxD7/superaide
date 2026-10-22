@@ -282,6 +282,16 @@ class SpyRunner:
         self.ensured.append(settings)
         return {"telegram": bool(settings.telegram_bot_token), "slack": bool(settings.slack_bot_token)}
 
+    # The listeners per owner (ADR 0009): each owner's Slack app and Telegram bot.
+    def ensure_slack_apps(self, apps):
+        if self.fail:
+            raise RuntimeError("socket mode is down")
+        self.ensured.append(apps)
+        return []
+
+    def ensure_bots(self, bots):
+        return []
+
     def stop(self) -> None:
         self.stopped += 1
 

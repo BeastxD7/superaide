@@ -53,6 +53,8 @@ class ChannelRunner:
         self._telegram: tuple[str, threading.Event, threading.Thread] | None = None
         # Many owners (ADR 0009 T4): one poller per owner bot, each running inside its owner's instance.
         self._bots: dict[str, tuple[Any, threading.Event, threading.Thread]] = {}
+        # One Socket Mode connection per owner's own Slack app, its events handled in that owner's instance.
+        self._apps: dict[str, tuple[Any, Any]] = {}  # app token -> (scope, _Held handler)
         self._slack: tuple[tuple[str, str], Any] | None = None
 
     def ensure(self, settings: Settings) -> dict[str, bool]:
@@ -94,6 +96,50 @@ class ChannelRunner:
                 self._bots[token] = (scope, stop, thread)
             return sorted(bot_id(t) for t in self._bots)
 
+    def ensure_slack_apps(self, apps: dict[str, tuple[Any, str, str]]) -> list[str]:
+        """Exactly one Socket Mode connection per app in `apps` (app token -> (instance scope, bot
+        token, team id)). Returns the "<team>/<app>" keys connected here."""
+        import hashlib
+
+        from superaide.channels import health
+        from superaide.channels.slack import auth_error, socket_mode_handler
+        from superaide.tenancy.context import use_instance
+        from superaide.tenancy.endpoints import slack_key
+
+        with self._lock:
+            for app, (scope, held) in list(self._apps.items()):
+                if app not in apps or apps[app][0] != scope:
+                    try:
+                        held.close()
+                    except Exception:
+                        log.exception("closing a Slack listener")
+                    del self._apps[app]
+            for app, (scope, bot, team) in apps.items():
+                if app in self._apps:
+                    continue
+                lock = claim_listener(f"slack:{hashlib.sha256(app.encode()).hexdigest()[:16]}")
+                if lock is None:
+                    log.info("Slack app %s listens in another process; skipped here", slack_key(team, app))
+                    continue
+
+                def in_scope(msg: InboundMessage, scope: Any = scope) -> Any:
+                    with use_instance(scope):  # Slack calls back on its own threads: say whose it is
+                        return self.handle(msg)
+
+                with use_instance(scope):
+                    try:
+                        handler = socket_mode_handler(bot, app, team, in_scope)
+                        handler.connect()
+                    except Exception as exc:
+                        lock.close()
+                        log.exception("Slack listener failed to start")
+                        if code := auth_error(exc):
+                            health.record("slack", health.AUTH_FAILED, f"Slack rejected the token ({code})")
+                        continue
+                    health.record("slack", health.OK)
+                self._apps[app] = (scope, _Held(handler, lock))
+            return sorted(slack_key(apps[a][2], a) for a in self._apps if a in apps)
+
     def stop(self) -> None:
         with self._lock:
             self._ensure_telegram("")
@@ -101,6 +147,12 @@ class ChannelRunner:
             for _, stop, _ in self._bots.values():
                 stop.set()
             self._bots.clear()
+            for _, held in self._apps.values():
+                try:
+                    held.close()
+                except Exception:
+                    log.exception("closing a Slack listener")
+            self._apps.clear()
 
     def _ensure_telegram(self, token: str) -> None:
         if self._telegram and self._telegram[0] == token and not self._telegram[2].is_alive():

@@ -136,7 +136,7 @@ with each service and stored encrypted with `SECRETS_MASTER_KEY`.
   bot token elsewhere at the same time, e.g. on your Mac.
   - Webhook mode is possible: set `TELEGRAM_WEBHOOK_BASE_URL=https://DOMAIN`, uncomment the `/webhooks/*` block in `deploy/caddy/Caddyfile` and rebuild. Each bot then gets its own webhook address and secret.
   - Polling is the tested path.
-- **Slack:** uses Socket Mode (an outbound websocket), so it needs no inbound URL either.
+- **Slack:** each owner connects their own Slack app in the app (Socket Mode, an outbound websocket), so it needs no inbound URL either. Two owners in one workspace each bring their own app; one app serves one Ava.
 - **Google Calendar:** in your Google Cloud OAuth client ("Web application"), add this authorised
   redirect URI exactly: `https://ava.example.com/api/app/connections/google/callback`
 - **Background jobs** (reminders, follow-ups, digests) and the listeners run in the `worker`
@@ -163,7 +163,7 @@ alias dc='docker compose -f /opt/superaide/docker-compose.prod.yml'
 | Status | `dc ps` |
 | Logs (all, follow) | `dc logs -f --tail=100` |
 | Logs (one service) | `dc logs -f api` (or `worker`, `web`, `caddy`, `db`) |
-| Restart | `dc restart api` |
+| Restart | `dc restart api worker` |
 | Stop / start | `dc down` / `dc up -d` (data is kept; never add `-v`, it deletes the database) |
 | Database shell | `dc exec db psql -U agent agent` |
 | Spend so far | `dc exec api superaide spend` |
