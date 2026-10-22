@@ -253,6 +253,8 @@ export const auth = {
     request<{ url: string }>('/auth/google/start', { method: 'POST', json: { next, timezone: browserTimeZone() } }),
   changePassword: (current: string, next: string) =>
     request<{ status: string }>('/auth/password', { method: 'POST', json: { current, new: next } }),
+  changeEmail: (email: string, password: string) =>
+    request<Account>('/auth/email', { method: 'POST', json: { email, password } }),
   logoutEverywhere: () => request<{ status: string }>('/auth/logout-everywhere', { method: 'POST' }),
   sendVerification: () => request<{ status: string }>('/auth/verify-email/send', { method: 'POST' }),
   verifyEmail: (token: string) => request<{ status: string }>('/auth/verify-email', { method: 'POST', json: { token } }),

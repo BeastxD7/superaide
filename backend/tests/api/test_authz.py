@@ -220,6 +220,7 @@ def test_google_sign_in_routes_are_the_only_new_public_auth_routes(app):
         ("POST", "/auth/password"),
         ("POST", "/auth/logout-everywhere"),
         ("POST", "/auth/verify-email/send"),
+        ("POST", "/auth/email"),  # change email: needs the session and the password
     }
     assert set(app_routes(app, "/auth")) == public | session_only
 

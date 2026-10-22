@@ -275,6 +275,29 @@ def revoke_all(session: Session, user: UserAccount, *, except_token: str | None 
     return rows_affected(session.execute(q.values(revoked_at=_now())))
 
 
+def change_email(session: Session, user: UserAccount, *, new_email: str, password: str, client: Client) -> None:
+    """Move the account to a new address. Needs the password; the new address must be verified again,
+    and links already sent to the old one stop working."""
+    settings = get_settings()
+    window = timedelta(minutes=settings.login_lock_minutes)
+    if _recent(session, "email_change_fail", window, user_id=user.id) >= settings.login_max_failures:
+        raise AuthError(429, f"Too many wrong passwords. Try again in {settings.login_lock_minutes} minutes.")
+    ok, _ = verify_password(user.password_hash, password)
+    if not ok:
+        _event(session, "email_change_fail", client, user_id=user.id)
+        raise AuthError(401, "Your password isn't right.", "password")
+    normalized = normalize_email(new_email)
+    if normalized == user.email_normalized:
+        raise AuthError(422, "That's already your email.", "email")
+    if find_user(session, normalized) is not None:
+        raise AuthError(409, "There's already an account with this email.", "email")
+    old = user.email_normalized
+    user.email = new_email.strip()[:320]  # sets email_normalized too (db/models.UserAccount)
+    user.email_verified_at = None
+    _event(session, "email_changed", client, user_id=user.id, email=normalized)
+    audit(session, "auth", "email_changed", user_id=user.id, old_domain=old.rsplit("@", 1)[-1])
+
+
 def change_password(
     session: Session, user: UserAccount, *, current: str, new: str, keep_token: str | None, client: Client
 ) -> None:

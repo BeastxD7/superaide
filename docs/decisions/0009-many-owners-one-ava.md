@@ -567,13 +567,23 @@ FTS -> T8, T11, T12. Nothing ships to a public URL as "hosted" until T1-T7 and t
   as the operator's switch for single-owner mode (a self-hosted server for one person: the first hire
   is the only owner, later hires are refused).
 
-- **Model keys: bring your own (BYOK).** Each owner connects their own AI provider key (Claude, or any
-  provider on the AI model page). There is no platform-paid model key: `PLATFORM_DAILY_CAP_USD` stays
-  0 and `key_source` is always `owner` for model calls (the platform allowance of section 7 stays in
-  the code, unused). An owner with no key connected sees a clear "Connect your AI model" state; their
-  Ava never falls back to another owner's key, and in hosted mode never to the `.env` key, which
-  remains only for self-hosted and development (`DEPLOY_MODE=self_hosted`). Affects T3 (credentials
-  per instance) and T6 (done; no change needed).
+- **Model keys: bring your own (BYOK), or Superaide AI credits** (updated 2026-10-23; first decided
+  BYOK only on 2026-10-22). Each owner connects their own AI provider key on the AI model page, or opts
+  in to **Superaide AI credits**: the platform's own Claude key (`PLATFORM_ANTHROPIC_API_KEY`, else
+  `ANTHROPIC_API_KEY`) on `PLATFORM_MODEL`, offered only when `PLATFORM_AI_ENABLED=true`.
+  - The owner's own key always wins for any role it can serve; credits fill only the rest.
+  - Credit-paid calls are recorded with `key_source = platform` and reserve against both the owner's
+    allowance (`PLATFORM_OWNER_DAILY_USD`, `PLATFORM_OWNER_MONTHLY_USD`, rolling) and the platform's
+    daily cap (`PLATFORM_DAILY_CAP_USD`), atomically (section 7). Running out gets an honest reply.
+  - The platform key is read only from the server's environment: never in an owner's runtime
+    settings, vault, logs or API responses, and never used for an owner who didn't opt in.
+  - **The operator's own Ava uses the server key** as its own key, even when hosted: accounts listed
+    in `PLATFORM_KEY_OWNER_EMAILS` get `ANTHROPIC_API_KEY` with `key_source = owner` and the normal
+    per-instance budget, outside the credits allowance and the platform cap. Emails aren't verified,
+    so only existing accounts are listed; `user_account.email_normalized` is kept in step with `email`
+    by the model and a CHECK constraint (migration 0029).
+  - Otherwise an owner with no key and no credits sees a clear "Connect your AI model" state; their
+    Ava never falls back to another owner's key, and in hosted mode never to the `.env` key.
 - **Telegram: each owner's own bot.** The owner pastes their BotFather token in Connections; it is
   stored per instance (T3), and T4 makes one channel endpoint per owner bot, with webhooks keyed by a
   per-bot secret (the "Now" row of section 9). Managed bots and a shared Superaide bot are out of scope.
@@ -582,7 +592,7 @@ FTS -> T8, T11, T12. Nothing ships to a public URL as "hosted" until T1-T7 and t
 
 1. **Pricing and billing** for Superaide itself: free tier? monthly plan or pay-as-you-go? Which
    currencies first? (Stripe assumed.)
-2. ~~Whose Claude key~~: decided above (BYOK).
+2. ~~Whose Claude key~~: decided above (BYOK or Superaide AI credits).
 3. ~~Telegram~~: decided above (each owner's own bot).
 4. **One Ava per account?** Or can one account run several Avas (e.g. work and personal)? And can a
    company workspace have several members managing one Ava?

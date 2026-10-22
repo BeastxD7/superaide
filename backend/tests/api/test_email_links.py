@@ -151,7 +151,7 @@ def test_a_verify_link_cannot_reset_a_password(browser, outbox):
 def test_a_link_stops_working_if_the_address_changed(browser, outbox):
     signup(browser())
     with session_scope() as s:
-        s.execute(update(UserAccount).values(email_normalized="changed@example.com"))
+        s.execute(update(UserAccount).values(email="changed@example.com", email_normalized="changed@example.com"))
     r = browser().post("/auth/verify-email", json={"token": token_in(outbox[0], "/verify-email")})
     assert r.status_code == 400
 

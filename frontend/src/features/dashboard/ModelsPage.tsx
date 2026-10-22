@@ -75,8 +75,10 @@ export function ModelsPage() {
       <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 lg:py-8">
         <h1 className="text-3xl font-medium text-ink tight">AI model</h1>
         <p className="mt-1 text-body">
-          Choose the AI that {name} thinks with. Keys are checked with the service, kept encrypted, and never shown
-          again. Every call counts against your spending cap.
+          Choose the AI that {name} thinks with: bring your own key from any provider below
+          {data?.credits.available ? ', or use Superaide AI credits with no key at all' : ''}. Your own key is always
+          used first. Keys are checked with the service, kept encrypted, and never shown again. Every call counts
+          against your spending cap.
         </p>
         {error && (
           <div className="mt-4">

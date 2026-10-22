@@ -17,6 +17,7 @@ from typing import Any
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     DateTime,
     Float,
     ForeignKey,
@@ -31,7 +32,7 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, validates
 
 
 def _tenant() -> uuid.UUID:
@@ -387,6 +388,9 @@ class TenantScoped:
     )
 
 
+EMAIL_MATCH_SQL = "octet_length(email) <> char_length(email) OR email_normalized = lower(btrim(email))"
+
+
 class UserAccount(TenantScoped, Base):
     """Someone who can sign in to the app. Passwords are stored only as Argon2id hashes.
 
@@ -399,6 +403,10 @@ class UserAccount(TenantScoped, Base):
     __table_args__ = (
         UniqueConstraint("email_normalized", name="uq_user_email"),
         UniqueConstraint("google_sub", name="uq_user_google_sub"),
+        # The two email columns can't drift apart (a hand edit of one once broke a sign-in rule): for
+        # plain ASCII addresses, which is nearly all of them, the normalized one must be the address
+        # lower-cased. Non-ASCII addresses are normalized in code (auth/service.normalize_email).
+        CheckConstraint(EMAIL_MATCH_SQL, name="ck_user_email_normalized"),
     )
 
     email: Mapped[str] = mapped_column(String(320))
@@ -407,6 +415,18 @@ class UserAccount(TenantScoped, Base):
     # Google's stable account id ("sub"), once the account has signed in with Google. The account is
     # found by this, never by email alone: a Google account's address can change or be reused.
     google_sub: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    @validates("email")
+    def _keep_normalized(self, _key: str, value: str) -> str:
+        """Setting the address always sets its normalized form too."""
+        from superaide.auth.service import AuthError, normalize_email
+
+        try:
+            self.email_normalized = normalize_email(value)
+        except AuthError:
+            self.email_normalized = value.strip().lower()
+        return value
+
     display_name: Mapped[str] = mapped_column(String(120))
     person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), unique=True)
     role: Mapped[str] = mapped_column(String(20), default="user")  # user | admin

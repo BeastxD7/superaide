@@ -192,6 +192,11 @@ def google_enabled() -> bool:
     return get_settings().google_signin_enabled
 
 
+class EmailBody(BaseModel):
+    email: str = Field(min_length=3, max_length=320)
+    password: str = Field(min_length=1, max_length=1024)
+
+
 class PasswordBody(BaseModel):
     current: str = Field(min_length=1, max_length=1024)
     new: str = Field(min_length=1, max_length=1024)
@@ -285,6 +290,29 @@ def make_router() -> APIRouter:
         n = run(lambda s: service.revoke_all(s, s.get(UserAccount, user_id)))
         clear_session_cookie(response)
         return {"status": "signed out everywhere", "sessions": n}
+
+    @router.post(
+        "/email",
+        summary="Change email",
+        description=(
+            "Needs the password. Moves the account to the new address, which must then be verified; links "
+            "sent to the old address stop working."
+        ),
+    )
+    def change_email(
+        body: EmailBody, request: Request, background: BackgroundTasks, user_id: uuid.UUID = Depends(current_user_id)
+    ) -> dict[str, Any]:
+        client = client_of(request)
+
+        def go(s: Any) -> tuple[dict[str, Any], Mail | None]:
+            user = s.get(UserAccount, user_id)
+            service.change_email(s, user, new_email=body.email, password=body.password, client=client)
+            s.flush()
+            return user_view(s, user), emails.start_verification(s, user)
+
+        view, mail = run(go)
+        background.add_task(deliver, mail)
+        return view
 
     @router.post(
         "/verify-email/send",

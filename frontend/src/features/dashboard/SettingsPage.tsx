@@ -43,6 +43,8 @@ export function SettingsPage() {
           </CardContent>
         </Card>
 
+        <EmailCard current={account.user.email} />
+
         <PasswordCard />
 
         <Card>
@@ -80,6 +82,70 @@ export function SettingsPage() {
         <AccessLogCard name={name} />
       </div>
     </div>
+  )
+}
+
+function EmailCard({ current }: { current: string }) {
+  const { refresh } = useSession()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [result, setResult] = useState<{ tone: 'info' | 'error'; text: string } | null>(null)
+
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    setBusy(true)
+    setResult(null)
+    try {
+      const changed = await auth.changeEmail(email, password)
+      setEmail('')
+      setPassword('')
+      await refresh()
+      setResult({
+        tone: 'info',
+        text: `Your email is now ${changed.user.email}. We sent a link there: open it to confirm the address.`,
+      })
+    } catch (err) {
+      setResult({ tone: 'error', text: err instanceof AppError ? err.message : String(err) })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Change email</CardTitle>
+        <CardDescription>
+          You sign in with {current}. After changing it, confirm the new address from the link we send there.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={submit} className="grid gap-4 sm:max-w-sm" aria-label="Change email">
+          <div className="grid gap-1.5">
+            <Label htmlFor="new-email">New email</Label>
+            <Input id="new-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="email-password">Password</Label>
+            <Input
+              id="email-password"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <Button type="submit" disabled={busy || !email || !password}>
+              Change email
+            </Button>
+          </div>
+          {result && <Notice tone={result.tone}>{result.text}</Notice>}
+        </form>
+      </CardContent>
+    </Card>
   )
 }
 
