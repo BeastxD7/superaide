@@ -431,6 +431,19 @@ def test_every_unsafe_app_and_auth_route_needs_the_csrf_header(app, browser, own
     assert owner.get("/app/me").status_code == 200
 
 
+def test_the_voice_calls_audio_upload_needs_the_csrf_header_and_a_session(browser, owner, settings, monkeypatch):
+    """A multipart form is what a cross-site page can send without a preflight, so the voice call's
+    utterance upload (ADR 0012) must be refused without X-Requested-With, and without a session."""
+    monkeypatch.setattr(settings, "voice_intro_v2", True)
+    form = {"files": {"audio": ("a.wav", b"RIFF0000WAVE", "audio/wav")}, "data": {"text": "hi"}}
+    plain = browser(csrf=False)
+    plain.cookies.set("superaide_session", owner.cookies.get("superaide_session"))
+    r = plain.post("/app/intro/voice/turn", **form)
+    assert r.status_code == 403 and r.json()["detail"] == "Missing X-Requested-With header"
+    for path in ("/app/intro/voice/turn", "/app/intro/voice/start", "/app/intro/voice/confirm"):
+        assert browser().post(path, **form).status_code == 401, path
+
+
 def test_reads_do_not_need_the_csrf_header(browser, owner):
     plain = browser(csrf=False)
     plain.cookies.set("superaide_session", owner.cookies.get("superaide_session"))

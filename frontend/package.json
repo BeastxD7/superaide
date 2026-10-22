@@ -4,22 +4,27 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/copy-vad-assets.mjs",
     "dev": "next dev --port 3000",
+    "prebuild": "node scripts/copy-vad-assets.mjs",
     "build": "next build",
     "start": "next start --port 3000",
     "lint": "oxlint src",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "vad-assets": "node scripts/copy-vad-assets.mjs"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",
     "@fontsource/atkinson-hyperlegible-mono": "^5.3.0",
     "@fontsource/atkinson-hyperlegible-next": "^5.3.0",
+    "@ricky0123/vad-web": "0.0.31",
     "axios": "^1.20.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.61.0",
     "motion": "^14.5.0",
     "next": "^16.4.2",
+    "onnxruntime-web": "1.22.0",
     "radix-ui": "^1.8.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",

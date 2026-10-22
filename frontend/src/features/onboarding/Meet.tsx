@@ -13,6 +13,7 @@ import { Orb } from '@/components/Orb'
 import { StepControls } from '@/features/onboarding/steps'
 import { unlockSpeech } from '@/features/onboarding/speech'
 import { VideoCall, type CallQuestion, type CallTurnResult } from '@/features/onboarding/VideoCall'
+import { VoiceIntro, type VoiceConfig } from '@/features/onboarding/voice/VoiceIntro'
 import { AccountMenu, Notice } from '@/components/site'
 import { SessionProblem } from '@/components/SessionProblem'
 
@@ -100,8 +101,24 @@ export function Meet({ session }: { session: Session }) {
 
   const [callCount, setCallCount] = useState(0)
 
+  const [voice, setVoice] = useState<VoiceConfig | null>(null)
+
   const openCall = useCallback(async () => {
     unlockSpeech() // must run inside the click, or Safari won't let Ava speak
+    // The voice call v2 (ADR 0012) when it's switched on; the original call otherwise (404).
+    try {
+      const cfg = await call<VoiceConfig>(`/intro/voice?lang=${encodeURIComponent(navigator.language || 'en-US')}`)
+      if (cfg.enabled) {
+        setVoice(cfg)
+        setCallCount((n) => n + 1)
+        return
+      }
+    } catch (e) {
+      if (!(e instanceof AppError) || e.status !== 404) {
+        setError(e instanceof AppError ? e.message : String(e))
+        return
+      }
+    }
     try {
       const r = await call<{ first: CallQuestion }>('/intro/call')
       setFirstQuestion(r.first)
@@ -211,6 +228,21 @@ export function Meet({ session }: { session: Session }) {
           </AnimatePresence>
         </div>
       </div>
+      {voice && (
+        <VoiceIntro
+          key={`voice-${callCount}`}
+          agentName={agentName}
+          config={voice}
+          onDone={() => {
+            setVoice(null)
+            void reload()
+          }}
+          onCancel={() => {
+            setVoice(null)
+            void reload()
+          }}
+        />
+      )}
       {calling && firstQuestion && (
         <VideoCall
           key={callCount}

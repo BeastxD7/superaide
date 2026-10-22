@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     budget_monthly_usd: float = 5.00  # any 30 days
     # Per purpose bucket, any 24 hours (chat replies, memory reading, web research).
     budget_daily_by_bucket: dict[str, float] = Field(
-        default_factory=lambda: {"chat": 0.40, "memory": 0.15, "research": 0.25, "triage": 0.05}
+        default_factory=lambda: {"chat": 0.40, "memory": 0.15, "research": 0.25, "triage": 0.05, "voice": 0.30}
     )
     # These limits apply to each hired Ava on its own; an instance may set its own (agent_instance.spend_limits).
     # Platform-wide, per UTC day, for calls paid with Superaide's own model key (ADR 0009). Owners'
@@ -174,6 +174,22 @@ class Settings(BaseSettings):
     ask_per_ip_per_hour: int = 5
     ask_per_handle_per_hour: int = 20
     ask_per_handle_per_day: int = 100
+
+    # The introduction's voice call, v2 (ADR 0012). Off: the original video call (browser speech, fixed
+    # questions). On: automatic turn-taking with in-browser voice activity detection, a conversational
+    # interview with Claude, a natural voice, and a "what I learned" summary the owner confirms.
+    voice_intro_v2: bool = False
+    # Speech-to-text and text-to-speech. auto: the owner's own key for a provider, then Superaide credits
+    # (if they opted in and the platform has a key), then the browser's own speech (free). fake: tests.
+    voice_asr: str = "auto"  # auto | deepgram | browser | fake
+    voice_tts: str = "auto"  # auto | elevenlabs | deepgram | browser | fake
+    voice_max_turn_seconds: int = 60  # a longer answer is refused before it is transcribed
+    deepgram_api_key: str = ""
+    elevenlabs_api_key: str = ""
+    # The platform's own voice keys, for owners on Superaide AI credits. Like PLATFORM_ANTHROPIC_API_KEY:
+    # read only from the server's environment, never put in an owner's settings, vault or responses.
+    platform_deepgram_api_key: str = Field(default="", exclude=True)
+    platform_elevenlabs_api_key: str = Field(default="", exclude=True)
 
     # Web push to the owner's phone (ADR 0011). Off: /app/push/* answers 404 and no VAPID keys are
     # made. On: the first use generates one VAPID key pair for this deployment, kept in the vault.

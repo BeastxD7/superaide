@@ -39,6 +39,9 @@ FIELDS: dict[tuple[str, str], str] = {
     ("google", "client_secret"): "google_client_secret",
     ("google", "refresh_token"): "google_refresh_token",
     ("google", "gmail_refresh_token"): "gmail_refresh_token",  # the Gmail capability's own sign-in
+    # The voice call (ADR 0012): speech-to-text and natural voices.
+    ("deepgram", "api_key"): "deepgram_api_key",
+    ("elevenlabs", "api_key"): "elevenlabs_api_key",
 }
 SECRET_NAMES = {
     "api_key",
@@ -153,7 +156,11 @@ def runtime_settings(base: Settings | None = None) -> Settings:
     base = base or get_settings()
     # The platform's key for Superaide AI credits is read from the server's own settings only
     # (brain/platform_ai.platform_key), never carried in an owner's settings.
-    updates: dict[str, Any] = {"platform_anthropic_api_key": ""}
+    updates: dict[str, Any] = {
+        "platform_anthropic_api_key": "",
+        "platform_deepgram_api_key": "",
+        "platform_elevenlabs_api_key": "",
+    }
     if not env_credentials_apply(base):
         # BYOK: never the server's keys (only its Google OAuth client, which isn't one).
         updates.update({field: "" for key, field in FIELDS.items() if key not in PLATFORM_FIELDS})
@@ -213,6 +220,9 @@ def status(session: Session, settings: Settings) -> dict[str, Any]:
         "slack": channel("slack", ["bot_token", "app_token"]),
         # Google needs an OAuth client first (the owner's own, or this deployment's), then their sign-in.
         "google": google_status(entry),
+        # The voice call (ADR 0012): optional; without a key the browser's own speech is used.
+        "deepgram": entry("deepgram", ["api_key"]),
+        "elevenlabs": entry("elevenlabs", ["api_key"]),
         "whatsapp": {
             "connected": False,
             "available": False,
