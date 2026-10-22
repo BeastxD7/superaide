@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta, tzinfo
 
 from sqlalchemy import or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from superaide.audit import audit
@@ -19,14 +20,18 @@ from superaide.identity.resolver import Sender
 REMEMBER_RE = re.compile(r"^\s*remember(?:\s+that)?[:,]?\s+(.+)$", re.IGNORECASE | re.DOTALL)
 
 
-def get_or_create_context(session: Session, msg: InboundMessage) -> Context:
-    ctx = session.scalar(
+def _find_context(session: Session, msg: InboundMessage) -> Context | None:
+    return session.scalar(
         select(Context).where(
             Context.provider == msg.provider,
             Context.tenant_scope == ("" if msg.provider == "telegram" else _workspace_scope(msg)),
             Context.external_id == msg.chat_id,
         )
     )
+
+
+def get_or_create_context(session: Session, msg: InboundMessage) -> Context:
+    ctx = _find_context(session, msg)
     if ctx is None:
         if msg.chat_kind == "dm":
             audience_class = "mixed_external" if msg.external_sender else "private_1to1"
@@ -40,8 +45,15 @@ def get_or_create_context(session: Session, msg: InboundMessage) -> Context:
             audience_class=audience_class,
             title=msg.chat_title,
         )
-        session.add(ctx)
-        session.flush()
+        try:
+            with session.begin_nested():  # a parallel first message may create it first (BE-14)
+                session.add(ctx)
+                session.flush()
+        except IntegrityError:
+            existing = _find_context(session, msg)
+            if existing is None:
+                raise
+            ctx = existing
     elif msg.external_sender and ctx.audience_class != "mixed_external":
         ctx.audience_class = "mixed_external"
     return ctx
