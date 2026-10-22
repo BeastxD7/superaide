@@ -84,7 +84,6 @@ test.describe('dashboard: home', () => {
   })
 
   test('a card whose data cannot be loaded says so instead of loading forever', async ({ page, owner }) => {
-    test.fail(true, 'BUG: Home ignores useAppData().error, so a failed /notebook or /preferences leaves a skeleton spinning forever')
     await page.route('**/api/app/notebook', serverError)
     await page.route('**/api/app/preferences', (r) => r.abort('connectionrefused'))
     await page.goto('/dashboard')
@@ -194,7 +193,6 @@ test.describe('dashboard: notebook', () => {
 
 test.describe('dashboard: settings', () => {
   test('if your rules cannot be loaded, Settings says so instead of loading forever', async ({ page, owner }) => {
-    test.fail(true, 'BUG: SettingsPage never reads prefs.error, so a failed /preferences leaves the "Your rules" skeleton up forever with no message')
     void owner
     await page.route('**/api/app/preferences', serverError)
     let asked = false
