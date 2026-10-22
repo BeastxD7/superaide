@@ -1,7 +1,7 @@
 """decision journal: opt-in setting and the owner's predictions (additive, per-instance tables under RLS)
 
-Revision ID: 0036
-Revises: 0031
+Revision ID: 0038
+Revises: 0032
 Create Date: 2026-10-23 02:42:17.917830
 
 """
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0036"
-down_revision: str | Sequence[str] | None = "0031"
+revision: str = "0038"
+down_revision: str | Sequence[str] | None = "0032"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
