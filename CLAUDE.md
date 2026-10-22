@@ -48,7 +48,7 @@ Read `README.md` for the overview and `docs/architecture.md` for how a request f
 
 Done:
 - Accounts and sessions, hiring, and the introduction: chat, files and links, or a video call with browser speech. Brave can't do speech-to-text, so it falls back to typing and says why.
-- Knowledge with provenance, the owner brief, the credentials vault and in-app connections (Claude, Telegram, Slack).
+- Knowledge with provenance, the owner brief, the credentials vault and in-app connections (Telegram, Slack) and the AI model page (any provider).
 - The Next.js port, the dashboard, CI, Docker images, and the E2E, API and journey test suites.
 - `GET /app/people` and `GET /app/preferences` feed the dashboard. There are no editing endpoints yet.
 

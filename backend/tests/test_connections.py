@@ -96,16 +96,17 @@ def test_key_file_fallback_is_private(tmp_path, monkeypatch):
         crypto.master_key()
 
 
-def test_connecting_claude_checks_encrypts_and_never_echoes_the_key(owner):
-    bad = owner.post("/app/connections/anthropic", json={"api_key": "sk-ant-wrong-key-123456"})
+def test_connecting_claude_goes_through_the_ai_model_api_and_never_echoes_the_key(owner):
+    bad = owner.post("/app/providers/anthropic", json={"api_key": "sk-ant-wrong-key-123456"})
     assert bad.status_code == 400 and "didn't accept" in bad.json()["detail"]
-    r = owner.post("/app/connections/anthropic", json={"api_key": CLAUDE_KEY})
+    r = owner.post("/app/providers/anthropic", json={"api_key": CLAUDE_KEY})
     assert r.status_code == 200, r.text
-    body = r.json()
-    assert body["services"]["anthropic"] | {"since": None} == {
-        "connected": True, "via": "app", "hints": {"api_key": "sk-…4f2a"}, "meta": {}, "since": None,
-    }  # fmt: skip
-    assert CLAUDE_KEY not in r.text and CLAUDE_KEY not in owner.get("/app/connections").text
+    assert r.json()["claude"]["connected"] is True
+    assert CLAUDE_KEY not in r.text and CLAUDE_KEY not in owner.get("/app/providers").text
+    # Connections lists channels and integrations only: no Claude card, no Claude route.
+    status = owner.get("/app/connections")
+    assert "anthropic" not in status.json()["services"] and CLAUDE_KEY not in status.text
+    assert owner.post("/app/connections/anthropic", json={"api_key": CLAUDE_KEY}).status_code in (404, 405)
     with session_scope() as s:
         row = s.scalar(select(IntegrationSecret))
         assert CLAUDE_KEY not in row.ciphertext
@@ -167,7 +168,7 @@ def test_only_the_owner_can_see_or_change_connections(owner, agent):
     assert other.get("/app/connections").status_code == 401
     other.post("/auth/signup", json={"name": "Priya Tan", "email": "p@example.com", "password": PASSWORD})
     assert other.get("/app/connections").status_code == 403
-    assert other.post("/app/connections/anthropic", json={"api_key": CLAUDE_KEY}).status_code == 403
+    assert other.post("/app/providers/anthropic", json={"api_key": CLAUDE_KEY}).status_code == 403
 
 
 def callback(client: TestClient, **params: str) -> httpx.Response:

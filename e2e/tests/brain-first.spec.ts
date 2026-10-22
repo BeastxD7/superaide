@@ -65,15 +65,17 @@ test.describe('brain first', () => {
     expect(await query("SELECT status FROM document WHERE title = 'resume.txt'")).toEqual([{ status: 'read' }])
   })
 
-  test('own key path: a bad key is refused and nothing advances', async ({ page, owner }) => {
+  test('own key path: "Connect my own key" opens the AI model page, and the introduction can be resumed', async ({ page, owner }) => {
     void owner
     await page.goto('/meet')
     const group = brainGroup(page)
+    await expect(group.getByLabel('Claude API key')).toHaveCount(0)
     await group.getByRole('button', { name: 'Connect my own key' }).click()
-    await group.getByLabel('Claude API key').fill('not-a-claude-key')
-    await group.getByRole('button', { name: 'Save key' }).click()
-    await expect(group.getByText(/doesn't look like a Claude API key/)).toBeVisible()
+    await expect(page).toHaveURL(/\/dashboard\/models$/)
+    await expect(page.getByRole('heading', { level: 1, name: 'AI model' })).toBeVisible()
+    await page.getByRole('link', { name: 'Back to the introduction' }).click()
+    await expect(page).toHaveURL(/\/meet$/)
     await expect(page.getByText(/Step 1 of 9: Brain/)).toBeVisible()
-    expect(await query("SELECT key_source FROM agent_instance")).toEqual([{ key_source: 'owner' }])
+    expect(await query('SELECT key_source FROM agent_instance')).toEqual([{ key_source: 'owner' }])
   })
 })

@@ -1,6 +1,7 @@
 'use client'
 
 import { CheckCircle2, ExternalLink, Globe, KeyRound, Loader2, PlugZap, Server } from 'lucide-react'
+import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { BrandIcon, type Brand } from '@/components/BrandIcon'
 import { Notice } from '@/components/site'
@@ -90,6 +91,17 @@ export function ModelsPage() {
           used first. Keys are checked with the service, kept encrypted, and never shown again. Every call counts
           against your spending cap.
         </p>
+        {me && !me.onboarding.done && (
+          <div className="mt-4">
+            <Notice tone="info">
+              You are in the middle of meeting {name}.{' '}
+              <Link href="/meet" className="font-medium underline">
+                Back to the introduction
+              </Link>{' '}
+              once a model is connected.
+            </Notice>
+          </div>
+        )}
         {error && (
           <div className="mt-4">
             <Notice tone="error">{error}</Notice>

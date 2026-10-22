@@ -13,7 +13,7 @@ You can't be everywhere at once. **Ava**, the first Superaide, fields the people
 - **Knowledge with provenance.** Settings live in typed tables (contacts, owner preferences). Facts live in a notebook with a category and their source: chat, call, or a named file or link. Removing a file removes what was learned from it.
 - **Owner-aware answers.** Every prompt carries a short brief about the owner, scoped to the audience. The owner sees their full settings. Anyone else gets only what the owner allowed to be shared, and a VIP is recognised.
 - **Identity you can trust.** People are recognised by immutable platform IDs, never display names. Unknown accounts get stranger mode. A new channel is linked only with a one-time code sent to an existing trusted channel.
-- **Connections in the app.** Connect Claude, Telegram and Slack without editing files. Each credential is checked with the service, encrypted (AES-256-GCM, master key in the OS keychain), shown only as a hint, and applied at once. WhatsApp is listed as unavailable: Meta's business terms restrict general-purpose AI assistants.
+- **Connections in the app.** Connect Telegram, Slack and Google Calendar without editing files; choose and connect the AI model (any provider) on the AI model page. Each credential is checked with the service, encrypted (AES-256-GCM, master key in the OS keychain), shown only as a hint, and applied at once. WhatsApp is listed as unavailable: Meta's business terms restrict general-purpose AI assistants.
 - **Spend cap and kill switch.** Every Claude call reserves its worst-case price first and is refused if it could exceed `MAX_SPEND_USD`. One switch stops all model calls.
 - **Operator console** at `/console`: people and trust tiers, conversations, safety log, spend, the pause switch and an impostor simulator.
 
@@ -29,7 +29,7 @@ The browser only ever talks to the Next.js server. Pages that should be public (
 
 ## Run it
 
-**On a Mac, no setup:** double-click `start.command` (or run `bash start.command`). It installs [uv](https://docs.astral.sh/uv/) and, if your Mac has no Node.js 20.9+, a private copy of Node (checksum-verified) in `.tools/`. It starts Postgres: in Docker if Docker Desktop is installed, otherwise an embedded Postgres. It then starts the API and the frontend and opens http://localhost:3000. Without a Claude key, Ava runs in offline mode and nothing is spent. Connect Claude later under **Connections** in the app.
+**On a Mac, no setup:** double-click `start.command` (or run `bash start.command`). It installs [uv](https://docs.astral.sh/uv/) and, if your Mac has no Node.js 20.9+, a private copy of Node (checksum-verified) in `.tools/`. It starts Postgres: in Docker if Docker Desktop is installed, otherwise an embedded Postgres. It then starts the API and the frontend and opens http://localhost:3000. Without a Claude key, Ava runs in offline mode and nothing is spent. Choose an AI model later on the **AI model** page in the app.
 
 - `bash start.command --reset` wipes the data first, to hire Ava from scratch.
 - `bash start.command --no-docker` always uses the embedded Postgres in `.local-db/`.

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 DESCRIPTION = """
 The backend for **Superaide**: Ava's marketplace page, accounts, hiring, the introduction,
-the owner's chat and notebook, connections to Claude/Telegram/Slack, the operator console and
+the owner's chat and notebook, connections to Telegram/Slack, the AI model providers, the operator console and
 the channel webhooks. JSON only; the web app on port 3000 calls it through its `/api` proxy.
 
 ### How requests are authorised
@@ -45,8 +45,8 @@ TAGS = [
     {"name": "Owner: people & rules", "description": "Who matters to the owner and the standing rules Ava follows."},
     {
         "name": "Connections",
-        "description": "Connect Claude, Telegram and Slack. Each credential is checked with the service, encrypted, "
-        "and never shown again (only a hint like `sk-…4f2a`).",
+        "description": "Connect Telegram, Slack, Google and the voice services (the AI model is on the Providers routes). Each credential is checked with the service, encrypted, "
+        "and never shown again (only a hint like `xox…ab12`).",
     },
     {
         "name": "Operator console",

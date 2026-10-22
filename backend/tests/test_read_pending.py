@@ -97,7 +97,7 @@ def test_connecting_claude_in_connections_reads_the_waiting_documents(owner_clie
     monkeypatch.setattr(connections.check, "check_anthropic", lambda key, http: Checked(values={"api_key": key}))
     share(owner_client)
     going_live(monkeypatch)
-    r = owner_client.post("/app/connections/anthropic", json={"api_key": "sk-ant-api03-" + "x" * 40})
+    r = owner_client.post("/app/providers/anthropic", json={"api_key": "sk-ant-api03-" + "x" * 40})
     assert r.status_code == 200, r.text
     assert_read_and_told(owner_client)
 

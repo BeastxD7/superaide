@@ -213,8 +213,6 @@ function BrainPicker({
 }) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
-  const [showKey, setShowKey] = useState(false)
-  const [key, setKey] = useState('')
   const [problem, setProblem] = useState<string | null>(null)
   const credits = input.credits
   const usd = (n: number | null) => (n === null ? null : `US$${n.toFixed(2)}`)
@@ -232,20 +230,6 @@ function BrainPicker({
     setProblem(null)
     try {
       await onAnswer({ choice }, said)
-    } catch (e) {
-      setProblem(e instanceof AppError ? e.message : String(e))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function saveKey() {
-    setBusy(true)
-    setProblem(null)
-    try {
-      await call('/providers/anthropic', { method: 'POST', json: { api_key: key.trim() } })
-      setKey('')
-      await onAnswer({ choice: 'own' }, 'I connected my own key')
     } catch (e) {
       setProblem(e instanceof AppError ? e.message : String(e))
     } finally {
@@ -283,42 +267,13 @@ function BrainPicker({
       )}
       <div className="rounded-2xl bg-white p-4">
         <p className="font-medium text-ink">Connect my own key</p>
-        <p className="mt-1 text-sm text-muted">Your own Claude key, kept encrypted and never shown again.</p>
-        {showKey ? (
-          <form
-            className="mt-3 space-y-2"
-            onSubmit={(e) => {
-              e.preventDefault()
-              if (key.trim()) void saveKey()
-            }}
-          >
-            <input
-              type="password"
-              autoComplete="off"
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              placeholder="sk-ant-…"
-              aria-label="Claude API key"
-              className="w-full rounded-xl bg-mist px-3 py-2.5 text-sm text-ink outline-none"
-            />
-            <div className="flex flex-wrap gap-2">
-              <Button tone="violet" className="py-2.5" disabled={busy || !key.trim()} onClick={() => void saveKey()}>
-                Save key
-              </Button>
-              <button
-                type="button"
-                onClick={() => router.push(input.models_url)}
-                className="rounded-full px-3 py-2 text-sm text-violet-700 underline"
-              >
-                Other providers (OpenAI, OpenRouter…)
-              </button>
-            </div>
-          </form>
-        ) : (
-          <Button className="mt-3 w-full py-3" disabled={busy} onClick={() => setShowKey(true)}>
-            Connect my own key
-          </Button>
-        )}
+        <p className="mt-1 text-sm text-muted">
+          Any provider you like (Claude, OpenAI, OpenRouter, your own server…). You add the key on the AI model page, where it is
+          kept encrypted and never shown again. Come back here when it is connected.
+        </p>
+        <Button className="mt-3 w-full py-3" disabled={busy} onClick={() => router.push(input.models_url)}>
+          Connect my own key
+        </Button>
       </div>
       {problem && <Notice tone="error">{problem}</Notice>}
       <button

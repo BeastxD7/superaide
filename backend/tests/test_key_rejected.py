@@ -60,7 +60,7 @@ def connect(client, monkeypatch) -> None:
     from superaide.app import connections
 
     monkeypatch.setattr(connections.check, "check_anthropic", lambda key, http: Checked(values={"api_key": key}))
-    r = client.post("/app/connections/anthropic", json={"api_key": KEY})
+    r = client.post("/app/providers/anthropic", json={"api_key": KEY})
     assert r.status_code == 200, r.text
 
 
