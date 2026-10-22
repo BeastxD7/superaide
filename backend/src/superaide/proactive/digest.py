@@ -160,6 +160,14 @@ def compose(
         lines.append(heading)
         lines += [f"- {i.due_at.astimezone(zone(tz)):%H:%M} {i.text}" for i in due]
 
+    from superaide.config import get_settings
+
+    if slot == "morning" and local.weekday() == 0 and get_settings().second_opinion_enabled:  # Mondays
+        from superaide.trust.second_opinion import agreement_line
+
+        if line := agreement_line(session, owner):
+            lines += ["**My agreement rate**", line]
+
     audience = Audience(person_ids={owner.id}, min_trust=2)
     notes = session.scalars(select(MemoryItem).where(memory_filter(audience))).all()
     soon = upcoming_dates(list(notes), local.date())

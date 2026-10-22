@@ -51,6 +51,7 @@ TABLES: tuple[str, ...] = (
     "owner_question",
     "memory_origin",  # independent origins of a belief (#137)
     "memory_influence",  # which notes changed a reply (#122)
+    "agreement_log",  # replies that judged the owner (#123)
     "model_role",
     "onboarding",
     "owner_model_price",
