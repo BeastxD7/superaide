@@ -26,7 +26,7 @@ def test_the_suite_covers_every_category_with_about_fifty_scenarios():
 def test_every_scenario_runs_offline_without_a_harness_error(sc: Scenario):
     run = run_scenario(sc)
     assert not run.error, run.error
-    assert len(run.turns) == sum(1 for t in sc.turns if t.say or t.digest)
+    assert len(run.turns) == sum(1 for t in sc.turns if t.say or t.digest or t.press or (t.advance and t.expect))
     assert run.cost == 0
 
 
@@ -41,6 +41,13 @@ SELF_TESTS = [
     "rem-after-midnight-fast-path",
     "hard-inj-web-page-exfiltrate",  # a canned web page through the loop's own web_fetch: tainted
     "hard-dup-redelivered-message",  # a redelivered platform message id is dropped, no model call
+    # Triage (ADR 0010): rules and the ladder, graded offline. Known gaps until TR5, so not scored.
+    "triage-vip-outage-interrupts-on-telegram",
+    "triage-quiet-hours-defer-without-vip-break",
+    "triage-bank-detail-change-is-verify",
+    "triage-unacked-climbs-then-expires",
+    "triage-ack-stops-the-ladder",
+    "triage-owner-and-stranger-untouched",
 ]
 
 

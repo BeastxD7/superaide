@@ -41,6 +41,8 @@ from superaide.identity.trust import Trust
 OWNER_TG, OWNER_SLACK = "7001", "U_OWNER"
 COLLEAGUE_TG, COLLEAGUE_SLACK = "7002", "U_PRIYA"
 STRANGER_TG, STRANGER_SLACK = "7999", "U_STRANGER"
+VIP_TG, VIP_SLACK = "7003", "U_DANA"
+CONTACT_TG, CONTACT_SLACK = "7004", "U_SAM"
 TEAM = "T_OURS"
 GROUP_TG, GROUP_SLACK = "-100777", "C_TEAM"
 CHAT_PURPOSES = {"chat_turn", "verify"}
@@ -316,7 +318,39 @@ def build_world(sc: Scenario, start: datetime, run: Run | None = None) -> uuid.U
             intentions.create(s, person, text=r.text, due_at=due, source="chat")
         if w.second_owner and run is not None:
             _second_owner(s, run)
+        if w.triage_enabled:
+            _triage_world(s, sc, person, start)
         return person.id
+
+
+def _triage_world(s: Any, sc: Scenario, owner: Person, start: datetime) -> None:
+    """Two more linked people (a VIP contact and a plain contact) and the owner's triage settings."""
+    from superaide.db.models import Contact
+    from superaide.identity.linking import bootstrap_person
+    from superaide.knowledge.store import preferences_for
+    from superaide.policy.killswitch import set_state
+    from superaide.triage.store import settings_for
+
+    w = sc.world
+    for name, vip, keys in (("Dana Lee", True, (VIP_SLACK, VIP_TG)), ("Sam Park", False, (CONTACT_SLACK, CONTACT_TG))):
+        p = bootstrap_person(s, name=name, relation="colleague",
+                             identities=[("slack", TEAM, keys[0]), ("telegram", "", keys[1])])  # fmt: skip
+        s.add(Contact(owner_person_id=owner.id, person_id=p.id, relationship="team", vip=vip))
+    pref = preferences_for(s, owner)
+    pref.urgent_topics = list(w.urgent_topics)
+    pref.vip_breaks_quiet = w.vip_breaks_quiet
+    if w.quiet_hours:
+        pref.quiet_start, pref.quiet_end = (x.strip() for x in w.quiet_hours.split("-"))
+    else:  # no quiet hours in the way unless the scenario asks for them
+        pref.quiet_start = pref.quiet_end = "00:00"
+    ts = settings_for(s, owner)
+    ts.stranger_intake, ts.away_visibility = w.stranger_intake, w.away_visibility
+    if w.away_days:
+        ts.away_until = start + timedelta(days=w.away_days)
+    for k, v in w.triage_settings.items():
+        setattr(ts, k, v)
+    if w.stage:
+        set_state(s, "stage", {"stage": w.stage})
 
 
 def _second_owner(s: Any, run: Run) -> None:
@@ -384,6 +418,8 @@ def inbound(turn: Turn, owner: Person, text_: str, mid: str = "") -> InboundMess
         ("owner", "telegram"): OWNER_TG, ("owner", "slack"): OWNER_SLACK,
         ("colleague", "telegram"): COLLEAGUE_TG, ("colleague", "slack"): COLLEAGUE_SLACK,
         ("stranger", "telegram"): STRANGER_TG, ("stranger", "slack"): STRANGER_SLACK,
+        ("vip", "telegram"): VIP_TG, ("vip", "slack"): VIP_SLACK,
+        ("contact", "telegram"): CONTACT_TG, ("contact", "slack"): CONTACT_SLACK,
     }.get((turn.who, turn.via))  # fmt: skip
     if sender is None:
         raise ValueError(f"{turn.who} can't write on {turn.via}")
@@ -420,7 +456,7 @@ def _out_sources(reply: str) -> list[dict[str, Any]]:
 
 
 @contextmanager
-def patched(llm: LLM, outbox: dict[str, FakeMessenger], live: bool) -> Iterator[None]:
+def patched(llm: LLM, outbox: dict[str, FakeMessenger], live: bool, triage: bool = False) -> Iterator[None]:
     """Background jobs build their own model client and Telegram sender: point both at ours.
     Live, Ava has a model connected (`brain_ready`), so she handles reminders herself; offline she
     doesn't, so the code-only paths run, as they do for an owner with no model connected."""
@@ -431,15 +467,19 @@ def patched(llm: LLM, outbox: dict[str, FakeMessenger], live: bool) -> Iterator[
         outbox["telegram"].send_dm(identity, text_)
         return True
 
-    saved = (factory.build_llm, factory.brain_ready, notify.send_telegram)
+    saved = (factory.build_llm, factory.brain_ready, notify.send_telegram, notify.messenger_for, notify.confirmed_here)
     factory.build_llm = lambda settings: llm
     if live:
         factory.brain_ready = lambda settings: True
     notify.send_telegram = send_telegram  # type: ignore[assignment]
+    if triage:  # escalations push to the owner on Slack too: catch those in the outbox
+        notify.messenger_for = lambda provider: outbox.get(provider)
+        notify.confirmed_here = lambda provider, identity: True
     try:
         yield
     finally:
-        factory.build_llm, factory.brain_ready, notify.send_telegram = saved
+        (factory.build_llm, factory.brain_ready, notify.send_telegram, notify.messenger_for,
+         notify.confirmed_here) = saved  # fmt: skip
 
 
 # --- one scenario ---------------------------------------------------------------------------
@@ -456,7 +496,9 @@ def run_scenario(sc: Scenario, *, inner: LLM | None = None, judge: Judge | None 
     offline = OfflineModel()
     rec = Recorder(inner if inner is not None else FakeLLM(offline), sc.world.web_pages)
     outbox = {"telegram": FakeMessenger(), "slack": FakeMessenger(), "web": FakeMessenger()}
-    settings: Settings = get_settings().model_copy(update={"web_tools_enabled": bool(sc.world.web_pages)})
+    settings: Settings = get_settings().model_copy(
+        update={"web_tools_enabled": bool(sc.world.web_pages), "triage_enabled": sc.world.triage_enabled}
+    )
     agent = Agent(llm=rec, messengers=outbox, settings=settings)  # type: ignore[arg-type]
 
     reset_db()
@@ -465,7 +507,7 @@ def run_scenario(sc: Scenario, *, inner: LLM | None = None, judge: Judge | None 
     traveller = time_machine.travel(run.start, tick=True)
     clock = traveller.start()
     try:
-        with patched(rec, outbox, live):
+        with patched(rec, outbox, live, sc.world.triage_enabled):
             clock.shift(timedelta(days=-1))
             run.owner_id = build_world(sc, run.start, run)
             _seed_messages(agent, sc, run.owner_id)
@@ -474,7 +516,23 @@ def run_scenario(sc: Scenario, *, inner: LLM | None = None, judge: Judge | None 
                 if turn.advance:
                     clock.shift(parse_shift(turn.advance))
                     _drain_jobs()
+                if turn.press is not None:
+                    _press(run, turn)
+                    if turn.run_jobs:
+                        _drain_jobs()
                 if turn.say is None and turn.digest is None:
+                    if turn.press is not None:
+                        rec_turn = TurnRecord(i, "owner", turn.press.via, "dm", f"(pressed {turn.press.verb})",
+                                              datetime.now(UTC), mode="press")  # fmt: skip
+                        run.turns.append(rec_turn)
+                        for item in turn.expect:
+                            run.outcomes.append(_grade(item, run, rec_turn, live, judge, f"turn {i}"))
+                    elif turn.expect:
+                        rec_turn = TurnRecord(i, "owner", "web", "dm", f"(waited {turn.advance})", datetime.now(UTC),
+                                              mode="advance")  # fmt: skip
+                        run.turns.append(rec_turn)
+                        for item in turn.expect:
+                            run.outcomes.append(_grade(item, run, rec_turn, live, judge, f"turn {i}"))
                     continue
                 offline.turn = turn.fake
                 rec.calls = []
@@ -512,6 +570,21 @@ def run_scenario(sc: Scenario, *, inner: LLM | None = None, judge: Judge | None 
     run.cost = ledger_total() - spent_before
     run.seconds = time.monotonic() - began
     return run
+
+
+def _press(run: Run, turn: Turn) -> None:
+    """The owner presses a button on the latest escalation."""
+    from superaide.triage import escalate
+    from superaide.triage.models import Escalation
+
+    assert turn.press is not None
+    with session_scope() as s:
+        esc = s.scalar(select(Escalation).order_by(Escalation.created_at.desc()).limit(1))
+        owner = s.get(Person, run.owner_id)
+        assert esc is not None, "nothing to press: no escalation yet"
+        assert owner is not None
+        escalate.ack(s, esc.id, source=turn.press.via, external_id=turn.press.id or uuid.uuid4().hex,
+                     verb=turn.press.verb, actor=owner)  # fmt: skip
 
 
 def _seed_messages(agent: Any, sc: Scenario, owner_id: uuid.UUID) -> None:

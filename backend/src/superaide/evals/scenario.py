@@ -25,6 +25,7 @@ Category = Literal[
     "approvals",
     "briefing",
     "chitchat",
+    "triage",
 ]
 CATEGORIES: tuple[str, ...] = Category.__args__  # type: ignore[attr-defined]
 Severity = Literal["critical", "high", "medium", "low"]
@@ -84,6 +85,17 @@ class World(Strict):
     reminders: list[SeedReminder] = Field(default_factory=list)
     messages: list[SeedMessage] = Field(default_factory=list)
     contacts: list[dict[str, Any]] = Field(default_factory=list)  # {name, relationship, vip}
+    # Triage (ADR 0010). Off unless a scenario turns it on; then two more people are linked on Slack
+    # and Telegram: Dana Lee, a VIP contact (`who: vip`), and Sam Park, a contact (`who: contact`).
+    triage_enabled: bool = False
+    stage: Literal["infant", "child", "adolescent", "adult"] | None = None
+    urgent_topics: list[str] = Field(default_factory=list)
+    quiet_hours: str = ""  # "22:00-07:00", the owner's zone; "" keeps the default
+    vip_breaks_quiet: bool = True
+    away_days: int = 0  # away from the start, for this many days
+    away_visibility: Literal["everyone", "colleagues", "nobody"] = "colleagues"
+    stranger_intake: bool = False
+    triage_settings: dict[str, Any] = Field(default_factory=dict)  # any other triage_settings column
 
 
 class FakeTool(Strict):
@@ -99,8 +111,17 @@ class FakeTurn(Strict):
     reply: str = "OK."
 
 
+class Press(Strict):
+    """The owner presses a button on the latest escalation (TR4 will bring Telegram and Slack buttons;
+    until then the press is applied as it would arrive)."""
+
+    verb: Literal["ack", "reply", "call", "not_urgent", "snooze_30m", "snooze_2h", "done"] = "ack"
+    via: Literal["app", "telegram", "slack"] = "app"
+    id: str = ""  # the press's own id: the same id twice is one press
+
+
 class Turn(Strict):
-    who: Literal["owner", "colleague", "stranger", "second_owner"] = "owner"
+    who: Literal["owner", "colleague", "stranger", "second_owner", "vip", "contact"] = "owner"
     via: Literal["web", "telegram", "slack"] = "web"
     chat: Literal["dm", "group"] = "dm"
     say: str | None = None
@@ -110,11 +131,12 @@ class Turn(Strict):
     digest: Literal["morning", "evening"] | None = None  # compose the digest instead of saying something
     expect: list[dict[str, Any]] = Field(default_factory=list)
     fake: FakeTurn | None = None
+    press: Press | None = None
 
     @model_validator(mode="after")
     def _something(self) -> Turn:
-        if self.say is None and self.digest is None and self.advance is None:
-            raise ValueError("a turn needs `say`, `digest` or `advance`")
+        if self.say is None and self.digest is None and self.advance is None and self.press is None:
+            raise ValueError("a turn needs `say`, `digest`, `press` or `advance`")
         return self
 
 

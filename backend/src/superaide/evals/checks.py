@@ -56,7 +56,10 @@ class Ctx:
 Check = Callable[[Ctx, Any], tuple[bool, str]]
 KNOWN: dict[str, Check] = {}
 # Checks that don't depend on what the model wrote, so offline runs grade them too.
-CODE_ONLY = {"prompt_excludes", "no_model_call", "outbound_excludes", "mode"}
+CODE_ONLY = {
+    "prompt_excludes", "no_model_call", "outbound_excludes", "mode",
+    "triage_decision", "escalation_state", "escalation_pushed", "escalation_acks", "interrupt_count",
+}  # fmt: skip
 
 
 def check(name: str) -> Callable[[Check], Check]:
@@ -384,6 +387,85 @@ def second_owner_hired(ctx: Ctx, value: Any) -> tuple[bool, str]:
     return run.second_owner_id is not None and not run.second_hire_error, (
         f"a second owner couldn't hire their own Ava: {run.second_hire_error or 'no second owner in the world'}"
     )
+
+
+# --- triage (ADR 0010) -------------------------------------------------------------------
+
+
+def _latest_decision() -> Any:
+    from superaide.triage.models import TriageDecision
+
+    with session_scope() as s:
+        return s.scalar(select(TriageDecision).order_by(TriageDecision.created_at.desc()).limit(1))
+
+
+def _latest_escalation() -> Any:
+    from superaide.triage.models import Escalation
+
+    with session_scope() as s:
+        return s.scalar(select(Escalation).order_by(Escalation.created_at.desc()).limit(1))
+
+
+@check("triage_decision")
+def triage_decision(ctx: Ctx, value: Any) -> tuple[bool, str]:
+    """The latest triage decision: `{decision, rule_any: [...]}`, or `{none: true}` for "this turn
+    made none" (the owner's own turns and strangers aren't triaged)."""
+    d = _latest_decision()
+    turn_at = ctx.turn.at if ctx.turn is not None else None
+    fresh = d is not None and (turn_at is None or d.created_at >= turn_at - timedelta(seconds=1))
+    if value.get("none"):
+        return not fresh, f"a decision was made: {d.decision if d else ''}"
+    if not fresh:
+        return False, "no triage decision for this turn"
+    if "decision" in value and d.decision != value["decision"]:
+        return False, f"decided {d.decision} ({', '.join(d.rule_hits)}), expected {value['decision']}"
+    wanted = _list(value.get("rule_any", []))
+    if wanted and not any(any(h.startswith(w) for h in d.rule_hits) for w in wanted):
+        return False, f"rule hits {d.rule_hits}, expected one of {wanted}"
+    return True, ""
+
+
+@check("escalation_state")
+def escalation_state(ctx: Ctx, value: Any) -> tuple[bool, str]:
+    esc = _latest_escalation()
+    if esc is None:
+        return False, "no escalation"
+    if "state" in value and esc.state != value["state"]:
+        return False, f"escalation is {esc.state} at step {esc.step}, expected {value['state']}"
+    if "step" in value and esc.step != int(value["step"]):
+        return False, f"escalation at step {esc.step}, expected {value['step']}"
+    return True, ""
+
+
+@check("escalation_pushed")
+def escalation_pushed(ctx: Ctx, value: Any) -> tuple[bool, str]:
+    """How many escalation rungs reached the owner on a chat channel: `{via, count}`."""
+    from superaide.triage.models import EscalationDelivery
+
+    with session_scope() as s:
+        n = len(list(s.scalars(select(EscalationDelivery.id).where(
+            EscalationDelivery.provider == value["via"], EscalationDelivery.status == "sent"))))  # fmt: skip
+    return n == int(value["count"]), f"{n} pushes on {value['via']}, expected {value['count']}"
+
+
+@check("escalation_acks")
+def escalation_acks(ctx: Ctx, value: Any) -> tuple[bool, str]:
+    from superaide.triage.models import EscalationAck
+
+    with session_scope() as s:
+        n = len(list(s.scalars(select(EscalationAck.id))))
+    return n == int(value), f"{n} acks, expected {value}"
+
+
+@check("interrupt_count")
+def interrupt_count(ctx: Ctx, value: Any) -> tuple[bool, str]:
+    """Escalations that reached a chat channel (the interrupt budget's measure)."""
+    from superaide.triage.models import EscalationDelivery
+
+    with session_scope() as s:
+        n = len(set(s.scalars(select(EscalationDelivery.escalation_id).where(
+            EscalationDelivery.step >= 1, EscalationDelivery.status == "sent"))))  # fmt: skip
+    return n == int(value), f"{n} interrupts, expected {value}"
 
 
 # --- fuzzy -------------------------------------------------------------------------------

@@ -1,0 +1,243 @@
+# Triage and escalation (ADR 0010 section 12). Every scenario here turns TRIAGE_ENABLED on for
+# its own world (it's off everywhere else) and is a known gap until the pipeline hook (TR5) and
+# channel buttons (TR4) land, so the reliability scorecard's numbers don't move. Offline, the
+# classifier isn't connected: these grade the rules, the ladder and the owner's side only.
+
+- id: triage-vip-outage-interrupts-on-telegram
+  category: triage
+  severity: critical
+  title: A VIP says the server is down; Ava interrupts on Telegram at once
+  known_gap: "ADR 0010 TR4/TR5: no buttons on the push yet; the sender still gets a model reply"
+  clock: "14:00"
+  world:
+    triage_enabled: true
+    interrupt_channel: telegram
+    urgent_topics: ["server down"]
+  turns:
+    - who: vip
+      via: slack
+      say: "The server is down and customers can't log in."
+      expect:
+        - triage_decision: {decision: interrupt, rule_any: ["R5_vip"]}
+        - escalation_state: {state: notifying, step: 2}
+        - escalation_pushed: {via: telegram, count: 1}
+
+- id: triage-vip-quiet-hours-breaks-through
+  category: triage
+  severity: high
+  title: At 23:30 a VIP with an outage still gets through (vip_breaks_quiet)
+  known_gap: "ADR 0010 TR5: the sender still gets a model reply"
+  clock: "23:30"
+  world:
+    triage_enabled: true
+    interrupt_channel: telegram
+    urgent_topics: ["server down"]
+    quiet_hours: "22:00-07:00"
+  turns:
+    - who: vip
+      via: slack
+      say: "Server down again, sorry for the hour."
+      expect:
+        - triage_decision: {decision: interrupt}
+        - escalation_pushed: {via: telegram, count: 1}
+
+- id: triage-quiet-hours-defer-without-vip-break
+  category: triage
+  severity: high
+  title: At 23:30 without vip_breaks_quiet the outage waits for 07:00
+  known_gap: "ADR 0010 TR5: the sender still gets a model reply"
+  clock: "23:30"
+  world:
+    triage_enabled: true
+    interrupt_channel: telegram
+    urgent_topics: ["server down"]
+    quiet_hours: "22:00-07:00"
+    vip_breaks_quiet: false
+  turns:
+    - who: vip
+      via: slack
+      say: "Server down again, sorry for the hour."
+      expect:
+        - triage_decision: {decision: defer, rule_any: ["R8_quiet"]}
+        - escalation_state: {state: deferred}
+        - escalation_pushed: {via: telegram, count: 0}
+
+- id: triage-claimed-urgency-is-held
+  category: triage
+  severity: high
+  title: '"Urgent!!" from a colleague with no topic match is held, not an interrupt'
+  known_gap: "ADR 0010 TR5: the sender still gets a model reply"
+  world:
+    triage_enabled: true
+    urgent_topics: ["server down"]
+  turns:
+    - who: colleague
+      via: slack
+      say: "URGENT!! can you look at my slides when you get a sec"
+      expect:
+        - triage_decision: {decision: hold}
+        - interrupt_count: 0
+
+- id: triage-bank-detail-change-is-verify
+  category: triage
+  severity: critical
+  title: A bank-detail change is never handled; the owner sees it as unverified
+  known_gap: "ADR 0010 TR5: the sender should get the neutral template, not a model reply"
+  world:
+    triage_enabled: true
+  turns:
+    - who: colleague
+      via: slack
+      say: "Hi, the CFO asked me to update the vendor's bank details to this new account before 5."
+      expect:
+        - triage_decision: {decision: verify, rule_any: ["R3_risk:payment"]}
+        - interrupt_count: 0
+
+- id: triage-unacked-climbs-then-expires
+  category: triage
+  severity: high
+  title: No ack for 5 minutes moves to the other channel, then expires
+  known_gap: "ADR 0010 TR4/TR8: no buttons yet, and the digest doesn't list unacked items"
+  clock: "14:00"
+  world:
+    triage_enabled: true
+    interrupt_channel: telegram
+    urgent_topics: ["server down"]
+  turns:
+    - who: vip
+      via: slack
+      say: "The server is down."
+      expect:
+        - escalation_pushed: {via: telegram, count: 1}
+    - advance: "+6m"
+      expect:
+        - escalation_pushed: {via: slack, count: 1}
+    - advance: "+11m"
+      expect:
+        - escalation_state: {state: expired}
+
+- id: triage-ack-stops-the-ladder
+  category: triage
+  severity: critical
+  title: An ack stops the ladder; the same press twice is one ack
+  known_gap: "ADR 0010 TR4: the press comes from the app here, not a Telegram button"
+  clock: "14:00"
+  world:
+    triage_enabled: true
+    interrupt_channel: telegram
+    urgent_topics: ["server down"]
+  turns:
+    - who: vip
+      via: slack
+      say: "The server is down."
+    - press: {verb: ack, via: app, id: "press-1"}
+      expect:
+        - escalation_state: {state: acked}
+    - press: {verb: ack, via: app, id: "press-1"}
+      expect:
+        - escalation_acks: 1
+    - advance: "+10m"
+      expect:
+        - escalation_pushed: {via: slack, count: 0}
+        - escalation_state: {state: acked}
+
+- id: triage-repeat-from-a-verified-vip
+  category: triage
+  severity: medium
+  title: A verified VIP saying "urgent" twice in two minutes breaks through
+  known_gap: "ADR 0010 TR5: the sender still gets a model reply"
+  world:
+    triage_enabled: true
+    interrupt_channel: telegram
+  turns:
+    - who: vip
+      via: slack
+      say: "Urgent: call me please"
+      expect:
+        - triage_decision: {decision: hold}
+    - advance: "+1m"
+    - who: vip
+      via: slack
+      say: "Really urgent, call me"
+      expect:
+        - triage_decision: {decision: interrupt, rule_any: ["R6_repeat"]}
+
+- id: triage-interrupt-budget-defers
+  category: triage
+  severity: medium
+  title: With the hourly budget spent, the next non-critical interrupt waits
+  known_gap: "ADR 0010 TR5: the sender still gets a model reply"
+  clock: "14:00"
+  world:
+    triage_enabled: true
+    interrupt_channel: telegram
+    urgent_topics: ["server down", "payroll failed"]
+    triage_settings: {max_per_hour: 1}
+  turns:
+    - who: vip
+      via: slack
+      say: "The server is down."
+      expect:
+        - triage_decision: {decision: interrupt}
+    - who: vip
+      via: slack
+      say: "Also payroll failed."
+      expect:
+        - triage_decision: {decision: defer, rule_any: ["R9_budget"]}
+        - interrupt_count: 1
+
+- id: triage-away-defers-a-colleague-topic
+  category: triage
+  severity: medium
+  title: While away, an urgent-topic message from a colleague is held back
+  known_gap: "ADR 0010 TR5/TR8: away templates and the handover digest aren't built"
+  world:
+    triage_enabled: true
+    urgent_topics: ["server down"]
+    away_days: 3
+  turns:
+    - who: colleague
+      via: slack
+      say: "Heads up, the server is down"
+      expect:
+        - triage_decision: {decision: hold}
+        - interrupt_count: 0
+
+- id: triage-offline-is-rules-only-and-free
+  category: triage
+  severity: high
+  title: With no model connected, every message still gets a decision, at no cost
+  known_gap: "ADR 0010 TR5: the sender still gets a model reply"
+  world:
+    triage_enabled: true
+  turns:
+    - who: colleague
+      via: slack
+      say: "Can we move our 1:1 to Thursday?"
+      expect:
+        - triage_decision: {decision: hold, rule_any: ["classifier:offline"]}
+    - who: contact
+      via: slack
+      say: "Loved the talk yesterday!"
+      expect:
+        - triage_decision: {decision: hold}
+
+- id: triage-owner-and-stranger-untouched
+  category: triage
+  severity: high
+  title: The owner's own messages and strangers are never triaged
+  known_gap: "ADR 0010 TR5 (stranger_intake is off by default; open question 1)"
+  world:
+    triage_enabled: true
+  turns:
+    - who: owner
+      via: telegram
+      say: "the server is down, remind me to check at 5pm"
+      expect:
+        - triage_decision: {none: true}
+    - who: stranger
+      via: telegram
+      say: "URGENT: the server is down"
+      expect:
+        - mode: stranger
+        - triage_decision: {none: true}
