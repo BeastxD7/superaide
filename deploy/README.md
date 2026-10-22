@@ -27,7 +27,7 @@ The files: `docker-compose.prod.yml`, `.env.prod.example`, `deploy/caddy/` (Cadd
   - 2 GB works, but building the web app on the server then leans on swap, so builds are slow. The bootstrap script adds swap automatically.
   - The whole stack idles at about 250 MB.
 - **A domain or subdomain** you control, e.g. `ava.example.com`.
-- **Optional:** a Claude API key, a Telegram bot and a Slack app. You can also add all of them later in the app.
+- **Optional:** a Claude API key for your own Ava, a Telegram bot and a Slack app. You can add all of them later in the app. The server runs in hosted mode (`DEPLOY_MODE=hosted`, set in `docker-compose.prod.yml`): every owner who signs up, you included, connects their own AI model, bot and app under Connections, and the keys in `.env` are not used for them. To run your own Ava on the key in `.env`, list your account's email in `PLATFORM_KEY_OWNER_EMAILS`.
 
 ## 1. Point the domain at the server
 

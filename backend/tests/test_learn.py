@@ -91,6 +91,51 @@ def test_a_statement_in_chat_is_learned_after_the_reply(owner, real_brain):
         assert len(s.scalars(select(MemoryItem)).all()) == 2
 
 
+def test_a_fact_the_owner_confirms_in_chat_outlives_the_document_it_first_came_from(owner, real_brain):
+    from superaide.db.models import Document, Person
+    from superaide.knowledge.store import retire_document
+
+    text = "I'm moving to the Bangalore office in January, and Arjun will run the Singapore team."
+    owner.post("/app/chat", json={"text": text})
+    run_due()
+    with session_scope() as s:
+        person = s.scalar(select(Person).where(Person.display_name == "Shashank Rao"))
+        assert person is not None
+        doc = Document(owner_person_id=person.id, kind="pdf", title="CV", source="cv.pdf", sha256="a" * 64, text="x")
+        s.add(doc)
+        s.flush()
+        for n in s.scalars(select(MemoryItem)):  # pretend both facts first came from the CV
+            n.document_id, n.source, n.source_event_ids = doc.id, "document", []
+        doc_id = doc.id
+    owner.post("/app/chat", json={"text": text})  # the owner says it again: that is a confirmation
+    run_due()
+    with session_scope() as s:
+        assert all(n.document_id is None and n.source_event_ids for n in s.scalars(select(MemoryItem)))
+        retire_document(s, s.get(Document, doc_id))
+    with session_scope() as s:
+        assert [n.valid_to for n in s.scalars(select(MemoryItem))] == [None, None]  # still in the notebook
+
+
+def test_a_document_fact_nobody_confirmed_is_still_retired_with_its_document(owner, real_brain):
+    from superaide.db.models import Document, Person
+    from superaide.knowledge.store import retire_document
+
+    text = "I'm moving to the Bangalore office in January, and Arjun will run the Singapore team."
+    owner.post("/app/chat", json={"text": text})
+    run_due()
+    with session_scope() as s:
+        person = s.scalar(select(Person).where(Person.display_name == "Shashank Rao"))
+        assert person is not None
+        doc = Document(owner_person_id=person.id, kind="pdf", title="CV", source="cv.pdf", sha256="b" * 64, text="x")
+        s.add(doc)
+        s.flush()
+        for n in s.scalars(select(MemoryItem)):
+            n.document_id, n.source, n.source_event_ids = doc.id, "document", []
+        retire_document(s, doc)
+    with session_scope() as s:
+        assert all(n.valid_to is not None for n in s.scalars(select(MemoryItem)))
+
+
 def test_offline_nothing_is_learned_and_nothing_breaks(owner):
     owner.post("/app/chat", json={"text": "I'm moving to the Bangalore office in January, it's confirmed now."})
     run_due()

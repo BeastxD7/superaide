@@ -192,16 +192,23 @@ def test_the_heuristic_on_its_own():
 
 
 def test_a_draft_cut_off_inside_a_tool_call_is_not_sent_back_for_revision():
-    # Live API: a tool_use with no tool_result after it is a 400, so abstain instead.
+    # Live API: a tool_use with no tool_result after it is a 400, so it is never sent back for revision.
+    # The step is retried once with more room (#88); still cut off, the half-written tool call is dropped,
+    # what was written is source-checked once (it abstains) and the reply says it ran out of room.
+    from superaide.brain.loop import CUT_OFF
+
+    cut = {
+        "content": [{"type": "text", "text": GYM}, *tool_use("recall", {"query": "gy"})],
+        "stop_reason": "max_tokens",
+    }
     with session_scope() as s:
-        script = Script(
-            {
-                "content": [{"type": "text", "text": GYM}, *tool_use("recall", {"query": "gy"})],
-                "stop_reason": "max_tokens",
-            }
-        )
+        script = Script(cut, cut, GYM)  # the cut-off step, its one retry, then the answer to the source check
         result = turn_for(s, script).run([{"role": "user", "content": "x"}])
-    assert len(script.seen) == 1 and result.text.endswith(verify.ABSTAIN) and "verify:abstained" in result.notes
+    assert len(script.seen) == 3
+    sent_back = [b for m in script.seen[2] if isinstance(m.get("content"), list) for b in m["content"]]
+    assert not [b for b in sent_back if b.get("type") == "tool_use"]  # the half-written tool call is never sent back
+    assert verify.ABSTAIN in result.text and result.text.endswith(CUT_OFF)
+    assert "verify:abstained" in result.notes and "max_tokens_retry" in result.notes and "max_tokens" in result.notes
 
 
 def test_a_recap_of_what_the_owner_said_on_another_channel_is_not_flagged():

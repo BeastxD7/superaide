@@ -134,7 +134,16 @@ SERVER_KEY = "sk-ant-server-env-key-111111111111111"
 
 
 @pytest.mark.parametrize(
-    ("listed", "own"), [("S@Example.com , ops@example.com", True), ("s@exampel.com", False), ("", False)]
+    ("listed", "own"),
+    [
+        ("S@Example.com , ops@example.com", True),
+        ("s@exampel.com", False),
+        ("", False),
+        # One bad entry must not break every agent build (#92): it is skipped, the good one still counts.
+        ("s@example.com, you@localhost", True),
+        ("s@example.com; you@localhost", True),
+        ("you@localhost, not an address", False),
+    ],
 )
 def test_the_operators_own_ava_uses_the_server_key_as_its_own(owner_client, credits, monkeypatch, listed, own):  # noqa: F811
     from decimal import Decimal

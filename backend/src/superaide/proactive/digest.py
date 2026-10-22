@@ -148,6 +148,7 @@ def compose(
         .where(
             Intention.owner_person_id == owner.id,
             Intention.status == "open",
+            Intention.delivered_at.is_(None),  # one that already went off is not "still to do"
             Intention.due_at >= start,
             Intention.due_at < end,
         )

@@ -252,6 +252,15 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         with session_scope() as s:
             onboarder()._say(s, require(s, Person, person_id), [line])
 
+    def _ingest_once(person_id: uuid.UUID, extracted: extract.Extracted, *, size_bytes: int) -> Any:
+        """ingest(), where sharing the same file twice at the same moment (a double click, two tabs)
+        is not an error: the request that lost the race hits the one-copy-per-owner index, and
+        trying again finds the winner's copy and answers "you've already shared this"."""
+        try:
+            return ingest(get_agent(), person_id, extracted, size_bytes=size_bytes)
+        except IntegrityError:
+            return ingest(get_agent(), person_id, extracted, size_bytes=size_bytes)
+
     @router.post(
         "/intro/files",
         tags=["Introduction"],
@@ -261,16 +270,16 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             " is read once Claude is connected."
         ),
     )
-    async def intro_file(
-        file: UploadFile = File(...), person_id: uuid.UUID = Depends(owner_person_id)
-    ) -> dict[str, Any]:
-        data = await file.read(extract.MAX_FILE_BYTES + 1)
+    def intro_file(file: UploadFile = File(...), person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        # A plain `def`: FastAPI runs it in a worker thread, so reading a PDF and the model call
+        # below don't freeze the event loop (and every other owner's request) while they work.
+        data = file.file.read(extract.MAX_FILE_BYTES + 1)
         try:
             extracted = extract.extract_file(file.filename or "upload", data)
         except extract.ExtractError as exc:
             raise HTTPException(422, str(exc)) from exc
         _require_text(extracted)
-        result = ingest(get_agent(), person_id, extracted, size_bytes=len(data))
+        result = _ingest_once(person_id, extracted, size_bytes=len(data))
         if not result.duplicate:
             _said(person_id, result.message)
         return {**result.__dict__, "document_id": str(result.document_id), "warnings": list(extracted.warnings)}
@@ -290,7 +299,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         except extract.ExtractError as exc:
             raise HTTPException(422, str(exc)) from exc
         _require_text(extracted)
-        result = ingest(get_agent(), person_id, extracted, size_bytes=len(extracted.text))
+        result = _ingest_once(person_id, extracted, size_bytes=len(extracted.text))
         if not result.duplicate:
             _said(person_id, result.message)
         return {**result.__dict__, "document_id": str(result.document_id), "warnings": list(extracted.warnings)}

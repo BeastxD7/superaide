@@ -213,3 +213,50 @@ def test_a_web_page_cannot_set_the_owners_rules(client, brain, agent, monkeypatc
     assert ingest.safe_category("sharing", "link") == "about"
     assert ingest.safe_category("work", "link") == "work"
     assert ingest.safe_category("urgency", "document") == "urgency"  # the owner's own file may
+
+
+def test_a_file_upload_does_not_run_on_the_event_loop(client, monkeypatch):
+    """Parsing and the model call are blocking; on the event loop they would freeze the whole API (#89)."""
+    import asyncio
+
+    from superaide.app import routes
+
+    real = routes.ingest
+    on_the_loop: list[bool] = []
+
+    def spy(*args, **kwargs):
+        try:
+            asyncio.get_running_loop()
+            on_the_loop.append(True)
+        except RuntimeError:
+            on_the_loop.append(False)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(routes, "ingest", spy)
+    assert upload(client, "resume.txt", b"Shashank Rao, applied AI lead").status_code == 200
+    assert on_the_loop == [False]
+    # The instance scope still follows the work onto the thread: the document is the owner's.
+    assert client.get("/app/intro/documents").json()[0]["title"] == "resume.txt"
+
+
+def test_sharing_the_same_file_at_the_same_moment_is_not_a_server_error(client, monkeypatch):
+    """Two requests pass the 'already shared?' check together; the loser used to hit the unique index (#92)."""
+    from sqlalchemy.exc import IntegrityError
+
+    from superaide.app import routes
+
+    real = routes.ingest
+    calls = {"n": 0}
+
+    def racing(agent, owner_id, extracted, **kwargs):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            real(agent, owner_id, extracted, **kwargs)  # the other request wins and saves it first
+            raise IntegrityError("INSERT INTO document", {}, Exception("uq_document_owner_sha"))
+        return real(agent, owner_id, extracted, **kwargs)
+
+    monkeypatch.setattr(routes, "ingest", racing)
+    r = upload(client, "resume.txt", b"Shashank Rao, applied AI lead")
+    assert r.status_code == 200, r.text
+    assert r.json()["duplicate"] is True
+    assert len(client.get("/app/intro/documents").json()) == 1

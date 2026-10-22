@@ -19,7 +19,6 @@ async function openSidebar(page: Page): Promise<void> {
 
 test.describe('accounts on a phone', () => {
   test('Settings from the sidebar account menu closes the sidebar, as the page links do', async ({ page, owner }) => {
-    test.fail(true, 'BUG: the account menu\'s Settings and Browse agents links never call setOpenMobile(false), so the sheet stays over the page')
     await page.goto('/dashboard')
     await openSidebar(page)
     await page.getByRole('button', { name: `Account: signed in as ${owner.name}` }).tap()
