@@ -94,6 +94,25 @@ class LLMProvider(Protocol):
     ) -> Completion: ...
 
 
+def _note_rejected_key(guard: Guard, provider: str, exc: BaseException) -> None:
+    """A provider that refuses the key is recorded for this instance (brain/keyhealth.py), and the
+    error is tagged so every caller can tell it from a passing failure."""
+    from superaide.brain import keyhealth
+
+    if not keyhealth.is_auth_error(exc):
+        return
+    label = "credits" if getattr(guard, "key_source", "owner") == "platform" else provider
+    keyhealth.mark(exc, label)
+    scope = getattr(guard, "scope", None)
+    if scope is None:
+        keyhealth.record_rejected(label)
+        return
+    from superaide.tenancy.context import use_instance
+
+    with use_instance(scope):
+        keyhealth.record_rejected(label)
+
+
 def metered[R](
     guard: Guard,
     *,
@@ -111,6 +130,7 @@ def metered[R](
     try:
         response = call()
     except Exception as exc:  # the provider did not return a billable response
+        _note_rejected_key(guard, provider, exc)
         guard.fail(entry_id, f"{type(exc).__name__}: {exc}")
         raise
     p = priced(response)

@@ -97,7 +97,13 @@ def extract_facts(
             output_model=FactList,
         )
     except Exception as exc:  # the intro carries on without facts
-        log.warning("fact extraction failed: %s", exc)
+        from superaide.brain import keyhealth
+
+        if keyhealth.is_auth_error(exc):  # permanent: callers stop retrying (see brain/keyhealth.py)
+            keyhealth.record_rejected(keyhealth.provider_of(exc))
+            log.warning("fact extraction stopped: the AI key was rejected")
+        else:
+            log.warning("fact extraction failed: %s", exc)
         return None
     parsed = result.parsed
     if isinstance(parsed, FactList):
