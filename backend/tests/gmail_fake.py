@@ -5,6 +5,8 @@ from __future__ import annotations
 import base64
 import json
 from collections.abc import Iterator
+from email import message_from_string
+from email import policy as email_policy
 from typing import Any
 from urllib.parse import parse_qs
 
@@ -126,6 +128,13 @@ class FakeGoogle:
                 if h > start
             ]
             return httpx.Response(200, json={"history": rows, "historyId": str(self.history_id)})
+        if "/drafts/" in path and r.method == "GET" and not path.endswith("/drafts/send"):
+            did = path.rsplit("/", 1)[1]
+            return (
+                httpx.Response(200, json=self.draft_message(did))
+                if did in self.drafts
+                else httpx.Response(404, json={})
+            )
         if path.endswith("/drafts/send"):
             did = json.loads(r.content)["id"]
             assert did in self.drafts
@@ -140,6 +149,30 @@ class FakeGoogle:
         if path.endswith("/messages/send"):
             raise AssertionError("Superaide must never send mail directly; only an approved draft")
         return httpx.Response(404, json={})
+
+    def draft_message(self, did: str) -> dict[str, Any]:
+        """drafts.get: the draft as Gmail holds it now (parsed from its raw MIME)."""
+        em = message_from_string(self.drafts[did]["raw"], policy=email_policy.default)
+        hdrs = [{"name": k, "value": str(v)} for k, v in em.items()]
+        body = em.get_body(preferencelist=("plain",))
+        text = body.get_content() if body else ""
+        return {
+            "id": did,
+            "message": {
+                "id": f"m-{did}",
+                "threadId": self.drafts[did]["thread"],
+                "payload": {"mimeType": "text/plain", "headers": hdrs, "body": {"data": b64(text)}},
+            },
+        }
+
+    def edit_draft(self, did: str, *, text: str | None = None, add_header: tuple[str, str] | None = None) -> None:
+        """Change a stored draft after it was made, as someone with access to the mailbox could."""
+        em = message_from_string(self.drafts[did]["raw"], policy=email_policy.default)
+        if text is not None:
+            em.set_content(text)
+        if add_header:
+            em[add_header[0]] = add_header[1]
+        self.drafts[did]["raw"] = em.as_string()
 
     def draft_to(self, did: str) -> str:
         return next(ln for ln in self.drafts[did]["raw"].splitlines() if ln.startswith("To:"))
