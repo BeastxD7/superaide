@@ -106,13 +106,21 @@ def server_key_is_own(session: Session) -> bool:
     own Ava): it uses the server's ANTHROPIC_API_KEY as its own key."""
     from superaide.auth.service import normalize_email
     from superaide.db.models import UserAccount
-    from superaide.tenancy.models import AgentInstance
+    from superaide.tenancy.models import AgentInstance, InstanceMember
 
     listed = {normalize_email(e) for e in get_settings().platform_key_owner_emails.split(",") if e.strip()}
     if not listed:
         return False
-    instance = session.get(AgentInstance, scope_or_default().agent_id)
-    if instance is None:
+    agent_id = scope_or_default().agent_id
+    owners: set[uuid.UUID] = set(
+        session.scalars(
+            select(InstanceMember.user_id).where(InstanceMember.agent_id == agent_id, InstanceMember.role == "owner")
+        )
+    )
+    instance = session.get(AgentInstance, agent_id)
+    if instance is not None and instance.owner_user_id:
+        owners.add(instance.owner_user_id)
+    if not owners:
         return False
-    account = session.get(UserAccount, instance.owner_user_id)
-    return account is not None and account.email_normalized in listed
+    emails = session.scalars(select(UserAccount.email_normalized).where(UserAccount.id.in_(owners)))
+    return any(e in listed for e in emails)

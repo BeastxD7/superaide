@@ -126,6 +126,8 @@ def version(session: Session) -> str:
     from superaide.brain import platform_ai
 
     parts.append(f"credits:{platform_ai.opted_in(session)}")  # opting in or out rebuilds the agent
+    # The operator's own Ava (PLATFORM_KEY_OWNER_EMAILS): rebuilt once its owner is known (e.g. right after hiring).
+    parts.append(f"server-key:{platform_ai.server_key_is_own(session)}")
     return "|".join(parts)
 
 
