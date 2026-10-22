@@ -86,6 +86,29 @@ def check_anthropic(api_key: str) -> CheckReport:
     return CheckReport(True, "Connected to Claude", sorted(PRICES))
 
 
+ROLE_LABELS = {"chat": "Conversation", "triage": "Quick reading", "deep": "Deep work"}  # as the AI model page says
+RESERVED_KEYS = frozenset({"anthropic", "platform", *PRESETS})  # other providers' names, and the credits route
+
+
+def provider_label(key: str) -> str:
+    """The name the AI model page shows for a provider or endpoint key."""
+    if key == "anthropic":
+        return str(ANTHROPIC["label"])
+    if key == "platform":
+        return "Superaide AI credits"
+    base, _, _ = key.partition("-")
+    return PRESETS[key].label if key in PRESETS else (f"{PRESETS[base].label} ({key})" if base in PRESETS else key)
+
+
+def check_endpoint_key(preset: str, key: str | None) -> None:
+    """A second endpoint of a kind is named like custom-2. Another provider's name, 'anthropic' and 'platform'
+    are never allowed, or one endpoint would pose as another provider (or as the credits route)."""
+    if key is None or key == preset:
+        return
+    if key in RESERVED_KEYS:
+        raise HTTPException(400, f"{key} is another provider's name. Use a name like {preset}-2.")
+
+
 class ProviderBody(BaseModel):
     api_key: str | None = Field(default=None, max_length=400)  # None or omitted keeps the stored key
     base_url: str = Field(default="", max_length=300)
@@ -216,6 +239,7 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], Any]) -> APIRo
         return api_key, base_url
 
     def test(preset: str, body: ProviderBody) -> CheckReport:
+        check_endpoint_key(preset, body.key)
         if preset == "anthropic":
             if not body.api_key:
                 raise HTTPException(400, "Paste your Claude API key.")
@@ -361,7 +385,7 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], Any]) -> APIRo
                 api_key, base_url = resolve(preset, body)
                 existing = config.endpoint(s, body.key or preset)
                 if existing is not None and existing.preset != preset:
-                    raise HTTPException(409, f"{body.key} is already used by another provider.")
+                    raise HTTPException(409, f"{body.key or preset} is already used by another provider.")
                 config.save_provider(
                     s, preset, key=body.key or preset, base_url=base_url,
                     api_key=api_key if body.api_key is not None else None,
@@ -403,9 +427,13 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], Any]) -> APIRo
         prices = load_prices(settings)
         chosen = {r: c for r, c in (("chat", body.chat), ("triage", body.triage), ("deep", body.deep)) if c}
         needs_price = []
-        for choice in chosen.values():
+        for role, choice in chosen.items():
             if not provider_usable(settings, choice.provider):
-                raise HTTPException(409, f"Connect {choice.provider} first.")
+                raise HTTPException(
+                    409,
+                    f"Connect {provider_label(choice.provider)} first, or choose a different provider "
+                    f"for {ROLE_LABELS[role]}.",
+                )
             try:
                 prices.price_for(choice.model, choice.provider)
             except UnknownModelPrice:

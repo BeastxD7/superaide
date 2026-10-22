@@ -294,6 +294,48 @@ def test_several_endpoints_of_one_kind_each_have_their_own_key_price_and_role(ow
     assert [p["key"] for p in left["providers"]] == ["custom"] and left["roles"]["chat"]["provider"] == "anthropic"
 
 
+@pytest.mark.parametrize("name", ["openai", "anthropic", "platform", "ollama", "azure", "openrouter"])
+def test_a_custom_endpoint_cannot_take_another_providers_name(owner_client, service, name):  # noqa: F811
+    saved = owner_client.post("/app/providers/custom", json={"key": name, "base_url": "http://localhost:8000/v1"})
+    assert saved.status_code == 400 and "another provider's name" in saved.json()["detail"]
+    tested = owner_client.post(
+        "/app/providers/test", json={"preset": "custom", "key": name, "base_url": "http://localhost:8000/v1"}
+    )
+    assert tested.status_code == 400
+    assert service.seen == []  # refused before anything connects
+    body = owner_client.get("/app/providers").json()
+    assert body["providers"] == [] and body["claude"]["connected"] is False
+    with session_scope() as s:
+        assert s.scalar(select(LlmProvider)) is None
+
+
+def test_a_provider_may_still_use_its_own_name_and_a_numbered_one(owner_client, service):  # noqa: F811
+    assert owner_client.post("/app/providers/openrouter", json={"api_key": KEY, "key": "openrouter"}).status_code == 200
+    numbered = owner_client.post("/app/providers/custom", json={"key": "custom-2", "base_url": "http://localhost:8000/v1"})
+    assert numbered.status_code == 200
+
+
+def test_the_name_clash_message_names_the_provider_even_without_a_key(owner_client, service):  # noqa: F811
+    from superaide.brain.providers import config
+
+    with session_scope() as s:
+        config.save_provider(s, "openrouter", key="custom", base_url="https://x.example/v1", api_key=KEY,
+                             user_id=None, models=[], prices={})  # fmt: skip
+    clash = owner_client.post("/app/providers/custom", json={"base_url": "http://localhost:8000/v1"})
+    assert clash.status_code == 409 and clash.json()["detail"] == "custom is already used by another provider."
+
+
+def test_saving_models_for_a_provider_that_is_not_connected_says_which_one_in_plain_words(owner_client, service):  # noqa: F811
+    r = owner_client.put("/app/providers/roles", json={"chat": {"provider": "anthropic", "model": "claude-haiku-5-5"}})
+    assert r.status_code == 409
+    assert r.json()["detail"] == "Connect Claude (Anthropic) first, or choose a different provider for Conversation."
+    r = owner_client.put(
+        "/app/providers/roles",
+        json={"chat": {"provider": "custom-2", "model": "m"}, "deep": {"provider": "openai", "model": "gpt"}},
+    )
+    assert r.status_code == 409 and "custom-2" in r.json()["detail"] and "Conversation" in r.json()["detail"]
+
+
 def test_a_role_on_an_unconnected_provider_uses_the_chat_model():
     from superaide.brain.llm import RoutedLLM as Routed
 
