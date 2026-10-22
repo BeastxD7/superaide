@@ -5,6 +5,7 @@ import { useState, type ReactNode } from 'react'
 import { Notice } from '@/components/site'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAppData } from '@/features/dashboard/data'
 import { AppError, call, type ApprovalItem } from '@/lib/api'
@@ -25,6 +26,7 @@ export function ApprovalsCard({ name, empty = null }: { name: string; empty?: Re
   const { data, reload } = useAppData<ApprovalItem[]>('/approvals')
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [reasons, setReasons] = useState<Record<string, string>>({})
   useApprovalsChanged(reload)
   const pending = (data ?? []).filter((a) => a.status === 'pending')
   if (!pending.length) return data ? empty : null
@@ -33,7 +35,7 @@ export function ApprovalsCard({ name, empty = null }: { name: string; empty?: Re
     setBusy(id)
     setError(null)
     try {
-      await call(`/approvals/${id}/${verdict}`, { method: 'POST' })
+      await call(`/approvals/${id}/${verdict}`, { method: 'POST', json: { reason: reasons[id] ?? null } })
     } catch (e) {
       setError(e instanceof AppError ? e.message : String(e))
     } finally {
@@ -70,6 +72,15 @@ export function ApprovalsCard({ name, empty = null }: { name: string; empty?: Re
                   {a.requested_by ? `Asked by ${a.requested_by}` : 'Asked in a chat'} ·{' '}
                   {formatWhen(a.at)}
                 </p>
+                {a.needs_reason && (
+                  <Input
+                    className="mt-2"
+                    aria-label="Why is this fine? Type a short reason to approve"
+                    placeholder="You have been approving fast. Type a short reason to say yes."
+                    value={reasons[a.id] ?? ''}
+                    onChange={(e) => setReasons({ ...reasons, [a.id]: e.target.value })}
+                  />
+                )}
               </div>
               <div className="flex shrink-0 gap-2">
                 <Button size="sm" variant="outline" disabled={busy === a.id} onClick={() => void decide(a.id, 'reject')}>
