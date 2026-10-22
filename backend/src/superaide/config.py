@@ -74,6 +74,9 @@ class Settings(BaseSettings):
     # Hash-chained log of tool calls and executed approvals (issue #113). Off by default.
     action_log: bool = False
 
+    # Refuse to start when a protected file differs from security/surface.lock.json (issue #114). Off by default.
+    surface_check_on_boot: bool = False
+
     # Tenancy
     tenant_id: uuid.UUID = DEFAULT_TENANT_ID
     agent_id: uuid.UUID = DEFAULT_AGENT_ID
