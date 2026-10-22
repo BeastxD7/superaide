@@ -27,6 +27,7 @@ from sqlalchemy.orm import Session, aliased
 from superaide.context import lexicon
 from superaide.context.audience import Audience, memory_filter
 from superaide.db.models import Context, Event, MemoryItem
+from superaide.memory.echo import label as echo_label
 
 LANG = "english"
 RRF_K = 60
@@ -153,7 +154,7 @@ def _memory_sources(session: Session, found: list[MemoryItem], channel: str | No
         else:
             src = f" · from {m.source}" if m.source else ""
         out.append(
-            Source(uri=f"ava://memory/{m.id}", kind="memory", title=f"Note · {m.category}{src}", text=m.content,
+            Source(uri=f"ava://memory/{m.id}", kind="memory", title=f"Note · {m.category}{src}{echo_label(m)}", text=m.content,
                    at=m.created_at)
         )  # fmt: skip
     return out

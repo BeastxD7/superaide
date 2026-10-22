@@ -66,15 +66,31 @@ def remember_fact(
     confidence: float = 1.0,
     shareable: bool = False,
     origin_context_id: Any = None,
+    origin_url: str | None = None,
+    origin_author: str | None = None,
+    quote_chain: tuple[str, ...] = (),
 ) -> MemoryItem | None:
-    """Store one fact about the owner. Returns None if the same fact is already known."""
+    """Store one fact about the owner. Returns None if the same fact is already known (with the Echo Filter
+    on, a repeat from a *different* root origin is still noted on the known fact)."""
+    from superaide.config import get_settings
+    from superaide.memory import echo
+
+    hearsay = get_settings().echo_filter_enabled and source in echo.HEARSAY_SOURCES
     content = " ".join(content.split())[:2000]
     if not content:
         return None
     category = category if category in CATEGORIES else "other"
-    if find_same_fact(session, owner, content, similarity=None) is not None:
+    root = None
+    if hearsay:
+        url = origin_url or (document.source if document is not None and document.kind in ("web", "github") else None)
+        root = echo.origin_root(url=url, author=origin_author, quote_chain=quote_chain)
+    known = find_same_fact(session, owner, content, similarity=None)
+    if known is not None:
+        if hearsay:
+            echo.record_origin(session, known, root)
         return None
     item = MemoryItem(
+        belief_state="hearsay" if hearsay else "fact",
         content=content,
         subject_person_ids=[owner.id],
         origin_context_id=origin_context_id,
@@ -88,6 +104,8 @@ def remember_fact(
     )
     session.add(item)
     session.flush()
+    if hearsay:
+        echo.record_origin(session, item, root)
     from superaide.context import vectors
 
     vectors.schedule(session, item)

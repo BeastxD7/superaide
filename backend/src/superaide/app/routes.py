@@ -489,6 +489,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                         "document": title,
                         "shareable": m.allowed_kind == "public",
                         "private": m.allowed_kind == "persons",
+                        "hearsay": m.belief_state == "hearsay",
                         "at": m.created_at.isoformat(),
                     }
                     for m, title in rows
@@ -548,6 +549,22 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 "shareable": [{"value": v, "label": SHARE_LABELS.get(v, v)} for v in pref.shareable],
                 "never_share": pref.never_share,
             }
+
+    @router.post(
+        "/notebook/{memory_id}/confirm",
+        tags=["Owner: chat & notebook"],
+        summary="Confirm a note is true",
+        description="Turns hearsay (heard from outside, fewer than two independent origins) into a fact.",
+    )
+    def confirm_note(memory_id: uuid.UUID, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, str]:
+        with session_scope() as s:
+            m = s.get(MemoryItem, memory_id)
+            if m is None or person_id not in (m.subject_person_ids or []) or m.valid_to is not None:
+                raise HTTPException(404, "Not found in your notebook")
+            from superaide.memory import echo
+
+            echo.confirm(s, m)
+        return {"status": "fact"}
 
     @router.post(
         "/notebook/{memory_id}/forget",
