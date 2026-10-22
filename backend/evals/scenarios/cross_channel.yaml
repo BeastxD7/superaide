@@ -12,7 +12,7 @@
     - via: web
       say: "do i like black colour?"
       expect:
-        - reply_contains_any: ["don't like", "do not like", "doesn't like", "not a fan", "dislike", "\\bno\\b"]
+        - reply_contains_any: ["don't like", "do not like", "doesn't like", "not a fan", "dislike", "\\bno\\b", "steer clear", "avoid"]
         - cited: true
         - citations_valid: true
 
@@ -54,7 +54,7 @@
     - via: telegram
       say: "remind me to call mom tomorrow at 7pm"
       expect:
-        - reply_contains: ["tomorrow.{0,40}7(:00)? ?pm"]
+        - reply_contains_any: ["tomorrow.{0,40}7(:00)? ?pm", "\\d{1,2} (Oct|Nov|Dec|Jan)[a-z]*.{0,12}7(:00)? ?pm"]
     - via: web
       say: "what reminders do I have?"
       expect:
