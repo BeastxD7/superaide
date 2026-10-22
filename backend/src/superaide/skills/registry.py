@@ -89,11 +89,62 @@ def remove(session: Session, skill_id: str) -> None:
     audit(session, "skills", "skill_removed", skill_id=skill_id)
 
 
-def tools_for(skills: list[Skill], *, web_allowed: bool) -> list[dict[str, Any]]:
-    """Claude tool definitions for these skills. Server tools (web) only when allowed (real model)."""
+def option_on(session: Session, skill_id: str, setting: str) -> bool:
+    """The owner switched this skill setting on and agreed to what it adds (and the skill is active)."""
+    skill = catalog().get(skill_id)
+    row = _rows(session).get(skill_id)
+    if skill is None or row is None or not row.enabled or row.removed_at is not None:
+        return False
+    agreed = set(skill.manifest.permissions) | set(skill.manifest.option_permissions(setting))
+    return bool((row.settings or {}).get(setting)) and agreed <= set(row.granted)
+
+
+def options_on(session: Session, skills: list[Skill]) -> set[tuple[str, str]]:
+    """(skill id, setting) for every option switched on among these skills."""
+    return {
+        (skill.manifest.id, setting)
+        for skill in skills
+        for setting in skill.manifest.options
+        if option_on(session, skill.manifest.id, setting)
+    }
+
+
+def set_option(session: Session, skill_id: str, setting: str, *, on: bool, accepted: list[str]) -> InstalledSkill:
+    """Switch a skill setting that adds tools on (with the owner's consent to what it adds) or off."""
+    skill = catalog().get(skill_id)
+    row = _rows(session).get(skill_id)
+    if skill is None or row is None or not row.enabled or row.removed_at is not None:
+        raise SkillUnavailable(404, "That skill isn't installed")
+    if setting not in skill.manifest.options:
+        raise SkillUnavailable(404, "No such setting")
+    extra = skill.manifest.option_permissions(setting)
+    if on and sorted(set(accepted)) != sorted(extra):
+        raise SkillUnavailable(409, "The permissions you agreed to don't match what this needs. Review them again.")
+    settings = dict(row.settings or {})
+    settings[setting] = on
+    row.settings = settings
+    others = {e for o in skill.manifest.options if o != setting and settings.get(o)
+              for e in skill.manifest.option_permissions(o)}  # fmt: skip
+    granted = set(row.granted) | set(extra) if on else set(row.granted) - (set(extra) - others)
+    order = list(skill.manifest.permissions) + [e for o in skill.manifest.options
+                                                for e in skill.manifest.option_permissions(o)]  # fmt: skip
+    row.granted = sorted(granted, key=lambda e: order.index(e) if e in order else len(order))
+    session.flush()
+    audit(session, "skills", "skill_option_on" if on else "skill_option_off", skill_id=skill_id, setting=setting,
+          granted=row.granted)  # fmt: skip
+    return row
+
+
+def tools_for(
+    skills: list[Skill], *, web_allowed: bool, options: set[tuple[str, str]] | frozenset = frozenset()
+) -> list[dict[str, Any]]:
+    """Claude tool definitions for these skills. Server tools (web) only when allowed (real model);
+    a tool behind a skill setting only while that setting is on (`options`, from options_on)."""
     tools: list[dict[str, Any]] = []
     for skill in skills:
         for tool in skill.manifest.tools:
+            if tool.setting is not None and (skill.manifest.id, tool.setting) not in options:
+                continue
             if tool.hosted:
                 if not web_allowed:
                     continue
@@ -137,7 +188,20 @@ def view(session: Session) -> list[dict[str, Any]]:
                 "removable": m.removable,
                 "permissions": [{"id": p, "label": EFFECT_LABEL[p]} for p in m.permissions],
                 "needs_consent": installed and row is not None and not set(m.permissions) <= set(row.granted),
-                "tools": [t.name for t in m.tools],
+                "tools": [t.name for t in m.tools if t.setting is None],
+                "options": [
+                    {
+                        "setting": o,
+                        "title": str(((m.settings or {}).get("properties") or {}).get(o, {}).get("title") or o),
+                        "description": str(
+                            ((m.settings or {}).get("properties") or {}).get(o, {}).get("description") or ""
+                        ),
+                        "on": installed and option_on(session, skill_id, o),
+                        "permissions": [{"id": p, "label": EFFECT_LABEL[p]} for p in m.option_permissions(o)],
+                        "tools": [t.name for t in m.tools if t.setting == o],
+                    }
+                    for o in m.options
+                ],
                 "cost": f"About US${m.budget.per_use_usd:.2f} each time it's used"
                 if m.budget and m.budget.per_use_usd
                 else None,

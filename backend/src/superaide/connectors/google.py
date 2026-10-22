@@ -1,4 +1,5 @@
-"""Google Calendar, read-only: sign in with OAuth 2.1 + PKCE, then list events as citable sources.
+"""Google Calendar: sign in with OAuth 2.1 + PKCE, list events as citable sources and, once the owner
+allows it (scope calendar.events, asked for incrementally), add, move and decline events.
 
 The owner brings their own OAuth client (an unverified app used only by them avoids
 Google's verification for a single user). The refresh token is encrypted in the vault;
@@ -22,7 +23,11 @@ import httpx
 AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 EVENTS_URL = "https://www.googleapis.com/calendar/v3/calendars/primary/events"
+FREEBUSY_URL = "https://www.googleapis.com/calendar/v3/freeBusy"
+WATCH_URL = EVENTS_URL + "/watch"
+STOP_URL = "https://www.googleapis.com/calendar/v3/channels/stop"
 SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
+EVENTS_SCOPE = "https://www.googleapis.com/auth/calendar.events"  # change events: only with calendar actions on
 PENDING_TTL = timedelta(minutes=10)
 
 
@@ -44,7 +49,7 @@ def pkce_pair() -> tuple[str, str]:
     return verifier, challenge
 
 
-def auth_url(client_id: str, redirect_uri: str, state: str, challenge: str) -> str:
+def auth_url(client_id: str, redirect_uri: str, state: str, challenge: str, scopes: list[str] | None = None) -> str:
     return (
         AUTH_URL
         + "?"
@@ -53,7 +58,7 @@ def auth_url(client_id: str, redirect_uri: str, state: str, challenge: str) -> s
                 "client_id": client_id,
                 "redirect_uri": redirect_uri,
                 "response_type": "code",
-                "scope": " ".join(SCOPES),
+                "scope": " ".join(scopes or SCOPES),
                 "state": state,
                 "code_challenge": challenge,
                 "code_challenge_method": "S256",
@@ -73,6 +78,7 @@ def exchange_code(
     verifier: str,
     redirect_uri: str,
     client: httpx.Client | None = None,
+    scopes: list[str] | None = None,
 ) -> dict[str, Any]:
     try:
         r = _client(client).post(
@@ -92,7 +98,7 @@ def exchange_code(
     if r.status_code != 200 or not isinstance(data, dict) or "refresh_token" not in data:
         raise GoogleError("Google didn't give Ava access. Try connecting again, and allow calendar access.")
     granted = set(str(data.get("scope", "")).split())
-    if not set(SCOPES) <= granted:
+    if not set(scopes or SCOPES) <= granted:
         raise ScopeNotGranted("Calendar access wasn't granted. Tick the calendar box on Google's screen.")
     return data
 
@@ -194,3 +200,76 @@ def event_text(event: dict[str, Any], tz: Any) -> tuple[str, str]:
     if people:
         bits.append("with " + ", ".join(people[:6]))
     return title, " ".join(bits)
+
+
+def _call(method: str, url: str, token: str, *, client: httpx.Client | None = None, **kw: Any) -> dict[str, Any]:
+    """One Calendar API call that changes or asks something. Raises GoogleError with a plain reason."""
+    try:
+        r = _client(client).request(method, url, headers={"Authorization": f"Bearer {token}"}, **kw)
+    except httpx.HTTPError as exc:
+        raise GoogleError("Couldn't reach Google Calendar just now.") from exc
+    if r.status_code in (404, 410):
+        raise GoogleError("That event isn't in the calendar any more.")
+    if r.status_code == 403:
+        raise GoogleError("Google didn't allow that change. Reconnect Google Calendar with calendar actions on.")
+    if r.status_code == 204:
+        return {}
+    try:
+        data = r.json()
+    except ValueError as exc:
+        raise GoogleError("Google Calendar sent something unreadable.") from exc
+    if r.status_code not in (200, 201) or not isinstance(data, dict):
+        raise GoogleError(f"Google Calendar answered with an error ({r.status_code}).")
+    return data
+
+
+def free_busy(
+    token: str, *, start: datetime, end: datetime, client: httpx.Client | None = None
+) -> list[tuple[datetime, datetime]]:
+    """The owner's busy intervals on their primary calendar, in order."""
+    body = {"timeMin": start.astimezone(UTC).isoformat(), "timeMax": end.astimezone(UTC).isoformat(),
+            "items": [{"id": "primary"}]}  # fmt: skip
+    data = _call("POST", FREEBUSY_URL, token, client=client, json=body)
+    busy = ((data.get("calendars") or {}).get("primary") or {}).get("busy") or []
+    out = []
+    for b in busy:
+        try:
+            out.append((datetime.fromisoformat(b["start"]), datetime.fromisoformat(b["end"])))
+        except KeyError, ValueError, TypeError:
+            continue
+    return sorted(out)
+
+
+def insert_event(
+    token: str, body: dict[str, Any], *, notify: bool, client: httpx.Client | None = None
+) -> dict[str, Any]:
+    return _call("POST", EVENTS_URL, token, client=client, json=body,
+                 params={"sendUpdates": "all" if notify else "none"})  # fmt: skip
+
+
+def patch_event(
+    token: str, event_id: str, body: dict[str, Any], *, notify: bool, client: httpx.Client | None = None
+) -> dict[str, Any]:
+    from urllib.parse import quote
+
+    return _call("PATCH", f"{EVENTS_URL}/{quote(event_id, safe='')}", token, client=client, json=body,
+                 params={"sendUpdates": "all" if notify else "none"})  # fmt: skip
+
+
+def watch(
+    token: str,
+    *,
+    channel_id: str,
+    address: str,
+    channel_token: str,
+    ttl_seconds: int,
+    client: httpx.Client | None = None,
+) -> dict[str, Any]:
+    """Ask Google to call `address` when the primary calendar's events change (events.watch)."""
+    body = {"id": channel_id, "type": "web_hook", "address": address, "token": channel_token,
+            "params": {"ttl": str(ttl_seconds)}}  # fmt: skip
+    return _call("POST", WATCH_URL, token, client=client, json=body)
+
+
+def stop_channel(token: str, *, channel_id: str, resource_id: str, client: httpx.Client | None = None) -> None:
+    _call("POST", STOP_URL, token, client=client, json={"id": channel_id, "resourceId": resource_id})

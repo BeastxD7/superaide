@@ -41,6 +41,44 @@ def _pending_key(state: str) -> str:
     return f"google_pending:{hashlib.sha256(state.encode()).hexdigest()[:40]}"  # fits platform_state.key
 
 
+def google_redirect_uri() -> str:
+    # The browser comes back through the web app's /api proxy, so the session cookie is sent.
+    return f"{get_settings().frontend_origin.rstrip('/')}/api/app/connections/google/callback"
+
+
+BACK_PAGES = {"connections": "/dashboard/connections", "skills": "/dashboard/capabilities"}
+
+
+def begin_google(user_id: uuid.UUID, *, events: bool, back: str = "connections") -> str:
+    """Google's consent URL for the owner in scope: calendar.readonly, plus calendar.events when
+    calendar actions are on (asked for incrementally, with include_granted_scopes). Raises
+    HTTPException 409 when no OAuth client is set up."""
+    settings = runtime_settings()
+    if not (settings.google_client_id and settings.google_client_secret):
+        raise HTTPException(409, "Save your Google OAuth client first.")
+    verifier, challenge = google.pkce_pair()
+    state = secrets.token_urlsafe(24)
+    scope = scope_or_default()
+    scopes = [*google.SCOPES, google.EVENTS_SCOPE] if events else list(google.SCOPES)
+    with session_scope() as s:
+        # Kept platform-wide under the state's hash: the callback arrives without a session and must
+        # find which owner's Ava (ADR 0009) the sign-in belongs to. Only the latest start per instance counts.
+        for old in s.scalars(select(PlatformState).where(PlatformState.key.like("google_pending:%"))).all():
+            if (old.value or {}).get("agent_id") == str(scope.agent_id):
+                s.delete(old)
+        s.add(
+            PlatformState(
+                key=_pending_key(state),
+                value={
+                    "verifier": verifier, "user_id": str(user_id), "at": datetime.now(UTC).isoformat(),
+                    "agent_id": str(scope.agent_id), "tenant_id": str(scope.tenant_id), "scopes": scopes,
+                    "back": back if back in BACK_PAGES else "connections",
+                },
+            )
+        )  # fmt: skip
+    return google.auth_url(settings.google_client_id, google_redirect_uri(), state, challenge, scopes)
+
+
 def http_client() -> httpx.Client:
     """Replaced in tests with a client that doesn't touch the network."""
     return httpx.Client(timeout=15)
@@ -258,10 +296,6 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
             "elevenlabs", checked_or_400(lambda: check.check_elevenlabs(body.api_key, http_client())), user_id
         )
 
-    def google_redirect_uri() -> str:
-        # The browser comes back through the web app's /api proxy, so the session cookie is sent.
-        return f"{get_settings().frontend_origin.rstrip('/')}/api/app/connections/google/callback"
-
     @router.post(
         "/google",
         summary="Save your Google OAuth client",
@@ -295,28 +329,11 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
     def google_start(
         _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
     ) -> dict[str, str]:
-        settings = runtime_settings()
-        if not (settings.google_client_id and settings.google_client_secret):
-            raise HTTPException(409, "Save your Google OAuth client first.")
-        verifier, challenge = google.pkce_pair()
-        state = secrets.token_urlsafe(24)
-        scope = scope_or_default()
+        from superaide.skills import calendar
+
         with session_scope() as s:
-            # Kept platform-wide under the state's hash: the callback arrives without a session and must
-            # find which owner's Ava (ADR 0009) the sign-in belongs to. Only the latest start per instance counts.
-            for old in s.scalars(select(PlatformState).where(PlatformState.key.like("google_pending:%"))).all():
-                if (old.value or {}).get("agent_id") == str(scope.agent_id):
-                    s.delete(old)
-            s.add(
-                PlatformState(
-                    key=_pending_key(state),
-                    value={
-                        "verifier": verifier, "user_id": str(user_id), "at": datetime.now(UTC).isoformat(),
-                        "agent_id": str(scope.agent_id), "tenant_id": str(scope.tenant_id),
-                    },
-                )
-            )  # fmt: skip
-        return {"url": google.auth_url(settings.google_client_id, google_redirect_uri(), state, challenge)}
+            events = calendar.actions_on(s)  # reconnecting keeps the right to change events, if it was given
+        return {"url": begin_google(user_id, events=events)}
 
     @router.get(
         "/google/callback",
@@ -330,13 +347,14 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
     def google_callback(code: str = "", state: str = "", error: str = "") -> RedirectResponse:
         # No session check here: the one-time state, made by the owner's own /start, is the proof. That way a
         # lapsed session still lands back on Connections with a message instead of a bare 401.
-        back = f"{get_settings().frontend_origin.rstrip('/')}/dashboard/connections"
         pending: dict[str, Any] = {}
         with session_scope() as s:
             row = s.get(PlatformState, _pending_key(state)) if state else None
             if row is not None:
                 pending = dict(row.value or {})
                 s.delete(row)  # one use only; a stray request can't wipe a real sign-in
+        page = BACK_PAGES.get(str(pending.get("back") or ""), BACK_PAGES["connections"])
+        back = f"{get_settings().frontend_origin.rstrip('/')}{page}"
         matches = bool(pending)
         fresh = (
             bool(pending.get("at")) and datetime.now(UTC) - datetime.fromisoformat(pending["at"]) < google.PENDING_TTL
@@ -359,15 +377,18 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
             tokens = google.exchange_code(
                 client_id=settings.google_client_id, client_secret=settings.google_client_secret, code=code,
                 verifier=str(pending["verifier"]), redirect_uri=google_redirect_uri(), client=http_client(),
+                scopes=list(pending.get("scopes") or google.SCOPES),
             )  # fmt: skip
         except google.ScopeNotGranted:
-            return RedirectResponse(f"{back}?google=no_calendar", status_code=303)
+            wanted_events = google.EVENTS_SCOPE in (pending.get("scopes") or [])
+            outcome = "no_actions" if wanted_events else "no_calendar"
+            return RedirectResponse(f"{back}?google={outcome}", status_code=303)
         except google.GoogleError:
             return RedirectResponse(f"{back}?google=failed", status_code=303)
         with session_scope() as s:
             store.save(
                 s, "google", {"refresh_token": str(tokens["refresh_token"])}, user_id=uuid.UUID(pending["user_id"]),
-                meta={"scopes": google.SCOPES},
+                meta={"scopes": sorted(set(str(tokens.get("scope", "")).split()))},
             )  # fmt: skip
         return RedirectResponse(f"{back}?google=connected", status_code=303)
 

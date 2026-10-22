@@ -587,3 +587,11 @@ def test_google_preflight_from_another_origin_gets_no_allow_origin(browser, goog
                  "Access-Control-Request-Headers": "content-type,x-requested-with"},
     )  # fmt: skip
     assert r.status_code == 400 and "access-control-allow-origin" not in r.headers
+
+
+def test_switching_calendar_actions_needs_the_csrf_header(browser, owner):
+    plain = browser(csrf=False)
+    plain.cookies.set("superaide_session", owner.cookies.get("superaide_session"))
+    body = {"setting": "actions", "on": True, "accepted": ["write_external", "send"]}
+    r = plain.post("/app/skills/superaide/google-calendar/options", json=body)
+    assert r.status_code == 403 and r.json()["detail"] == "Missing X-Requested-With header"
