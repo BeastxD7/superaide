@@ -102,7 +102,7 @@ def _turn_slots() -> threading.BoundedSemaphore:
 
 @dataclass
 class HandleResult:
-    mode: str  # dropped | duplicate | frozen | stranger | unconfirmed | known
+    mode: str  # dropped | duplicate | frozen | halted | stranger | unconfirmed | known
     reply: str | None = None
     notes: list[str] = field(default_factory=list)
 
@@ -147,6 +147,14 @@ class Agent:
                     )  # fmt: skip
             except IntegrityError:
                 return HandleResult("duplicate")
+
+            if sender.known and not sender.unconfirmed and (sender.relation == "manager" or self._is_owner(s, sender)):
+                from superaide.policy.breaker import halt, is_halt_word
+
+                if is_halt_word(msg.text):  # before any model sees it, and even when already frozen
+                    reply = halt(s, via=msg.provider)
+                    self._reply(s, ctx, aud, reply, thread)
+                    return HandleResult("halted", reply)
 
             if is_frozen(s):
                 audit(s, "pipeline", "frozen_no_reply", event_id=inbound.id)
