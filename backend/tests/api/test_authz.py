@@ -304,3 +304,22 @@ def test_the_owner_cannot_answer_a_recheck_for_someone_elses_fact_and_bad_answer
     assert owner.post(mine, json={"answer": "yes"}).status_code == 200
     assert owner.post(mine, json={"answer": "changed", "new_content": "Bluebird moved to Q4."}).status_code == 200
     assert owner.post(mine, json={"answer": "yes"}).status_code == 404  # retired by the change
+
+
+# --- the Glass brain (/app/brain) --------------------------------------------------------------
+
+BRAIN_ROUTES = {
+    ("GET", "/app/brain"),
+    ("GET", "/app/brain/share.svg"),
+    ("POST", "/app/brain/facts/{memory_id}/correct"),
+}
+
+
+def test_the_brain_routes_are_owner_routes_and_leak_nothing(app, browser, owner_data):
+    assert BRAIN_ROUTES <= set(owner_routes(app))  # so the 401, 403 and 200 sweeps above cover them too
+    stranger = browser()
+    signup(stranger, name="Mallory Tan", email="mallory@example.com")
+    for method, path in BRAIN_ROUTES:
+        r = stranger.request(method, fill_path(path), json={"text": "x"} if method == "POST" else None)
+        assert r.status_code == 403
+        _assert_no_owner_data(r, owner_data)

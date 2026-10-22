@@ -174,6 +174,9 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     from superaide.push.routes import make_router as make_push_router
 
     app.include_router(make_push_router())  # 404 unless PUSH_ENABLED (ADR 0011)
+    from superaide.app.brain_map import make_brain_router
+
+    app.include_router(make_brain_router(get_agent))
     from superaide.voice.routes import make_router as make_voice_router
 
     app.include_router(make_voice_router(get_agent))  # 404 unless VOICE_INTRO_V2 (ADR 0012)

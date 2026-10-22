@@ -1,0 +1,158 @@
+"""The Glass brain API (/app/brain): a map of what Ava knows, through the audience gate, as the owner."""
+
+from __future__ import annotations
+
+import uuid
+from datetime import UTC, datetime, timedelta
+
+import pytest
+from sqlalchemy import select
+
+from superaide.config import get_settings
+from superaide.db.models import Document, MemoryItem, Person
+from superaide.db.session import session_scope
+from superaide.knowledge.store import add_contact, remember_fact
+from tests.api.conftest import OTHER, OWNER, hire, signup
+from tests.api.test_many_owners import account
+
+
+@pytest.fixture(autouse=True)
+def many_owners_on(monkeypatch) -> None:
+    monkeypatch.setattr(get_settings(), "allow_many_owners", True)
+
+
+def owners(browser):
+    a, b = browser(), browser()
+    assert signup(a).status_code == 200 and hire(a).status_code == 200
+    assert signup(b, **OTHER).status_code == 200 and hire(b).status_code == 200
+    return a, b
+
+
+def seed() -> dict[str, str]:
+    owner_id = account(OWNER["email"]).person_id
+    with session_scope() as s:
+        owner = s.get(Person, owner_id)
+        assert owner is not None
+        chat = remember_fact(s, owner=owner, content="Shashank prefers calls before 11am.", category="preference")
+        doc = Document(
+            owner_person_id=owner_id, kind="pdf", title="resume.pdf", source="resume.pdf", sha256="b" * 64, text="x"
+        )
+        s.add(doc)
+        s.flush()
+        filed = remember_fact(
+            s, owner=owner, content="Shashank led Project Bluebird with Arjun.", category="work", source="document",
+            document=doc,
+        )  # fmt: skip
+        old = remember_fact(s, owner=owner, content="Shashank lives in Pune.", category="about")
+        assert chat and filed and old
+        old.created_at = datetime.now(UTC) - timedelta(days=400)
+        add_contact(s, owner=owner, name="Arjun Mehta", relationship="team")
+        # Rows that must never appear on this owner's map:
+        stranger = Person(display_name="Priya Tan", relation="contact")
+        s.add(stranger)
+        s.flush()
+        remember_fact(s, owner=stranger, content="Priya plans a surprise party.", category="about")
+        hidden = MemoryItem(  # about the owner, but only Priya may see it
+            content="Shashank is being considered for a board seat.",
+            subject_person_ids=[owner_id],
+            allowed_kind="persons",
+            allowed_person_ids=[stranger.id],
+        )
+        s.add(hidden)
+        return {"chat": str(chat.id), "filed": str(filed.id), "old": str(old.id)}
+
+
+def labels(map_: dict, kind: str) -> list[str]:
+    return [n["label"] for n in map_["nodes"] if n["type"] == kind]
+
+
+def test_the_map_has_people_topics_facts_and_where_they_came_from(browser):
+    a, _ = owners(browser)
+    ids = seed()
+    m = a.get("/app/brain").json()
+    assert set(labels(m, "fact")) == {
+        "Shashank prefers calls before 11am.",
+        "Shashank led Project Bluebird with Arjun.",
+        "Shashank lives in Pune.",
+    }
+    assert set(labels(m, "topic")) == {"preference", "work", "about"}
+    assert labels(m, "person") == ["Arjun Mehta"] and labels(m, "source") == ["resume.pdf"]
+    by_id = {n["id"]: n for n in m["nodes"]}
+    filed = by_id[f"fact:{ids['filed']}"]
+    assert filed["origin"] == "file" and filed["document"] == "resume.pdf"
+    assert by_id[f"fact:{ids['chat']}"]["origin"] == "you"
+    assert by_id[f"fact:{ids['old']}"]["freshness"] == 0.35 and by_id[f"fact:{ids['chat']}"]["freshness"] > 0.95
+    kinds = {(e["from"][:5], e["to"][:5], e["kind"]) for e in m["edges"]}
+    assert ("sourc", "fact:", "learned_from") in kinds and ("topic", "fact:", "about") in kinds
+    assert ("fact:", "perso", "mentions") in kinds  # "Arjun" appears in a fact
+    assert m["origins"]["file"]["count"] == 1 and m["origins"]["you"]["count"] == 2
+
+
+def test_a_fact_the_owner_may_not_see_is_never_rendered(browser):
+    """Canary: facts about others, and facts about the owner that only someone else may see, are not in the
+    response at all, in any field."""
+    a, b = owners(browser)
+    seed()
+    text = a.get("/app/brain").text
+    for secret in ("surprise party", "board seat", "Priya"):
+        assert secret not in text, secret
+    assert "Shashank" not in b.get("/app/brain").text  # and the other owner sees none of it
+
+
+def test_forgetting_moves_a_fact_to_the_forgotten_shelf(browser):
+    a, _ = owners(browser)
+    ids = seed()
+    assert a.post(f"/app/notebook/{ids['chat']}/forget").status_code == 200
+    m = a.get("/app/brain").json()
+    assert "Shashank prefers calls before 11am." not in labels(m, "fact")
+    assert [f["text"] for f in m["forgotten"]] == ["Shashank prefers calls before 11am."]
+
+
+def test_correcting_retires_the_old_fact_and_records_the_owners_words(browser):
+    a, _ = owners(browser)
+    ids = seed()
+    r = a.post(f"/app/brain/facts/{ids['old']}/correct", json={"text": "Shashank lives in Singapore."})
+    assert r.status_code == 200
+    m = a.get("/app/brain").json()
+    assert "Shashank lives in Pune." not in labels(m, "fact") and "Shashank lives in Singapore." in labels(m, "fact")
+    assert [f["text"] for f in m["forgotten"]] == ["Shashank lives in Pune."]
+    with session_scope() as s:
+        new = s.get(MemoryItem, uuid.UUID(r.json()["id"]))
+        assert new is not None and new.source == "owner_edit" and new.confidence == 1.0 and new.category == "about"
+    assert a.post(f"/app/brain/facts/{ids['old']}/correct", json={"text": "again"}).status_code == 404
+
+
+def test_correcting_checks_ownership_and_input(browser):
+    a, b = owners(browser)
+    ids = seed()
+    assert b.post(f"/app/brain/facts/{ids['old']}/correct", json={"text": "Hacked"}).status_code == 404
+    assert a.post(f"/app/brain/facts/{ids['old']}/correct", json={"text": "   "}).status_code == 422
+    assert a.post(f"/app/brain/facts/{ids['old']}/correct", json={"text": "x" * 2001}).status_code == 422
+    assert a.post(f"/app/brain/facts/{uuid.uuid4()}/correct", json={"text": "x"}).status_code == 404
+    assert a.post("/app/brain/facts/nope/correct", json={"text": "x"}).status_code == 422
+    with session_scope() as s:
+        assert s.scalar(select(MemoryItem).where(MemoryItem.content == "Hacked")) is None
+        assert s.get(MemoryItem, uuid.UUID(ids["old"])).valid_to is None  # type: ignore[union-attr]
+
+
+def test_the_share_picture_has_no_names_or_text(browser):
+    a, _ = owners(browser)
+    seed()
+    r = a.get("/app/brain/share.svg")
+    assert r.status_code == 200 and r.headers["content-type"].startswith("image/svg+xml")
+    for private in ("Shashank", "Bluebird", "Arjun", "Pune", "resume", "11am", "Priya", "surprise"):
+        assert private not in r.text, private
+    assert "<circle" in r.text and "things Ava knows" in r.text
+
+
+def test_the_brain_routes_need_the_owner(browser):
+    anonymous = browser()
+    unhired = browser()
+    signup(unhired, name="Mallory Tan", email="mallory@example.com")
+    for method, path in (
+        ("GET", "/app/brain"),
+        ("GET", "/app/brain/share.svg"),
+        ("POST", f"/app/brain/facts/{uuid.uuid4()}/correct"),
+    ):
+        assert anonymous.request(method, path, json={"text": "x"} if method == "POST" else None).status_code == 401
+        assert unhired.request(method, path, json={"text": "x"} if method == "POST" else None).status_code == 403
