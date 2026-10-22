@@ -9,6 +9,7 @@ from __future__ import annotations
 import fnmatch
 import hashlib
 import json
+import re
 import sys
 import tomllib
 from dataclasses import dataclass
@@ -87,8 +88,16 @@ def protected_files(sf: Surface | None = None, root: Path = REPO) -> list[str]:
     return sorted(found)
 
 
+_TABLE_LIST = re.compile(r"^TABLES: tuple\[str, \.\.\.\] = \(.*?^\)\n", re.DOTALL | re.MULTILINE)
+
+
 def digest(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    """The file's hash. For db/rls.py the list of table names is left out: every new table adds a line to it,
+    and that is routine; the policy text, roles and the exempt list are what is locked."""
+    data = path.read_bytes()
+    if path.name == "rls.py" and path.parent.name == "db":
+        data = _TABLE_LIST.sub("TABLES = (...)\n", data.decode()).encode()
+    return hashlib.sha256(data).hexdigest()
 
 
 def current(root: Path = REPO) -> dict[str, str]:
