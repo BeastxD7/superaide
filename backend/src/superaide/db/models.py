@@ -360,6 +360,10 @@ class Approval(Scoped, Base):
     status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | approved | rejected
     decided_by: Mapped[str | None] = mapped_column(String(100), nullable=True)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Issue #111: the hash of kind + payload when the request was opened (policy/binding.py), and when the
+    # request stops being answerable (empty = never).
+    bound_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class AuditLog(Scoped, Base):

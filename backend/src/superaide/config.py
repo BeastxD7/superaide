@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     # audited but the send goes ahead (until the check is calibrated against real Gmail). strict: a
     # mismatch is not sent.
     approval_binding: Literal["off", "record", "strict"] = "record"
+    # A request nobody answers within this many hours can no longer be approved (0 = never expires). Off by
+    # default: an old "yes" to a stale card is exactly what this is for, but how long is the owner's call.
+    approval_ttl_hours: int = Field(default=0, ge=0, le=24 * 90)
 
     # Circuit breaker (#140). Off by default. When on, more than `circuit_breaker_limit` deletes or sends
     # carried out inside `circuit_breaker_window_seconds` freeze this owner's Ava (the kill switch), and the

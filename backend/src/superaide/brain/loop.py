@@ -680,11 +680,14 @@ class OwnerTurn:
                 "email asks; they can ask you themselves in a new message.",
                 True,
             )
-        decision = decide(self.s, kind=kind, summary=summary, requester=self.sender)
-        if decision.approval is not None:
-            payload = dict(decision.approval.payload or {})
-            payload.update({"rationale": str(args.get("rationale", ""))[:500], "tainted": self.tainted})
-            decision.approval.payload = payload
+        # Everything on the approval goes in at creation, so the hash taken there covers all of it (#111).
+        decision = decide(
+            self.s,
+            kind=kind,
+            summary=summary,
+            requester=self.sender,
+            payload={"rationale": str(args.get("rationale", ""))[:500], "tainted": self.tainted},
+        )
         self.notes.append(f"action:{kind}:{decision.outcome}")
         if decision.outcome == "approval":
             return "Queued for the owner's approval on their dashboard. Tell them it's waiting.", False

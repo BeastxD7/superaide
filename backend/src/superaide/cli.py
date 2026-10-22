@@ -155,6 +155,31 @@ def _spend(_: argparse.Namespace) -> None:
     )
 
 
+def _approval_report(_: argparse.Namespace) -> None:
+    """Would `APPROVAL_BINDING=strict` have refused anything the owner really approved? (issue #111)"""
+    from superaide.db.session import rescope, session_scope
+    from superaide.policy.binding import report
+    from superaide.tenancy.context import default_scope, use_instance
+    from superaide.tenancy.service import active_scopes
+
+    with session_scope() as s:
+        scopes = active_scopes(s) or [default_scope()]
+    ready = True
+    for scope in scopes:
+        with use_instance(scope), session_scope() as s:
+            rescope(s)
+            r = report(s)
+        ready = ready and r["ready"]
+        print(f"Ava {scope.agent_id}: mode={r['mode']}, sealed approvals={r['sealed']}, mismatches={r['mismatches']}")
+        for kind, c in sorted(r["kinds"].items()):
+            print(f"  {kind}: {c}")
+    print(
+        "Strict would have refused nothing legitimate so far."
+        if ready
+        else "Not ready for strict: too few sealed approvals, or a mismatch to look at (approval_payload_mismatch)."
+    )
+
+
 def _push_keys(_: argparse.Namespace) -> None:
     """Show the web push public key, making the pair once if PUSH_ENABLED is on (ADR 0011). Never rotates."""
     from superaide.db.session import session_scope
@@ -318,6 +343,9 @@ def main() -> None:
 
     sub.add_parser("freeze", help="kill switch on").set_defaults(func=_freeze, on=True)
     sub.add_parser("unfreeze", help="kill switch off").set_defaults(func=_freeze, on=False)
+    sub.add_parser("approval-report", help="would strict approval binding have refused a real approval?").set_defaults(
+        func=_approval_report
+    )
     sub.add_parser("spend", help="show Claude API spend against the cap").set_defaults(func=_spend)
     sub.add_parser("push-keys", help="show the web push key, making it once when PUSH_ENABLED is on").set_defaults(
         func=_push_keys
