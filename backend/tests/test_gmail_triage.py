@@ -232,3 +232,14 @@ def test_only_a_verified_known_sender_is_classified_by_the_model(owner_client, g
     with session_scope() as s:
         gmail_inbox.poll(s, llm=object(), model="m", ready=True)
     assert seen == ["Daniel Kim:True", "Daniel Kim:False"]  # the unverified copy gets rules only
+
+
+def test_a_poll_that_blows_up_still_queues_the_next_one(owner_client, gmail_fake, flags, monkeypatch):
+    connect()
+    with session_scope() as s:
+        gmail_inbox.ensure_scheduled(s)
+    monkeypatch.setattr(gmail_inbox, "poll", lambda *a, **k: 1 / 0)
+    assert run_due(datetime.now(UTC) + timedelta(minutes=get_settings().gmail_poll_minutes + 1)) >= 1
+    with session_scope() as s:
+        jobs = list(s.scalars(select(Job).where(Job.kind == "gmail_poll")))
+        assert sorted(j.status for j in jobs) == ["done", "queued"]

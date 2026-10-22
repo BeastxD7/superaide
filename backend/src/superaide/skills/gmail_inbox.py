@@ -213,8 +213,8 @@ def _job(session: Session, job: Job) -> None:
             settings = runtime_settings()
             ready = brain_ready(settings)
             poll(session, llm=build_llm(settings) if ready else None, model=settings.model_triage, ready=ready)
-    except (google.GoogleError, gmail.NotReady) as exc:  # Gmail away or access removed: try next time
-        log.warning("gmail poll: %s", exc)
+    except Exception as exc:  # any failure: the chain must go on (issue #86), so never let a poll raise
+        log.warning("gmail poll: %s", exc, exc_info=not isinstance(exc, (google.GoogleError, gmail.NotReady)))
         audit(session, "skills", "gmail_poll_failed", error=type(exc).__name__)
     finally:
         ensure_scheduled(session, max(datetime.now(UTC), job.run_at) + timedelta(seconds=1))
