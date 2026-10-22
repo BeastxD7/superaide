@@ -26,7 +26,14 @@ export type Me = {
   onboarding: { step: string; done: boolean }
   brain: 'claude' | 'offline'
   paused: boolean
-  channels: { web: boolean; telegram: boolean; telegram_available: boolean; slack: boolean }
+  channels: {
+    web: boolean
+    telegram: boolean
+    telegram_available: boolean
+    slack: boolean
+    // Whether Telegram and Slack still accept the saved token. Optional: an older API doesn't send it.
+    health?: Partial<Record<'telegram' | 'slack', { status: 'ok' | 'auth_failed' | 'unreachable' }>>
+  }
 }
 
 export type SharedDoc = {

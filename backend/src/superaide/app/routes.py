@@ -26,6 +26,7 @@ from superaide.app.catalog import catalog, find
 from superaide.app.onboarding import SHARE_LABELS, Onboarder, documents_view
 from superaide.app.stream import stream_turn
 from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header
+from superaide.channels import health
 from superaide.config import get_settings
 from superaide.db.models import (
     Approval,
@@ -217,6 +218,9 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                     "telegram": "telegram" in providers,
                     "telegram_available": bool(telegram_username(settings.telegram_bot_token)),
                     "slack": "slack" in providers,
+                    # Whether each service still accepts our token (stored, never fetched here): "Linked to
+                    # you" on Home means nothing if Telegram rejects the bot token.
+                    "health": {p: health.get(s, p) for p in health.PROVIDERS},
                 },
             }
 

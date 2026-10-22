@@ -4,8 +4,10 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft, ShieldCheck } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { useEffect, useState, type FormEvent } from 'react'
-import { AppError, call, type AgentCard } from '@/lib/api'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { call, type AgentCard } from '@/lib/api'
+import { LoadError } from '@/components/load-state'
+import { errorMessage } from '@/lib/action'
 import type { Session } from '@/lib/session-context'
 import { Orb } from '@/components/Orb'
 import { homeFor } from '@/lib/session'
@@ -28,11 +30,24 @@ export function Hire({ slug, session }: { slug: string; session: Session }) {
   const [agreed, setAgreed] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const account = session.account
 
+  // The agent card holds the notice the owner must agree to: until it has loaded, the form stays shut.
+  const loadAgent = useCallback(
+    () =>
+      call<AgentCard[]>('/agents').then(
+        (all) => {
+          setAgent(all.find((a) => a.slug === slug) ?? null)
+          setLoadError(null)
+        },
+        (e: unknown) => setLoadError(errorMessage(e)),
+      ),
+    [slug],
+  )
   useEffect(() => {
-    call<AgentCard[]>('/agents').then((all) => setAgent(all.find((a) => a.slug === slug) ?? null))
-  }, [slug])
+    void loadAgent()
+  }, [loadAgent])
 
   // Step 1 is having an account. Already hired: carry on where you left off.
   useEffect(() => {
@@ -50,7 +65,7 @@ export function Hire({ slug, session }: { slug: string; session: Session }) {
       setStage('hired')
       await session.refresh()
     } catch (err) {
-      setError(err instanceof AppError ? err.message : String(err))
+      setError(errorMessage(err))
     } finally {
       setBusy(false)
     }
@@ -102,7 +117,11 @@ export function Hire({ slug, session }: { slug: string; session: Session }) {
               <h1 className="text-4xl font-medium tight">One thing before you start, {first}</h1>
               <p className="mt-2 text-body">Here's how {agentName} handles what you tell it.</p>
               <div className="glass mt-8 rounded-[24px] border border-white/70 p-6">
-                <p className="leading-relaxed text-ink">{agent?.notice}</p>
+                {loadError && !agent ? (
+                  <LoadError what={`${agentName}'s details`} error={loadError} onRetry={loadAgent} />
+                ) : (
+                  <p className="leading-relaxed text-ink">{agent?.notice}</p>
+                )}
                 <ul className="mt-5 space-y-3 text-sm">
                   {(agent?.never ?? []).map((n) => (
                     <li key={n} className="flex items-center gap-3 text-body">
@@ -117,6 +136,7 @@ export function Hire({ slug, session }: { slug: string; session: Session }) {
                   type="checkbox"
                   checked={agreed}
                   onChange={(e) => setAgreed(e.target.checked)}
+                  disabled={!agent}
                   className="mt-0.5 size-5 accent-violet-600"
                 />
                 <span>I understand {agentName} is an AI, and I agree to how it handles what I share.</span>

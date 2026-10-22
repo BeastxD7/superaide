@@ -3,7 +3,9 @@
 import { AlertTriangle, AudioLines, Check, ChevronDown, ExternalLink, KeyRound, ShieldAlert } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { AppError, call, type Me } from '@/lib/api'
+import { call, type Me } from '@/lib/api'
+import { ActionError, LoadError } from '@/components/load-state'
+import { errorMessage, useAction, UserError } from '@/lib/action'
 import { BrandIcon } from '@/components/BrandIcon'
 import { Button, Notice } from '@/components/site'
 import { GoogleCalendarRow, type GoogleGuide, type GoogleService } from '@/features/workspace/GoogleCalendar'
@@ -89,15 +91,18 @@ export function Connections({ agentName, me, refreshMe }: { agentName: string; m
           const params = new URLSearchParams(window.location.search)
           const outcome = params.get('google')
           if (outcome) {
-            setGoogleOutcome(outcome)
-            setOpen('google')
+            // Only say "connected" if Google really is: anyone can send a link with ?google=connected.
+            if (outcome !== 'connected' || s.services.google.connected) {
+              setGoogleOutcome(outcome)
+              setOpen('google')
+            }
             params.delete('google')
             const rest = params.toString()
             window.history.replaceState(window.history.state, '', `${window.location.pathname}${rest ? `?${rest}` : ''}${window.location.hash}`)
           }
         })
         .catch((e: unknown) => {
-          setError(e instanceof AppError ? e.message : String(e))
+          setError(errorMessage(e))
         }),
     [reloadLinked],
   )
@@ -107,7 +112,12 @@ export function Connections({ agentName, me, refreshMe }: { agentName: string; m
   }, [load])
 
 
-  if (!status) return error ? <Notice tone="error">{error}</Notice> : <p className="text-sm text-muted">Checking connections…</p>
+  if (!status)
+    return error ? (
+      <LoadError what="your connections" error={error} onRetry={() => load()} />
+    ) : (
+      <p className="text-sm text-muted">Checking connections…</p>
+    )
 
   const rows = [
     { key: 'anthropic', brand: 'claude', name: `Claude, ${agentName}'s brain`, why: 'Real replies and reading your files' },
@@ -254,32 +264,25 @@ function ConnectForm({
   onLinkedChanged: () => Promise<void>
 }) {
   const [values, setValues] = useState<Record<string, string>>({})
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  // Saving and disconnecting share one busy flag and one error line, shown whichever form is on screen.
+  const { run, busy, error } = useAction()
+  const [failed, setFailed] = useState<'save' | 'disconnect'>('save')
   const fields = FIELDS[provider]
+  const label = NAMES[provider]
 
-  async function save(e: FormEvent) {
+  function save(e: FormEvent) {
     e.preventDefault()
-    setBusy(true)
-    setError(null)
-    try {
+    setFailed('save')
+    void run(async () => {
       const next = await call<Status>(`/connections/${provider}`, { method: 'POST', json: values })
       setValues({})
       await onSaved(next)
-    } catch (err) {
-      setError(err instanceof AppError ? err.message : String(err))
-    } finally {
-      setBusy(false)
-    }
+    })
   }
 
-  async function disconnect() {
-    setBusy(true)
-    try {
-      await onSaved(await call<Status>(`/connections/${provider}/disconnect`, { method: 'POST' }))
-    } finally {
-      setBusy(false)
-    }
+  function disconnect() {
+    setFailed('disconnect')
+    void run(async () => onSaved(await call<Status>(`/connections/${provider}/disconnect`, { method: 'POST' })))
   }
 
   return (
@@ -340,7 +343,6 @@ function ConnectForm({
                 />
               </label>
             ))}
-            {error && <Notice tone="error">{error}</Notice>}
             <Button tone="violet" type="submit" className="w-full py-3" disabled={busy || fields.some((f) => !(values[f.name] ?? '').trim())}>
               {busy ? 'Checking…' : rejected(service) ? 'Check and reconnect' : 'Check and save'}
             </Button>
@@ -348,9 +350,12 @@ function ConnectForm({
           </form>
         </>
       )}
+      <div className="mt-3 empty:hidden">
+        <ActionError action={failed === 'save' ? `connect ${label}` : `disconnect ${label}`} error={error} />
+      </div>
       {service.connected && service.via === 'app' && (
-        <button onClick={() => void disconnect()} disabled={busy} className="mt-3 w-full rounded-full py-2 text-sm text-muted hover:text-danger">
-          Disconnect {NAMES[provider]}
+        <button onClick={disconnect} disabled={busy} className="mt-3 w-full rounded-full py-2 text-sm text-muted hover:text-danger">
+          Disconnect {label}
         </button>
       )}
     </div>
@@ -361,6 +366,14 @@ function ConnectForm({
 function TelegramPairing({ me, refreshMe, username }: { me: Me; refreshMe: () => Promise<Me | null>; username: string | null }) {
   const [url, setUrl] = useState<string | null>(null)
   const [linked, setLinked] = useState(me.channels.telegram)
+  const { run, busy, error } = useAction()
+
+  const link = () =>
+    run(async () => {
+      const r = await call<{ available: boolean; url?: string }>('/channels/telegram', { method: 'POST' })
+      if (!r.url) throw new UserError("Telegram didn't answer for this bot. Check it is still connected.")
+      setUrl(r.url)
+    })
 
   useEffect(() => {
     if (!url || linked) return
@@ -388,14 +401,17 @@ function TelegramPairing({ me, refreshMe, username }: { me: Me; refreshMe: () =>
         </a>
       ) : (
         <button
-          onClick={async () => {
-            const r = await call<{ available: boolean; url?: string }>('/channels/telegram', { method: 'POST' })
-            if (r.url) setUrl(r.url)
-          }}
-          className="mt-2 rounded-full bg-ink px-3 py-1.5 text-xs font-medium text-white"
+          onClick={() => void link()}
+          disabled={busy}
+          className="mt-2 rounded-full bg-ink px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
         >
           Link my Telegram
         </button>
+      )}
+      {error && (
+        <div className="mt-2">
+          <ActionError action="make the link" error={error} />
+        </div>
       )}
     </div>
   )
