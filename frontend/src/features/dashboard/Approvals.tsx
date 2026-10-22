@@ -12,6 +12,7 @@ import { AppError, call, type ApprovalItem } from '@/lib/api'
 const KIND_LABEL: Record<string, string> = {
   publish_post: 'Publish a post',
   message_someone_else: 'Message someone for you',
+  gmail_send: 'Send an email from your Gmail',
   grant_access: 'Grant access',
   delete_memory: 'Delete something she remembers',
   ask_reply: 'Reply to someone from your Ask link',

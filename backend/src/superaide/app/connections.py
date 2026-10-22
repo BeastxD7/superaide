@@ -308,6 +308,10 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
             return RedirectResponse(f"{back}?google=expired", status_code=303)
         owner_scope = InstanceScope(tenant_id=uuid.UUID(pending["tenant_id"]), agent_id=uuid.UUID(pending["agent_id"]))
         with use_instance(owner_scope):  # the owner who started the sign-in, whoever's browser comes back
+            if pending.get("purpose") == "gmail":  # the Gmail capability's sign-in (app/gmail.py)
+                from superaide.app.gmail import finish
+
+                return finish(code, pending)
             return _finish_google(code, pending, back)
 
     def _finish_google(code: str, pending: dict[str, Any], back: str) -> RedirectResponse:

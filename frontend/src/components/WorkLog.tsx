@@ -29,7 +29,13 @@ const TOOL_ICON: Record<string, LucideIcon> = {
   verify: BadgeCheck,
 }
 // Tools that talk to a branded service show its logo instead.
-const TOOL_BRAND: Record<string, Brand> = { calendar_events: 'googlecalendar' }
+const TOOL_BRAND: Record<string, Brand> = {
+  calendar_events: 'googlecalendar',
+  gmail_search: 'gmail',
+  gmail_read_thread: 'gmail',
+  gmail_draft_reply: 'gmail',
+  gmail_send: 'gmail',
+}
 
 // What Ava did while answering: each tool or skill call with how it went, the lines where
 // she says what she's doing, and her reasoning. Live while she works, folded away after.

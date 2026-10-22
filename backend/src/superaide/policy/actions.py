@@ -107,6 +107,13 @@ class ApprovalError(Exception):
 EXECUTORS: dict[str, Callable[[Session, Approval], str]] = {}
 
 
+def _load_executors() -> None:
+    """Capabilities that carry out approved actions (imported here, not at the top: they import policy)."""
+    from superaide.skills import gmail
+
+    EXECUTORS.setdefault("gmail_send", gmail.send_approved)
+
+
 def resolve(session: Session, approval: Approval, *, approve: bool, decided_by: str) -> Approval:
     """Record the owner's yes or no on a pending approval, then carry it out if it can be."""
     if approval.status != "pending":
@@ -116,6 +123,7 @@ def resolve(session: Session, approval: Approval, *, approve: bool, decided_by: 
     approval.decided_at = datetime.now(UTC)
     payload = dict(approval.payload or {})
     if approve:
+        _load_executors()
         executor = EXECUTORS.get(approval.kind)
         payload["result"] = executor(session, approval) if executor else "Approved. Nothing can carry this out yet."
     approval.payload = payload

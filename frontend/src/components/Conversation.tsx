@@ -164,7 +164,14 @@ function AgentBubble({
   )
 }
 
-const SOURCE_KIND: Record<SourceRef['kind'], string> = { memory: 'Note', message: 'Message', web: 'Web', other: 'Source' }
+const SOURCE_KIND: Record<SourceRef['kind'], string> = {
+  memory: 'Note',
+  message: 'Message',
+  web: 'Web',
+  calendar: 'Calendar',
+  email: 'Email',
+  other: 'Source',
+}
 
 // Where the answer came from: numbered to match the [1] [2] marks in the text. Web
 // sources open the page; notes and messages show the exact words that were used.

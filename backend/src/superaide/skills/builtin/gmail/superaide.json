@@ -1,0 +1,84 @@
+{
+  "$schema": "../../manifest.schema.json",
+  "id": "superaide/gmail",
+  "version": "1.0.0",
+  "publisher": "Superaide",
+  "tier": "official",
+  "title": "Gmail",
+  "summary": "Ava searches and reads your Gmail when you ask, sorts new mail into what needs you, and can save reply drafts in your Gmail. Nothing is sent without your OK.",
+  "tools": [
+    {
+      "name": "gmail_search",
+      "description": "Search the owner's Gmail with Gmail's search syntax. Returns emails you can cite (sender, subject, date, a short preview).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {"type": "string", "description": "A Gmail search, e.g. 'is:unread', 'from:daniel newer_than:7d'"},
+          "limit": {"type": "integer", "description": "How many emails (1 to 10)", "minimum": 1, "maximum": 10}
+        },
+        "required": ["query"],
+        "additionalProperties": false
+      },
+      "effect": "read_private"
+    },
+    {
+      "name": "gmail_read_thread",
+      "description": "Read one email thread (by the thread id from gmail_search). Returns each message's own text, without quoted earlier mail.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {"thread_id": {"type": "string", "description": "The thread id from gmail_search"}},
+        "required": ["thread_id"],
+        "additionalProperties": false
+      },
+      "effect": "read_private"
+    },
+    {
+      "name": "gmail_draft_reply",
+      "description": "Save a reply in the owner's Gmail drafts, in that thread, to its other participants. Never sends.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "thread_id": {"type": "string", "description": "The thread id from gmail_search"},
+          "text": {"type": "string", "description": "The reply's text"}
+        },
+        "required": ["thread_id", "text"],
+        "additionalProperties": false
+      },
+      "effect": "write_own"
+    },
+    {
+      "name": "gmail_send",
+      "description": "Ask the owner to approve sending a reply in a thread. Saves it as a draft and waits for their OK; it is sent only after they approve.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "thread_id": {"type": "string", "description": "The thread id from gmail_search"},
+          "text": {"type": "string", "description": "The reply's text"}
+        },
+        "required": ["thread_id", "text"],
+        "additionalProperties": false
+      },
+      "effect": "send"
+    }
+  ],
+  "connectors": [
+    {
+      "provider": "google",
+      "scopes": ["https://www.googleapis.com/auth/gmail.readonly", "https://www.googleapis.com/auth/gmail.compose"]
+    }
+  ],
+  "network": ["oauth2.googleapis.com", "gmail.googleapis.com"],
+  "settings": {
+    "type": "object",
+    "properties": {
+      "drafts": {
+        "type": "boolean",
+        "default": false,
+        "description": "Let Ava save reply drafts in your Gmail (asks Google for permission to manage drafts)"
+      }
+    },
+    "additionalProperties": false
+  },
+  "default_installed": false,
+  "removable": true
+}

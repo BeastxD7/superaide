@@ -130,6 +130,9 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     from superaide.app.providers import make_router as make_providers_router
 
     app.include_router(make_providers_router(get_agent, apply_connections))
+    from superaide.app.gmail import make_router as make_gmail_router
+
+    app.include_router(make_gmail_router(get_agent))
     from superaide.triage.routes import make_router as make_triage_router
 
     app.include_router(make_triage_router(get_agent))  # 404 everywhere while TRIAGE_ENABLED is off

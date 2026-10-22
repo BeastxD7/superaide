@@ -38,8 +38,16 @@ FIELDS: dict[tuple[str, str], str] = {
     ("google", "client_id"): "google_client_id",
     ("google", "client_secret"): "google_client_secret",
     ("google", "refresh_token"): "google_refresh_token",
+    ("google", "gmail_refresh_token"): "gmail_refresh_token",  # the Gmail capability's own sign-in
 }
-SECRET_NAMES = {"api_key", "bot_token", "app_token", "client_secret", "refresh_token"}  # ids aren't secrets
+SECRET_NAMES = {
+    "api_key",
+    "bot_token",
+    "app_token",
+    "client_secret",
+    "refresh_token",
+    "gmail_refresh_token",
+}  # ids aren't secrets
 # The deployment's own Google OAuth client (the app owners sign in to, for sign-in and Calendar). It
 # spends nothing and reads nothing by itself, so a hosted server offers it to every owner; the
 # refresh token from each owner's calendar sign-in stays theirs.

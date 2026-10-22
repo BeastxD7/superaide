@@ -237,3 +237,32 @@ def test_google_sign_in_gives_an_owner_s_data_to_nobody(browser, owner_data, mon
     r = anonymous.get("/auth/google/callback", params={"code": "x", "state": "y"}, follow_redirects=False)
     assert r.status_code == 303 and "superaide_session" not in r.headers.get("set-cookie", "")
     assert anonymous.get("/app/me").status_code == 401
+
+
+# --- the Gmail capability (/app/gmail) ---------------------------------------------------------
+
+GMAIL_ROUTES = {
+    ("GET", "/app/gmail"),
+    ("POST", "/app/gmail/connect"),
+    ("POST", "/app/gmail/drafts"),
+    ("POST", "/app/gmail/addresses"),
+}
+
+
+def test_the_gmail_routes_are_owner_routes(app, browser, owner):
+    assert GMAIL_ROUTES <= set(owner_routes(app))  # so every check above covers them too
+    stranger = browser()
+    signup(stranger, name="Mallory Tan", email="mallory@example.com")
+    for method, path in GMAIL_ROUTES:
+        assert browser().request(method, path, json={}).status_code == 401
+        assert stranger.request(method, path, json={}).status_code == 403
+
+
+def test_an_owner_cannot_attach_an_address_to_someone_who_isnt_their_contact(owner):
+    with session_scope() as s:
+        someone = Person(display_name="Priya Tan", relation="contact")  # a Person, but not the owner's contact
+        s.add(someone)
+        s.flush()
+        pid = str(someone.id)
+    r = owner.post("/app/gmail/addresses", json={"person_id": pid, "email": "priya@example.com"})
+    assert r.status_code == 404

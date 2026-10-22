@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -434,6 +435,20 @@ def test_reads_do_not_need_the_csrf_header(browser, owner):
     plain = browser(csrf=False)
     plain.cookies.set("superaide_session", owner.cookies.get("superaide_session"))
     assert plain.get("/auth/me").status_code == 200 and plain.get("/app/me").status_code == 200
+
+
+def test_the_gmail_routes_need_the_csrf_header_and_refuse_bad_input(browser, owner):
+    plain = browser(csrf=False)
+    plain.cookies.set("superaide_session", owner.cookies.get("superaide_session"))
+    for path in ("/app/gmail/connect", "/app/gmail/drafts", "/app/gmail/addresses"):
+        assert plain.post(path, json={}).status_code == 403
+    assert owner.post("/app/gmail/drafts", json={"enabled": "maybe"}).status_code == 422
+    assert owner.post("/app/gmail/drafts", json={}).status_code == 422
+    for body in ({"person_id": "x", "email": "a@b.co"}, {"person_id": str(uuid.uuid4()), "email": "a" * 300},
+                 {"person_id": str(uuid.uuid4()), "email": "not an email"}, {"email": "a@b.co"}):  # fmt: skip
+        assert owner.post("/app/gmail/addresses", json=body).status_code == 422, body
+    assert owner.post("/app/gmail/addresses", json={"person_id": str(uuid.uuid4()), "email": "a\u0000@b.co"}
+                      ).status_code in (400, 422)  # fmt: skip
 
 
 ALLOWED = "http://localhost:3000"

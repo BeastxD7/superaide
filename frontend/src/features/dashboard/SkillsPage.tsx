@@ -14,6 +14,7 @@ import { useSession } from '@/lib/session-context'
 // Capabilities that wrap a branded service show that service's logo; the rest keep the generic piece.
 const SKILL_BRAND: Record<string, Brand> = {
   'superaide/google-calendar': 'googlecalendar',
+  'superaide/gmail': 'gmail',
 }
 
 export function SkillsPage() {

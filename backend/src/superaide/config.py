@@ -145,6 +145,13 @@ class Settings(BaseSettings):
     # verify), and an interrupt escalates to the owner until acknowledged. What the sender is told
     # doesn't change until the pipeline hook (TR5) lands.
     triage_enabled: bool = False
+    # Gmail inbox triage (the Gmail capability): each owner's new inbox mail is read with history.list
+    # every few minutes and goes through the same triage. Needs TRIAGE_ENABLED too. Off: Gmail is
+    # read only when the owner asks in chat.
+    gmail_triage_enabled: bool = False
+    gmail_poll_minutes: int = 5
+    # The owner's Gmail sign-in (same OAuth client as Calendar); kept per instance in the vault.
+    gmail_refresh_token: str = ""
 
     # "Ask my Ava" link (docs/research/AGI era growth ideas.md, idea 1). Off: /p/ask/* and
     # /app/ask-link/* answer 404 (owner routes still 401/403 first). On: an owner can publish a
