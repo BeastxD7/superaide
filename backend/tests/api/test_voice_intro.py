@@ -91,7 +91,7 @@ def call_state() -> dict[str, Any]:
 def say(client, *, audio: bytes | None = WAV, text: str = "", heard: str | None = None):
     data = {"text": text, "lang": "en-GB"}
     if heard is not None:
-        data["heard"] = heard
+        data["heard"], data["interrupted"] = heard, "true"
     files = {"audio": ("answer.wav", audio, "audio/wav")} if audio is not None else None
     return events(client.post("/app/intro/voice/turn", data=data, files=files))
 
@@ -191,6 +191,12 @@ def test_barge_in_keeps_only_what_the_owner_heard(owner, voice_on, scripted):
     interrupted = [t for t in turns if t.get("interrupted")]
     assert interrupted and interrupted[0]["text"].startswith("Hello Shashank, I'm Ava. Thank you")
     assert any("[they interrupted here]" in m["content"] for m in seen[-1]["messages"])
+
+
+def test_talking_again_before_ava_answered_marks_her_reply_unheard(owner, voice_on):
+    events(owner.post("/app/intro/voice/start", json={}))
+    say(owner, audio=None, text="I'm a designer.", heard="")
+    assert call_state()["turns"][0] == {"role": "ava", "text": "…", "interrupted": True}
 
 
 def test_a_failing_model_falls_back_to_the_script(owner, voice_on, agent, monkeypatch):

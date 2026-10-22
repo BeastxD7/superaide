@@ -107,10 +107,10 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         "/turn",
         summary="Say something on the call",
         description=(
-            "One utterance, as multipart form data: `audio` (what the microphone heard, transcribed on the "
-            "server) or `text` (what the browser's own speech recognition heard, or what was typed); `heard` "
-            "when the owner talked over Ava (the part of her reply they heard); `lang`. Streams `transcript`, "
-            "`sentence`, `audio` and `done` events. Audio is never stored."
+            "One utterance, as multipart form data: `audio` (what the microphone heard, transcribed on "
+            "the server) or `text` (what the browser's own speech recognition heard, or what was typed); "
+            "`interrupted` and `heard` when the owner talked over Ava (the part of her reply they heard); "
+            "`lang`. Streams `transcript`, `sentence`, `audio` and `done` events. Audio is never stored."
         ),
         response_class=StreamingResponse,
     )
@@ -118,6 +118,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         audio: UploadFile | None = File(default=None),
         text: str = Form(default="", max_length=4000),
         heard: str | None = Form(default=None, max_length=4000),
+        interrupted: bool = Form(default=False),
         lang: str = Form(default="en-US", max_length=20),
         person_id: uuid.UUID = Depends(owner_on_call),
     ) -> StreamingResponse:
@@ -136,7 +137,11 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             raise HTTPException(422, "Say or type something first.")
         clean = text.replace("\x00", "")
         t = Turn(
-            audio=data, mime=mime, text=clean, heard=heard.replace("\x00", "") if heard else None, lang=_lang(lang)
+            audio=data,
+            mime=mime,
+            text=clean,
+            heard=(heard or "").replace("\x00", "") if (interrupted or heard) else None,
+            lang=_lang(lang),
         )
         return StreamingResponse(
             stream(voice().turn(person_id, t)), media_type="text/event-stream", headers=STREAM_HEADERS

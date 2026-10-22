@@ -195,7 +195,10 @@ export function VoiceIntro({
     if (fields.audio) form.append('audio', fields.audio, 'answer.wav')
     if (fields.text) form.append('text', fields.text)
     form.append('lang', lang)
-    if (st.pendingHeard !== null) form.append('heard', st.pendingHeard)
+    if (st.pendingHeard !== null) {
+      form.append('interrupted', 'true')
+      form.append('heard', st.pendingHeard)
+    }
     st.pendingHeard = null
     setPhase('thinking')
     void exchange('/intro/voice/turn', form)
