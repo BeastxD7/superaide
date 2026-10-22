@@ -77,6 +77,5 @@ test('the "Infant to Adult" band is shown in full on a phone, not cut off at the
     const box = el.parentElement!.getBoundingClientRect()
     return Math.max(el.scrollWidth - el.clientWidth, 0) + Math.max(el.getBoundingClientRect().right - box.right, 0)
   })
-  test.fail(true, 'BUG: on a phone the decorative "Infant to Adult" heading is wider than its band and is cut off ("Infant to Adul")')
   expect(overflow).toBeLessThanOrEqual(1)
 })

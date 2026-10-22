@@ -7,6 +7,7 @@ import { motion } from 'motion/react'
 import { useEffect, useId, useRef, useState, type ComponentProps, type ReactNode } from 'react'
 import type { Session } from '@/lib/session-context'
 import { homeFor } from '@/lib/session'
+import { initialOf } from '@/lib/initial'
 
 export const PRODUCT = 'Superaide'
 
@@ -161,7 +162,7 @@ export function AccountMenu({ session }: { session: Session }) {
   }, [open])
 
   if (!account) return null
-  const initial = account.user.name.trim().charAt(0).toUpperCase() || '?'
+  const initial = initialOf(account.user.name)
   return (
     <div ref={ref} className="relative">
       <button
