@@ -130,11 +130,14 @@ def decide(
         )
         return Decision("refused", "this needs a stronger identity check; do it from the dashboard instead")
     extra = footprint.assess(session, kind=kind, text=summary, requester=requester)
+    from superaide.policy import quote
+
     approval = Approval(
         kind=kind,
         payload={
             **(payload or {}),
             **extra,
+            **quote.assess(session, kind),
             "summary": summary,
             "trust_at_request": requester.trust,
             "required_trust": rule.min_trust,
@@ -243,6 +246,18 @@ def resolve(session: Session, approval: Approval, *, approve: bool, decided_by: 
         _log_executed(session, approval)
         executor = EXECUTORS.get(approval.kind)
         payload["result"] = executor(session, approval) if executor else "Approved. Nothing can carry this out yet."
+        from superaide.policy import quote
+
+        if quote.enabled() and quote.prepare_only(approval):
+            payload["result"] = (
+                "Prepared, not run: the odds for this are low. The details are on the card; do the last step yourself."
+            )
+        else:
+            _load_executors()
+            executor = EXECUTORS.get(approval.kind)
+            payload["result"] = executor(session, approval) if executor else "Approved. Nothing can carry this out yet."
+            if executor:
+                payload["outcome"] = quote.outcome_of(payload["result"])
     approval.payload = payload
     audit(session, "policy", f"approval_{approval.status}", kind=approval.kind, approval_id=approval.id, by=decided_by)
     return approval

@@ -1216,6 +1216,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                     "requested_by": names.get(a.requested_by_person_id) if a.requested_by_person_id else None,
                     "status": a.status,
                     "result": (a.payload or {}).get("result"),
+                    "notes": list((a.payload or {}).get("notes") or []),
                     "at": a.created_at.isoformat(),
                     "decided_at": a.decided_at.isoformat() if a.decided_at else None,
                     "needs_reason": bool(state and a.status == "pending" and brake.needs_reason(a.kind, state)),

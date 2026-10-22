@@ -115,6 +115,13 @@ class Settings(BaseSettings):
     time_travel_replay_days: int = Field(default=90, ge=1, le=365)
     time_travel_promote_after: int = Field(default=20, ge=1)
     time_travel_min_agreement: float = Field(default=0.9, ge=0, le=1)
+    # Quote and Odds (#139). Off by default. When on, an approval card carries honest odds computed only from
+    # logged outcomes of earlier approvals of the same kind (with the sample size). With at least
+    # `quote_min_samples` outcomes and a success rate below `quote_min_success`, approving prepares the action
+    # for the owner instead of running it.
+    quote_odds_enabled: bool = False
+    quote_min_samples: int = Field(default=5, ge=1)
+    quote_min_success: float = Field(default=0.5, ge=0, le=1)
 
     # Tenancy
     tenant_id: uuid.UUID = DEFAULT_TENANT_ID
