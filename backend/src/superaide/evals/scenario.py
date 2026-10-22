@@ -68,6 +68,7 @@ class SeedMessage(Strict):
 
     via: Literal["web", "telegram", "slack"] = "telegram"
     text: str
+    from_ava: bool = False  # one of Ava's own earlier replies, not the owner's message
 
 
 class World(Strict):

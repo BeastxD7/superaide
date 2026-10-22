@@ -425,3 +425,4 @@ def test_the_after_midnight_note_tells_the_model_to_keep_the_reminder(owner_clie
             note_text = turn._after_midnight("tomorrow at 8", night.replace(hour=8), tz)
     assert "don't change it" in note_text and "set it again" not in note_text
     assert "newer one wins" in OWNER_RULES
+    assert "Don't volunteer corrections of your earlier replies" in OWNER_RULES

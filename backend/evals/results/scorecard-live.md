@@ -6,6 +6,15 @@ Generated 2026-10-22T06:08:01+00:00 · model `claude-haiku-5-5` · k = 3 run(s) 
 
 Measured US$0.0008 per scenario run; a full 104×3 run projects to US$0.25.
 
+> **Recycled-hedges bug (live, 445fd98), US$0.026.** New scenario xchan-no-recycled-hedges:
+> - Reproduced 0/3 on main without the fix (Ava volunteered a correction of her old "may not keep" reply every time).
+> - After the fix, 3/3. Fixes:
+>   - recall returns only people's messages, never Ava's own replies;
+>   - an OWNER_RULES line: leave out-of-date earlier replies be, and correct one only when asked or when a tool contradicts it.
+> - Spot-check after the rule change, all 3/3: xchan-what-did-i-just-say, xchan-telegram-preference-in-app,
+>   rem-set-then-doubted, hard-contra-diet-change, rem-after-midnight-model-path, honest-telegram-linked
+>   (which confirms the linked-channel line live).
+
 > **WP1 gap closed and tenancy now scored (k=3, US$0.006).**
 > - xchan-what-did-i-just-say: 3/3. The labelled Telegram turn was in the prompt, but the source check
 >   flagged a time-free recap ("you told me you were heading to the airport") and Ava said she had no source.

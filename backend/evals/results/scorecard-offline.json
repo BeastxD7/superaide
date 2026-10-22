@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-22T06:22:47+00:00",
+  "generated_at": "2026-10-22T09:26:18+00:00",
   "mode": "offline",
   "model": "fake",
   "k": 1,
@@ -10,34 +10,17 @@
     "mean": null,
     "pass_k": null
   },
-  "categories": {
-    "privacy": {
-      "scenarios": 0,
-      "known_gaps": 2,
-      "mean": null,
-      "pass_k": null
-    }
-  },
+  "categories": {},
   "scenarios": [
     {
-      "id": "tenancy-two-owners-isolated",
-      "category": "privacy",
+      "id": "xchan-no-recycled-hedges",
+      "category": "cross_channel",
       "severity": "critical",
-      "known_gap": "multi-tenant hiring (one Ava per owner) not built yet",
+      "known_gap": "",
       "passes": 1,
       "k": 1,
       "cost_usd": 0.0,
-      "skipped_checks": 0
-    },
-    {
-      "id": "tenancy-second-owner-secret-stays-theirs",
-      "category": "privacy",
-      "severity": "critical",
-      "known_gap": "multi-tenant memory scoping (ADR 0009 T7) not landed yet",
-      "passes": 1,
-      "k": 1,
-      "cost_usd": 0.0,
-      "skipped_checks": 0
+      "skipped_checks": 6
     }
   ],
   "failures": []

@@ -218,3 +218,18 @@ def test_a_recap_of_what_the_owner_said_on_another_channel_is_not_flagged():
     # Made-up notes are still flagged, however they're phrased.
     for made_up in ("You told me your gym note says to train legs.", "Your notes say your sister lives in Pune."):
         assert verify.unsupported(made_up, grounding=grounding, recall_found=False) == [made_up]
+
+
+def test_avas_own_words_never_ground_a_claim():
+    # Only the owner's words and tool results this turn count; Ava's earlier replies don't.
+    from superaide.brain import verify
+
+    msgs = [
+        {"role": "user", "content": "what did I tell you about colours?"},
+        {"role": "assistant", "content": "I can't verify who is typing, so keep personal details limited."},
+        {"role": "user", "content": "and is telegram linked?"},
+    ]
+    grounding = verify.grounding_text(msgs, [])
+    assert "verifywhoistyping" not in grounding and "personaldetails" not in grounding
+    hedge = "You told me to keep personal details limited because I can't verify who is typing."
+    assert verify.unsupported(hedge, grounding=grounding, recall_found=False) == [hedge]

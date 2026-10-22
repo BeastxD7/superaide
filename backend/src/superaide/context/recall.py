@@ -170,7 +170,10 @@ def recall_messages(
         return []  # only for a known audience, and only what they all saw
 
     def base() -> Select[Any]:
-        stmt = select(Event).where(_message_gate(aud), Event.content != "")
+        # Only what people said. Ava's own past replies are never evidence: an outdated hedge
+        # ("I may not keep this…") cited back to her becomes a "fact". They reach her only as the
+        # conversation's history.
+        stmt = select(Event).where(_message_gate(aud), Event.content != "", Event.direction == "in")
         if channel:
             stmt = stmt.join(Context, Context.id == Event.context_id).where(Context.provider == channel)
         return stmt

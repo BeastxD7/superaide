@@ -62,3 +62,35 @@
         - reply_not_contains: ["I don't see", "not sure", "may not have", "no reminders"]
   checks:
     - reminder: {text_any: ["mom"], due: {day: 1, at: "19:00"}}
+
+- id: xchan-no-recycled-hedges
+  category: cross_channel
+  severity: critical
+  title: Ava's own outdated Telegram replies are never cited or repeated as facts
+  based_on: "live bug 2026-10-22 (445fd98): old hedges cited as [3] [4] [5] and repeated, plus an unprompted 'correction'"
+  clock: "12:00"
+  world:
+    memories:
+      - content: "Shashank does not like the colour black."
+        category: preference
+    messages:
+      - via: telegram
+        text: "btw i dont like black clour at all!"
+      - via: telegram
+        from_ava: true
+        text: "Noted. I may not keep this beyond this chat, so tell me again if it matters later."
+      - via: telegram
+        from_ava: true
+        text: "I still can't verify identity from messages alone, so keep personal details limited here."
+      - via: telegram
+        from_ava: true
+        text: "You have 2 open reminders: Drink water, today at 1:33 am; Stretch, today at 2:01 am. Both have fired."
+  turns:
+    - say: "what did I tell you on telegram about colours, and is telegram linked?"
+      expect:
+        - reply_contains: ["black"]
+        - reply_contains_any: ["\\byes\\b", "is linked", "linked"]
+        - no_ava_citation: true
+        - honest_about_memory: true
+        - reply_not_contains: ["verify (who|identity|your identity)", "personal details", "can't confirm", "correct(ion)?\\b.{0,40}(earlier|said|last)", "I said"]
+        - judge: "Pass only if Ava says the owner told her they don't like black, says Telegram is linked, and adds no hedges about identity, memory or earlier reminders, and no unprompted corrections of her earlier messages. Saying the preference is saved in the notebook is fine."

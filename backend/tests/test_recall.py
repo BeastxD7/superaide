@@ -164,3 +164,23 @@ def test_typo_matching_stays_behind_the_audience_gate(people):
         _note(s, owner, "Shashank's favourite cuisine is Thai food.")  # owner only
         assert pre_recall(s, owner_only(colleague), "whats his favrite cusine") == []
         assert pre_recall(s, Audience(person_ids={owner}, has_unknown=True), "favrite cusine") == []
+
+
+def test_avas_own_replies_are_never_returned_as_sources(people):
+    # Live bug 2026-10-22: Ava cited her own old Telegram replies ("I may not keep this beyond this
+    # chat", "I can't verify identity…") as evidence and repeated the outdated hedges as facts.
+    owner, colleague = people
+    with session_scope() as s:
+        ctx = _ctx(s, "telegram", "t-1")
+        said = _msg(s, ctx, "btw i dont like black colour at all!", [owner])
+        hedge = "Noted, black colour. I may not keep this beyond this chat."
+        reply = Event(context_id=ctx.id, direction="out", content=hedge, audience_person_ids=[owner],
+                      audience_has_unknown=False)  # fmt: skip
+        s.add(reply)
+        s.flush()
+        found = recall(s, owner_only(owner), "black colour", channel="telegram")
+        uris = {f.uri for f in found}
+        assert f"ava://msg/telegram/{said.id}" in uris
+        assert f"ava://msg/telegram/{reply.id}" not in uris
+        latest = recall(s, owner_only(owner), "", channel="telegram")  # "what did I say on Telegram?"
+        assert [f.uri for f in latest] == [f"ava://msg/telegram/{said.id}"]

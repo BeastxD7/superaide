@@ -666,6 +666,9 @@ def _seed_messages(agent: Any, sc: Scenario, owner_id: uuid.UUID) -> None:
             msg = inbound(Turn(who="owner", via=m.via, say=m.text), owner, m.text)
             sender = resolve(s, msg)
             ctx = get_or_create_context(s, msg)
+            if m.from_ava:
+                log_event(s, context=ctx, direction="out", content=m.text, audience=audience_for(ctx, sender))
+                continue
             log_event(
                 s, context=ctx, direction="in", content=m.text, audience=audience_for(ctx, sender), sender=sender,
                 external_id=msg.message_id,

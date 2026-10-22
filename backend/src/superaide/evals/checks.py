@@ -219,6 +219,19 @@ def citations_valid(ctx: Ctx, value: Any) -> tuple[bool, str]:
     return True, ""
 
 
+@check("no_ava_citation")
+def no_ava_citation(ctx: Ctx, value: Any) -> tuple[bool, str]:
+    """No cited source is one of Ava's own messages: her past replies are never evidence."""
+    bad = []
+    with session_scope() as s:
+        for src in _turn(ctx).sources:
+            m = re.match(r"^ava://msg/[a-z]+/([0-9a-f-]{36})$", str(src.get("uri", "")))
+            ev = s.get(Event, uuid.UUID(m.group(1))) if m else None
+            if ev is not None and ev.direction == "out":
+                bad.append(_clip(ev.content, 60))
+    return not bad, f"cited Ava's own messages as sources: {bad}"
+
+
 @check("cites_text")
 def cites_text(ctx: Ctx, value: Any) -> tuple[bool, str]:
     """A cited source's text matches one of these patterns (the right note was cited)."""
