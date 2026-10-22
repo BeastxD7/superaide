@@ -1,5 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
-import { API_PORT, API_URL, BASE_URL, DB_NAME, FAKE_GOOGLE_PORT, FAKE_GOOGLE_URL, GOOGLE, PG_ADMIN_URL, SLOT, WEB_PORT, apiEnv } from './src/env'
+import { API_PORT, API_URL, PROXY, PROXY_A, PROXY_B, PROXY_C, UPSTREAM_PORT, BASE_URL, DB_NAME, FAKE_GOOGLE_PORT, FAKE_GOOGLE_URL, GOOGLE, PG_ADMIN_URL, SLOT, WEB_PORT, apiEnv } from './src/env'
 
 // One slot = one API, one Next.js server and one database (see src/env.ts).
 // Tests inside a slot run one at a time because they reset the shared database;
@@ -27,8 +27,10 @@ export default defineConfig({
     launchOptions: { args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--mute-audio'] },
   },
   projects: [
-    { name: 'desktop', use: { ...devices['Desktop Chrome'] }, testIgnore: /\.mobile\.spec\.ts$/ },
+    { name: 'desktop', use: { ...devices['Desktop Chrome'] }, testIgnore: /\.(mobile|proxy)\.spec\.ts$/ },
     { name: 'mobile', use: { ...devices['Pixel 7'] }, testMatch: /\.mobile\.spec\.ts$/ },
+    // The /api proxy against a fake upstream (E2E_PROXY=1): no browser, no database.
+    ...(PROXY ? [{ name: 'proxy', testMatch: /\.proxy\.spec\.ts$/ }] : []),
   ],
   webServer: [
     // A fake Google for the "Continue with Google" tests (E2E_GOOGLE=1 only).
@@ -65,5 +67,34 @@ export default defineConfig({
       stdout: 'ignore',
       stderr: 'pipe',
     },
+    // The proxy contract tests (E2E_PROXY=1): a fake upstream and three Next servers in front of it.
+    ...(PROXY
+      ? [
+          {
+            command: 'node scripts/fake-upstream.mjs',
+            url: `http://127.0.0.1:${UPSTREAM_PORT}/health`,
+            env: { ...process.env, FAKE_UPSTREAM_PORT: String(UPSTREAM_PORT) },
+            reuseExistingServer: !process.env.CI,
+            timeout: 30_000,
+            stdout: 'ignore' as const,
+            stderr: 'pipe' as const,
+          },
+          ...[
+            [PROXY_A, `http://127.0.0.1:${UPSTREAM_PORT}`, 'false'],
+            [PROXY_B, `http://127.0.0.1:${UPSTREAM_PORT}`, 'true'],
+            [PROXY_C, 'http://127.0.0.1:1', 'false'],
+          ].map(([port, upstream, trust]) => ({
+            command: `npx next start --port ${port}`,
+            cwd: '../frontend',
+            // The Next server itself answers /icon.svg without the upstream, so the one that cannot reach it still starts.
+            url: `http://127.0.0.1:${port}/icon.svg`,
+            env: { ...process.env, API_INTERNAL_URL: String(upstream), TRUST_PROXY_HEADERS: String(trust), NEXT_TELEMETRY_DISABLED: '1' },
+            reuseExistingServer: !process.env.CI,
+            timeout: 120_000,
+            stdout: 'ignore' as const,
+            stderr: 'pipe' as const,
+          })),
+        ]
+      : []),
   ],
 })

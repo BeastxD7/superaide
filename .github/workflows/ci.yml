@@ -162,6 +162,11 @@ jobs:
         working-directory: e2e
         run: npx playwright test --shard=${{ matrix.shard }}/3
 
+      - name: Run the API proxy contract tests
+        if: matrix.shard == 1
+        working-directory: e2e
+        run: E2E_PROXY=1 npx playwright test --project=proxy
+
       - name: Upload report
         if: failure()
         uses: actions/upload-artifact@v7

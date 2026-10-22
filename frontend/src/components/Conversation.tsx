@@ -132,6 +132,16 @@ export function Conversation({
   )
 }
 
+// Source addresses come from the model or a web page, so only http(s) ones become links (no javascript: or data:).
+function isWebUrl(uri: string): boolean {
+  try {
+    const { protocol } = new URL(uri)
+    return protocol === 'https:' || protocol === 'http:'
+  } catch {
+    return false
+  }
+}
+
 function isLastOfRun(messages: Message[], i: number): boolean {
   return i === messages.length - 1 || messages[i + 1].from !== messages[i].from
 }
@@ -204,12 +214,12 @@ function Sources({ sources }: { sources: SourceRef[] }) {
             <span className="min-w-0 [overflow-wrap:anywhere]">
               <span className="font-medium text-ink">{SOURCE_KIND[src.kind]}</span>
               {' · '}
-              {src.kind === 'web' ? (
+              {src.kind === 'web' && isWebUrl(src.uri) ? (
                 <a href={src.uri} target="_blank" rel="noopener noreferrer" className="text-violet-700 underline">
                   {src.title || src.uri}
                 </a>
               ) : (
-                <span className="text-body">{src.title}</span>
+                <span className="text-body">{src.title || src.uri}</span>
               )}
               {src.cited_text && <span className="mt-0.5 block text-muted">&ldquo;{src.cited_text}&rdquo;</span>}
             </span>
