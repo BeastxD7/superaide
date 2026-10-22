@@ -131,7 +131,8 @@ def _delay(session: Session, owner: Person, ladder: list[dict[str, Any]], step: 
 
 def text_for(session: Session, esc: Escalation, decision: TriageDecision, *, push: bool) -> str:
     sender = session.get(Person, decision.sender_person_id) if decision.sender_person_id else None
-    name = sender.display_name if sender else "Someone"
+    # Never a name a stranger typed: this text is written into the owner's chat (issue #90).
+    name = sender.display_name if sender else "Someone new"
     head = "Unverified request" if decision.decision == Decision.VERIFY else "Needs you"
     tries = f" ({esc.step + 1}{'nd' if esc.step == 1 else 'rd' if esc.step == 2 else 'th'} try)" if esc.step else ""
     line = f"{head}{tries}: {name}: {decision.reason or 'time-sensitive'}"

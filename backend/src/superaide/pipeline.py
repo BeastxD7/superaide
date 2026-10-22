@@ -193,9 +193,16 @@ class Agent:
                 return HandleResult("unconfirmed", reply)
 
             if not sender.known:
-                reply = self._ai_notice(self._stranger(s, sender, msg))
+                # Receptionist mode (ADR 0010 TR5): a real conversation on the owner's behalf, from public
+                # information only. None: off, not a DM, or a linking code, so the fixed reply as before.
+                from superaide.reception.service import handle_stranger
+
+                received = handle_stranger(self, s, sender, ctx, msg, inbound)
+                if received == "":
+                    return HandleResult("stranger", None, ["rate_limited"])
+                reply = received if received is not None else self._ai_notice(self._stranger(s, sender, msg))
                 self._reply(s, ctx, aud, reply, thread)
-                return HandleResult("stranger", reply)
+                return HandleResult("stranger", reply, ["receptionist"] if received is not None else [])
 
             # With a model connected, Ava handles reminders herself (her create_reminder tool), so
             # she understands typos and phrasing and you can watch her reason. The code-only
@@ -361,6 +368,21 @@ class Agent:
             return reply
         return f"(I'm {self.name}, an AI assistant.) {reply}"
 
+    def _claim(self, s, sender: Sender, claimed: str) -> None:
+        """Someone unknown said a name: if it's someone we know, send a code to their linked channel.
+        Whatever the answer, the caller replies the same way, so nobody can probe who Ava knows."""
+        person = linking.find_person_by_name(s, claimed)
+        if person is not None:
+            linking.start_challenge(
+                s,
+                new_identity=sender.identity,
+                person=person,
+                messengers=self.messengers,
+                settings=self.settings,
+                agent_name=self.name,
+            )
+        audit(s, "identity", "claim_seen", identity_id=sender.identity.id, claimed=claimed)
+
     def _stranger(self, s, sender: Sender, msg: InboundMessage) -> str:
         """No model call, no memory, no actions. The same reply whether or not a
         claimed name exists, so strangers cannot probe who the agent knows."""
@@ -384,17 +406,7 @@ class Agent:
 
         claimed = linking.detect_claimed_name(msg.text)
         if claimed:
-            person = linking.find_person_by_name(s, claimed)
-            if person is not None:
-                linking.start_challenge(
-                    s,
-                    new_identity=sender.identity,
-                    person=person,
-                    messengers=self.messengers,
-                    settings=self.settings,
-                    agent_name=self.name,
-                )
-            audit(s, "identity", "claim_seen", identity_id=sender.identity.id, claimed=claimed)
+            self._claim(s, sender, claimed)
             return (
                 "Thanks. If we work together and you've already linked another channel, I'll send a code there; "
                 "type it here to link this account. Setting me up for the first time? Open the link from "

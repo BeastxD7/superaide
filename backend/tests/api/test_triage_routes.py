@@ -166,7 +166,7 @@ def test_settings_defaults_changes_and_limits(owner_browser):
         0.6,
         "colleagues",
     )
-    assert s["stranger_intake"] is False and [r["provider"] for r in s["ladder"]] == ["app", "interrupt", "other"]
+    assert "stranger_intake" not in s and [r["provider"] for r in s["ladder"]] == ["app", "interrupt", "other"]
     r = owner_browser.put("/app/triage/settings", json={"max_per_day": 3, "silenced_topics": [" golf ", ""]})
     assert r.json()["max_per_day"] == 3 and r.json()["silenced_topics"] == ["golf"] and r.json()["max_per_hour"] == 2
     assert owner_browser.put("/app/triage/settings", json={"theta_interrupt": 0.1}).status_code == 422

@@ -60,6 +60,7 @@ BUCKETS = {
     "voice_turn": "voice",
     "voice_asr": "voice",
     "voice_tts": "voice",
+    "receptionist": "receptionist",  # ADR 0010 TR5: chats with people Ava doesn't know
 }
 
 

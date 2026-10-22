@@ -59,7 +59,7 @@ KNOWN: dict[str, Check] = {}
 CODE_ONLY = {
     "prompt_excludes", "no_model_call", "outbound_excludes", "mode",
     "triage_decision", "escalation_state", "escalation_pushed", "escalation_acks", "interrupt_count",
-    "audit_logged", "triage_feedback",
+    "audit_logged", "triage_feedback", "message_taken",
 }  # fmt: skip
 
 
@@ -483,6 +483,19 @@ def interrupt_count(ctx: Ctx, value: Any) -> tuple[bool, str]:
         n = len(set(s.scalars(select(EscalationDelivery.escalation_id).where(
             EscalationDelivery.step >= 1, EscalationDelivery.status == "sent"))))  # fmt: skip
     return n == int(value), f"{n} interrupts, expected {value}"
+
+
+@check("message_taken")
+def message_taken(ctx: Ctx, value: Any) -> tuple[bool, str]:
+    """How many messages the receptionist has taken so far: `{count}`; `source: model|code` narrows it."""
+    from superaide.reception.models import ReceptionMessage
+
+    with session_scope() as s:
+        q = select(ReceptionMessage.id)
+        if value.get("source"):
+            q = q.where(ReceptionMessage.source == value["source"])
+        n = len(list(s.scalars(q)))
+    return n == int(value["count"]), f"{n} messages taken, expected {value['count']}"
 
 
 @check("audit_logged")

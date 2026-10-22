@@ -580,6 +580,7 @@ job; a triage failure can't touch the reply.
 | TR2 | Classifier on the `triage` role and its own daily bucket (`BUCKETS["triage"]`, `budget_daily_by_bucket["triage"] = 0.05`); quote and deadline checks; resampling; rules-only fallbacks | `triage/classify.py` |
 | TR3 | The ladder (app → interrupt channel → other channel → expired), idempotent step jobs under a row lock, delivery rows, explicit owner-only acks, snooze cycles, quiet hours, rejected channels, the interrupt budget | `triage/{escalate,service}.py` |
 | TR4 | Telegram buttons on escalation pushes (Acknowledge, Snooze 30 min, Not urgent); `callback_query` from the per-bot pollers and both webhook routes; owner-only presses on the confirmed bot; repeated presses are no-ops; every press answered; every Telegram copy edited once answered (from Telegram or the app) | `triage/buttons.py`, `channels/telegram.py` |
+| TR5 (receptionist half) | Someone Ava doesn't know, in a Telegram or Slack DM, gets a real AI conversation on the owner's behalf from public information only, and can leave a message; on by default, owner switch; independent of `TRIAGE_ENABLED`. See "Receptionist mode" below | `reception/`, `brain/receptionist.md` |
 | TR7 | `GET /app/needs-you`, `POST /app/needs-you/{id}/action` and `/feedback`, `GET/PUT /app/triage/settings`, `POST /app/triage/away` and `/busy` | `triage/routes.py` |
 | TR8 | Digest sections (Needs your decision, Escalations, Handled for you, Messages taken, FYI, Couldn't sort) and one catch-up note when quiet hours end | `triage/digest.py`, one hook in `proactive/digest.py` |
 | TR9 | The Needs-you inbox and a settings panel at `/dashboard/needs-you`; the sidebar item appears only when the API answers | `frontend/src/features/needs-you/` |
@@ -590,13 +591,41 @@ job; a triage failure can't touch the reply.
 
 | Question | Default |
 |---|---|
-| 1. Strangers | `stranger_intake` off: fixed reply, no model call (not used until TR5) |
+| 1. Strangers | **Decided 2026-10-22: receptionist mode, on by default** (below). `triage_settings.stranger_intake` is retired; the column stays, nothing reads it |
 | 3. Ladder | app at once; the interrupt channel after 180 s (at once when the owner chose a chat channel); the other channel after 300 s; expired 600 s later |
 | 5. Away visibility | colleagues |
 | 6. Interrupt budget | 2 an hour, 6 a day; a verified VIP gets past it only when critical (`vip_ignores_budget`) |
 | 8. Phone | off (the rung isn't built) |
 | 9. "Has seen" | off (`tell_sender_seen`, not used until TR5) |
 | Thresholds | θ_interrupt 0.6, θ_handle 0.7 |
+
+**Receptionist mode** (open question 1, decided 2026-10-22 after the owner messaged a friend's Ava as an
+unknown person and got the fixed "I don't recognise this account" reply).
+
+- *When:* a DM on Telegram or Slack from an account Ava doesn't recognise, with the receptionist on (the
+  default). Groups are unchanged, and the web app has no strangers (sign-in is required). A linking code, or "I'm
+  <name>", still starts the linking flow exactly as before; the model is never told whether a name matched and the
+  same sentence about codes is added in code either way. An owner's own account on a bot it wasn't confirmed on
+  still gets the confirm flow, not the receptionist.
+- *What a stranger can see, and nothing else:* (1) the notice, in code, on the first reply: "Hi, I'm Ava, an AI
+  assistant." (with "<first name>'s" only if the owner allowed it); (2) the owner's public profile text and notes the
+  owner marked public (the audience gate in SQL, for this instance only); (3) one sentence "away until <date>", only
+  if the owner set away and chose "everyone". Never the owner brief, private memories, other conversations, quiet
+  hours, busy or away status otherwise, or the never-share text.
+- *What it can do:* one structured reply, optionally with `take_message` (name, contact, topic, urgency, deadline,
+  message). No tools, no reminders, no approvals, no memory, no learning. What the person wrote is stored as data
+  (`reception_message`), unverified, and shown only in the app.
+- *What the owner sees:* triage off, one fixed in-app note ("Message taken from someone new on Telegram. Open your
+  dashboard to read it."), at most every 15 minutes, plus a counts-only digest line, and `GET
+  /app/receptionist/messages`. Triage on, a Needs-you item (decision `hold`, or `verify` with the ladder as an
+  "Unverified request" when it matches one of the owner's urgent topics and passes the risk screen, once a day per
+  sender and within the interrupt budget; never `interrupt`). Nothing a stranger typed is ever written into the
+  owner's chat (issue #90): notes and pushes say "Someone new".
+- *Cost and abuse:* the `triage` model role, purpose `receptionist` in its own daily bucket (default US$0.10 a day
+  per instance), charged to the owner's own key or Superaide credits; per sender 10 messages an hour and 30 a day
+  (owner-editable), then one fixed polite message and silence. With no model, an exhausted budget or an error: a
+  fixed reply that says the message was passed on, and the person's own words are filed as the message.
+- *Settings:* `GET/PUT /app/receptionist` and a card in Settings.
 
 **First numbers** (52 synthetic labels; Infant labels are measured on the shadow decision, what Child
 would do, as section 8 says; reports in `backend/evals/results/triage-*.md`):
@@ -654,8 +683,9 @@ security or legal matters. Code: `skills/gmail_inbox.py`; the shared step is `tr
 
 ## Open questions for the owner
 
-1. **Strangers.** Should strangers' messages be classified (take-a-message, one cheap model call,
-   capped), or stay fixed-reply with no model call? The proposal is an off-by-default setting.
+1. **Strangers.** *Decided 2026-10-22:* receptionist mode, on by default, with an owner switch (see "Receptionist mode").
+   The question was whether strangers' messages should be classified (take-a-message, one cheap model call,
+   capped) or stay fixed-reply with no model call.
 2. **Known colleagues at Infant.** Is a fixed "I've noted this for Shashank" plus a draft for you to
    approve acceptable, instead of today's direct model reply? Or should Infant keep answering from notes
    for colleagues while triage runs in shadow?

@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label'
 import { AskLinkCard } from '@/features/ask/AskLinkCard'
 import { AccessLogCard } from '@/features/dashboard/AccessLogCard'
 import { CHANNEL_LABEL, DIGEST_LABEL, useAppData } from '@/features/dashboard/data'
+import { ReceptionistCard } from '@/features/reception/ReceptionistCard'
 import { AppError, auth, type Preferences } from '@/lib/api'
 import { useSession } from '@/lib/session-context'
 
@@ -80,6 +81,7 @@ export function SettingsPage() {
           </CardContent>
         </Card>
 
+        <ReceptionistCard agentName={name} />
         <AskLinkCard />
 
         <AccessLogCard name={name} />

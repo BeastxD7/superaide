@@ -167,6 +167,15 @@ function Item({
       </div>
       {item.subject && <p className="mt-1 text-sm font-medium [overflow-wrap:anywhere] text-ink">{item.subject}</p>}
       <p className="mt-1 text-sm [overflow-wrap:anywhere] text-body">{item.reason}</p>
+      {item.taken && (
+        <div className="mt-2 rounded-lg border border-line bg-white p-3 text-sm">
+          <p className="text-xs text-muted">Left by someone Ava doesn’t know. None of this is verified.</p>
+          {item.taken.topic && <p className="mt-1 font-medium [overflow-wrap:anywhere] text-ink">{item.taken.topic}</p>}
+          {item.taken.message && <p className="mt-1 [overflow-wrap:anywhere] text-body">{item.taken.message}</p>}
+          {item.taken.contact && <p className="mt-1 text-muted">Contact they gave: {item.taken.contact}</p>}
+          {item.taken.deadline_text && <p className="text-muted">Deadline they mentioned: {item.taken.deadline_text}</p>}
+        </div>
+      )}
       {item.quotes.map((q) => (
         <blockquote key={q} className="mt-1 border-l-2 border-line pl-2 text-sm [overflow-wrap:anywhere] text-muted">
           {q}

@@ -52,6 +52,14 @@ SELF_TESTS = [
     "triage-budget-exhausted-holds",
     "triage-fake-quote-is-discarded",
     "triage-granted-intent-needs-approval-at-infant",
+    # Receptionist mode (ADR 0010 TR5): the privacy and hand-off guarantees that are graded in code.
+    "rcpt-private-fact-never-reaches-the-prompt",
+    "rcpt-social-engineering-gets-nothing",
+    "rcpt-urgent-topic-is-an-unverified-request",
+    "rcpt-payment-request-is-unverified",
+    "rcpt-switched-off-gives-the-fixed-reply",
+    "rcpt-group-stays-unchanged",
+    "rcpt-per-sender-limit",
 ]
 
 

@@ -26,6 +26,7 @@ Category = Literal[
     "briefing",
     "chitchat",
     "triage",
+    "receptionist",
 ]
 CATEGORIES: tuple[str, ...] = Category.__args__  # type: ignore[attr-defined]
 Severity = Literal["critical", "high", "medium", "low"]
@@ -95,7 +96,11 @@ class World(Strict):
     vip_breaks_quiet: bool = True
     away_days: int = 0  # away from the start, for this many days
     away_visibility: Literal["everyone", "colleagues", "nobody"] = "colleagues"
-    stranger_intake: bool = False
+    # Receptionist mode (ADR 0010 TR5): on by default. False keeps the old fixed reply for strangers.
+    receptionist: bool = True
+    reception_profile: str = ""  # the owner's public profile text
+    reception_show_name: bool = False  # may Ava say the owner's first name to people she doesn't know
+    reception_limits: dict[str, int] = Field(default_factory=dict)  # per_hour / per_day for one unknown sender
     triage_settings: dict[str, Any] = Field(default_factory=dict)  # any other triage_settings column
     # Offline, the triage classifier isn't connected (rules only). True: it is, and answers with each
     # turn's `fake.triage` (a TriageOutput as a dict, or "budget" for a refusal).
@@ -114,6 +119,7 @@ class FakeTurn(Strict):
     tools: list[FakeTool] = Field(default_factory=list)
     reply: str = "OK."
     triage: dict[str, Any] | Literal["budget"] | None = None  # the triage classifier's answer (world.triage_model)
+    take: dict[str, Any] | None = None  # the message the receptionist takes (a TakenMessage), with `reply`
 
 
 class Press(Strict):
