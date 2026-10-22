@@ -763,10 +763,10 @@ test.describe('keyboard', () => {
     const callTab = page.getByRole('tab', { name: 'Video call' })
     await expect(chat).toHaveAttribute('aria-selected', 'true')
 
+    // Arrow keys move between the tabs (roving tabindex), and the focused tab is the selected one.
     await chat.focus()
-    await page.keyboard.press('Tab')
+    await page.keyboard.press('ArrowRight')
     await expect(files).toBeFocused()
-    await page.keyboard.press('Enter')
     await expect(files).toHaveAttribute('aria-selected', 'true')
     await expect(chat).toHaveAttribute('aria-selected', 'false')
 
@@ -801,7 +801,6 @@ test.describe('keyboard', () => {
   })
 
   test('the intro tabs follow the ARIA tabs pattern (arrow keys, a labelled tab panel)', async ({ page }) => {
-    test.fail(true, 'BUG: role=tab buttons without arrow-key support, roving tabindex or a role=tabpanel')
     const chat = page.getByRole('tab', { name: 'Tell me here' })
     await chat.focus()
     await page.keyboard.press('ArrowRight')
