@@ -21,6 +21,14 @@ def get_engine(url: str | None = None) -> Engine:
 
 
 @lru_cache
+def lock_engine() -> Engine:
+    """Connections that each hold one long-lived advisory lock (a listener's), outside the pool."""
+    from sqlalchemy.pool import NullPool
+
+    return create_engine(get_settings().database_url, poolclass=NullPool)
+
+
+@lru_cache
 def _factory(url: str | None = None) -> sessionmaker[Session]:
     return sessionmaker(bind=get_engine(url), expire_on_commit=False)
 

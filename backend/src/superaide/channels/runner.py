@@ -1,8 +1,13 @@
-"""Telegram and Slack listeners running inside the API process.
+"""Telegram and Slack listeners, in the API process (development) or the worker (a server).
 
 They follow the current connections: connecting Telegram in the app starts its
-listener, changing the token restarts it, disconnecting stops it. No restart
-of the app and no separate processes are needed.
+listener, changing the token restarts it, disconnecting stops it.
+
+One listener per bot across every process (ADR 0009 T11): before polling a bot (or
+opening a Slack app's socket) a process takes a Postgres advisory lock for it, held
+on its own connection for as long as it listens. Another worker, or an API left with
+listeners on, finds the lock taken and leaves that bot alone; if the holder dies, its
+connection closes, the lock frees, and the next refresh elsewhere picks the bot up.
 """
 
 from __future__ import annotations
@@ -16,6 +21,29 @@ from superaide.channels.base import InboundMessage
 from superaide.config import Settings
 
 log = logging.getLogger(__name__)
+LOCK_NAMESPACE = 784_221_002  # pg advisory lock namespace for "this process listens to that bot"
+
+
+def claim_listener(key: str) -> Any:
+    """A connection holding the listener lock for `key`, or None if another process holds it.
+    Closing the connection releases the lock."""
+    from sqlalchemy import text
+
+    from superaide.db.session import lock_engine
+
+    conn = lock_engine().connect()
+    try:
+        got = conn.execute(
+            text("SELECT pg_try_advisory_lock(:ns, hashtext(:key))"), {"ns": LOCK_NAMESPACE, "key": key}
+        ).scalar()
+        conn.commit()
+    except Exception:
+        conn.close()
+        raise
+    if not got:
+        conn.close()
+        return None
+    return conn
 
 
 class ChannelRunner:
@@ -48,11 +76,18 @@ class ChannelRunner:
             for token, scope in bots.items():
                 if token in self._bots:
                     continue
+                held = claim_listener(f"telegram:{bot_id(token)}")
+                if held is None:
+                    log.info("bot %s is polled by another process; skipped here", bot_id(token))
+                    continue
                 stop = threading.Event()
 
-                def run(token: str = token, scope: Any = scope, stop: threading.Event = stop) -> None:
-                    with use_instance(scope):
-                        poll_forever(token, self.handle, stop)
+                def run(token: str = token, scope: Any = scope, stop: threading.Event = stop, held: Any = held) -> None:
+                    try:
+                        with use_instance(scope):
+                            poll_forever(token, self.handle, stop)
+                    finally:
+                        held.close()  # frees the bot for another process
 
                 thread = threading.Thread(target=run, name=f"telegram-{bot_id(token)}", daemon=True)
                 thread.start()
@@ -95,17 +130,37 @@ class ChannelRunner:
             self._slack = None
             log.info("Slack listener stopped")
         if bot and app and self._slack is None:
+            import hashlib
+
             from superaide.channels import health
             from superaide.channels.slack import auth_error, socket_mode_handler
 
+            held = claim_listener(f"slack:{hashlib.sha256(app.encode()).hexdigest()[:16]}")
+            if held is None:
+                log.info("this Slack app listens in another process; skipped here")
+                return
             try:
                 handler = socket_mode_handler(bot, app, team, self.handle)
                 handler.connect()
-                self._slack = (key, handler)
+                self._slack = (key, _Held(handler, held))
             except Exception as exc:
+                held.close()
                 log.exception("Slack listener failed to start")
                 code = auth_error(exc)
                 if code:
                     health.record("slack", health.AUTH_FAILED, f"Slack rejected the token ({code})")
             else:
                 health.record("slack", health.OK)
+
+
+class _Held:
+    """A Slack handler plus the listener lock it holds; closing one closes both."""
+
+    def __init__(self, handler: Any, held: Any) -> None:
+        self.handler, self.held = handler, held
+
+    def close(self) -> None:
+        try:
+            self.handler.close()
+        finally:
+            self.held.close()

@@ -70,8 +70,9 @@ services:
       SESSION_COOKIE_SECURE: "true"
       ENABLE_SIMULATOR: "false"
       ENABLE_API_DOCS: "false"
-    # One process on purpose: the job runner (reminders, digests) and the Telegram/Slack
-    # listeners start inside the API, and more workers would run them twice.
+      # Jobs and the Telegram/Slack listeners run in the `worker` service below.
+      RUN_JOBS_IN_API: "false"
+      RUN_CHANNELS_IN_API: "false"
     # Only the web app and Caddy can reach this port, so their forwarded client
     # address is trusted (it drives the per-address sign-up and log-in limits).
     command:
@@ -91,6 +92,31 @@ services:
       timeout: 3s
       start_period: 60s
       retries: 5
+
+  # Every hired Ava's background work: reminders, digests, learning, and the Telegram/Slack
+  # listeners (ADR 0009 T11). It follows connections saved in the app by itself. More than one
+  # can run (`--scale worker=2`): jobs are claimed with row locks, and each bot is listened to
+  # by one worker only (a Postgres advisory lock per bot).
+  worker:
+    <<: *hardened
+    build: ./backend
+    image: superaide-api:prod
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://superaide_app:${APP_DB_PASSWORD:-${POSTGRES_PASSWORD}}@db:5432/agent
+      MIGRATION_DATABASE_URL: ""
+      SECRETS_MASTER_KEY: ${SECRETS_MASTER_KEY:?Set SECRETS_MASTER_KEY in .env (openssl rand -base64 32)}
+      FRONTEND_ORIGIN: ${PUBLIC_URL:-https://${DOMAIN:?Set DOMAIN in .env}}
+      ENABLE_SIMULATOR: "false"
+    command: ["superaide", "worker"]
+    healthcheck:
+      disable: true
+    tmpfs: [/tmp]
+    # The data network has no route out; the app network reaches Telegram, Slack and the model APIs.
+    networks: [data, app]
+    depends_on:
+      db: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
 
   web:
     <<: *hardened

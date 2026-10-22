@@ -68,17 +68,47 @@ def _serve(args: argparse.Namespace) -> None:
     uvicorn.run("superaide.main:app", host="127.0.0.1", port=args.port, reload=args.reload)
 
 
-def _worker(_: argparse.Namespace) -> None:
-    """Run background jobs in this process (instead of inside the API)."""
-    from superaide.jobs.worker import JobWorker
+def _worker(args: argparse.Namespace) -> None:
+    """Run the background work of every hired Ava in this process, instead of inside the API (ADR 0009
+    T11): jobs (reminders, digests, learning) and the Telegram/Slack listeners. It follows connections
+    saved in the app every `--refresh` seconds. Several workers can run: jobs are claimed with row
+    locks, and each bot is listened to by one process only (an advisory lock per bot)."""
+    import signal
+    import threading
 
-    worker = JobWorker()
-    worker.start()
+    from superaide.db.session import session_scope
+    from superaide.jobs.worker import JobWorker
+    from superaide.runtime import Runtime
+
+    settings = get_settings()
+    stop = threading.Event()
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        signal.signal(sig, lambda *_: stop.set())
+    runtime = Runtime(settings)
+    jobs = JobWorker()
     try:
-        while True:
-            input()
-    except KeyboardInterrupt, EOFError:
-        worker.stop()
+        from superaide.context import vectors
+
+        with session_scope() as s:
+            vectors.start(s)  # the local embedder, in the background
+    except Exception:
+        logging.getLogger(__name__).exception("couldn't start embeddings; recall stays keyword-only")
+    if not args.no_jobs:
+        jobs.start()
+    log = logging.getLogger("superaide.worker")
+    log.info("worker started (jobs: %s, listeners: %s)", not args.no_jobs, not args.no_listeners)
+    try:
+        while not stop.is_set():
+            if not args.no_listeners:
+                try:
+                    log.debug("listeners: %s", runtime.apply_connections(listen=True))
+                except Exception:
+                    log.exception("couldn't refresh the listeners; trying again shortly")
+            stop.wait(args.refresh)
+    finally:
+        jobs.stop()
+        runtime.stop()
+        log.info("worker stopped")
 
 
 def _telegram_poll(_: argparse.Namespace) -> None:
@@ -260,7 +290,11 @@ def main() -> None:
     p.add_argument("--reload", action="store_true")
     p.set_defaults(func=_serve)
 
-    sub.add_parser("worker", help="run background jobs (reminders, digests) in this process").set_defaults(func=_worker)
+    p = sub.add_parser("worker", help="run every Ava's jobs and Telegram/Slack listeners in this process")
+    p.add_argument("--refresh", type=float, default=15.0, help="seconds between checks for changed connections")
+    p.add_argument("--no-jobs", action="store_true", help="listeners only")
+    p.add_argument("--no-listeners", action="store_true", help="jobs only")
+    p.set_defaults(func=_worker)
     sub.add_parser("telegram-poll", help="receive Telegram messages by polling").set_defaults(func=_telegram_poll)
     sub.add_parser("slack-socket", help="receive Slack messages over Socket Mode").set_defaults(func=_slack_socket)
 

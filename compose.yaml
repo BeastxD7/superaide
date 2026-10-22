@@ -19,6 +19,9 @@ x-backend: &backend
     DATABASE_URL: postgresql+psycopg://superaide_app:superaide-app-dev-password@db:5432/agent
     MIGRATION_DATABASE_URL: postgresql+psycopg://agent:agent@db:5432/agent
     APP_DB_PASSWORD: superaide-app-dev-password
+    # The API serves; the `worker` service runs jobs and listeners (ignored by the worker itself).
+    RUN_JOBS_IN_API: "false"
+    RUN_CHANNELS_IN_API: "false"
     FRONTEND_ORIGIN: http://localhost:3000
     # Requests arrive through the web container's /api proxy; trust its client address.
     FORWARDED_ALLOW_IPS: "*"
@@ -60,6 +63,22 @@ services:
       # The vault's master key (encrypts connected credentials) survives rebuilds.
       - vault-key:/home/app/.config/superaide
       # The local embedding model (~220 MB, downloaded once) survives rebuilds.
+      - models:/home/app/.cache/superaide
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  # Jobs and the Telegram/Slack listeners, as on a server (ADR 0009 T11). start.command runs
+  # everything in one process instead.
+  worker:
+    <<: *backend
+    profiles: [app]
+    restart: unless-stopped
+    command: ["superaide", "worker"]
+    healthcheck:
+      disable: true
+    volumes:
+      - vault-key:/home/app/.config/superaide
       - models:/home/app/.cache/superaide
     depends_on:
       migrate:

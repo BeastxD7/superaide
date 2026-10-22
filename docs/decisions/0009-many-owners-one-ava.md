@@ -5,8 +5,8 @@ request scope), T3 (credentials, freeze and runtime per instance), T4 (each owne
 T6 (budget), T7 (an automatic per-instance filter on every ORM query in scope, identities and conversations per
 instance), T8 (operator console: metadata by default, break-glass with a reason recorded in the owner's own log,
 which they read at /app/access-log; operator accounts instead of ADMIN_TOKEN come later), T9 (email links), T10
-"now" items and T12 (isolation e2e, marked expected-fail until many owners are switched on). Still to do: T11
-(worker service), Slack per instance. `ALLOW_MANY_OWNERS` stays off until
+"now" items and T12 (isolation e2e, marked expected-fail until many owners are switched on). T11 (a separate `worker` service with one
+listener per bot by advisory lock). Still to do: Slack per instance. `ALLOW_MANY_OWNERS` stays off until
 the owner decides to open hiring to everyone.
 
 ## Context

@@ -258,7 +258,7 @@ def live_app(monkeypatch):
         def stop(self):
             calls["stop"].append(True)
 
-    monkeypatch.setattr(main, "ChannelRunner", SpyRunner)
+    monkeypatch.setattr(importlib.import_module("superaide.runtime"), "ChannelRunner", SpyRunner)  # used by main
     return main.create_app, SpyRunner, calls
 
 

@@ -289,7 +289,7 @@ class SpyRunner:
 @pytest.fixture
 def spy_runner(monkeypatch):
     SpyRunner.instances = []
-    monkeypatch.setattr(main, "ChannelRunner", SpyRunner)
+    monkeypatch.setattr(importlib.import_module("superaide.runtime"), "ChannelRunner", SpyRunner)  # used by main
     return SpyRunner.instances
 
 

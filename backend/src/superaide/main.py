@@ -4,9 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-import threading
 import uuid
-from collections import OrderedDict
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -24,18 +22,17 @@ from superaide.audit import audit
 from superaide.auth.routes import make_router as make_auth_router
 from superaide.channels import slack, telegram
 from superaide.channels.base import FakeMessenger, InboundMessage
-from superaide.channels.runner import ChannelRunner
 from superaide.config import get_settings
 from superaide.db.session import session_scope
 from superaide.jobs.worker import JobWorker
 from superaide.pipeline import Agent
-from superaide.tenancy.context import current_scope, default_scope, scope_or_default, use_instance
-from superaide.tenancy.endpoints import owner_of, secret_ok, sync_telegram, webhook_secret
+from superaide.runtime import Runtime
+from superaide.tenancy.context import default_scope, use_instance
 from superaide.tenancy.endpoints import scope_of as endpoint_scope
+from superaide.tenancy.endpoints import secret_ok
 from superaide.tenancy.models import ChannelEndpoint
 
 log = logging.getLogger(__name__)
-MAX_CACHED = 256  # agents kept built, one per recently active instance
 
 
 class SimulatedMessage(BaseModel):
@@ -88,74 +85,14 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     app.include_router(make_auth_router())
 
     fixed = agent  # tests pass their own agent; it is never rebuilt
-    # One agent per hired instance (ADR 0009 T3), each built from that instance's own connections and
-    # rebuilt when they change. Least recently used ones are dropped beyond MAX_CACHED.
-    current: OrderedDict[Any, tuple[Agent, str]] = OrderedDict()
-    cache_lock = threading.Lock()
-
-    def get_agent() -> Agent:
-        """The agent of the instance in scope, rebuilt whenever its connections change in the app."""
-        if fixed is not None:
-            return fixed
-        from superaide.factory import build_agent
-        from superaide.vault.store import runtime_settings, version
-
-        key = scope_or_default().agent_id
-        with session_scope() as s:
-            v = version(s)
-        with cache_lock:
-            cached = current.get(key)
-            if cached is not None and cached[1] == v:
-                current.move_to_end(key)
-                return cached[0]
-        built = build_agent(runtime_settings(settings))
-        with cache_lock:
-            current[key] = (built, v)
-            current.move_to_end(key)
-            while len(current) > MAX_CACHED:
-                current.popitem(last=False)
-        return built
-
-    def handle_on_server_channels(msg: InboundMessage) -> Any:
-        """Slack (one app per server for now) and the server's legacy Telegram webhook belong to the
-        server's first instance."""
-        with use_instance(default_scope()):
-            return get_agent().handle(msg)
-
-    def handle_listened(msg: InboundMessage) -> Any:
-        """From a listener: an owner bot's poller runs inside its owner's instance (ADR 0009 T4)."""
-        if current_scope() is not None:
-            return get_agent().handle(msg)
-        return handle_on_server_channels(msg)
-
-    runner = ChannelRunner(handle_listened)
-    hooked: dict[str, Any] = {}  # bot token -> instance whose webhook Telegram already has
+    runtime = Runtime(settings, agent)
+    get_agent = runtime.get_agent
+    handle_on_server_channels = runtime.handle_on_server_channels
 
     def apply_connections() -> dict[str, bool]:
-        """Use new or removed credentials now: rebuild the agent and the listeners."""
-        if fixed is not None or not settings.run_channels_in_api:
-            get_agent()
-            return {}
-        with use_instance(default_scope()):  # Slack follows the first instance's connections
-            base = get_agent().settings
-            started = runner.ensure(base.model_copy(update={"telegram_bot_token": ""}))
-        bots = sync_telegram()  # each owner's own bot, registered to their instance
-        if settings.telegram_webhook_base_url:
-            runner.ensure_bots({})
-            for token, scope in bots.items():
-                if hooked.get(token) != scope:
-                    with use_instance(scope), session_scope() as s:
-                        endpoint = owner_of(s, "telegram", telegram.bot_id(token))
-                    if endpoint is not None and telegram.set_webhook(
-                        token,
-                        f"{settings.telegram_webhook_base_url.rstrip('/')}/webhooks/telegram/{endpoint.id}",
-                        webhook_secret(endpoint.id),
-                    ):
-                        hooked[token] = scope
-            started["telegram"] = bool(bots)
-        else:
-            started["telegram"] = bool(runner.ensure_bots(bots))
-        return started
+        """Use new or removed credentials now: rebuild the agent, and the listeners when this
+        process runs them (a server's separate worker follows the changes by itself)."""
+        return runtime.apply_connections(listen=settings.run_channels_in_api)
 
     worker = JobWorker()
 
@@ -178,7 +115,7 @@ def create_app(agent: Agent | None = None) -> FastAPI:
             worker.start()
         yield
         worker.stop()
-        runner.stop()
+        runtime.stop()
 
     app.router.lifespan_context = lifespan
 

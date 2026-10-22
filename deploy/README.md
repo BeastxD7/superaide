@@ -6,10 +6,15 @@ VPS, Bluehost included. Plan on 30 minutes, most of it waiting for DNS and the f
 
 ```
  browser ──HTTPS──▶ Caddy :443 ──▶ web (Next.js) :3000 ──/api/*──▶ api (FastAPI) :8000 ──▶ Postgres
-                    certificates,     pages, and the same-       migrations on start,    private network,
-                    headers, rate     origin /api proxy          job runner, Telegram/   no route out
-                    limits                                       Slack listeners
+                    certificates,     pages, and the same-       requests only           private network,
+                    headers, rate     origin /api proxy                                  no route out
+                    limits                                       worker ────────────────▶ (same database)
+                                                                 jobs, Telegram/Slack
+                                                                 listeners
 ```
+
+`migrate` runs once on every start (migrations as the database owner, then the app's own role),
+before `api` and `worker` start.
 
 Only Caddy is published (ports 80 and 443). Everything else talks on private Docker networks.
 The files: `docker-compose.prod.yml`, `.env.prod.example`, `deploy/caddy/` (Caddyfile and image),
@@ -110,10 +115,13 @@ docker compose -f docker-compose.prod.yml up -d --build --wait
 > the only published ports are Caddy's 80 and 443. Never add a `ports:` entry to `db`, `api` or
 > `web` in the compose file: it would be reachable from the internet whatever ufw says.
 
-## 5. First visit: claim Ava straight away
+## 5. First visit: hire your Ava straight away
 
-Open `https://ava.example.com`, **sign up, and hire Ava**. The first account to hire Ava becomes
-the owner, and the site is public, so do this before sharing the address.
+Open `https://ava.example.com`, **sign up, and hire Ava**. Each Ava works for the account that
+hired it, with its own memory, connections and spend. While `ALLOW_MANY_OWNERS=false` (the
+default) the server has one Ava: the first account to hire it is its owner and every later hire
+is refused. The site is public, so hire before you share the address. (Turning many owners on
+lets anyone who signs up hire their own Ava; see ADR 0009 before you do.)
 
 Then, in the workspace, connect Claude, Telegram and Slack under Connections. They're checked
 with each service and stored encrypted with `SECRETS_MASTER_KEY`.
@@ -123,16 +131,19 @@ with each service and stored encrypted with `SECRETS_MASTER_KEY`.
 ## Channels, Google and the API docs on a server
 
 - **Telegram:** uses polling (the API asks Telegram for new messages). It needs no inbound URL and
-  works behind any firewall. Only one process may poll a bot, so don't run the same bot token
-  elsewhere at the same time, e.g. on your Mac.
-  - Webhook mode is possible: set `TELEGRAM_WEBHOOK_SECRET`, uncomment the `/webhooks/*` block in `deploy/caddy/Caddyfile`, rebuild, and register `https://DOMAIN/webhooks/telegram` with Telegram.
+  works behind any firewall. Each owner connects their own bot in the app, and the `worker`
+  polls it. Only one process may poll a bot: workers take a lock per bot, but don't run the same
+  bot token elsewhere at the same time, e.g. on your Mac.
+  - Webhook mode is possible: set `TELEGRAM_WEBHOOK_BASE_URL=https://DOMAIN`, uncomment the `/webhooks/*` block in `deploy/caddy/Caddyfile` and rebuild. Each bot then gets its own webhook address and secret.
   - Polling is the tested path.
 - **Slack:** uses Socket Mode (an outbound websocket), so it needs no inbound URL either.
 - **Google Calendar:** in your Google Cloud OAuth client ("Web application"), add this authorised
   redirect URI exactly: `https://ava.example.com/api/app/connections/google/callback`
-- **Background jobs** (reminders, follow-ups, digests) and the listeners run inside the API.
-  - That's why the API runs as a single process (`--workers 1`). More workers would poll Telegram twice and send reminders twice.
-  - One process is plenty for one owner.
+- **Background jobs** (reminders, follow-ups, digests) and the listeners run in the `worker`
+  service; the API only serves requests.
+  - It follows connections saved in the app within about 15 seconds.
+  - More workers are safe (`docker compose -f docker-compose.prod.yml up -d --scale worker=2`): jobs are claimed with row locks, and each bot is polled by one worker only.
+  - Its log: `docker compose -f docker-compose.prod.yml logs -f worker`.
 - **`/docs`** (the interactive API reference) is off in production (`ENABLE_API_DOCS=false`), and
   the web app's proxy only forwards `/api/auth`, `/api/app`, `/api/api` (console, needs
   `ADMIN_TOKEN`) and `/api/health`.
@@ -151,7 +162,7 @@ alias dc='docker compose -f /opt/superaide/docker-compose.prod.yml'
 | --- | --- |
 | Status | `dc ps` |
 | Logs (all, follow) | `dc logs -f --tail=100` |
-| Logs (one service) | `dc logs -f api` (or `web`, `caddy`, `db`) |
+| Logs (one service) | `dc logs -f api` (or `worker`, `web`, `caddy`, `db`) |
 | Restart | `dc restart api` |
 | Stop / start | `dc down` / `dc up -d` (data is kept; never add `-v`, it deletes the database) |
 | Database shell | `dc exec db psql -U agent agent` |
