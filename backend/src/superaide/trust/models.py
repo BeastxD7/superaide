@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import date
 
-from sqlalchemy import CheckConstraint, Date, Float, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, CheckConstraint, Date, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from superaide.db.models import Base, Scoped
@@ -44,3 +44,16 @@ class NeverAskTopic(Scoped, Base):
 
     person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), index=True)
     topic: Mapped[str] = mapped_column(String(40))
+
+
+class MemoryInfluence(Scoped, Base):
+    """How much removing one memory changed a reply (#122): 0 = identical answer, 1 = nothing in common."""
+
+    __tablename__ = "memory_influence"
+    __table_args__ = (UniqueConstraint("event_id", "memory_id", name="uq_memory_influence"),)
+
+    event_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("event.id", ondelete="CASCADE"), index=True)
+    memory_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("memory_item.id", ondelete="CASCADE"), index=True)
+    influence: Mapped[float] = mapped_column(Float)
+    changed: Mapped[bool] = mapped_column(Boolean)
+    ablations: Mapped[int] = mapped_column(Integer, default=1)  # how many ablation runs this score averages

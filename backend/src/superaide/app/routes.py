@@ -645,6 +645,60 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             echo.confirm(s, m)
         return {"status": "fact"}
 
+    def why_on(person_id: uuid.UUID = Depends(owner_person_id)) -> uuid.UUID:
+        """The owner, once "Why did you say that?" is on (404 otherwise; sign-in and ownership are checked first)."""
+        if not get_settings().why_replay_enabled:
+            raise HTTPException(404, "Not found")
+        return person_id
+
+    def _why_view(rows: list[tuple[Any, Any]], stopped: str | None = None) -> dict[str, Any]:
+        return {
+            "notes": [
+                {"id": str(m.id), "text": m.content, "influence": i.influence, "changed_the_answer": i.changed}
+                for m, i in rows
+            ],
+            "never_used": [str(m.id) for m, i in rows if not i.changed],
+            "stopped": stopped,
+        }
+
+    @router.get(
+        "/why/{event_id}",
+        tags=["Owner: chat & notebook"],
+        summary="Which notes changed this reply",
+        description="The stored result of a replay (404 while WHY_REPLAY_ENABLED is off, or if it isn't your reply).",
+    )
+    def why_get(event_id: uuid.UUID, person_id: uuid.UUID = Depends(why_on)) -> dict[str, Any]:
+        from superaide.trust import replay
+
+        with session_scope() as s:
+            owner = require(s, Person, person_id)
+            try:
+                return _why_view(replay.stored(s, owner, event_id))
+            except replay.ReplayError as exc:
+                raise HTTPException(exc.status, str(exc)) from exc
+
+    @router.post(
+        "/why/{event_id}",
+        tags=["Owner: chat & notebook"],
+        summary="Why did you say that?",
+        description=(
+            "Re-runs the answer with each of the top notes removed, on the small model inside the spend cap, and "
+            "stores how far each removal moved it. At most REPLAY_MAX_ABLATIONS + 1 model calls."
+        ),
+    )
+    def why_run(event_id: uuid.UUID, person_id: uuid.UUID = Depends(why_on)) -> dict[str, Any]:
+        from superaide.trust import replay
+
+        agent = get_agent()
+        with session_scope() as s:
+            owner = require(s, Person, person_id)
+            try:
+                run = replay.explain(agent, s, owner, event_id)
+            except replay.ReplayError as exc:
+                raise HTTPException(exc.status, str(exc)) from exc
+            s.flush()
+            return _why_view(replay.stored(s, owner, event_id), run.stopped)
+
     @router.post(
         "/notebook/{memory_id}/forget",
         tags=["Owner: chat & notebook"],
