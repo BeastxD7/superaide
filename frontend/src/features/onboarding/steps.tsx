@@ -30,6 +30,7 @@ import { AppError, call, upload, type IngestResult, type Me, type SharedDoc, typ
 import { Connections } from '@/features/workspace/Connections'
 import { BrandIcon } from '@/components/BrandIcon'
 import { Button, Notice } from '@/components/site'
+import { isSendKey } from '@/lib/keys'
 
 // The answer panel for each step of the introduction. Each control calls
 // onAnswer(payload, whatYouSaid); intro actions (files, links, the call) talk to
@@ -142,7 +143,7 @@ export function Composer({
     void onSend(t)
   }
   function onKey(e: KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (isSendKey(e)) {
       e.preventDefault()
       send()
     }
@@ -383,7 +384,19 @@ function FilesAndLinks({ documents, reload, onContinue }: { documents: SharedDoc
   const [drag, setDrag] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
+  // One upload or link at a time: a ref, because two drops can land before a re-render shows `busy`.
+  const working = useRef(false)
   async function sendFile(file: File) {
+    if (working.current) return
+    if (!/\.(pdf|docx|txt|md)$/i.test(file.name)) {
+      setError('That file type is not supported. Use a PDF, Word, text or Markdown file.')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError(`${file.name} is larger than 10 MB.`)
+      return
+    }
+    working.current = true
     setBusy(`Reading ${file.name}…`)
     setError(null)
     setNote(null)
@@ -397,13 +410,15 @@ function FilesAndLinks({ documents, reload, onContinue }: { documents: SharedDoc
     } catch (e) {
       setError(e instanceof AppError ? e.message : String(e))
     } finally {
+      working.current = false
       setBusy(null)
     }
   }
 
   async function sendLink() {
     const u = url.trim()
-    if (!u) return
+    if (!u || working.current) return
+    working.current = true
     setBusy(`Reading ${u}…`)
     setError(null)
     setNote(null)
@@ -417,6 +432,7 @@ function FilesAndLinks({ documents, reload, onContinue }: { documents: SharedDoc
     } catch (e) {
       setError(e instanceof AppError ? e.message : String(e))
     } finally {
+      working.current = false
       setBusy(null)
     }
   }
@@ -435,7 +451,7 @@ function FilesAndLinks({ documents, reload, onContinue }: { documents: SharedDoc
     e.preventDefault()
     setDrag(false)
     const f = e.dataTransfer.files?.[0]
-    if (f) void sendFile(f)
+    if (f && !busy) void sendFile(f)
   }
 
   return (
@@ -474,7 +490,7 @@ function FilesAndLinks({ documents, reload, onContinue }: { documents: SharedDoc
         <input
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && void sendLink()}
+          onKeyDown={(e) => isSendKey(e) && void sendLink()}
           placeholder="Your website, GitHub or a page about you"
           aria-label="Link to a page about you"
           className="min-w-0 flex-1 bg-transparent py-2 text-sm text-ink outline-none placeholder:text-muted/70"
