@@ -98,7 +98,7 @@ export function accountButton(page: Page): Locator {
 }
 
 export function navLogOut(page: Page): Locator {
-  return page.getByRole('navigation').getByRole('button', { name: 'Log out' })
+  return page.getByRole('menuitem', { name: 'Log out' }) // the menu is portalled out of the nav
 }
 
 // Log out from the public site's nav (marketplace, agent pages, hire, introduction).

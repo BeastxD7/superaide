@@ -28,7 +28,7 @@ async function gotoLogin(page: Page): Promise<void> {
 // A finger-sized target that is fully on screen.
 async function expectTappable(page: Page, target: Locator): Promise<void> {
   await target.scrollIntoViewIfNeeded()
-  await expect(target).toBeInViewport({ ratio: 1 })
+  await expect(target).toBeInViewport({ ratio: 0.99 }) // sub-pixel rounding of a scaled-in menu can read 0.9999999
   const box = await target.boundingBox()
   expect(box!.width).toBeGreaterThanOrEqual(24)
   expect(box!.height).toBeGreaterThanOrEqual(24)
@@ -117,6 +117,8 @@ test.describe('accounts on a phone', () => {
     await expectTappable(page, accountButton(page))
     await accountButton(page).tap()
     const logout = navLogOut(page)
+    await expect(logout).toBeVisible()
+    await page.waitForTimeout(400) // the menu's open animation scales it in; measure it once settled
     await expectTappable(page, logout)
     await expectNoHorizontalScroll(page)
     await logout.tap()
