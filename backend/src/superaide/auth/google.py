@@ -28,6 +28,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
+from fastapi import Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -38,11 +39,13 @@ from superaide.config import get_settings
 from superaide.connectors import google_signin
 from superaide.connectors.google_signin import GoogleIdentity, SignInError
 from superaide.db.models import UserAccount
+from superaide.links import allowed_request_origin, same_origin
 from superaide.tenancy.models import PlatformState
 
 PENDING_TTL = timedelta(minutes=10)
 PREFIX = "gsignin:"
 COOKIE = "superaide_google_signin"
+PAGES = ("login", "signup")  # where a sign-in started, so a failure can send the person back there
 
 
 @dataclass(frozen=True)
@@ -64,9 +67,40 @@ def http_client() -> httpx.Client:
     return httpx.Client(timeout=15)
 
 
-def redirect_uri() -> str:
+def registered_origins() -> list[str]:
+    """The origins whose callback address is registered with Google: FRONTEND_ORIGIN, then GOOGLE_REDIRECT_ORIGINS."""
+    settings = get_settings()
+    extra = [o.strip() for o in settings.google_redirect_origins.split(",") if o.strip()]
+    return [settings.frontend_origin.rstrip("/"), *(o.rstrip("/") for o in extra)]
+
+
+def origin_for(request: Request) -> str:
+    """The origin to sign in on: where the person is using the app, so the one-time browser cookie
+    set now is still there when Google sends them back. Google only accepts redirect addresses
+    registered in its console, so that origin must be allowed (superaide/links.py) and registered
+    (FRONTEND_ORIGIN or GOOGLE_REDIRECT_ORIGINS). Any other address gets a message, not a failed sign-in."""
+    settings = get_settings()
+    home = settings.frontend_origin.rstrip("/")
+    used = allowed_request_origin(request, settings)
+    if used is None or any(same_origin(used, o) for o in registered_origins()):
+        return used or home
+    raise AuthError(
+        409,
+        f"Google sign-in works only at {home}. Open the app there and try again, or use your email and password.",
+    )
+
+
+def redirect_uri(origin: str | None = None) -> str:
     """Through the web app's /api proxy, so the session cookie is set on the app's own origin."""
-    return f"{get_settings().frontend_origin.rstrip('/')}/api/auth/google/callback"
+    return f"{(origin or get_settings().frontend_origin).rstrip('/')}/api/auth/google/callback"
+
+
+def pending_origin(pending: dict[str, Any]) -> str:
+    """The origin a pending sign-in started on, checked again: only a registered origin is ever used."""
+    stored = str(pending.get("origin") or "")
+    if stored and any(same_origin(stored, o) for o in registered_origins()):
+        return stored.rstrip("/")
+    return get_settings().frontend_origin.rstrip("/")
 
 
 def safe_next(raw: str | None) -> str:
@@ -84,7 +118,15 @@ def configured() -> bool:
     return bool(s.google_client_id and s.google_client_secret)
 
 
-def start(session: Session, *, client: Client, next_path: str | None, timezone: str | None) -> Started:
+def start(
+    session: Session,
+    *,
+    client: Client,
+    next_path: str | None,
+    timezone: str | None,
+    origin: str,
+    page: str | None = None,
+) -> Started:
     settings = get_settings()
     now = datetime.now(UTC)
     window = timedelta(minutes=15)
@@ -107,12 +149,13 @@ def start(session: Session, *, client: Client, next_path: str | None, timezone: 
             value={
                 "verifier": verifier, "nonce": nonce, "browser": _hash(browser), "at": now.isoformat(),
                 "next": safe_next(next_path), "timezone": service.valid_timezone(timezone),
+                "origin": origin, "page": page if page in PAGES else "login",
             },
         )
     )  # fmt: skip
     service._event(session, "google_start", client)
     url = google_signin.auth_url(
-        settings.google_client_id, redirect_uri(), state=state, challenge=challenge, nonce=nonce
+        settings.google_client_id, redirect_uri(origin), state=state, challenge=challenge, nonce=nonce
     )
     return Started(url=url, browser_secret=browser)
 
@@ -137,7 +180,7 @@ def identify(pending: dict[str, Any], code: str, http: httpx.Client) -> GoogleId
     settings = get_settings()
     id_token = google_signin.exchange_code(
         client_id=settings.google_client_id, client_secret=settings.google_client_secret, code=code,
-        verifier=str(pending["verifier"]), redirect_uri=redirect_uri(), client=http,
+        verifier=str(pending["verifier"]), redirect_uri=redirect_uri(pending_origin(pending)), client=http,
     )  # fmt: skip
     return google_signin.verify_id_token(
         id_token, client_id=settings.google_client_id, nonce=str(pending.get("nonce", "")), client=http

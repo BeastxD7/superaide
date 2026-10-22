@@ -111,12 +111,18 @@ def _use(session: Session, row: EmailToken) -> None:
 # --- verifying the address ------------------------------------------------------------
 
 
+def ensure_can_send(session: Session, user: UserAccount) -> None:
+    """Raises the hourly-limit error (429) if this account has had its share of email links. Call it
+    before changing anything that a link would follow."""
+    if _issued_recently(session, user) >= get_settings().email_links_per_account_per_hour:
+        raise AuthError(429, "We've sent several emails already. Check your inbox, or try again in an hour.")
+
+
 def start_verification(session: Session, user: UserAccount, base: str | None = None) -> Mail | None:
     """The email that verifies this account's address, or None if it is already verified."""
     if user.email_verified_at is not None:
         return None
-    if _issued_recently(session, user) >= get_settings().email_links_per_account_per_hour:
-        raise AuthError(429, "We've sent several emails already. Check your inbox, or try again in an hour.")
+    ensure_can_send(session, user)
     hours = get_settings().verify_link_hours
     token = _issue(session, user, VERIFY, timedelta(hours=hours))
     account_audit(session, user.id, "verification_sent")

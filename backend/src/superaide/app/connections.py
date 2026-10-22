@@ -7,7 +7,6 @@ a credential, only a masked hint.
 
 from __future__ import annotations
 
-import contextvars
 import hashlib
 import secrets
 import uuid
@@ -18,7 +17,7 @@ from typing import Any
 from urllib.parse import quote
 
 import httpx
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -29,7 +28,7 @@ from superaide.channels import health
 from superaide.config import get_settings
 from superaide.connectors import google
 from superaide.db.session import session_scope
-from superaide.knowledge.ingest import read_pending
+from superaide.knowledge.pending import brain_became_ready
 from superaide.tenancy import endpoints
 from superaide.tenancy.context import InstanceScope, scope_or_default, use_instance
 from superaide.tenancy.models import PlatformState
@@ -186,15 +185,12 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
     )
     def connect_anthropic(
         body: AnthropicBody,
-        background: BackgroundTasks,
-        owner_id: uuid.UUID = Depends(owner_person_id),
+        _: uuid.UUID = Depends(owner_person_id),
         user_id: uuid.UUID = Depends(current_user_id),
     ) -> dict[str, Any]:
         checked = checked_or_400(lambda: check.check_anthropic(body.api_key, http_client()))
         result = connect("anthropic", checked, user_id)
-        # Files and links saved while offline get read now that there is a brain.
-        # In the request's context: the owner's instance stays in scope after the response is sent.
-        background.add_task(contextvars.copy_context().run, read_pending, get_agent(), owner_id)
+        brain_became_ready()  # files and links saved while offline get read now that there is a brain
         return result
 
     @router.post(

@@ -52,7 +52,7 @@ test.describe('files', () => {
 
     await chooseFile(page, textFile('about-me.txt', 'I lead applied AI at PebbleRoad in Singapore.\nMost of my week is client work.'))
     await expect(fileRow(page, 'about-me.txt')).toContainText(SAVED)
-    await expect(page.getByText("I've saved about-me.txt. I'll read it properly once my Claude brain is connected.")).toBeVisible()
+    await expect(page.getByText("I've saved about-me.txt. I'll read it properly once an AI model is connected.")).toBeVisible()
 
     await chooseFile(page, textFile('notes.md', '# Notes\n\n- Prefers mornings for deep work\n- Travels to Bengaluru monthly', 'text/markdown'))
     await expect(fileRow(page, 'notes.md')).toContainText(SAVED)
