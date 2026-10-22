@@ -13,8 +13,12 @@ Many owners (ADR 0009 T6):
   .env defaults.
 - When the platform's own model key pays (`key_source="platform"`), each call also
   draws on a platform-wide daily allowance (`platform_spend`, one row per UTC day),
-  reserved with one atomic UPDATE, no global lock. Spend on an owner's own key is
-  capped by the owner's limits only.
+  reserved with one atomic UPDATE, no global lock.
+- Who pays decides which limits count. The lifetime cap (MAX_SPEND_USD) counts every row, whoever
+  paid, so no instance can spend more than it. The owner's day, month and bucket limits count only
+  what their own key paid. Superaide AI credits answer to their own limits instead (the owner's
+  credits allowance and the platform's daily cap), so using up the credits never stops the owner's
+  own key, and the owner's own limits never cut the credits short of the allowance the card shows.
 """
 
 from __future__ import annotations
@@ -148,7 +152,9 @@ class BudgetGuard:
         self.cap = Decimal(str(cap_usd))
         self.db_url = db_url
         self.limits = limits or Limits()
-        self.prices = prices or DEFAULT_PRICES
+        # Superaide pays for credit calls, so they are priced from the built-in tables only: never from
+        # a price the owner typed in (an owner price of 0 must not make Superaide's calls free).
+        self.prices = DEFAULT_PRICES if key_source == "platform" else (prices or DEFAULT_PRICES)
         self.scope = scope or scope_or_default()  # the instance whose ledger this guards
         self.key_source = key_source
 
@@ -176,14 +182,24 @@ class BudgetGuard:
     def _mine(self) -> Any:
         return SpendEntry.agent_id == self.scope.agent_id
 
-    def _committed(self, s, since: datetime | None = None, purposes: list[str] | None = None) -> Decimal:
-        """Settled cost plus open reservations, optionally within a window or for some purposes."""
+    def _committed(
+        self,
+        s,
+        since: datetime | None = None,
+        purposes: list[str] | None = None,
+        *,
+        all_sources: bool = False,
+    ) -> Decimal:
+        """Settled cost plus open reservations, optionally within a window or for some purposes.
+        Counts what this guard's key source paid; `all_sources=True` counts everything (the lifetime cap)."""
         amount = case(
             (SpendEntry.status == "settled", SpendEntry.cost_usd),
             (SpendEntry.status == "reserved", SpendEntry.reserved_usd),
             else_=0,
         )
         q = select(func.coalesce(func.sum(amount), 0)).where(self._mine())
+        if not all_sources:
+            q = q.where(SpendEntry.key_source == self.key_source)
         if since is not None:
             q = q.where(SpendEntry.created_at >= since)
         if purposes is not None:
@@ -224,7 +240,8 @@ class BudgetGuard:
                     s, "budget", "llm_call_refused", reason=period, purpose=purpose, committed_usd=float(spent),
                     request_usd=float(worst), cap_usd=float(cap),
                 )  # fmt: skip
-                return BudgetExceeded(f"Superaide AI credits: {period.split('_')[1]}ly allowance used", period)
+                word = "daily" if period == "platform_day" else "monthly"
+                return BudgetExceeded(f"Superaide AI credits: {word} allowance used", period)
         return None
 
     def summary(self) -> SpendSummary:
@@ -256,7 +273,7 @@ class BudgetGuard:
                     text("SELECT pg_advisory_xact_lock(:ns, hashtext(:agent))"),
                     {"ns": _LOCK_KEY, "agent": str(self.scope.agent_id)},
                 )
-                committed = self._committed(s)
+                committed = self._committed(s, all_sources=True)
                 if committed + worst_case_usd > self.cap:
                     audit(
                         s,
@@ -272,8 +289,11 @@ class BudgetGuard:
                         f"Spend cap US${self.cap} would be passed: committed US${committed:.4f}, "
                         f"this call up to US${worst_case_usd:.4f}"
                     )
-                elif (period_refusal := self._period_refusal(s, purpose, worst_case_usd)) is not None:
-                    refusal = period_refusal
+                elif (
+                    self.key_source == "owner"
+                    and (period_refusal := self._period_refusal(s, purpose, worst_case_usd)) is not None
+                ):
+                    refusal = period_refusal  # the owner's own limits apply to the owner's own key only
                 elif self.key_source == "platform" and (
                     owner_refusal := self._credits_refusal(s, purpose, worst_case_usd)
                 ):

@@ -35,6 +35,16 @@ const ROLES: { id: RoleName; label: string; why: string }[] = [
   { id: 'deep', label: 'Deep work', why: 'Longer research and harder questions.' },
 ]
 
+// A price typed into the page: digits with an optional dot, like 1.50. Anything else is refused here, before
+// it is sent (a comma or letters would otherwise reach the server as something it can't read).
+const PRICE_HELP = 'Enter the price as a number with a dot, like 1.50.'
+function parsePrice(text: string): number | null {
+  const t = text.trim()
+  if (!/^\d+(\.\d+)?$/.test(t)) return null
+  const n = Number(t)
+  return n <= 1000 ? n : null
+}
+
 function errorText(e: unknown): string {
   return e instanceof AppError ? e.message : String(e)
 }
@@ -158,7 +168,15 @@ export function ModelsPage() {
 
         {data && <WebSearchCard settings={data} onChanged={reload} />}
 
-        {data && <RolePicker settings={data} connected={[...connected]} label={label} onSaved={reload} />}
+        {data && (
+          <RolePicker
+            key={[...connected].join(',')}
+            settings={data}
+            connected={[...connected]}
+            label={label}
+            onSaved={reload}
+          />
+        )}
       </div>
     </div>
   )
@@ -501,6 +519,17 @@ function CreditsCard({ settings, onChanged }: { settings: ModelSettings; onChang
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const usd = (n: number) => `US$${n.toFixed(2)}`
+  // A missing limit means none of your own (only Superaide's shared daily limit applies), never US$0.00.
+  const daily = c.allowance.daily_usd
+  const monthly = c.allowance.monthly_usd
+  const limitText =
+    daily !== null && monthly !== null
+      ? ` up to ${usd(daily)} a day and ${usd(monthly)} a month`
+      : daily !== null
+        ? ` up to ${usd(daily)} a day`
+        : monthly !== null
+          ? ` up to ${usd(monthly)} a month`
+          : ', with no limit of your own (Superaide shares a daily limit across everyone)'
 
   async function toggle() {
     setBusy(true)
@@ -527,12 +556,13 @@ function CreditsCard({ settings, onChanged }: { settings: ModelSettings; onChang
           )}
         </p>
         <p className="mt-1 text-sm text-body">
-          No key needed: use Superaide&apos;s own Claude ({c.model}) up to {usd(c.allowance.daily_usd)} a day and{' '}
-          {usd(c.allowance.monthly_usd)} a month. If you also connect your own key below, your key is used first.
+          No key needed: use Superaide&apos;s own Claude ({c.model}){limitText}. If you also connect your own key
+          below, your key is used first.
         </p>
         <p className="mt-1 text-xs text-muted">
-          Used in the last 24 hours: {usd(c.used.today_usd)} of {usd(c.allowance.daily_usd)} · last 30 days:{' '}
-          {usd(c.used.month_usd)} of {usd(c.allowance.monthly_usd)}
+          Used in the last 24 hours: {usd(c.used.today_usd)}
+          {daily !== null && ` of ${usd(daily)}`} · last 30 days: {usd(c.used.month_usd)}
+          {monthly !== null && ` of ${usd(monthly)}`}
         </p>
         {problem && (
           <div className="mt-3">
@@ -563,20 +593,26 @@ function RolePicker({
   label: (id: string) => string
   onSaved: () => Promise<void>
 }) {
+  const modelsFor = (provider: string) =>
+    provider === 'anthropic'
+      ? (settings.priced.anthropic ?? [])
+      : (settings.providers.find((p) => p.key === provider)?.models ?? [])
+  // A role saved on a provider that isn't connected (Claude, by default) starts on the first one that is,
+  // with its first model, so Save models works without touching anything.
   const initial = () =>
-    Object.fromEntries(ROLES.map((r) => [r.id, { ...settings.roles[r.id], input: '', output: '' }])) as Record<
-      RoleName,
-      Choice
-    >
+    Object.fromEntries(
+      ROLES.map((r) => {
+        const saved = settings.roles[r.id]
+        const provider = connected.includes(saved.provider) ? saved.provider : (connected[0] ?? saved.provider)
+        const model = provider === saved.provider ? saved.model : (modelsFor(provider)[0] ?? '')
+        return [r.id, { provider, model, input: '', output: '' }]
+      }),
+    ) as Record<RoleName, Choice>
   const [choices, setChoices] = useState<Record<RoleName, Choice>>(initial)
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
 
-  const modelsFor = (provider: string) =>
-    provider === 'anthropic'
-      ? (settings.priced.anthropic ?? [])
-      : (settings.providers.find((p) => p.key === provider)?.models ?? [])
   const isPriced = (c: Choice) => (settings.priced[c.provider] ?? []).includes(c.model)
   const update = (role: RoleName, patch: Partial<Choice>) => {
     setSaved(false)
@@ -590,19 +626,23 @@ function RolePicker({
       for (const role of ROLES) {
         const c = choices[role.id]
         if (!connected.includes(c.provider)) continue
+        if (c.model.trim() === '') throw new Error(`Choose a model for ${role.label}.`)
         if (!isPriced(c)) {
           if (c.input === '' || c.output === '') {
             throw new Error(`Enter the price of ${c.model} (from ${label(c.provider)}'s price page) first.`)
           }
-          await call('/providers/prices', {
-            method: 'POST',
-            json: {
-              provider: c.provider,
-              model: c.model,
-              input_usd_per_mtok: Number(c.input),
-              output_usd_per_mtok: Number(c.output),
-            },
-          })
+          const input = parsePrice(c.input)
+          const output = parsePrice(c.output)
+          if (input === null || output === null) throw new Error(PRICE_HELP)
+          try {
+            await call('/providers/prices', {
+              method: 'POST',
+              json: { provider: c.provider, model: c.model, input_usd_per_mtok: input, output_usd_per_mtok: output },
+            })
+          } catch (e) {
+            // The server's own validation wording isn't for people.
+            throw e instanceof AppError && e.status === 422 ? new Error(PRICE_HELP) : e
+          }
         }
       }
       // A role on a provider that isn't connected uses the conversation model instead.
