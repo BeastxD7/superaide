@@ -14,10 +14,17 @@ import { Button, Notice, PRODUCT } from '@/components/site'
 // needs it; a verify link is used up the moment it is opened.
 function useFragmentToken(keepAs?: string): [string | null | undefined, () => void] {
   const [token, setToken] = useState<string | null | undefined>(undefined) // undefined: not read yet
+  // The fragment is read once and then cleared from the address bar. React in development runs effects twice
+  // (mount, cleanup, mount); the second run would find the hash already gone and replace the token with null,
+  // so the first read is remembered here (refs survive that double run).
+  const fromHash = useRef<string | null | undefined>(undefined)
   useEffect(() => {
     const key = keepAs ? `superaide.link.${keepAs}` : null
-    const found = new URLSearchParams(window.location.hash.slice(1)).get('token')
-    if (found) window.history.replaceState(null, '', window.location.pathname)
+    if (fromHash.current === undefined) {
+      fromHash.current = new URLSearchParams(window.location.hash.slice(1)).get('token')
+      if (fromHash.current) window.history.replaceState(null, '', window.location.pathname)
+    }
+    const found = fromHash.current
     let kept: string | null = null
     try {
       if (key && found) sessionStorage.setItem(key, found)

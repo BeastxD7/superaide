@@ -2,6 +2,7 @@
 
 import { Copy, ExternalLink } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
+import { ConfirmAction } from '@/components/confirm-action'
 import { Notice } from '@/components/site'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -122,9 +123,14 @@ export function AskLinkCard() {
               </Button>
             )}
             {link && !link.revoked && (
-              <Button type="button" variant="ghost" disabled={busy} onClick={() => void revoke()}>
-                Revoke
-              </Button>
+              <ConfirmAction
+                label="Revoke"
+                variant="ghost"
+                confirmLabel="Yes, revoke it for good"
+                question="The link stops working for good and can't be turned back on."
+                disabled={busy}
+                onConfirm={revoke}
+              />
             )}
             {link && !live && !link.revoked && (
               <Button type="button" variant="outline" disabled={busy} onClick={() => void save({ published: true }, 'Your link is live.')}>

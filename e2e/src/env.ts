@@ -15,6 +15,10 @@ export const UPSTREAM_PORT = 8400 + SLOT
 export const PROXY_A = 3500 + SLOT
 export const PROXY_B = 3600 + SLOT
 export const PROXY_C = 3700 + SLOT
+// Opt-in (E2E_DEV=1): also run `next dev` (React StrictMode double effects) for the *.dev.spec.ts files.
+export const DEV = process.env.E2E_DEV === '1'
+export const DEV_PORT = 3300 + SLOT
+export const DEV_URL = `http://localhost:${DEV_PORT}`
 export const API_URL = `http://127.0.0.1:${API_PORT}`
 // "Continue with Google" against a fake Google (scripts/fake-google.mjs). Muted by default: only with
 // E2E_GOOGLE=1, which also starts the fake and switches Google sign-in on in the API.

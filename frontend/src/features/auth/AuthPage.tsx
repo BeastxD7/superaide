@@ -81,7 +81,7 @@ export function AuthPage({
 
   // Already signed in: go where you were heading.
   useEffect(() => {
-    if (session.account) router.push(target ?? homeFor(session.account))
+    if (session.account) router.replace(target ?? homeFor(session.account))
   }, [session.account, target, router])
 
   async function submit(e: FormEvent) {
@@ -91,7 +91,7 @@ export function AuthPage({
     try {
       const account = mode === 'signup' ? await auth.signup(name, email, password) : await auth.login(email, password)
       await session.signedIn(account)
-      router.push(target ?? homeFor(account))
+      router.replace(target ?? homeFor(account))
     } catch (err) {
       setError(err instanceof AppError ? { message: err.message, field: err.field } : { message: String(err) })
     } finally {

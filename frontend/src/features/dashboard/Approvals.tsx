@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAppData } from '@/features/dashboard/data'
 import { AppError, call, type ApprovalItem } from '@/lib/api'
+import { announceApprovalsChanged, useApprovalsChanged } from '@/lib/approvals-sync'
+import { formatWhen } from '@/lib/dates'
 
 const KIND_LABEL: Record<string, string> = {
   publish_post: 'Publish a post',
@@ -23,6 +25,7 @@ export function ApprovalsCard({ name, empty = null }: { name: string; empty?: Re
   const { data, reload } = useAppData<ApprovalItem[]>('/approvals')
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  useApprovalsChanged(reload)
   const pending = (data ?? []).filter((a) => a.status === 'pending')
   if (!pending.length) return data ? empty : null
 
@@ -31,10 +34,12 @@ export function ApprovalsCard({ name, empty = null }: { name: string; empty?: Re
     setError(null)
     try {
       await call(`/approvals/${id}/${verdict}`, { method: 'POST' })
-      await reload()
     } catch (e) {
       setError(e instanceof AppError ? e.message : String(e))
     } finally {
+      // Read again even when it failed: "already decided" means this list was stale.
+      await reload()
+      announceApprovalsChanged()
       setBusy(null)
     }
   }
@@ -63,7 +68,7 @@ export function ApprovalsCard({ name, empty = null }: { name: string; empty?: Re
                 <p className="mt-0.5 break-words text-sm text-body">{a.summary}</p>
                 <p className="mt-1 text-xs text-muted">
                   {a.requested_by ? `Asked by ${a.requested_by}` : 'Asked in a chat'} ·{' '}
-                  {new Date(a.at).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
+                  {formatWhen(a.at)}
                 </p>
               </div>
               <div className="flex shrink-0 gap-2">

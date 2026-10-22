@@ -51,8 +51,8 @@ export function Hire({ slug, session }: { slug: string; session: Session }) {
 
   // Step 1 is having an account. Already hired: carry on where you left off.
   useEffect(() => {
-    if (!account) router.push(`/signup?next=${encodeURIComponent(`/agents/${slug}/hire`)}`)
-    else if (account.hire && stage !== 'hired') router.push(homeFor(account))
+    if (!account) router.replace(`/signup?next=${encodeURIComponent(`/agents/${slug}/hire`)}`)
+    else if (account.hire && stage !== 'hired') router.replace(homeFor(account))
   }, [account, slug, stage, router])
 
   async function hire(e: FormEvent) {

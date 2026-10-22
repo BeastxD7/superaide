@@ -38,6 +38,8 @@ const nextConfig: NextConfig = {
   // The Docker image builds a self-contained server; `next start` and `next dev` don't need it.
   output: process.env.NEXT_OUTPUT === 'standalone' ? 'standalone' : undefined,
   poweredByHeader: false,
+  // The dev-mode e2e project runs `next dev` next to `next start`; they must not share one .next folder.
+  distDir: process.env.NEXT_DIST_DIR || undefined,
   // Next's dev server blocks its own scripts for other host names; start.command
   // users may open the app as 127.0.0.1 as well as localhost, and DEV_ORIGINS adds
   // more (comma-separated), e.g. the Mac's Wi-Fi address to try it on a phone.

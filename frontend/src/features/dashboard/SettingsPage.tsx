@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react'
 import { Loadable } from '@/components/load-state'
+import { ConfirmAction } from '@/components/confirm-action'
 import { Notice } from '@/components/site'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -36,7 +37,9 @@ export function SettingsPage() {
               <dt className="text-muted">Name</dt>
               <dd className="text-ink [overflow-wrap:anywhere]">{account.user.name}</dd>
               <dt className="text-muted">Email</dt>
-              <dd className="text-ink">{account.user.email}</dd>
+              <dd className="text-ink [overflow-wrap:anywhere]">
+                {account.user.email} <VerifiedBadge verified={account.user.email_verified} />
+              </dd>
               <dt className="text-muted">Member since</dt>
               <dd className="text-ink">{new Date(account.user.created_at).toLocaleDateString(undefined, { dateStyle: 'long' })}</dd>
             </dl>
@@ -82,6 +85,34 @@ export function SettingsPage() {
         <AccessLogCard name={name} />
       </div>
     </div>
+  )
+}
+
+// Whether the address was confirmed from the emailed link, with a way to get the link again.
+function VerifiedBadge({ verified }: { verified?: boolean }) {
+  const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'failed'>('idle')
+  if (verified === undefined) return null
+  if (verified) return <span className="ml-1 rounded-full bg-mist px-2 py-0.5 text-xs text-body">Verified</span>
+  async function again() {
+    setState('sending')
+    try {
+      await auth.sendVerification()
+      setState('sent')
+    } catch {
+      setState('failed')
+    }
+  }
+  return (
+    <span className="ml-1 inline-flex flex-wrap items-center gap-2 text-xs">
+      <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[#6b3d06]">Not verified</span>
+      <Button type="button" size="sm" variant="outline" disabled={state === 'sending' || state === 'sent'} onClick={() => void again()}>
+        Send the link again
+      </Button>
+      <span role="status" className="text-muted">
+        {state === 'sent' && 'Sent. Check your inbox.'}
+        {state === 'failed' && "That didn't go through. Try again in a minute."}
+      </span>
+    </span>
   )
 }
 
@@ -202,9 +233,12 @@ function PasswordCard() {
             <Button type="submit" disabled={busy || !current || !next}>
               Change password
             </Button>
-            <Button type="button" variant="outline" onClick={() => void everywhere()}>
-              Sign out everywhere
-            </Button>
+            <ConfirmAction
+              label="Sign out everywhere"
+              confirmLabel="Yes, sign out everywhere"
+              question="This signs you out on every device, including this one."
+              onConfirm={everywhere}
+            />
           </div>
           {result && <Notice tone={result.tone}>{result.text}</Notice>}
         </form>
