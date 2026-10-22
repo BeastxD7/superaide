@@ -316,10 +316,23 @@ function IntroPicker({
         {tabs.map(({ key, label, short, icon: Icon }) => (
           <button
             key={key}
+            id={`intro-tab-${key}`}
             role="tab"
             aria-selected={tab === key}
+            aria-controls="intro-tabpanel"
+            tabIndex={tab === key ? 0 : -1}
             aria-label={label}
             onClick={() => setTab(key)}
+            onKeyDown={(e) => {
+              // The ARIA tabs pattern: arrows (and Home/End) move between the tabs, only the selected one is in the Tab order.
+              const at = tabs.findIndex((t) => t.key === key)
+              const to = e.key === 'ArrowRight' ? at + 1 : e.key === 'ArrowLeft' ? at - 1 : e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : null
+              if (to === null) return
+              e.preventDefault()
+              const next = tabs[(to + tabs.length) % tabs.length].key
+              setTab(next)
+              document.getElementById(`intro-tab-${next}`)?.focus()
+            }}
             className={`flex items-center justify-center gap-2 rounded-xl px-2 py-2.5 text-sm font-medium transition-colors ${
               tab === key ? 'bg-violet-600 text-white shadow-sm' : 'text-body hover:bg-white'
             }`}
@@ -331,7 +344,7 @@ function IntroPicker({
         ))}
       </div>
       <AnimatePresence mode="wait">
-        <motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.2 }}>
+        <motion.div key={tab} id="intro-tabpanel" role="tabpanel" aria-labelledby={`intro-tab-${tab}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.2 }}>
           {tab === 'chat' && <Composer placeholder={input.placeholder} onSend={(t) => onAnswer({ mode: 'chat', text: t }, t)} autoFocus />}
           {tab === 'files' && <FilesAndLinks documents={input.documents} reload={reload} onContinue={() => onAnswer({ mode: 'continue' }, "That's me for now")} />}
           {tab === 'call' && (
@@ -485,7 +498,7 @@ function FilesAndLinks({ documents, reload, onContinue }: { documents: SharedDoc
           onKeyDown={(e) => isSendKey(e) && void sendLink()}
           placeholder="Your website, GitHub or a page about you"
           aria-label="Link to a page about you"
-          className="min-w-0 flex-1 bg-transparent py-2 text-sm text-ink outline-none placeholder:text-muted/70"
+          className="min-w-0 flex-1 bg-transparent py-2 text-base md:text-sm text-ink outline-none placeholder:text-muted/70"
         />
         <button onClick={() => void sendLink()} disabled={!url.trim() || Boolean(busy)} className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-white disabled:opacity-40">
           Add
@@ -549,13 +562,13 @@ function PeoplePicker({ input, onAnswer }: { input: Extract<StepInput, { kind: '
                 onChange={(e) => set(i, { name: e.target.value })}
                 placeholder={i === 0 ? 'e.g. Priya' : 'Name'}
                 aria-label={`Person ${i + 1} name`}
-                className="min-w-0 flex-1 rounded-xl bg-mist px-3 py-2 text-sm text-ink outline-none focus:ring-2 focus:ring-violet-400/50"
+                className="min-w-0 flex-1 rounded-xl bg-mist px-3 py-2 text-base md:text-sm text-ink outline-none focus:ring-2 focus:ring-violet-400/50"
               />
               <select
                 value={r.relationship}
                 onChange={(e) => set(i, { relationship: e.target.value })}
                 aria-label={`Person ${i + 1} relationship`}
-                className="rounded-xl bg-mist px-2 py-2 text-sm text-ink outline-none"
+                className="rounded-xl bg-mist px-2 py-2 text-base md:text-sm text-ink outline-none"
               >
                 {input.relationships.map((rel) => (
                   <option key={rel}>{rel}</option>
@@ -609,7 +622,7 @@ function UrgentPicker({ input, onAnswer }: { input: Extract<StepInput, { kind: '
         onChange={(e) => setOther(e.target.value)}
         placeholder="Something else? e.g. anything about the Series A"
         aria-label="Something else that's urgent"
-        className="mt-3 w-full rounded-2xl bg-white px-4 py-3 text-sm text-ink outline-none placeholder:text-muted/70 focus:ring-2 focus:ring-violet-400/50"
+        className="mt-3 w-full rounded-2xl bg-white px-4 py-3 text-base md:text-sm text-ink outline-none placeholder:text-muted/70 focus:ring-2 focus:ring-violet-400/50"
       />
       <p className="mt-4 mb-2 text-sm font-medium text-ink">Everything else, in a digest:</p>
       <div className="grid grid-cols-2 gap-1.5 rounded-2xl bg-white/70 p-1.5 sm:grid-cols-4">
@@ -710,7 +723,7 @@ function SharePicker({ input, onAnswer }: { input: Extract<StepInput, { kind: 's
         rows={2}
         placeholder={input.never_placeholder}
         aria-label="Never share"
-        className="mt-3 w-full resize-none rounded-2xl bg-white px-4 py-3 text-sm text-ink outline-none placeholder:text-muted/70 focus:ring-2 focus:ring-violet-400/50"
+        className="mt-3 w-full resize-none rounded-2xl bg-white px-4 py-3 text-base md:text-sm text-ink outline-none placeholder:text-muted/70 focus:ring-2 focus:ring-violet-400/50"
       />
       <Submit onClick={() => void onAnswer({ shareable: picked, never }, null)}>{input.submit}</Submit>
       <button onClick={() => void onAnswer({ skip: true, never }, null)} className="mt-2 w-full rounded-full py-2 text-sm text-muted hover:text-ink">

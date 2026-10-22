@@ -609,7 +609,7 @@ function Summary({
               rows={2}
               maxLength={500}
               onChange={(e) => edit(i, e.target.value)}
-              className="min-h-[2.75rem] flex-1 resize-none rounded-2xl bg-white/10 px-4 py-2.5 text-sm text-white ring-1 ring-white/15 outline-none focus:ring-violet-400"
+              className="min-h-[2.75rem] flex-1 resize-none rounded-2xl bg-white/10 px-4 py-2.5 text-base md:text-sm text-white ring-1 ring-white/15 outline-none focus:ring-violet-400"
             />
             <button type="button" onClick={() => setFacts(facts.filter((_, j) => j !== i))} aria-label={`Remove fact ${i + 1}`} className="mt-1.5 grid size-9 place-items-center rounded-full text-white/60 hover:bg-white/10 hover:text-white">
               <Trash2 className="size-4" aria-hidden />

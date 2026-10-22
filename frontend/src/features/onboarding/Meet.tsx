@@ -74,6 +74,14 @@ export function Meet({ session }: { session: Session }) {
   }, [me?.person.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const { visible, typing, settled } = useReveal(messages, pending, fresh)
+  // After an answer the old controls are gone: move focus into the new step so keyboard and screen-reader users aren't left on <body>.
+  const panelRef = useRef<HTMLDivElement>(null)
+  const answered = useRef(false)
+  const focusNewStep = () => {
+    if (!answered.current) return
+    answered.current = false
+    panelRef.current?.querySelector<HTMLElement>('input:not([type=hidden]):not([type=file]), textarea, select, button:not([disabled])')?.focus()
+  }
 
   const answer = useCallback(
     async (answer: Record<string, unknown>, said: string | null) => {
@@ -84,6 +92,7 @@ export function Meet({ session }: { session: Session }) {
       try {
         const v = await call<StepView>('/onboarding', { method: 'POST', json: { step: view.step, answer } })
         const m = await call<Message[]>('/messages')
+        answered.current = true
         setView(v)
         setMessages(m)
         // Wait for the account and the agent's state to say "introduced" before the dashboard
@@ -209,7 +218,7 @@ export function Meet({ session }: { session: Session }) {
       </main>
 
       <div className="px-3 pt-1 pb-3">
-        <div className="mx-auto max-h-[62dvh] max-w-2xl overflow-y-auto rounded-[28px] border border-white bg-[#f6f2ff]/90 p-4 shadow-[0_-10px_40px_-24px_rgba(60,30,140,0.5)] backdrop-blur-xl">
+        <div ref={panelRef} className="mx-auto max-h-[62dvh] max-w-2xl overflow-y-auto rounded-[28px] border border-white bg-[#f6f2ff]/90 p-4 shadow-[0_-10px_40px_-24px_rgba(60,30,140,0.5)] backdrop-blur-xl">
           {error && (
             <div className="mb-3">
               <Notice tone="error">{error}</Notice>
@@ -224,6 +233,7 @@ export function Meet({ session }: { session: Session }) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 8 }}
                 transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                onAnimationComplete={focusNewStep}
               >
                 <StepControls
                   input={view.input}
