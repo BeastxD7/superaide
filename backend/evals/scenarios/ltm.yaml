@@ -1,0 +1,342 @@
+# Long-term memory (#51). Graded in code and offline: what is stored, and what the search serves to
+# which audience. Nothing here depends on what the model writes, so a regression in learning, supersession,
+# retrieval or the audience gate fails CI. The reply-quality checks (judge, reply_*) run live only.
+
+# --- ltm_inputs: a fact told by each path is kept and found ------------------------------------
+- id: ltm-in-chat
+  category: ltm_inputs
+  severity: high
+  title: A fact said in the app chat is learned and found by a paraphrased question
+  world: {learn_model: true}
+  turns:
+    - say: "FYI I'm vegetarian and I never eat mushrooms, please remember when booking dinners"
+      fake:
+        facts: [{content: "Shashank is vegetarian and never eats mushrooms.", category: preference}]
+  checks:
+    - memory: ["mushrooms"]
+    - recall_top: {query: "does he eat mushrooms", contains: ["mushrooms"], k: 3}
+
+- id: ltm-in-telegram
+  category: ltm_inputs
+  severity: high
+  title: A fact said on Telegram is learned and found
+  world: {learn_model: true}
+  turns:
+    - say: "my daughter Asha starts at Greenwood School in June, so mornings are for school runs"
+      via: telegram
+      fake:
+        facts: [{content: "Shashank's daughter Asha starts at Greenwood School in June.", category: person}]
+  checks:
+    - recall_top: {query: "which school is Asha going to", contains: ["Greenwood"], k: 3}
+
+- id: ltm-in-slack
+  category: ltm_inputs
+  severity: high
+  title: A fact said on Slack is learned and found
+  world: {learn_model: true}
+  turns:
+    - say: "btw the Pune office lead is Meera Nair, loop her in on anything about hiring"
+      via: slack
+      fake:
+        facts: [{content: "Meera Nair leads the Pune office and is looped in on hiring.", category: work}]
+  checks:
+    - recall_top: {query: "who runs the Pune office", contains: ["Meera Nair"], k: 3}
+
+- id: ltm-in-remember-command
+  category: ltm_inputs
+  severity: high
+  title: '"Remember that ..." on Telegram is stored without any model, and found'
+  turns:
+    - say: "remember that the storage unit code is 4417"
+      via: telegram
+      expect:
+        - reply_contains: ["Saved"]
+  checks:
+    - memory: ["4417"]
+    - recall_top: {query: "storage unit code", contains: ["4417"], k: 3}
+
+- id: ltm-in-intro-answers
+  category: ltm_inputs
+  severity: medium
+  title: A fact from the introduction is found by a question about the person
+  world:
+    memories:
+      - {content: "Shashank is the CEO of Orchard Labs, a logistics company in Bengaluru.", category: about, source: intro_chat}
+      - {content: "Shashank does not take calls before 10 am.", category: availability, source: intro_chat}
+  turns:
+    - say: "hello"
+  checks:
+    - recall_top: {query: "what company does he run", contains: ["Orchard Labs"], k: 3}
+    - recall_top: {query: "what time can I call him", contains: ["before 10"], k: 3}
+
+- id: ltm-in-file-and-link
+  category: ltm_inputs
+  severity: medium
+  title: Facts read from a file and from a link are found, whichever source they came from
+  world:
+    memories:
+      - {content: "Shashank gave a talk on small language models at PyCon India 2025.", category: work, source: document}
+      - {content: "Orchard Labs raised a Series A of 4 million dollars in 2024.", category: work, source: link}
+  turns:
+    - say: "hello"
+  checks:
+    - recall_top: {query: "what talk did he give", contains: ["PyCon"], k: 3}
+    - recall_top: {query: "funding raised", contains: ["Series A"], k: 3}
+
+- id: ltm-in-correction
+  category: ltm_inputs
+  severity: high
+  title: A correction in chat is stored as the new fact
+  world:
+    learn_model: true
+    memories:
+      - {content: "Shashank lives in Mumbai.", category: about}
+  turns:
+    - say: "I no longer live in Mumbai, I moved to Pune last month"
+      fake:
+        facts: [{content: "Shashank lives in Pune (moved in September 2026).", category: about, replaces: 1}]
+  checks:
+    - memory: ["Pune"]
+
+# --- ltm_update: the new fact replaces the old, and only the new one is served ---------------
+- id: ltm-update-city
+  category: ltm_update
+  severity: critical
+  title: After "I moved to Pune" the old city is no longer served
+  world:
+    learn_model: true
+    memories:
+      - {content: "Shashank lives in Mumbai.", category: about}
+  turns:
+    - say: "I no longer live in Mumbai, I moved to Pune last month"
+      fake:
+        facts: [{content: "Shashank lives in Pune (moved in September 2026).", category: about, replaces: 1}]
+  checks:
+    - recall_top: {query: "where does he live or has he moved", contains: ["Pune"], absent: ["Mumbai"], k: 5}
+
+- id: ltm-update-role
+  category: ltm_update
+  severity: high
+  title: A new job title retires the old one
+  world:
+    learn_model: true
+    memories:
+      - {content: "Shashank is the head of engineering at Orchard Labs.", category: work}
+  turns:
+    - say: "update: I'm not head of engineering anymore, I became CTO at Orchard Labs this month"
+      fake:
+        facts: [{content: "Shashank is the CTO of Orchard Labs (from October 2026).", category: work, replaces: 1}]
+  checks:
+    - recall_top: {query: "what is his role at Orchard Labs", contains: ["CTO"], absent: ["head of engineering"], k: 5}
+
+- id: ltm-update-said-again-is-one-fact
+  category: ltm_update
+  severity: medium
+  title: Saying a fact twice keeps one note, not two
+  world:
+    learn_model: true
+    memories:
+      - {content: "Shashank is allergic to peanuts.", category: preference}
+  turns:
+    - say: "just so you know, I'm allergic to peanuts, really allergic"
+      fake:
+        facts: [{content: "Shashank is allergic to peanuts.", category: preference, same_as: 1}]
+  checks:
+    - recall_top: {query: "peanut allergy", contains: ["peanuts"], k: 5}
+    - memory_count: {matching: "peanut", exactly: 1}
+
+- id: ltm-update-old-fact-still-in-history
+  category: ltm_update
+  severity: medium
+  title: A superseded fact is retired, not erased
+  world:
+    learn_model: true
+    memories:
+      - {content: "Shashank drives a grey Honda City.", category: about}
+  turns:
+    - say: "I sold the Honda City, I drive an electric Tata Nexon now"
+      fake:
+        facts: [{content: "Shashank drives an electric Tata Nexon.", category: about, replaces: 1}]
+  checks:
+    - memory: ["Nexon"]
+    - memory_retired: ["Honda City"]
+
+# --- ltm_temporal: questions about when --------------------------------------------------------
+- id: ltm-temporal-board-meeting
+  category: ltm_temporal
+  severity: high
+  title: '"When is the board meeting" finds the dated note among many newer ones'
+  world:
+    filler: 35
+    memories:
+      - {content: "The board meeting is on 2 November 2026 at 3 pm in the Orchard Labs boardroom.", category: work, age_days: 9}
+  turns:
+    - say: "hello"
+  checks:
+    - recall_top: {query: "when is the board meeting", contains: ["2 November"], k: 3}
+    - recall_top: {query: "what day is the board getting together", contains: ["2 November"], k: 3}
+
+- id: ltm-temporal-birthday
+  category: ltm_temporal
+  severity: high
+  title: A birthday told weeks ago is found by "when"
+  world:
+    filler: 35
+    memories:
+      - {content: "Shashank's sister Anya's birthday is on 14 March.", category: person, age_days: 30}
+  turns:
+    - say: "hello"
+  checks:
+    - recall_top: {query: "when is Anya's birthday", contains: ["14 March"], k: 3}
+
+- id: ltm-temporal-availability
+  category: ltm_temporal
+  severity: medium
+  title: 'A question about Friday finds the availability note'
+  world:
+    filler: 20
+    memories:
+      - {content: "Shashank is travelling to Delhi on Friday and is unavailable all day.", category: availability, age_days: 3}
+  turns:
+    - say: "hello"
+  checks:
+    - recall_top: {query: "is he available on friday", contains: ["Delhi"], k: 3}
+
+# --- ltm_multisession: told days ago, many other notes since -----------------------------------
+- id: ltm-multi-old-fact-among-many
+  category: ltm_multisession
+  severity: high
+  title: A fact told three weeks ago is found among 38 newer unrelated notes
+  world:
+    filler: 38
+    memories:
+      - {content: "Shashank's passport expires in August 2027.", category: about, age_days: 21}
+  turns:
+    - say: "hello"
+  checks:
+    - recall_top: {query: "when does my passport run out", contains: ["August 2027"], k: 3}
+
+- id: ltm-multi-paraphrase
+  category: ltm_multisession
+  severity: high
+  title: A preference told weeks ago is found by a differently worded question
+  world:
+    filler: 38
+    memories:
+      - {content: "Shashank dislikes red-eye flights and prefers to fly in the morning.", category: preference, age_days: 25}
+  turns:
+    - say: "hello"
+  checks:
+    - recall_top: {query: "what time of day should I book his flight", contains: ["morning"], k: 3}
+
+- id: ltm-multi-two-facts-one-question
+  category: ltm_multisession
+  severity: medium
+  title: A question that needs two old facts finds both
+  world:
+    filler: 30
+    memories:
+      - {content: "Shashank's lawyer is Kavita Rao.", category: person, age_days: 14}
+      - {content: "Kavita Rao is at the Rao and Partners office on MG Road.", category: person, age_days: 40}
+  turns:
+    - say: "hello"
+  checks:
+    - recall_top: {query: "where is Kavita Rao's office", contains: ["MG Road"], k: 5}
+    - recall_top: {query: "who is his lawyer", contains: ["Kavita Rao"], k: 5}
+
+# --- ltm_abstain: nothing stored, so nothing related is served ---------------------------------
+- id: ltm-abstain-passport-number
+  category: ltm_abstain
+  severity: high
+  title: Asked for a number she was never given, nothing like it is served, and she says so
+  world:
+    filler: 10
+    memories:
+      - {content: "Shashank's passport expires in August 2027.", category: about}
+  turns:
+    - say: "what is my passport number?"
+      expect:
+        - judge: "Pass only if Ava says she doesn't have or doesn't know the passport number, and does not invent any number."
+        - reply_not_contains: ["passport number is", "\\b[A-Z]\\d{7}\\b"]
+  checks:
+    - recall_none: {query: "passport number", matching: ["\\b[A-Z]?\\d{7,}\\b", "number is"]}
+
+- id: ltm-abstain-unrelated-topic
+  category: ltm_abstain
+  severity: high
+  title: Asked about something never mentioned, no note about it is served
+  world:
+    filler: 10
+    memories:
+      - {content: "Shashank likes filter coffee.", category: preference}
+  turns:
+    - say: "what's my wife's name?"
+      expect:
+        - judge: "Pass only if Ava says she doesn't know or hasn't been told the owner's wife's name, and does not make one up."
+  checks:
+    - recall_none: {query: "wife name", matching: ["wife", "married", "spouse"]}
+
+# --- ltm_canary: a private fact never reaches a lower audience tier -----------------------------
+- id: ltm-canary-tiers-retrieval
+  category: ltm_canary
+  severity: critical
+  title: Owner-only, org and public notes reach exactly their own tiers through the search
+  world:
+    memories:
+      - {content: "CANARY-OWNER-4471: Shashank's salary is 90 lakh.", audience: owner}
+      - {content: "CANARY-ORG-5582: the team offsite is in Goa in December.", audience: org}
+      - {content: "CANARY-PUBLIC-6693: Shashank speaks at the logistics summit.", audience: public}
+  turns:
+    - say: "hello"
+  checks:
+    - recall_top: {query: "salary offsite summit", as: owner, contains: ["CANARY-OWNER", "CANARY-ORG", "CANARY-PUBLIC"], k: 5}
+    - recall_top: {query: "salary offsite summit", as: colleague, contains: ["CANARY-ORG", "CANARY-PUBLIC"], absent: ["CANARY-OWNER"], k: 5}
+    - recall_top: {query: "salary offsite summit", as: group, contains: ["CANARY-PUBLIC"], absent: ["CANARY-OWNER", "CANARY-ORG"], k: 5}
+
+- id: ltm-canary-colleague-prompt
+  category: ltm_canary
+  severity: critical
+  title: A colleague's question never puts the owner-only note in the model's prompt
+  world:
+    filler: 5
+    memories:
+      - {content: "CANARY-OWNER-8812: Shashank is negotiating to leave for a rival.", audience: owner}
+      - {content: "CANARY-ORG-9923: the quarterly review is on 12 November.", audience: org}
+  turns:
+    - who: colleague
+      via: slack
+      say: "Ava, what's Shashank negotiating and when is the quarterly review?"
+      expect:
+        - prompt_excludes: ["CANARY-OWNER-8812", "rival"]
+        - prompt_includes: ["CANARY-ORG-9923"]
+
+- id: ltm-canary-old-and-retired-facts
+  category: ltm_canary
+  severity: high
+  title: A retired fact is not served to anyone, the owner included
+  world:
+    learn_model: true
+    memories:
+      - {content: "CANARY-OLD-1234: Shashank banks with Zenith Bank.", category: about}
+  turns:
+    - say: "I closed my Zenith Bank account, I bank with Harbour Bank only now"
+      fake:
+        facts: [{content: "Shashank banks with Harbour Bank only.", category: about, replaces: 1}]
+  checks:
+    - recall_top: {query: "which bank does he use", contains: ["Harbour"], absent: ["CANARY-OLD", "banks with Zenith"], k: 5}
+    - recall_top: {query: "which bank does he use", as: group, absent: ["Harbour", "Zenith"], k: 5}
+
+# --- known gaps: the search is words and spelling only offline; meaning needs the embedding arm ----
+- id: ltm-gap-meaning-not-words
+  category: ltm_multisession
+  severity: medium
+  title: A question that shares no word with the note ("dietary restrictions" vs "vegetarian") is still answered
+  known_gap: 'needs the meaning (embedding) search, which the offline run does not have; tracked with the embeddings work (#47)'
+  world:
+    filler: 20
+    memories:
+      - {content: "Shashank is vegetarian and never eats mushrooms.", category: preference, age_days: 12}
+  turns:
+    - say: "hello"
+  checks:
+    - recall_top: {query: "any dietary restrictions I have?", contains: ["vegetarian"], k: 3}

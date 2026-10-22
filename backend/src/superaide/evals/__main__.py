@@ -50,6 +50,10 @@ def _env(args: argparse.Namespace) -> str:
     return key if args.live else ""
 
 
+def args_for_offline() -> argparse.Namespace:
+    return argparse.Namespace(env_file=None, live=False, cap=0.0)
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="python -m superaide.evals")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -66,6 +70,8 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--name", help="scorecard file name (default scorecard-<mode>)")
     r.add_argument("--wipe-ledger", action="store_true", help="forget earlier eval spend (resets the cap)")
     sub.add_parser("list", help="list scenarios")
+    g = sub.add_parser("gate", help="long-term-memory regression gate: offline, fails if a scenario regresses")
+    g.add_argument("--update", action="store_true", help="record today's results as the baseline")
     t = sub.add_parser("triage", help="triage precision and recall on the labelled set (ADR 0010)")
     t.add_argument("--live", action="store_true", help="use the triage model (costs money)")
     t.add_argument("--cap", type=float, default=0.25, help="hard spend cap in US$ over the evals ledger")
@@ -90,6 +96,12 @@ def main(argv: list[str] | None = None) -> int:
             f"US${s['cost_usd']:.4f}"
         )
         return 0
+
+    if args.cmd == "gate":
+        from superaide.evals.gate import run_gate
+
+        _env(args_for_offline())
+        return run_gate(update=args.update)
 
     if args.cmd == "list":
         from superaide.evals.scenario import load_all
