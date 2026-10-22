@@ -30,6 +30,8 @@ export const PG_URL = withDatabase(PG_ADMIN_URL, DB_NAME)
 export const DATABASE_URL = PG_URL.replace(/^postgres(ql)?:\/\//, 'postgresql+psycopg://')
 
 export const ASK_LINK = process.env.E2E_ASK_LINK === '1'
+// The voice call v2 (ADR 0012) with fake speech services; E2E_VOICE=1 for tests/voice-intro.spec.ts.
+export const VOICE = process.env.E2E_VOICE === '1'
 
 export const ADMIN_TOKEN = 'e2e-admin-token'
 export const PASSWORD = 'correct horse battery staple'
@@ -64,5 +66,6 @@ export function apiEnv(): Record<string, string> {
           GOOGLE_REDIRECT_ORIGINS: `http://127.0.0.1:${WEB_PORT}`,
         }
       : {}),
+    ...(VOICE ? { VOICE_INTRO_V2: 'true', VOICE_ASR: 'fake', VOICE_TTS: 'fake' } : {}),
   }
 }

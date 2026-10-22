@@ -125,10 +125,10 @@ export function VoiceIntro({
       mode: config.tts === 'browser' ? 'browser' : 'server',
       style: s,
       lang,
-      onSentence: (_i, text) => {
+      onSentence: (i, text) => {
         if (!r.current.alive) return
         setPhase('speaking')
-        setAvaLine(text)
+        setAvaLine((line) => (i === 0 ? text : `${line} ${text}`)) // the whole reply so far, as it's said
         r.current.vad?.setGuarded(true)
       },
       onFirstSound: () => {
