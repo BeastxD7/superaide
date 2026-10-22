@@ -228,6 +228,10 @@ class Settings(BaseSettings):
     # Owner Twin (#119, tracking #142). Off: /app/twin answers 404. On: a calibration page scores a small
     # predictor of the owner's approve/reject choices. It reads approvals only and grants nothing.
     owner_twin_enabled: bool = False
+    # Two-channel voice (#125). Off: voice can propose nothing. On: an action heard on a call becomes an approval
+    # marked as voice-origin; it can be approved only by a tap in a text channel, never by what is said, and the
+    # call reads it back as a structured proposal and never says it is done. The voice shell holds no tools.
+    voice_two_channel: bool = False
     gmail_poll_minutes: int = 5
     # The owner's Gmail sign-in (same OAuth client as Calendar); kept per instance in the vault.
     gmail_refresh_token: str = ""

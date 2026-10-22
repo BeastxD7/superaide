@@ -52,6 +52,7 @@ from superaide.policy.actions import ApprovalError, resolve
 from superaide.policy.killswitch import is_frozen
 from superaide.skills import registry as skill_registry
 from superaide.tenancy.context import InstanceScope, use_instance
+from superaide.voice import gateway
 
 
 @lru_cache
@@ -1137,6 +1138,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                     "at": a.created_at.isoformat(),
                     "decided_at": a.decided_at.isoformat() if a.decided_at else None,
                     "needs_reason": bool(state and a.status == "pending" and brake.needs_reason(a.kind, state)),
+                    **({"origin": "voice", "readback": gateway.readback(a)} if gateway.from_voice(a) else {}),
                 }
                 for a in rows
             ]
@@ -1209,7 +1211,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                     s.commit()  # keep the audit line that says why it was held
                     raise HTTPException(422, held)
             try:
-                resolve(s, approval, approve=verdict == "approve", decided_by=owner.display_name)
+                resolve(s, approval, approve=verdict == "approve", decided_by=owner.display_name, via="app")
             except ApprovalError as exc:
                 raise HTTPException(exc.status, str(exc)) from exc
             return {"status": approval.status, "result": (approval.payload or {}).get("result")}
