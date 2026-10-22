@@ -315,7 +315,7 @@ function RedirectUri({ value }: { value: string }) {
   )
 }
 
-// Connected, but the skill that reads the calendar is off: point to the Skills page.
+// Connected, but the skill that reads the calendar is off: point to the Capabilities page.
 function SkillNudge() {
   const [installed, setInstalled] = useState<boolean | null>(null)
   useEffect(() => {
@@ -330,9 +330,9 @@ function SkillNudge() {
   if (installed !== false) return null
   return (
     <p className="flex flex-wrap items-center gap-2 rounded-xl bg-lilac-50 px-3 py-2 text-sm text-ink">
-      <Puzzle className="size-4 text-violet-600" /> One more step: turn on the Google Calendar skill so I use it.
-      <Link href="/dashboard/skills" className="font-medium text-violet-700 hover:underline">
-        Enable it on the Skills page
+      <Puzzle className="size-4 text-violet-600" /> One more step: turn on the Google Calendar capability so I use it.
+      <Link href="/dashboard/capabilities" className="font-medium text-violet-700 hover:underline">
+        Enable it on the Capabilities page
       </Link>
     </p>
   )

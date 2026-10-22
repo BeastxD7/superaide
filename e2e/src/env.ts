@@ -3,7 +3,7 @@
 //   slot 0 -> API :8100, web :3100, database superaide_e2e_0
 //   slot 1 -> API :8101, web :3101, database superaide_e2e_1 …
 export const SLOT = Number(process.env.E2E_SLOT ?? 0)
-if (!Number.isInteger(SLOT) || SLOT < 0 || SLOT > 50) throw new Error('E2E_SLOT must be a whole number from 0 to 50')
+if (!Number.isInteger(SLOT) || SLOT < 0 || SLOT > 99) throw new Error('E2E_SLOT must be a whole number from 0 to 99')
 
 export const API_PORT = 8100 + SLOT
 export const WEB_PORT = 3100 + SLOT

@@ -31,7 +31,7 @@ export const NAV: { group: string; items: NavItem[] }[] = [
   {
     group: 'Setup',
     items: [
-      { href: '/dashboard/skills', label: 'Skills', icon: Puzzle },
+      { href: '/dashboard/capabilities', label: 'Capabilities', icon: Puzzle },
       { href: '/dashboard/connections', label: 'Connections', icon: Plug },
       { href: '/dashboard/models', label: 'AI model', icon: Brain },
       { href: '/dashboard/settings', label: 'Settings', icon: Settings },

@@ -1,8 +1,6 @@
-import type { Metadata } from 'next'
-import { SkillsPage } from '@/app/(site)/dashboard/pages'
+import { redirect } from 'next/navigation'
 
-export const metadata: Metadata = { title: 'Skills' }
-
+// The page was renamed Capabilities; old links and bookmarks still land there.
 export default function Page() {
-  return <SkillsPage />
+  redirect('/dashboard/capabilities')
 }

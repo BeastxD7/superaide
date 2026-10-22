@@ -62,11 +62,11 @@ def active(session: Session) -> list[Skill]:
 def install(session: Session, skill_id: str, accepted: list[str]) -> InstalledSkill:
     skill = catalog().get(skill_id)
     if skill is None:
-        raise SkillUnavailable(404, "No such skill")
+        raise SkillUnavailable(404, "No such capability")
     needed = skill.manifest.permissions
     if sorted(set(accepted)) != sorted(needed):
         raise SkillUnavailable(
-            409, "The permissions you agreed to don't match what this skill needs. Review them again."
+            409, "The permissions you agreed to don't match what this capability needs. Review them again."
         )
     row = _rows(session).get(skill_id)
     if row is None:
@@ -82,7 +82,7 @@ def remove(session: Session, skill_id: str) -> None:
     skill = catalog().get(skill_id)
     row = _rows(session).get(skill_id)
     if skill is None or row is None or row.removed_at is not None:
-        raise SkillUnavailable(404, "That skill isn't installed")
+        raise SkillUnavailable(404, "That capability isn't installed")
     if not skill.manifest.removable:
         raise SkillUnavailable(409, f"{skill.manifest.title} is part of how Ava works and can't be removed")
     row.enabled, row.removed_at = False, datetime.now(UTC)

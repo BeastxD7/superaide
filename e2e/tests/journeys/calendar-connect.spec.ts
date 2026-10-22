@@ -121,7 +121,7 @@ test('a forged sign-in is refused and nothing is connected', async ({ page, api,
   expect(outside).toEqual([])
 })
 
-test('once connected, it points to the Google Calendar skill until that is on', async ({ page, owner }) => {
+test('once connected, it points to the Google Calendar capability until that is on', async ({ page, owner }) => {
   void owner
   const outside = await blockGoogle(page)
   // The real exchange with Google can't run here: serve the connected status instead.
@@ -148,9 +148,9 @@ test('once connected, it points to the Google Calendar skill until that is on', 
   await expect(page.getByRole('button', { name: 'Connect Google Calendar', exact: true })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Disconnect Google Calendar' })).toBeVisible()
 
-  await page.getByRole('link', { name: 'Enable it on the Skills page' }).click()
-  await expect(page).toHaveURL(/\/dashboard\/skills$/)
-  const calendar = page.getByRole('list', { name: 'Skills' }).getByRole('listitem', { name: 'Google Calendar' })
+  await page.getByRole('link', { name: 'Enable it on the Capabilities page' }).click()
+  await expect(page).toHaveURL(/\/dashboard\/capabilities$/)
+  const calendar = page.getByRole('list', { name: 'Capabilities' }).getByRole('listitem', { name: 'Google Calendar' })
   await calendar.getByRole('button', { name: 'Install' }).click()
   await page.getByRole('group', { name: 'Permissions for Google Calendar' }).getByRole('button', { name: 'Allow and install' }).click()
   await expect(calendar.getByText('Installed')).toBeVisible()
@@ -158,6 +158,6 @@ test('once connected, it points to the Google Calendar skill until that is on', 
   await openConnections(page)
   await googleRow(page).click()
   await expect(page.getByText('Signed in with Google')).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Enable it on the Skills page' })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Enable it on the Capabilities page' })).toHaveCount(0)
   expect(outside).toEqual([])
 })

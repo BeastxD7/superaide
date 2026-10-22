@@ -11,7 +11,7 @@ import { useAppData } from '@/features/dashboard/data'
 import { AppError, call, type SkillCard } from '@/lib/api'
 import { useSession } from '@/lib/session-context'
 
-// Skills that wrap a branded service show that service's logo; the rest keep the generic piece.
+// Capabilities that wrap a branded service show that service's logo; the rest keep the generic piece.
 const SKILL_BRAND: Record<string, Brand> = {
   'superaide/google-calendar': 'googlecalendar',
 }
@@ -41,9 +41,9 @@ export function SkillsPage() {
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 lg:py-8">
-        <h1 className="text-3xl font-medium text-ink tight">Skills</h1>
+        <h1 className="text-3xl font-medium text-ink tight">Capabilities</h1>
         <p className="mt-1 text-body">
-          What {name} can do for you. Each skill says exactly what it needs; anything that changes things outside{' '}
+          What {name} can do for you. Each capability says exactly what it needs; anything that changes things outside{' '}
           {name}, sends or spends always waits for your OK.
         </p>
         {(error || problem) && (
@@ -51,7 +51,7 @@ export function SkillsPage() {
             <Notice tone="error">{problem ?? error}</Notice>
           </div>
         )}
-        <ul className="mt-6 grid gap-3 sm:grid-cols-2" aria-label="Skills">
+        <ul className="mt-6 grid gap-3 sm:grid-cols-2" aria-label="Capabilities">
           {!data &&
             [0, 1, 2].map((i) => (
               <li key={i} className="rounded-xl border border-line bg-white p-4">
@@ -147,8 +147,8 @@ export function SkillsPage() {
           })}
         </ul>
         <p className="mt-6 text-xs text-muted">
-          Skills follow one open protocol: instructions in the Agent Skills format, tools over MCP, and a manifest that
-          says what each one may touch.
+          Capabilities follow one open protocol: instructions in the Agent Skills format, tools over MCP, and a manifest
+          that says what each one may touch.
         </p>
       </div>
     </div>
