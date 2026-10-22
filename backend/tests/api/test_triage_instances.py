@@ -116,6 +116,9 @@ def test_triage_runs_in_the_owners_instance(two):
 
 def test_the_ladder_and_catch_up_stay_in_the_instance(daytime, two):
     sa, pa, sb, pb = two
+    with use_instance(sb), session_scope() as s:  # whatever zone B signed up in, 09:00 UTC is a UTC daytime
+        pref = preferences_for(s, pb)
+        pref.timezone, pref.quiet_start, pref.quiet_end = "UTC", "22:00", "07:00"
     vip_message(sb, pb, "The server is down")
     drain()
     drain(datetime.now(UTC) + timedelta(minutes=30))  # rung 2 and expiry run as B's jobs
