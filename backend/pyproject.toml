@@ -22,7 +22,7 @@ dependencies = [
     "keyring>=25",
     "openai>=3.36",
     "psycopg[binary]>=3.3.6",
-    "py-vapid==1.9.4",  # web push (ADR 0011): exact pin, not the 1.9.5/1.9.6 released 2026-10-14
+    "py-vapid==1.9.6",  # web push (ADR 0011): exact pin, not the 1.9.5/1.9.6 released 2026-10-14
     "pydantic>=2.14.1",
     "pydantic-settings>=2.16.1",
     "pypdf>=5",
