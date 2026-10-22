@@ -121,10 +121,13 @@ class EscalationDelivery(Scoped, Base):
     """One rung sent (or tried) on one channel. Written before the send, so a retry knows."""
 
     __tablename__ = "escalation_delivery"
-    __table_args__ = (UniqueConstraint("escalation_id", "step", "provider", name="uq_escalation_delivery_step"),)
+    __table_args__ = (
+        UniqueConstraint("escalation_id", "cycle", "step", "provider", name="uq_escalation_delivery_step"),
+    )
 
     escalation_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("escalation.id"), index=True)
     step: Mapped[int] = mapped_column(Integer)
+    cycle: Mapped[int] = mapped_column(Integer, default=0, server_default="0")  # a snooze starts a new cycle
     provider: Mapped[str] = mapped_column(String(20))  # app | telegram | slack
     # For buttons (TR4): an opaque token in callback_data / value, never the escalation id.
     token: Mapped[str] = mapped_column(String(24), unique=True)

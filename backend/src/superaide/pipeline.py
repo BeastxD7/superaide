@@ -198,9 +198,24 @@ class Agent:
                 learn.schedule(s, inbound)  # after the reply: learn anything worth keeping
                 return HandleResult("known", reply, notes)
 
+            if self.settings.triage_enabled:  # ADR 0010, shadow until TR5: the reply below is unchanged
+                self._shadow_triage(s, sender, inbound)
             reply, notes = self._think(s, sender, ctx, aud, msg)
             self._reply(s, ctx, aud, reply, thread)
             return HandleResult("known", reply, notes)
+
+    def _shadow_triage(self, s, sender: Sender, inbound) -> None:
+        """Queue a recorded triage decision for a known non-owner's message. A failure here never
+        touches the reply."""
+        if self._is_owner(s, sender):
+            return
+        try:
+            with s.begin_nested():
+                from superaide.triage.service import schedule
+
+                schedule(s, inbound)
+        except Exception:
+            log.exception("couldn't queue triage")
 
     # --- reminders -------------------------------------------------------------
 
