@@ -159,7 +159,6 @@ test.describe('emailed links', () => {
   })
 
   test('a reset link still works after reloading the page once a weak password was refused', async ({ page, owner, api }) => {
-    test.fail(true, 'BUG: useFragmentToken clears #token from the URL, so a reload shows "missing its code" although the link is still valid')
     await api.post('/auth/logout')
     const token = await emailLink(owner.email, 'reset_password')
     await page.goto(`/reset-password#token=${token}`)
@@ -176,7 +175,6 @@ test.describe('emailed links', () => {
   })
 
   test('after resetting the password in a signed-in browser, "Log in" opens the log-in page', async ({ page, owner }) => {
-    test.fail(true, 'BUG: the reset signs out every session, but the page keeps the old account in memory, so "Log in" bounces to a dead dashboard')
     await page.goto('/dashboard')
     await expect(sidebarLink(page, '/dashboard/notebook')).toBeVisible()
     const token = await emailLink(owner.email, 'reset_password')
@@ -212,7 +210,6 @@ test.describe('a session that ends while a page is open', () => {
 test.describe('the log-in page and its ?google= reason', () => {
   for (const mode of ['login', 'signup'] as const) {
     test(`/${mode}?google=__proto__ still shows the form with the general message`, async ({ page, api }) => {
-      test.fail(true, 'BUG: GOOGLE_PROBLEMS[reason] reads Object.prototype for "__proto__", and React crashes rendering it')
       void api
       const errors: string[] = []
       page.on('pageerror', (e) => errors.push(e.message))
@@ -225,7 +222,6 @@ test.describe('the log-in page and its ?google= reason', () => {
   }
 
   test('an unknown reason (constructor) shows the general message, not an empty box', async ({ page, api }) => {
-    test.fail(true, 'BUG: GOOGLE_PROBLEMS["constructor"] is Object, a function React drops, so the error box is empty')
     void api
     await page.goto('/login?google=constructor')
     await expect(page.getByRole('button', { name: 'Log in', exact: true })).toBeVisible()

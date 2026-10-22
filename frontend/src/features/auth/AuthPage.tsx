@@ -24,6 +24,11 @@ const GOOGLE_PROBLEMS: Record<string, string> = {
   failed: "We couldn't sign you in with Google. Please try again, or use your email and password.",
 }
 
+// The reason comes from the address bar, so only our own keys count ("__proto__" or "constructor" are not reasons).
+function googleProblem(reason: string): string {
+  return Object.hasOwn(GOOGLE_PROBLEMS, reason) ? GOOGLE_PROBLEMS[reason] : GOOGLE_PROBLEMS.failed
+}
+
 export function AuthPage({
   mode,
   next,
@@ -45,7 +50,7 @@ export function AuthPage({
   const [busy, setBusy] = useState(false)
   // Why a Google sign-in came back here, if it did (/login?google=<reason>).
   const [error, setError] = useState<{ message: string; field?: string } | null>(
-    googleReason ? { message: GOOGLE_PROBLEMS[googleReason] ?? GOOGLE_PROBLEMS.failed } : null,
+    googleReason ? { message: googleProblem(googleReason) } : null,
   )
   const [google, setGoogle] = useState(false)
   const [googleBusy, setGoogleBusy] = useState(false)
