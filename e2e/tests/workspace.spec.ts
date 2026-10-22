@@ -847,17 +847,22 @@ test.describe('connections', () => {
 // Store a credential the way the vault does (AES-256-GCM, slot as associated data),
 // so the connected state can be tested without calling the real service.
 async function plantSecret(provider: string, name: string, value: string): Promise<void> {
+  // Secrets belong to one hired Ava and are sealed to it (ADR 0009 T3): the AAD is
+  // <agent_id>/<provider>/<name>, with the agent_id the app wrote on the owner's conversation.
+  const [scope] = await query<{ tenant_id: string; agent_id: string }>(
+    "SELECT tenant_id, agent_id FROM context WHERE external_id LIKE 'web:%' LIMIT 1",
+  )
   const key = Buffer.from(apiEnv().SECRETS_MASTER_KEY, 'base64')
   const nonce = randomBytes(12)
   const cipher = createCipheriv('aes-256-gcm', key, nonce)
-  cipher.setAAD(Buffer.from(`${provider}/${name}`))
+  cipher.setAAD(Buffer.from(`${scope.agent_id}/${provider}/${name}`))
   const ct = Buffer.concat([cipher.update(value, 'utf8'), cipher.final(), cipher.getAuthTag()])
   const token = Buffer.concat([Buffer.from([1]), nonce, ct]).toString('base64')
   const prefix = value.slice(0, 8).includes('-') ? `${value.split('-')[0]}-` : value.slice(0, 3)
   const hint = `${prefix}…${value.slice(-4)}`
   await query(
-    `INSERT INTO integration_secret (id, tenant_id, provider, name, ciphertext, hint, meta, updated_at, created_at)
-     SELECT gen_random_uuid(), tenant_id, $1, $2, $3, $4, '{}'::jsonb, now(), now() FROM user_account LIMIT 1`,
-    [provider, name, token, hint],
+    `INSERT INTO integration_secret (id, tenant_id, agent_id, aad, provider, name, ciphertext, hint, meta, updated_at, created_at)
+     VALUES (gen_random_uuid(), $1, $2, 'instance', $3, $4, $5, $6, '{}'::jsonb, now(), now())`,
+    [scope.tenant_id, scope.agent_id, provider, name, token, hint],
   )
 }

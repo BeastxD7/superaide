@@ -98,9 +98,12 @@ export async function auditActions(): Promise<string[]> {
   return (await query<{ action: string }>('SELECT action FROM audit_log ORDER BY created_at')).map((r) => r.action)
 }
 
+// Paused if the platform switch (the console's Pause) or this Ava's own switch is on (ADR 0009 T3).
 export async function isPaused(): Promise<boolean> {
-  const rows = await query<{ value: { on?: boolean } }>("SELECT value FROM agent_state WHERE key = 'frozen'")
-  return Boolean(rows[0]?.value?.on)
+  const rows = await query<{ value: { on?: boolean } }>(
+    "SELECT value FROM platform_state WHERE key = 'frozen' UNION ALL SELECT value FROM agent_state WHERE key = 'frozen'",
+  )
+  return rows.some((r) => Boolean(r.value?.on))
 }
 
 // --- the workspace ------------------------------------------------------------------------
