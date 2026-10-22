@@ -382,6 +382,10 @@ class Agent:
 
     def _budget_reply(self, s, exc: BudgetExceeded) -> str:
         audit(s, "pipeline", "budget_cap_reached", period=exc.period)
+        if exc.period in {"platform_day", "platform"}:
+            return "You've used today's Superaide credits. Add your own AI key on the AI model page, or try tomorrow."
+        if exc.period == "platform_month":
+            return "You've used this month's Superaide credits. Add your own AI key on the AI model page to carry on."
         if exc.period in {"day", "bucket"}:
             return "I've used today's thinking budget, so I'll pick this up again tomorrow."
         if exc.period == "month":

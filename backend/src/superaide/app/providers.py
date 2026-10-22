@@ -96,6 +96,10 @@ class TestBody(ProviderBody):
     preset: str = Field(max_length=20)
 
 
+class CreditsBody(BaseModel):
+    on: bool
+
+
 class SearchKeyBody(BaseModel):
     api_key: str = Field(min_length=10, max_length=200)
 
@@ -141,11 +145,14 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], Any]) -> APIRo
     )
 
     def view() -> dict[str, Any]:
-        from superaide.factory import brain_status, load_prices
+        from superaide.factory import brain_status, load_prices, with_credits
 
         settings = runtime_settings()
+        from superaide.brain import platform_ai
+
         with session_scope() as s:
             mine = config.view(s)
+            credits_view = platform_ai.view(s)
             claude = store.status(s, settings)["anthropic"]
         roles = {
             role: {
@@ -181,8 +188,13 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], Any]) -> APIRo
             },
             "providers": mine["providers"],
             "roles": roles,
-            "brain": {"ready": status.ready, "provider": status.provider},
+            "brain": {
+                "ready": status.ready,
+                "provider": status.provider,
+                "model": config.split(with_credits(settings).model_chat)[1],
+            },
             "web_search": web_search_view(settings),
+            "credits": credits_view,
             "priced": known,  # models whose price Superaide knows, per provider
         }
 
@@ -246,6 +258,26 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], Any]) -> APIRo
                 message = "Brave didn't accept that key."
             return CheckReport(False, message)
         return CheckReport(True, "Web search works.")
+
+    @router.post(
+        "/credits",
+        summary="Use Superaide AI credits",
+        description=(
+            "Opt in or out of Superaide AI credits (only offered when the server has them on). Your own key "
+            "still wins for any role it can serve; credits fill the rest, within your daily and monthly allowance."
+        ),
+    )
+    def set_credits(
+        body: CreditsBody, _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
+    ) -> dict[str, Any]:
+        from superaide.brain import platform_ai
+
+        if body.on and not platform_ai.available():
+            raise HTTPException(409, "Superaide AI credits aren't offered on this server.")
+        with session_scope() as s:
+            platform_ai.set_opt_in(s, body.on, user_id=user_id)
+        apply()
+        return view()
 
     @router.post(
         "/web-search/test",

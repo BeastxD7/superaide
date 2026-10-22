@@ -53,6 +53,7 @@ export function ModelsPage() {
   }, [data])
   const presetOf = (key: string) => data?.providers.find((p) => p.key === key)?.preset ?? key
   const label = (key: string) => {
+    if (key === 'platform') return 'Superaide AI credits'
     const base = data?.presets.find((p) => p.id === presetOf(key))?.label ?? key
     return key === presetOf(key) ? base : `${base} (${key})`
   }
@@ -86,13 +87,15 @@ export function ModelsPage() {
           <div className="mt-4">
             {data.brain.ready ? (
               <Notice tone="info">
-                {name} is thinking with <strong>{label(data.brain.provider ?? '')}</strong> ({data.roles.chat.model}).
+                {name} is thinking with <strong>{label(data.brain.provider ?? '')}</strong> ({data.brain.model}).
               </Notice>
             ) : (
               <Notice tone="warn">No AI model is connected yet, so {name} can only echo you. Connect one below.</Notice>
             )}
           </div>
         )}
+
+        {data?.credits.available && <CreditsCard settings={data} onChanged={reload} />}
 
         <h2 className="mt-8 text-lg font-medium text-ink">Providers</h2>
         <ul className="mt-3 grid gap-3 sm:grid-cols-2" aria-label="Providers">
@@ -486,6 +489,60 @@ function WebSearchCard({ settings, onChanged }: { settings: ModelSettings; onCha
             </Button>
           </div>
         )}
+      </div>
+    </section>
+  )
+}
+
+function CreditsCard({ settings, onChanged }: { settings: ModelSettings; onChanged: () => Promise<void> }) {
+  const c = settings.credits
+  const [busy, setBusy] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
+  const usd = (n: number) => `US$${n.toFixed(2)}`
+
+  async function toggle() {
+    setBusy(true)
+    setProblem(null)
+    try {
+      await call('/providers/credits', { method: 'POST', json: { on: !c.opted_in } })
+      await onChanged()
+    } catch (e) {
+      setProblem(errorText(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="mt-8" aria-label="Superaide AI credits">
+      <div className="rounded-xl border border-line bg-white p-4">
+        <p className="flex flex-wrap items-center gap-1.5 font-medium text-ink">
+          Superaide AI credits
+          {c.opted_in && (
+            <Badge variant="secondary" className="gap-1 text-violet-700">
+              <CheckCircle2 className="size-3" aria-hidden /> On
+            </Badge>
+          )}
+        </p>
+        <p className="mt-1 text-sm text-body">
+          No key needed: use Superaide&apos;s own Claude ({c.model}) up to {usd(c.allowance.daily_usd)} a day and{' '}
+          {usd(c.allowance.monthly_usd)} a month. If you also connect your own key below, your key is used first.
+        </p>
+        <p className="mt-1 text-xs text-muted">
+          Used in the last 24 hours: {usd(c.used.today_usd)} of {usd(c.allowance.daily_usd)} · last 30 days:{' '}
+          {usd(c.used.month_usd)} of {usd(c.allowance.monthly_usd)}
+        </p>
+        {problem && (
+          <div className="mt-3">
+            <Notice tone="error">{problem}</Notice>
+          </div>
+        )}
+        <div className="pt-3">
+          <Button size="sm" variant={c.opted_in ? 'outline' : 'default'} disabled={busy} onClick={() => void toggle()}>
+            {busy && <Loader2 className="animate-spin" aria-hidden />}
+            {c.opted_in ? 'Stop using credits' : 'Use Superaide AI credits'}
+          </Button>
+        </div>
       </div>
     </section>
   )

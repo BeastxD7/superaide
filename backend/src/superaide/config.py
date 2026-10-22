@@ -55,6 +55,18 @@ class Settings(BaseSettings):
     # Platform-wide, per UTC day, for calls paid with Superaide's own model key (ADR 0009). Owners'
     # own keys never draw on it. 0 refuses every platform-paid call (no platform key is offered yet).
     platform_daily_cap_usd: float = 0.0
+    # Superaide AI credits: owners may choose to use the platform's own Claude key instead of bringing
+    # theirs. Off by default. The key is PLATFORM_ANTHROPIC_API_KEY, else ANTHROPIC_API_KEY; it is
+    # never shown, logged or stored in an owner's vault, and only used for owners who opted in.
+    platform_ai_enabled: bool = False
+    platform_anthropic_api_key: str = Field(default="", exclude=True)  # never serialised
+    platform_model: str = "claude-haiku-5-5"  # every role runs on this model when credits pay
+    # Each owner's share of the credits, rolling 24 hours and 30 days, inside PLATFORM_DAILY_CAP_USD.
+    platform_owner_daily_usd: float = 0.50
+    platform_owner_monthly_usd: float = 5.00
+    # Whether this instance's owner opted in to the credits. Filled from the database by
+    # vault.store.runtime_settings, never from .env.
+    use_platform_ai: bool = Field(default=False, exclude=True)
     # Other model providers the owner connected in the app (preset -> base_url, api_key). Filled from
     # the database by vault.store.runtime_settings, never from .env. A model id "<preset>::<model>"
     # in model_chat/model_triage/model_deep runs on that provider; a bare id runs on Claude.

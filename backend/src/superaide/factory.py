@@ -47,8 +47,35 @@ class BrainStatus:
     reason: str  # connected | fake_llm | no_provider
 
 
+def credits_on(settings: Settings) -> bool:
+    """Superaide AI credits can pay for this owner: the switch is on, there's a key, and they opted in."""
+    from superaide.brain import platform_ai
+
+    return settings.use_platform_ai and platform_ai.available()
+
+
+def with_credits(settings: Settings) -> Settings:
+    """Roles the owner's own keys can't serve run on the credits' model, when the owner opted in.
+    Their own key always wins for a role it can serve."""
+    from superaide.brain.platform_ai import ROUTE
+    from superaide.brain.providers.config import split
+
+    if not credits_on(settings):
+        return settings
+    updates = {}
+    for field in ("model_chat", "model_triage", "model_deep"):
+        provider, _ = split(getattr(settings, field))
+        if not provider_usable(settings, provider):
+            updates[field] = f"{ROUTE}::{get_settings().platform_model}"
+    return settings.model_copy(update=updates) if updates else settings
+
+
 def provider_usable(settings: Settings, provider: str) -> bool:
     """Connected, with a key where the service needs one."""
+    from superaide.brain.platform_ai import ROUTE
+
+    if provider == ROUTE:
+        return credits_on(settings)
     if provider == "anthropic":
         return bool(settings.anthropic_api_key)
     from superaide.brain.providers.presets import PRESETS
@@ -64,7 +91,7 @@ def brain_status(settings: Settings) -> BrainStatus:
 
     if settings.fake_llm:
         return BrainStatus(False, None, "fake_llm")
-    provider, _ = split(settings.model_chat)
+    provider, _ = split(with_credits(settings).model_chat)
     if provider_usable(settings, provider):
         return BrainStatus(True, provider, "connected")
     return BrainStatus(False, None, "no_provider")
@@ -87,6 +114,7 @@ def load_prices(settings: Settings | None = None) -> PriceRegistry:
 
 
 def build_llm(settings: Settings) -> LLM:
+    settings = with_credits(settings)
     if not brain_ready(settings):
         return FakeLLM(demo_responder)
     from superaide.brain.providers.config import split
@@ -107,6 +135,13 @@ def build_llm(settings: Settings) -> LLM:
                 guard, PRESETS[preset], api_key=cfg.get("api_key", ""), base_url=cfg.get("base_url", ""), id=key
             )
             routes[key] = ProviderLLM(provider, web=web)
+    from superaide.brain import platform_ai
+
+    if any(split(m)[0] == platform_ai.ROUTE for m in (settings.model_chat, settings.model_triage, settings.model_deep)):
+        # Paid by Superaide AI credits: its own guard records key_source="platform" and reserves against
+        # the owner's allowance and the platform's daily cap. The key never enters the owner's settings.
+        credits = BudgetGuard.for_instance(settings, prices=load_prices(settings), key_source="platform")
+        routes[platform_ai.ROUTE] = ClaudeLLM(credits, api_key=platform_ai.platform_key())
     roles = {split(m)[0] for m in (settings.model_chat, settings.model_triage, settings.model_deep)}
     if set(routes) == {"anthropic"} and roles == {"anthropic"}:
         return routes["anthropic"]
@@ -131,5 +166,5 @@ def build_messengers(settings: Settings) -> dict[str, Messenger]:
 
 
 def build_agent(settings: Settings | None = None) -> Agent:
-    settings = settings or get_settings()
+    settings = with_credits(settings or get_settings())  # the agent asks for the models that will run
     return Agent(llm=build_llm(settings), messengers=build_messengers(settings), settings=settings)

@@ -1,0 +1,101 @@
+"""Superaide AI credits: the platform's own Claude key, for owners who choose it (ADR 0009 update).
+
+An owner either brings their own model key or opts in to the credits. Their own key always wins
+for a role it can serve; the credits only fill roles nothing of theirs can. Every credit-paid call
+is recorded with key_source="platform" and reserves against both the owner's allowance
+(PLATFORM_OWNER_DAILY_USD / _MONTHLY_USD, rolling) and the platform's daily cap
+(PLATFORM_DAILY_CAP_USD), atomically (brain/budget.py).
+
+The key comes only from the server's environment (`platform_key()`), is never put into an owner's
+Settings, vault, logs or API responses, and is never used for an owner who didn't opt in.
+"""
+
+from __future__ import annotations
+
+import uuid
+from datetime import UTC, datetime, timedelta
+from decimal import Decimal
+from typing import Any
+
+from sqlalchemy import case, func, select
+from sqlalchemy.orm import Session
+
+from superaide.audit import audit
+from superaide.config import Settings, get_settings
+from superaide.db.models import SpendEntry
+from superaide.tenancy.context import scope_or_default
+
+ROUTE = "platform"  # the route name in RoutedLLM and the ledger's provider for credit-paid calls
+
+
+def platform_key(settings: Settings | None = None) -> str:
+    """The platform's Claude key, from the server's own environment only. "" when credits are off."""
+    env = get_settings()  # never the owner's runtime settings
+    if not env.platform_ai_enabled:
+        return ""
+    return env.platform_anthropic_api_key or env.anthropic_api_key
+
+
+def available() -> bool:
+    """Credits can be offered: the switch is on and there is a key."""
+    return bool(platform_key())
+
+
+def opted_in(session: Session) -> bool:
+    from superaide.tenancy.models import AgentInstance
+
+    instance = session.get(AgentInstance, scope_or_default().agent_id)
+    return bool(instance and instance.key_source == "platform")
+
+
+def set_opt_in(session: Session, on: bool, *, user_id: uuid.UUID | None) -> None:
+    from superaide.tenancy.models import AgentInstance
+
+    instance = session.get(AgentInstance, scope_or_default().agent_id)
+    if instance is None:
+        raise LookupError("no instance in scope")
+    instance.key_source = "platform" if on else "owner"
+    audit(session, "providers", "platform_credits_opt_in" if on else "platform_credits_opt_out", user_id=user_id)
+
+
+def allowance(settings: Settings | None = None) -> tuple[Decimal | None, Decimal | None]:
+    """The owner's daily and monthly share of the credits (None: no limit of that kind)."""
+    env = settings or get_settings()
+
+    def dec(v: float) -> Decimal | None:
+        return Decimal(str(v)) if v and v > 0 else None
+
+    return dec(env.platform_owner_daily_usd), dec(env.platform_owner_monthly_usd)
+
+
+def used(session: Session, agent_id: uuid.UUID | None = None) -> tuple[Decimal, Decimal]:
+    """Credits this instance committed in the last 24 hours and 30 days (settled plus reserved)."""
+    agent_id = agent_id or scope_or_default().agent_id
+    now = datetime.now(UTC)
+    amount = case(
+        (SpendEntry.status == "settled", SpendEntry.cost_usd),
+        (SpendEntry.status == "reserved", SpendEntry.reserved_usd),
+        else_=0,
+    )
+
+    def since(start: datetime) -> Decimal:
+        q = select(func.coalesce(func.sum(amount), 0)).where(
+            SpendEntry.agent_id == agent_id, SpendEntry.key_source == "platform", SpendEntry.created_at >= start
+        )
+        return Decimal(session.scalar(q) or 0)
+
+    return since(now - timedelta(hours=24)), since(now - timedelta(days=30))
+
+
+def view(session: Session) -> dict[str, Any]:
+    """What the AI model page shows about the credits. Never the key."""
+    env = get_settings()
+    day_cap, month_cap = allowance(env)
+    day, month = used(session)
+    return {
+        "available": available(),
+        "opted_in": opted_in(session),
+        "model": env.platform_model,
+        "allowance": {"daily_usd": float(day_cap or 0), "monthly_usd": float(month_cap or 0)},
+        "used": {"today_usd": float(day), "month_usd": float(month)},
+    }

@@ -150,18 +150,22 @@ class BudgetGuard:
 
     @classmethod
     def for_instance(
-        cls, settings: Any, *, prices: PriceRegistry | None = None, scope: InstanceScope | None = None
+        cls,
+        settings: Any,
+        *,
+        prices: PriceRegistry | None = None,
+        scope: InstanceScope | None = None,
+        key_source: str = "owner",
     ) -> BudgetGuard:
-        """The guard for one instance: the .env limits, overridden by the instance's own spend_limits."""
+        """The guard for one instance: the .env limits, overridden by the instance's own spend_limits.
+        `key_source="platform"` is the guard for calls Superaide AI credits pay for (brain/platform_ai.py)."""
         scope = scope or scope_or_default()
         cap, limits = Decimal(str(settings.max_spend_usd)), Limits.from_settings(settings)
-        key_source = "owner"
         from superaide.tenancy.models import AgentInstance
 
         with use_instance(scope), session_scope() as s:
             instance = s.get(AgentInstance, scope.agent_id)
             own = dict(instance.spend_limits or {}) if instance else {}
-            key_source = instance.key_source if instance and instance.key_source in KEY_SOURCES else "owner"
         cap, limits = _override(cap, limits, own)
         return cls(float(cap), limits=limits, prices=prices, scope=scope, key_source=key_source)
 
@@ -201,6 +205,22 @@ class BudgetGuard:
                     committed_usd=float(used), request_usd=float(worst), cap_usd=float(cap),
                 )  # fmt: skip
                 return BudgetExceeded(f"{label} limit of US${cap} would be passed", period)
+        return None
+
+    def _credits_refusal(self, s, purpose: str, worst: Decimal) -> BudgetExceeded | None:
+        """This owner's share of Superaide AI credits (rolling day and month), checked under the
+        instance lock before the platform-wide draw."""
+        from superaide.brain import platform_ai
+
+        day_cap, month_cap = platform_ai.allowance()
+        day, month = platform_ai.used(s, self.scope.agent_id)
+        for period, cap, spent in (("platform_day", day_cap, day), ("platform_month", month_cap, month)):
+            if cap is not None and spent + worst > cap:
+                audit(
+                    s, "budget", "llm_call_refused", reason=period, purpose=purpose, committed_usd=float(spent),
+                    request_usd=float(worst), cap_usd=float(cap),
+                )  # fmt: skip
+                return BudgetExceeded(f"Superaide AI credits: {period.split('_')[1]}ly allowance used", period)
         return None
 
     def summary(self) -> SpendSummary:
@@ -250,6 +270,10 @@ class BudgetGuard:
                     )
                 elif (period_refusal := self._period_refusal(s, purpose, worst_case_usd)) is not None:
                     refusal = period_refusal
+                elif self.key_source == "platform" and (
+                    owner_refusal := self._credits_refusal(s, purpose, worst_case_usd)
+                ):
+                    refusal = owner_refusal
                 elif self.key_source == "platform" and not platform.draw(s, worst_case_usd):
                     audit(
                         s, "budget", "llm_call_refused", reason="platform", purpose=purpose,

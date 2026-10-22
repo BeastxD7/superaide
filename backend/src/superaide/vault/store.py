@@ -123,6 +123,9 @@ def version(session: Session) -> str:
             select(func.max(table.updated_at), func.count(table.id)).where(table.agent_id == agent)
         ).one()
         parts.append(f"{latest}:{count}")
+    from superaide.brain import platform_ai
+
+    parts.append(f"credits:{platform_ai.opted_in(session)}")  # opting in or out rebuilds the agent
     return "|".join(parts)
 
 
@@ -134,7 +137,9 @@ def env_credentials_apply(settings: Settings | None = None) -> bool:
 def runtime_settings(base: Settings | None = None) -> Settings:
     """Settings with the instance's own credentials applied (over .env, when self-hosted)."""
     base = base or get_settings()
-    updates: dict[str, Any] = {}
+    # The platform's key for Superaide AI credits is read from the server's own settings only
+    # (brain/platform_ai.platform_key), never carried in an owner's settings.
+    updates: dict[str, Any] = {"platform_anthropic_api_key": ""}
     if not env_credentials_apply(base):
         updates.update({field: "" for field in FIELDS.values()})  # BYOK: never the server's keys
     with session_scope() as s:
@@ -145,6 +150,9 @@ def runtime_settings(base: Settings | None = None) -> Settings:
         from superaide.brain.providers.config import overlay
 
         updates.update(overlay(s))  # model providers and roles chosen in the app
+        from superaide.brain import platform_ai
+
+        updates["use_platform_ai"] = platform_ai.opted_in(s)  # Superaide AI credits, if the owner chose them
     return base.model_copy(update=updates) if updates else base
 
 

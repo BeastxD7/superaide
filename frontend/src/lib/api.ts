@@ -325,9 +325,17 @@ export type ModelSettings = {
   claude: { connected: boolean; via: 'app' | 'env' | null; key_hint: string }
   providers: ConnectedProvider[]
   roles: Record<RoleName, { provider: string; model: string }>
-  brain: { ready: boolean; provider: string | null }
+  brain: { ready: boolean; provider: string | null; model: string }
   priced: Record<string, string[]>
   web_search: { connected: boolean; via: 'app' | 'env' | null; key_hint: string; usd_per_call: number }
+  // Superaide AI credits: the platform's own Claude key, offered only when the server turns it on.
+  credits: {
+    available: boolean
+    opted_in: boolean
+    model: string
+    allowance: { daily_usd: number; monthly_usd: number }
+    used: { today_usd: number; month_usd: number }
+  }
 }
 
 export type ConnectionTest = { ok: boolean; message: string; models: string[] }
