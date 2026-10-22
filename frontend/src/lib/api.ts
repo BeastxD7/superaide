@@ -389,3 +389,38 @@ export type TriageSettings = {
   tell_sender_seen: boolean
   phone_enabled: boolean
 }
+
+// The "Ask my Ava" link (owner side). Every route answers 404 while ASK_LINK_ENABLED is off.
+export type AskLinkStats = { views: number; submissions: number; dropped: number; get_own_clicks: number }
+
+export type AskLinkView = {
+  link: null | {
+    handle: string
+    path: string
+    published: boolean
+    revoked: boolean
+    show_first_name: boolean
+    display: string
+  }
+  suggested: string
+  first_name: string
+  notice: string
+  stats: AskLinkStats
+}
+
+export type AskRank = 'unverified' | 'urgent' | 'normal' | 'low'
+
+export type AskRequestCard = {
+  id: string
+  name: string
+  contact: string
+  contact_kind: 'email' | 'phone'
+  topic: string
+  why: string
+  deadline: string | null
+  rank: AskRank
+  rule_hits: string[]
+  status: 'new' | 'replied' | 'dismissed' | 'spam'
+  created_at: string
+  reply: null | { approval_id: string; status: 'pending' | 'approved' | 'rejected'; text: string }
+}

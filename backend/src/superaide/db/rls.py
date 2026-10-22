@@ -60,12 +60,16 @@ TABLES: tuple[str, ...] = (
     "triage_decision",
     "triage_rule",
     "triage_settings",
+    "ask_link",  # the "Ask my Ava" link
+    "ask_request",
+    "ask_stat",
 )
 
 # Tables that have agent_id but are read before an instance is known, to find it.
 EXEMPT: dict[str, str] = {
     "instance_member": "which instances an account belongs to: read at sign-in, before a scope exists",
     "channel_endpoint": "which instance a bot or Slack install belongs to: read to route a message",
+    "ask_handle": "which instance a public Ask link belongs to: read to route a visitor; holds no content",
 }
 
 _MATCH = f"agent_id = nullif(current_setting('{SETTING}', true), '')::uuid"

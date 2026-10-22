@@ -114,6 +114,19 @@ class Settings(BaseSettings):
     # doesn't change until the pipeline hook (TR5) lands.
     triage_enabled: bool = False
 
+    # "Ask my Ava" link (docs/research/AGI era growth ideas.md, idea 1). Off: /p/ask/* and
+    # /app/ask-link/* answer 404 (owner routes still 401/403 first). On: an owner can publish a
+    # pseudonymous /a/<handle> page where anyone can leave a request. No model call for the visitor.
+    ask_link_enabled: bool = False
+    # Signs the public form's token (time-to-submit and same-form check). Blank: a random key per
+    # process, so a restart only means a visitor reloads the page.
+    ask_form_secret: str = ""
+    ask_min_seconds: float = 3.0  # a form sent faster than this is a bot; it is quietly dropped
+    ask_token_max_age_s: int = 2 * 3600
+    ask_per_ip_per_hour: int = 5
+    ask_per_handle_per_hour: int = 20
+    ask_per_handle_per_day: int = 100
+
     # Web push to the owner's phone (ADR 0011). Off: /app/push/* answers 404 and no VAPID keys are
     # made. On: the first use generates one VAPID key pair for this deployment, kept in the vault.
     push_enabled: bool = False

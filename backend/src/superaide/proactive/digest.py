@@ -184,6 +184,9 @@ def compose(
     from superaide.triage.digest import digest_lines  # ADR 0010: [] while TRIAGE_ENABLED is off
 
     lines += digest_lines(session, owner, now)
+    from superaide.asklink.service import digest_lines as ask_lines  # [] while ASK_LINK_ENABLED is off
+
+    lines += ask_lines(session, owner, now)
     if not lines:
         return None
     first = owner.display_name.split()[0]

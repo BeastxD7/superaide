@@ -14,6 +14,7 @@ const KIND_LABEL: Record<string, string> = {
   message_someone_else: 'Message someone for you',
   grant_access: 'Grant access',
   delete_memory: 'Delete something she remembers',
+  ask_reply: 'Reply to someone from your Ask link',
 }
 
 // What Ava was asked to do that needs your yes first. Shown only while something is waiting.

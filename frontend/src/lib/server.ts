@@ -30,3 +30,18 @@ export async function currentSession(): Promise<{ account: Account | null; hasSe
 export async function agentCatalog(): Promise<AgentCard[] | null> {
   return get<AgentCard[]>('/app/agents')
 }
+
+// The public page of an owner's "Ask my Ava" link. null for an unknown, unpublished or revoked handle
+// (the API answers each with the same 404), and while the feature is off.
+export type AskPage = {
+  handle: string
+  display: string
+  first_name: string | null
+  notice: string
+  token: string
+  limits: { name: number; contact: number; topic: number; why: number }
+}
+
+export async function askPage(handle: string): Promise<AskPage | null> {
+  return get<AskPage>(`/p/ask/${encodeURIComponent(handle)}`)
+}

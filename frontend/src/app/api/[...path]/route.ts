@@ -7,7 +7,8 @@ import { API_INTERNAL_URL } from '@/lib/server'
 export const dynamic = 'force-dynamic'
 
 // Only the API's public prefixes are reachable through the app (not /docs, /webhooks…).
-const ALLOWED = new Set(['auth', 'app', 'api', 'health'])
+// `p`: public pages with no account, such as an owner's "Ask my Ava" link.
+const ALLOWED = new Set(['auth', 'app', 'api', 'health', 'p'])
 // Headers that describe one hop, or that fetch() recomputes, are not copied.
 const SKIP = new Set([
   'connection',

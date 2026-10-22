@@ -6,6 +6,7 @@ import type { ReactNode } from 'react'
 import { BrandIcon } from '@/components/BrandIcon'
 import { isBrand } from '@/components/brands/marks'
 import { Orb } from '@/components/Orb'
+import { AskRequests } from '@/features/ask/AskRequests'
 import { ApprovalsCard } from '@/features/dashboard/Approvals'
 import { STAGES } from '@/components/stages'
 import { Badge } from '@/components/ui/badge'
@@ -60,6 +61,8 @@ export function DashboardHome() {
         )}
 
         <ApprovalsCard name={name} />
+
+        <AskRequests className="mt-6" />
 
         <div className="mt-6 grid gap-4 lg:grid-cols-3">
           <AgentCard me={me} />

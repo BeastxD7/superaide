@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { AskRequests } from '@/features/ask/AskRequests'
 import { CHANNEL_LABEL } from '@/features/dashboard/data'
 import { useNeedsYou } from '@/features/needs-you/useNeedsYou'
 import { AppError, call, type NeedsYouItem, type TriageFeedback, type TriageSettings, type TriageVerb } from '@/lib/api'
@@ -80,6 +81,8 @@ export function NeedsYouPage() {
           What {name} thinks you should see, what she answered, and what she kept for your digest. Opening this page
           never counts as acknowledging anything: press a button.
         </p>
+
+        <AskRequests className="mt-6" />
 
         <div role="tablist" aria-label="Lists" className="mt-6 flex flex-wrap gap-1.5">
           {TABS.map((t) => (

@@ -23,7 +23,13 @@ PUBLIC = {("GET", "/app/agents")}  # the marketplace
 ACCOUNT_ONLY = {("POST", "/app/hire")}  # any signed-in account (tested in test_hire_negative)
 # Owner routes behind a setting that's off by default: the owner gets 404 until it's on (ADR 0010
 # triage, TRIAGE_ENABLED). Everyone else is refused exactly as on any owner route.
-FLAG_GATED = {("GET", "/app/needs-you"), ("GET", "/app/triage/settings")}
+FLAG_GATED = {
+    ("GET", "/app/needs-you"),
+    ("GET", "/app/triage/settings"),
+    # The "Ask my Ava" link (ASK_LINK_ENABLED); its public side is checked in test_public_ask_routes below.
+    ("GET", "/app/ask-link"),
+    ("GET", "/app/ask-link/requests"),
+}
 SECRET_NOTE = "Project Bluebird is my secret side project"
 
 
@@ -178,3 +184,21 @@ def test_removing_or_forgetting_twice_is_404_the_second_time(owner, owner_data):
     forget = f"/app/notebook/{owner_data['memory_id']}/forget"
     assert owner.post(forget).status_code == 200
     assert owner.post(forget).status_code == 404
+
+
+# --- the public "Ask my Ava" routes (no account) -------------------------------------------------------
+
+PUBLIC_ASK = {("GET", "/p/ask/{handle}"), ("POST", "/p/ask/{handle}"), ("POST", "/p/ask/{handle}/click")}
+
+
+def test_the_only_public_routes_outside_app_and_auth_are_the_ask_link(app):
+    """A new public route has to be added here on purpose (and tested in tests/api/test_ask_link.py)."""
+    assert set(app_routes(app, "/p")) == PUBLIC_ASK
+
+
+def test_public_ask_routes_are_404_while_off_and_carry_no_owner_data(browser, owner_data):
+    for method, path in sorted(PUBLIC_ASK):
+        r = browser().request(method, path.replace("{handle}", "shashank"), json={} if method == "POST" else None)
+        assert r.status_code == 404, (method, path, r.status_code, r.text)
+        assert r.json() == {"detail": "Not Found"}
+        _assert_no_owner_data(r, owner_data)

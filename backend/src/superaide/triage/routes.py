@@ -177,10 +177,15 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 where = lists[bucket(d, escs.get(d.id))]
                 if len(where) < LIMIT:
                     where.append(item_view(s, d, escs.get(d.id)))
+            from superaide.asklink import service as ask
+            from superaide.asklink.routes import open_requests
+
             return {
                 **lists,
                 "counts": {k: len(v) for k, v in lists.items()},
                 "stage": str(current_stage(s)),
+                # Requests from the owner's Ask link (source "ask_link"), ranked by the same rules.
+                "ask_link": open_requests(s) if ask.enabled() else [],
             }
 
     @router.post(
