@@ -1,0 +1,14 @@
+# Groups the notes GitHub generates for a release (`gh release create vYYYY.MM.DD --generate-notes`).
+changelog:
+  exclude:
+    labels:
+      - dependencies
+  categories:
+    - title: Added
+      labels: [enhancement]
+    - title: Fixed
+      labels: [bug]
+    - title: Accessibility
+      labels: [accessibility]
+    - title: Other changes
+      labels: ["*"]
