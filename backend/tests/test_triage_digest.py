@@ -6,6 +6,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
+import time_machine
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
@@ -107,7 +108,18 @@ def test_only_since_the_last_digest(owner_id, on):
     assert "New" in text and "Old" not in text
 
 
-def test_quiet_hours_schedule_one_catch_up(owner_id, on):
+@pytest.fixture
+def daytime():
+    """09:00 UTC (17:00 for the Singapore owner above): clear of quiet hours (22:00-07:00).
+
+    The catch-up window starts at the owner's quiet-hours start, so a test that fakes "quiet hours end in
+    two hours" on the wall clock drops its own decision whenever 22:00 Singapore time falls in between.
+    """
+    with time_machine.travel(datetime(2026, 10, 22, 9, 0, tzinfo=UTC), tick=True):
+        yield
+
+
+def test_quiet_hours_schedule_one_catch_up(daytime, owner_id, on):
     with session_scope() as s:
         person = s.get(Person, owner_id)
         end = datetime.now(UTC) + timedelta(hours=2)
@@ -123,7 +135,7 @@ def test_quiet_hours_schedule_one_catch_up(owner_id, on):
         assert "Night Owl" in note.content
 
 
-def test_an_empty_catch_up_sends_nothing(owner_id, on):
+def test_an_empty_catch_up_sends_nothing(daytime, owner_id, on):
     with session_scope() as s:
         tdigest.schedule_catchup(s, s.get(Person, owner_id), datetime.now(UTC) + timedelta(minutes=1))
     run_due(datetime.now(UTC) + timedelta(minutes=2))
