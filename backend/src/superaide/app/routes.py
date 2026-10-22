@@ -120,6 +120,19 @@ class CounterBody(BaseModel):
     on: bool
 
 
+class DraftPlaybookBody(BaseModel):
+    task: str = Field(min_length=3, max_length=500)
+
+
+class ActivatePlaybookBody(BaseModel):
+    body: str = Field(min_length=1, max_length=4000)
+
+
+class OutcomeBody(BaseModel):
+    used: bool
+    distance: float = Field(ge=0, le=1)
+
+
 class ReminderBody(BaseModel):
     text: str = Field(min_length=1, max_length=500)
     # Either an exact moment, or a time in the text ("Call Priya tomorrow at 5").
@@ -736,6 +749,93 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         with session_scope() as s:
             companion.set_counter(s, body.on)
             return {"counter_on": body.on}
+
+    def ratchet_on(person_id: uuid.UUID = Depends(owner_person_id)) -> uuid.UUID:
+        if not get_settings().skill_ratchet_enabled:
+            raise HTTPException(404, "Not found")
+        return person_id
+
+    def _playbook_view(p: Any) -> dict[str, Any]:
+        return {
+            "id": str(p.id), "title": p.title, "status": p.status, "body": p.body, "drafted_body": p.drafted_body,
+            "tools": p.tools, "retired_reason": p.retired_reason,
+            "trials": {"with": p.used_n, "without": p.unused_n},
+        }  # fmt: skip
+
+    @router.get(
+        "/playbooks",
+        tags=["Owner: skills"],
+        summary="Playbooks",
+        description=(
+            "Skill Ratchet (SKILL_RATCHET_ENABLED, off by default; 404 while off): the playbooks Ava drafted and the "
+            "ones you switched on. Only a playbook you edited can be active."
+        ),
+    )
+    def playbooks_list(person_id: uuid.UUID = Depends(ratchet_on)) -> list[dict[str, Any]]:
+        from superaide.trust.models import Playbook
+
+        with session_scope() as s:
+            rows = s.scalars(
+                select(Playbook).where(Playbook.owner_person_id == person_id).order_by(Playbook.created_at.desc())
+            ).all()
+            return [_playbook_view(p) for p in rows]
+
+    @router.post("/playbooks", tags=["Owner: skills"], summary="Ask Ava to draft a playbook")
+    def playbook_draft(body: DraftPlaybookBody, person_id: uuid.UUID = Depends(ratchet_on)) -> dict[str, Any]:
+        from superaide.trust import ratchet
+
+        agent = get_agent()
+        with session_scope() as s:
+            owner = require(s, Person, person_id)
+            try:
+                return _playbook_view(ratchet.draft(agent, s, owner, body.task))
+            except ratchet.RatchetError as exc:
+                raise HTTPException(exc.status, str(exc)) from exc
+
+    @router.post(
+        "/playbooks/{playbook_id}/activate",
+        tags=["Owner: skills"],
+        summary="Switch a playbook on",
+        description="Send the text as you want it. It must differ from Ava's draft: unedited drafts never go live.",
+    )
+    def playbook_activate(
+        playbook_id: uuid.UUID, body: ActivatePlaybookBody, person_id: uuid.UUID = Depends(ratchet_on)
+    ) -> dict[str, Any]:
+        from superaide.trust import ratchet
+
+        with session_scope() as s:
+            owner = require(s, Person, person_id)
+            try:
+                return _playbook_view(ratchet.activate(s, owner, playbook_id, body.body))
+            except ratchet.RatchetError as exc:
+                raise HTTPException(exc.status, str(exc)) from exc
+
+    @router.post("/playbooks/{playbook_id}/retire", tags=["Owner: skills"], summary="Retire a playbook")
+    def playbook_retire(playbook_id: uuid.UUID, person_id: uuid.UUID = Depends(ratchet_on)) -> dict[str, Any]:
+        from superaide.trust import ratchet
+
+        with session_scope() as s:
+            owner = require(s, Person, person_id)
+            try:
+                return _playbook_view(ratchet.retire(s, owner, playbook_id))
+            except ratchet.RatchetError as exc:
+                raise HTTPException(exc.status, str(exc)) from exc
+
+    @router.post(
+        "/playbooks/{playbook_id}/outcome", tags=["Owner: skills"], summary="Record how much you edited the result"
+    )
+    def playbook_outcome(
+        playbook_id: uuid.UUID, body: OutcomeBody, person_id: uuid.UUID = Depends(ratchet_on)
+    ) -> dict[str, Any]:
+        from superaide.trust import ratchet
+
+        with session_scope() as s:
+            owner = require(s, Person, person_id)
+            try:
+                pb = ratchet._mine(s, owner, playbook_id)
+                return _playbook_view(ratchet.record_outcome(s, pb, used=body.used, distance=body.distance))
+            except ratchet.RatchetError as exc:
+                raise HTTPException(exc.status, str(exc)) from exc
 
     @router.post(
         "/notebook/{memory_id}/forget",

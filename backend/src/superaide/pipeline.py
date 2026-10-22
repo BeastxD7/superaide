@@ -517,6 +517,16 @@ class Agent:
         assert sender.person is not None
         owner_tz = zone(owner_zone(s, sender.person))
         timeline = owner_timeline(s, sender.person.id, ctx, thread_id=thread_of(msg), tz=owner_tz)
+        brief = owner_brief(s, sender, aud)
+        playbook_arm: dict | None = None
+        if self.settings.skill_ratchet_enabled:
+            from superaide.trust import ratchet
+
+            if text := ratchet.live_text(s, sender.person):  # only owner-edited, approved playbooks
+                use = ratchet.use_for_task()  # the coin flip: with the playbooks, or without (the control)
+                playbook_arm = {"used": use}
+                if use:
+                    brief = brief + "\n\n" + text
         turn = OwnerTurn(
             llm=self.llm,
             model=self.settings.model_chat,
@@ -524,7 +534,7 @@ class Agent:
             session=s,
             sender=sender,
             audience=aud,
-            brief=owner_brief(s, sender, aud),
+            brief=brief,
             inbound=inbound,
             web=brain_ready(self.settings) and self.settings.web_tools_enabled,
             emit=emit,
@@ -558,6 +568,8 @@ class Agent:
             meta["activity"] = result.activity[:20]
         if result.reasoning:
             meta["reasoning"] = result.reasoning
+        if playbook_arm is not None:
+            meta["playbook_arm"] = playbook_arm
         if timeline.labels:
             meta["other_channels"] = len(timeline.labels)  # turns from other channels this reply saw
         reply = strip_label(result.text)
