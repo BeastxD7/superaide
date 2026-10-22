@@ -127,6 +127,23 @@ class TelegramMessenger:
         return self._send(context.external_id, text, thread_id, sources)
 
 
+def set_webhook(token: str, url: str, secret: str, client: httpx.Client | None = None) -> bool:
+    """Ask Telegram to deliver this bot's updates to `url`, with `secret` in SECRET_HEADER."""
+    http = client or httpx.Client(timeout=15)
+    try:
+        r = http.post(
+            f"https://api.telegram.org/bot{token}/setWebhook",
+            json={"url": url, "secret_token": secret, "allowed_updates": ["message"], "drop_pending_updates": False},
+        )
+        ok = r.status_code == 200 and bool(r.json().get("ok"))
+    except (httpx.HTTPError, ValueError) as exc:
+        log.warning("telegram setWebhook failed: %s", type(exc).__name__)  # str(exc) can hold the token
+        return False
+    if not ok:
+        log.warning("telegram setWebhook refused (%s)", r.status_code)
+    return ok
+
+
 def poll_forever(token: str, handle: Callable[[InboundMessage], Any], stop: threading.Event | None = None) -> None:
     """Long-polling for local development (no public URL needed).
 

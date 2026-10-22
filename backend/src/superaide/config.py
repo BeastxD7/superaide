@@ -79,6 +79,9 @@ class Settings(BaseSettings):
     # Telegram
     telegram_bot_token: str = ""
     telegram_webhook_secret: str = ""
+    # Public https address of this server (e.g. https://ava.example.com). When set, each owner's bot gets a
+    # webhook at <this>/webhooks/telegram/<endpoint> with its own secret, instead of polling (ADR 0009 T4).
+    telegram_webhook_base_url: str = ""
 
     # Google (Calendar): the owner's own OAuth client, and the refresh token from signing in
     google_client_id: str = ""

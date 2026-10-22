@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import threading
+import uuid
 from collections import OrderedDict
 from contextlib import asynccontextmanager
 from typing import Any
@@ -28,7 +29,10 @@ from superaide.config import get_settings
 from superaide.db.session import session_scope
 from superaide.jobs.worker import JobWorker
 from superaide.pipeline import Agent
-from superaide.tenancy.context import default_scope, scope_or_default, use_instance
+from superaide.tenancy.context import current_scope, default_scope, scope_or_default, use_instance
+from superaide.tenancy.endpoints import owner_of, secret_ok, sync_telegram, webhook_secret
+from superaide.tenancy.endpoints import scope_of as endpoint_scope
+from superaide.tenancy.models import ChannelEndpoint
 
 log = logging.getLogger(__name__)
 MAX_CACHED = 256  # agents kept built, one per recently active instance
@@ -113,20 +117,45 @@ def create_app(agent: Agent | None = None) -> FastAPI:
         return built
 
     def handle_on_server_channels(msg: InboundMessage) -> Any:
-        """Telegram and Slack connected through the server's listeners belong to the server's first instance
-        until channels are routed per instance (ADR 0009 T4)."""
+        """Slack (one app per server for now) and the server's legacy Telegram webhook belong to the
+        server's first instance."""
         with use_instance(default_scope()):
             return get_agent().handle(msg)
 
-    runner = ChannelRunner(handle_on_server_channels)
+    def handle_listened(msg: InboundMessage) -> Any:
+        """From a listener: an owner bot's poller runs inside its owner's instance (ADR 0009 T4)."""
+        if current_scope() is not None:
+            return get_agent().handle(msg)
+        return handle_on_server_channels(msg)
+
+    runner = ChannelRunner(handle_listened)
+    hooked: dict[str, Any] = {}  # bot token -> instance whose webhook Telegram already has
 
     def apply_connections() -> dict[str, bool]:
         """Use new or removed credentials now: rebuild the agent and the listeners."""
         if fixed is not None or not settings.run_channels_in_api:
             get_agent()
             return {}
-        with use_instance(default_scope()):  # the listeners follow the first instance's connections (until T4)
-            return runner.ensure(get_agent().settings)
+        with use_instance(default_scope()):  # Slack follows the first instance's connections
+            base = get_agent().settings
+            started = runner.ensure(base.model_copy(update={"telegram_bot_token": ""}))
+        bots = sync_telegram()  # each owner's own bot, registered to their instance
+        if settings.telegram_webhook_base_url:
+            runner.ensure_bots({})
+            for token, scope in bots.items():
+                if hooked.get(token) != scope:
+                    with use_instance(scope), session_scope() as s:
+                        endpoint = owner_of(s, "telegram", telegram.bot_id(token))
+                    if endpoint is not None and telegram.set_webhook(
+                        token,
+                        f"{settings.telegram_webhook_base_url.rstrip('/')}/webhooks/telegram/{endpoint.id}",
+                        webhook_secret(endpoint.id),
+                    ):
+                        hooked[token] = scope
+            started["telegram"] = bool(bots)
+        else:
+            started["telegram"] = bool(runner.ensure_bots(bots))
+        return started
 
     worker = JobWorker()
 
@@ -209,6 +238,37 @@ def create_app(agent: Agent | None = None) -> FastAPI:
         msg = telegram.parse_update(await request.json(), verified=True, bot=bot)
         if msg is not None:
             background.add_task(handle_on_server_channels, msg)
+        return {"ok": True}
+
+    @app.post(
+        "/webhooks/telegram/{endpoint_id}",
+        tags=["Webhooks"],
+        summary="Telegram webhook for one owner's bot",
+        description=(
+            "Each owner's own bot delivers here, at its own endpoint, with that endpoint's secret in "
+            "`X-Telegram-Bot-Api-Secret-Token`. The update is handled by that owner's Ava only."
+        ),
+    )
+    async def telegram_endpoint_webhook(
+        endpoint_id: uuid.UUID, request: Request, background: BackgroundTasks
+    ) -> dict[str, bool]:
+        with session_scope() as s:
+            endpoint = s.get(ChannelEndpoint, endpoint_id)
+            known = endpoint is not None and endpoint.status == "active" and endpoint.provider == "telegram"
+            scope = endpoint_scope(endpoint) if known and endpoint else None
+            bot = endpoint.external_key if known and endpoint else ""
+        if scope is None or not secret_ok(endpoint_id, request.headers.get(telegram.SECRET_HEADER)):
+            with session_scope() as s:
+                audit(s, "webhook", "rejected", provider="telegram", reason="bad endpoint or secret")
+            raise HTTPException(401, "bad secret")
+        msg = telegram.parse_update(await request.json(), verified=True, bot=bot)
+        if msg is not None:
+
+            def handle_in_scope(m: InboundMessage = msg, sc: Any = scope) -> Any:
+                with use_instance(sc):
+                    return get_agent().handle(m)
+
+            background.add_task(handle_in_scope)
         return {"ok": True}
 
     @app.post(

@@ -23,6 +23,8 @@ class ChannelRunner:
         self.handle = handle
         self._lock = threading.Lock()
         self._telegram: tuple[str, threading.Event, threading.Thread] | None = None
+        # Many owners (ADR 0009 T4): one poller per owner bot, each running inside its owner's instance.
+        self._bots: dict[str, tuple[Any, threading.Event, threading.Thread]] = {}
         self._slack: tuple[tuple[str, str], Any] | None = None
 
     def ensure(self, settings: Settings) -> dict[str, bool]:
@@ -32,10 +34,38 @@ class ChannelRunner:
             self._ensure_slack(settings.slack_bot_token, settings.slack_app_token, settings.slack_team_id)
             return {"telegram": self._telegram is not None, "slack": self._slack is not None}
 
+    def ensure_bots(self, bots: dict[str, Any]) -> list[str]:
+        """Run exactly one poller per bot token in `bots` (token -> instance scope), each inside that
+        instance, so what it receives is handled as that owner's. Returns the bot ids running."""
+        from superaide.channels.telegram import bot_id, poll_forever
+        from superaide.tenancy.context import use_instance
+
+        with self._lock:
+            for token, (scope, stop, thread) in list(self._bots.items()):
+                if token not in bots or bots[token] != scope or not thread.is_alive():
+                    stop.set()  # the thread exits after its current poll
+                    del self._bots[token]
+            for token, scope in bots.items():
+                if token in self._bots:
+                    continue
+                stop = threading.Event()
+
+                def run(token: str = token, scope: Any = scope, stop: threading.Event = stop) -> None:
+                    with use_instance(scope):
+                        poll_forever(token, self.handle, stop)
+
+                thread = threading.Thread(target=run, name=f"telegram-{bot_id(token)}", daemon=True)
+                thread.start()
+                self._bots[token] = (scope, stop, thread)
+            return sorted(bot_id(t) for t in self._bots)
+
     def stop(self) -> None:
         with self._lock:
             self._ensure_telegram("")
             self._ensure_slack("", "", "")
+            for _, stop, _ in self._bots.values():
+                stop.set()
+            self._bots.clear()
 
     def _ensure_telegram(self, token: str) -> None:
         if self._telegram and self._telegram[0] == token and not self._telegram[2].is_alive():

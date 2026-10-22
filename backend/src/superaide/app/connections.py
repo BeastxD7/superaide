@@ -30,6 +30,7 @@ from superaide.config import get_settings
 from superaide.connectors import google
 from superaide.db.session import session_scope
 from superaide.knowledge.ingest import read_pending
+from superaide.tenancy import endpoints
 from superaide.tenancy.context import InstanceScope, scope_or_default, use_instance
 from superaide.tenancy.models import PlatformState
 from superaide.vault import check, store
@@ -131,6 +132,14 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
 
     def connect(provider: str, checked: check.Checked, user_id: uuid.UUID) -> dict[str, Any]:
         with session_scope() as s:
+            if provider == "telegram":  # each owner's own bot, serving their Ava only (ADR 0009 T4)
+                bot = checked.values["bot_token"].split(":", 1)[0]
+                try:
+                    endpoints.register_telegram(s, bot)
+                except endpoints.EndpointTaken as exc:
+                    raise HTTPException(
+                        409, "This bot is already connected to another Ava. Create a new bot with @BotFather."
+                    ) from exc
             store.save(s, provider, checked.values, user_id=user_id, meta=checked.meta)
             if provider in health.PROVIDERS:
                 health.reset(s, provider)  # the service just accepted this token
@@ -319,6 +328,8 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
             raise HTTPException(404, "Unknown connection")
         with session_scope() as s:
             store.remove(s, provider, user_id=user_id)
+            if provider == "telegram":
+                endpoints.remove_telegram(s)
             if provider in health.PROVIDERS:
                 health.reset(s, provider)
         telegram_username.cache_clear()
