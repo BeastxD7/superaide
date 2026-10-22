@@ -95,9 +95,21 @@ def remember_fact(
     return item
 
 
+def lock_document(session: Session, document_id: Any) -> Document | None:
+    """The document, freshly read and locked until this transaction ends. Whoever saves facts for a document
+    and whoever removes it both take this lock, so a removal can't slip between "is it still there?" and the
+    insert of facts that would then outlive it (issue #87)."""
+    return session.scalar(
+        select(Document).where(Document.id == document_id).with_for_update().execution_options(populate_existing=True)
+    )
+
+
 def retire_document(session: Session, document: Document) -> int:
     """Remove a shared file or link and every fact that came from it."""
     now = datetime.now(UTC)
+    locked = lock_document(session, document.id)  # waits for facts being saved right now, then retires them too
+    if locked is not None:
+        document = locked
     document.removed_at = now
     n = rows_affected(
         session.execute(

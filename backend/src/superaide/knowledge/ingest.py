@@ -20,7 +20,7 @@ from superaide.db.models import Document, MemoryItem, Person
 from superaide.db.session import require, session_scope
 from superaide.knowledge.extract import Extracted
 from superaide.knowledge.facts import extract_facts
-from superaide.knowledge.store import remember_fact
+from superaide.knowledge.store import lock_document, remember_fact
 from superaide.proactive.notify import notify_owner
 
 
@@ -78,7 +78,17 @@ def ingest(agent: Any, owner_id: uuid.UUID, extracted: Extracted, *, size_bytes:
     # 3. Keep the facts, linked to the document.
     with session_scope() as s:
         owner = require(s, Person, owner_id)
-        doc = require(s, Document, doc_id)
+        locked = lock_document(s, doc_id)
+        if locked is None or locked.removed_at is not None:  # the owner removed it while the model was reading
+            return IngestResult(
+                doc_id,
+                title,
+                0,
+                False,
+                "removed",
+                f"{title} was removed while I was reading it. I kept nothing from it.",
+            )
+        doc = locked
         n = 0
         for f in facts or []:
             if remember_fact(
@@ -154,8 +164,8 @@ def read_documents(agent: Any, owner_id: uuid.UUID) -> list[ReadResult]:
             continue
         source = "link" if kind in {"web", "github"} else "document"
         with session_scope() as s:
-            owner, doc = require(s, Person, owner_id), require(s, Document, doc_id)
-            if doc.status != "stored" or doc.removed_at is not None:
+            owner, doc = require(s, Person, owner_id), lock_document(s, doc_id)
+            if doc is None or doc.status != "stored" or doc.removed_at is not None:
                 continue  # read or removed while the model worked
             n = sum(
                 1
