@@ -58,7 +58,17 @@ export function Marketplace({ session, initialAgents = null }: { session: Sessio
             >
               Hire an AI that grows up on the job
             </motion.h1>
-            <motion.div custom={2} variants={rise} initial="hidden" animate="show" className="mt-8">
+            <motion.div custom={2} variants={rise} initial="hidden" animate="show" className="mt-8 flex flex-wrap gap-3">
+              {session.account && !mine ? (
+                // Signed in, nothing hired yet: the one thing to do here is hire your own Ava.
+                <Button tone="violet" icon onClick={() => router.push('/agents/ava/hire')}>
+                  Hire your own Ava
+                </Button>
+              ) : mine ? (
+                <Button tone="violet" icon onClick={() => router.push(homeFor(session.account))}>
+                  Go to your Ava
+                </Button>
+              ) : null}
               <Button tone="light" icon onClick={() => document.getElementById('agents')?.scrollIntoView({ behavior: 'smooth' })}>
                 Meet the agents
               </Button>
@@ -90,7 +100,7 @@ export function Marketplace({ session, initialAgents = null }: { session: Sessio
                 <Orb hue="rose" size={40} mood="asleep" className="rounded-full ring-2 ring-white" />
               </div>
               <p className="text-2xl font-medium text-ink tight">
-                {ava?.hired ? (mine ? 'Ava works for you' : 'Ava is already working for someone') : 'Ava is ready to start'}
+                {mine ? 'Ava works for you' : ava?.hired ? 'Ava is already working for someone' : 'Ava is ready to start'}
               </p>
             </div>
             <p className="mt-6 max-w-xs leading-relaxed text-body">
@@ -147,7 +157,7 @@ export function Marketplace({ session, initialAgents = null }: { session: Sessio
           </div>
           {error && <p className="mt-6 text-danger">{error}</p>}
           <div className="mt-10 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-            {ava && <FeaturedAgent agent={ava} mine={mine && Boolean(ava.hired)} />}
+            {ava && <FeaturedAgent agent={ava} mine={mine} />}
             <div className="grid gap-4">
               {agents
                 ?.filter((a) => a.status === 'coming_soon')

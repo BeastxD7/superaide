@@ -26,6 +26,7 @@ from superaide.auth.service import AuthError, Client
 from superaide.config import get_settings
 from superaide.db.models import AgentHire, Onboarding, UserAccount
 from superaide.db.session import session_scope
+from superaide.links import request_origin
 from superaide.mail import Mail, MailError, get_mailer
 
 log = logging.getLogger(__name__)
@@ -221,7 +222,7 @@ def make_router() -> APIRouter:
             user, token = service.signup(
                 s, email=body.email, password=body.password, name=body.name, client=client, timezone=body.timezone
             )
-            return token, user_view(s, user), emails.start_verification(s, user)
+            return token, user_view(s, user), emails.start_verification(s, user, request_origin(request))
 
         token, view, mail = run(go)
         background.add_task(deliver, mail)
@@ -319,8 +320,11 @@ def make_router() -> APIRouter:
         summary="Send the verification email again",
         description="Emails a new link that confirms the signed-in account's address. At most a few an hour.",
     )
-    def send_verification(background: BackgroundTasks, user_id: uuid.UUID = Depends(current_user_id)) -> dict[str, str]:
-        mail = run(lambda s: emails.start_verification(s, s.get(UserAccount, user_id)))
+    def send_verification(
+        request: Request, background: BackgroundTasks, user_id: uuid.UUID = Depends(current_user_id)
+    ) -> dict[str, str]:
+        base = request_origin(request)
+        mail = run(lambda s: emails.start_verification(s, s.get(UserAccount, user_id), base))
         background.add_task(deliver, mail)
         return {"status": "sent" if mail else "already verified"}
 
@@ -344,7 +348,8 @@ def make_router() -> APIRouter:
     )
     def request_reset(body: ResetRequestBody, request: Request, background: BackgroundTasks) -> dict[str, str]:
         client = client_of(request)
-        mail = run(lambda s: emails.request_reset(s, body.email, client))
+        base = request_origin(request)
+        mail = run(lambda s: emails.request_reset(s, body.email, client, base))
         background.add_task(deliver, mail)
         return {"status": "If that address has an account, we've emailed a link to reset the password."}
 

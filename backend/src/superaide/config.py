@@ -130,6 +130,11 @@ class Settings(BaseSettings):
     admin_token: str = Field(default="", description="Bearer token for /api/*")
     # The React frontend (web/) runs on its own dev server and calls this API from the browser.
     frontend_origin: str = "http://localhost:3000"
+    # Links in emails fall back to PUBLIC_BASE_URL (above), else FRONTEND_ORIGIN (superaide/links.py).
+    # Other addresses people may open the app at, for links in emails (comma-separated; * allowed in the
+    # host), e.g. "https://*.trycloudflare.com". DEV_ORIGINS (host names, set by start.command) count too.
+    link_origins: str = ""
+    dev_origins: str = ""
     # Dev only: lets the dashboard inject fake messages to try impostor scenarios.
     enable_simulator: bool = False
     # The interactive API docs (/docs, /redoc, /openapi.json). Turn off on a public server.

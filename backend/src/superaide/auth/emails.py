@@ -45,8 +45,11 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
-def _link(path: str, token: str) -> str:
-    return f"{get_settings().frontend_origin.rstrip('/')}{path}#token={token}"
+def _link(path: str, token: str, base: str | None = None) -> str:
+    """`base`: the allowed origin the person is using (superaide.links); else the server's own address."""
+    settings = get_settings()
+    origin = base or settings.public_base_url or settings.frontend_origin
+    return f"{origin.rstrip('/')}{path}#token={token}"
 
 
 def _issued_recently(session: Session, user: UserAccount) -> int:
@@ -108,7 +111,7 @@ def _use(session: Session, row: EmailToken) -> None:
 # --- verifying the address ------------------------------------------------------------
 
 
-def start_verification(session: Session, user: UserAccount) -> Mail | None:
+def start_verification(session: Session, user: UserAccount, base: str | None = None) -> Mail | None:
     """The email that verifies this account's address, or None if it is already verified."""
     if user.email_verified_at is not None:
         return None
@@ -123,7 +126,7 @@ def start_verification(session: Session, user: UserAccount) -> Mail | None:
         text=(
             f"Hi {user.display_name},\n\n"
             "Please confirm this is your email address by opening this link:\n\n"
-            f"{_link('/verify-email', token)}\n\n"
+            f"{_link('/verify-email', token, base)}\n\n"
             f"The link works once and for {hours} hours. If you didn't sign up for Superaide, ignore this email.\n"
         ),
     )
@@ -141,7 +144,7 @@ def verify_email(session: Session, token: str, client: Client) -> UserAccount:
 # --- resetting a forgotten password -------------------------------------------------------
 
 
-def request_reset(session: Session, email: str, client: Client) -> Mail | None:
+def request_reset(session: Session, email: str, client: Client, base: str | None = None) -> Mail | None:
     """The reset email, or None when there is nothing to send. The caller answers the same either way."""
     settings = get_settings()
     if _recent(session, "reset_requested", timedelta(minutes=15), ip=client.ip) >= settings.login_failures_per_ip:
@@ -165,7 +168,7 @@ def request_reset(session: Session, email: str, client: Client) -> Mail | None:
         text=(
             f"Hi {user.display_name},\n\n"
             "Someone asked to reset the password for your Superaide account. To choose a new one, open:\n\n"
-            f"{_link('/reset-password', token)}\n\n"
+            f"{_link('/reset-password', token, base)}\n\n"
             f"The link works once and for {minutes} minutes. If it wasn't you, ignore this email; "
             "your password stays the same.\n"
         ),

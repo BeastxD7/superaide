@@ -238,3 +238,46 @@ def test_sign_up_keeps_the_browsers_time_zone_or_falls_back_to_utc(browser, sent
     with session_scope() as s:
         pref = s.scalar(select(OwnerPreference))
         assert pref is not None and pref.timezone == stored
+
+
+# --- the address links point at ------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("headers", "expected"),
+    [
+        ({}, "http://localhost:3000"),  # nothing to go on: the server's own address
+        ({"Origin": "http://127.0.0.1:3000"}, "http://127.0.0.1:3000"),
+        ({"Origin": "https://ava-demo.trycloudflare.com"}, "https://ava-demo.trycloudflare.com"),  # LINK_ORIGINS
+        ({"Origin": "http://192.168.1.20:3000"}, "http://192.168.1.20:3000"),  # DEV_ORIGINS (a phone on Wi-Fi)
+        (
+            {"X-Forwarded-Host": "ava-demo.trycloudflare.com", "X-Forwarded-Proto": "https"},
+            "https://ava-demo.trycloudflare.com",
+        ),
+        # Never someone else's site, however the request dresses it up.
+        ({"Origin": "https://evil.example"}, "http://localhost:3000"),
+        ({"Origin": "https://ava-demo.trycloudflare.com.evil.example"}, "http://localhost:3000"),
+        ({"Origin": "https://user@ava-demo.trycloudflare.com"}, "http://localhost:3000"),
+        ({"Origin": "javascript://ava-demo.trycloudflare.com"}, "http://localhost:3000"),
+        ({"X-Forwarded-Host": "evil.example", "X-Forwarded-Proto": "https"}, "http://localhost:3000"),
+        ({"Origin": "http://ava-demo.trycloudflare.com"}, "http://localhost:3000"),  # the pattern is https only
+    ],
+)
+def test_links_use_the_address_the_person_is_on_when_it_is_ours(browser, outbox, monkeypatch, headers, expected):
+    settings = get_settings()
+    monkeypatch.setattr(settings, "link_origins", "https://*.trycloudflare.com")
+    monkeypatch.setattr(settings, "dev_origins", "192.168.1.20")
+    browser().post("/auth/signup", json={**OWNER, "timezone": "UTC"}, headers=headers)
+    [m] = outbox
+    assert f"{expected}/verify-email#token=" in m.text, m.text
+
+
+def test_reset_links_use_the_public_address_when_the_request_gives_none(browser, outbox, monkeypatch):
+    monkeypatch.setattr(get_settings(), "public_base_url", "https://ava.example.com")
+    signup(browser())
+    outbox.clear()
+    browser().post(
+        "/auth/password-reset/request", json={"email": OWNER["email"]}, headers={"Origin": "https://evil.example"}
+    )
+    [m] = outbox
+    assert "https://ava.example.com/reset-password#token=" in m.text
