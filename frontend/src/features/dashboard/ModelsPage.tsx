@@ -618,6 +618,13 @@ function RolePicker({
       }),
     ) as Record<RoleName, Choice>
   const [choices, setChoices] = useState<Record<RoleName, Choice>>(initial)
+  // The saved roles changed under us (a reload, a provider removed): show them, not what was chosen before.
+  const rolesNow = JSON.stringify(settings.roles)
+  const [rolesSeen, setRolesSeen] = useState(rolesNow)
+  if (rolesSeen !== rolesNow) {
+    setRolesSeen(rolesNow)
+    setChoices(initial())
+  }
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
