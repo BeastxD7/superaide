@@ -248,7 +248,12 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
     def onboarding_answer(body: AnswerBody, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         ob = onboarder()
         with session_scope() as s:
-            return ob.answer(s, require(s, Person, person_id), body.step, body.answer).as_dict()
+            view = ob.answer(s, require(s, Person, person_id), body.step, body.answer).as_dict()
+        if body.step == "brain":
+            from superaide.knowledge.pending import brain_became_ready
+
+            brain_became_ready()  # after the commit: read anything already shared (issue #12)
+        return view
 
     # --- introducing yourself with files, links or a video call -------------------
 

@@ -22,6 +22,12 @@ export const GOOGLE = process.env.E2E_GOOGLE === '1'
 export const FAKE_GOOGLE_PORT = 8300 + SLOT
 export const FAKE_GOOGLE_URL = `http://127.0.0.1:${FAKE_GOOGLE_PORT}`
 
+// "Brain first" tests: Superaide AI credits against a fake Anthropic (scripts/fake-anthropic.mjs). Muted by
+// default: only with E2E_BRAIN=1, which starts the fake and runs the API hosted, with a real model switched on.
+export const BRAIN = process.env.E2E_BRAIN === '1'
+export const FAKE_ANTHROPIC_PORT = 8400 + SLOT
+export const FAKE_ANTHROPIC_URL = `http://127.0.0.1:${FAKE_ANTHROPIC_PORT}`
+
 // A Postgres URL for a database we may create others from (CI and local defaults differ).
 export const PG_ADMIN_URL = process.env.E2E_PG_ADMIN_URL ?? 'postgresql://agent:agent@localhost:5432/postgres'
 export const DB_NAME = `superaide_e2e_${SLOT}`
@@ -62,6 +68,16 @@ export function apiEnv(): Record<string, string> {
     // A fixed throwaway vault key, so tests never touch your real keychain.
     SECRETS_MASTER_KEY: Buffer.alloc(32, SLOT + 1).toString('base64'),
     // The "Ask my Ava" link is off by default; E2E_ASK_LINK=1 turns it on for tests/ask-link.spec.ts.
+    ...(BRAIN
+      ? {
+          FAKE_LLM: 'false',
+          DEPLOY_MODE: 'hosted',
+          PLATFORM_AI_ENABLED: 'true',
+          PLATFORM_ANTHROPIC_API_KEY: 'sk-ant-e2e-platform-key-00000000000000',
+          PLATFORM_DAILY_CAP_USD: '5',
+          ANTHROPIC_BASE_URL: FAKE_ANTHROPIC_URL,
+        }
+      : {}),
     ...(ASK_LINK ? { ASK_LINK_ENABLED: 'true', ASK_MIN_SECONDS: '1' } : {}),
     ...(GOOGLE
       ? {

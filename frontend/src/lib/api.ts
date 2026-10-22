@@ -50,6 +50,20 @@ export type Option = { value: string; label: string }
 
 export type StepInput =
   | { kind: 'chips'; options: string[] }
+  | {
+      // Choose Ava's brain: the first step for an owner with no AI yet.
+      kind: 'brain'
+      ready: boolean
+      provider: string | null
+      credits: {
+        available: boolean
+        opted_in: boolean
+        model: string
+        allowance: { daily_usd: number | null; monthly_usd: number | null }
+        used: { today_usd: number; month_usd: number }
+      } | null
+      models_url: string
+    }
   | { kind: 'intro'; placeholder: string; documents: SharedDoc[]; facts: number; call_questions: number }
   | {
       kind: 'people'

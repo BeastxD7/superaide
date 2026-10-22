@@ -29,7 +29,11 @@ from superaide.knowledge.facts import extract_facts
 from superaide.knowledge.store import add_contact, contacts_of, preferences_for, remember_fact
 from superaide.memory.store import get_or_create_context, log_event
 
-STEPS = ["hello", "about", "people", "urgent", "reach", "share", "rules", "connect", "done"]
+# "brain" comes first, but only for owners who have no AI yet (it is skipped when a model is ready, and when
+# the operator forced offline mode): the owner chooses Superaide AI credits, their own key, or to set it up
+# later, so what they share afterwards is read at once (issue #13).
+STEPS = ["brain", "hello", "about", "people", "urgent", "reach", "share", "rules", "connect", "done"]
+BRAIN_LABEL = "Brain"
 LABELS = {
     "hello": "Hello",
     "about": "About you",
@@ -103,6 +107,14 @@ def first_name(person: Person) -> str:
 
 def lines_for(step: str, person: Person, agent_name: str) -> list[str]:
     name = first_name(person)
+    if step == "brain":
+        return [
+            f"Hi {name}, I'm {agent_name}, your personal assistant. Before we start: I need an AI brain to read "
+            "what you share and to answer you. Choose how I get one.",
+            "Superaide AI credits work in one click, with a small daily allowance. Or bring your own key from "
+            "Claude, OpenAI and others. Or skip for now: I'll keep everything you share and read it as soon as "
+            "my brain is set up.",
+        ]
     if step == "hello":
         return [
             f"Hi {name}, I'm {agent_name}, your personal assistant. Thanks for hiring me.",
@@ -151,7 +163,10 @@ class Onboarder:
     def state(self, session: Session, person: Person) -> Onboarding:
         row = session.scalar(select(Onboarding).where(Onboarding.person_id == person.id))
         if row is None:
-            row = Onboarding(person_id=person.id, step="hello", answers={})
+            from superaide.app.intro_brain import intro_needs_brain_step
+
+            first = intro_needs_brain_step(self.settings)
+            row = Onboarding(person_id=person.id, step="brain" if first else "hello", answers={"brain_first": first})
             session.add(row)
             session.flush()
         return row
@@ -159,11 +174,13 @@ class Onboarder:
     def view(self, session: Session, person: Person, hint: str | None = None) -> StepView:
         state = self.state(session, person)
         step = state.step
+        with_brain = bool((state.answers or {}).get("brain_first"))
+        labels = ([BRAIN_LABEL] if with_brain else []) + list(LABELS.values())
         return StepView(
             step=step,
-            index=STEPS.index(step),
-            total=len(LABELS),
-            labels=list(LABELS.values()),
+            index=STEPS.index(step) - (0 if with_brain else 1),
+            total=len(labels),
+            labels=labels,
             ava=lines_for(step, person, self.settings.agent_name),
             input=self.input_for(session, person, step, state.answers or {}),
             done=step == "done",
@@ -171,6 +188,11 @@ class Onboarder:
         )
 
     def input_for(self, session: Session, person: Person, step: str, answers: dict[str, Any]) -> dict[str, Any]:
+        if step == "brain":
+            from superaide.app.intro_brain import brain_choices
+            from superaide.vault.store import runtime_settings
+
+            return brain_choices(session, runtime_settings())
         if step == "hello":
             return {"kind": "chips", "options": ["Nice to meet you", "What will you do for me?"]}
         if step == "about":
@@ -250,11 +272,11 @@ class Onboarder:
 
     def start(self, session: Session, person: Person) -> None:
         """Called once at hire: the agent's first lines go into the conversation."""
-        self._say(session, person, lines_for("hello", person, self.settings.agent_name))
+        self._say(session, person, lines_for(self.state(session, person).step, person, self.settings.agent_name))
 
     def ensure_started(self, session: Session, person: Person) -> None:
         """Say the introduction once, the first time the owner opens the app."""
-        if self.state(session, person).step != "hello":
+        if self.state(session, person).step not in {"brain", "hello"}:
             return
         _, ctx, _ = self._context(session, person)
         if session.scalar(select(Event.id).where(Event.context_id == ctx.id).limit(1)) is None:
@@ -271,7 +293,45 @@ class Onboarder:
         extra: list[str] = []
         name = person.display_name
 
-        if step == "hello":
+        if step == "brain":
+            choice = str(payload.get("choice", ""))
+            if choice == "credits":
+                from superaide.brain import platform_ai
+
+                if not platform_ai.available():
+                    return self.view(
+                        session,
+                        person,
+                        hint="Superaide AI credits aren't offered here. Bring your own key, or skip for now.",
+                    )
+                platform_ai.set_opt_in(session, True, user_id=None)
+                self._hear(session, person, "Use Superaide AI credits")
+                extra = [
+                    "Done: I'll think with Superaide AI credits. Share anything you like and I'll read it right away."
+                ]
+                answers["brain"] = "credits"
+            elif choice == "own":
+                from superaide.app.intro_brain import brain_ready_for_intro
+                from superaide.vault.store import runtime_settings
+
+                if not brain_ready_for_intro(runtime_settings()):
+                    return self.view(
+                        session, person, hint="I can't see your key yet. Add it first, then press continue."
+                    )
+                self._hear(session, person, "I connected my own key")
+                extra = ["Thanks, I'll think with your key. Share anything you like and I'll read it right away."]
+                answers["brain"] = "own"
+            elif choice == "skip":
+                self._hear(session, person, "Skip for now")
+                extra = [
+                    "No problem. Anything you share is saved, and I'll read it as soon as my brain is set up, "
+                    "then tell you here. Until then I can only echo you.",
+                ]
+                answers["brain"] = "skipped"
+            else:
+                return self.view(session, person, hint="Pick one: credits, your own key, or skip for now.")
+
+        elif step == "hello":
             choice = _text(payload.get("choice"), 100) or "Nice to meet you"
             self._hear(session, person, choice)
             if choice.startswith("What will you"):
