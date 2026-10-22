@@ -44,7 +44,7 @@ export function Conversations({ conn }: { conn: Connection }) {
           </button>
         ))}
       </nav>
-      {active && <Thread conn={conn} contextId={active} />}
+      {active && <Thread key={active} conn={conn} contextId={active} />}
     </div>
   )
 }

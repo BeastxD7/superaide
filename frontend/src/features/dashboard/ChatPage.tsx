@@ -8,6 +8,7 @@ import { Conversation, type LiveTurn } from '@/components/Conversation'
 import { useReveal } from '@/hooks/use-reveal'
 import { Notice } from '@/components/site'
 import { AppError, call, streamChat, type ChatEvent, type Message, type WorkStep } from '@/lib/api'
+import { isSendKey } from '@/lib/keys'
 import { useSession } from '@/lib/session-context'
 
 const QUICK = [
@@ -30,6 +31,18 @@ export function ChatPage() {
   const [loaded, setLoaded] = useState(false)
   const refreshed = useRef(false)
   const localCount = useRef(0)
+  const refreshedWhileSending = useRef(false)
+  const unmounted = useRef(false)
+  const abort = useRef<AbortController | null>(null)
+
+  // Leaving the page ends the stream (the turn carries on server-side); coming back reads the saved reply.
+  useEffect(() => {
+    unmounted.current = false
+    return () => {
+      unmounted.current = true
+      abort.current?.abort()
+    }
+  }, [])
 
   useEffect(() => {
     call<Message[]>('/messages')
@@ -40,6 +53,24 @@ export function ChatPage() {
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoaded(true))
   }, [])
+
+  // The last saved message is the owner's and no reply is streaming: the reply is still being written
+  // (they left mid-turn, or the stream was cut). Check again every few seconds, for a few minutes.
+  const waiting = loaded && !pending && messages.length > 0 && messages[messages.length - 1].from === 'you'
+  useEffect(() => {
+    if (!waiting) return
+    let tries = 0
+    const t = window.setInterval(() => {
+      if (document.visibilityState !== 'visible') return
+      if (++tries > 60) return window.clearInterval(t)
+      call<Message[]>('/messages')
+        .then((fresh) => {
+          if (!unmounted.current && !refreshedWhileSending.current) setMessages(fresh)
+        })
+        .catch(() => {})
+    }, 3000)
+    return () => window.clearInterval(t)
+  }, [waiting])
 
   // Reveal nothing until the history is in, so only new replies get the typing animation.
   const { visible, typing } = useReveal(loaded ? messages : [], pending && !live, false, true)
@@ -69,13 +100,28 @@ export function ChatPage() {
     let started = false // the server has the message, so it's saved whatever happens next
     let mode = ''
     let failure: string | null = null
+    let finished = false // a 'done' or 'error' event arrived: the turn really ended
+    const controller = new AbortController()
+    abort.current = controller
+    refreshedWhileSending.current = true
     try {
-      await streamChat(t, (e) => {
-        started = true
-        if (e.event === 'done') mode = e.data.mode
-        else if (e.event === 'error') failure = e.data.message
-        else setLive((now) => (now ? apply(now, e) : now))
-      })
+      await streamChat(
+        t,
+        (e) => {
+          started = true
+          if (e.event === 'done') {
+            mode = e.data.mode
+            finished = true
+          } else if (e.event === 'error') {
+            failure = e.data.message
+            finished = true
+          } else setLive((now) => (now ? apply(now, e) : now))
+        },
+        controller.signal,
+      )
+      if (unmounted.current) return
+      // The stream closed without saying it was done (a proxy idle timeout, a restart): same as a dropped connection.
+      if (started && !finished) throw new Error('stream ended early')
       const fresh = await call<Message[]>('/messages')
       refreshed.current = true
       setMessages(fresh)
@@ -83,10 +129,11 @@ export function ChatPage() {
       // Paused: the message is kept, but say why nothing came back instead of leaving silence.
       else if (mode === 'frozen') setError(`${name} is paused, so she didn't reply. She'll see this once she's resumed.`)
     } catch (e) {
+      if (unmounted.current) return
       if (started) {
         // The connection dropped mid-reply; the turn carries on server-side, so show what's saved.
         call<Message[]>('/messages').then(setMessages).catch(() => {})
-        setError("Lost the live connection. The reply will appear here when it's ready; refresh to check.")
+        setError("Lost the live connection. The reply will appear here when it's ready.")
       } else {
         // Not sent: take the bubble back and give you your words to try again.
         setMessages((m) => m.filter((x) => x.id !== localId))
@@ -94,13 +141,16 @@ export function ChatPage() {
         setError(e instanceof AppError ? e.message : String(e))
       }
     } finally {
-      setLive(null)
-      setPending(false)
+      refreshedWhileSending.current = false
+      if (!unmounted.current) {
+        setLive(null)
+        setPending(false)
+      }
     }
   }
 
   function onKey(e: KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (isSendKey(e)) {
       e.preventDefault()
       void send(draft)
     }

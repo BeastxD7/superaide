@@ -28,12 +28,29 @@ export function Conversation({
 }) {
   const endRef = useRef<HTMLDivElement>(null)
 
+  // One small hidden status instead of a live region over the whole transcript and the streaming
+  // bubble (a screen reader would re-read it on every token): say she is working, then read the
+  // finished reply once.
+  const working = Boolean(live) || typing
+  const [finished, setFinished] = useState(false)
+  const [wasWorking, setWasWorking] = useState(false)
+  if (working !== wasWorking) {
+    setWasWorking(working)
+    if (working) setFinished(false)
+    else setFinished(true)
+  }
+  const lastAgent = [...messages].reverse().find((m) => m.from === 'agent')
+  const announcement = working ? `${agentName} is working` : finished && lastAgent ? `${agentName} said: ${lastAgent.text}` : ''
+
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' })
   }, [messages.length, typing, scrollKey, live])
 
   return (
-    <div className="flex flex-col gap-2.5" aria-live="polite">
+    <div className="flex flex-col gap-2.5">
+      <p className="sr-only" role="status" data-testid="chat-status">
+        {announcement}
+      </p>
       <AnimatePresence initial={false}>
         {messages.map((m, i) => {
           const firstOfRun = i === 0 || messages[i - 1].from !== m.from

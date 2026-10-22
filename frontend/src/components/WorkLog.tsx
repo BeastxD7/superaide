@@ -68,7 +68,7 @@ export function WorkLog({
 
   if (live) {
     return (
-      <div className="mb-2 border-b border-line/70 pb-2 text-xs" data-testid="work-log" aria-live="polite">
+      <div className="mb-2 border-b border-line/70 pb-2 text-xs" data-testid="work-log">
         {body}
       </div>
     )
@@ -142,7 +142,7 @@ function Reasoning({ text, live }: { text: string; live: boolean }) {
 function Status({ text }: { text: string }) {
   const reduce = useReducedMotion()
   return (
-    <div className="flex items-center gap-2 text-muted" role="status">
+    <div className="flex items-center gap-2 text-muted">
       <Loader2 className="size-3.5 animate-spin text-violet-500" aria-hidden />
       <motion.span
         animate={reduce ? undefined : { opacity: [0.55, 1, 0.55] }}

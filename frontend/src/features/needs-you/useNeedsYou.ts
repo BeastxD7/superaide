@@ -35,10 +35,14 @@ export function useNeedsYou(poll = 0) {
     void reload()
   }, [reload])
 
-  // Poll only while triage is on: with it off, one 404 and nothing more.
+  // Poll unless triage is known to be off (a 404): a failed first call (502 during a restart,
+  // offline) leaves `enabled` null and must not stop the polling, or the inbox stays hidden for
+  // the whole session. A hidden tab doesn't poll.
   useEffect(() => {
-    if (!poll || !enabled) return
-    const t = setInterval(() => void reload(), poll)
+    if (!poll || enabled === false) return
+    const t = setInterval(() => {
+      if (document.visibilityState === 'visible') void reload()
+    }, poll)
     return () => clearInterval(t)
   }, [reload, poll, enabled])
 
