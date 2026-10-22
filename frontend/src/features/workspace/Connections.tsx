@@ -11,7 +11,7 @@ import { Button, Notice } from '@/components/site'
 import { GoogleCalendarRow, type GoogleGuide, type GoogleService } from '@/features/workspace/GoogleCalendar'
 import { LinkedAccounts, type LinkedAccount } from '@/features/workspace/LinkedAccounts'
 
-// Connect Claude, Telegram, Slack, Google Calendar and the voice call's speech services from the app. Keys are checked with the
+// Connect Telegram, Slack, Google Calendar and the voice call's speech services from the app. Keys are checked with the
 // service, then kept encrypted on this computer; the app only ever shows a hint.
 
 type Service = {
@@ -29,13 +29,12 @@ type Service = {
 const rejected = (s: Service) => s.connected && s.health?.status === 'auth_failed'
 
 type Status = {
-  services: Record<'anthropic' | 'telegram' | 'slack' | 'whatsapp' | 'deepgram' | 'elevenlabs', Service> & { google: GoogleService }
+  services: Record<'telegram' | 'slack' | 'whatsapp' | 'deepgram' | 'elevenlabs', Service> & { google: GoogleService }
   guides: Record<string, { url: string; steps: string[] }> & { google: GoogleGuide }
   keys_kept_in: string
 }
 
 const FIELDS: Record<string, { name: string; label: string; placeholder: string }[]> = {
-  anthropic: [{ name: 'api_key', label: 'Claude API key', placeholder: 'sk-ant-…' }],
   telegram: [{ name: 'bot_token', label: 'Bot token from BotFather', placeholder: '123456789:AAE…' }],
   slack: [
     { name: 'bot_token', label: 'Bot User OAuth Token', placeholder: 'xoxb-…' },
@@ -45,16 +44,14 @@ const FIELDS: Record<string, { name: string; label: string; placeholder: string 
   elevenlabs: [{ name: 'api_key', label: 'ElevenLabs API key', placeholder: 'sk_…' }],
 }
 const NAMES: Record<Provider, string> = {
-  anthropic: 'Claude',
   telegram: 'Telegram',
   slack: 'Slack',
   deepgram: 'Deepgram',
   elevenlabs: 'ElevenLabs',
 }
-type Provider = 'anthropic' | 'telegram' | 'slack' | 'deepgram' | 'elevenlabs'
+type Provider = 'telegram' | 'slack' | 'deepgram' | 'elevenlabs'
 const VOICE: ReadonlySet<Provider> = new Set(['deepgram', 'elevenlabs'])
 const OPEN_LABEL: Record<string, string> = {
-  anthropic: 'Open the Claude Console',
   telegram: 'Open BotFather',
   slack: 'Create my Slack app',
   deepgram: 'Open the Deepgram console',
@@ -120,7 +117,6 @@ export function Connections({ agentName, me, refreshMe }: { agentName: string; m
     )
 
   const rows = [
-    { key: 'anthropic', brand: 'claude', name: `Claude, ${agentName}'s brain`, why: 'Real replies and reading your files' },
     { key: 'telegram', brand: 'telegram', name: 'Telegram', why: 'Message me from your phone' },
     { key: 'slack', brand: 'slack', name: 'Slack', why: 'Your team can reach me in Slack' },
     // The voice call (ADR 0012). Optional: without them, your browser's own speech is used.

@@ -1,6 +1,6 @@
 // The signed-in dashboard (formerly the single /workspace screen): chatting with Ava
 // (/dashboard/chat), the notebook (/dashboard/notebook), privacy between accounts, and
-// Connections (/dashboard/connections: Claude, Telegram, Slack, WhatsApp).
+// Connections (/dashboard/connections: Telegram, Slack, WhatsApp; the AI model lives on /dashboard/models).
 import { createCipheriv, randomBytes } from 'node:crypto'
 import { expect, query, test } from '../src/fixtures'
 import { apiEnv } from '../src/env'
@@ -477,30 +477,29 @@ test.describe('workspace: notebook', () => {
 })
 
 test.describe('workspace: offline mode', () => {
-  test('the offline notice links to Connections, where Claude can be connected', async ({ page, owner }) => {
+  test('the offline notice links to the AI model page, not to Connections', async ({ page, owner }) => {
     void owner
     await openChat(page)
-    const notice = page.getByText("Ava's Claude brain isn't connected yet")
+    const notice = page.getByText("Ava's AI model isn't connected yet")
     await expect(notice).toBeVisible()
     await expect(notice).toContainText('replies are placeholders')
     await expect(page.getByRole('main').getByText('Ava: offline mode')).toBeVisible()
 
-    // The notice's link opens Connections, and Claude is the first thing in it.
-    await notice.getByRole('link', { name: 'Connect Claude' }).click()
-    await expect(page).toHaveURL(/\/dashboard\/connections$/)
-    await expect(page.getByRole('heading', { level: 1, name: 'Connections' })).toBeVisible()
-    const claude = page.getByRole('button', { name: /Claude, Ava's brain/ })
-    await expect(claude).toBeVisible()
-    await claude.click()
-    await expect(page.getByLabel('Claude API key')).toBeVisible()
+    // The notice's link opens the AI model page. Connections has no Claude card: it lists channels and integrations only.
+    await notice.getByRole('link', { name: 'Choose an AI model' }).click()
+    await expect(page).toHaveURL(/\/dashboard\/models$/)
+    await expect(page.getByRole('heading', { level: 1, name: 'AI model' })).toBeVisible()
+    await openConnections(page)
+    await expect(page.getByRole('button', { name: /Claude/ })).toHaveCount(0)
+    await expect(page.getByLabel('Claude API key')).toHaveCount(0)
   })
 
-  test('the dashboard home says Ava is in offline mode and links to Connections', async ({ page, owner }) => {
+  test('the dashboard home says Ava is in offline mode and links to the AI model page', async ({ page, owner }) => {
     void owner
     await page.goto('/dashboard')
     await expect(page.getByText('Ava is in offline mode, so her replies are placeholders for now.')).toBeVisible()
-    await page.getByRole('main').getByRole('link', { name: 'Connect Claude' }).click()
-    await expect(page).toHaveURL(/\/dashboard\/connections$/)
+    await page.getByRole('main').getByRole('link', { name: 'Choose an AI model' }).click()
+    await expect(page).toHaveURL(/\/dashboard\/models$/)
   })
 })
 
@@ -605,13 +604,6 @@ function connectionRow(page: import('@playwright/test').Page, name: RegExp) {
 
 const SERVICES = [
   {
-    row: /Claude, Ava's brain/,
-    step: 'Open the Claude Console and sign in.',
-    link: 'Open the Claude Console',
-    href: /^https:\/\/platform\.claude\.com\/dashboard$/,
-    fields: ['Claude API key'],
-  },
-  {
     row: /^Telegram/,
     step: 'Open @BotFather in Telegram and send /newbot.',
     link: 'Open BotFather',
@@ -652,7 +644,7 @@ test.describe('connections', () => {
     const slack = connectionRow(page, /^Slack/)
     await slack.click()
     await expect(slack).toHaveAttribute('aria-expanded', 'false')
-    await expect(page.getByText(SERVICES[2].step)).toHaveCount(0)
+    await expect(page.getByText(SERVICES[1].step)).toHaveCount(0)
     expect(outside).toEqual([])
   })
 
@@ -679,12 +671,6 @@ test.describe('connections', () => {
   })
 
   const WRONG = [
-    {
-      service: 'Claude',
-      row: /Claude, Ava's brain/,
-      fill: { 'Claude API key': 'this-is-not-a-claude-key' },
-      message: "That doesn't look like a Claude API key. Keys start with sk-ant-.",
-    },
     {
       service: 'Telegram',
       row: /^Telegram/,
@@ -754,8 +740,8 @@ test.describe('connections', () => {
   test('a key that is too short is refused with a message a person can act on', async ({ page, owner }) => {
     void owner
     await openConnections(page)
-    await connectionRow(page, /Claude, Ava's brain/).click()
-    await page.getByLabel('Claude API key').fill('sk-ant')
+    await connectionRow(page, /^Telegram/).click()
+    await page.getByLabel('Bot token from BotFather').fill('123:abc')
     await page.getByRole('button', { name: 'Check and save' }).click()
     await expect(page.getByText(/at least 10 characters/)).toBeVisible()
     expect(await storedSecrets()).toEqual([])
@@ -767,19 +753,19 @@ test.describe('connections', () => {
     let release: () => void = () => {}
     const held = new Promise<void>((resolve) => (release = resolve))
     let calls = 0
-    await page.route('**/api/app/connections/anthropic', async (route) => {
+    await page.route('**/api/app/connections/telegram', async (route) => {
       calls += 1
       await held
       await route.continue()
     })
-    await connectionRow(page, /Claude, Ava's brain/).click()
-    await page.getByLabel('Claude API key').fill('still-not-a-claude-key')
+    await connectionRow(page, /^Telegram/).click()
+    await page.getByLabel('Bot token from BotFather').fill('still not a bot token')
     await page.getByRole('button', { name: 'Check and save' }).click()
     const checking = page.getByRole('button', { name: 'Checking…' })
     await expect(checking).toBeDisabled()
     await checking.click({ force: true })
     release()
-    await expect(page.getByText("That doesn't look like a Claude API key.")).toBeVisible()
+    await expect(page.getByText("That doesn't look like a bot token.")).toBeVisible()
     await expect(page.getByRole('button', { name: 'Check and save' })).toBeEnabled()
     expect(calls).toBe(1)
   })
@@ -808,7 +794,7 @@ test.describe('connections', () => {
       await expect(page.getByRole('button', { name: /^Disconnect/ })).toHaveCount(0)
     }
     const before = await (await api.get('/app/connections')).json()
-    for (const provider of ['anthropic', 'telegram', 'slack']) {
+    for (const provider of ['telegram', 'slack']) {
       const r = await api.post(`/app/connections/${provider}/disconnect`)
       expect(r.status(), provider).toBe(200)
       expect((await r.json()).services).toEqual(before.services)
@@ -823,7 +809,7 @@ test.describe('connections', () => {
     expect(await storedSecrets()).toEqual([])
     // The dashboard still works and still shows nothing connected.
     await page.reload()
-    await expect(connectionRow(page, /Claude, Ava's brain/)).toContainText('Real replies and reading your files')
+    await expect(connectionRow(page, /^Telegram/)).toContainText('Message me from your phone')
     await openChat(page)
     await composer(page).fill('Still answering?')
     await composer(page).press('Enter')
@@ -832,23 +818,23 @@ test.describe('connections', () => {
 
   test('a saved key is only ever shown as a hint, and Disconnect removes it', async ({ page, api, owner }) => {
     void owner
-    const key = 'sk-ant-e2e-planted-placeholder-not-real-7f3a'
-    await plantSecret('anthropic', 'api_key', key)
+    const key = 'sk-e2e-planted-placeholder-not-real-7f3a'
+    await plantSecret('deepgram', 'api_key', key)
     await openConnections(page)
-    const claude = connectionRow(page, /Claude, Ava's brain/)
+    const claude = connectionRow(page, /Deepgram, for the voice call/)
     await expect(claude).toContainText('Connected (sk-…7f3a)')
 
     const status = await api.get('/app/connections')
     const text = await status.text()
     expect(text).not.toContain(key)
     expect(text).not.toContain('placeholder-not-real')
-    expect((await status.json()).services.anthropic).toMatchObject({ connected: true, via: 'app', hints: { api_key: 'sk-…7f3a' } })
+    expect((await status.json()).services.deepgram).toMatchObject({ connected: true, via: 'app', hints: { api_key: 'sk-…7f3a' } })
 
     await claude.click()
     expect(await page.locator('body').innerText()).not.toContain(key)
-    await expect(page.getByLabel('Claude API key'), 'no form to re-enter while connected').toHaveCount(0)
-    await page.getByRole('button', { name: 'Disconnect Claude' }).click()
-    await expect(claude).toContainText('Real replies and reading your files')
+    await expect(page.getByLabel('Deepgram API key'), 'no form to re-enter while connected').toHaveCount(0)
+    await page.getByRole('button', { name: 'Disconnect Deepgram' }).click()
+    await expect(claude).toContainText('Hears you on the call')
     expect(await storedSecrets()).toEqual([])
     expect(await auditActions()).toContain('disconnected')
   })

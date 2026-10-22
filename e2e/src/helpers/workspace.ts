@@ -108,7 +108,7 @@ export async function isPaused(): Promise<boolean> {
 
 // --- the workspace ------------------------------------------------------------------------
 
-export const OFFLINE_REPLY = /Offline mode: no Claude API key yet, so I can only echo you\./
+export const OFFLINE_REPLY = /Offline mode: no AI model is connected yet, so I can only echo you\./
 
 // A line from the introduction (fixtures.completeIntroduction), so its presence
 // means the conversation history has loaded.

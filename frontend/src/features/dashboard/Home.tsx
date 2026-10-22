@@ -51,11 +51,11 @@ export function DashboardHome() {
           <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-lilac-200 bg-lilac-50 p-4 sm:flex-row sm:items-center">
             <Plug className="size-5 shrink-0 text-violet-600" aria-hidden />
             <p className="flex-1 text-sm text-body">
-              <span className="font-medium text-ink">Connect Claude to switch {name} on.</span> It takes a minute: paste an API key, and she
+              <span className="font-medium text-ink">Choose an AI model to switch {name} on.</span> It takes a minute: pick a provider and paste your key, and she
               starts replying for real.
             </p>
             <Button asChild size="sm">
-              <Link href="/dashboard/connections">Connect Claude</Link>
+              <Link href="/dashboard/models">Choose an AI model</Link>
             </Button>
           </div>
         )}

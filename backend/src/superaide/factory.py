@@ -30,8 +30,8 @@ def demo_responder(
     last = lines[-1] if lines else ""
     return TurnOutput(
         reply=(
-            f'(Offline mode: no Claude API key yet, so I can only echo you.) You said: "{last}". '
-            "Connect Claude under Connections to get real replies."
+            f'(Offline mode: no AI model is connected yet, so I can only echo you.) You said: "{last}". '
+            "Choose an AI model on the AI model page to get real replies."
         ),
         requested_action=RequestedAction(kind="none", summary=""),
         prediction=Prediction(expectation="you will reply", confidence=0.5),

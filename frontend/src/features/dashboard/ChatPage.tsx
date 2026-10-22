@@ -190,9 +190,9 @@ export function ChatPage() {
           {me.brain === 'offline' && (
             <div className="mb-4">
               <Notice tone="warn">
-                {name}&apos;s Claude brain isn&apos;t connected yet, so replies are placeholders.{' '}
-                <Link href="/dashboard/connections" className="font-medium underline">
-                  Connect Claude
+                {name}&apos;s AI model isn&apos;t connected yet, so replies are placeholders.{' '}
+                <Link href="/dashboard/models" className="font-medium underline">
+                  Choose an AI model
                 </Link>{' '}
                 to switch her on.
               </Notice>
