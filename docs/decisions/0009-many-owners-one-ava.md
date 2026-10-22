@@ -7,8 +7,7 @@ instance), T8 (operator console: metadata by default, break-glass with a reason 
 which they read at /app/access-log; operator accounts instead of ADMIN_TOKEN come later), T9 (email links), T10
 "now" items and T12 (isolation e2e, marked expected-fail until many owners are switched on). T11 (a separate `worker` service with one
 listener per bot by advisory lock), and Slack per instance (each owner's own Slack app, keyed "<team>/<app>"
-like the identity layer's links, one Socket Mode connection per app in the owner's instance). `ALLOW_MANY_OWNERS` stays off until
-the owner decides to open hiring to everyone.
+like the identity layer's links, one Socket Mode connection per app in the owner's instance). Many owners is the default (decided 2026-10-22).
 
 ## Context
 
@@ -562,6 +561,11 @@ FTS -> T8, T11, T12. Nothing ships to a public URL as "hosted" until T1-T7 and t
 - In-flight ADRs 0007 and 0008 need small amendments (instance keys, hosted-mode SSRF rule).
 
 ## Decided by the owner (2026-10-22)
+
+- **Many owners by default.** "Each owner's Ava behaves differently based on their own conversations":
+  anyone who signs up can hire their own Ava (`ALLOW_MANY_OWNERS=true` is the default). `false` stays
+  as the operator's switch for single-owner mode (a self-hosted server for one person: the first hire
+  is the only owner, later hires are refused).
 
 - **Model keys: bring your own (BYOK).** Each owner connects their own AI provider key (Claude, or any
   provider on the AI model page). There is no platform-paid model key: `PLATFORM_DAILY_CAP_USD` stays

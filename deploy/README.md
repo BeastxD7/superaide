@@ -115,16 +115,18 @@ docker compose -f docker-compose.prod.yml up -d --build --wait
 > the only published ports are Caddy's 80 and 443. Never add a `ports:` entry to `db`, `api` or
 > `web` in the compose file: it would be reachable from the internet whatever ufw says.
 
-## 5. First visit: hire your Ava straight away
+## 5. First visit: hire your Ava
 
-Open `https://ava.example.com`, **sign up, and hire Ava**. Each Ava works for the account that
-hired it, with its own memory, connections and spend. While `ALLOW_MANY_OWNERS=false` (the
-default) the server has one Ava: the first account to hire it is its owner and every later hire
-is refused. The site is public, so hire before you share the address. (Turning many owners on
-lets anyone who signs up hire their own Ava; see ADR 0009 before you do.)
+Open `https://ava.example.com`, **sign up, and hire Ava**. Anyone who signs up can hire their
+own Ava: each one works for the account that hired it, with its own memory, people,
+connections and spend, and behaves according to that owner's own conversations (ADR 0009).
 
-Then, in the workspace, connect Claude, Telegram and Slack under Connections. They're checked
-with each service and stored encrypted with `SECRETS_MASTER_KEY`.
+For a server that only you should use, set `ALLOW_MANY_OWNERS=false` in `.env` before your first
+visit: then the first account to hire Ava is its only owner and every later hire is refused, so
+hire before you share the address.
+
+Then, in the workspace, each owner connects their own AI model, Telegram bot and Slack app under
+Connections. They're checked with each service and stored encrypted with `SECRETS_MASTER_KEY`.
 
 **Operator console:** `https://ava.example.com/console`. It asks for `ADMIN_TOKEN` from `.env`.
 

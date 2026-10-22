@@ -159,51 +159,38 @@ test.describe('hiring Ava', () => {
     expect(refused).toEqual([])
   })
 
-  test('a second account sees that Ava is taken, never by whom, and cannot hire her (UI and API)', async ({ page, api }) => {
+  test('a second account hires its own Ava and never sees the first owner (UI and API)', async ({ page, api }) => {
+    // Many owners is the default (ADR 0009): Ava is never "taken".
     const meera = newPerson('Meera Iyer')
     await api.signup(meera)
     await api.hire()
+    await api.answer('hello', { choice: 'Nice to meet you' })
     const meeraId = (await hires())[0].owner_user_id
 
     await page.context().clearCookies()
     const rahul = newPerson('Rahul Verma')
     await api.signup(rahul)
 
-    // The profile says she's taken, never who hired her, and offers no Hire button.
+    // The profile offers Ava to Rahul too, and never names who else hired her.
     await page.goto('/agents/ava')
-    await expect(page.getByText('Ava already works for someone.')).toBeVisible()
+    await expect(page.getByText('Available now', { exact: true })).toBeVisible()
     await expect(page.getByText(/Meera/)).toHaveCount(0)
-    await expect(page.getByText('Already hired', { exact: true })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Hire Ava' })).toHaveCount(0)
+    await expect(page.getByText('Already hired', { exact: true })).toHaveCount(0)
 
-    // Going straight to the hire page: the attempt is refused with the reason.
     const hire = new HirePage(page)
     await hire.open()
     await hire.agree().check()
     await hire.hireButton().click()
-    await expect(page.getByText(/^Ava already works for /)).toBeVisible()
-    await expect(hire.hired()).toBeHidden()
-    await expect(page).toHaveURL(/\/agents\/ava\/hire$/)
+    await expect(hire.hired()).toBeVisible()
 
-    // The API says the same, and keeps the first owner's introduction out of reach.
-    const r = await api.post('/app/hire', { agent: 'ava', accepted_notice: true })
-    expect(r.status()).toBe(409)
-    expect((await r.json()).detail).toMatch(/^Ava already works for /)
-    for (const path of ['/app/onboarding', '/app/messages', '/app/notebook', '/app/me']) {
-      expect((await api.get(path)).status(), path).toBe(403)
-    }
-    expect((await api.post('/app/onboarding', { step: 'hello', answer: { choice: 'Nice to meet you' } })).status()).toBe(403)
-
-    // /meet sends this account back to the marketplace.
-    await page.goto('/meet')
-    await expect(page).toHaveURL(/\/$/)
-    await expect(page.getByText('Ava is already working for someone')).toBeVisible()
-    await expect(page.getByText(/Meera/)).toHaveCount(0)
-
+    // Two hires, two owners; Rahul's introduction starts fresh, with none of Meera's.
     const rows = await hires()
-    expect(rows).toHaveLength(1)
-    expect(rows[0].owner_user_id).toBe(meeraId)
-    expect(await eventCount('Nice to meet you', 'in')).toBe(0)
+    expect(rows).toHaveLength(2)
+    expect(rows.map((r) => r.owner_user_id)).toContain(meeraId)
+    const me = await api.ok<{ person: { name: string }; onboarding: { step: string } }>(api.get('/app/me'))
+    expect(me.person.name).toBe('Rahul Verma')
+    expect(me.onboarding.step).toBe('hello')
+    expect(JSON.stringify(await api.ok(api.get('/app/messages')))).not.toContain('Meera')
   })
 })
 

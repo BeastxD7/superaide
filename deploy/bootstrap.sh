@@ -141,7 +141,7 @@ if [[ "${SKIP_START:-}" != 1 ]]; then
   docker compose -f docker-compose.prod.yml ps
   say "Done"
   cat <<EOF
-    App:              https://$domain        (sign up and hire Ava now: on this server the first hire is the owner)
+    App:              https://$domain        (sign up and hire your Ava; anyone can hire their own, unless ALLOW_MANY_OWNERS=false)
     Operator console: https://$domain/console (password: ADMIN_TOKEN in $ENV_FILE)
     Logs:             docker compose -f docker-compose.prod.yml logs -f
 

@@ -61,12 +61,29 @@ def test_marketplace_lists_ava_as_available(client):
     assert any(a["status"] == "coming_soon" for a in agents)
 
 
-def test_hiring_needs_an_account_and_consent_and_happens_once(client, browser):
+def test_hiring_needs_an_account_and_consent_and_everyone_gets_their_own(client, browser):
     assert client.post("/app/hire", json={"agent": "ava", "accepted_notice": True}).status_code == 401
     _signup(client)
     assert client.post("/app/hire", json={"agent": "ava", "accepted_notice": False}).status_code == 400
     assert client.post("/app/hire", json={"agent": "ava", "accepted_notice": True}).status_code == 200
     assert client.get("/auth/me").json()["hire"]["agent"] == "ava"
+    # Someone else hires their own Ava; it's never shown as taken.
+    other = browser()
+    _signup(other, "Priya Tan", "priya@example.com")
+    assert other.post("/app/hire", json={"agent": "ava", "accepted_notice": True}).status_code == 200
+    assert other.get("/app/me").json()["person"]["name"] == "Priya Tan"
+    assert client.get("/app/me").json()["person"]["name"] == "Shashank Rao"
+    ava = client.get("/app/agents").json()[0]
+    assert ava["hired"] is False and "hired_by" not in ava
+    assert "Shashank" not in other.get("/app/agents").text
+
+
+def test_in_single_owner_mode_hiring_happens_once(client, browser, monkeypatch):
+    from superaide.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "allow_many_owners", False)
+    _signup(client)
+    assert client.post("/app/hire", json={"agent": "ava", "accepted_notice": True}).status_code == 200
     # Someone else can make an account, but Ava already has a manager.
     other = browser()
     _signup(other, "Priya Tan", "priya@example.com")

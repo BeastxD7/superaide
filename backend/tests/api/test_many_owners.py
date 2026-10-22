@@ -1,7 +1,7 @@
 """ADR 0009 T2: platform-wide accounts, one Ava per account, and each request in its owner's instance.
 
-Many owners are behind ALLOW_MANY_OWNERS until the rest of tenancy (T3-T7) is in; these
-tests switch it on to check the account and request side.
+Many owners is the default (ALLOW_MANY_OWNERS=true, decided 2026-10-22); the `many` fixture
+says so explicitly, and single-owner mode (false) has its own test.
 """
 
 from __future__ import annotations
@@ -47,7 +47,8 @@ def two_owners(browser):
     return a, b
 
 
-def test_without_the_switch_ava_still_works_for_one_account(browser):
+def test_in_single_owner_mode_ava_works_for_one_account(browser, monkeypatch):
+    monkeypatch.setattr(get_settings(), "allow_many_owners", False)
     a, b = browser(), browser()
     signup(a), hire(a)
     signup(b, **OTHER)

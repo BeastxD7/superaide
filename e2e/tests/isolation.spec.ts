@@ -2,11 +2,8 @@
 // their Ava stays with that owner. Each owner runs in their own browser context
 // (separate cookies), as two people on two computers would.
 //
-// Tenancy is not built yet (work packages T1-T7): today Ava can only be hired once.
-// The tests that need a second hire are marked test.fail() so the suite stays green
-// and starts failing loudly, as a reminder to drop the marker, the day isolation works.
-// The others guard what already holds: an account that hasn't hired sees none of
-// the owner's data.
+// Many owners is the default (ADR 0009, decided 2026-10-22): anyone can hire their own Ava.
+// An account that hasn't hired sees none of an owner's data; two owners see only their own.
 import type { Browser, BrowserContext } from '@playwright/test'
 import { Api, expect, newPerson, test, type Person } from '../src/fixtures'
 import { BASE_URL } from '../src/env'
@@ -68,7 +65,6 @@ test.describe('two owners', () => {
   })
 
   test('a second owner can hire their own Ava', async ({ browser }) => {
-    test.fail(true, 'ADR 0009 T2: Ava can only be hired once until hires become per instance')
     await hired(browser, 'Shashank Rao')
     const b = await account(browser, 'Priya Tan')
     const r = await b.api.post('/app/hire', { agent: 'ava', accepted_notice: true })
@@ -76,7 +72,6 @@ test.describe('two owners', () => {
   })
 
   test('the marketplace shows Ava as available to everyone', async ({ browser }) => {
-    test.fail(true, 'ADR 0009 T2/T12: the listing still says Ava is already hired')
     await hired(browser, 'Shashank Rao')
     const b = await account(browser, 'Priya Tan')
     const listing = await b.api.ok<{ slug: string; hired?: boolean }[]>(b.api.get('/app/agents'))
@@ -84,7 +79,6 @@ test.describe('two owners', () => {
   })
 
   test('each owner’s notebook holds only what they told their own Ava', async ({ browser }) => {
-    test.fail(true, 'ADR 0009 T2-T7: a second owner cannot hire yet')
     const a = await hired(browser, 'Shashank Rao')
     const b = await hired(browser, 'Priya Tan')
     await tell(a, SECRET_A)
@@ -97,7 +91,6 @@ test.describe('two owners', () => {
   })
 
   test('each owner’s conversation, reminders and people stay their own', async ({ browser }) => {
-    test.fail(true, 'ADR 0009 T2-T7: a second owner cannot hire yet')
     const a = await hired(browser, 'Shashank Rao')
     const b = await hired(browser, 'Priya Tan')
     await tell(a, SECRET_A)
@@ -110,7 +103,6 @@ test.describe('two owners', () => {
   })
 
   test('one owner cannot act on the other’s memories by id', async ({ browser }) => {
-    test.fail(true, 'ADR 0009 T2-T7: a second owner cannot hire yet')
     const a = await hired(browser, 'Shashank Rao')
     const b = await hired(browser, 'Priya Tan')
     await tell(a, SECRET_A)
