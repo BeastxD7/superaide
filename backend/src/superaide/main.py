@@ -196,6 +196,9 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     from superaide.triage.routes import make_router as make_triage_router
 
     app.include_router(make_triage_router(get_agent))  # 404 everywhere while TRIAGE_ENABLED is off
+    from superaide.push.routes import make_router as make_push_router
+
+    app.include_router(make_push_router())  # 404 unless PUSH_ENABLED (ADR 0011)
 
     @app.get(
         "/",

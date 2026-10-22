@@ -122,6 +122,19 @@ def _spend(_: argparse.Namespace) -> None:
     )
 
 
+def _push_keys(_: argparse.Namespace) -> None:
+    """Show the web push public key, making the pair once if PUSH_ENABLED is on (ADR 0011). Never rotates."""
+    from superaide.db.session import session_scope
+    from superaide.push import vapid
+
+    with session_scope() as s:
+        keys = vapid.ensure(s)
+    if keys is None:
+        print("Push is off (PUSH_ENABLED=false), so no VAPID keys were made.")
+        sys.exit(1)
+    print(f"VAPID public key: {keys.public_key}")
+
+
 def _unlink(args: argparse.Namespace) -> None:
     from superaide.db.models import ChannelIdentity
     from superaide.db.session import session_scope
@@ -254,6 +267,9 @@ def main() -> None:
     sub.add_parser("freeze", help="kill switch on").set_defaults(func=_freeze, on=True)
     sub.add_parser("unfreeze", help="kill switch off").set_defaults(func=_freeze, on=False)
     sub.add_parser("spend", help="show Claude API spend against the cap").set_defaults(func=_spend)
+    sub.add_parser("push-keys", help="show the web push key, making it once when PUSH_ENABLED is on").set_defaults(
+        func=_push_keys
+    )
 
     p = sub.add_parser("unlink", help="unlink a channel identity from its person")
     p.add_argument("--identity", required=True)

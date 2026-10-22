@@ -7,11 +7,13 @@ rows that belong to someone else.
 
 from __future__ import annotations
 
+import base64
 import uuid
 
 import pytest
 from sqlalchemy import select
 
+from superaide.config import get_settings
 from superaide.db.models import Document, MemoryItem, Person, UserAccount
 from superaide.db.session import session_scope
 from superaide.knowledge.store import remember_fact
@@ -23,6 +25,19 @@ ACCOUNT_ONLY = {("POST", "/app/hire")}  # any signed-in account (tested in test_
 # triage, TRIAGE_ENABLED). Everyone else is refused exactly as on any owner route.
 FLAG_GATED = {("GET", "/app/needs-you"), ("GET", "/app/triage/settings")}
 SECRET_NOTE = "Project Bluebird is my secret side project"
+
+
+@pytest.fixture(autouse=True)
+def push_on(monkeypatch):
+    """Web push (ADR 0011) answers 404 while off; switched on here so its routes are checked too."""
+    from superaide.vault import crypto
+
+    monkeypatch.setenv("SECRETS_MASTER_KEY", base64.b64encode(b"a" * 32).decode())
+    monkeypatch.delenv("SECRETS_MASTER_KEY_FILE", raising=False)
+    monkeypatch.setattr(get_settings(), "push_enabled", True)
+    crypto.master_key.cache_clear()
+    yield
+    crypto.master_key.cache_clear()
 
 
 @pytest.fixture

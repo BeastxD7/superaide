@@ -7,6 +7,7 @@ authors = [
 ]
 requires-python = ">=3.14"
 dependencies = [
+    "aiohttp>=3.14.3",  # via pywebpush; floor clears PYSEC-2026-3545/3546/3547
     "alembic>=1.20.0",
     "anthropic>=1.17.0",
     "argon2-cffi>=23",
@@ -16,15 +17,18 @@ dependencies = [
     "fastapi>=0.156.8",
     "fastembed==0.9.0",  # local embeddings on CPU (ONNX, Apache-2.0); exact pin: it downloads models
     "httpcore>=1.0.9",
+    "http-ece==1.2.1",  # via pywebpush: RFC 8188/8291 encryption; exact pin
     "httpx>=0.28.1",
     "keyring>=25",
     "openai>=3.36",
     "psycopg[binary]>=3.3.6",
+    "py-vapid==1.9.4",  # web push (ADR 0011): exact pin, not the 1.9.5/1.9.6 released 2026-10-14
     "pydantic>=2.14.1",
     "pydantic-settings>=2.16.1",
     "pypdf>=5",
     "python-docx>=1.1",
     "python-multipart>=0.0.9",
+    "pywebpush==2.5.0",  # web push encryption (aes128gcm) and VAPID; exact pin, web-push-libs
     "pyyaml>=6",
     "slack-bolt>=1.30.0",
     "sqlalchemy>=2.1",
@@ -44,6 +48,7 @@ dev = [
     "mypy>=1.19",
     "pytest>=9.1.1",
     "pytest-cov>=7",
+    "respx>=0.22",
     "ruff>=0.17.1",
     "time-machine>=3.5.1",
 ]

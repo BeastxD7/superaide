@@ -51,6 +51,8 @@ TABLES: tuple[str, ...] = (
     "owner_model_price",
     "owner_preference",
     "person",
+    "push_send",  # web push (ADR 0011)
+    "push_subscription",
     "spend_ledger",
     "escalation",  # triage (ADR 0010)
     "escalation_ack",

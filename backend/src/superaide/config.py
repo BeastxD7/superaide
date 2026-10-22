@@ -114,6 +114,17 @@ class Settings(BaseSettings):
     # doesn't change until the pipeline hook (TR5) lands.
     triage_enabled: bool = False
 
+    # Web push to the owner's phone (ADR 0011). Off: /app/push/* answers 404 and no VAPID keys are
+    # made. On: the first use generates one VAPID key pair for this deployment, kept in the vault.
+    push_enabled: bool = False
+    vapid_subject: str = "mailto:admin@localhost"  # who push services contact about this sender
+    # Every encrypted push is padded to this many plaintext bytes, so its size reveals nothing.
+    push_pad_bytes: int = 1024
+    # What a lock screen may show for a new device: none ("Ava / Needs you") | sender | reason.
+    push_default_preview: str = "none"
+    push_ttl_seconds: int = 180  # a push that arrives after the ladder moved on is useless
+    push_max_attempts: int = 3  # for 429 and 5xx answers, inside the TTL
+
     # User accounts and sessions
     session_cookie_name: str = "superaide_session"
     session_cookie_secure: bool = False  # set true when served over HTTPS
