@@ -375,6 +375,7 @@ export type ApprovalItem = {
   result: string | null
   at: string
   decided_at: string | null
+  needs_reason?: boolean
 }
 
 export type Reminder = {

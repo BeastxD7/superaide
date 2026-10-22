@@ -47,6 +47,7 @@ from superaide.intentions.when import clean_task, find_moment, zone
 from superaide.knowledge import extract
 from superaide.knowledge.ingest import ingest
 from superaide.knowledge.store import contacts_of, preferences_for, retire_document
+from superaide.policy import brake
 from superaide.policy.actions import ApprovalError, resolve
 from superaide.policy.killswitch import is_frozen
 from superaide.skills import registry as skill_registry
@@ -101,6 +102,10 @@ class HireBody(BaseModel):
 class AnswerBody(BaseModel):
     step: str
     answer: dict[str, Any] = Field(default_factory=dict)
+
+
+class DecideBody(BaseModel):
+    reason: str | None = Field(default=None, max_length=500)
 
 
 class ReminderBody(BaseModel):
@@ -733,9 +738,15 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         description="Actions Ava was asked to take that need your yes first, newest first, plus recent decisions.",
     )
     def approvals(person_id: uuid.UUID = Depends(owner_person_id)) -> list[dict[str, Any]]:
+        braked = get_settings().rubber_stamp_brake_enabled
         with session_scope() as s:
-            rows = s.scalars(select(Approval).order_by(Approval.created_at.desc()).limit(50)).all()
+            rows = list(s.scalars(select(Approval).order_by(Approval.created_at.desc()).limit(50)).all())
             names = {p.id: p.display_name for p in s.scalars(select(Person)).all()}
+            state = brake.state(s) if braked else None
+            if state is not None and state.engaged:  # a smaller batch: only the few oldest waiting cards
+                waiting = [a for a in reversed(rows) if a.status == "pending"][: brake.PENDING_CAP]
+                keep = {a.id for a in waiting}
+                rows = [a for a in rows if a.status != "pending" or a.id in keep]
             return [
                 {
                     "id": str(a.id),
@@ -746,9 +757,34 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                     "result": (a.payload or {}).get("result"),
                     "at": a.created_at.isoformat(),
                     "decided_at": a.decided_at.isoformat() if a.decided_at else None,
+                    "needs_reason": bool(state and a.status == "pending" and brake.needs_reason(a.kind, state)),
                 }
                 for a in rows
             ]
+
+    @router.get(
+        "/approvals/brake",
+        tags=["Owner: approvals"],
+        summary="How fast you have been approving",
+        description=(
+            "The Rubber-Stamp Brake (RUBBER_STAMP_BRAKE_ENABLED, off by default; 404 while off): your recent "
+            "approval speed and refusals, and whether Ava is asking for a typed reason on high-risk cards."
+        ),
+    )
+    def approval_brake(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        if not get_settings().rubber_stamp_brake_enabled:
+            raise HTTPException(404, "Not found")
+        with session_scope() as s:
+            st = brake.state(s)
+            return {
+                "engaged": st.engaged,
+                "decisions": st.decisions,
+                "median_latency_s": st.median_latency_s,
+                "reject_rate": st.reject_rate,
+                "per_kind": st.per_kind,
+                "fast_below_s": brake.FAST_MEDIAN_S,
+                "pending_cap": brake.PENDING_CAP,
+            }
 
     @router.post(
         "/approvals/{approval_id}/{verdict}",
@@ -757,7 +793,10 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         description="`verdict` is `approve` or `reject`. Each approval can be decided once.",
     )
     def decide_approval(
-        approval_id: uuid.UUID, verdict: str, person_id: uuid.UUID = Depends(owner_person_id)
+        approval_id: uuid.UUID,
+        verdict: str,
+        body: DecideBody | None = None,
+        person_id: uuid.UUID = Depends(owner_person_id),
     ) -> dict[str, Any]:
         if verdict not in {"approve", "reject"}:
             raise HTTPException(404, "Not found")
@@ -766,6 +805,11 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             if approval is None:
                 raise HTTPException(404, "No such approval")
             owner = require(s, Person, person_id)
+            if get_settings().rubber_stamp_brake_enabled and approval.status == "pending":
+                held = brake.check(s, approval, approve=verdict == "approve", reason=body.reason if body else None)
+                if held:
+                    s.commit()  # keep the audit line that says why it was held
+                    raise HTTPException(422, held)
             try:
                 resolve(s, approval, approve=verdict == "approve", decided_by=owner.display_name)
             except ApprovalError as exc:

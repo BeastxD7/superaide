@@ -177,6 +177,10 @@ class Settings(BaseSettings):
     # every few minutes and goes through the same triage. Needs TRIAGE_ENABLED too. Off: Gmail is
     # read only when the owner asks in chat.
     gmail_triage_enabled: bool = False
+    # Rubber-Stamp Brake (#134, tracking #142). Off: approvals work as before. On: when the owner's recent
+    # approvals are all yes and faster than a card can be read, high-risk cards need a typed reason and only
+    # a few cards show at once. It can only add friction, never remove it.
+    rubber_stamp_brake_enabled: bool = False
     gmail_poll_minutes: int = 5
     # The owner's Gmail sign-in (same OAuth client as Calendar); kept per instance in the vault.
     gmail_refresh_token: str = ""
