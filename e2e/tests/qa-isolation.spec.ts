@@ -10,6 +10,7 @@ import { ADMIN_TOKEN, ASK_LINK, BASE_URL } from '../src/env'
 
 const QA = `${process.env.QA_SHOTS_DIR ?? 'test-results/qa-shots'}/isolation`
 const SECRET_A = 'my locker code is 4417'
+const SECRET_WORDS = 'locker code' // not the digits: a random id or timestamp can contain 4417
 const OPERATOR = { Authorization: `Bearer ${ADMIN_TOKEN}` }
 
 type Owner = { person: Person; api: Api; context: BrowserContext }
@@ -96,7 +97,7 @@ test.describe('owner B with A’s ids', () => {
     for (const path of ['/app/me', '/app/notebook', '/app/people', '/app/preferences', '/app/messages', '/app/approvals',
       '/app/access-log', '/app/intro/documents', '/app/onboarding', '/app/channels/linked']) {
       const seen = await (await b.api.get(path)).text()
-      expect(seen, path).not.toContain('4417')
+      expect(seen, path).not.toContain(SECRET_WORDS)
       expect(seen, path).not.toContain(a.person.email)
       expect(seen, path).not.toContain('Shashank')
     }
@@ -204,7 +205,7 @@ test.describe('operator break-glass', () => {
       headers: { ...OPERATOR, 'X-Operator-Reason': 'qa: a reported reminder for B', 'X-Operator-Instance': instanceB },
     })
     expect(r.ok()).toBeTruthy()
-    expect(await r.text()).not.toContain('4417')
+    expect(await r.text()).not.toContain(SECRET_WORDS)
     const logB = await b.api.ok<{ reason: string }[]>(b.api.get('/app/access-log'))
     const logA = await a.api.ok<unknown[]>(a.api.get('/app/access-log'))
     expect(logB.map((x) => x.reason)).toContain('qa: a reported reminder for B')
