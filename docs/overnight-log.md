@@ -83,3 +83,9 @@ backend tests, lint, types, the frontend checks and the full browser suite pass.
   - Per-instance budget plus the platform allowance landed (ADR 0009 T6, 38b306b, migration 0019). The platform cap defaults to $0 until the owner decides pricing.
   - Identity follow-ups landed (aa54a50).
   - Next: reliability round 3 (double-typo recall, the remaining honesty hedge, ~20 harder scenarios); tenancy T2 (accounts → own Ava); triage foundations; mobile ADR.
+- 10:50 IST:
+  - A usage limit paused all agents twice (about 04:30–05:20 and 09:40–10:40); all were resumed.
+  - The owner's login email was corrected to shashank@pebbleroad.com (dev DB).
+  - PR #10 merged (8bf07e3). Dev checkout updated, frontend npm ci, dev DB at 0021, stack restarted cleanly.
+  - The phone tunnel had dropped; a new quick tunnel is open.
+  - The morning summary is at docs/morning-summary-2026-10-22.md.
