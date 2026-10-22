@@ -99,10 +99,26 @@ class Settings(BaseSettings):
     # webhook at <this>/webhooks/telegram/<endpoint> with its own secret, instead of polling (ADR 0009 T4).
     telegram_webhook_base_url: str = ""
 
-    # Google (Calendar): the owner's own OAuth client, and the refresh token from signing in
+    # Google: one OAuth client (Web application) for this deployment serves both "Sign in with Google"
+    # and Google Calendar. Set here, it is the platform's client; an owner may still save their own in
+    # Connections for their calendar. The refresh token comes from the owner's calendar sign-in and is
+    # kept in their instance's vault (from .env only on a self-hosted server).
     google_client_id: str = ""
     google_client_secret: str = ""
     google_refresh_token: str = ""
+    # "Continue with Google" on the log-in and sign-up pages (OpenID Connect, scopes openid email
+    # profile). Needs GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET above. Off: /auth/google/* answer 404.
+    google_signin_enabled: bool = False
+    # Google Calendar push (events.watch): Google calls this server when the owner's calendar changes,
+    # so meeting prep notices new or moved meetings at once instead of at the next 30-minute scan
+    # (which keeps running as the fallback). Needs a public https address (PUBLIC_BASE_URL).
+    google_calendar_push: bool = False
+    # Public https address of this API as Google and other services reach it (e.g. https://ava.example.com,
+    # whose /webhooks/* goes to the API). Falls back to TELEGRAM_WEBHOOK_BASE_URL.
+    public_base_url: str = ""
+    # E2E only: a fake Google at this address stands in for accounts.google.com, used only while
+    # ENABLE_SIMULATOR is on. Never set it on a real server.
+    google_fake_base_url: str = ""
 
     # Slack
     slack_bot_token: str = ""

@@ -23,8 +23,8 @@ export function ProfileScreen({ slug, initialAgents }: { slug: string; initialAg
   return <Profile slug={slug} session={useSession()} initialAgents={initialAgents} />
 }
 
-export function AuthScreen({ mode, next }: { mode: 'signup' | 'login'; next: string | null }) {
-  return <AuthPage mode={mode} next={next} session={useSession()} />
+export function AuthScreen({ mode, next, google = null }: { mode: 'signup' | 'login'; next: string | null; google?: string | null }) {
+  return <AuthPage mode={mode} next={next} google={google} session={useSession()} />
 }
 
 export function HireScreen({ slug }: { slug: string }) {

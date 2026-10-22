@@ -15,11 +15,13 @@ from collections.abc import Callable
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, Security
+from fastapi.responses import RedirectResponse
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from superaide.auth import emails, service
+from superaide.auth import google as google_signin
 from superaide.auth.service import AuthError, Client
 from superaide.config import get_settings
 from superaide.db.models import AgentHire, Onboarding, UserAccount
@@ -131,6 +133,8 @@ def user_view(s: Any, user: UserAccount) -> dict[str, Any]:
             "name": user.display_name,
             "timezone": user.timezone,
             "email_verified": user.email_verified_at is not None,
+            "has_password": bool(user.password_hash),
+            "google": user.google_sub is not None,
             "created_at": user.created_at.isoformat(),
         },
         "hire": None
@@ -177,6 +181,15 @@ def deliver(mail: Mail | None) -> None:
 class LoginBody(BaseModel):
     email: str = Field(min_length=1, max_length=320)
     password: str = Field(min_length=1, max_length=1024)
+
+
+class GoogleStartBody(BaseModel):
+    next: str | None = Field(default=None, max_length=300)  # where to go afterwards: a path on this site
+    timezone: str | None = Field(default=None, max_length=64)  # for a new account, as at sign-up
+
+
+def google_enabled() -> bool:
+    return get_settings().google_signin_enabled
 
 
 class PasswordBody(BaseModel):
@@ -316,5 +329,94 @@ def make_router() -> APIRouter:
         client = client_of(request)
         run(lambda s: emails.reset_password(s, body.token, body.password, client))
         return {"status": "password reset; log in with the new password"}
+
+    @router.get(
+        "/google",
+        summary="Is Google sign-in available",
+        description='`{"enabled": true}` when this server offers Continue with Google. Needs no session.',
+    )
+    def google_status() -> dict[str, bool]:
+        return {"enabled": google_enabled() and google_signin.configured()}
+
+    @router.post(
+        "/google/start",
+        summary="Start signing in with Google",
+        description=(
+            "Returns Google's sign-in URL (OpenID Connect with PKCE; scopes `openid email profile` only) and "
+            "ties this sign-in to the browser with a short-lived cookie. Open the URL in the same browser. "
+            "`404` while GOOGLE_SIGNIN_ENABLED is off."
+        ),
+    )
+    def google_start(body: GoogleStartBody, request: Request, response: Response) -> dict[str, str]:
+        if not google_enabled():
+            raise HTTPException(404, "Not Found")
+        if not google_signin.configured():
+            raise HTTPException(503, "Google sign-in isn't set up on this server yet.")
+        client = client_of(request)
+        started = run(lambda s: google_signin.start(s, client=client, next_path=body.next, timezone=body.timezone))
+        response.set_cookie(
+            google_signin.COOKIE, started.browser_secret,
+            max_age=int(google_signin.PENDING_TTL.total_seconds()), httponly=True,
+            secure=get_settings().session_cookie_secure, samesite="lax", path="/",
+        )  # fmt: skip
+        return {"url": started.url}
+
+    @router.get(
+        "/google/callback",
+        summary="Google sign-in callback",
+        description=(
+            "Google sends the browser here. Checks the one-time state and this browser's cookie, verifies "
+            "Google's ID token, signs in (setting the session cookie) and sends the browser on. Failures go "
+            "to /login?google=<reason>."
+        ),
+        include_in_schema=False,
+    )
+    def google_callback(request: Request, code: str = "", state: str = "", error: str = "") -> RedirectResponse:
+        if not google_enabled():
+            raise HTTPException(404, "Not Found")
+        front = get_settings().frontend_origin.rstrip("/")
+        client = client_of(request)
+        browser_secret = request.cookies.get(google_signin.COOKIE)
+
+        def back(reason: str) -> RedirectResponse:
+            out = RedirectResponse(f"{front}/login?google={reason}", status_code=303)
+            out.delete_cookie(google_signin.COOKIE, path="/", httponly=True, samesite="lax")
+            return out
+
+        def pending_or_reason(s: Any) -> dict[str, Any] | str:
+            try:
+                return google_signin.take_pending(s, state, browser_secret)
+            except google_signin.SignInError as exc:
+                return exc.reason
+
+        pending = run(pending_or_reason)  # used up even when Google reports an error
+        if error or not code:
+            return back("cancelled")
+        if isinstance(pending, str):
+            run(lambda s: google_signin.fail(s, client, "expired"))
+            return back("expired")
+        try:
+            who = google_signin.identify(pending, code, google_signin.http_client())
+        except google_signin.SignInError as exc:
+            reason = exc.reason
+            run(lambda s: google_signin.fail(s, client, reason))
+            return back("failed")
+
+        def go(s: Any) -> tuple[str, str] | str:
+            try:
+                user, token = google_signin.sign_in(s, who, client=client, timezone=pending.get("timezone"))
+            except google_signin.SignInError as exc:
+                google_signin.fail(s, client, exc.reason)
+                return exc.reason
+            return token, str(pending.get("next") or "")
+
+        outcome = run(go)
+        if isinstance(outcome, str):
+            return back(outcome if outcome in {"unverified", "locked", "throttled"} else "failed")
+        token, next_path = outcome
+        out = RedirectResponse(f"{front}{next_path or '/login'}", status_code=303)
+        set_session_cookie(out, token)
+        out.delete_cookie(google_signin.COOKIE, path="/", httponly=True, samesite="lax")
+        return out
 
     return router

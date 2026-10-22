@@ -8,6 +8,7 @@ import pytest
 from sqlalchemy import func, select, update
 
 from superaide.auth import service
+from superaide.config import get_settings
 from superaide.db.models import AuthEvent, Person, UserAccount, UserSession
 from superaide.db.session import session_scope
 from tests.api.conftest import OTHER, OWNER, PASSWORD, app_routes, fill_path, login, signup
@@ -519,3 +520,42 @@ def test_validation_errors_never_echo_a_password(browser, path, body):
     assert SECRET_PASSWORD not in r.text
     first = r.json()["detail"][0]
     assert first["loc"] and first["msg"]  # still says what's wrong, for the form
+
+
+# --- Sign in with Google (the flows are in test_google_signin.py) -----------------------------------
+
+
+@pytest.fixture
+def google_on(monkeypatch):
+    settings = get_settings()
+    monkeypatch.setattr(settings, "google_signin_enabled", True)
+    monkeypatch.setattr(settings, "google_client_id", "1234-signin.apps.googleusercontent.com")
+    monkeypatch.setattr(settings, "google_client_secret", "test-signin-secret-not-real")
+
+
+def test_google_sign_in_routes_ask_for_no_session_and_reveal_nothing(browser, owner, google_on):
+    """GET /auth/google, POST /auth/google/start and GET /auth/google/callback: public by design
+    (they sign people in), so the same answers whoever asks, and never an account's data."""
+    for c in (browser(), owner):
+        assert c.get("/auth/google").json() == {"enabled": True}
+        r = c.post("/auth/google/start", json={"next": "/workspace"})
+        assert r.status_code == 200 and r.json().keys() == {"url"}
+        assert OWNER["email"] not in r.text and "Shashank" not in r.text
+        r = c.get("/auth/google/callback", params={"code": "x", "state": "nope"}, follow_redirects=False)
+        assert r.status_code == 303 and r.headers["location"].endswith("/login?google=expired")
+    assert owner.get("/auth/me").status_code == 200  # a failed callback doesn't sign the owner out
+
+
+def test_google_start_needs_the_csrf_header_and_valid_fields(browser, google_on):
+    assert browser(csrf=False).post("/auth/google/start", json={}).status_code == 403
+    for body in ({"next": "x" * 301}, {"timezone": "x" * 65}, {"next": ["/a"]}):
+        assert browser().post("/auth/google/start", json=body).status_code == 422, body
+
+
+def test_google_preflight_from_another_origin_gets_no_allow_origin(browser, google_on):
+    r = browser().options(
+        "/auth/google/start",
+        headers={"Origin": "http://evil.example", "Access-Control-Request-Method": "POST",
+                 "Access-Control-Request-Headers": "content-type,x-requested-with"},
+    )  # fmt: skip
+    assert r.status_code == 400 and "access-control-allow-origin" not in r.headers

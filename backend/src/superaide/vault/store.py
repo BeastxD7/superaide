@@ -40,6 +40,10 @@ FIELDS: dict[tuple[str, str], str] = {
     ("google", "refresh_token"): "google_refresh_token",
 }
 SECRET_NAMES = {"api_key", "bot_token", "app_token", "client_secret", "refresh_token"}  # ids aren't secrets
+# The deployment's own Google OAuth client (the app owners sign in to, for sign-in and Calendar). It
+# spends nothing and reads nothing by itself, so a hosted server offers it to every owner; the
+# refresh token from each owner's calendar sign-in stays theirs.
+PLATFORM_FIELDS = {("google", "client_id"), ("google", "client_secret")}
 
 
 def slot(provider: str, name: str, agent_id: uuid.UUID | None = None) -> str:
@@ -143,7 +147,8 @@ def runtime_settings(base: Settings | None = None) -> Settings:
     # (brain/platform_ai.platform_key), never carried in an owner's settings.
     updates: dict[str, Any] = {"platform_anthropic_api_key": ""}
     if not env_credentials_apply(base):
-        updates.update({field: "" for field in FIELDS.values()})  # BYOK: never the server's keys
+        # BYOK: never the server's keys (only its Google OAuth client, which isn't one).
+        updates.update({field: "" for key, field in FIELDS.items() if key not in PLATFORM_FIELDS})
     with session_scope() as s:
         from superaide.brain import platform_ai
 
@@ -170,7 +175,10 @@ def status(session: Session, settings: Settings) -> dict[str, Any]:
 
     def entry(provider: str, names: list[str]) -> dict[str, Any]:
         mine = [rows[(provider, n)] for n in names if (provider, n) in rows]
-        from_env = env_credentials_apply() and all(getattr(get_settings(), FIELDS[(provider, n)]) for n in names)
+        platform = all((provider, n) in PLATFORM_FIELDS for n in names)
+        from_env = (env_credentials_apply() or platform) and all(
+            getattr(get_settings(), FIELDS[(provider, n)]) for n in names
+        )
         if mine and len(mine) == len(names):
             return {
                 "connected": True,
@@ -195,11 +203,8 @@ def status(session: Session, settings: Settings) -> dict[str, Any]:
         "anthropic": entry("anthropic", ["api_key"]),
         "telegram": channel("telegram", ["bot_token"]),
         "slack": channel("slack", ["bot_token", "app_token"]),
-        # Google needs the owner's OAuth client first, then their sign-in (the refresh token).
-        "google": {
-            **entry("google", ["client_id", "client_secret", "refresh_token"]),
-            "client_ready": entry("google", ["client_id", "client_secret"])["connected"],
-        },
+        # Google needs an OAuth client first (the owner's own, or this deployment's), then their sign-in.
+        "google": google_status(entry),
         "whatsapp": {
             "connected": False,
             "available": False,
@@ -209,3 +214,15 @@ def status(session: Session, settings: Settings) -> dict[str, Any]:
             ),
         },
     }
+
+
+def google_status(entry: Any) -> dict[str, Any]:
+    """The calendar's connection: an OAuth client (saved here, or the deployment's from .env) plus the
+    owner's own sign-in (the refresh token, saved here)."""
+    client = entry("google", ["client_id", "client_secret"])
+    full = entry("google", ["client_id", "client_secret", "refresh_token"])
+    if not full["connected"] and client["connected"]:
+        token = entry("google", ["refresh_token"])
+        if token["connected"]:  # the deployment's client, the owner's own sign-in
+            full = {**token, "hints": {**client["hints"], **token["hints"]}}
+    return {**full, "client_ready": client["connected"]}

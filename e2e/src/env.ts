@@ -9,6 +9,11 @@ export const API_PORT = 8100 + SLOT
 export const WEB_PORT = 3100 + SLOT
 export const BASE_URL = process.env.E2E_BASE_URL ?? `http://localhost:${WEB_PORT}`
 export const API_URL = `http://127.0.0.1:${API_PORT}`
+// "Continue with Google" against a fake Google (scripts/fake-google.mjs). Muted by default: only with
+// E2E_GOOGLE=1, which also starts the fake and switches Google sign-in on in the API.
+export const GOOGLE = process.env.E2E_GOOGLE === '1'
+export const FAKE_GOOGLE_PORT = 8300 + SLOT
+export const FAKE_GOOGLE_URL = `http://127.0.0.1:${FAKE_GOOGLE_PORT}`
 
 // A Postgres URL for a database we may create others from (CI and local defaults differ).
 export const PG_ADMIN_URL = process.env.E2E_PG_ADMIN_URL ?? 'postgresql://agent:agent@localhost:5432/postgres'
@@ -49,5 +54,13 @@ export function apiEnv(): Record<string, string> {
     SECRETS_MASTER_KEY: Buffer.alloc(32, SLOT + 1).toString('base64'),
     // The "Ask my Ava" link is off by default; E2E_ASK_LINK=1 turns it on for tests/ask-link.spec.ts.
     ...(ASK_LINK ? { ASK_LINK_ENABLED: 'true', ASK_MIN_SECONDS: '1' } : {}),
+    ...(GOOGLE
+      ? {
+          GOOGLE_SIGNIN_ENABLED: 'true',
+          GOOGLE_CLIENT_ID: 'e2e-client.apps.googleusercontent.com',
+          GOOGLE_CLIENT_SECRET: 'e2e-not-a-secret',
+          GOOGLE_FAKE_BASE_URL: FAKE_GOOGLE_URL,
+        }
+      : {}),
   }
 }

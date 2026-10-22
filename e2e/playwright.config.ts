@@ -1,5 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
-import { API_PORT, API_URL, BASE_URL, DB_NAME, PG_ADMIN_URL, SLOT, WEB_PORT, apiEnv } from './src/env'
+import { API_PORT, API_URL, BASE_URL, DB_NAME, FAKE_GOOGLE_PORT, FAKE_GOOGLE_URL, GOOGLE, PG_ADMIN_URL, SLOT, WEB_PORT, apiEnv } from './src/env'
 
 // One slot = one API, one Next.js server and one database (see src/env.ts).
 // Tests inside a slot run one at a time because they reset the shared database;
@@ -31,6 +31,20 @@ export default defineConfig({
     { name: 'mobile', use: { ...devices['Pixel 7'] }, testMatch: /\.mobile\.spec\.ts$/ },
   ],
   webServer: [
+    // A fake Google for the "Continue with Google" tests (E2E_GOOGLE=1 only).
+    ...(GOOGLE
+      ? [
+          {
+            command: 'node scripts/fake-google.mjs',
+            url: `${FAKE_GOOGLE_URL}/health`,
+            env: { ...process.env, FAKE_GOOGLE_PORT: String(FAKE_GOOGLE_PORT) },
+            reuseExistingServer: !process.env.CI,
+            timeout: 30_000,
+            stdout: 'ignore' as const,
+            stderr: 'pipe' as const,
+          },
+        ]
+      : []),
     {
       command: 'bash scripts/start-api.sh',
       url: `${API_URL}/health`,

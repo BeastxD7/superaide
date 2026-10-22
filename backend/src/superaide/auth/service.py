@@ -114,12 +114,11 @@ def valid_timezone(name: str | None) -> str:
 def signup(
     session: Session, *, email: str, password: str, name: str, client: Client, timezone: str | None = None
 ) -> tuple[UserAccount, str]:
-    settings = get_settings()
     name = " ".join(name.split())[:120]
     if not name:
         raise AuthError(422, "Tell us your name.", "name")
     normalized = normalize_email(email)
-    if _recent(session, "signup", timedelta(hours=1), ip=client.ip) >= settings.signups_per_ip_per_hour:
+    if signups_throttled(session, client):
         raise AuthError(429, "Too many new accounts from this device. Try again in an hour.")
     problem = password_problem(password, email=normalized, name=name)
     if problem:
@@ -129,6 +128,32 @@ def signup(
         hash_password(password)
         raise AuthError(409, "There's already an account with this email. Log in instead.", "email")
 
+    user = create_account(
+        session, email=email, normalized=normalized, name=name, password_hash=hash_password(password),
+        timezone=timezone,
+    )  # fmt: skip
+    _event(session, "signup", client, user_id=user.id, email=normalized)
+    audit(session, "auth", "signup", user_id=user.id)
+    return user, new_session(session, user, client)
+
+
+def signups_throttled(session: Session, client: Client) -> bool:
+    return _recent(session, "signup", timedelta(hours=1), ip=client.ip) >= get_settings().signups_per_ip_per_hour
+
+
+def create_account(
+    session: Session,
+    *,
+    email: str,
+    normalized: str,
+    name: str,
+    password_hash: str,
+    timezone: str | None,
+    google_sub: str | None = None,
+    verified: bool = False,
+) -> UserAccount:
+    """A new account and its own Person record. `password_hash` is "" for an account that signs in
+    with Google only (no password matches it)."""
     # The account's own record among the people the agents know.
     person = Person(display_name=name, relation="unknown", channel_prefs={"routine": "web"})
     session.add(person)
@@ -137,18 +162,18 @@ def signup(
     user = UserAccount(
         email=email.strip()[:320],
         email_normalized=normalized,
-        password_hash=hash_password(password),
+        password_hash=password_hash,
         display_name=name,
         person_id=person.id,
         timezone=valid_timezone(timezone),
-        password_changed_at=now,
+        password_changed_at=now if password_hash else None,
         last_login_at=now,
+        google_sub=google_sub,
+        email_verified_at=now if verified else None,
     )
     session.add(user)
     session.flush()
-    _event(session, "signup", client, user_id=user.id, email=normalized)
-    audit(session, "auth", "signup", user_id=user.id)
-    return user, _new_session(session, user, client)
+    return user
 
 
 def login(session: Session, *, email: str, password: str, client: Client) -> tuple[UserAccount, str]:
@@ -195,13 +220,13 @@ def login(session: Session, *, email: str, password: str, client: Client) -> tup
     user.locked_until = None
     user.last_login_at = now
     _event(session, "login_ok", client, user_id=user.id, email=normalized)
-    return user, _new_session(session, user, client)
+    return user, new_session(session, user, client)
 
 
 # --- sessions ----------------------------------------------------------------------
 
 
-def _new_session(session: Session, user: UserAccount, client: Client) -> str:
+def new_session(session: Session, user: UserAccount, client: Client) -> str:
     token = secrets.token_urlsafe(32)
     now = _now()
     session.add(

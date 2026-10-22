@@ -242,3 +242,24 @@ def test_only_the_owner_can_set_up_google(owner):
     owner.post("/app/connections/google", json=body)
     assert other.post("/app/connections/google/start").status_code == 403
     assert other.post("/app/connections/google/disconnect").status_code == 403
+
+
+def test_the_deployments_google_client_serves_every_owners_calendar_even_when_hosted(owner, monkeypatch):
+    """One OAuth client for sign-in and Calendar: set in .env, an owner connects without pasting one.
+    The refresh token is still each owner's own, and a hosted server never uses one from .env."""
+    from superaide.config import get_settings
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "deploy_mode", "hosted")
+    monkeypatch.setattr(settings, "google_client_id", GOOGLE_CLIENT)
+    monkeypatch.setattr(settings, "google_client_secret", GOOGLE_SECRET)
+    monkeypatch.setattr(settings, "google_refresh_token", "1//the-servers-own-token")
+    google = owner.get("/app/connections").json()["services"]["google"]
+    assert google["client_ready"] and not google["connected"]
+    assert runtime_settings().google_refresh_token == ""  # never the server's token for an owner
+    q = google_start(owner)
+    assert q["client_id"] == GOOGLE_CLIENT
+    assert callback(owner, code="good-code", state=q["state"]).headers["location"].endswith("?google=connected")
+    google = owner.get("/app/connections").json()["services"]["google"]
+    assert google["connected"] and google["via"] == "app" and GOOGLE_SECRET not in json.dumps(google)
+    assert runtime_settings().google_refresh_token == GOOGLE_REFRESH

@@ -396,11 +396,17 @@ class UserAccount(TenantScoped, Base):
 
     __tablename__ = "user_account"
     # Accounts are platform-wide: one sign-in for every agent the person hires (ADR 0009).
-    __table_args__ = (UniqueConstraint("email_normalized", name="uq_user_email"),)
+    __table_args__ = (
+        UniqueConstraint("email_normalized", name="uq_user_email"),
+        UniqueConstraint("google_sub", name="uq_user_google_sub"),
+    )
 
     email: Mapped[str] = mapped_column(String(320))
     email_normalized: Mapped[str] = mapped_column(String(320))
-    password_hash: Mapped[str] = mapped_column(String(255))
+    password_hash: Mapped[str] = mapped_column(String(255))  # "" when the account signs in with Google only
+    # Google's stable account id ("sub"), once the account has signed in with Google. The account is
+    # found by this, never by email alone: a Google account's address can change or be reused.
+    google_sub: Mapped[str | None] = mapped_column(String(255), nullable=True)
     display_name: Mapped[str] = mapped_column(String(120))
     person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), unique=True)
     role: Mapped[str] = mapped_column(String(20), default="user")  # user | admin

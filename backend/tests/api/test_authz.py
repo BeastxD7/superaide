@@ -202,3 +202,38 @@ def test_public_ask_routes_are_404_while_off_and_carry_no_owner_data(browser, ow
         assert r.status_code == 404, (method, path, r.status_code, r.text)
         assert r.json() == {"detail": "Not Found"}
         _assert_no_owner_data(r, owner_data)
+
+
+# --- Sign in with Google: public routes under /auth ---------------------------------------------------
+
+GOOGLE_SIGNIN_ROUTES = {("GET", "/auth/google"), ("POST", "/auth/google/start")}  # + the hidden callback
+
+
+def test_google_sign_in_routes_are_the_only_new_public_auth_routes(app):
+    """Every /auth route either needs a session or is one of the known public ones (sign-up, log-in,
+    email links, Google sign-in). A new /auth route has to be added here deliberately."""
+    public = {
+        ("POST", "/auth/signup"), ("POST", "/auth/login"), ("POST", "/auth/logout"), ("GET", "/auth/me"),
+        ("POST", "/auth/verify-email"), ("POST", "/auth/password-reset/request"), ("POST", "/auth/password-reset"),
+    } | GOOGLE_SIGNIN_ROUTES  # fmt: skip
+    session_only = {
+        ("POST", "/auth/password"),
+        ("POST", "/auth/logout-everywhere"),
+        ("POST", "/auth/verify-email/send"),
+    }
+    assert set(app_routes(app, "/auth")) == public | session_only
+
+
+def test_google_sign_in_gives_an_owner_s_data_to_nobody(browser, owner_data, monkeypatch):
+    settings = get_settings()
+    monkeypatch.setattr(settings, "google_signin_enabled", True)
+    monkeypatch.setattr(settings, "google_client_id", "1234-signin.apps.googleusercontent.com")
+    monkeypatch.setattr(settings, "google_client_secret", "test-signin-secret-not-real")
+    anonymous = browser()
+    for method, path in sorted(GOOGLE_SIGNIN_ROUTES):
+        r = anonymous.request(method, path, json={} if method == "POST" else None)
+        assert r.status_code == 200, (method, path, r.text)
+        _assert_no_owner_data(r, owner_data)
+    r = anonymous.get("/auth/google/callback", params={"code": "x", "state": "y"}, follow_redirects=False)
+    assert r.status_code == 303 and "superaide_session" not in r.headers.get("set-cookie", "")
+    assert anonymous.get("/app/me").status_code == 401

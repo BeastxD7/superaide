@@ -139,8 +139,8 @@ Connections. They're checked with each service and stored encrypted with `SECRET
   - Webhook mode is possible: set `TELEGRAM_WEBHOOK_BASE_URL=https://DOMAIN`, uncomment the `/webhooks/*` block in `deploy/caddy/Caddyfile` and rebuild. Each bot then gets its own webhook address and secret.
   - Polling is the tested path.
 - **Slack:** each owner connects their own Slack app in the app (Socket Mode, an outbound websocket), so it needs no inbound URL either. Two owners in one workspace each bring their own app; one app serves one Ava.
-- **Google Calendar:** in your Google Cloud OAuth client ("Web application"), add this authorised
-  redirect URI exactly: `https://ava.example.com/api/app/connections/google/callback`
+- **Google** (Sign in with Google and Google Calendar): one OAuth client serves both. See
+  [Google: one OAuth client for sign-in and Calendar](#google-one-oauth-client-for-sign-in-and-calendar).
 - **Background jobs** (reminders, follow-ups, digests) and the listeners run in the `worker`
   service; the API only serves requests.
   - It follows connections saved in the app within about 15 seconds.
@@ -151,6 +151,68 @@ Connections. They're checked with each service and stored encrypted with `SECRET
   `ADMIN_TOKEN`) and `/api/health`.
 - **The simulator** is forced off, and session cookies are `Secure`. The compose file fixes both
   settings, whatever `.env` says.
+
+## Google: one OAuth client for sign-in and Calendar
+
+One Google Cloud OAuth client (type *Web application*) serves "Continue with Google" on the
+log-in and sign-up pages and every owner's Google Calendar connection. Sign-in asks only for
+`openid email profile`; calendar access is asked for later, when an owner connects their calendar,
+and the right to change events (`calendar.events`) only when they switch on calendar actions in
+Skills. Replace `ava.example.com` with your domain throughout.
+
+1. Open <https://console.cloud.google.com/> and create a project (e.g. "Superaide"), or pick one.
+2. **APIs & Services → Library:** search for **Google Calendar API** and press **Enable**.
+   Sign-in itself needs no API.
+3. **Google Auth Platform → Branding** (the OAuth consent screen): app name (e.g. "Superaide"),
+   user support email, developer contact email, and under **Authorised domains** your domain
+   (`example.com`). Add the home page, privacy policy and terms of service links now if you have
+   them: verification (step 8) needs them.
+4. **Audience:** user type **External**, publishing status **Testing**. Under **Test users**, add
+   every Google account that will sign in or connect a calendar while you test (up to 100). Nobody
+   else can use the app until it is published.
+5. **Data Access → Add or remove scopes:** add `openid`, `.../auth/userinfo.email`,
+   `.../auth/userinfo.profile`, `.../auth/calendar.readonly` and `.../auth/calendar.events`, then **Save**.
+   The two calendar scopes are *sensitive*.
+6. **Clients → Create client:** application type **Web application**, name "Superaide web".
+   - **Authorised JavaScript origins:** `https://ava.example.com`
+   - **Authorised redirect URIs**, both, exactly (scheme, host, port and path must match):
+     - sign-in: `https://ava.example.com/api/auth/google/callback`
+     - calendar: `https://ava.example.com/api/app/connections/google/callback`
+   - For a local install add `http://localhost:3000` as an origin and the same two paths on
+     `http://localhost:3000` as redirect URIs. Only `localhost` may use plain `http`.
+   - Press **Create** and copy the **client ID** and **client secret** (download the JSON: the
+     secret is shown in full only once).
+7. In `/opt/superaide/.env` set the client and switch sign-in on, then restart:
+
+   ```bash
+   GOOGLE_CLIENT_ID=1234567890-abc.apps.googleusercontent.com
+   GOOGLE_CLIENT_SECRET=GOCSPX-...
+   GOOGLE_SIGNIN_ENABLED=true
+   ```
+
+   ```bash
+   docker compose -f docker-compose.prod.yml up -d
+   ```
+
+   "Continue with Google" appears on the log-in and sign-up pages. Owners connect their calendar
+   under **Connections → Google Calendar** with the same client (an owner may still paste their
+   own client there instead).
+8. **Before a public launch**, under **Audience** press **Publish app**. While the app is in
+   *Testing*:
+   - only the test users can sign in or connect;
+   - Google expires calendar refresh tokens after **7 days**, so owners must reconnect their
+     calendar every week (sign-in is not affected: it keeps no Google token).
+
+   Because the calendar scopes are sensitive, a published app must pass **Google's verification**
+   (under **Verification centre**: a home page and privacy policy on your verified domain, why each
+   scope is needed, and a short video of the consent flow). It takes from a few days to a few
+   weeks. Until it passes, people see an "unverified app" warning and the app is capped at 100 users.
+
+How an account is matched: by Google's account id once someone has signed in with Google, else
+by their Google-verified email, which links the Google account to the existing account. If that
+account's email was never verified, its password is removed and its sessions end when Google is
+linked, so someone who registered the address first can't keep a way in. A Google account whose
+email Google hasn't verified can't sign in.
 
 ## Day-to-day
 

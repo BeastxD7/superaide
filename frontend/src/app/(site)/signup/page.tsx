@@ -3,7 +3,7 @@ import { AuthScreen } from '@/app/(site)/screens'
 
 export const metadata: Metadata = { title: 'Create your account' }
 
-export default async function SignupPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
-  const { next } = await searchParams
-  return <AuthScreen mode="signup" next={next ?? null} />
+export default async function SignupPage({ searchParams }: { searchParams: Promise<{ next?: string; google?: string }> }) {
+  const { next, google } = await searchParams
+  return <AuthScreen mode="signup" next={next ?? null} google={google ?? null} />
 }

@@ -8,12 +8,33 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { AppError, auth } from '@/lib/api'
 import type { Session } from '@/lib/session-context'
 import { Orb } from '@/components/Orb'
+import { BrandIcon } from '@/components/BrandIcon'
 import { homeFor, safeNext } from '@/lib/session'
 import { Button, Notice, PRODUCT } from '@/components/site'
 
 type Mode = 'signup' | 'login'
 
-export function AuthPage({ mode, next, session }: { mode: Mode; next: string | null; session: Session }) {
+// What to tell someone a Google sign-in sent back to this page.
+const GOOGLE_PROBLEMS: Record<string, string> = {
+  cancelled: 'Google sign-in was cancelled. You can try again, or use your email and password.',
+  expired: 'That Google sign-in took too long or was opened in another browser. Please try again.',
+  unverified: "Google hasn't verified that account's email address, so we can't use it to sign you in.",
+  locked: 'Too many wrong passwords on this account. Try again in a few minutes.',
+  throttled: 'Too many attempts from this device. Wait a while and try again.',
+  failed: "We couldn't sign you in with Google. Please try again, or use your email and password.",
+}
+
+export function AuthPage({
+  mode,
+  next,
+  google: googleReason = null,
+  session,
+}: {
+  mode: Mode
+  next: string | null
+  google?: string | null
+  session: Session
+}) {
   const router = useRouter()
   const target = safeNext(next)
   const hiring = Boolean(target && /^\/agents\/[^/]+\/hire$/.test(target))
@@ -22,7 +43,36 @@ export function AuthPage({ mode, next, session }: { mode: Mode; next: string | n
   const [password, setPassword] = useState('')
   const [show, setShow] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<{ message: string; field?: string } | null>(null)
+  // Why a Google sign-in came back here, if it did (/login?google=<reason>).
+  const [error, setError] = useState<{ message: string; field?: string } | null>(
+    googleReason ? { message: GOOGLE_PROBLEMS[googleReason] ?? GOOGLE_PROBLEMS.failed } : null,
+  )
+  const [google, setGoogle] = useState(false)
+  const [googleBusy, setGoogleBusy] = useState(false)
+
+  // Offer Google only when this server has it switched on.
+  useEffect(() => {
+    let live = true
+    auth
+      .googleEnabled()
+      .then((r) => live && setGoogle(r.enabled))
+      .catch(() => live && setGoogle(false))
+    return () => {
+      live = false
+    }
+  }, [])
+
+  async function continueWithGoogle() {
+    setGoogleBusy(true)
+    setError(null)
+    try {
+      const { url } = await auth.googleStart(target)
+      window.location.assign(url)
+    } catch (err) {
+      setError(err instanceof AppError ? { message: err.message } : { message: String(err) })
+      setGoogleBusy(false)
+    }
+  }
 
   // Already signed in: go where you were heading.
   useEffect(() => {
@@ -96,7 +146,26 @@ export function AuthPage({ mode, next, session }: { mode: Mode; next: string | n
             </p>
           </div>
 
-          <div className="mt-8 space-y-4">
+          {google && (
+            <div className="mt-8">
+              <button
+                type="button"
+                onClick={continueWithGoogle}
+                disabled={googleBusy}
+                className="flex w-full items-center justify-center gap-3 rounded-full border border-[#dadce0] bg-white px-5 py-3.5 font-medium text-[#1f1f1f] transition-colors hover:bg-[#f8f9fa] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <BrandIcon brand="google" size={20} decorative />
+                {googleBusy ? 'Opening Google…' : 'Continue with Google'}
+              </button>
+              <div className="mt-6 flex items-center gap-3 text-sm text-muted" aria-hidden="true">
+                <span className="h-px flex-1 bg-ink/10" />
+                or with your email
+                <span className="h-px flex-1 bg-ink/10" />
+              </div>
+            </div>
+          )}
+
+          <div className={google ? 'mt-6 space-y-4' : 'mt-8 space-y-4'}>
             {mode === 'signup' && (
               <label className="block">
                 <span className="text-sm font-medium text-ink">Your name</span>

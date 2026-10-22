@@ -88,9 +88,14 @@ GUIDES = {
         "url": "https://console.cloud.google.com/apis/credentials",
         "steps": [
             "In Google Cloud, pick or create a project and enable the Google Calendar API.",
-            "Set up the OAuth consent screen (External, Testing) and add your own Google account as a test user.",
-            "Create an OAuth client ID of type Web application, with the redirect URI below.",
+            "Under Google Auth Platform, set up Branding and Audience (External, Testing) and add your own "
+            "Google account as a test user.",
+            "Under Data Access, add the calendar.readonly scope (and calendar.events if you'll let Ava change events).",
+            "Create a client of type Web application with the redirect URI below. The same client can serve "
+            "Sign in with Google too: add its redirect URI as well.",
             "Paste the client ID and secret here, then press Connect Google Calendar.",
+            "While the app is in Testing, Google ends calendar access after 7 days: reconnect then, or publish "
+            "the app.",
         ],
     },
     "slack": {
@@ -128,6 +133,9 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
         guides = {k: dict(v) for k, v in GUIDES.items()}
         guides["slack"]["url"] = slack_manifest_url()
         guides["google"]["redirect_uri"] = google_redirect_uri()
+        guides["google"]["signin_redirect_uri"] = (
+            f"{get_settings().frontend_origin.rstrip('/')}/api/auth/google/callback"
+        )
         return {"services": result, "guides": guides, "keys_kept_in": where}
 
     def connect(provider: str, checked: check.Checked, user_id: uuid.UUID) -> dict[str, Any]:

@@ -162,7 +162,16 @@ export type Preferences = {
 // The signed-in account, from /auth/me. The session itself is an httpOnly cookie
 // the browser sends automatically; page code never sees it.
 export type Account = {
-  user: { id: string; email: string; name: string; timezone: string; email_verified?: boolean; created_at: string }
+  user: {
+    id: string
+    email: string
+    name: string
+    timezone: string
+    email_verified?: boolean
+    has_password?: boolean
+    google?: boolean
+    created_at: string
+  }
   hire: { agent: string; since: string; onboarding_done: boolean } | null
 }
 
@@ -238,6 +247,10 @@ export const auth = {
     request<Account>('/auth/signup', { method: 'POST', json: { name, email, password, timezone: browserTimeZone() } }),
   login: (email: string, password: string) => request<Account>('/auth/login', { method: 'POST', json: { email, password } }),
   logout: () => request<{ status: string }>('/auth/logout', { method: 'POST' }),
+  // Continue with Google (only when the server has it on): start returns Google's URL to open.
+  googleEnabled: () => request<{ enabled: boolean }>('/auth/google'),
+  googleStart: (next: string | null) =>
+    request<{ url: string }>('/auth/google/start', { method: 'POST', json: { next, timezone: browserTimeZone() } }),
   changePassword: (current: string, next: string) =>
     request<{ status: string }>('/auth/password', { method: 'POST', json: { current, new: next } }),
   logoutEverywhere: () => request<{ status: string }>('/auth/logout-everywhere', { method: 'POST' }),
