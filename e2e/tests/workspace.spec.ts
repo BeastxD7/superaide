@@ -196,7 +196,12 @@ test.describe('workspace: chat', () => {
     await openChat(page)
     await composer(page).fill(link)
     await composer(page).press('Enter')
-    const bubble = page.getByText(link, { exact: true })
+    // The offline reply echoes the link, and Markdown turns it into a clickable link, so once the reply
+    // has rendered two elements read exactly as the link: the sent bubble (first) and the link in the
+    // reply. Wait for the reply so the page is in that state every time (it used to depend on timing),
+    // then check the sent bubble and, through the chat scroller, the reply's link too.
+    await expect(page.getByText('You said:')).toBeVisible()
+    const bubble = page.getByText(link, { exact: true }).first()
     await expect(bubble).toBeVisible()
     const fits = await bubble.evaluate((el) => {
       const scroller = el.closest('.overflow-y-auto') as HTMLElement
