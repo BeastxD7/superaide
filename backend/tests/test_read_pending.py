@@ -14,7 +14,6 @@ from superaide.db.session import session_scope
 from superaide.jobs.handlers import load
 from superaide.jobs.queue import run_due
 from superaide.knowledge.facts import Fact, FactList
-from superaide.main import create_app
 from superaide.vault.check import Checked
 from tests.test_loop import owner_client  # noqa: F401  (fixture)
 
@@ -183,7 +182,8 @@ def test_the_periodic_sweep_reads_documents_nobody_else_noticed(owner_client, re
     assert worker.sweep_if_due(now=1000.0) is True  # first tick: sweeps
     assert worker.sweep_if_due(now=1100.0) is False  # not again until the interval has passed
     assert_read_and_told(owner_client)
-    share(owner_client, "second.txt")  # shared offline again, say the server was restarted without its key
+    with session_scope() as s:  # another one waiting (shared when the brain was off), nobody asked for it to be read
+        s.scalar(select(Document)).status = "stored"
     assert worker.sweep_if_due(now=1601.0) is True
     assert len(read_jobs()) == 1  # the finished job is replaced, never piled up
 
@@ -208,8 +208,9 @@ def test_asking_twice_schedules_one_job_and_reads_each_document_once(owner_clien
     assert len(read_jobs()) == 1
     assert_read_and_told(owner_client)
     assert len(reads.calls) == 1
-    pending.brain_became_ready()  # nothing waiting any more
-    assert run_due() == 0 and len(reads.calls) == 1
+    assert pending.brain_became_ready() is False  # nothing waiting any more
+    run_due()
+    assert len(reads.calls) == 1
 
 
 def test_a_read_that_fails_is_retried_and_the_owner_is_not_told_it_was_read(owner_client, reads, credits, monkeypatch):  # noqa: F811
@@ -239,7 +240,7 @@ def test_the_note_that_a_document_was_read_goes_only_to_the_owner(owner_client, 
     with session_scope() as s:
         event = s.scalar(select(Event).where(Event.content.like("I've read%")))
         assert event is not None and event.direction == "out"
-        assert event.audience_kind == "persons" and len(event.audience_person_ids or []) == 1
+        assert len(event.audience_person_ids) == 1 and not event.audience_has_unknown
 
 
 def test_a_document_that_found_nothing_says_so(owner_client, reads, credits, monkeypatch):  # noqa: F811

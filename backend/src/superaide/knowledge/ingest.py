@@ -20,6 +20,7 @@ from superaide.db.session import require, session_scope
 from superaide.knowledge.extract import Extracted
 from superaide.knowledge.facts import extract_facts
 from superaide.knowledge.store import remember_fact
+from superaide.proactive.notify import notify_owner
 
 
 @dataclass
@@ -112,12 +113,26 @@ def safe_category(category: str, source: str) -> str:
     return "about" if source == "link" and category in RULE_CATEGORIES else category
 
 
+@dataclass
+class ReadResult:
+    document_id: uuid.UUID
+    title: str
+    facts: int
+    read: bool  # False: the model couldn't read it just now; it stays saved and is tried again
+
+
 def read_pending(agent: Any, owner_id: uuid.UUID) -> int:
-    """Read facts out of documents saved while offline. Returns how many documents were read."""
+    """Read documents saved while offline. Returns how many it tried."""
+    return len(read_documents(agent, owner_id))
+
+
+def read_documents(agent: Any, owner_id: uuid.UUID) -> list[ReadResult]:
+    """Read facts out of documents saved while offline, and tell the owner in chat about each one read.
+    Nothing is held open while the model works; a document that can't be read stays `stored`."""
     from superaide.factory import brain_ready
 
     if not brain_ready(agent.settings):
-        return 0
+        return []
     with session_scope() as s:
         pending = [
             (d.id, d.title or d.source, d.text, d.kind)
@@ -128,21 +143,37 @@ def read_pending(agent: Any, owner_id: uuid.UUID) -> int:
             )
         ]
         owner_name = require(s, Person, owner_id).display_name
+    results: list[ReadResult] = []
     for doc_id, title, text, kind in pending:
         facts = extract_facts(agent, owner_name=owner_name, text=text, source=title)
         if facts is None:
-            continue  # still saved, tried again next time
+            results.append(ReadResult(doc_id, title, 0, False))  # still saved, tried again later
+            continue
+        source = "link" if kind in {"web", "github"} else "document"
         with session_scope() as s:
             owner, doc = require(s, Person, owner_id), require(s, Document, doc_id)
-            for f in facts:
-                remember_fact(
+            if doc.status != "stored" or doc.removed_at is not None:
+                continue  # read or removed while the model worked
+            n = sum(
+                1
+                for f in facts
+                if remember_fact(
                     s,
                     owner=owner,
                     content=f.content,
-                    category=safe_category(f.category, "link" if kind in {"web", "github"} else "document"),
-                    source="link" if kind in {"web", "github"} else "document",
+                    category=safe_category(f.category, source),
+                    source=source,
                     document=doc,
                     confidence=f.confidence,
                 )
+            )
             doc.status = "read"
-    return len(pending)
+            note = (
+                f"I've read {title}: {n} {'fact' if n == 1 else 'facts'} saved."
+                if n
+                else f"I've read {title}, but didn't find anything new about you in it."
+            )
+            meta = {"kind": "document_read", "document_id": str(doc_id), "facts": n}
+            notify_owner(s, owner, note, meta, channel="app")  # in the app chat, for the owner only
+            results.append(ReadResult(doc_id, title, n, True))
+    return results
