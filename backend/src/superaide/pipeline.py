@@ -264,6 +264,9 @@ class Agent:
                 from superaide.knowledge import learn
 
                 learn.schedule(s, inbound)  # after the reply: learn anything worth keeping
+                from superaide.journal import service as journal
+
+                journal.schedule(s, inbound)  # only if the owner turned the decision journal on
                 return HandleResult("known", reply, notes)
 
             if self.settings.triage_enabled:  # ADR 0010, shadow until TR5: the reply below is unchanged

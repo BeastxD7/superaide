@@ -1,6 +1,6 @@
 'use client'
 
-import { Network, Search } from 'lucide-react'
+import { Network, Scale, Search } from 'lucide-react'
 import Link from 'next/link'
 import { AnimatePresence, motion } from 'motion/react'
 import { useMemo, useState } from 'react'
@@ -139,6 +139,13 @@ export function NotebookPage() {
         </Link>
 
         <PassportPanel name={name} onChanged={reload} />
+
+        <Link
+          href="/dashboard/notebook/journal"
+          className="mt-4 inline-flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-sm font-medium text-ink hover:bg-surface"
+        >
+          <Scale className="size-4 text-violet-700" aria-hidden /> Decision journal: how often are you right?
+        </Link>
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative sm:w-72">

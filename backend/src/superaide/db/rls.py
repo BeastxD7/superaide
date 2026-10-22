@@ -47,6 +47,8 @@ TABLES: tuple[str, ...] = (
     "integration_secret",  # each instance's own credentials (T3)
     "import_lease",  # third-party import leases (#133)
     "intention",
+    "journal_setting",  # the decision journal ("Ava keeps score")
+    "prediction",
     "job",
     "link_challenge",
     "llm_provider",
