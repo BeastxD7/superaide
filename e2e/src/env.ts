@@ -24,6 +24,8 @@ export const PG_URL = withDatabase(PG_ADMIN_URL, DB_NAME)
 // SQLAlchemy wants the driver in the scheme.
 export const DATABASE_URL = PG_URL.replace(/^postgres(ql)?:\/\//, 'postgresql+psycopg://')
 
+export const ASK_LINK = process.env.E2E_ASK_LINK === '1'
+
 export const ADMIN_TOKEN = 'e2e-admin-token'
 export const PASSWORD = 'correct horse battery staple'
 
@@ -45,5 +47,7 @@ export function apiEnv(): Record<string, string> {
     LOGIN_FAILURES_PER_IP: '100000',
     // A fixed throwaway vault key, so tests never touch your real keychain.
     SECRETS_MASTER_KEY: Buffer.alloc(32, SLOT + 1).toString('base64'),
+    // The "Ask my Ava" link is off by default; E2E_ASK_LINK=1 turns it on for tests/ask-link.spec.ts.
+    ...(ASK_LINK ? { ASK_LINK_ENABLED: 'true', ASK_MIN_SECONDS: '1' } : {}),
   }
 }
