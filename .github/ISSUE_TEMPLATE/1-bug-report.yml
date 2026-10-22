@@ -1,0 +1,168 @@
+name: Bug report
+description: Something in Superaide doesn't work the way it should.
+title: "bug: "
+labels: ["type:bug", "status:triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Fill in what you can; the required fields are enough to start.
+
+        **Found a security or privacy vulnerability?** Don't open an issue. Report it privately as described in [SECURITY.md](https://github.com/BeastxD7/superaide/blob/main/SECURITY.md).
+
+  # --- Summary ---------------------------------------------------------------
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One or two sentences on what went wrong.
+      placeholder: Ava replied to a colleague on Slack with a note the owner marked private.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Pick all that apply. Each maps to an `area:*` label.
+      multiple: true
+      options:
+        - "backend: API, pipeline, database, migrations"
+        - "frontend: app, dashboard, operator console"
+        - "channels: Telegram, Slack, web chat"
+        - "memory: recall, citations, audience gate"
+        - "reminders: reminders, jobs, digests"
+        - "triage: triage and escalation"
+        - "providers: AI model, prompts"
+        - "capabilities: skills, connectors"
+        - "spend: billing, spend cap, ledger"
+        - "auth: accounts, sessions, identity"
+        - "deploy: Docker, Caddy, VPS, start.command"
+        - "ci: CI, end-to-end tests, evals"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: How bad is it? This sets the starting priority.
+      options:
+        - "Critical: data leak, impostor gets through, or spend past the cap"
+        - "High: a core flow is broken with no workaround"
+        - "Medium: a real problem, with a workaround"
+        - "Low: cosmetic or minor"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: reproducibility
+    attributes:
+      label: Reproducibility
+      options:
+        - Always
+        - Sometimes
+        - Once
+    validations:
+      required: true
+
+  # --- Reproduce -------------------------------------------------------------
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Start from a known state (for example `bash start.command --reset`).
+      placeholder: |
+        1. Sign in as the owner and open Settings → Sharing.
+        2. Mark "dentist appointment" as private.
+        3. From a colleague's Slack account, ask Ava "what's Shashank doing on Friday?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+      placeholder: Ava says she can't share that and offers to take a message.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual
+      placeholder: Ava mentions the appointment.
+    validations:
+      required: true
+
+  # --- Where -----------------------------------------------------------------
+  - type: input
+    id: page
+    attributes:
+      label: Page or URL
+      description: The app page, console page or API endpoint. Remove any tokens from the URL.
+      placeholder: /dashboard/chat or POST /app/chat
+
+  - type: dropdown
+    id: channel
+    attributes:
+      label: Channel
+      multiple: true
+      options:
+        - Web app
+        - Telegram
+        - Slack
+        - Operator console
+        - API only
+        - Not channel-specific
+
+  - type: input
+    id: device
+    attributes:
+      label: Device and browser
+      placeholder: MacBook, macOS 26, Chrome 141
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      options:
+        - "Local development (make, start.command)"
+        - "Self-hosted (deploy/, DEPLOY_MODE=self_hosted)"
+        - "Hosted (DEPLOY_MODE=hosted)"
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: "`git rev-parse --short HEAD`, or the image tag."
+      placeholder: 18f41b7
+    validations:
+      required: true
+
+  # --- Evidence --------------------------------------------------------------
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or screen recording
+      description: Drag and drop images, a GIF or a short video here. Blur names, messages and anything personal.
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant API, worker or browser console output. It is formatted as code automatically.
+      render: shell
+
+  # --- Checks ----------------------------------------------------------------
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you submit
+      options:
+        - label: I searched the existing issues and this isn't a duplicate.
+          required: true
+        - label: I removed personal data, tokens and keys from everything above.
+          required: true

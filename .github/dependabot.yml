@@ -1,17 +1,37 @@
+# Labels match .github/labels.yml, so Dependabot doesn't create its own per-ecosystem ones.
 version: 2
 updates:
   - package-ecosystem: uv
     directory: /backend
     schedule:
       interval: weekly
+    labels: [dependencies, "area:backend"]
     groups:
       python-minor-and-patch:
         update-types: [minor, patch]
 
   - package-ecosystem: npm
-    directories: [/frontend, /e2e]
+    directory: /frontend
     schedule:
       interval: weekly
+    labels: [dependencies, "area:frontend"]
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # TypeScript 7 (the Go-based compiler) is held by owner decision; revisit later.
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
+      # @types/node tracks the Node major we run (24, Active LTS). Bump it by hand
+      # together with the Docker image and CI node-version.
+      - dependency-name: "@types/node"
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: npm
+    directory: /e2e
+    schedule:
+      interval: weekly
+    labels: [dependencies, "area:ci"]
     groups:
       npm-minor-and-patch:
         update-types: [minor, patch]
@@ -28,6 +48,7 @@ updates:
     directories: [/backend, /frontend, /deploy/caddy]
     schedule:
       interval: weekly
+    labels: [dependencies, "area:deploy"]
     ignore:
       # Node runs on the Active LTS line only. Odd majors are never LTS, and moving to
       # the next even major is a manual change (Dockerfile, CI node-version, @types/node).
@@ -38,3 +59,4 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    labels: [dependencies, "area:ci"]

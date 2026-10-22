@@ -1,0 +1,154 @@
+name: Capability proposal
+description: Propose a new Capability (skill) for Ava, or a change to an existing one's permissions.
+title: "capability: "
+labels: ["type:capability", "area:capabilities", "status:triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A Capability is a folder with a `SKILL.md` (the Agent Skills standard) and a `superaide.json` manifest that the runtime enforces. Read [ADR 0006](https://github.com/BeastxD7/superaide/blob/main/docs/decisions/0006-skill-protocol.md) and the [manifest schema](https://github.com/BeastxD7/superaide/blob/main/backend/src/superaide/skills/manifest.schema.json) first; the built-in Capabilities in `backend/src/superaide/skills/builtin/` are worked examples.
+
+  # --- Summary ---------------------------------------------------------------
+  - type: input
+    id: capability_id
+    attributes:
+      label: Capability id
+      description: "`publisher/name`, lowercase, as in `superaide.json`."
+      placeholder: superaide/gmail-triage
+    validations:
+      required: true
+
+  - type: dropdown
+    id: tier
+    attributes:
+      label: Tier
+      description: Community Capabilities run as instructions only, and may not use `send` or `spend` until reviewed.
+      options:
+        - official
+        - community
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: What it lets Ava do
+      description: One or two sentences, from the owner's point of view. This becomes the `summary`.
+      placeholder: Ava reads your inbox each morning and tells you which emails need you today. Read-only.
+    validations:
+      required: true
+
+  # --- Manifest --------------------------------------------------------------
+  - type: textarea
+    id: skill_md
+    attributes:
+      label: SKILL.md
+      description: The frontmatter (`name`, `description`) and an outline of the instructions.
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: tools
+    attributes:
+      label: Tools
+      description: The `tools[]` entries in MCP's shape (`name`, `description`, `inputSchema`), each with its `effect`.
+      render: json
+      placeholder: |
+        [
+          {
+            "name": "inbox_summary",
+            "description": "List today's unread emails that look like they need the owner.",
+            "inputSchema": {"type": "object", "properties": {}, "additionalProperties": false},
+            "effect": "read_private"
+          }
+        ]
+    validations:
+      required: true
+
+  - type: dropdown
+    id: effects
+    attributes:
+      label: Effect classes
+      description: Every effect class the tools use. `write_external`, `send` and `spend` always end in an approval card at the Infant and Child stages.
+      multiple: true
+      options:
+        - "read_public: public information"
+        - "read_private: the owner's private data"
+        - "write_own: changes inside Superaide"
+        - "write_external: changes in another service"
+        - "send: messages someone outside Superaide"
+        - "spend: costs money"
+    validations:
+      required: true
+
+  - type: textarea
+    id: connectors
+    attributes:
+      label: Connectors and OAuth scopes
+      description: Each provider and the narrowest scopes that work. Tokens stay in the vault and never reach the model.
+      placeholder: "google: https://www.googleapis.com/auth/gmail.readonly"
+
+  - type: textarea
+    id: network
+    attributes:
+      label: Network hosts
+      description: Every host the Capability may reach (`network`). Anything else is refused.
+      placeholder: |
+        oauth2.googleapis.com
+        gmail.googleapis.com
+
+  - type: dropdown
+    id: budget_bucket
+    attributes:
+      label: Budget bucket
+      description: Which part of the spend cap pays for it (`budget.bucket`).
+      options:
+        - chat
+        - memory
+        - research
+        - other
+    validations:
+      required: true
+
+  - type: input
+    id: budget_per_use
+    attributes:
+      label: Budget per use (US$)
+      description: "`budget.per_use_usd`, the most one use may cost. 0 if it only reads."
+      placeholder: "0.01"
+    validations:
+      required: true
+
+  - type: textarea
+    id: settings
+    attributes:
+      label: Owner settings
+      description: The JSON Schema for per-owner `settings`, if any.
+      render: json
+
+  # --- Safety ----------------------------------------------------------------
+  - type: textarea
+    id: safety
+    attributes:
+      label: Privacy and safety
+      description: What untrusted content it reads (that turn is tainted), what it stores, and who could see it.
+      placeholder: |
+        - Untrusted input: email bodies and subjects (tainted; no side effects without approval).
+        - Stored: nothing; summaries are shown to the owner only.
+        - Shown to senders: never.
+    validations:
+      required: true
+
+  # --- Checks ----------------------------------------------------------------
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you submit
+      options:
+        - label: The manifest asks for the narrowest scopes, hosts and budget that work.
+          required: true
+        - label: Nothing here relies on the prompt to enforce a permission.
+          required: true
+        - label: I removed personal data, tokens and keys from everything above.
+          required: true

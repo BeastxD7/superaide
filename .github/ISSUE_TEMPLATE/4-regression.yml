@@ -1,0 +1,133 @@
+name: Reliability or eval regression
+description: Something that worked before has stopped working, or an eval scenario's score dropped.
+title: "regression: "
+labels: ["type:regression", "status:triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for a drop in the scenario evals (`make eval`, `make eval-live`) or a flow that used to work. Scenarios live in [`backend/evals/scenarios/`](https://github.com/BeastxD7/superaide/tree/main/backend/evals/scenarios); the scorecards are written to `backend/evals/results/`.
+
+  # --- Summary ---------------------------------------------------------------
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What regressed, in one or two sentences.
+      placeholder: Ava now cites her own earlier reply as a source when asked what the owner said on Telegram.
+    validations:
+      required: true
+
+  - type: input
+    id: scenario_id
+    attributes:
+      label: Eval scenario id
+      description: The `id` from the scenario file, or "none" if no scenario covers it yet.
+      placeholder: colleague-cannot-see-private-fact
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options:
+        - approvals
+        - briefing
+        - chitchat
+        - citations
+        - cross_channel
+        - honesty
+        - privacy
+        - recall
+        - reminders
+        - triage
+        - Not an eval scenario
+    validations:
+      required: true
+
+  # --- Reproduce -------------------------------------------------------------
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. git checkout <first bad commit>
+        2. make eval-live k=3
+        3. Open backend/evals/results/scorecard-live.md and find the scenario.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Eval mode
+      options:
+        - "Offline (fake model, free)"
+        - "Live (real model)"
+        - "Not an eval"
+    validations:
+      required: true
+
+  # --- Measurements ----------------------------------------------------------
+  - type: input
+    id: pass_before
+    attributes:
+      label: pass^k before
+      description: "With k, for example `3/3 (k=3)`, and the commit."
+      placeholder: 3/3 (k=3) at a6240a8
+
+  - type: input
+    id: pass_after
+    attributes:
+      label: pass^k after
+      placeholder: 1/3 (k=3) at 18f41b7
+    validations:
+      required: true
+
+  - type: input
+    id: model
+    attributes:
+      label: Model
+      description: The model id the run used (`MODEL_CHAT`, `MODEL_TRIAGE`), or "fake" offline.
+      placeholder: claude-haiku-5-5
+    validations:
+      required: true
+
+  - type: input
+    id: cost
+    attributes:
+      label: Cost of the run (US$)
+      description: From the scorecard or `superaide spend`. 0 offline.
+      placeholder: "0.15"
+
+  - type: input
+    id: suspect
+    attributes:
+      label: Last good and first bad commit
+      placeholder: good a6240a8, bad 18f41b7
+
+  # --- Evidence --------------------------------------------------------------
+  - type: textarea
+    id: transcript
+    attributes:
+      label: Scorecard excerpt or transcript
+      description: The failing check and the reply. Blur anything personal.
+      render: markdown
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      render: shell
+
+  # --- Checks ----------------------------------------------------------------
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you submit
+      options:
+        - label: I searched the existing issues and this isn't a duplicate.
+          required: true
+        - label: I removed personal data, tokens and keys from everything above.
+          required: true

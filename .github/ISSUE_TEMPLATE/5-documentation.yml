@@ -1,0 +1,57 @@
+name: Documentation
+description: Something in the README, a guide, an ADR or the API docs is missing, wrong or unclear.
+title: "docs: "
+labels: ["type:docs", "status:triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Point at the page and say what a reader needs. Small fixes are welcome as a pull request instead.
+
+  # --- Summary ---------------------------------------------------------------
+  - type: input
+    id: location
+    attributes:
+      label: Page or file
+      description: A path in the repository or a URL.
+      placeholder: deploy/README.md
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What's wrong
+      options:
+        - Missing
+        - Wrong or out of date
+        - Unclear
+        - Broken link
+    validations:
+      required: true
+
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: Quote the passage if it helps, and say what you were trying to do.
+      placeholder: The guide says to set SESSION_COOKIE_SECURE but not where.
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested change
+      description: The wording you'd expect, if you have it.
+
+  # --- Checks ----------------------------------------------------------------
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before you submit
+      options:
+        - label: I searched the existing issues and this isn't a duplicate.
+          required: true
+        - label: I removed personal data, tokens and keys from everything above.
+          required: true
