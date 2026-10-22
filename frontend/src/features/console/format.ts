@@ -37,6 +37,22 @@ export const METHOD_NAMES: Record<string, string> = {
 
 export type AuditKind = 'identity' | 'refusal' | 'model' | 'memory' | 'control'
 
+// What an operator did with an owner's content, for operator_access rows (ADR 0009 T8).
+const OPENED: Record<string, string> = {
+  '/api/people': 'People',
+  '/api/conversations': 'Conversations',
+  '/api/events': 'Messages',
+  '/api/memories': 'Memories',
+  '/api/approvals': 'Approvals',
+  '/api/audit': 'Safety log',
+}
+
+function accessed(path: string): string {
+  if (OPENED[path]) return `opened ${OPENED[path]}`
+  if (path.startsWith('/api/identities/')) return path.endsWith('/unlink') ? 'unlinked an account' : 'linked an account'
+  return `opened ${path || 'a private page'}`
+}
+
 const str = (v: unknown) => (v === undefined || v === null ? '' : String(v))
 
 // Turns an audit row into one plain sentence and a category.
@@ -103,6 +119,8 @@ export function describeAudit(row: AuditRow): { kind: AuditKind; text: string } 
       return { kind: 'refusal', text: 'Reached the spend cap and paused replies.' }
     case 'simulated_message':
       return { kind: 'control', text: `Ran a simulated ${str(d.provider)} message (${str(d.mode)}).` }
+    case 'operator_access':
+      return { kind: 'control', text: `You ${accessed(str(d.path))} — reason: ${str(d.reason)}` }
     default:
       return { kind: 'control', text: row.action.replaceAll('_', ' ') }
   }
