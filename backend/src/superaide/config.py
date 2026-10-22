@@ -68,6 +68,9 @@ class Settings(BaseSettings):
     # is flagged on its approval card.
     footprint_guard_enabled: bool = False
 
+    # Every tool call is recorded as hashes only (tool, effect class, argument and result hashes; issue #110).
+    trace_recorder: bool = True
+
     # Tenancy
     tenant_id: uuid.UUID = DEFAULT_TENANT_ID
     agent_id: uuid.UUID = DEFAULT_AGENT_ID
