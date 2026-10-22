@@ -87,7 +87,39 @@ type Fixtures = {
   owner: Person
 }
 
-export const test = base.extend<Fixtures>({
+type WorkerFixtures = { silentBrowser: void }
+
+// Tests never make a sound. Ava's voice (speechSynthesis) is played by the operating system,
+// outside the browser's own audio, so --mute-audio in playwright.config.ts doesn't cover it:
+// every utterance speaks at volume 0 instead, with its timing and events unchanged.
+function silence(): void {
+  const synth = window.speechSynthesis
+  if (!synth) return
+  const speak = synth.speak.bind(synth)
+  synth.speak = (u: SpeechSynthesisUtterance) => {
+    u.volume = 0
+    speak(u)
+  }
+}
+
+export const test = base.extend<Fixtures, WorkerFixtures>({
+  // Every context a test opens is silent: the default one, and any from browser.newContext().
+  silentBrowser: [
+    async ({ browser }, use) => {
+      const newContext = browser.newContext.bind(browser)
+      browser.newContext = async (options) => {
+        const context = await newContext(options)
+        await context.addInitScript(silence)
+        return context
+      }
+      await use()
+    },
+    { scope: 'worker', auto: true },
+  ],
+  context: async ({ context }, use) => {
+    await context.addInitScript(silence)
+    await use(context)
+  },
   // Every test starts from an empty database.
   api: async ({ page }, use) => {
     await resetDatabase()
