@@ -9,14 +9,32 @@ import { AppError, auth } from '@/lib/api'
 import { Orb } from '@/components/Orb'
 import { Button, Notice, PRODUCT } from '@/components/site'
 
-function useFragmentToken(): string | null | undefined {
+// `keepAs`: a name to remember the token under for this tab (sessionStorage), so reloading the page
+// doesn't lose a link that is still good, as when a too-short password was refused. Only the reset link
+// needs it; a verify link is used up the moment it is opened.
+function useFragmentToken(keepAs?: string): [string | null | undefined, () => void] {
   const [token, setToken] = useState<string | null | undefined>(undefined) // undefined: not read yet
   useEffect(() => {
+    const key = keepAs ? `superaide.link.${keepAs}` : null
     const found = new URLSearchParams(window.location.hash.slice(1)).get('token')
     if (found) window.history.replaceState(null, '', window.location.pathname)
-    setToken(found)
-  }, [])
-  return token
+    let kept: string | null = null
+    try {
+      if (key && found) sessionStorage.setItem(key, found)
+      else if (key) kept = sessionStorage.getItem(key)
+    } catch {
+      // Storage can be blocked; the link then works until the page is reloaded.
+    }
+    setToken(found ?? kept)
+  }, [keepAs])
+  const forget = () => {
+    try {
+      if (keepAs) sessionStorage.removeItem(`superaide.link.${keepAs}`)
+    } catch {
+      // Nothing was kept.
+    }
+  }
+  return [token, forget]
 }
 
 function message(err: unknown): string {
@@ -46,7 +64,7 @@ const INPUT =
   'mt-2 w-full rounded-2xl border border-white bg-white px-4 py-3.5 text-ink outline-none placeholder:text-muted/60 focus:border-violet-400'
 
 export function VerifyEmail() {
-  const token = useFragmentToken()
+  const [token] = useFragmentToken()
   const [state, setState] = useState<{ ok: boolean; text: string } | null>(null)
   const sent = useRef(false)
 
@@ -125,7 +143,7 @@ export function ForgotPassword() {
 }
 
 export function ResetPassword() {
-  const token = useFragmentToken()
+  const [token, forget] = useFragmentToken('reset')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
@@ -138,8 +156,12 @@ export function ResetPassword() {
     setError(null)
     try {
       await auth.resetPassword(token, password)
+      forget() // the link is used up
       setDone(true)
     } catch (err) {
+      // A refused password leaves the link good (the person can try another, even after a reload);
+      // a link that is used or expired never will be.
+      if (err instanceof AppError && err.status === 400) forget()
       setError(message(err))
     } finally {
       setBusy(false)
@@ -156,9 +178,11 @@ export function ResetPassword() {
       {done && (
         <>
           <Notice tone="info">Your password is changed and every device was signed out.</Notice>
-          <Link href="/login" className="inline-block font-medium text-violet-700 hover:underline">
+          {/* A full page load, not a client-side Link: the reset ended every session, and this page may still
+              hold the account the browser was signed in as. A fresh load starts from what the server says. */}
+          <a href="/login" className="inline-block font-medium text-violet-700 hover:underline">
             Log in
-          </Link>
+          </a>
         </>
       )}
       {token && !done && (

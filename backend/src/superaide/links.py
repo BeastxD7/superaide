@@ -69,8 +69,8 @@ def origin_allowed(origin: str, settings: Settings | None = None) -> bool:
     return p in exact or any(p[0] == scheme and fnmatchcase(p[1], host) for scheme, host in patterns)
 
 
-def request_origin(request: Request, settings: Settings | None = None) -> str:
-    """Where this person is using the app (if allowed), else the server's own address."""
+def allowed_request_origin(request: Request, settings: Settings | None = None) -> str | None:
+    """The origin this request came from, when it is an allowed one; else None."""
     settings = settings or get_settings()
     candidates = [request.headers.get("origin") or ""]
     host = request.headers.get("x-forwarded-host") or ""
@@ -81,4 +81,18 @@ def request_origin(request: Request, settings: Settings | None = None) -> str:
         if candidate and origin_allowed(candidate, settings):
             scheme, host_port = _parts(candidate)  # type: ignore[misc]
             return f"{scheme}://{host_port}"
-    return (settings.public_base_url or settings.frontend_origin).rstrip("/")
+    return None
+
+
+def request_origin(request: Request, settings: Settings | None = None) -> str:
+    """Where this person is using the app (if allowed), else the server's own address."""
+    settings = settings or get_settings()
+    return allowed_request_origin(request, settings) or (settings.public_base_url or settings.frontend_origin).rstrip(
+        "/"
+    )
+
+
+def same_origin(a: str, b: str) -> bool:
+    """Whether two bare origins are the same (scheme, host and port)."""
+    pa, pb = _parts(a), _parts(b)
+    return pa is not None and pa == pb

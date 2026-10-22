@@ -62,6 +62,7 @@ class FakeGoogle:
         self.nonce = ""
         self.jwks_calls = 0
         self.token_status = 200
+        self.origin = FRONT  # the address the sign-in started on; the token request must repeat it
         self.requests: list[httpx.Request] = []
 
     def identity(self, **claims: Any) -> None:
@@ -81,7 +82,7 @@ class FakeGoogle:
         if url == google_signin.TOKEN_URL:
             form = parse_qs(request.content.decode())
             assert form["grant_type"] == ["authorization_code"] and form["code_verifier"][0]
-            assert form["redirect_uri"] == [f"{FRONT}/api/auth/google/callback"]
+            assert form["redirect_uri"] == [f"{self.origin}/api/auth/google/callback"]
             if self.token_status != 200:
                 return httpx.Response(self.token_status, json={"error": "invalid_grant"})
             claims = {"nonce": self.nonce} | self.claims
@@ -430,3 +431,91 @@ def test_with_many_owners_a_new_google_account_can_hire_its_own_ava(browser, goo
     me = c.get("/app/me")
     assert me.status_code == 200 and "Shashank" not in me.text
     assert first.get("/app/me").status_code == 200  # the first owner keeps theirs
+
+
+# --- the address the person is using ----------------------------------------------------------------
+
+ALT = "http://127.0.0.1:3000"
+
+
+def test_signing_in_from_the_other_local_address_needs_it_registered_with_google(browser, google):
+    """127.0.0.1 is ours (links.py) but Google only knows the addresses registered in its console."""
+    c = browser()
+    r = c.post("/auth/google/start", json={}, headers={"Origin": ALT})
+    assert r.status_code == 409 and FRONT in r.json()["detail"] and "Google sign-in works only at" in r.json()["detail"]
+    assert not c.cookies.get(signin.COOKIE)  # nothing started
+
+
+def test_a_registered_address_signs_in_there_end_to_end(browser, google, monkeypatch):
+    monkeypatch.setattr(get_settings(), "google_redirect_origins", ALT)
+    c = browser()
+    r = c.post("/auth/google/start", json={"next": "/workspace"}, headers={"Origin": ALT})
+    assert r.status_code == 200
+    q = {k: v[0] for k, v in parse_qs(urlparse(r.json()["url"]).query).items()}
+    assert q["redirect_uri"] == f"{ALT}/api/auth/google/callback"
+    google.nonce = q["nonce"]
+    google.origin = ALT  # the token request must repeat the redirect address Google was given
+    done = callback(c, code="4/fake-code", state=q["state"])
+    assert done.status_code == 303, done.text
+    assert done.headers["location"] == f"{ALT}/workspace"  # not localhost
+    assert c.get("/auth/me").status_code == 200
+
+
+@pytest.mark.parametrize("origin", ["https://evil.example", "http://127.0.0.1:3000.evil.example", "javascript://x"])
+def test_an_address_that_is_not_ours_signs_in_on_the_normal_one(browser, google, monkeypatch, origin):
+    monkeypatch.setattr(get_settings(), "google_redirect_origins", "https://evil.example")  # even if misconfigured
+    c = browser()
+    r = c.post("/auth/google/start", json={}, headers={"Origin": origin})
+    assert r.status_code == 200
+    assert parse_qs(urlparse(r.json()["url"]).query)["redirect_uri"] == [f"{FRONT}/api/auth/google/callback"]
+
+
+def test_a_stored_address_that_is_no_longer_registered_is_never_redirected_to(browser, google, monkeypatch):
+    monkeypatch.setattr(get_settings(), "google_redirect_origins", ALT)
+    c = browser()
+    q = parse_qs(urlparse(c.post("/auth/google/start", json={}, headers={"Origin": ALT}).json()["url"]).query)
+    google.nonce = q["nonce"][0]
+    monkeypatch.setattr(get_settings(), "google_redirect_origins", "")  # un-registered meanwhile
+    r = callback(c, code="x", state=q["state"][0])
+    assert r.headers["location"].startswith(f"{FRONT}/") and ALT not in r.headers["location"]
+
+
+# --- coming back after a failure -----------------------------------------------------------------
+
+
+def test_cancelling_returns_to_the_page_it_started_on_with_next_kept(browser, google):
+    c = browser()
+    q = start(c, google, next="/agents/ava/hire", page="signup")
+    r = callback(c, error="access_denied", state=q["state"])
+    assert r.headers["location"] == f"{FRONT}/signup?google=cancelled&next=%2Fagents%2Fava%2Fhire"
+
+
+def test_a_failure_from_google_keeps_next_and_defaults_to_the_login_page(browser, google):
+    google.token_status = 400
+    c = browser()
+    q = start(c, google, next="/workspace?tab=a&b=c", page="elsewhere")
+    r = callback(c, code="x", state=q["state"])
+    assert r.headers["location"] == f"{FRONT}/login?google=failed&next=%2Fworkspace%3Ftab%3Da%26b%3Dc"
+
+
+def test_a_next_that_is_another_site_is_not_carried_back(browser, google):
+    c = browser()
+    q = start(c, google, next="//evil.example/x", page="signup")
+    r = callback(c, error="access_denied", state=q["state"])
+    assert r.headers["location"] == f"{FRONT}/signup?google=cancelled"
+
+
+# --- an account with no password ---------------------------------------------------------------------
+
+
+def test_a_google_only_owner_is_told_how_to_set_a_password_not_that_theirs_is_wrong(browser, google):
+    c = browser()
+    assert reason(sign_in(c, google)) == "ok"
+    for _ in range(get_settings().login_max_failures + 2):  # never counted toward the lockout
+        r = c.post("/auth/email", json={"email": "new@example.com", "password": "anything I could think of"})
+        assert r.status_code == 400 and "Google" in r.json()["detail"] and "Forgot your password" in r.json()["detail"]
+        assert "isn't right" not in r.text
+    r = c.post("/auth/password", json={"current": "whatever it was", "new": "a long enough new passphrase"})
+    assert r.status_code == 400 and "Google" in r.json()["detail"]
+    assert account() is not None and account("new@example.com") is None
+    assert events("email_change_fail") == 0 and events("password_change_fail") == 0

@@ -7,6 +7,8 @@ the list of hired instances and the kill switch show no owner's content. Anythin
 shows or changes what an owner's Ava holds (people, conversations, messages, memories,
 approvals, the safety log, linking) needs a reason (`X-Operator-Reason`, at least
 10 characters) and names the instance (`X-Operator-Instance`, else the server's first).
+A header can only carry plain Latin-1, so the console sends the reason percent-encoded
+with `X-Operator-Reason-Encoding: uri`; plain text without that header works too.
 Each such request is written to that owner's own audit log, which the owner can read
 (/app/access-log), and runs inside that instance only.
 """
@@ -18,6 +20,7 @@ import uuid
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from urllib.parse import unquote
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Security
 from fastapi.concurrency import run_in_threadpool
@@ -63,8 +66,17 @@ router = APIRouter(prefix="/api", tags=["Operator console"], dependencies=[Depen
 MIN_REASON = 10
 
 
+def _reason(request: Request) -> str:
+    """The operator's reason as typed. Headers cannot hold curly quotes, dashes or other scripts,
+    so the console percent-encodes it and says so (`X-Operator-Reason-Encoding: uri`)."""
+    raw = request.headers.get("x-operator-reason") or ""
+    if request.headers.get("x-operator-reason-encoding", "").strip().lower() == "uri":
+        raw = unquote(raw)
+    return " ".join(raw.split())
+
+
 def _grant(request: Request) -> InstanceScope:
-    reason = " ".join((request.headers.get("x-operator-reason") or "").split())
+    reason = _reason(request)
     if len(reason) < MIN_REASON:
         raise HTTPException(
             403,
