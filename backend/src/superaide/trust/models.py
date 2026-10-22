@@ -57,3 +57,16 @@ class MemoryInfluence(Scoped, Base):
     influence: Mapped[float] = mapped_column(Float)
     changed: Mapped[bool] = mapped_column(Boolean)
     ablations: Mapped[int] = mapped_column(Integer, default=1)  # how many ablation runs this score averages
+
+
+class AgreementLog(Scoped, Base):
+    """One reply that judged the owner's own claim or choice (#123): did it side with them?"""
+
+    __tablename__ = "agreement_log"
+
+    person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), index=True)
+    validated: Mapped[bool] = mapped_column(Boolean)  # the reply sided with the owner
+    second_stance: Mapped[str] = mapped_column(String(10))  # the memory-free reader: agree | disagree | unsure
+    flagged: Mapped[bool] = mapped_column(
+        Boolean, default=False
+    )  # reply validated but the memory-free reader disagreed

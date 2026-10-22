@@ -516,7 +516,12 @@ class Agent:
             meta["reasoning"] = result.reasoning
         if timeline.labels:
             meta["other_channels"] = len(timeline.labels)  # turns from other channels this reply saw
-        return strip_label(result.text), [*result.notes, f"steps:{result.steps}"], meta
+        reply = strip_label(result.text)
+        if self.settings.second_opinion_enabled and brain_ready(self.settings):
+            from superaide.trust.second_opinion import review
+
+            reply = review(self, s, sender.person, msg.text, reply)
+        return reply, [*result.notes, f"steps:{result.steps}"], meta
 
     def _think(self, s, sender: Sender, ctx: Context, aud: Audience, msg: InboundMessage) -> tuple[str, list[str]]:
         is_owner = sender.relation == "manager" and aud.person_ids == {sender.person.id} if sender.person else False

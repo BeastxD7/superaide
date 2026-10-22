@@ -193,6 +193,12 @@ class Settings(BaseSettings):
     # every few minutes and goes through the same triage. Needs TRIAGE_ENABLED too. Off: Gmail is
     # read only when the owner asks in chat.
     gmail_triage_enabled: bool = False
+    # Memory-free second opinion (#123, tracking #142). Off: replies go out as before. On: when the owner asks
+    # Ava to judge their own claim or choice, a small-model call with an EMPTY memory context gives a second
+    # view, replies are logged as validating the owner or not, and above agreement_limit the reply must carry the
+    # strongest case for the other side. At most two small-model calls per judged owner message, inside the cap.
+    second_opinion_enabled: bool = False
+    agreement_limit: float = 0.75
     # Rubber-Stamp Brake (#134, tracking #142). Off: approvals work as before. On: when the owner's recent
     # approvals are all yes and faster than a card can be read, high-risk cards need a typed reason and only
     # a few cards show at once. It can only add friction, never remove it.
