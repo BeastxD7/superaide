@@ -625,3 +625,23 @@ export type RehearsalSession = {
   notice: string
 }
 export type RehearsalReply = { paused: boolean; message?: string; reply?: string; session: RehearsalSession }
+
+// Ava School, local half (#57). Every /school route answers 404 while the backend's SCHOOL_ENABLED is off.
+export type Lesson = {
+  id: string
+  text: string
+  role: string
+  source: 'own' | 'imported'
+  status: 'active' | 'pending'
+  consented: boolean
+  exported: boolean
+  created_at: string
+}
+export type SchoolList = { lessons: Lesson[]; format: string; note: string }
+export type LessonProblem = { code: string; message: string }
+export type LessonExport = {
+  document: { format: string; lessons: { text: string; role: string }[]; sha256: string }
+  count: number
+  skipped: { id: string; problems: LessonProblem[] }[]
+}
+export type LessonImport = { added: number; rejected: { index: number; problems: LessonProblem[] }[] }
