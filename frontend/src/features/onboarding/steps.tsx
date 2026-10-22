@@ -57,6 +57,8 @@ export function StepControls({ input, done, agentName, me, onAnswer, reload, ope
       </Button>
     )
   switch (input.kind) {
+    case 'brain':
+      return <BrainPicker input={input} agentName={agentName} onAnswer={onAnswer} />
     case 'chips':
       return (
         <div className="flex flex-wrap justify-end gap-2">
@@ -198,6 +200,138 @@ function Submit({ children, onClick, disabled }: { children: ReactNode; onClick:
   )
 }
 
+// --- Choose Ava's brain ---------------------------------------------------------------
+
+function BrainPicker({
+  input,
+  agentName,
+  onAnswer,
+}: {
+  input: Extract<StepInput, { kind: 'brain' }>
+  agentName: string
+  onAnswer: Answer
+}) {
+  const router = useRouter()
+  const [busy, setBusy] = useState(false)
+  const [showKey, setShowKey] = useState(false)
+  const [key, setKey] = useState('')
+  const [problem, setProblem] = useState<string | null>(null)
+  const credits = input.credits
+  const usd = (n: number | null) => (n === null ? null : `US$${n.toFixed(2)}`)
+  const allowance = credits
+    ? [
+        usd(credits.allowance.daily_usd) && `${usd(credits.allowance.daily_usd)} a day`,
+        usd(credits.allowance.monthly_usd) && `${usd(credits.allowance.monthly_usd)} a month`,
+      ]
+        .filter(Boolean)
+        .join(' and ')
+    : ''
+
+  async function answer(choice: 'credits' | 'own' | 'skip', said: string) {
+    setBusy(true)
+    setProblem(null)
+    try {
+      await onAnswer({ choice }, said)
+    } catch (e) {
+      setProblem(e instanceof AppError ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function saveKey() {
+    setBusy(true)
+    setProblem(null)
+    try {
+      await call('/providers/anthropic', { method: 'POST', json: { api_key: key.trim() } })
+      setKey('')
+      await onAnswer({ choice: 'own' }, 'I connected my own key')
+    } catch (e) {
+      setProblem(e instanceof AppError ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (input.ready)
+    return (
+      <div>
+        <p className="mb-2 text-sm text-body">{agentName} already has a brain to think with.</p>
+        <Submit onClick={() => void answer('own', "That's set up")} disabled={busy}>
+          Continue
+        </Submit>
+      </div>
+    )
+
+  return (
+    <div className="space-y-3" role="group" aria-label={`Choose ${agentName}'s brain`}>
+      {credits && (
+        <div className="rounded-2xl bg-white p-4">
+          <p className="font-medium text-ink">Use Superaide AI credits</p>
+          <p className="mt-1 text-sm text-muted">
+            One click, no key needed{allowance ? `: up to ${allowance}` : ''}. Powered by {credits.model}.
+          </p>
+          <Button
+            tone="violet"
+            className="mt-3 w-full py-3"
+            disabled={busy}
+            onClick={() => void answer('credits', 'Use Superaide AI credits')}
+          >
+            Use Superaide AI credits
+          </Button>
+        </div>
+      )}
+      <div className="rounded-2xl bg-white p-4">
+        <p className="font-medium text-ink">Connect my own key</p>
+        <p className="mt-1 text-sm text-muted">Your own Claude key, kept encrypted and never shown again.</p>
+        {showKey ? (
+          <form
+            className="mt-3 space-y-2"
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (key.trim()) void saveKey()
+            }}
+          >
+            <input
+              type="password"
+              autoComplete="off"
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              placeholder="sk-ant-…"
+              aria-label="Claude API key"
+              className="w-full rounded-xl bg-mist px-3 py-2.5 text-sm text-ink outline-none"
+            />
+            <div className="flex flex-wrap gap-2">
+              <Button tone="violet" className="py-2.5" disabled={busy || !key.trim()} onClick={() => void saveKey()}>
+                Save key
+              </Button>
+              <button
+                type="button"
+                onClick={() => router.push(input.models_url)}
+                className="rounded-full px-3 py-2 text-sm text-violet-700 underline"
+              >
+                Other providers (OpenAI, OpenRouter…)
+              </button>
+            </div>
+          </form>
+        ) : (
+          <Button className="mt-3 w-full py-3" disabled={busy} onClick={() => setShowKey(true)}>
+            Connect my own key
+          </Button>
+        )}
+      </div>
+      {problem && <Notice tone="error">{problem}</Notice>}
+      <button
+        onClick={() => void answer('skip', 'Skip for now')}
+        disabled={busy}
+        className="w-full rounded-full py-2 text-sm text-muted hover:text-ink disabled:opacity-40"
+      >
+        Skip for now. Until a brain is set up, {agentName} can only echo you; what you share is saved and read later.
+      </button>
+    </div>
+  )
+}
+
 // --- About you: chat, files & links, or a video call ----------------------------------
 
 function IntroPicker({
@@ -276,10 +410,20 @@ function IntroPicker({
   )
 }
 
+// "Read resume.pdf: 5 facts saved", or that it's kept until Ava has a brain.
+function readStatus(r: IngestResult): string {
+  if (r.status === 'read')
+    return r.facts > 0
+      ? `Read ${r.title}: ${r.facts} ${r.facts === 1 ? 'fact' : 'facts'} saved.`
+      : `Read ${r.title}: nothing new about you in it.`
+  return `${r.title} is saved. It will be read as soon as Ava's brain is set up.`
+}
+
 function FilesAndLinks({ documents, reload, onContinue }: { documents: SharedDoc[]; reload: () => Promise<void>; onContinue: () => void }) {
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
+  const [done, setDone] = useState<string | null>(null)
   const [url, setUrl] = useState('')
   const [drag, setDrag] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -288,9 +432,11 @@ function FilesAndLinks({ documents, reload, onContinue }: { documents: SharedDoc
     setBusy(`Reading ${file.name}…`)
     setError(null)
     setNote(null)
+    setDone(null)
     try {
       const r = await upload<IngestResult>('/intro/files', file)
       if (r.duplicate) setNote(r.message)
+      else setDone(readStatus(r))
       if (r.warnings.length) setNote(r.warnings.join(' '))
       await reload()
     } catch (e) {
@@ -306,9 +452,11 @@ function FilesAndLinks({ documents, reload, onContinue }: { documents: SharedDoc
     setBusy(`Reading ${u}…`)
     setError(null)
     setNote(null)
+    setDone(null)
     try {
       const r = await call<IngestResult>('/intro/links', { method: 'POST', json: { url: u.includes('://') ? u : `https://${u}` } })
       if (r.duplicate) setNote(r.message)
+      else setDone(readStatus(r))
       setUrl('')
       await reload()
     } catch (e) {
@@ -383,6 +531,7 @@ function FilesAndLinks({ documents, reload, onContinue }: { documents: SharedDoc
       {busy && <p className="text-center text-sm text-muted" aria-live="polite">{busy}</p>}
       {error && <Notice tone="error">{error}</Notice>}
       {note && <Notice tone="warn">{note}</Notice>}
+      {done && !busy && <Notice tone="info">{done}</Notice>}
       {documents.length > 0 && (
         <ul className="space-y-1.5">
           {documents.map((d) => {

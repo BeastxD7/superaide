@@ -1,5 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
-import { API_PORT, API_URL, PROXY, PROXY_A, PROXY_B, PROXY_C, UPSTREAM_PORT, BASE_URL, DB_NAME, FAKE_GOOGLE_PORT, FAKE_GOOGLE_URL, GOOGLE, PG_ADMIN_URL, SLOT, WEB_PORT, apiEnv } from './src/env'
+import { BRAIN, FAKE_ANTHROPIC_PORT, FAKE_ANTHROPIC_URL, API_PORT, API_URL, PROXY, PROXY_A, PROXY_B, PROXY_C, UPSTREAM_PORT, BASE_URL, DB_NAME, FAKE_GOOGLE_PORT, FAKE_GOOGLE_URL, GOOGLE, PG_ADMIN_URL, SLOT, WEB_PORT, apiEnv } from './src/env'
 
 // One slot = one API, one Next.js server and one database (see src/env.ts).
 // Tests inside a slot run one at a time because they reset the shared database;
@@ -40,6 +40,20 @@ export default defineConfig({
             command: 'node scripts/fake-google.mjs',
             url: `${FAKE_GOOGLE_URL}/health`,
             env: { ...process.env, FAKE_GOOGLE_PORT: String(FAKE_GOOGLE_PORT) },
+            reuseExistingServer: !process.env.CI,
+            timeout: 30_000,
+            stdout: 'ignore' as const,
+            stderr: 'pipe' as const,
+          },
+        ]
+      : []),
+    // A fake Anthropic for the "brain first" tests (E2E_BRAIN=1 only).
+    ...(BRAIN
+      ? [
+          {
+            command: 'node scripts/fake-anthropic.mjs',
+            url: `${FAKE_ANTHROPIC_URL}/health`,
+            env: { ...process.env, FAKE_ANTHROPIC_PORT: String(FAKE_ANTHROPIC_PORT) },
             reuseExistingServer: !process.env.CI,
             timeout: 30_000,
             stdout: 'ignore' as const,

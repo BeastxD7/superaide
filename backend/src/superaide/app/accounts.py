@@ -22,7 +22,6 @@ from superaide.db.models import (
     ChannelIdentity,
     ChannelInvite,
     IdentityLinkEvent,
-    Onboarding,
     Person,
     UserAccount,
 )
@@ -148,8 +147,8 @@ def _hire_inside(session: Session, user: UserAccount, agent_slug: str) -> Person
                 actor="app",
             )
         )
-    if session.scalar(select(Onboarding).where(Onboarding.person_id == person.id)) is None:
-        session.add(Onboarding(person_id=person.id, step="hello", answers={}))
+    # The introduction's row is made when it starts (app/onboarding.py), where it is known whether the first
+    # step is choosing Ava's brain.
     audit(session, "app", "hired", person_id=person.id, user_id=user.id, agent=agent_slug)
     return person
 
