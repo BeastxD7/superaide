@@ -219,9 +219,9 @@ def test_only_a_verified_known_sender_is_classified_by_the_model(owner_client, g
     seen: list[str] = []
     real = classify.classify
 
-    def spy(llm, *, model, f, earlier=None, ready=True):
+    def spy(llm, *, model, f, earlier=None, ready=True, **kwargs):
         seen.append(f"{f.sender_name}:{ready}")
-        return real(llm, model=model, f=f, earlier=earlier, ready=False)
+        return real(llm, model=model, f=f, earlier=earlier, ready=False, **kwargs)
 
     monkeypatch.setattr(classify, "classify", spy)
     contact("daniel@acme.com")
