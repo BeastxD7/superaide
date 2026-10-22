@@ -10,7 +10,8 @@ import type { Session } from '@/lib/session-context'
 import { BrandIcon, type Brand } from '@/components/BrandIcon'
 import { Orb } from '@/components/Orb'
 import { homeFor } from '@/lib/session'
-import { Button, NavBar, STAGES } from '@/components/site'
+import { Button, NavBar } from '@/components/site'
+import { STAGES } from '@/components/stages'
 
 const CHANNEL_BRANDS: Record<string, Brand> = { Telegram: 'telegram', Slack: 'slack', WhatsApp: 'whatsapp', Discord: 'discord' }
 

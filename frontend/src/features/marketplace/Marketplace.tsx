@@ -8,9 +8,11 @@ import { useEffect, useState } from 'react'
 import { BrandIcon } from '@/components/BrandIcon'
 import { call, type AgentCard } from '@/lib/api'
 import type { Session } from '@/lib/session-context'
-import { Orb, huePanel } from '@/components/Orb'
+import { huePanel } from '@/components/hue'
+import { Orb } from '@/components/Orb'
 import { homeFor } from '@/lib/session'
-import { Button, Footer, NavBar, Sparkle, STAGES } from '@/components/site'
+import { Button, Footer, NavBar, Sparkle } from '@/components/site'
+import { STAGES } from '@/components/stages'
 
 const MotionLink = motion.create(Link)
 

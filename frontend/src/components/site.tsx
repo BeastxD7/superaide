@@ -10,13 +10,6 @@ import { homeFor } from '@/lib/session'
 
 export const PRODUCT = 'Superaide'
 
-export const STAGES = [
-  { name: 'Infant', does: 'Watches, asks questions and drafts. Everything waits for your yes.' },
-  { name: 'Child', does: 'Suggests ideas and drafts on its own. Still waits for your yes.' },
-  { name: 'Adolescent', does: 'Publishes inside themes you have approved, with time for you to stop it.' },
-  { name: 'Adult', does: 'Works on its own, within the limits you set.' },
-]
-
 // The product's mark: an agent's face, the same one as the browser tab icon (src/app/icon.svg).
 export function BrandMark({ className = 'size-6' }: { className?: string }) {
   const id = useId()

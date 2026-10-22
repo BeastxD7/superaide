@@ -5,7 +5,8 @@ import { useEffect, type ReactNode } from 'react'
 import { Separator } from '@/components/ui/separator'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { AppSidebar, agentStatus, navItemFor } from '@/features/dashboard/AppSidebar'
+import { AppSidebar } from '@/features/dashboard/AppSidebar'
+import { agentStatus, navItemFor } from '@/features/dashboard/nav'
 import { useSession } from '@/lib/session-context'
 
 // The signed-in app: a sidebar for moving around, and the page beside it.

@@ -7,23 +7,28 @@ export function useApi<T>(conn: Connection, path: string, everyMs = 5000) {
   const [error, setError] = useState<ApiError | null>(null)
   const alive = useRef(true)
 
-  const load = useCallback(async () => {
-    try {
-      const result = await api<T>(conn, path)
-      if (alive.current) {
-        setData(result)
-        setError(null)
-      }
-    } catch (e) {
-      if (alive.current) setError(e instanceof ApiError ? e : new ApiError(0, String(e)))
-    }
-  }, [conn, path])
+  // State is set only once the request settles (written with .then so the effect lint can see that).
+  const load = useCallback(
+    () =>
+      api<T>(conn, path).then(
+        (result) => {
+          if (alive.current) {
+            setData(result)
+            setError(null)
+          }
+        },
+        (e) => {
+          if (alive.current) setError(e instanceof ApiError ? e : new ApiError(0, String(e)))
+        },
+      ),
+    [conn, path],
+  )
 
   useEffect(() => {
     alive.current = true
-    load()
+    void load()
     const timer = window.setInterval(() => {
-      if (document.visibilityState === 'visible') load()
+      if (document.visibilityState === 'visible') void load()
     }, everyMs)
     return () => {
       alive.current = false

@@ -65,24 +65,29 @@ export function Connections({ agentName, me, refreshMe }: { agentName: string; m
     }
   }, [])
 
-  const load = useCallback(async () => {
-    try {
-      setStatus(await call<Status>('/connections'))
-      void reloadLinked()
-      // Back from Google sign-in: /dashboard/connections?google=<outcome>. Show it once, then tidy the URL.
-      const params = new URLSearchParams(window.location.search)
-      const outcome = params.get('google')
-      if (outcome) {
-        setGoogleOutcome(outcome)
-        setOpen('google')
-        params.delete('google')
-        const rest = params.toString()
-        window.history.replaceState(window.history.state, '', `${window.location.pathname}${rest ? `?${rest}` : ''}${window.location.hash}`)
-      }
-    } catch (e) {
-      setError(e instanceof AppError ? e.message : String(e))
-    }
-  }, [reloadLinked])
+  // State is set only once the request settles (written with .then so the effect lint can see that).
+  const load = useCallback(
+    () =>
+      call<Status>('/connections')
+        .then((s) => {
+          setStatus(s)
+          void reloadLinked()
+          // Back from Google sign-in: /dashboard/connections?google=<outcome>. Show it once, then tidy the URL.
+          const params = new URLSearchParams(window.location.search)
+          const outcome = params.get('google')
+          if (outcome) {
+            setGoogleOutcome(outcome)
+            setOpen('google')
+            params.delete('google')
+            const rest = params.toString()
+            window.history.replaceState(window.history.state, '', `${window.location.pathname}${rest ? `?${rest}` : ''}${window.location.hash}`)
+          }
+        })
+        .catch((e: unknown) => {
+          setError(e instanceof AppError ? e.message : String(e))
+        }),
+    [reloadLinked],
+  )
 
   useEffect(() => {
     void load()

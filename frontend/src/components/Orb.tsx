@@ -145,11 +145,3 @@ export function Orb({ hue, size = 120, mood = 'idle', track = false, className =
     </div>
   )
 }
-
-export function hueText(hue: Hue): string {
-  return hue === 'sky' ? 'text-kai' : hue === 'rose' ? 'text-rhea' : 'text-violet-600'
-}
-
-export function huePanel(hue: Hue): string {
-  return hue === 'sky' ? 'bg-sky-100' : hue === 'rose' ? 'bg-rose-100' : 'bg-lilac-100'
-}

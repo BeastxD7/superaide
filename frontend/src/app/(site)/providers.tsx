@@ -3,7 +3,7 @@
 import { MotionConfig } from 'motion/react'
 import type { ReactNode } from 'react'
 import type { Account } from '@/lib/api'
-import { SessionProvider } from '@/lib/session-context'
+import { SessionProvider } from '@/lib/session-provider'
 
 type Props = { initialAccount: Account | null; hasSession: boolean; children: ReactNode }
 

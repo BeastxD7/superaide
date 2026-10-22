@@ -1,19 +1,9 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { auth, call, type Account, type Me } from '@/lib/api'
-
-export type Session = {
-  account: Account | null // who is signed in (null when logged out)
-  me: Me | null // the hired agent's workspace state, when this account hired one
-  loading: boolean // true until the first check with the server finishes
-  refresh: () => Promise<Me | null>
-  signedIn: (account: Account) => Promise<void>
-  logOut: () => Promise<void>
-}
-
-const SessionContext = createContext<Session | null>(null)
+import { SessionContext } from '@/lib/session-context'
 
 type ProviderProps = { initialAccount: Account | null; hasSession: boolean; children: ReactNode }
 
@@ -24,7 +14,8 @@ export function SessionProvider({ initialAccount, hasSession, children }: Provid
   const router = useRouter()
   const [account, setAccount] = useState<Account | null>(initialAccount)
   const [me, setMe] = useState<Me | null>(null)
-  const [loading, setLoading] = useState(true)
+  // Signed out (no cookie, no account): the server already checked, so nothing is loading.
+  const [loading, setLoading] = useState(hasSession || initialAccount !== null)
 
   const loadAgent = useCallback(async (acc: Account | null) => {
     if (!acc?.hire) {
@@ -42,22 +33,23 @@ export function SessionProvider({ initialAccount, hasSession, children }: Provid
   }, [])
 
   // Re-read both the account and the agent state from the server.
-  const refresh = useCallback(async () => {
-    let acc: Account | null = null
-    try {
-      acc = await auth.me()
-    } catch {
-      acc = null
-    }
-    setAccount(acc)
-    const m = await loadAgent(acc)
-    setLoading(false)
-    return m
-  }, [loadAgent])
+  // State is set only once the server answers (written with .then so the effect lint can see that).
+  const refresh = useCallback(
+    () =>
+      auth
+        .me()
+        .catch(() => null)
+        .then(async (acc: Account | null) => {
+          setAccount(acc)
+          const m = await loadAgent(acc)
+          setLoading(false)
+          return m
+        }),
+    [loadAgent],
+  )
 
   useEffect(() => {
     if (hasSession || initialAccount) void refresh()
-    else setLoading(false) // signed out: the server already checked
   }, [refresh, hasSession, initialAccount])
 
   const signedIn = useCallback(
@@ -87,10 +79,4 @@ export function SessionProvider({ initialAccount, hasSession, children }: Provid
     [account, me, loading, refresh, signedIn, logOut],
   )
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
-}
-
-export function useSession(): Session {
-  const session = useContext(SessionContext)
-  if (!session) throw new Error('useSession must be used inside <SessionProvider>')
-  return session
 }
