@@ -122,7 +122,7 @@ def when(text: str, now: datetime) -> tuple[datetime, str] | None:
                 due = (now.astimezone(UTC) + span).astimezone(now.tzinfo)
             else:
                 due = now + span  # days and weeks keep the same time on the wall clock
-        except (OverflowError, ValueError):
+        except OverflowError, ValueError:
             return None
         return due, rest[: m.start()] + rest[m.end() :]
 
@@ -222,7 +222,7 @@ def find_moment(text: str, now: datetime) -> tuple[datetime, str] | None:
         if found is None and _IN.search(text):
             return None  # "in N days" that is out of range: don't let dateparser guess something else
         return found or _fallback(text, now)
-    except (OverflowError, ValueError):
+    except OverflowError, ValueError:
         return None
 
 
