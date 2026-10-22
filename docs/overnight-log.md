@@ -100,3 +100,15 @@ backend tests, lint, types, the frontend checks and the full browser suite pass.
   - Live triage: tell-now precision 100%, recall 100% on 52 synthetic labels (US$0.023 total).
   - Owner decisions recorded: BYOK; each owner's own Telegram bot.
   - Login email corrected to .com.
+
+## 22 Oct, afternoon
+- 14:55 IST: dev updated to 445fd98 (DB 0026; backup ~/superaide-dev-2026-10-22-1453.dump) and the stack restarted cleanly.
+  - Live checks:
+    - app cross-channel recall cites the Telegram message ✔;
+    - "Telegram is linked" ✔;
+    - "remind me on telegram in 2 minutes to stretch" delivered 14:57:15 to app + Telegram via the new per-bot listener ✔.
+  - Bug found: Ava cites her OWN old replies as sources and recycles outdated hedges ("can't verify who is typing", a false "can't confirm delivered"). Assigned to reliability (recall returns only inbound messages; no unprompted corrections).
+- New builds started (owner: "do whatever you want"), all behind flags with mocks only:
+  - Google sign-in + Calendar actions + push updates;
+  - the Capabilities rename + Gmail triage;
+  - the "Ask my Ava" link.
