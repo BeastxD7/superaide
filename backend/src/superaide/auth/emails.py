@@ -18,7 +18,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
+from superaide.audit import account_audit
 from superaide.auth.models import EmailToken
 from superaide.auth.passwords import hash_password, password_problem
 from superaide.auth.service import (
@@ -119,7 +119,7 @@ def start_verification(session: Session, user: UserAccount, base: str | None = N
         raise AuthError(429, "We've sent several emails already. Check your inbox, or try again in an hour.")
     hours = get_settings().verify_link_hours
     token = _issue(session, user, VERIFY, timedelta(hours=hours))
-    audit(session, "auth", "verification_sent", user_id=user.id)
+    account_audit(session, user.id, "verification_sent")
     return Mail(
         to=user.email,
         subject="Confirm your email for Superaide",
@@ -137,7 +137,7 @@ def verify_email(session: Session, token: str, client: Client) -> UserAccount:
     if user.email_verified_at is None:
         user.email_verified_at = _now()
     _event(session, "email_verified", client, user_id=user.id, email=user.email_normalized)
-    audit(session, "auth", "email_verified", user_id=user.id)
+    account_audit(session, user.id, "email_verified")
     return user
 
 
@@ -161,7 +161,7 @@ def request_reset(session: Session, email: str, client: Client, base: str | None
         return None  # quietly: an error here would confirm the account exists
     minutes = settings.reset_link_minutes
     token = _issue(session, user, RESET, timedelta(minutes=minutes))
-    audit(session, "auth", "password_reset_sent", user_id=user.id)
+    account_audit(session, user.id, "password_reset_sent")
     return Mail(
         to=user.email,
         subject="Reset your Superaide password",
@@ -191,5 +191,5 @@ def reset_password(session: Session, token: str, new: str, client: Client) -> Us
         user.email_verified_at = now  # opening the link proved they read this inbox
     revoke_all(session, user)
     _event(session, "password_reset", client, user_id=user.id, email=user.email_normalized)
-    audit(session, "auth", "password_reset", user_id=user.id, via="email")
+    account_audit(session, user.id, "password_reset", via="email")
     return user

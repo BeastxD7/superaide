@@ -1,4 +1,5 @@
 from superaide.db.models import (
+    AccountAudit,
     AgentHire,
     AgentState,
     Approval,
@@ -29,6 +30,7 @@ __all__ = [
     "AgentState",
     "Approval",
     "AuditLog",
+    "AccountAudit",
     "AuthEvent",
     "Base",
     "ChannelIdentity",

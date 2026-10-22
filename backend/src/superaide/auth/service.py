@@ -19,10 +19,10 @@ from email_validator import EmailNotValidError, validate_email
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
+from superaide.audit import account_audit
 from superaide.auth.passwords import hash_password, password_problem, verify_password
 from superaide.config import get_settings
-from superaide.db.models import AuthEvent, Person, UserAccount, UserSession
+from superaide.db.models import AuthEvent, UserAccount, UserSession
 from superaide.db.session import rows_affected
 
 # Only refresh last_used_at/expiry this often, so reads don't write on every request.
@@ -133,7 +133,7 @@ def signup(
         timezone=timezone,
     )  # fmt: skip
     _event(session, "signup", client, user_id=user.id, email=normalized)
-    audit(session, "auth", "signup", user_id=user.id)
+    account_audit(session, user.id, "signup")
     return user, new_session(session, user, client)
 
 
@@ -152,19 +152,15 @@ def create_account(
     google_sub: str | None = None,
     verified: bool = False,
 ) -> UserAccount:
-    """A new account and its own Person record. `password_hash` is "" for an account that signs in
-    with Google only (no password matches it)."""
-    # The account's own record among the people the agents know.
-    person = Person(display_name=name, relation="unknown", channel_prefs={"routine": "web"})
-    session.add(person)
-    session.flush()
+    """A new account. `password_hash` is "" for an account that signs in with Google only (no password
+    matches it). It has no Person yet: a Person belongs to one agent instance, so the account gets its
+    own when it hires (tenancy.join_as_owner), and an account that never hires is stored in none."""
     now = _now()
     user = UserAccount(
         email=email.strip()[:320],
         email_normalized=normalized,
         password_hash=password_hash,
         display_name=name,
-        person_id=person.id,
         timezone=valid_timezone(timezone),
         password_changed_at=now if password_hash else None,
         last_login_at=now,
@@ -210,7 +206,7 @@ def login(session: Session, *, email: str, password: str, client: Client) -> tup
                     .where(UserAccount.id == user.id)
                     .values(locked_until=now + timedelta(minutes=settings.login_lock_minutes), failed_logins=0)
                 )
-                audit(session, "auth", "account_locked", user_id=user.id)
+                account_audit(session, user.id, "account_locked")
         _event(session, "login_fail", client, user_id=user.id if user else None, email=normalized)
         raise AuthError(401, "That email and password don't match.")
 
@@ -295,7 +291,7 @@ def change_email(session: Session, user: UserAccount, *, new_email: str, passwor
     user.email = new_email.strip()[:320]  # sets email_normalized too (db/models.UserAccount)
     user.email_verified_at = None
     _event(session, "email_changed", client, user_id=user.id, email=normalized)
-    audit(session, "auth", "email_changed", user_id=user.id, old_domain=old.rsplit("@", 1)[-1])
+    account_audit(session, user.id, "email_changed", old_domain=old.rsplit("@", 1)[-1])
 
 
 def change_password(
@@ -317,7 +313,7 @@ def change_password(
     user.password_changed_at = _now()
     revoke_all(session, user, except_token=keep_token)
     _event(session, "password_changed", client, user_id=user.id)
-    audit(session, "auth", "password_changed", user_id=user.id)
+    account_audit(session, user.id, "password_changed")
 
 
 def reset_password(session: Session, email: str, new: str) -> UserAccount:
@@ -334,5 +330,5 @@ def reset_password(session: Session, email: str, new: str) -> UserAccount:
     user.locked_until = None
     revoke_all(session, user)
     _event(session, "password_reset_cli", Client(ip="cli"), user_id=user.id)
-    audit(session, "auth", "password_reset", user_id=user.id, via="cli")
+    account_audit(session, user.id, "password_reset", via="cli")
     return user
