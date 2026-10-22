@@ -352,7 +352,7 @@ test.describe('AI model page', () => {
     const chat = page.getByRole('group', { name: 'Conversation' })
     await chat.getByLabel('Provider').selectOption('openrouter')
     await expect(chat.getByText("Superaide doesn't know this model's price")).toBeVisible()
-    await chat.getByLabel('Input, US$ / 1M tokens').fill('1,5')
+    await chat.getByLabel('Input, US$ / 1M tokens').fill('1.5.2')
     await chat.getByLabel('Output, US$ / 1M tokens').fill('2')
     await page.getByRole('button', { name: 'Save models' }).click()
     const models = page.getByRole('region', { name: 'Models' })
