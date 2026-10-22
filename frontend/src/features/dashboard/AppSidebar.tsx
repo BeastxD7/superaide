@@ -6,6 +6,7 @@ import {
   Brain,
   ChevronsUpDown,
   House,
+  Inbox,
   LogOut,
   MessageCircle,
   Plug,
@@ -41,10 +42,12 @@ import {
   SidebarRail,
   useSidebar,
 } from '@/components/ui/sidebar'
+import { useNeedsYou } from '@/features/needs-you/useNeedsYou'
 import type { Me } from '@/lib/api'
 import type { Session } from '@/lib/session-context'
 
-type NavItem = { href: string; label: string; icon: typeof House }
+// `triage`: shown only while the backend has triage turned on (ADR 0010).
+type NavItem = { href: string; label: string; icon: typeof House; triage?: boolean }
 
 export const NAV: { group: string; items: NavItem[] }[] = [
   {
@@ -52,6 +55,7 @@ export const NAV: { group: string; items: NavItem[] }[] = [
     items: [
       { href: '/dashboard', label: 'Home', icon: House },
       { href: '/dashboard/chat', label: 'Chat', icon: MessageCircle },
+      { href: '/dashboard/needs-you', label: 'Needs you', icon: Inbox, triage: true },
       { href: '/dashboard/reminders', label: 'Reminders', icon: AlarmClock },
       { href: '/dashboard/notebook', label: 'Notebook', icon: BookOpen },
       { href: '/dashboard/people', label: 'People', icon: Users },
@@ -83,6 +87,7 @@ export function AppSidebar({ session, me }: { session: Session; me: Me }) {
   const { setOpenMobile } = useSidebar()
   const status = agentStatus(me)
   const isActive = (href: string) => navItemFor(pathname)?.href === href
+  const triage = useNeedsYou(60_000)
 
   return (
     <Sidebar collapsible="icon" variant="inset">
@@ -121,12 +126,19 @@ export function AppSidebar({ session, me }: { session: Session; me: Me }) {
             <SidebarGroupLabel>{group}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {items.map(({ href, label, icon: Icon }) => (
+                {items
+                  .filter((i) => !i.triage || triage.enabled)
+                  .map(({ href, label, icon: Icon, triage: counted }) => (
                   <SidebarMenuItem key={href}>
                     <SidebarMenuButton asChild isActive={isActive(href)} tooltip={label}>
                       <Link href={href} aria-current={isActive(href) ? 'page' : undefined} onClick={() => setOpenMobile(false)}>
                         <Icon />
                         <span>{label}</span>
+                        {counted && !!triage.data?.counts.needs_you && (
+                          <span className="ml-auto rounded-full bg-lilac-200 px-1.5 text-xs text-violet-700">
+                            {triage.data.counts.needs_you}
+                          </span>
+                        )}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

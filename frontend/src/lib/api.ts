@@ -331,3 +331,61 @@ export type ModelSettings = {
 }
 
 export type ConnectionTest = { ok: boolean; message: string; models: string[] }
+
+// Triage and escalation (ADR 0010). Every /needs-you and /triage route answers 404 while the
+// backend's TRIAGE_ENABLED is off, and the app then hides the inbox.
+export type TriageDecision = 'handle' | 'hold' | 'interrupt' | 'defer' | 'verify'
+export type TriageVerb = 'ack' | 'reply' | 'call' | 'not_urgent' | 'snooze_30m' | 'snooze_2h' | 'done'
+export type TriageFeedback = 'useful' | 'not_urgent' | 'should_have_told' | 'wrong_handle' | 'good_handle'
+
+export type NeedsYouItem = {
+  id: string
+  decision: TriageDecision
+  reason: string
+  sender: string
+  quotes: string[]
+  rule_hits: string[]
+  stage: string
+  maybe_urgent: boolean
+  shadow_decision: string | null
+  feedback: TriageFeedback | null
+  created_at: string
+  escalation: {
+    id: string
+    state: 'deferred' | 'notifying' | 'acked' | 'resolved' | 'expired'
+    step: number
+    cycle: number
+    next_at: string | null
+    acked_at: string | null
+    acked_via: string | null
+    resolution: string | null
+    deliveries: { step: number; cycle: number; provider: string; status: string; sent_at: string | null }[]
+  } | null
+}
+
+export type NeedsYou = {
+  needs_you: NeedsYouItem[]
+  handled: NeedsYouItem[]
+  held: NeedsYouItem[]
+  counts: { needs_you: number; handled: number; held: number }
+  stage: string
+}
+
+export type TriageSettings = {
+  ladder: { provider: string; delay_s: number }[]
+  expire_after_s: number
+  max_per_hour: number
+  max_per_day: number
+  vip_ignores_budget: 'critical' | 'always' | 'never'
+  theta_interrupt: number
+  theta_handle: number
+  silenced_people: string[]
+  silenced_topics: string[]
+  autonomy_grants: string[]
+  stranger_intake: boolean
+  away_until: string | null
+  away_visibility: 'everyone' | 'colleagues' | 'nobody'
+  busy_until: string | null
+  tell_sender_seen: boolean
+  phone_enabled: boolean
+}
