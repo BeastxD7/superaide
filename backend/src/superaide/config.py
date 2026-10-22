@@ -196,6 +196,9 @@ class Settings(BaseSettings):
     # approvals are all yes and faster than a card can be read, high-risk cards need a typed reason and only
     # a few cards show at once. It can only add friction, never remove it.
     rubber_stamp_brake_enabled: bool = False
+    # Echo Filter (#137, tracking #142). Off: facts are stored as before. On: a fact from a link, Telegram or
+    # Slack is stored as hearsay with its root origin; a second independent root, or the owner, makes it a fact.
+    echo_filter_enabled: bool = False
     gmail_poll_minutes: int = 5
     # The owner's Gmail sign-in (same OAuth client as Calendar); kept per instance in the vault.
     gmail_refresh_token: str = ""

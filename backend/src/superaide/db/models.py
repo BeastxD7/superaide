@@ -213,6 +213,18 @@ class MemoryItem(Scoped, Base):
     source: Mapped[str] = mapped_column(String(30), default="chat", server_default="chat")
     document_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("document.id"), nullable=True, index=True)
     confidence: Mapped[float] = mapped_column(Float, default=1.0, server_default="1")
+    # fact | hearsay (#137): hearsay came from outside the owner and has fewer than two independent roots.
+    belief_state: Mapped[str] = mapped_column(String(10), default="fact", server_default="fact")
+
+
+class MemoryOrigin(Scoped, Base):
+    """One root origin of a belief (#137). Repeats of the same root are one row, so they count once."""
+
+    __tablename__ = "memory_origin"
+    __table_args__ = (UniqueConstraint("memory_id", "origin_root", name="uq_memory_origin_root"),)
+
+    memory_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("memory_item.id", ondelete="CASCADE"), index=True)
+    origin_root: Mapped[str] = mapped_column(String(64))
 
 
 class Document(Scoped, Base):

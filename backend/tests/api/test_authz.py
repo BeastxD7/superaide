@@ -173,7 +173,9 @@ def test_the_owner_cannot_remove_someone_elses_document_or_forget_their_facts(ow
     assert all(m["id"] != fact_id for m in owner.get("/app/notebook").json()["memories"])
 
 
-@pytest.mark.parametrize("path", ["/app/intro/documents/{}/remove", "/app/notebook/{}/forget"])
+@pytest.mark.parametrize(
+    "path", ["/app/intro/documents/{}/remove", "/app/notebook/{}/forget", "/app/notebook/{}/confirm"]
+)
 def test_ids_that_dont_exist_or_arent_ids(owner, path):
     assert owner.post(path.format(uuid.uuid4())).status_code == 404
     for bad in ("not-a-uuid", "1", "' OR 1=1 --", "00000000-0000-0000-0000-00000000000g"):

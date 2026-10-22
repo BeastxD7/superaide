@@ -47,6 +47,7 @@ TABLES: tuple[str, ...] = (
     "llm_provider",
     "memory_embedding",  # outside the ORM metadata (context/vectors.py); only where pgvector exists
     "memory_item",
+    "memory_origin",  # independent origins of a belief (#137)
     "model_role",
     "onboarding",
     "owner_model_price",
