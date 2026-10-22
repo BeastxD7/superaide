@@ -347,7 +347,9 @@ def test_moving_to_a_bare_time_keeps_the_reminders_day():
         script = Script(tool_use("update_reminder", {"id": str(r.id), "when": "tomorrow at 9am"}), "Moved.")
         turn_for(s, script, "move it to tomorrow 9am").run(ASK)
         s.refresh(r)
-        tomorrow = (datetime.now(UTC).astimezone(tz) + timedelta(days=1)).date()
+        now = datetime.now(UTC).astimezone(tz)
+        # Just after midnight "tomorrow" means after you've slept: today's date (intentions/when.py).
+        tomorrow = now.date() if now.hour < 4 else (now + timedelta(days=1)).date()
         assert r.due_at.astimezone(tz).date() == tomorrow and r.due_at.astimezone(tz).hour == 9
 
 
