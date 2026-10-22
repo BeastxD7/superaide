@@ -559,6 +559,11 @@ FTS -> T8, T11, T12. Nothing ships to a public URL as "hosted" until T1-T7 and t
 - The database role change is a deploy-time step that must happen before RLS is useful.
 - Owners who want Telegram today still create a bot with BotFather until managed bots ship.
 - In-flight ADRs 0007 and 0008 need small amendments (instance keys, hosted-mode SSRF rule).
+- Accounts are platform-wide, so an account belongs to no instance until it hires (issues 24 and 25).
+  Sign-up makes no Person (`user_account.person_id` is empty until `join_as_owner`). Events about an
+  account (sign-up, e-mail checks, password and address changes) go through `audit.account_audit`: into
+  the account's own Ava's audit log once it has hired, and into the platform-level `account_audit` table
+  before that. They are never filed under another owner's Ava.
 
 ## Decided by the owner (2026-10-22)
 

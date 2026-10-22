@@ -110,12 +110,12 @@ def join_as_owner(session: Session, user: UserAccount, scope: InstanceScope) -> 
         return person
     from superaide.tenancy.context import all_instances
 
-    with all_instances():  # the sign-up Person may live in another instance (where sign-up happened)
-        person = session.get(Person, user.person_id)
-    if person is None or person.agent_id != scope.agent_id:
-        # The Person made at sign-up lives in whichever instance was in scope then; the owner gets
-        # a fresh one here, and the unused sign-up one is removed.
-        old = person
+    with all_instances():  # an older sign-up Person may live in another instance (where sign-up happened)
+        old = session.get(Person, user.person_id) if user.person_id else None
+    person = old if old is not None and old.agent_id == scope.agent_id else None
+    if person is None:
+        # Sign-up makes no Person (an account that never hires belongs to no instance): the owner gets
+        # theirs here. One left over from before that, in another instance, is removed if unused.
         person = Person(
             display_name=user.display_name, relation="unknown", channel_prefs={"routine": "web"},
             tenant_id=scope.tenant_id, agent_id=scope.agent_id,
@@ -258,3 +258,54 @@ def backfill_default_instance(conn: Connection) -> int:
             {"id": uuid.uuid4(), "agent": agent_id, "user": owner_id, "person": person_id, "at": since},
         )
     return created
+
+
+def move_stray_account_data(conn: Connection) -> tuple[int, int]:
+    """Undo what sign-up used to do before accounts belonged to no instance (migration 0030).
+
+    Sign-up ran with no instance in scope, so the new account's Person and its "auth" audit lines were
+    stored in whichever instance was the default (the first owner's). This takes them out again:
+    - an account that has hired nothing loses its sign-up Person (when nothing refers to it);
+    - "auth" audit lines about an account that is not a member of the instance they sit in move to
+      the platform's account log. An owner's own lines in their own instance stay.
+    Plain SQL on a connection, so the migration and the tests run the same code. Returns
+    (people removed, audit lines moved).
+    """
+    strays = conn.execute(
+        text(
+            "SELECT u.id, u.person_id FROM user_account u WHERE u.person_id IS NOT NULL "
+            "AND NOT EXISTS (SELECT 1 FROM instance_member m WHERE m.user_id = u.id)"
+        )
+    ).all()
+    references = conn.execute(
+        text(
+            "SELECT c.conrelid::regclass::text, a.attname FROM pg_constraint c "
+            "JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1] "
+            "WHERE c.contype = 'f' AND c.confrelid = 'person'::regclass AND cardinality(c.conkey) = 1 "
+            "AND c.conrelid <> 'user_account'::regclass"
+        )
+    ).all()
+    unused = "".join(f' AND NOT EXISTS (SELECT 1 FROM {t} WHERE "{c}" = p.id)' for t, c in references)
+    removed = 0
+    for user_id, person_id in strays:
+        conn.execute(text("UPDATE user_account SET person_id = NULL WHERE id = :u"), {"u": user_id})
+        done = conn.execute(
+            text(
+                "DELETE FROM person p WHERE p.id = :p AND p.relation = 'unknown' AND p.status = 'active' "
+                f"AND p.merged_into IS NULL{unused}"
+            ),
+            {"p": person_id},
+        )
+        removed += done.rowcount
+    moved = conn.execute(
+        text(
+            "WITH gone AS (DELETE FROM audit_log a WHERE a.actor = 'auth' "
+            "AND a.detail->>'user_id' ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' "
+            "AND NOT EXISTS (SELECT 1 FROM instance_member m "
+            "WHERE m.agent_id = a.agent_id AND m.user_id::text = a.detail->>'user_id') "
+            "RETURNING a.id, a.action, a.detail, a.created_at) "
+            "INSERT INTO account_audit (id, user_id, actor, action, detail, created_at) "
+            "SELECT id, (detail->>'user_id')::uuid, 'auth', action, detail, created_at FROM gone"
+        )
+    )
+    return removed, moved.rowcount
