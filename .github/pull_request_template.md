@@ -100,3 +100,7 @@
 ## Rollback plan
 
 <!-- How to undo it in production: revert the commit, turn the flag off, `alembic downgrade -1`, … -->
+
+## Changelog
+
+<!-- One line for the changelog: what changed, in plain words. CHANGELOG.md is regenerated from merged PR titles with `python3 scripts/changelog.py`, so make the PR title say it. -->
