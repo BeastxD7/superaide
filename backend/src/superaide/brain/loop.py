@@ -50,6 +50,8 @@ LEARNS = (
     'caveats like "I may not keep every word".'
 )
 MAX_TOKENS = 1200
+MAX_TOKENS_RETRY = 4000  # the one retry of a step that ran out of room (thinking plus text share MAX_TOKENS)
+CUT_OFF = "I ran out of room before I could finish that. Ask me to carry on and I'll pick it up."
 MAX_REASONING_CHARS = 4000
 
 # Live progress for the owner's chat (see app/stream.py): ("text", {"delta"}), ("reasoning",
@@ -709,8 +711,12 @@ class OwnerTurn:
                 max_web_searches=WEB_SEARCHES_PER_STEP if any(t.get("name") == "web_search" for t in tools) else 0,
                 on_event=self.on_model_event if streaming else None,
             )
+            if last.stop_reason == "max_tokens":
+                last = self._more_room(system, tools, msgs, last)
             if any(b.get("type") in {"web_search_tool_result", "web_fetch_tool_result"} for b in last.content):
                 self.tainted = True
+            if last.stop_reason == "max_tokens":
+                return self._cut_off(system, tools, msgs, last, step + 1)
             if last.stop_reason == "pause_turn":  # a server tool hit its own limit: carry on
                 self._narrated()
                 msgs = [*msgs, {"role": "assistant", "content": last.content}]
@@ -746,6 +752,47 @@ class OwnerTurn:
             self.notes + ["step_limit"],
             MAX_STEPS,
         )
+
+    def _more_room(
+        self, system: list[SystemBlock], tools: list[dict[str, Any]], msgs: list[dict[str, Any]], cut: StepResult
+    ) -> StepResult:
+        """The step ran out of tokens (thinking and text share them). Ask the same question once more
+        with a bigger budget and less thinking, rather than send half an answer or an ellipsis."""
+        self.notes.append("max_tokens_retry")
+        self._said = ""
+        self.emit("retract", {})  # whatever streamed so far is replaced by the retry
+        self.emit("status", {"text": "Taking a little longer"})
+        try:
+            return self.llm.step(
+                purpose="chat_turn",
+                model=self.model,
+                system=system,
+                messages=msgs,
+                tools=tools,
+                max_tokens=MAX_TOKENS_RETRY,
+                effort="low",
+                max_web_searches=WEB_SEARCHES_PER_STEP if any(t.get("name") == "web_search" for t in tools) else 0,
+                on_event=self.on_model_event if self._emit is not None else None,
+            )
+        except BudgetExceeded:
+            log.info("retry after max_tokens refused by the spend cap")
+            return cut
+
+    def _cut_off(
+        self, system: list[SystemBlock], tools: list[dict[str, Any]], msgs: list[dict[str, Any]], last: StepResult,
+        steps: int,
+    ) -> LoopResult:  # fmt: skip
+        """Still out of room after the retry. What was written is checked like any answer, but it is
+        never passed off as complete: it says it stopped. A half-written tool call is dropped, not run."""
+        self.notes.append("max_tokens")
+        whole = [b for b in last.content if b.get("type") not in {"tool_use", "server_tool_use"}]
+        kept = StepResult(content=whole, stop_reason="end_turn", usage=last.usage, cost_usd=last.cost_usd)
+        result = self._finish(system, tools, msgs, kept, steps) if render(whole)[0].strip() else None
+        text = result.text if result is not None else ""
+        if text.strip() == "…":
+            text = ""
+        sources = result.sources if result is not None else []
+        return self._result((text + "\n\n" if text else "") + CUT_OFF, sources, self.notes, steps)
 
     # --- the source check ------------------------------------------------------
 

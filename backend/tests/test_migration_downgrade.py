@@ -45,7 +45,8 @@ def test_downgrading_0023_keeps_the_latest_cycle_of_a_snoozed_rung():
                 conn.execute(
                     text(
                         "INSERT INTO escalation_delivery (id, tenant_id, agent_id, escalation_id, step, cycle,"
-                        " provider, token, external_ref, error, status) VALUES (:id, :t, :a, :e, 1, :c, :p, :tok, '', '', 'sent')"
+                        " provider, token, external_ref, error, status)"
+                        " VALUES (:id, :t, :a, :e, 1, :c, :p, :tok, '', '', 'sent')"
                     ),
                     {
                         "id": uuid.uuid4(), "t": tenant, "a": agent, "e": escalation, "c": cycle, "p": provider,
