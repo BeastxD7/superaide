@@ -82,7 +82,6 @@ test.describe('signed in with an account that has not hired', () => {
     await expect(page.getByRole('heading', { name: /One thing before you start/ })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Hire Ava' })).toBeDisabled()
     await page.screenshot({ path: `${QA}/hire-catalog-error-silent.png`, fullPage: true })
-    test.fail(true, 'BUG: if /agents fails, the hire page shows an empty notice and a dead Hire button with no message or retry')
     await expect(page.getByText(/can't|couldn't|try again/i)).toBeVisible({ timeout: 3000 })
   })
 })
