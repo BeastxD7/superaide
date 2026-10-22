@@ -10,6 +10,28 @@ from superaide.jobs.queue import run_due
 log = logging.getLogger(__name__)
 
 
+def schedule_recurring() -> None:
+    """Make sure each hired instance's recurring work (the daily digest, the meeting scan) is
+    queued, inside that instance's scope. One instance failing never stops the others."""
+    from superaide.db.session import session_scope
+    from superaide.proactive.digest import ensure_scheduled
+    from superaide.tenancy.context import default_scope, use_instance
+    from superaide.tenancy.service import active_scopes
+
+    try:
+        with session_scope() as s:
+            scopes = active_scopes(s) or [default_scope()]
+    except Exception:
+        log.exception("couldn't list agent instances")
+        return
+    for scope in scopes:
+        try:
+            with use_instance(scope), session_scope() as s:
+                ensure_scheduled(s)
+        except Exception:
+            log.exception("couldn't schedule the digest for instance %s", scope.agent_id)
+
+
 class JobWorker:
     def __init__(self, interval: float = 5.0) -> None:
         self.interval = interval
@@ -22,14 +44,7 @@ class JobWorker:
         from superaide.jobs.handlers import load
 
         load()
-        try:  # make sure recurring work (the daily digest) is queued
-            from superaide.db.session import session_scope
-            from superaide.proactive.digest import ensure_scheduled
-
-            with session_scope() as s:
-                ensure_scheduled(s)
-        except Exception:
-            log.exception("couldn't schedule the digest")
+        schedule_recurring()
         self._stop.clear()
         self._thread = threading.Thread(target=self._loop, name="job-worker", daemon=True)
         self._thread.start()

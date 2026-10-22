@@ -517,7 +517,10 @@ class Job(Scoped, Base):
     """
 
     __tablename__ = "job"
-    __table_args__ = (Index("ix_job_due", "status", "run_at"),)
+    __table_args__ = (
+        Index("ix_job_due", "status", "run_at"),
+        UniqueConstraint("agent_id", "dedupe_key", name="uq_job_dedupe"),
+    )
 
     kind: Mapped[str] = mapped_column(String(40), index=True)
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
@@ -529,7 +532,7 @@ class Job(Scoped, Base):
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     locked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    dedupe_key: Mapped[str | None] = mapped_column(String(200), nullable=True, unique=True)
+    dedupe_key: Mapped[str | None] = mapped_column(String(200), nullable=True)  # unique per instance
 
 
 class Intention(Scoped, Base):
@@ -576,5 +579,6 @@ class InstalledSkill(Scoped, Base):
 # Tables defined in their own modules, imported here so every user of Base (Alembic,
 # the tests' create_all) sees them.
 from superaide.auth import models as _auth_models  # noqa: E402, F401
+from superaide.jobs import claim as _job_claim  # noqa: E402, F401  (the claim function, made after the job table)
 from superaide.tenancy import models as _tenancy_models  # noqa: E402, F401
 from superaide.triage import models as _triage_models  # noqa: E402, F401

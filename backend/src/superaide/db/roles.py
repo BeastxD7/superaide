@@ -50,6 +50,11 @@ def ensure_app_role(conn: Connection, *, name: str = DEFAULT_ROLE, password: str
         text(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO {name}")
     )
     conn.execute(text(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO {name}"))
+    # The worker claims due jobs across instances only through this one function (jobs/claim.py).
+    if conn.scalar(text("SELECT to_regprocedure('claim_due_jobs(timestamptz, integer, integer, interval)')")):
+        conn.execute(
+            text(f"GRANT EXECUTE ON FUNCTION claim_due_jobs(timestamptz, integer, integer, interval) TO {name}")
+        )
     # Migrations are the owner's job; the app may not touch their bookkeeping.
     if conn.scalar(text("SELECT to_regclass('alembic_version') IS NOT NULL")):
         conn.execute(text(f"REVOKE INSERT, UPDATE, DELETE ON alembic_version FROM {name}"))

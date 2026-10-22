@@ -173,6 +173,14 @@ def instances_of(session: Session, user_id: uuid.UUID) -> list[tuple[AgentInstan
     return [(i, m) for i, m in rows]
 
 
+def active_scopes(session: Session) -> list[InstanceScope]:
+    """Every hired instance on the server (the worker serves them all)."""
+    rows = session.scalars(
+        select(AgentInstance).where(AgentInstance.status == "active").order_by(AgentInstance.created_at)
+    )
+    return [scope_of(i) for i in rows]
+
+
 def scope_of(instance: AgentInstance) -> InstanceScope:
     return InstanceScope(tenant_id=instance.tenant_id, agent_id=instance.id)
 
