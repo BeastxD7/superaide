@@ -109,4 +109,5 @@ def fill_path(path: str) -> str:
         .replace("{session_id}", "6f1f5b8e-0000-4000-8000-000000000006")
         .replace("{chunk_id}", "6f1f5b8e-0000-4000-8000-000000000009")
         .replace("{contact_id}", "6f1f5b8e-0000-4000-8000-00000000000a")
+        .replace("{import_id}", "6f1f5b8e-0000-4000-8000-000000000006")
     )

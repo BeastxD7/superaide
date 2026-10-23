@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { PassportPanel } from '@/features/dashboard/PassportPanel'
 import { CATEGORY_LABEL, SOURCE_LABEL, useAppData } from '@/features/dashboard/data'
 import { call, retryDocument, type Conflict, type ConflictCard, type Memory, type SharedDoc } from '@/lib/api'
 import { errorMessage } from '@/lib/action'
@@ -136,6 +137,8 @@ export function NotebookPage() {
         >
           <Network className="size-4 text-violet-700" aria-hidden /> Glass brain: see it as a map
         </Link>
+
+        <PassportPanel name={name} onChanged={reload} />
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative sm:w-72">

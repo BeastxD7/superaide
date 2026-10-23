@@ -342,3 +342,24 @@ def test_the_brain_routes_are_owner_routes_and_leak_nothing(app, browser, owner_
         r = stranger.request(method, fill_path(path), json={"text": "x"} if method == "POST" else None)
         assert r.status_code == 403
         _assert_no_owner_data(r, owner_data)
+
+
+# --- the memory passport (/app/passport) -------------------------------------------------------
+
+PASSPORT_ROUTES = {
+    ("GET", "/app/passport/export"),
+    ("POST", "/app/passport/import"),
+    ("GET", "/app/passport/imports"),
+    ("POST", "/app/passport/imports/{import_id}/erase"),
+}
+
+
+def test_the_passport_routes_are_owner_routes(app, browser, owner_data):
+    assert PASSPORT_ROUTES <= set(owner_routes(app))  # so the sweeps above cover them too
+    stranger = browser()
+    signup(stranger, name="Mallory Tan", email="mallory@example.com")
+    for method, path in PASSPORT_ROUTES:
+        assert browser().request(method, path.replace("{import_id}", str(uuid.uuid4()))).status_code == 401
+        r = stranger.request(method, path.replace("{import_id}", str(uuid.uuid4())))
+        assert r.status_code == 403
+        _assert_no_owner_data(r, owner_data)
