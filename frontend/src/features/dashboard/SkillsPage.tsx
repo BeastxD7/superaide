@@ -188,7 +188,7 @@ export function SkillsPage({ google = null }: { google?: string | null }) {
                     {s.installed && !s.removable && <span className="text-xs text-muted">Always on</span>}
                   </div>
                 )}
-                {s.installed && s.google_connected === false && (
+                {s.installed && s.google_connected === false && s.id !== 'superaide/gmail' && (
                   <div className="mt-3">
                     <Notice tone="warn">
                       Google isn&apos;t connected, so this can&apos;t work yet.{' '}
@@ -199,10 +199,10 @@ export function SkillsPage({ google = null }: { google?: string | null }) {
                     </Notice>
                   </div>
                 )}
-                {s.installed && s.id === 'superaide/gmail' && s.google_connected !== false && !asking && <GmailPanel name={name} />}
+                {s.installed && s.id === 'superaide/gmail' && !asking && <GmailPanel name={name} />}
 
                 {s.installed &&
-                  s.google_connected !== false &&
+                  (s.google_connected !== false || s.id === 'superaide/gmail') && // Gmail's own panel and options explain a missing Google
                   (s.options ?? []).map((o) => {
                     const key = `${s.id}:${o.setting}`
                     return (
