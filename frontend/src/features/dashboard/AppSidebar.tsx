@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/sidebar'
 import { useNeedsYou } from '@/features/needs-you/useNeedsYou'
 import { useRehearsalEnabled } from '@/features/rehearsal/useRehearsal'
+import { useSchoolEnabled } from '@/features/school/useSchool'
 import type { Me } from '@/lib/api'
 import { agentStatus, navItemFor, NAV } from '@/features/dashboard/nav'
 import type { Session } from '@/lib/session-context'
@@ -42,6 +43,7 @@ export function AppSidebar({ session, me }: { session: Session; me: Me }) {
   const isActive = (href: string) => navItemFor(pathname)?.href === href
   const triage = useNeedsYou(60_000)
   const rehearsal = useRehearsalEnabled()
+  const school = useSchoolEnabled()
 
   return (
     <Sidebar collapsible="icon" variant="inset">
@@ -81,7 +83,7 @@ export function AppSidebar({ session, me }: { session: Session; me: Me }) {
             <SidebarGroupContent>
               <SidebarMenu>
                 {items
-                  .filter((i) => (!i.triage || triage.enabled) && (!i.rehearsal || rehearsal))
+                  .filter((i) => (!i.triage || triage.enabled) && (!i.rehearsal || rehearsal) && (!i.school || school))
                   .map(({ href, label, icon: Icon, triage: counted }) => (
                   <SidebarMenuItem key={href}>
                     <SidebarMenuButton asChild isActive={isActive(href)} tooltip={label}>

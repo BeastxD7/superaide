@@ -52,6 +52,8 @@ export const VOICE = process.env.E2E_VOICE === '1'
 
 // The rehearsal room (#58): E2E_REHEARSAL=1 switches it on (it needs E2E_BRAIN=1 for a model to play the other side).
 export const REHEARSAL = process.env.E2E_REHEARSAL === '1'
+// Ava School (#57), the local half: E2E_SCHOOL=1 switches it on.
+export const SCHOOL = process.env.E2E_SCHOOL === '1'
 
 export const ADMIN_TOKEN = 'e2e-admin-token'
 export const PASSWORD = 'correct horse battery staple'
@@ -97,6 +99,7 @@ export function apiEnv(): Record<string, string> {
         }
       : {}),
     ...(REHEARSAL ? { REHEARSAL_ENABLED: 'true' } : {}),
+    ...(SCHOOL ? { SCHOOL_ENABLED: 'true' } : {}),
     ...(VOICE ? { VOICE_INTRO_V2: 'true', VOICE_ASR: 'fake', VOICE_TTS: 'fake' } : {}),
   }
 }

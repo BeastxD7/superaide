@@ -167,6 +167,9 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     from superaide.triage.routes import make_router as make_triage_router
 
     app.include_router(make_triage_router(get_agent))  # 404 everywhere while TRIAGE_ENABLED is off
+    from superaide.school.routes import make_router as make_school_router
+
+    app.include_router(make_school_router(get_agent))  # 404 everywhere while SCHOOL_ENABLED is off
     from superaide.reception.routes import make_router as make_reception_router
 
     app.include_router(make_reception_router(get_agent))  # receptionist (ADR 0010 TR5)
