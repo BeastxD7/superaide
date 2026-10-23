@@ -84,7 +84,7 @@ def test_the_page_shows_the_card_and_nothing_private(browser, owner, on):
     assert body["ai"] is True and body["acts_for"] == "A. Tan"
     assert body["can"] == ["Propose times"] and body["cannot"] == ["Agree prices"]
     assert set(body) == {"ai", "agent", "acts_for", "can", "cannot", "valid_until", "notice"}
-    assert "Bluebird" not in r.text and "shashank" not in r.text.lower() and "@" not in r.text
+    assert "Bluebird" not in r.text and "jordan" not in r.text.lower() and "@" not in r.text
 
 
 def test_no_card_until_the_owner_chooses_a_display_name(owner, on):

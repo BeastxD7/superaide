@@ -378,9 +378,9 @@ def test_delivered_reminders_are_listed_apart_from_upcoming_ones_and_clearing_on
 
 
 def test_the_owner_prompt_says_the_chat_is_their_verified_account():
-    # Live Telegram test 2026-10-22: "Btw I'm Shashank" got "I can't verify identity from messages alone".
+    # Live Telegram test 2026-10-22: "Btw I'm Jordan" got "I can't verify identity from messages alone".
     with session_scope() as s:
-        turn = turn_for(s, Script("Hi!"), "btw I'm Shashank")
+        turn = turn_for(s, Script("Hi!"), "btw I'm Jordan")
         prompt = "\n".join(b.text for b in turn.system())
         assert "verified by the app through a linked identity" in prompt and "never doubt" in prompt
 

@@ -122,7 +122,7 @@ def test_only_installed_skills_give_ava_tools():
 @pytest.fixture
 def owner(agent):
     c = TestClient(create_app(agent), headers={"X-Requested-With": "superaide"})
-    c.post("/auth/signup", json={"name": "Shashank Rao", "email": "s@example.com", "password": PASSWORD})
+    c.post("/auth/signup", json={"name": "Jordan Whitfield", "email": "s@example.com", "password": PASSWORD})
     c.post("/app/hire", json={"agent": "ava", "accepted_notice": True})
     return c
 

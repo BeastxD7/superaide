@@ -19,7 +19,7 @@ NOW = datetime(2026, 10, 24, 3, 0, tzinfo=UTC)
 
 
 def world(s):
-    o = Person(display_name="Shashank Rao", relation="unknown")
+    o = Person(display_name="Jordan Whitfield", relation="unknown")
     s.add(o)
     s.flush()
     c = Context(provider="telegram", tenant_scope="", external_id="chat1", kind="dm", audience_class="private_1to1")
@@ -109,9 +109,9 @@ def notes(s, o, texts, source="chat"):
 def test_exact_duplicates_are_merged_keeping_the_better_sourced_note():
     with session_scope() as s:
         o, _ = world(s)
-        doc = notes(s, o, ["Shashank is the CEO of Orchard Labs."], source="document")[0]
-        said = notes(s, o, ["shashank is the CEO of Orchard Labs"], source="chat")[0]
-        notes(s, o, [f"Fact number {i} about Shashank." for i in range(6)])
+        doc = notes(s, o, ["Jordan is the CEO of Orchard Labs."], source="document")[0]
+        said = notes(s, o, ["jordan is the CEO of Orchard Labs"], source="chat")[0]
+        notes(s, o, [f"Fact number {i} about Jordan." for i in range(6)])
         run = sleep.run_for_owner(s, o, NOW)
         assert run.retired_ids == [doc.id]  # the document copy goes, never the owner's own words
         assert doc.valid_to is not None and said.valid_to is None
@@ -330,10 +330,10 @@ def test_without_a_model_no_pair_is_merged():
 def test_a_locked_note_is_never_merged_away_as_a_duplicate():
     with session_scope() as s:
         o, _ = world(s)
-        doc = notes(s, o, ["Shashank is the CEO of Orchard Labs."], source="document")[0]
-        said = notes(s, o, ["shashank is the CEO of Orchard Labs"], source="chat")[0]
+        doc = notes(s, o, ["Jordan is the CEO of Orchard Labs."], source="document")[0]
+        said = notes(s, o, ["jordan is the CEO of Orchard Labs"], source="chat")[0]
         doc.locked = True  # the owner pinned the copy read from the file
-        notes(s, o, [f"Fact number {i} about Shashank." for i in range(6)])
+        notes(s, o, [f"Fact number {i} about Jordan." for i in range(6)])
         run = sleep.run_for_owner(s, o, NOW)
         assert doc.valid_to is None and said.valid_to is not None and run.retired_ids == [said.id]
         said.valid_to = None

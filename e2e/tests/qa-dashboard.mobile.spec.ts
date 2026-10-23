@@ -7,7 +7,7 @@ import { expectNoSidewaysScroll, goToDashboardPage, sidebarTrigger } from '../sr
 const QA = `${process.env.QA_SHOTS_DIR ?? 'test-results/qa-shots'}/dashboard`
 
 const PAGES: { path: string; heading: RegExp | string }[] = [
-  { path: '/dashboard', heading: /^Good (morning|afternoon|evening), Shashank$/ },
+  { path: '/dashboard', heading: /^Good (morning|afternoon|evening), Ananya$/ },
   { path: '/dashboard/chat', heading: 'Your conversation with Ava' },
   { path: '/dashboard/notebook', heading: "Ava's notebook" },
   { path: '/dashboard/people', heading: 'People who matter' },

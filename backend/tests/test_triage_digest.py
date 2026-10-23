@@ -29,7 +29,7 @@ PASSWORD = "correct horse battery"
 @pytest.fixture
 def owner_id(agent) -> uuid.UUID:
     c = TestClient(create_app(agent), headers={"X-Requested-With": "superaide"})
-    c.post("/auth/signup", json={"name": "Shashank Rao", "email": "s@example.com", "password": PASSWORD,
+    c.post("/auth/signup", json={"name": "Jordan Whitfield", "email": "s@example.com", "password": PASSWORD,
                                  "timezone": "Asia/Singapore"})  # fmt: skip
     c.post("/app/hire", json={"agent": "ava", "accepted_notice": True})
     with session_scope() as s:
@@ -86,7 +86,7 @@ def test_sections_in_order_with_empty_ones_left_out(owner_id, on):
     decide(owner_id, "hold", "automated sender", name="Build bot", hits=["R4_automated"])
     decide(owner_id, "hold", "couldn't classify", name="Lee", hits=["classifier:bad_quote"])
     text = compose(owner_id)
-    assert text is not None and text.startswith("Good morning, Shashank.")
+    assert text is not None and text.startswith("Good morning, Jordan.")
     order = [text.index(h) for h in ("**Needs your decision**", "**Escalations**", "**Messages taken**")]
     assert order == sorted(order)
     assert "**Handled for you**" not in text

@@ -175,7 +175,7 @@ def manager() -> Person:
     with session_scope() as s:
         return bootstrap_person(
             s,
-            name="Shashank",
+            name="Jordan",
             relation="manager",
             identities=[("telegram", "", MANAGER_TG), ("slack", OUR_TEAM, MANAGER_SLACK)],
         )

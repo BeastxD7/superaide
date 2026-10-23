@@ -212,7 +212,7 @@ Oban's and Graphile Worker's per-queue concurrency, applied per tenant.
   2. **Managed bots** (Bot API 9.6, April 2026): a manager bot with management mode enabled sends the
      owner a `t.me/newbot/...` link; once they confirm, the manager receives a `managed_bot` update and
      calls `getManagedBotToken` to get the child bot's token. One tap gives each owner their own bot
-     (e.g. `@ShashankAvaBot`), with routing by bot and no BotFather. *To confirm against the official
+     (e.g. `@AnanyaAvaBot`), with routing by bot and no BotFather. *To confirm against the official
      docs before building: limits per owner, and who owns the bot if the owner leaves.*
   3. **Business connections** (Bot API 7.2, *from memory; to confirm*): an owner with Telegram Premium connects a bot to their
      personal account, and the bot answers messages people send to the **owner's own account**, each

@@ -83,7 +83,7 @@ class SeedMessage(Strict):
 
 class World(Strict):
     timezone: str = "Asia/Kolkata"
-    owner_name: str = "Shashank Rao"
+    owner_name: str = "Jordan Whitfield"
     colleague: bool = True  # Priya Tan, linked on Slack
     second_owner: bool = False  # another account that hires its own Ava (multi-tenant)
     web_pages: dict[str, str] = Field(default_factory=dict)  # url → page text; web_fetch reads these

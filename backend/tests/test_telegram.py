@@ -30,7 +30,7 @@ def update(
 ) -> dict[str, Any]:
     message: dict[str, Any] = {
         "message_id": 7,
-        "from": sender if sender is not None else {"id": 1001, "is_bot": False, "first_name": "Shashank"},
+        "from": sender if sender is not None else {"id": 1001, "is_bot": False, "first_name": "Jordan"},
         "chat": chat or {"id": 1001, "type": "private"},
     }
     if text is not None:
@@ -53,11 +53,11 @@ def test_an_empty_header_does_not_match_a_configured_secret():
 
 def test_a_private_chat_is_a_dm_with_the_numeric_ids_as_strings():
     msg = parse_update(
-        update(sender={"id": 1001, "first_name": "Shashank", "last_name": "Rao", "username": "sr"}), verified=True
+        update(sender={"id": 1001, "first_name": "Jordan", "last_name": "Whitfield", "username": "jw"}), verified=True
     )
     assert msg is not None
     assert (msg.provider, msg.tenant_scope, msg.sender_id, msg.chat_id) == ("telegram", "", "1001", "1001")
-    assert (msg.chat_kind, msg.message_id, msg.sender_display, msg.sender_username) == ("dm", "7", "Shashank Rao", "sr")
+    assert (msg.chat_kind, msg.message_id, msg.sender_display, msg.sender_username) == ("dm", "7", "Jordan Whitfield", "jw")
     assert msg.verified is True and msg.raw["update_id"] == 1
 
 
@@ -121,12 +121,12 @@ def recording_client(status: int = 200, body: dict[str, Any] | None = None) -> t
 
 def test_send_dm_posts_to_the_bot_api_with_the_user_id_as_chat_id():
     client, seen = recording_client()
-    TelegramMessenger(TOKEN, client).send_dm(ChannelIdentity(stable_key="1001"), "Hi Shashank")
+    TelegramMessenger(TOKEN, client).send_dm(ChannelIdentity(stable_key="1001"), "Hi Jordan")
     [request] = seen
     assert request.method == "POST"
     assert str(request.url) == f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     body = json.loads(request.content)
-    assert body["chat_id"] == "1001" and body["text"] == "Hi Shashank" and body["parse_mode"] == "HTML"
+    assert body["chat_id"] == "1001" and body["text"] == "Hi Jordan" and body["parse_mode"] == "HTML"
 
 
 def test_send_to_context_posts_to_the_group_chat_id():

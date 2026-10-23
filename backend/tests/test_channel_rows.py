@@ -27,7 +27,7 @@ def owner_with(model, outbox, settings, **tokens) -> TestClient:
     )
     assert (
         c.post(
-            "/auth/signup", json={"name": "Shashank Rao", "email": "s@example.com", "password": PASSWORD}
+            "/auth/signup", json={"name": "Jordan Whitfield", "email": "s@example.com", "password": PASSWORD}
         ).status_code
         == 200
     )

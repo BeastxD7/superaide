@@ -60,7 +60,7 @@ def test_next_run_follows_the_preference_and_time_zone():
 @pytest.fixture
 def owner(agent):
     c = TestClient(create_app(agent), headers={"X-Requested-With": "superaide"})
-    body = {"name": "Shashank Rao", "email": "s@example.com", "password": PASSWORD, "timezone": "Asia/Singapore"}
+    body = {"name": "Jordan Whitfield", "email": "s@example.com", "password": PASSWORD, "timezone": "Asia/Singapore"}
     c.post("/auth/signup", json=body)
     c.post("/app/hire", json={"agent": "ava", "accepted_notice": True})
     return c
@@ -92,7 +92,7 @@ def test_a_morning_digest_lists_today_dates_with_context_and_approvals(owner, da
         s.add(Approval(kind="publish_post", payload={"summary": "x"}))
         s.flush()
         text = digest.compose(s, person, now, "morning")
-    assert text is not None and text.startswith("Good morning, Shashank.")
+    assert text is not None and text.startswith("Good morning, Jordan.")
     assert "Call the bank" in text and "**Today**" in text
     assert "Priya's birthday in 3 days" in text and "really into pottery" in text
     assert "**Waiting for your OK:** 1" in text
@@ -132,7 +132,7 @@ def test_the_digest_job_sends_once_and_schedules_the_next(owner):
         run_at = job.run_at
     assert run_due(run_at + timedelta(seconds=1)) == 1
     texts = [m["text"] for m in owner.get("/app/messages").json()]
-    assert any(t.startswith("Good morning, Shashank.") for t in texts)
+    assert any(t.startswith("Good morning, Jordan.") for t in texts)
     with session_scope() as s:
         queued = s.scalars(select(Job).where(Job.kind == "send_digest", Job.status == "queued")).all()
         assert len(queued) == 1 and queued[0].run_at > run_at  # tomorrow's
@@ -144,7 +144,7 @@ def test_the_digest_job_sends_once_and_schedules_the_next(owner):
     [
         ("Priya Tan's birthday is on 14 November.", "Priya's birthday"),  # live eval: was "Tan's birthday"
         ("My sister Anya's birthday is 14 November", "Anya's birthday"),
-        ("Shashank's sister Anya's birthday is 14 November", "Anya's birthday"),
+        ("Jordan's sister Anya's birthday is 14 November", "Anya's birthday"),
         ("mum's birthday is 14 November", "mum's birthday"),
     ],
 )

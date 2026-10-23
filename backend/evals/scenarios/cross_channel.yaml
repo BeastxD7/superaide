@@ -71,7 +71,7 @@
   clock: "12:00"
   world:
     memories:
-      - content: "Shashank does not like the colour black."
+      - content: "Jordan does not like the colour black."
         category: preference
     messages:
       - via: telegram

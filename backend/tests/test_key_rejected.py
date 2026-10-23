@@ -201,7 +201,7 @@ def test_chat_says_credits_are_unavailable_when_they_are_the_ones_refused(owner_
 def test_a_colleague_gets_a_plain_apology_and_the_owner_the_note(owner_client, provider, colleague, agent):  # noqa: F811
     from tests.conftest import sl
 
-    result = agent.handle(sl("U_PRIYA", "Is Shashank around?"))
+    result = agent.handle(sl("U_PRIYA", "Is Jordan around?"))
     assert result.reply == keyhealth.OTHERS_CHAT and "key" not in result.reply.lower()
     assert any("key was rejected" in t for t in told(owner_client))
 

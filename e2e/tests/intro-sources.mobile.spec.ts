@@ -44,10 +44,10 @@ test('the intro tab labels are readable in full on a phone', async ({ page }) =>
 
 test('the files list fits a phone screen, even with a long file name', async ({ page }) => {
   await openTab(page, 'Files & links')
-  const long = 'Shashank-Rao-Curriculum-Vitae-2026-final-final-v3-for-the-assistant-with-a-very-long-name.txt'
+  const long = 'Ananya-Menon-Curriculum-Vitae-2026-final-final-v3-for-the-assistant-with-a-very-long-name.txt'
   await chooseFile(page, textFile(long, 'I lead applied AI at PebbleRoad in Singapore.'))
   await expect(fileRow(page, long)).toBeVisible()
-  await chooseFile(page, pdf(['Shashank Rao', 'Leads applied AI at PebbleRoad in Singapore.']))
+  await chooseFile(page, pdf(['Ananya Menon', 'Leads applied AI at PebbleRoad in Singapore.']))
   await expect(fileRow(page, 'resume.pdf')).toBeVisible()
 
   for (const title of [long, 'resume.pdf']) {

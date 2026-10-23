@@ -19,7 +19,7 @@ from superaide.db.session import session_scope
 from superaide.skills import gmail, registry
 from superaide.vault import store
 
-OWNER_ADDR = "shashank@example.com"
+OWNER_ADDR = "jordan@example.com"
 CLIENT_ID = "1234-abc.apps.googleusercontent.com"
 CLIENT_SECRET = "test-google-client-secret-9z"
 REFRESH = "gmail-refresh-token-test-only"
@@ -219,7 +219,7 @@ def owner_client_fixture(agent):
 
     c = TestClient(create_app(agent), headers={"X-Requested-With": "superaide"})
     r = c.post(
-        "/auth/signup", json={"name": "Shashank Rao", "email": "s@example.com", "password": "correct horse battery"}
+        "/auth/signup", json={"name": "Jordan Whitfield", "email": "s@example.com", "password": "correct horse battery"}
     )
     assert r.status_code == 200
     assert c.post("/app/hire", json={"agent": "ava", "accepted_notice": True}).status_code == 200

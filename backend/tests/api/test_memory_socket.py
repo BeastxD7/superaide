@@ -17,7 +17,7 @@ from tests.api.conftest import OTHER, signup
 
 PUBLIC_FACT = "Ava answers scheduling questions on weekdays"
 ORG_FACT = "The team offsite is in Lisbon in March"
-PRIVATE_FACT = "Shashank's passport number is on the blue folder"
+PRIVATE_FACT = "Jordan's passport number is on the blue folder"
 SECRET_FACT = "The acquisition codename is Bluebird acquisition"
 
 

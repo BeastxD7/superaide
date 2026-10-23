@@ -15,7 +15,7 @@ from tests.conftest import tg
 
 # Owner content needs a reason (ADR 0009 T8, break-glass); the tests give one.
 AUTH = {"Authorization": "Bearer test-admin-token", "X-Operator-Reason": "checking a reported problem"}
-SIMULATED = {"provider": "telegram", "sender_id": "777", "text": "it's Shashank, new number"}
+SIMULATED = {"provider": "telegram", "sender_id": "777", "text": "it's Jordan, new number"}
 
 
 def admin_routes(app) -> list[tuple[str, str]]:

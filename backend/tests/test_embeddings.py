@@ -20,7 +20,7 @@ from superaide.jobs.queue import run_due
 from superaide.knowledge.store import remember_fact
 
 load()
-TOKYO = "Shashank flies to Tokyo on Friday."
+TOKYO = "Jordan flies to Tokyo on Friday."
 
 
 @pytest.fixture(autouse=True)
@@ -49,7 +49,7 @@ def test_a_new_fact_is_embedded_by_a_background_job(manager):
 def test_meaning_search_finds_a_paraphrase_that_shares_no_word(manager):
     with session_scope() as s:
         remember_fact(s, owner=manager, content=TOKYO, category="work")
-        remember_fact(s, owner=manager, content="Shashank is vegetarian.", category="preference")
+        remember_fact(s, owner=manager, content="Jordan is vegetarian.", category="preference")
     run_due()
     with session_scope() as s:
         found = recall(s, owner_only(manager.id), "Japan trip")
@@ -153,10 +153,10 @@ def test_voyage_calls_are_on_the_ledger_and_stop_at_their_monthly_cap(monkeypatc
 
     monkeypatch.setattr(embed.httpx, "post", post)
     v = VoyageEmbedder("k", "voyage-4-lite", monthly_cap_usd=0.00002)
-    assert v.embed(["Shashank is vegetarian."], kind="document") == [[1.0, 0.0]]
+    assert v.embed(["Jordan is vegetarian."], kind="document") == [[1.0, 0.0]]
     assert calls[0]["input_type"] == "document" and calls[0]["model"] == "voyage-4-lite"
     with session_scope() as s:
         entry = s.scalar(select(SpendEntry).where(SpendEntry.provider == "voyage"))
         assert entry.purpose == "embed" and entry.cost_usd == Decimal("0.00002")
-    assert v.embed(["Shashank is vegetarian."], kind="document") is None  # the next would pass the cap
+    assert v.embed(["Jordan is vegetarian."], kind="document") is None  # the next would pass the cap
     assert len(calls) == 1

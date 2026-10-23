@@ -25,7 +25,7 @@ def browser(agent):
     return make
 
 
-def hired(browser, email="s@example.com", name="Shashank Rao") -> TestClient:
+def hired(browser, email="s@example.com", name="Jordan Whitfield") -> TestClient:
     c = browser()
     assert c.post("/auth/signup", json={"name": name, "email": email, "password": PASSWORD}).status_code == 200
     assert c.post("/app/hire", json={"agent": "ava", "accepted_notice": True}).status_code == 200
@@ -43,7 +43,7 @@ def test_the_owner_sees_a_request_and_approves_it_once(browser, model):
     owner = hired(browser)
     pending = ask_for(owner, model, "publish_post", "Publish the launch post")
     assert pending["status"] == "pending" and pending["summary"] == "Publish the launch post"
-    assert pending["requested_by"] == "Shashank Rao"
+    assert pending["requested_by"] == "Jordan Whitfield"
 
     r = owner.post(f"/app/approvals/{pending['id']}/approve")
     assert r.status_code == 200 and r.json()["status"] == "approved"
@@ -65,7 +65,7 @@ def test_a_rejected_request_is_recorded_and_never_runs(browser, model):
     assert r.status_code == 200 and r.json() == {"status": "rejected", "result": None}
     with session_scope() as s:
         approval = s.scalar(select(Approval))
-        assert approval is not None and approval.decided_by == "Shashank Rao" and approval.decided_at is not None
+        assert approval is not None and approval.decided_by == "Jordan Whitfield" and approval.decided_at is not None
 
 
 def test_only_the_owner_can_see_or_decide_approvals(browser, model):

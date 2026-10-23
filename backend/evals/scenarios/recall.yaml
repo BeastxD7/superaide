@@ -6,7 +6,7 @@
   based_on: 'missing "black colour" vs "color" (2026-10-21)'
   world:
     memories:
-      - content: "Shashank does not like the colour black."
+      - content: "Jordan does not like the colour black."
         category: preference
   turns:
     - say: "do i like black color?"
@@ -22,7 +22,7 @@
   title: A misspelled question still finds the note
   world:
     memories:
-      - content: "Shashank's favourite cuisine is Thai food."
+      - content: "Jordan's favourite cuisine is Thai food."
         category: preference
   turns:
     - say: "whats my favrite cusine again"
@@ -37,7 +37,7 @@
   title: '"Food to avoid" finds the peanut allergy'
   world:
     memories:
-      - content: "Shashank is allergic to peanuts."
+      - content: "Jordan is allergic to peanuts."
   turns:
     - say: "is there any food I should stay away from?"
       expect:
@@ -112,8 +112,8 @@
   title: Conflicting notes are flagged, not silently merged
   world:
     memories:
-      - content: "Shashank's gym is Cult Fit in Indiranagar."
-      - content: "Shashank moved to Gold's Gym in Koramangala."
+      - content: "Jordan's gym is Cult Fit in Indiranagar."
+      - content: "Jordan moved to Gold's Gym in Koramangala."
   turns:
     - say: "which gym do I go to?"
       expect:

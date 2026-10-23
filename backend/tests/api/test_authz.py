@@ -95,7 +95,7 @@ def owner_data(owner) -> dict[str, str]:
         memory = s.scalar(select(MemoryItem.id).where(MemoryItem.content.contains("Bluebird")))
         return {
             "email": OWNER["email"],
-            "surname": "Rao",
+            "surname": "Whitfield",
             "user_id": str(account.id),
             "person_id": str(account.person_id),
             "note": "Bluebird",
@@ -253,7 +253,7 @@ def test_public_brain_routes_are_404_while_off_and_carry_no_owner_data(browser, 
 
 def test_public_ask_routes_are_404_while_off_and_carry_no_owner_data(browser, owner_data):
     for method, path in sorted(PUBLIC_ASK):
-        r = browser().request(method, path.replace("{handle}", "shashank"), json={} if method == "POST" else None)
+        r = browser().request(method, path.replace("{handle}", "jordan"), json={} if method == "POST" else None)
         assert r.status_code == 404, (method, path, r.status_code, r.text)
         assert r.json()["detail"] == "Not Found"
         _assert_no_owner_data(r, owner_data)

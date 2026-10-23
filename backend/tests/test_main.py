@@ -163,7 +163,7 @@ def test_slack_webhook_is_closed_when_no_signing_secret_is_configured(configure,
 
 
 def test_verified_slack_message_reaches_the_agent(client, model, colleague, outbox):
-    body = _slack_event(COLLEAGUE_SLACK, "is Shashank free at 3?")
+    body = _slack_event(COLLEAGUE_SLACK, "is Jordan free at 3?")
     r = client.post("/webhooks/slack", content=body, headers=_slack_headers(body))
     assert r.json() == {"ok": True}
     assert len(model.systems) == 1 and "Priya Tan" in model.systems[0] and outbox["slack"].sent

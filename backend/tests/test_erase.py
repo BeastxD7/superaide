@@ -24,7 +24,7 @@ from superaide.main import create_app
 load()
 PASSWORD = "correct horse battery"
 PHRASE = "zanzibar-quokka-7731"
-FACT = "Shashank collects zanzibar quokka stamps."
+FACT = "Jordan collects zanzibar quokka stamps."
 
 
 class Script:
@@ -47,7 +47,7 @@ def script(agent, monkeypatch):
 @pytest.fixture
 def owner(agent, script):
     client = TestClient(create_app(agent), headers={"X-Requested-With": "superaide"})
-    client.post("/auth/signup", json={"name": "Shashank Rao", "email": "s@example.com", "password": PASSWORD})
+    client.post("/auth/signup", json={"name": "Jordan Whitfield", "email": "s@example.com", "password": PASSWORD})
     client.post("/app/hire", json={"agent": "ava", "accepted_notice": True})
     return client
 
@@ -142,14 +142,14 @@ def test_erasing_what_was_retired_or_superseded_clears_pointers(owner, agent):
     r = share(agent, BODY)
     with session_scope() as s:
         fact = s.scalar(select(MemoryItem).where(MemoryItem.content == FACT))
-        older = MemoryItem(content="Shashank collects coins.", subject_person_ids=fact.subject_person_ids)
+        older = MemoryItem(content="Jordan collects coins.", subject_person_ids=fact.subject_person_ids)
         s.add(older)
         s.flush()
         older.superseded_by = fact.id
     assert owner.post(f"/app/intro/documents/{r.document_id}/erase").status_code == 200
     with session_scope() as s:
         assert (
-            s.scalar(select(MemoryItem.superseded_by).where(MemoryItem.content == "Shashank collects coins.")) is None
+            s.scalar(select(MemoryItem.superseded_by).where(MemoryItem.content == "Jordan collects coins.")) is None
         )
 
 

@@ -85,7 +85,7 @@ def live_link(session: Session, handle: str) -> AskLink | None:
 
 
 def display_line(session: Session, link: AskLink) -> tuple[str, str | None]:
-    """("Shashank's assistant", "Shashank") when the owner opted in, else a line that names nobody."""
+    """("Jordan's assistant", "Jordan") when the owner opted in, else a line that names nobody."""
     if link.show_first_name:
         owner = session.get(Person, link.owner_person_id)
         first = (owner.display_name.split() or [""])[0][:40] if owner else ""

@@ -180,7 +180,7 @@ export function AuthPage({
                   onChange={(e) => setName(e.target.value)}
                   autoComplete="name"
                   maxLength={120}
-                  placeholder="e.g. Shashank Rao"
+                  placeholder="e.g. Ananya Menon"
                   aria-invalid={error?.field === 'name'}
                   className="mt-2 w-full rounded-2xl border border-white bg-white px-4 py-3.5 text-ink outline-none placeholder:text-muted focus:border-violet-400 focus:ring-2 focus:ring-violet-400/60"
                 />

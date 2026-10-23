@@ -33,17 +33,17 @@ def seed() -> dict[str, str]:
     with session_scope() as s:
         owner = s.get(Person, owner_id)
         assert owner is not None
-        chat = remember_fact(s, owner=owner, content="Shashank prefers calls before 11am.", category="preference")
+        chat = remember_fact(s, owner=owner, content="Jordan prefers calls before 11am.", category="preference")
         doc = Document(
             owner_person_id=owner_id, kind="pdf", title="resume.pdf", source="resume.pdf", sha256="b" * 64, text="x"
         )
         s.add(doc)
         s.flush()
         filed = remember_fact(
-            s, owner=owner, content="Shashank led Project Bluebird with Arjun.", category="work", source="document",
+            s, owner=owner, content="Jordan led Project Bluebird with Arjun.", category="work", source="document",
             document=doc,
         )  # fmt: skip
-        old = remember_fact(s, owner=owner, content="Shashank lives in Pune.", category="about")
+        old = remember_fact(s, owner=owner, content="Jordan lives in Pune.", category="about")
         assert chat and filed and old
         old.created_at = datetime.now(UTC) - timedelta(days=400)
         add_contact(s, owner=owner, name="Arjun Mehta", relationship="team")
@@ -53,7 +53,7 @@ def seed() -> dict[str, str]:
         s.flush()
         remember_fact(s, owner=stranger, content="Priya plans a surprise party.", category="about")
         hidden = MemoryItem(  # about the owner, but only Priya may see it
-            content="Shashank is being considered for a board seat.",
+            content="Jordan is being considered for a board seat.",
             subject_person_ids=[owner_id],
             allowed_kind="persons",
             allowed_person_ids=[stranger.id],
@@ -71,9 +71,9 @@ def test_the_map_has_people_topics_facts_and_where_they_came_from(browser):
     ids = seed()
     m = a.get("/app/brain").json()
     assert set(labels(m, "fact")) == {
-        "Shashank prefers calls before 11am.",
-        "Shashank led Project Bluebird with Arjun.",
-        "Shashank lives in Pune.",
+        "Jordan prefers calls before 11am.",
+        "Jordan led Project Bluebird with Arjun.",
+        "Jordan lives in Pune.",
     }
     assert set(labels(m, "topic")) == {"preference", "work", "about"}
     assert labels(m, "person") == ["Arjun Mehta"] and labels(m, "source") == ["resume.pdf"]
@@ -96,7 +96,7 @@ def test_a_fact_the_owner_may_not_see_is_never_rendered(browser):
     text = a.get("/app/brain").text
     for secret in ("surprise party", "board seat", "Priya"):
         assert secret not in text, secret
-    assert "Shashank" not in b.get("/app/brain").text  # and the other owner sees none of it
+    assert "Jordan" not in b.get("/app/brain").text  # and the other owner sees none of it
 
 
 def test_forgetting_moves_a_fact_to_the_forgotten_shelf(browser):
@@ -104,18 +104,18 @@ def test_forgetting_moves_a_fact_to_the_forgotten_shelf(browser):
     ids = seed()
     assert a.post(f"/app/notebook/{ids['chat']}/forget").status_code == 200
     m = a.get("/app/brain").json()
-    assert "Shashank prefers calls before 11am." not in labels(m, "fact")
-    assert [f["text"] for f in m["forgotten"]] == ["Shashank prefers calls before 11am."]
+    assert "Jordan prefers calls before 11am." not in labels(m, "fact")
+    assert [f["text"] for f in m["forgotten"]] == ["Jordan prefers calls before 11am."]
 
 
 def test_correcting_retires_the_old_fact_and_records_the_owners_words(browser):
     a, _ = owners(browser)
     ids = seed()
-    r = a.post(f"/app/brain/facts/{ids['old']}/correct", json={"text": "Shashank lives in Singapore."})
+    r = a.post(f"/app/brain/facts/{ids['old']}/correct", json={"text": "Jordan lives in Singapore."})
     assert r.status_code == 200
     m = a.get("/app/brain").json()
-    assert "Shashank lives in Pune." not in labels(m, "fact") and "Shashank lives in Singapore." in labels(m, "fact")
-    assert [f["text"] for f in m["forgotten"]] == ["Shashank lives in Pune."]
+    assert "Jordan lives in Pune." not in labels(m, "fact") and "Jordan lives in Singapore." in labels(m, "fact")
+    assert [f["text"] for f in m["forgotten"]] == ["Jordan lives in Pune."]
     with session_scope() as s:
         new = s.get(MemoryItem, uuid.UUID(r.json()["id"]))
         assert new is not None and new.source == "owner_edit" and new.confidence == 1.0 and new.category == "about"
@@ -140,7 +140,7 @@ def test_the_share_picture_has_no_names_or_text(browser):
     seed()
     r = a.get("/app/brain/share.svg")
     assert r.status_code == 200 and r.headers["content-type"].startswith("image/svg+xml")
-    for private in ("Shashank", "Bluebird", "Arjun", "Pune", "resume", "11am", "Priya", "surprise"):
+    for private in ("Jordan", "Bluebird", "Arjun", "Pune", "resume", "11am", "Priya", "surprise"):
         assert private not in r.text, private
     assert "<circle" in r.text and "things Ava knows" in r.text
 
@@ -163,17 +163,17 @@ def test_the_brain_routes_need_the_owner(browser):
 def test_a_corrected_fact_stays_on_the_map_struck_through_and_points_at_its_replacement(browser):
     a, _ = owners(browser)
     ids = seed()
-    new_id = a.post(f"/app/brain/facts/{ids['old']}/correct", json={"text": "Shashank lives in Singapore."}).json()[
+    new_id = a.post(f"/app/brain/facts/{ids['old']}/correct", json={"text": "Jordan lives in Singapore."}).json()[
         "id"
     ]
     m = a.get("/app/brain").json()
     by_id = {n["id"]: n for n in m["nodes"]}
     old, new = by_id[f"fact:{ids['old']}"], by_id[f"fact:{new_id}"]
-    assert old["superseded"] is True and old["label"] == "Shashank lives in Pune."
+    assert old["superseded"] is True and old["label"] == "Jordan lives in Pune."
     assert old["replaced_by"] == f"fact:{new_id}" and "superseded" not in new
     assert {"from": f"fact:{ids['old']}", "to": f"fact:{new_id}", "kind": "replaced_by"} in m["edges"]
     # The live facts are unchanged: the struck-through one is not counted as something Ava believes.
-    assert m["origins"]["you"]["count"] == 2 and "Shashank lives in Pune." in [f["text"] for f in m["forgotten"]]
+    assert m["origins"]["you"]["count"] == 2 and "Jordan lives in Pune." in [f["text"] for f in m["forgotten"]]
 
 
 def test_forgetting_a_fact_is_not_a_replacement_and_adds_no_strike_through(browser):
@@ -254,4 +254,4 @@ def test_a_locked_fact_can_still_be_corrected_by_the_owner(browser):
     a, _ = owners(browser)
     ids = seed()
     a.post(f"/app/brain/facts/{ids['old']}/lock")
-    assert a.post(f"/app/brain/facts/{ids['old']}/correct", json={"text": "Shashank lives in Goa."}).status_code == 200
+    assert a.post(f"/app/brain/facts/{ids['old']}/correct", json={"text": "Jordan lives in Goa."}).status_code == 200

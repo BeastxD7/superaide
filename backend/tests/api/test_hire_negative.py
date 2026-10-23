@@ -69,7 +69,7 @@ def test_a_second_account_hires_its_own_ava_and_learns_nothing_about_the_first(b
     assert r.status_code == 200 and r.json()["person"]["name"] == OTHER["name"]
     with session_scope() as s:
         owner_account = s.scalar(select(UserAccount).where(UserAccount.email_normalized == OWNER["email"]))
-        secrets = [OWNER["email"], "Shashank", "Rao", str(owner_account.id), str(owner_account.person_id)]
+        secrets = [OWNER["email"], "Jordan", "Whitfield", str(owner_account.id), str(owner_account.person_id)]
     for secret in secrets:
         assert secret not in r.text, secret
     assert _hires() == 2
@@ -89,7 +89,7 @@ def test_in_single_owner_mode_a_second_account_gets_409_and_learns_nothing_about
     assert r.status_code == 409
     with session_scope() as s:
         owner_account = s.scalar(select(UserAccount).where(UserAccount.email_normalized == OWNER["email"]))
-        secrets = [OWNER["email"], "Shashank", "Rao", str(owner_account.id), str(owner_account.person_id)]
+        secrets = [OWNER["email"], "Jordan", "Whitfield", str(owner_account.id), str(owner_account.person_id)]
     for secret in secrets:
         assert secret not in r.text, secret
     # Nothing changed for either of them.

@@ -9,7 +9,7 @@ async function noSidewaysScroll(page: Page) {
 
 test('on a phone, someone signs up, hires Ava and starts the introduction', async ({ page, api }) => {
   void api
-  const me = newPerson('Shashank Rao')
+  const me = newPerson('Ananya Menon')
   await page.goto('/agents/ava')
   await noSidewaysScroll(page)
   await page.screenshot({ path: 'test-results/journey/phone-profile.png', fullPage: true })

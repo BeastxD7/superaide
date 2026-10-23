@@ -139,7 +139,7 @@ GUIDES = {
         "url": "https://t.me/BotFather",
         "steps": [
             "Open @BotFather in Telegram and send /newbot.",
-            "Pick a name (e.g. Ava for Shashank) and a username ending in bot.",
+            "Pick a name (e.g. Ava for Jordan) and a username ending in bot.",
             "BotFather replies with a token like 123456789:AAE…. Copy it.",
             "Paste it here. Then open your bot once so it knows it's you.",
         ],

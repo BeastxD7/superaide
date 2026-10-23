@@ -26,7 +26,7 @@ test.describe('approvals', () => {
     await page.getByRole('button', { name: 'Yes, go ahead' }).click()
     await expect(card).toHaveCount(0)
     const rows = await query<{ status: string; decided_by: string }>('SELECT status, decided_by FROM approval')
-    expect(rows).toEqual([{ status: 'approved', decided_by: 'Shashank Rao' }])
+    expect(rows).toEqual([{ status: 'approved', decided_by: 'Ananya Menon' }])
   })
 
   test('"No" rejects it, and it never comes back @smoke', async ({ page, owner }) => {

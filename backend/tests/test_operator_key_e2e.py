@@ -17,7 +17,7 @@ def hosted_operator(monkeypatch):
     monkeypatch.setattr(env, "deploy_mode", "hosted")
     monkeypatch.setattr(env, "anthropic_api_key", SERVER_KEY)
     monkeypatch.setattr(env, "platform_anthropic_api_key", SERVER_KEY)
-    monkeypatch.setattr(env, "platform_key_owner_emails", "shashank@pebbleroad.com")
+    monkeypatch.setattr(env, "platform_key_owner_emails", "jordan@example.com")
     monkeypatch.setattr(env, "fake_llm", False)
     monkeypatch.setattr(env, "run_channels_in_api", False)
     monkeypatch.setattr(env, "run_jobs_in_api", False)
@@ -36,7 +36,7 @@ def test_the_operators_web_chat_is_not_offline(hosted_operator, monkeypatch):
 
     monkeypatch.setattr(factory, "build_llm", spy)
     c = TestClient(create_app(), headers={"X-Requested-With": "superaide"})
-    assert c.post("/auth/signup", json={"name": "Shashank", "email": "shashank@pebbleroad.com",
+    assert c.post("/auth/signup", json={"name": "Jordan", "email": "jordan@example.com",
                                         "password": "correct horse battery"}).status_code == 200  # fmt: skip
     assert c.post("/app/hire", json={"agent": "ava", "accepted_notice": True}).status_code == 200
     me = c.get("/app/me").json()
@@ -58,7 +58,7 @@ def test_the_operators_chat_stream_answers_with_the_server_key(hosted_operator, 
     c = TestClient(create_app(), headers={"X-Requested-With": "superaide"})
     c.post(
         "/auth/signup",
-        json={"name": "Shashank", "email": "Shashank@PebbleRoad.com", "password": "correct horse battery"},
+        json={"name": "Jordan", "email": "Jordan@Example.com", "password": "correct horse battery"},
     )
     assert c.post("/app/hire", json={"agent": "ava", "accepted_notice": True}).status_code == 200
     with c.stream("POST", "/app/chat/stream", json={"text": "hi"}) as r:
@@ -73,7 +73,7 @@ def test_someone_else_on_the_same_server_stays_offline(hosted_operator, monkeypa
     c = TestClient(create_app(), headers={"X-Requested-With": "superaide"})
     c.post(
         "/auth/signup",
-        json={"name": "Shashank", "email": "shashank@pebbleroad.com", "password": "correct horse battery"},
+        json={"name": "Jordan", "email": "jordan@example.com", "password": "correct horse battery"},
     )
     c.post("/app/hire", json={"agent": "ava", "accepted_notice": True})
     other = TestClient(create_app(), headers={"X-Requested-With": "superaide"})

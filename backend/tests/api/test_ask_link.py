@@ -42,7 +42,7 @@ def form(**over):
         "name": "Lee Wong",
         "contact": "lee@example.org",
         "topic": "Speaking at our conference",
-        "why": "We'd love Shashank on the AI panel.",
+        "why": "We'd love Jordan on the AI panel.",
         "deadline": None,
         "website": "",
     }
@@ -80,7 +80,7 @@ def test_bad_handles_are_refused_with_a_reason(bad):
         handles.check(bad)
 
 
-@pytest.mark.parametrize("ok", ["shashank-k", "ava-k3q9tz", "grapes-and-peacocks", "sussex-77", "bad-minton", "abc"])
+@pytest.mark.parametrize("ok", ["jordan-w", "ava-k3q9tz", "grapes-and-peacocks", "sussex-77", "bad-minton", "abc"])
 def test_ordinary_handles_are_fine(ok):
     assert handles.check(ok) == ok
 
@@ -108,7 +108,7 @@ def test_a_suggestion_that_spells_a_rude_word_is_replaced_not_returned(monkeypat
 
 
 def test_handles_are_case_folded(owner):
-    assert publish(owner, "Shashank-K")["link"]["handle"] == "shashank-k"
+    assert publish(owner, "Jordan-W")["link"]["handle"] == "jordan-w"
 
 
 def test_creating_needs_a_valid_handle(owner):
@@ -142,15 +142,15 @@ def test_the_page_names_nobody_unless_the_owner_opts_in(owner, browser):
     page = browser().get("/p/ask/ava-k3q9tz")
     assert page.status_code == 200
     body = page.json()
-    assert body["first_name"] is None and "Shashank" not in page.text and "Rao" not in page.text
+    assert body["first_name"] is None and "Jordan" not in page.text and "Whitfield" not in page.text
     assert OWNER["email"] not in page.text
     assert "AI assistant" in body["notice"]  # EU AI Act Art. 50: said up front
     assert body["token"].startswith("v1.")
 
     owner.put("/app/ask-link", json={"show_first_name": True})
     page = browser().get("/p/ask/ava-k3q9tz")
-    assert page.json()["display"] == "Shashank's assistant" and page.json()["first_name"] == "Shashank"
-    assert "Rao" not in page.text and OWNER["email"] not in page.text
+    assert page.json()["display"] == "Jordan's assistant" and page.json()["first_name"] == "Jordan"
+    assert "Whitfield" not in page.text and OWNER["email"] not in page.text
 
 
 def _shape(r) -> tuple[int, bytes, str | None]:

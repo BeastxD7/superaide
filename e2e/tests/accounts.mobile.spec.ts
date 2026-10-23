@@ -45,7 +45,7 @@ test.describe('accounts on a phone', () => {
     const f = signupForm(page)
 
     // A long name and email still fit.
-    await fillSignup(page, { name: 'Shashank '.repeat(13).trim(), email: taken.email, password: 'too short' })
+    await fillSignup(page, { name: 'Ananya '.repeat(13).trim(), email: taken.email, password: 'too short' })
     await expectNoHorizontalScroll(page)
     await expectTappable(page, f.submit)
     await f.submit.tap()

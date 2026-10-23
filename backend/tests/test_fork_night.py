@@ -35,7 +35,7 @@ def drafts(purpose, system, messages, output_model):
 
 def owner() -> Person:
     with session_scope() as s:
-        o = Person(display_name="Shashank", relation="manager")
+        o = Person(display_name="Jordan", relation="manager")
         s.add(o)
         s.flush()
         s.expunge(o)
@@ -76,7 +76,7 @@ def test_branches_see_only_the_question_and_complete_has_no_tools_argument(on, s
     from superaide.knowledge.store import remember_fact
 
     with session_scope() as s:
-        o = Person(display_name="Shashank", relation="manager")
+        o = Person(display_name="Jordan", relation="manager")
         s.add(o)
         s.flush()
         remember_fact(s, owner=o, content=SECRET, category="work")
@@ -94,7 +94,7 @@ def test_branches_see_only_the_question_and_complete_has_no_tools_argument(on, s
     assert len(agent.llm.calls) == 3
     for call in agent.llm.calls:
         blob = "\n".join(b.text for b in call["system"]) + str(call["messages"])
-        assert "Bluebird" not in blob and "Shashank" not in blob  # no memory, no owner brief
+        assert "Bluebird" not in blob and "Jordan" not in blob  # no memory, no owner brief
         assert call["messages"][0]["content"].count("Plan a trip") == 1
 
 

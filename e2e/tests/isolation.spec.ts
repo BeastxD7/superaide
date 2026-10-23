@@ -43,7 +43,7 @@ test.describe('two owners', () => {
   })
 
   test('an account that has not hired sees none of the owner’s data', async ({ browser }) => {
-    const a = await hired(browser, 'Shashank Rao')
+    const a = await hired(browser, 'Ananya Menon')
     await tell(a, SECRET_A)
     const b = await account(browser, 'Priya Tan')
     for (const path of ['/app/me', '/app/notebook', '/app/messages', '/app/people', '/app/preferences', '/app/reminders']) {
@@ -58,7 +58,7 @@ test.describe('two owners', () => {
   })
 
   test('the marketplace never names who hired Ava', async ({ browser }) => {
-    const a = await hired(browser, 'Shashank Rao')
+    const a = await hired(browser, 'Ananya Menon')
     const b = await account(browser, 'Priya Tan')
     const listing = await b.api.ok<unknown>(b.api.get('/app/agents'))
     expect(JSON.stringify(listing)).not.toContain(a.person.name)
@@ -66,21 +66,21 @@ test.describe('two owners', () => {
   })
 
   test('a second owner can hire their own Ava', async ({ browser }) => {
-    await hired(browser, 'Shashank Rao')
+    await hired(browser, 'Ananya Menon')
     const b = await account(browser, 'Priya Tan')
     const r = await b.api.post('/app/hire', { agent: 'ava', accepted_notice: true })
     expect(r.status()).toBe(200)
   })
 
   test('the marketplace shows Ava as available to everyone', async ({ browser }) => {
-    await hired(browser, 'Shashank Rao')
+    await hired(browser, 'Ananya Menon')
     const b = await account(browser, 'Priya Tan')
     const listing = await b.api.ok<{ slug: string; hired?: boolean }[]>(b.api.get('/app/agents'))
     expect(listing.find((x) => x.slug === 'ava')?.hired).toBeFalsy()
   })
 
   test('each owner’s notebook holds only what they told their own Ava @smoke', async ({ browser }) => {
-    const a = await hired(browser, 'Shashank Rao')
+    const a = await hired(browser, 'Ananya Menon')
     const b = await hired(browser, 'Priya Tan')
     await tell(a, SECRET_A)
     await tell(b, SECRET_B)
@@ -92,7 +92,7 @@ test.describe('two owners', () => {
   })
 
   test('each owner’s conversation, reminders and people stay their own', async ({ browser }) => {
-    const a = await hired(browser, 'Shashank Rao')
+    const a = await hired(browser, 'Ananya Menon')
     const b = await hired(browser, 'Priya Tan')
     await tell(a, SECRET_A)
     await a.api.ok(a.api.post('/app/reminders', { text: 'Call the bank tomorrow at 5pm' }))
@@ -104,7 +104,7 @@ test.describe('two owners', () => {
   })
 
   test('one owner cannot act on the other’s memories by id @smoke', async ({ browser }) => {
-    const a = await hired(browser, 'Shashank Rao')
+    const a = await hired(browser, 'Ananya Menon')
     const b = await hired(browser, 'Priya Tan')
     await tell(a, SECRET_A)
     const [fact] = (await a.api.ok<{ memories?: { id: string }[] }>(a.api.get('/app/notebook'))).memories ?? []

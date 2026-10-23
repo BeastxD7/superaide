@@ -105,7 +105,7 @@ The overall rank weights risk and fit above virality, because the owner said rel
 - **x.ai's "Amy Ingram" scheduling assistant** is the closest historical cousin of Ava-to-Ava scheduling:
   - Bloomberg found human trainers reviewed almost every email before Amy replied ([Bloomberg](https://www.bloomberg.com/news/articles/2016-04-18/the-humans-hiding-behind-the-chatbots)).
   - The product was later discontinued; we found no primary post-mortem.
-  - Lesson: promising "100% service delivery" from an autonomous agent leads to hidden humans or broken trust. Ava's honest "I'll check with Shashank" is the antidote, not a weakness.
+  - Lesson: promising "100% service delivery" from an autonomous agent leads to hidden humans or broken trust. Ava's honest "I'll check with Ananya" is the antidote, not a weakness.
 - **2026.** Our searches found no well-documented new "AI employee" collapse, so that picture is unconfirmed.
 
 ### Proactive assistants
@@ -162,12 +162,12 @@ Each idea lists the user story, the loop, what we already have, the risks, and t
 
 ### 1. "Ask my Ava" link, with code-decided intake for strangers *(team and referral loop, part 1)*
 
-**User story.** Shashank puts `superaide.com/a/shashank-k` (or a pseudonymous handle) in his email signature, LinkedIn "contact" field and out-of-office.
+**User story.** Ananya puts `superaide.com/a/ananya-m` (or a pseudonymous handle) in his email signature, LinkedIn "contact" field and out-of-office.
 - Anyone who clicks reaches Ava on the web.
 - Known contacts, verified by a platform ID they've already linked, get the normal conversation inside their audience.
 - Strangers get a short intake: who they are, what it's about, how urgent, and the best channel back.
 - Ava decides nothing about them with the model. Code turns the intake into a triaged card in the owner's digest.
-- After submitting, the visitor sees "Ava is Shashank's AI assistant. She'll pass this on." and a quiet "Get your own Ava" link.
+- After submitting, the visitor sees "Ava is Ananya's AI assistant. She'll pass this on." and a quiet "Get your own Ava" link.
 
 **Why it spreads.**
 - It is the Calendly loop: every use exposes a non-user to the product at the moment they see it working.
@@ -198,10 +198,10 @@ Each idea lists the user story, the loop, what we already have, the risks, and t
 
 ### 2. "While you were out": away mode and a handover note *(required: the inbox moment)*
 
-**User story.** Shashank flips Ava to "I'm away until Monday".
+**User story.** Ananya flips Ava to "I'm away until Monday".
 - On Telegram, Slack and the web, Ava tells each contact the owner is away, inside what their audience allows. She answers what she can from cited notes, and holds the rest.
 - Anything that matches the owner's critical rules goes up the escalation ladder.
-- On Monday at 08:00, Shashank gets one handover: "While you were out: 23 messages from 11 people. I answered 14 from your notes (sources attached). 7 are waiting for you, ranked. 2 I didn't understand. Nobody got anything they shouldn't have."
+- On Monday at 08:00, Ananya gets one handover: "While you were out: 23 messages from 11 people. I answered 14 from your notes (sources attached). 7 are waiting for you, ranked. 2 I didn't understand. Nobody got anything they shouldn't have."
 - Each item has Reply, Approve-my-draft or Snooze.
 
 **Why it spreads.**
@@ -231,9 +231,9 @@ Each idea lists the user story, the loop, what we already have, the risks, and t
 
 ### 3. Ava's report card: an opt-in public probation diary *(required)*
 
-**User story.** Shashank's Ava has a page: "Ava, apprentice to S.K. Hired 3 Oct. Stage: Infant → Child review on 2 Nov."
+**User story.** Ananya's Ava has a page: "Ava, apprentice to S.K. Hired 3 Oct. Stage: Infant → Child review on 2 Nov."
 - **The numbers**, all pulled from the database: messages handled, drafts approved unedited, drafts edited (with median edit size), approvals asked vs approved, abstentions, leak tests run and failed, and owner corrections this week vs last.
-- **"What I learned this week"**: owner-approved rules such as "Shashank cuts my first line 80% of the time; I open with the claim now".
+- **"What I learned this week"**: owner-approved rules such as "Ananya cuts my first line 80% of the time; I open with the claim now".
 - **One honest miss and how it was corrected.**
 - The owner can publish it, unpublish it, or share it as a private link.
 
@@ -295,10 +295,10 @@ Each idea lists the user story, the loop, what we already have, the risks, and t
 
 ### 5. Speaks their language *(required: uniquely global)*
 
-**User story.** A supplier in Ho Chi Minh City messages Shashank's Ava in Vietnamese on Telegram, and a colleague in Jakarta writes in Bahasa Indonesia.
+**User story.** A supplier in Ho Chi Minh City messages Ananya's Ava in Vietnamese on Telegram, and a colleague in Jakarta writes in Bahasa Indonesia.
 - Ava replies to each in their language.
-- Shashank's digest shows every item in English, with the original one tap away.
-- When Shashank approves a draft, he sees the English and the outgoing translation side by side.
+- Ananya's digest shows every item in English, with the original one tap away.
+- When Ananya approves a draft, he sees the English and the outgoing translation side by side.
 
 **Why it spreads.**
 - Founders in Southeast Asia and India work across many languages daily. "My assistant handles my Vietnamese suppliers" is a concrete, regional brag the US assistants don't target.
@@ -326,7 +326,7 @@ Each idea lists the user story, the loop, what we already have, the risks, and t
 
 ### 6. Voice notes in, voice briefing out *(required: voice)*
 
-**User story.** Walking to a meeting, Shashank holds the mic in Telegram: "Tell Priya I'll be 10 minutes late, and remind me to send her the deck tonight."
+**User story.** Walking to a meeting, Ananya holds the mic in Telegram: "Tell Priya I'll be 10 minutes late, and remind me to send her the deck tonight."
 - Ava transcribes the note.
 - She creates the reminder.
 - She drafts the message to Priya for one-tap approval.
@@ -375,8 +375,8 @@ Each idea lists the user story, the loop, what we already have, the risks, and t
 ### 8. Second seat: delegates and a gifted apprentice month *(required: team and referral loop, part 2)*
 
 **User story.**
-- *(a) Delegates.* Shashank adds his human EA as a **delegate** who can see and act on the approvals queue, but never the owner-only notebook.
-- *(b) Gifts.* He gets two gift links: "a 30-day apprentice Ava for a founder friend". The friend's Ava starts empty, because memory is never shared. It can import Shashank's *skills and settings templates* (urgency rules, digest times), never his data.
+- *(a) Delegates.* Ananya adds his human EA as a **delegate** who can see and act on the approvals queue, but never the owner-only notebook.
+- *(b) Gifts.* He gets two gift links: "a 30-day apprentice Ava for a founder friend". The friend's Ava starts empty, because memory is never shared. It can import Ananya's *skills and settings templates* (urgency rules, digest times), never his data.
 
 **Why it spreads.**
 - Delegates bring a second person into the product who sees its value daily.
@@ -400,14 +400,14 @@ Each idea lists the user story, the loop, what we already have, the risks, and t
 
 ### 9. Warm-intro broker: double-opt-in introductions
 
-**User story.** A founder asks Shashank's Ava, "Can Shashank intro me to someone at GovTech?"
+**User story.** A founder asks Ananya's Ava, "Can Ananya intro me to someone at GovTech?"
 - Ava checks the owner's notebook for a matching contact the asker's audience is allowed to know about.
 - She drafts a *double opt-in*: first to the contact ("A founder building X would like an intro. Interested?"), and only after a yes, the intro itself.
 - Every send needs owner approval.
 
 **Why it spreads.** Each intro touches two people who aren't the owner, both of whom see Ava acting with good manners. Intros are a high-value, high-frequency founder chore, and doing them well is memorable.
 
-**What makes it cheap.** The audience gate (who may learn that Shashank knows whom), the contacts table, drafts with approvals, and reminders for "no reply after 3 days" are all in place.
+**What makes it cheap.** The audience gate (who may learn that Ananya knows whom), the contacts table, drafts with approvals, and reminders for "no reply after 3 days" are all in place.
 
 **Risks.**
 - *Revealing a relationship* to someone not allowed to know it. The gate must cover *the existence* of a contact, not just facts about them: the "knowledge-state ledger" idea from the humanistic report.
@@ -418,7 +418,7 @@ Each idea lists the user story, the loop, what we already have, the risks, and t
 ### 10. Ava-to-Ava scheduling between Superaide owners *(agent-to-agent, step 1)*
 
 **User story.**
-- Priya's Ava and Shashank's Ava need to find 30 minutes next week.
+- Priya's Ava and Ananya's Ava need to find 30 minutes next week.
 - Each Ava sees only its own owner's calendar, and they exchange *proposed slots*, not calendars.
 - Each owner gets "Ava and Priya's Ava agreed Thu 3pm. Approve?"
 - On both approvals, both calendars update.
@@ -448,7 +448,7 @@ Each idea lists the user story, the loop, what we already have, the risks, and t
 **User story.**
 - A VIP contact's message hits a critical rule ("server down", "the term sheet expires today").
 - In-app and Telegram notifications went unacknowledged for 10 minutes.
-- Ava places a phone call to Shashank's own verified number and says: "This is Ava, your AI assistant. Priya says the term sheet expires at 5pm today. Press 1 to acknowledge, 2 to have me tell her you'll call back within the hour."
+- Ava places a phone call to Ananya's own verified number and says: "This is Ava, your AI assistant. Priya says the term sheet expires at 5pm today. Press 1 to acknowledge, 2 to have me tell her you'll call back within the hour."
 
 **Why it spreads.** It's weakly viral (one story per incident), but it's the most trust-building moment in the product: "my assistant woke me for the one thing that mattered". It earns word of mouth among exactly the busy owners we target. Outbound errand calls (Gemini Call for Me style) are the later, more viral extension, and they need disclosure, consent and much more engineering.
 
@@ -472,7 +472,7 @@ Each idea lists the user story, the loop, what we already have, the risks, and t
 ### 12. Open agent-to-agent: "my Ava orders from the restaurant's agent" *(required: later-stage bet)*
 
 **User story (2027+).**
-- Shashank says "order my usual from Tiong Bahru for 1pm".
+- Ananya says "order my usual from Tiong Bahru for 1pm".
 - His Ava finds the restaurant's A2A Agent Card and sends a structured order using his food preferences, which it shares only as the order's audience allows (allergies, yes; anything else, no).
 - It pays under an AP2-style mandate the owner signed in advance: "up to S$40 per meal, only at these merchants, only weekdays".
 - Every external agent's reply is treated as untrusted content.

@@ -35,13 +35,13 @@ def client(browser):
     return browser()
 
 
-def _signup(client, name="Shashank Rao", email="shashank@example.com"):
+def _signup(client, name="Jordan Whitfield", email="jordan@example.com"):
     r = client.post("/auth/signup", json={"name": name, "email": email, "password": PASSWORD})
     assert r.status_code == 200, r.text
     return r.json()
 
 
-def _hire(client, name="Shashank Rao", email="shashank@example.com"):
+def _hire(client, name="Jordan Whitfield", email="jordan@example.com"):
     _signup(client, name, email)
     r = client.post("/app/hire", json={"agent": "ava", "accepted_notice": True})
     assert r.status_code == 200, r.text
@@ -72,10 +72,10 @@ def test_hiring_needs_an_account_and_consent_and_everyone_gets_their_own(client,
     _signup(other, "Priya Tan", "priya@example.com")
     assert other.post("/app/hire", json={"agent": "ava", "accepted_notice": True}).status_code == 200
     assert other.get("/app/me").json()["person"]["name"] == "Priya Tan"
-    assert client.get("/app/me").json()["person"]["name"] == "Shashank Rao"
+    assert client.get("/app/me").json()["person"]["name"] == "Jordan Whitfield"
     ava = client.get("/app/agents").json()[0]
     assert ava["hired"] is False and "hired_by" not in ava
-    assert "Shashank" not in other.get("/app/agents").text
+    assert "Jordan" not in other.get("/app/agents").text
 
 
 def test_in_single_owner_mode_hiring_happens_once(client, browser, monkeypatch):
@@ -91,7 +91,7 @@ def test_in_single_owner_mode_hiring_happens_once(client, browser, monkeypatch):
     assert other.get("/app/me").status_code == 403  # and can't see Ava's workspace
     ava = client.get("/app/agents").json()[0]
     assert ava["hired"] is True and "hired_by" not in ava  # taken, but never by whom
-    assert "Shashank" not in client.get("/app/agents").text
+    assert "Jordan" not in client.get("/app/agents").text
 
 
 def test_app_needs_a_session(client):
@@ -176,7 +176,7 @@ def test_notebook_is_private_and_forgettable(client, agent, model, colleague):
     assert any("AI agent marketplace" in m["text"] for m in notebook)
 
     # A colleague asking in their own DM never sees it.
-    agent.handle(sl("U_PRIYA", "What is Shashank building?"))
+    agent.handle(sl("U_PRIYA", "What is Jordan building?"))
     assert "AI agent marketplace" not in model.systems[-1]
 
     mem = next(m for m in notebook if "AI agent marketplace" in m["text"])

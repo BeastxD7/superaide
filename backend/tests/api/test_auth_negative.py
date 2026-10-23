@@ -44,8 +44,8 @@ def clock(monkeypatch):
         ("qwertyuiop", "too easy"),
         ("aaaaaaaaaaaaaaaa", "too easy"),  # fewer than 4 different characters
         ("abababababababab", "too easy"),
-        ("ShashankRao is great", "name or email"),  # the name, spaces removed, case ignored
-        ("i am shashank 2026", "name or email"),  # the email's local part
+        ("JordanWhitfield is great", "name or email"),  # the name, spaces removed, case ignored
+        ("i am jordan 2026", "name or email"),  # the email's local part
     ],
 )
 def test_signup_refuses_weak_passwords_with_a_reason(browser, password, message):
@@ -62,7 +62,7 @@ def test_a_password_of_exactly_ten_or_256_characters_is_fine(browser):
 
 @pytest.mark.parametrize(
     "email",
-    ["not-an-email", "a@b", "@example.com", "shashank@", "a@@example.com", "a b@example.com", "a@exa mple.com", "  "],
+    ["not-an-email", "a@b", "@example.com", "jordan@", "a@@example.com", "a b@example.com", "a@exa mple.com", "  "],
 )
 def test_signup_refuses_invalid_emails(browser, email):
     r = signup(browser(), email=email)
@@ -74,7 +74,7 @@ def test_signup_refuses_invalid_emails(browser, email):
 
 
 @pytest.mark.parametrize(
-    "variant", ["SHASHANK@EXAMPLE.COM", "  shashank@example.com  ", "Shashank@Example.com", "\tshashank@example.com\n"]
+    "variant", ["JORDAN@EXAMPLE.COM", "  jordan@example.com  ", "Jordan@Example.com", "\tjordan@example.com\n"]
 )
 def test_duplicate_email_in_any_case_or_spacing_is_refused(browser, variant):
     assert signup(browser()).status_code == 200
@@ -95,7 +95,7 @@ def test_duplicate_email_in_any_case_or_spacing_is_refused(browser, variant):
         ("name", ""),
         ("password", ""),
         ("name", 12345),
-        ("email", ["shashank@example.com"]),
+        ("email", ["jordan@example.com"]),
         ("password", None),
     ],
 )
@@ -121,11 +121,11 @@ def test_signup_name_of_only_spaces_is_refused(browser):
 
 
 def test_signup_name_is_tidied(browser):
-    r = signup(browser(), name="  Shashank \n  Rao  ")
-    assert r.status_code == 200 and r.json()["user"]["name"] == "Shashank Rao"
+    r = signup(browser(), name="  Jordan \n  Whitfield  ")
+    assert r.status_code == 200 and r.json()["user"]["name"] == "Jordan Whitfield"
 
 
-@pytest.mark.parametrize("name", ["Shashank\x00Rao", "\x00", "Back\\\x00slash"])
+@pytest.mark.parametrize("name", ["Jordan\x00Rao", "\x00", "Back\\\x00slash"])
 def test_signup_with_a_nul_character_is_refused_not_a_server_error(browser, name):
     """Postgres can't store NUL; this used to fail on save with a 500."""
     r = signup(browser(), name=name)
@@ -165,7 +165,7 @@ def test_unknown_email_and_wrong_password_look_the_same(browser):
         login(browser(), password="not the password at all"),
         login(browser(), email="nobody@example.com"),
         login(browser(), email="not even an email"),
-        login(browser(), email="SHASHANK@example.com", password="Correct Horse Battery"),  # case matters
+        login(browser(), email="JORDAN@example.com", password="Correct Horse Battery"),  # case matters
     ]
     assert {r.status_code for r in answers} == {401}
     assert {r.json()["detail"] for r in answers} == {GENERIC_LOGIN_ERROR}
@@ -174,20 +174,20 @@ def test_unknown_email_and_wrong_password_look_the_same(browser):
 
 def test_login_works_with_the_email_in_any_case_or_spacing(browser):
     signup(browser())
-    assert login(browser(), email="  SHASHANK@Example.COM ").status_code == 200
+    assert login(browser(), email="  JORDAN@Example.COM ").status_code == 200
 
 
 @pytest.mark.parametrize(
     "body",
     [
         {},
-        {"email": "shashank@example.com"},
+        {"email": "jordan@example.com"},
         {"password": PASSWORD},
         {"email": "", "password": PASSWORD},
-        {"email": "shashank@example.com", "password": ""},
+        {"email": "jordan@example.com", "password": ""},
         {"email": 1, "password": 2},
         pytest.param({"email": "e" * 321, "password": PASSWORD}, id="email-321"),
-        pytest.param({"email": "shashank@example.com", "password": "p" * 1025}, id="password-1025"),
+        pytest.param({"email": "jordan@example.com", "password": "p" * 1025}, id="password-1025"),
     ],
 )
 def test_malformed_login_requests_are_refused(browser, body):
@@ -199,7 +199,7 @@ def test_malformed_login_requests_are_refused(browser, body):
 
 def test_login_with_a_nul_character_is_refused_not_a_server_error(browser):
     signup(browser())
-    for body in ({"email": "shashank@example.com\x00", "password": PASSWORD}, {"email": "\x00", "password": "x"}):
+    for body in ({"email": "jordan@example.com\x00", "password": PASSWORD}, {"email": "\x00", "password": "x"}):
         r = browser().post("/auth/login", json=body)
         assert r.status_code == 422, r.text
     assert login(browser()).status_code == 200
@@ -356,7 +356,7 @@ def test_wrong_current_password_changes_nothing(browser):
 
 
 @pytest.mark.parametrize(
-    ("new", "message"), [("short", "at least 10"), ("password123", "too easy"), ("shashank rao 1", "name or email")]
+    ("new", "message"), [("short", "at least 10"), ("password123", "too easy"), ("jordan whitfield 1", "name or email")]
 )
 def test_weak_new_password_is_refused_and_nothing_changes(browser, new, message):
     me, laptop = browser(), browser()
@@ -532,7 +532,7 @@ SECRET_PASSWORD = "my-very-secret-passphrase"
 @pytest.mark.parametrize(
     ("path", "body"),
     [
-        ("/auth/signup", {"name": "Shashank Rao", "email": "s@example.com", "password": SECRET_PASSWORD * 50}),
+        ("/auth/signup", {"name": "Jordan Whitfield", "email": "s@example.com", "password": SECRET_PASSWORD * 50}),
         ("/auth/signup", {"name": "", "email": "s@example.com", "password": SECRET_PASSWORD}),
         ("/auth/login", {"password": SECRET_PASSWORD}),  # a missing field's "input" is the whole body
         ("/auth/login", {"email": ["s@example.com"], "password": SECRET_PASSWORD}),
@@ -568,7 +568,7 @@ def test_google_sign_in_routes_ask_for_no_session_and_reveal_nothing(browser, ow
         assert c.get("/auth/google").json() == {"enabled": True}
         r = c.post("/auth/google/start", json={"next": "/workspace"})
         assert r.status_code == 200 and r.json().keys() == {"url"}
-        assert OWNER["email"] not in r.text and "Shashank" not in r.text
+        assert OWNER["email"] not in r.text and "Jordan" not in r.text
         r = c.get("/auth/google/callback", params={"code": "x", "state": "nope"}, follow_redirects=False)
         assert r.status_code == 303 and r.headers["location"].endswith("/login?google=expired")
     assert owner.get("/auth/me").status_code == 200  # a failed callback doesn't sign the owner out

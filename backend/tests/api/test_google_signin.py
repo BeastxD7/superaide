@@ -69,7 +69,7 @@ class FakeGoogle:
         now = int(time.time())
         self.claims = {
             "iss": "https://accounts.google.com", "aud": CLIENT_ID, "azp": CLIENT_ID, "sub": "g-1001",
-            "email": "shashank@example.com", "email_verified": True, "name": "Shashank Rao",
+            "email": "jordan@example.com", "email_verified": True, "name": "Jordan Whitfield",
             "iat": now, "exp": now + 3600,
         } | claims  # fmt: skip
 
@@ -186,7 +186,7 @@ def test_a_new_person_gets_a_verified_account_without_a_password(browser, google
     r = sign_in(c, google, next="/agents/ava/hire", timezone="Asia/Singapore")
     assert r.status_code == 303 and r.headers["location"] == f"{FRONT}/agents/ava/hire"
     me = c.get("/auth/me").json()["user"]
-    assert me["email"] == "shashank@example.com" and me["name"] == "Shashank Rao"
+    assert me["email"] == "jordan@example.com" and me["name"] == "Jordan Whitfield"
     assert me["email_verified"] is True and me["has_password"] is False and me["google"] is True
     assert me["timezone"] == "Asia/Singapore"
     user = account()
@@ -208,7 +208,7 @@ def test_returning_person_is_found_by_their_google_id_even_if_the_email_changed(
     google.identity(email="new-address@example.com")
     c = browser()
     assert reason(sign_in(c, google)) == "ok"
-    assert c.get("/auth/me").json()["user"]["email"] == "shashank@example.com"  # same account, keyed on sub
+    assert c.get("/auth/me").json()["user"]["email"] == "jordan@example.com"  # same account, keyed on sub
     with session_scope() as s:
         assert s.scalar(select(func.count()).select_from(UserAccount)) == 1
     assert events("google_login_ok") == 1
@@ -242,7 +242,7 @@ def test_linking_an_unverified_account_removes_the_squatters_password_and_sessio
 
 def test_an_email_in_another_case_still_links(browser, google):
     assert signup(browser()).status_code == 200
-    google.identity(email="Shashank@Example.COM")
+    google.identity(email="Jordan@Example.COM")
     assert reason(sign_in(browser(), google)) == "ok"
     assert account().google_sub == "g-1001"
 
@@ -429,7 +429,7 @@ def test_with_many_owners_a_new_google_account_can_hire_its_own_ava(browser, goo
     assert reason(sign_in(c, google, next="/agents/ava/hire")) == "ok"
     assert hire(c).status_code == 200
     me = c.get("/app/me")
-    assert me.status_code == 200 and "Shashank" not in me.text
+    assert me.status_code == 200 and "Jordan" not in me.text
     assert first.get("/app/me").status_code == 200  # the first owner keeps theirs
 
 

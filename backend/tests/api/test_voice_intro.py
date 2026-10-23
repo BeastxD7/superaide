@@ -72,8 +72,8 @@ def scripted(agent, monkeypatch):
         if purpose == "intro_facts":
             return FactList(
                 facts=[
-                    Fact(content="Shashank leads applied AI in Singapore.", category="work", confidence=1),
-                    Fact(content="Priya, Shashank's wife, can always get through.", category="person", confidence=1),
+                    Fact(content="Jordan leads applied AI in Singapore.", category="work", confidence=1),
+                    Fact(content="Priya, Jordan's wife, can always get through.", category="person", confidence=1),
                 ]
             )
         raise AssertionError(purpose)
@@ -113,7 +113,7 @@ def test_the_call_greets_then_takes_one_turn_per_utterance(owner, voice_on, fake
     assert cfg["asr"] == "fake" and cfg["tts"] == "fake" and cfg["brain"] == "scripted" and cfg["topics"] == 6
     start = events(owner.post("/app/intro/voice/start", json={"lang": "en-GB"}))
     sentences = [d["text"] for d in of(start, "sentence")]
-    assert sentences[0].startswith("Hello Shashank, I'm Ava.") and TOPICS[0].question in " ".join(sentences)
+    assert sentences[0].startswith("Hello Jordan, I'm Ava.") and TOPICS[0].question in " ".join(sentences)
     audio = of(start, "audio")
     assert len(audio) == len(sentences) and base64.b64decode(audio[0]["b64"])[:4] == b"RIFF"
     assert of(start, "done")[0]["timings"]["first_audio_ms"] >= 0
@@ -174,7 +174,7 @@ def test_claude_asks_one_follow_up_at_most_then_moves_on(owner, voice_on, script
 def test_the_model_ending_the_call_and_the_tag_never_spoken(owner, voice_on, scripted):
     replies, _ = scripted
     events(owner.post("/app/intro/voice/start", json={}))
-    replies.append("[end] Thank you, Shashank. I'll show you what I've learned.")
+    replies.append("[end] Thank you, Jordan. I'll show you what I've learned.")
     turn = say(owner)
     assert all("[" not in d["text"] for d in of(turn, "sentence"))
     assert of(turn, "done")[0]["ended"]
@@ -183,13 +183,13 @@ def test_the_model_ending_the_call_and_the_tag_never_spoken(owner, voice_on, scr
 def test_barge_in_keeps_only_what_the_owner_heard(owner, voice_on, scripted):
     replies, seen = scripted
     events(owner.post("/app/intro/voice/start", json={}))
-    turn = say(owner, audio=None, text="Hi", heard="Hello Shashank, I'm Ava. Thank you")
+    turn = say(owner, audio=None, text="Hi", heard="Hello Jordan, I'm Ava. Thank you")
     replies.append("[next] Of course. What are you focused on at the moment?")
-    turn = say(owner, audio=None, text="Sorry, go on", heard="Hello Shashank, I'm Ava. Thank you")
+    turn = say(owner, audio=None, text="Sorry, go on", heard="Hello Jordan, I'm Ava. Thank you")
     assert of(turn, "done")
     turns = call_state()["turns"]
     interrupted = [t for t in turns if t.get("interrupted")]
-    assert interrupted and interrupted[0]["text"].startswith("Hello Shashank, I'm Ava. Thank you")
+    assert interrupted and interrupted[0]["text"].startswith("Hello Jordan, I'm Ava. Thank you")
     assert any("[they interrupted here]" in m["content"] for m in seen[-1]["messages"])
 
 
@@ -227,13 +227,13 @@ def test_facts_are_proposed_at_the_end_and_saved_only_once_confirmed(owner, voic
     replies.append("[next] Thank you. Who matters most to you?")
     say(owner)
     proposed = owner.post("/app/intro/voice/finish").json()
-    assert [f["content"] for f in proposed["facts"]][0] == "Shashank leads applied AI in Singapore."
+    assert [f["content"] for f in proposed["facts"]][0] == "Jordan leads applied AI in Singapore."
     assert intro_call_facts() == []  # nothing saved yet
     assert owner.get("/app/intro/voice").json()["proposed"] == proposed["facts"]
 
     edited = [
-        {"content": "Shashank leads applied AI at PebbleRoad in Singapore.", "category": "work"},
-        {"content": "Priya, Shashank's wife, can always get through.", "category": "nonsense"},
+        {"content": "Jordan leads applied AI at PebbleRoad in Singapore.", "category": "work"},
+        {"content": "Priya, Jordan's wife, can always get through.", "category": "nonsense"},
     ]
     r = owner.post("/app/intro/voice/confirm", json={"facts": edited})
     assert r.status_code == 200 and r.json()["saved"] == 2
