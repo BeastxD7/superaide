@@ -19,7 +19,7 @@ Each run uses one **slot** (`E2E_SLOT`, default 0):
 | Web (Next.js) | 3100 + slot |
 | Database | `superaide_e2e_<slot>`, created and migrated automatically |
 
-Playwright starts both servers for the slot (see `playwright.config.ts`). Tests in a slot run one at a time, because each test starts from an empty database. For parallelism, run several slots at once (each test agent gets its own), or shard in CI (`--shard=1/3`).
+Playwright starts both servers for the slot (see `playwright.config.ts`). Tests in a slot run one at a time, because each test starts from an empty database. For parallelism, run several slots at once (each test agent gets its own), or shard in CI: `npx playwright test $(node scripts/shard.mjs 1 4)` runs shard 1 of 4, split by measured time from `shard-timings.json` (refresh with `node scripts/shard.mjs --update report.json`).
 
 Postgres comes from `E2E_PG_ADMIN_URL`. The default, `postgresql://agent:agent@localhost:5432/postgres`, matches `docker compose up -d db` and CI. The tests only ever create, wipe and use databases named `superaide_e2e_*`.
 

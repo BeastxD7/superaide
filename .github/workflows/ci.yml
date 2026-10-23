@@ -199,6 +199,15 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
+      # Next's build cache: unchanged modules are not recompiled. Keyed on the lockfile and the sources;
+      # an older entry for the same lockfile is a valid starting point.
+      - uses: actions/cache@v6
+        with:
+          path: frontend/.next/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}-${{ hashFiles('frontend/**/*.ts', 'frontend/**/*.tsx', 'frontend/**/*.css') }}
+          restore-keys: |
+            nextjs-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}-
+
       - run: npm ci --no-audit --no-fund
       - run: npm run lint
       - run: npm run typecheck
@@ -210,7 +219,7 @@ jobs:
           NEXT_TELEMETRY_DISABLED: 1
 
   e2e:
-    name: End-to-end (shard ${{ matrix.shard }}/3)
+    name: End-to-end (shard ${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
     timeout-minutes: 25
     # Runs beside backend, not after it: it builds its own API and web. A frontend failure still stops it,
@@ -221,7 +230,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4]
     services:
       postgres:
         image: pgvector/pgvector:pg17
@@ -256,6 +265,15 @@ jobs:
             frontend/package-lock.json
             e2e/package-lock.json
 
+      # Next's build cache: unchanged modules are not recompiled. Keyed on the lockfile and the sources;
+      # an older entry for the same lockfile is a valid starting point.
+      - uses: actions/cache@v6
+        with:
+          path: frontend/.next/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}-${{ hashFiles('frontend/**/*.ts', 'frontend/**/*.tsx', 'frontend/**/*.css') }}
+          restore-keys: |
+            nextjs-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}-
+
       - name: Install
         run: |
           (cd backend && uv python install && uv sync --locked --no-dev)
@@ -286,7 +304,11 @@ jobs:
 
       - name: Run end-to-end tests
         working-directory: e2e
-        run: npx playwright test --shard=${{ matrix.shard }}/3
+        # Spec files are split by measured time (e2e/shard-timings.json), not test count.
+        run: |
+          files=$(node scripts/shard.mjs ${{ matrix.shard }} 4)
+          test -n "$files" || { echo "::error::shard.mjs listed no spec files"; exit 1; }
+          npx playwright test $files
 
       - name: Run the API proxy contract tests
         if: matrix.shard == 1

@@ -48,6 +48,12 @@ CI runs `pytest -n auto` (pytest-xdist). The suite truncates every table before 
 
 `e2e` and `images` used to `need` backend, so a pull request's wall-clock was backend plus the slowest e2e shard (last green main run: backend 10:34 to 10:53, e2e 10:53 to 11:06). Neither job uses the backend job's output: e2e builds and starts its own API and web. They now need only `changes` and `frontend` (cheap, so a lint or type error still stops them early) and start in parallel with backend. The `CI result` gate still needs and requires backend, so nothing that protects main is weaker: a backend failure still fails the gate; it just no longer saves the runner minutes of e2e that would have been skipped.
 
+## Balanced e2e shards and the Next cache (PR A)
+
+Playwright's `--shard` splits by test count, and shard 2 held the slow specs (`intro-sources`, `introduction`): 20 minutes against 7 for the others. `e2e/scripts/shard.mjs` now places every spec file under `e2e/tests` (except the opt-in proxy and dev projects), slowest first, on the shard with the least time so far, using the measured seconds in `e2e/shard-timings.json`. A file missing from that file gets the average weight, so a new spec still runs on exactly one shard; an empty list fails the job. Four shards of about 5 minutes of tests each replace three. Refresh the timings from a full run: `npx playwright test --reporter=json > report.json` (with `PLAYWRIGHT_JSON_OUTPUT_NAME`), then `node scripts/shard.mjs --update report.json`; stale numbers only make shards slightly unequal, never skip a test.
+
+`frontend/.next/cache` is cached (frontend and e2e jobs, keyed on lockfile plus sources, with a lockfile-only fallback). The e2e `npm ci` stays on the setup-node npm cache (23 packages, seconds). Two Playwright slots per shard were not added: the 4-shard split already brings the longest shard near 5 minutes, and sharing 4 vCPUs between two API, two Next and two browser stacks risks timing flakes for little gain; revisit if shards grow.
+
 ## Plan
 
 1. Change detection and the gate (this PR).
