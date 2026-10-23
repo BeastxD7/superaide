@@ -72,6 +72,15 @@ A pull request merges when CI is green. Run the same checks locally first:
 
 CI runs the full browser suite when `frontend/`, `e2e/` or the API contract changes, and a short `@smoke` subset when only `backend/` changed. If you change an endpoint, request or response model, run `make openapi` and commit `backend/openapi.snapshot.json`; the backend tests fail until you do, and committing it selects the full browser suite. See [ADR 0013](docs/decisions/0013-ci-pipeline.md). CI runs the backend tests as two shards (`uv run pytest --shard 1/2`); locally `uv run pytest` still runs everything.
 
+CI runs only the tests a pull request can affect: every part of the code is a module in [`ci/modules.toml`](ci/modules.toml) with its own test files and e2e specs, and a change runs its module's tests plus those of the modules that import it. Shared files (models, migrations, `conftest.py`, lockfiles, the workflow, the OpenAPI snapshot, shared UI), anything no module owns, and any selector problem run the whole suite, as do `main`, the scheduled Full run and a pull request with the `full-suite` label. The design is in [docs/design/test-modules.md](docs/design/test-modules.md).
+
+```bash
+make test MODULE=memory    # one module and the modules that depend on it
+make test-changed          # what CI would run for your branch
+```
+
+**Adding a module, test or spec.** A new backend package or frontend feature group gets a `[modules.<name>]` entry (`src`, `tests`, `e2e`). A new test file goes under one module's `tests`, or starts with the line `# ci-module: <name>` so you need not edit the map. A new e2e spec is listed under the modules it exercises. `uv run pytest tests/test_select_tests.py` fails and names whatever is unmapped, so nothing can be left out of selection by accident.
+
  CI also builds the Docker images and validates the production compose file and Caddyfile.
 
 ## Pull requests

@@ -2,7 +2,7 @@
 # Non-developers: double-click start.command (or `bash start.command`) instead.
 
 .DEFAULT_GOAL := help
-.PHONY: help setup db db-down migrate migration api web dev lint fmt typecheck test e2e e2e-ui eval eval-live eval-gate eval-ltm-live eval-mem0 check check-env openapi build stack stack-down clean
+.PHONY: help setup db db-down migrate migration api web dev lint fmt typecheck test e2e e2e-ui eval eval-live eval-gate eval-ltm-live eval-mem0 test-changed check check-env openapi build stack stack-down clean
 
 BACKEND = cd backend &&
 FRONTEND = cd frontend &&
@@ -57,8 +57,26 @@ check-env: ## Every environment variable the app reads is in the .env.example fi
 openapi: ## Regenerate backend/openapi.snapshot.json after an API change (CI runs the full e2e when it changes)
 	$(BACKEND) uv run python scripts/openapi_snapshot.py
 
-test: ## Backend tests (needs TEST_DATABASE_URL, see backend/.env.example)
+# One module (MODULE=memory) or the diff against main: select_tests.py prints ALL, NONE or the test files.
+SELECT = uv run --project backend python scripts/select_tests.py --format pytest
+define run_selected
+	@sel=$$($(SELECT) $(1)) || exit 1; \
+	case "$$sel" in \
+	  NONE) echo "No backend tests selected.";; \
+	  ALL) echo "Running the whole backend suite."; $(BACKEND) uv run pytest;; \
+	  *) echo "Running: $$sel"; $(BACKEND) uv run pytest $$sel;; \
+	esac
+endef
+
+test: ## Backend tests (needs TEST_DATABASE_URL); MODULE=memory runs one module and what depends on it
+ifdef MODULE
+	$(call run_selected,--module $(MODULE))
+else
 	$(BACKEND) uv run pytest
+endif
+
+test-changed: ## Backend tests CI would pick for your branch (git diff origin/main...HEAD)
+	$(call run_selected,--base origin/main)
 
 e2e: build ## Browser end-to-end tests on an isolated stack (E2E_SLOT=n for another one)
 	cd e2e && npx playwright test
