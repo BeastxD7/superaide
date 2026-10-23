@@ -143,3 +143,40 @@ def test_backfill_refuses_to_guess_when_data_has_two_agent_ids():
         s.add(Person(display_name="Someone else's contact", agent_id=uuid.uuid4()))
     with pytest.raises(AmbiguousTenancy), get_engine().begin() as conn:
         backfill_default_instance(conn)
+
+
+def test_concurrent_first_hires_do_not_race_on_the_default_tenant():
+    """Several requests creating the default tenant and instance at once must all succeed.
+
+    This used to be check-then-insert, so each saw no row and all inserted: a unique violation
+    for every request but one (seen in the end-to-end logs as duplicate key "tenant_pkey").
+    """
+    from superaide.tenancy.context import default_scope
+    from superaide.tenancy.service import _create
+
+    with session_scope() as s:
+        user, _ = signup(s, email="race@example.com", password=PASSWORD, name="Race", client=Client())
+        user_id = user.id
+    workers = 4
+    barrier = threading.Barrier(workers)
+    errors: list[BaseException] = []
+
+    def hire() -> None:
+        try:
+            with session_scope() as s:
+                user = s.get(UserAccount, user_id)
+                assert user is not None
+                barrier.wait(timeout=10)
+                _create(s, user, "ava", default_scope())
+        except BaseException as exc:  # noqa: BLE001 - reported below
+            errors.append(exc)
+
+    threads = [threading.Thread(target=hire) for _ in range(workers)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=30)
+    assert errors == []
+    with session_scope() as s:
+        assert len(s.scalars(select(Tenant)).all()) == 1
+        assert len(s.scalars(select(AgentInstance)).all()) == 1
