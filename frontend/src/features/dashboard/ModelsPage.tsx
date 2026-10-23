@@ -52,9 +52,16 @@ function errorText(e: unknown): string {
 }
 
 export function ModelsPage() {
-  const { me } = useSession()
+  const session = useSession()
+  const me = session.me
   const name = me?.agent.name ?? 'Ava'
-  const { data, error, reload } = useAppData<ModelSettings>('/providers')
+  const { data, error, reload: reloadModels } = useAppData<ModelSettings>('/providers')
+  // Every change here (credits, a provider, the roles) also changes what the header, sidebar, Home and Chat say about the AI
+  // model, so the shared session state is refreshed with this page's own data.
+  const reload = async () => {
+    await reloadModels()
+    await session.refresh()
+  }
   const [open, setOpen] = useState<string | null>(null)
   const [adding, setAdding] = useState<{ preset: string; key: string } | null>(null)
 
