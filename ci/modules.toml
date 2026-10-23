@@ -229,6 +229,7 @@ src = [
   "backend/src/superaide/connectors/**",
 ]
 tests = [
+  "backend/tests/test_gmail_compose.py",
   "backend/tests/test_recipient_preflight.py",
   "backend/tests/test_calendar_actions.py",
   "backend/tests/test_calendar_push.py",

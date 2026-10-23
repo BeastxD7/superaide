@@ -53,7 +53,7 @@ if (a === '--update') {
   }
   const timings = JSON.parse(readFileSync(timingsPath, 'utf8'))
   const only = process.env.E2E_ONLY?.split(/\s+/).filter(Boolean)
-  const files = only ? specFiles().filter((f) => only.includes(f)) : specFiles()
+  const files = only?.length ? specFiles().filter((f) => only.includes(f)) : specFiles()
   const known = files.filter((f) => f in timings)
   const avg = known.length ? known.reduce((s, f) => s + timings[f], 0) / known.length : 10
   const weight = (f) => timings[f] ?? avg
