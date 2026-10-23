@@ -31,8 +31,7 @@ from superaide.db.models import Event
 from superaide.identity.resolver import Sender
 from superaide.intentions import service as intentions
 from superaide.intentions.when import clean_task, find_moment, names_a_day, zone
-from superaide.policy.actions import RULES as ACTION_RULES
-from superaide.policy.actions import decide
+from superaide.policy.actions import action_kinds, decide
 from superaide.proactive.notify import CHANNEL_NAMES, EXTERNAL
 from superaide.skills import registry
 from superaide.skills.manifest import Skill
@@ -83,7 +82,7 @@ ACTION_TOOL = {
     "input_schema": {
         "type": "object",
         "properties": {
-            "kind": {"type": "string", "enum": sorted(ACTION_RULES)},
+            "kind": {"type": "string", "enum": action_kinds()},
             "summary": {"type": "string", "description": "Exactly what would be done, e.g. the message text"},
             "rationale": {"type": "string", "description": "Why, in one sentence"},
         },

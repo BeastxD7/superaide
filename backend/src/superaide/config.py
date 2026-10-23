@@ -59,6 +59,12 @@ class Settings(BaseSettings):
     circuit_breaker_window_seconds: int = Field(default=60, ge=1)
     halt_word: str = "halt"
 
+    # Footprint Guard (#136). Off by default. When on: creating something in the world under the owner's name
+    # (account, profile, public post, pull request, review) is its own action class that always needs the
+    # owner's approval and is logged, and an outbound message that names someone outside the owner's contacts
+    # is flagged on its approval card.
+    footprint_guard_enabled: bool = False
+
     # Tenancy
     tenant_id: uuid.UUID = DEFAULT_TENANT_ID
     agent_id: uuid.UUID = DEFAULT_AGENT_ID

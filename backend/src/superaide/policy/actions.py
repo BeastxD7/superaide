@@ -33,6 +33,24 @@ RULES: dict[str, Rule] = {
     "grant_access": Rule(int(Trust.STEPPED_UP), manager_only=True, needs_approval=True),
     "delete_memory": Rule(int(Trust.STEPPED_UP), manager_only=True, needs_approval=True),
 }
+# Footprint Guard (#136): things created in the world under the owner's name. Only offered and accepted when
+# FOOTPRINT_GUARD_ENABLED; always manager-only and always approved by the owner first.
+CREATION_RULES: dict[str, Rule] = {
+    kind: Rule(int(Trust.LINKED), manager_only=True, needs_approval=True)
+    for kind in ("create_account", "create_profile", "publish_post", "open_pull_request", "post_review")
+}
+
+
+def action_kinds() -> list[str]:
+    """The kinds the model may propose through propose_action."""
+    from superaide.config import get_settings
+
+    kinds = set(RULES)
+    if get_settings().footprint_guard_enabled:
+        kinds |= set(CREATION_RULES)
+    return sorted(kinds)
+
+
 # Actions a skill's own tool asks for (never through propose_action, whose kinds are RULES): the
 # tool fills in exactly what would be done, and approving runs it (EXECUTORS).
 TOOL_RULES: dict[str, Rule] = {
@@ -77,6 +95,10 @@ def decide(
     such an approval can then be approved only from a text channel, never by what was said."""
     if kind == "none":
         return Decision("none", "no action requested")
+    from superaide.policy import footprint
+
+    if rules is RULES and footprint.enabled():
+        rules = {**RULES, **CREATION_RULES}
     if kind in NEVER_VIA_CHAT or kind not in rules:
         audit(session, "policy", "action_refused", kind=kind, reason="not allowed via chat", requester=requester.name)
         return Decision("refused", "not allowed via chat")
@@ -105,10 +127,12 @@ def decide(
             required_trust=rule.min_trust,
         )
         return Decision("refused", "this needs a stronger identity check; do it from the dashboard instead")
+    extra = footprint.assess(session, kind=kind, text=summary, requester=requester)
     approval = Approval(
         kind=kind,
         payload={
             **(payload or {}),
+            **extra,
             "summary": summary,
             "trust_at_request": requester.trust,
             "required_trust": rule.min_trust,
