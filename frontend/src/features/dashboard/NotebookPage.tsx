@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CATEGORY_LABEL, SOURCE_LABEL, useAppData } from '@/features/dashboard/data'
-import { call, type Conflict, type ConflictCard, type Memory } from '@/lib/api'
+import { call, retryDocument, type Conflict, type ConflictCard, type Memory, type SharedDoc } from '@/lib/api'
 import { errorMessage } from '@/lib/action'
 import { formatDay } from '@/lib/dates'
 import { useSession } from '@/lib/session-context'
@@ -18,6 +18,9 @@ export function NotebookPage() {
   const { me } = useSession()
   const { data, error, reload } = useAppData<{ memories: Memory[] }>('/notebook')
   const conflicts = useAppData<{ conflicts: Conflict[] }>('/notebook/conflicts')
+  const files = useAppData<SharedDoc[]>('/intro/documents')
+  const failed = (files.data ?? []).filter((d) => d.status === 'failed')
+  const [retrying, setRetrying] = useState<string | null>(null)
   const [filter, setFilter] = useState<string>('all')
   const [where, setWhere] = useState<string>('all')
   const [query, setQuery] = useState('')
@@ -143,6 +146,35 @@ export function NotebookPage() {
               </Button>
             ))}
           </div>
+        )}
+
+        {failed.length > 0 && (
+          <ul className="mt-4 space-y-2" aria-label="Files that could not be read">
+            {failed.map((d) => (
+              <li key={d.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-white px-4 py-3 text-sm">
+                <span className="min-w-0 flex-1 text-ink [overflow-wrap:anywhere]">I couldn&apos;t read {d.title}.</span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={retrying !== null}
+                  onClick={async () => {
+                    setRetrying(d.id)
+                    setActionError(null)
+                    try {
+                      await retryDocument(d.id)
+                      await Promise.all([files.reload(), reload()])
+                    } catch (e) {
+                      setActionError(errorMessage(e))
+                    } finally {
+                      setRetrying(null)
+                    }
+                  }}
+                >
+                  {retrying === d.id ? 'Reading…' : 'Retry'}
+                </Button>
+              </li>
+            ))}
+          </ul>
         )}
 
         {(error || actionError) && (

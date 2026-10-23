@@ -26,7 +26,7 @@ import {
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from 'react'
-import { browserTimeZone, call, upload, type IngestResult, type Me, type SharedDoc, type StepInput } from '@/lib/api'
+import { browserTimeZone, call, retryDocument, upload, type IngestResult, type Me, type SharedDoc, type StepInput } from '@/lib/api'
 import { Connections } from '@/features/workspace/Connections'
 import { BrandIcon } from '@/components/BrandIcon'
 import { Button, Notice } from '@/components/site'
@@ -414,7 +414,10 @@ function FilesAndLinks({ documents, reload, onContinue }: { documents: SharedDoc
     setDone(null)
     try {
       const r = await upload<IngestResult>('/intro/files', file)
-      if (r.duplicate) setNote(r.message)
+      if (r.status === 'failed') {
+        setError(`I couldn't read ${r.title}.`)
+        setRetry(() => () => void retryDoc(r.document_id, workingFile(file)))
+      } else if (r.duplicate) setNote(r.message)
       else setDone(readStatus(r))
       if (r.warnings.length) setNote(r.warnings.join(' '))
       await reload()
@@ -440,13 +443,43 @@ function FilesAndLinks({ documents, reload, onContinue }: { documents: SharedDoc
     setDone(null)
     try {
       const r = await call<IngestResult>('/intro/links', { method: 'POST', json: { url: u.includes('://') ? u : `https://${u}` } })
-      if (r.duplicate) setNote(r.message)
+      if (r.status === 'failed') {
+        setError(`I couldn't read ${r.title}.`)
+        setRetry(() => () => void retryDoc(r.document_id, workingLink(u)))
+      } else if (r.duplicate) setNote(r.message)
       else setDone(readStatus(r))
       setUrl('')
       await reload()
     } catch (e) {
       setError(errorMessage(e))
       setRetry(() => () => void sendLink())
+    } finally {
+      inFlight.current = false
+      setBusy(null)
+      setWorking(null)
+    }
+  }
+
+  // A document that failed to save facts: ask the server to read it again, with the same loader.
+  async function retryDoc(id: string, work: Working) {
+    if (inFlight.current) return
+    inFlight.current = true
+    setBusy(`Reading ${work.name}…`)
+    setWorking(work)
+    setRetry(null)
+    setError(null)
+    setNote(null)
+    setDone(null)
+    try {
+      const r = await retryDocument(id)
+      if (r.status === 'failed') {
+        setError(`I couldn't read ${r.title || work.name}.`)
+        setRetry(() => () => void retryDoc(id, work))
+      } else setDone(readStatus(r))
+      await reload()
+    } catch (e) {
+      setError(errorMessage(e))
+      setRetry(() => () => void retryDoc(id, work))
     } finally {
       inFlight.current = false
       setBusy(null)
@@ -544,7 +577,20 @@ function FilesAndLinks({ documents, reload, onContinue }: { documents: SharedDoc
                 <span className="min-w-0 flex-1 truncate text-ink" title={d.source}>
                   {d.title}
                 </span>
-                <span className="shrink-0 text-xs text-muted">{d.status === 'read' ? `${d.facts} facts` : 'Saved, not read yet'}</span>
+                {d.status === 'failed' ? (
+                  <>
+                    <span className="shrink-0 text-xs text-danger">I couldn&apos;t read it</span>
+                    <button
+                      onClick={() => void retryDoc(d.id, d.kind === 'web' || d.kind === 'github' ? workingLink(d.source) : { kind: 'file', name: d.title, detail: d.title.split('.').pop()?.toUpperCase() ?? 'File' })}
+                      disabled={Boolean(busy)}
+                      className="shrink-0 rounded-full border border-lilac-200 px-2.5 py-1 text-xs font-medium text-violet-700 disabled:opacity-40"
+                    >
+                      Retry
+                    </button>
+                  </>
+                ) : (
+                  <span className="shrink-0 text-xs text-muted">{d.status === 'read' ? `${d.facts} facts` : 'Saved, not read yet'}</span>
+                )}
                 <button onClick={() => void remove(d)} className="grid size-7 shrink-0 place-items-center rounded-full text-muted hover:bg-mist hover:text-danger" aria-label={`Remove ${d.title}`}>
                   <Trash2 className="size-3.5" />
                 </button>

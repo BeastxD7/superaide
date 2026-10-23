@@ -4,7 +4,11 @@ import { expect, test } from '../src/fixtures'
 import { chooseFile, openIntroduction, openTab, textFile } from '../src/helpers/intro-sources'
 
 const SHOTS = process.env.SHOT_DIR
+const FAILED = { document_id: '00000000-0000-4000-8000-000000000001', title: 'resume.txt', facts: 0, duplicate: false, status: 'failed', message: '', warnings: [] }
+const RETRIED = { ...FAILED, facts: 2, status: 'read' }
 
+test.describe('in the introduction', () => {
+test.use({ ownerState: 'hired' })
 test.beforeEach(async ({ page, api, owner }) => {
   void owner
   await openIntroduction(page, api)
@@ -74,4 +78,45 @@ test.describe('reduced motion', () => {
     await expect(loader.locator('.animate-spin')).toHaveCount(0)
     release()
   })
+})
+
+// A document the server could not save facts from comes back with status "failed" and can be tried again
+// (POST /app/intro/documents/{id}/retry). The server's answers are scripted here.
+
+test('a file that could not be read says so and Try again reads it again', async ({ page }, info) => {
+  await page.route('**/api/app/intro/files', (route) => route.fulfill({ json: FAILED }))
+  let retried = 0
+  const release = await hold(page, '**/api/app/intro/documents/*/retry')
+  await page.route('**/api/app/intro/documents/*/retry', (route) => {
+    retried += 1
+    return route.fulfill({ json: RETRIED })
+  })
+  await chooseFile(page, textFile('resume.txt', 'I lead applied AI at PebbleRoad in Singapore.'))
+  await expect(page.getByText("I couldn't read resume.txt.")).toBeVisible()
+  if (SHOTS) await page.screenshot({ path: `${SHOTS}/${process.env.SHOT_PREFIX ?? 'after'}-failed-${info.project.name}.png` })
+  await page.getByRole('button', { name: 'Try again' }).click()
+  await expect(page.getByTestId('doc-loader')).toContainText('Reading resume.txt…')
+  release()
+  await expect(page.getByTestId('doc-done')).toContainText('2 facts saved')
+  expect(retried).toBe(1)
+  if (SHOTS) await page.screenshot({ path: `${SHOTS}/${process.env.SHOT_PREFIX ?? 'after'}-retried-${info.project.name}.png` })
+})
+
+})
+
+test('the Notebook lists a file that could not be read, with Retry', async ({ page, owner }, info) => {
+  void owner
+  let failed = true
+  await page.route('**/api/app/intro/documents', (route) =>
+    route.fulfill({ json: failed ? [{ id: FAILED.document_id, kind: 'pdf', title: 'resume.pdf', source: 'resume.pdf', status: 'failed', facts: 0, warnings: [] }] : [] }),
+  )
+  await page.route('**/api/app/intro/documents/*/retry', (route) => {
+    failed = false
+    return route.fulfill({ json: { ...RETRIED, title: 'resume.pdf' } })
+  })
+  await page.goto('/dashboard/notebook')
+  await expect(page.getByText("I couldn't read resume.pdf.")).toBeVisible()
+  if (SHOTS) await page.screenshot({ path: `${SHOTS}/${process.env.SHOT_PREFIX ?? 'after'}-notebook-failed-${info.project.name}.png` })
+  await page.getByRole('button', { name: 'Retry' }).click()
+  await expect(page.getByText("I couldn't read resume.pdf.")).toHaveCount(0)
 })

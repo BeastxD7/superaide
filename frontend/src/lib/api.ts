@@ -106,6 +106,9 @@ export type IngestResult = {
   warnings: string[]
 }
 
+// A document that failed to save facts is tried again here (POST /app/intro/documents/{id}/retry).
+export const retryDocument = (id: string) => call<IngestResult>(`/intro/documents/${id}/retry`, { method: 'POST' })
+
 export type StepView = {
   step: string
   index: number
