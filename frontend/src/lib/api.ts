@@ -484,6 +484,7 @@ export type SkillCard = {
   cost: string | null
   // Settings that give the skill more tools (Google Calendar's "actions"), each with its own consent.
   options?: SkillOption[]
+  google_connected?: boolean // Google Calendar and Gmail only: whether Google is connected right now
   google_url?: string | null // after switching calendar actions on: Google's consent page to finish
 }
 

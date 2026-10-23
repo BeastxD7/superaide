@@ -41,8 +41,9 @@ def many(monkeypatch) -> None:
     monkeypatch.setattr(get_settings(), "allow_many_owners", True)
 
 
-BIKE = "my bike lock code is 9032"  # the second owner's secret
-LOCKER = "my locker code is 4417"  # the first owner's secret
+# Markers carry a non-hex prefix (zq): random hex ids in responses can contain a plain number by chance.
+BIKE = "my bike lock code is zq9032"  # the second owner's secret
+LOCKER = "my locker code is zq4417"  # the first owner's secret
 ASK_B = "What is my bike lock code?"
 ASK_A = "What is my locker code?"
 
@@ -209,8 +210,8 @@ def test_a_second_owners_streamed_turn_stays_in_their_instance(browser, many, ta
     # An agent was built for the second owner under the second owner's scope (and none under a wrong one).
     assert tape.built.count(ib) == 1 and tape.built.count(ia) == 1 and len(tape.built) == 2
     # The signed-in views agree: each notebook has only its owner's note.
-    assert "9032" in b.get("/app/notebook").text and "4417" not in b.get("/app/notebook").text
-    assert "4417" in a.get("/app/notebook").text and "9032" not in a.get("/app/notebook").text
+    assert "zq9032" in b.get("/app/notebook").text and "zq4417" not in b.get("/app/notebook").text
+    assert "zq4417" in a.get("/app/notebook").text and "zq9032" not in a.get("/app/notebook").text
 
 
 def test_the_second_owner_can_go_first(browser, many, tape):

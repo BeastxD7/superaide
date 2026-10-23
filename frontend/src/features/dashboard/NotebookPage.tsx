@@ -21,8 +21,12 @@ export function NotebookPage() {
   const { data, error, reload } = useAppData<{ memories: Memory[] }>('/notebook')
   const conflicts = useAppData<{ conflicts: Conflict[] }>('/notebook/conflicts')
   const files = useAppData<SharedDoc[]>('/intro/documents')
-  const failed = (files.data ?? []).filter((d) => d.status === 'failed')
+  // Files and links shared in the introduction that Ava has not turned into notes: saved but not read yet, or
+  // unreadable. Once read they are the notes below ("from notes.md"), so only these two need a place here (#296).
+  const unread = (files.data ?? []).filter((d) => d.status !== 'read')
   const [retrying, setRetrying] = useState<string | null>(null)
+  const [erasing, setErasing] = useState<string | null>(null)
+  const [erased, setErased] = useState(false)
 
 
   // The Mirror answers 404 while the server has it off; the link shows only when it answers.
@@ -69,11 +73,13 @@ export function NotebookPage() {
     setForgetting(true)
     try {
       await call(`/notebook/${id}/forget`, { method: 'POST' })
-      setConfirm(null)
-      await reload()
     } catch (e) {
       setActionError(errorMessage(e))
     } finally {
+      // Read again even when it failed: "not found" means another tab already forgot it, and the note it
+      // still shows can never be forgotten (#298).
+      setConfirm(null)
+      await reload()
       setForgetting(false)
     }
   }
@@ -202,33 +208,82 @@ export function NotebookPage() {
           </div>
         )}
 
-        {failed.length > 0 && (
-          <ul className="mt-4 space-y-2" aria-label="Files that could not be read">
-            {failed.map((d) => (
-              <li key={d.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-white px-4 py-3 text-sm">
-                <span className="min-w-0 flex-1 text-ink [overflow-wrap:anywhere]">I couldn&apos;t read {d.title}.</span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={retrying !== null}
-                  onClick={async () => {
-                    setRetrying(d.id)
-                    setActionError(null)
-                    try {
-                      await retryDocument(d.id)
-                      await Promise.all([files.reload(), reload()])
-                    } catch (e) {
-                      setActionError(errorMessage(e))
-                    } finally {
-                      setRetrying(null)
-                    }
-                  }}
-                >
-                  {retrying === d.id ? 'Reading…' : 'Retry'}
-                </Button>
-              </li>
-            ))}
-          </ul>
+        {unread.length > 0 && (
+          <section aria-label="Files and links not read yet" className="mt-4">
+            <h2 className="text-sm font-medium text-ink">Files and links {name} has not read yet</h2>
+            <ul className="mt-2 space-y-2">
+              {unread.map((d) => (
+                <li key={d.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-white px-4 py-3 text-sm">
+                  <span className="min-w-0 flex-1 text-ink [overflow-wrap:anywhere]">
+                    {d.status === 'failed' ? (
+                      <>I couldn&apos;t read {d.title}.</>
+                    ) : (
+                      <>
+                        {d.title} <span className="ml-1 text-xs text-muted">Saved, not read yet</span>
+                      </>
+                    )}
+                  </span>
+                  {d.status === 'failed' && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={retrying !== null}
+                      aria-label={`Retry ${d.title}`}
+                      onClick={async () => {
+                        setRetrying(d.id)
+                        setActionError(null)
+                        try {
+                          await retryDocument(d.id)
+                          await Promise.all([files.reload(), reload()])
+                        } catch (e) {
+                          setActionError(errorMessage(e))
+                        } finally {
+                          setRetrying(null)
+                        }
+                      }}
+                    >
+                      {retrying === d.id ? 'Reading…' : 'Retry'}
+                    </Button>
+                  )}
+                  {erasing === d.id ? (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        aria-label={`Erase ${d.title} for good`}
+                        onClick={async () => {
+                          setActionError(null)
+                          try {
+                            await call(`/intro/documents/${d.id}/erase`, { method: 'POST' })
+                            setErased(true)
+                          } catch (e) {
+                            setActionError(errorMessage(e))
+                          } finally {
+                            setErasing(null)
+                            await Promise.all([files.reload(), reload()])
+                          }
+                        }}
+                      >
+                        Erase for good
+                      </Button>
+                      <Button size="sm" variant="ghost" autoFocus onClick={() => setErasing(null)}>
+                        Keep
+                      </Button>
+                    </>
+                  ) : (
+                    <Button size="sm" variant="ghost" aria-label={`Erase ${d.title}`} onClick={() => { setErased(false); setErasing(d.id) }}>
+                      Erase
+                    </Button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+        {erased && unread.length === 0 && (
+          <p role="status" className="mt-4 text-sm text-muted">
+            Erased. Its text and anything {name} learned only from it are gone.
+          </p>
         )}
 
         {(error || actionError) && (
