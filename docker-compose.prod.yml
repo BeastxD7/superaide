@@ -124,11 +124,17 @@ services:
 
   web:
     <<: *hardened
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        # The installable app (PWA) is on for a public server; NEXT_PUBLIC_PWA=0 in .env turns it off. Baked in at build time.
+        NEXT_PUBLIC_PWA: ${NEXT_PUBLIC_PWA:-1}
     image: superaide-web:prod
     environment:
       API_INTERNAL_URL: http://api:8000
-      # Caddy overwrites X-Forwarded-For with the real client address; pass it on.
+      # Caddy overwrites X-Forwarded-For with the real client address; pass it on. This is only safe because this
+      # container publishes no port: Caddy is the only way in. If you ever publish port 3000, a client could send its
+      # own X-Forwarded-For and dodge the per-address rate limits, so set this back to "false" first.
       TRUST_PROXY_HEADERS: "true"
     tmpfs:
       - /tmp

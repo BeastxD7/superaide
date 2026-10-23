@@ -11,8 +11,11 @@ RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
 
 FROM node:24-alpine AS build
 WORKDIR /app
+# NEXT_PUBLIC_* are baked into the bundle at build time. 1 = the installable app (manifest, service worker); see docker-compose.prod.yml.
+ARG NEXT_PUBLIC_PWA
 ENV NEXT_TELEMETRY_DISABLED=1 \
-    NEXT_OUTPUT=standalone
+    NEXT_OUTPUT=standalone \
+    NEXT_PUBLIC_PWA=${NEXT_PUBLIC_PWA}
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
