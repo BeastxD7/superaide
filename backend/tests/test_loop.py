@@ -211,7 +211,12 @@ def test_side_effects_become_approvals_with_the_reason_and_risky_ones_are_refuse
         script = Script(
             tool_use(
                 "propose_action",
-                {"kind": "message_someone_else", "summary": "Tell Priya I'm late", "rationale": "Owner asked"},
+                {
+                    "kind": "message_someone_else",
+                    "summary": "Tell Priya I'm late",
+                    "rationale": "Owner asked",
+                    "reaches_a_person": "yes",
+                },
                 "a",
             ),
             tool_use(
