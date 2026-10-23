@@ -316,10 +316,11 @@ class Settings(BaseSettings):
     # Import lease (#133). Off: /app/import-leases/* answer 404. On: the owner can bring in context cards
     # converted on their own machine from a third-party export, under a time-limited lease that erases them.
     import_lease_enabled: bool = False
-    # Airlock (#128, pure-code half). Off: nothing changes. On: before a conversation goes to a model, contact
-    # details, cards and ID-like numbers in it become placeholders, and the reply gets the originals back.
-    # The on-device model and device attestation are not built.
-    airlock_enabled: bool = False
+    # Airlock (#128, pure-code half). On (the default): before a conversation goes to a model, other people's
+    # contact details, ids, addresses and the names of everyone Ava knows (the owner's own are kept) become
+    # placeholders, and the reply, including text streamed to the owner, gets the originals back. Set
+    # AIRLOCK_ENABLED=false to send conversations as they are. The on-device model and attestation are not built.
+    airlock_enabled: bool = True
     gmail_poll_minutes: int = 5
     # Rehearsal room (#58): the owner practises a hard conversation with Ava playing the other side. Off:
     # /app/rehearsal/* answer 404. On: text role-play, nothing is sent to anyone, and a session is
