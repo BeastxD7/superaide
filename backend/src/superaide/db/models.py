@@ -85,6 +85,7 @@ class Scoped:
 
 class Person(Scoped, Base):
     __tablename__ = "person"
+    __table_args__ = (Index("ix_person_agent_created", "agent_id", "created_at", "id"),)  # operator paging (ADR 0014)
 
     display_name: Mapped[str] = mapped_column(String(200))
     kind: Mapped[str] = mapped_column(String(20), default="human")  # human | agent
@@ -98,7 +99,17 @@ class Person(Scoped, Base):
 
 class ChannelIdentity(Scoped, Base):
     __tablename__ = "channel_identity"
-    __table_args__ = (UniqueConstraint("agent_id", "provider", "tenant_scope", "stable_key", name="uq_identity_key"),)
+    __table_args__ = (
+        UniqueConstraint("agent_id", "provider", "tenant_scope", "stable_key", name="uq_identity_key"),
+        # Accounts nobody has claimed yet, paged by the operator console (ADR 0014); the partial index stays small.
+        Index(
+            "ix_identity_unlinked",
+            "agent_id",
+            "created_at",
+            "id",
+            postgresql_where=text("person_id IS NULL"),
+        ),
+    )
 
     person_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("person.id"), nullable=True, index=True)
     provider: Mapped[str] = mapped_column(String(20))  # telegram | slack | email | ...
@@ -206,7 +217,11 @@ class MemoryItem(Scoped, Base):
     """A remembered fact, tagged with the audience it may be shown to."""
 
     __tablename__ = "memory_item"
-    __table_args__ = (Index("ix_memory_item_fts", text("to_tsvector('english', content)"), postgresql_using="gin"),)
+    __table_args__ = (
+        Index("ix_memory_item_fts", text("to_tsvector('english', content)"), postgresql_using="gin"),
+        # Operator paging of every memory, newest first (ADR 0014).
+        Index("ix_memory_item_agent_created", "agent_id", text("created_at DESC"), text("id DESC")),
+    )
 
     content: Mapped[str] = mapped_column(Text)
     subject_person_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(UUID(as_uuid=True)), default=list)
@@ -418,6 +433,7 @@ class OwnerPreference(Scoped, Base):
 
 class Approval(Scoped, Base):
     __tablename__ = "approval"
+    __table_args__ = (Index("ix_approval_agent_created", "agent_id", text("created_at DESC"), text("id DESC")),)
 
     kind: Mapped[str] = mapped_column(String(40))
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
