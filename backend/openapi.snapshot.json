@@ -682,6 +682,39 @@
         "title": "DraftsBody",
         "type": "object"
       },
+      "DrillBody": {
+        "properties": {
+          "model_a": {
+            "default": "",
+            "maxLength": 120,
+            "title": "Model A",
+            "type": "string"
+          },
+          "model_b": {
+            "maxLength": 120,
+            "title": "Model B",
+            "type": "string"
+          },
+          "tasks": {
+            "anyOf": [
+              {
+                "maximum": 50.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tasks"
+          }
+        },
+        "required": [
+          "model_b"
+        ],
+        "title": "DrillBody",
+        "type": "object"
+      },
       "EmailBody": {
         "properties": {
           "email": {
@@ -3978,6 +4011,35 @@
         ]
       }
     },
+    "/app/channels/slack/invite": {
+      "post": {
+        "description": "A one-time code (15 minutes) the owner sends to Ava in a direct message on Slack: `link <code>`. It works only through the Slack app that is connected now. 404 when no Slack app is connected.",
+        "operationId": "invite_slack_app_channels_slack_invite_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Invite Slack App Channels Slack Invite Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Link my Slack account",
+        "tags": [
+          "Connections"
+        ]
+      }
+    },
     "/app/channels/telegram": {
       "post": {
         "description": "A one-time `t.me` link (15 minutes) that links the owner's Telegram account to Ava.",
@@ -4497,6 +4559,88 @@
         "summary": "Ask three advisers about a high-stakes choice",
         "tags": [
           "Owner: dissent desk"
+        ]
+      }
+    },
+    "/app/episodes": {
+      "get": {
+        "description": "The owner's own episodes, newest first. 404 while SLEEP_JOB_ENABLED is off.",
+        "operationId": "episodes_app_episodes_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Episodes App Episodes Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Conversation summaries from the nightly job",
+        "tags": [
+          "Owner: episodes"
+        ]
+      }
+    },
+    "/app/episodes/{episode_id}/erase": {
+      "post": {
+        "description": "Deletes the summary only. The messages themselves are not touched.",
+        "operationId": "erase_app_episodes__episode_id__erase_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "episode_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Episode Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Erase App Episodes  Episode Id  Erase Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Erase one summary",
+        "tags": [
+          "Owner: episodes"
         ]
       }
     },
@@ -6470,6 +6614,84 @@
         "summary": "Turn the Mirror on or off",
         "tags": [
           "Owner: the Mirror"
+        ]
+      }
+    },
+    "/app/model-drill": {
+      "get": {
+        "description": "MODEL_DRILL_ENABLED (off by default; 404 while off): the model Ava uses now and how many recent tasks a drill can replay.",
+        "operationId": "drill_info_app_model_drill_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Drill Info App Model Drill Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Model-swap drill",
+        "tags": [
+          "Owner: skills",
+          "Owner: skills"
+        ]
+      },
+      "post": {
+        "description": "Replays your last tasks (at most DRILL_MAX_TASKS) on each model with effects stubbed and no network, and reports where the call sequences differ (tool names and short argument hashes only).",
+        "operationId": "drill_run_app_model_drill_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DrillBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Drill Run App Model Drill Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Replay on two models",
+        "tags": [
+          "Owner: skills",
+          "Owner: skills"
         ]
       }
     },

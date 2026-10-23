@@ -11,9 +11,11 @@ import logging
 import re
 import threading
 from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 from typing import cast
 
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 from superaide.audit import audit
@@ -26,7 +28,7 @@ from superaide.channels.format import strip_citations
 from superaide.channels.health import DeliveryFailed
 from superaide.config import Settings, get_settings
 from superaide.context.audience import Audience, audience_for, visible_memories
-from superaide.db.models import Context, Person
+from superaide.db.models import AuditLog, Context, Person
 from superaide.db.session import session_scope
 from superaide.identity import linking
 from superaide.identity.resolver import Sender, resolve
@@ -53,6 +55,20 @@ START_CODE_RE = re.compile(r"^/start\s+([A-Za-z0-9_-]{8,64})\s*$")
 def parse_start_code(text: str) -> str | None:
     """Telegram sends "/start <code>" when someone opens t.me/<bot>?start=<code>."""
     m = START_CODE_RE.match(text)
+    return m.group(1) if m else None
+
+
+# Slack has no deep link, so the owner types the code from the app in a direct message to Ava.
+SLACK_CODE_DM_RE = re.compile(r"^\s*link\s+([A-Za-z0-9_-]{8,64})\s*$", re.I)
+# The same words in a channel or thread (possibly after an @-mention): never redeemed, never repeated.
+SLACK_CODE_ANYWHERE_RE = re.compile(r"^\s*(?:<@[A-Z0-9]+>\s*)?link\s+[A-Za-z0-9_-]{8,64}\s*$", re.I)
+SLACK_CODE_WITHHELD = "link [code withheld]"
+SLACK_BAD_CODES_PER_HOUR = 5
+
+
+def parse_slack_link_code(text: str) -> str | None:
+    """ "link <code>", exactly, in a direct message. Case-insensitive on the word; the code is as given."""
+    m = SLACK_CODE_DM_RE.match(text)
     return m.group(1) if m else None
 
 
@@ -192,6 +208,14 @@ class Agent:
                 self._reply(s, ctx, aud, reply, thread)
                 return HandleResult("known" if sender.known else "stranger", reply, ["invite"])
 
+            # Only for someone not linked yet: a linked person writing "link calendar" is just talking.
+            if msg.provider == "slack" and not sender.known and SLACK_CODE_ANYWHERE_RE.match(msg.text):
+                code_reply = self._slack_link_code(s, sender, ctx, msg, inbound)
+                if code_reply is None:
+                    return HandleResult("stranger", None, ["invite"])
+                self._reply(s, ctx, aud, code_reply, thread)
+                return HandleResult("stranger", code_reply, ["invite"])
+
             if sender.unconfirmed:
                 # A linked account on a bot (or app) it wasn't confirmed on, or back after a long
                 # silence. Whoever holds that account now isn't trusted with anything private until
@@ -280,6 +304,41 @@ class Agent:
             outsider = sender.relation != "manager" and not self._is_owner(s, sender)  # the owner never gets the card
             self._reply(s, ctx, aud, reply, thread, to=(sender.name if sender.known else "") if outsider else None)
             return HandleResult("known", reply, notes)
+
+    def _slack_link_code(self, s, sender: Sender, ctx: Context, msg: InboundMessage, inbound) -> str | None:
+        """ "link <code>" on Slack. Only a direct message can link an account; the same words in a channel
+        or thread are never redeemed and never repeated. The stored copy of the message loses the code
+        either way. Returns the reply, or None for no reply (too many wrong codes from this account)."""
+        inbound.content = SLACK_CODE_WITHHELD
+        if ctx.kind != "dm":
+            audit(s, "identity", "slack_link_code_in_channel", identity_id=sender.identity.id)
+            return (
+                "Don't post link codes in a channel. Make a new one in the app and send it to me in a direct message."
+            )
+        code = parse_slack_link_code(msg.text)
+        if code is None:
+            return None
+        since = datetime.now(UTC) - timedelta(hours=1)
+        failed = s.scalar(
+            select(func.count())
+            .select_from(AuditLog)
+            .where(
+                AuditLog.action == "slack_link_attempt",
+                AuditLog.created_at > since,
+                AuditLog.detail["identity_id"].astext == str(sender.identity.id),
+                AuditLog.detail["linked"].astext == "false",
+            )
+        )
+        if (failed or 0) >= SLACK_BAD_CODES_PER_HOUR:
+            audit(s, "identity", "slack_link_attempt_ignored", identity_id=sender.identity.id)
+            return None
+        from superaide.app.accounts import redeem_invite
+
+        person = redeem_invite(s, provider="slack", code=code, identity=sender.identity, endpoint=msg.endpoint)
+        audit(s, "identity", "slack_link_attempt", identity_id=sender.identity.id, linked=person is not None)
+        if person is None:
+            return self._ai_notice("That code has expired or was already used. Make a new one in the app.")
+        return f"Linked. Hi {person.display_name}, it's {self.name}. I'll recognise you here from now on."
 
     @staticmethod
     def _turn_failed(s, exc: Exception, msg: InboundMessage) -> str:
