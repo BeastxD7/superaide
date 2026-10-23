@@ -1,7 +1,7 @@
 """approvals carry the hash of what the owner was shown, and an optional expiry (issue 111)
 
-Revision ID: 0040
-Revises: 0035
+Revision ID: 0042
+Revises: 0040
 Create Date: 2026-10-23 09:00:00.000000
 
 """
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "0040"
-down_revision: str | Sequence[str] | None = "0035"
+revision: str = "0042"
+down_revision: str | Sequence[str] | None = "0040"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
