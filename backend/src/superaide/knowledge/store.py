@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from superaide.audit import audit
 from superaide.db.models import Contact, Document, MemoryItem, OwnerPreference, Person, UserAccount
 from superaide.db.session import rows_affected
+from superaide.knowledge import trust
 from superaide.memory import importance as weigh
 
 CATEGORIES = ("about", "work", "person", "preference", "urgency", "availability", "sharing", "other")
@@ -44,6 +45,7 @@ def find_same_fact(
     norm = normalise(content)
     live = and_(
         MemoryItem.valid_to.is_(None),
+        MemoryItem.conflict_status == "none",  # a claim waiting for the owner is not yet a fact
         MemoryItem.agent_id == owner.agent_id,
         MemoryItem.subject_person_ids.contains([owner.id]),
     )
@@ -78,9 +80,12 @@ def remember_fact(
     quote_chain: tuple[str, ...] = (),
     importance: float | None = None,
     time_bound: bool | None = None,
+    trust_rank: int | None = None,
+    author_person_id: Any = None,
 ) -> MemoryItem | None:
     """Store one fact about the owner. Returns None if the same fact is already known (with the Echo Filter
-    on, a repeat from a *different* root origin is still noted on the known fact)."""
+    on, a repeat from a *different* root origin is still noted on the known fact). Its trust rank comes from its
+    source unless given; a link fact outside about/work is held for review."""
     from superaide.config import get_settings
     from superaide.memory import echo
 
@@ -112,6 +117,9 @@ def remember_fact(
         confidence=max(0.0, min(1.0, confidence)),
         importance=weigh.score(category, importance),
         time_bound=weigh.is_time_bound(category, content) if time_bound is None else time_bound,
+        trust_rank=trust_rank if trust_rank is not None else trust.rank_for(source),
+        author_person_id=author_person_id if author_person_id is not None else owner.id,
+        conflict_status="review" if trust.needs_review(source, category) else "none",
     )
     session.add(item)
     session.flush()
@@ -122,6 +130,80 @@ def remember_fact(
     vectors.schedule(session, item)
     audit(session, "memory", "remembered", memory_id=item.id, source=item.source, category=item.category)
     return item
+
+
+def supersede(session: Session, old: MemoryItem, new: MemoryItem) -> bool:
+    """`new` says `old` is no longer true. True when `old` retires (new is as trusted or better, and it
+    stays queryable by valid time, with `superseded_by` pointing at its successor); False when `new` is
+    weaker, so `old` stays and `new` waits as a conflict for the owner to resolve."""
+    if old.valid_to is not None:
+        return True
+    if new.trust_rank <= old.trust_rank:
+        old.valid_to = datetime.now(UTC)
+        old.superseded_by = new.id
+        audit(session, "memory", "superseded", memory_id=old.id, by=new.id)
+        return True
+    new.conflict_status = "pending"
+    new.conflicts_with_id = old.id
+    audit(
+        session, "memory", "conflict_raised", memory_id=new.id, against=old.id, rank=new.trust_rank, held=old.trust_rank
+    )
+    return False
+
+
+def conflicts_of(session: Session, owner_id: Any) -> list[tuple[MemoryItem, MemoryItem | None]]:
+    """Claims waiting for the owner: (the claim, the fact it disagrees with, or None for a review item)."""
+    claims = session.scalars(
+        select(MemoryItem)
+        .where(
+            MemoryItem.subject_person_ids.contains([owner_id]),
+            MemoryItem.conflict_status.in_(("pending", "review")),
+            MemoryItem.valid_to.is_(None),
+        )
+        .order_by(MemoryItem.created_at.desc())
+    ).all()
+    out: list[tuple[MemoryItem, MemoryItem | None]] = []
+    for c in claims:
+        current = session.get(MemoryItem, c.conflicts_with_id) if c.conflicts_with_id else None
+        out.append((c, current))
+    return out
+
+
+def resolve_conflict(
+    session: Session, owner: Person, claim: MemoryItem, choice: str, text: str = ""
+) -> MemoryItem | None:
+    """The owner's answer, stored as a rank-1 fact. keep: the current fact stands and is confirmed;
+    new: the claim is accepted; custom: the owner's own wording. Both older rows are kept, retired."""
+    now = datetime.now(UTC)
+    current = session.get(MemoryItem, claim.conflicts_with_id) if claim.conflicts_with_id else None
+    claim.conflict_status, claim.valid_to = "resolved", now
+    if choice == "keep":
+        if current is not None and current.valid_to is None:
+            current.trust_rank = trust.OWNER_VERIFIED
+        audit(session, "memory", "conflict_resolved", memory_id=claim.id, choice="keep")
+        return current
+    content = " ".join((text if choice == "custom" else claim.content).split())[:2000]
+    chosen = MemoryItem(
+        content=content,
+        subject_person_ids=list(claim.subject_person_ids),
+        allowed_kind="persons",
+        allowed_person_ids=[owner.id],
+        min_trust=2,
+        category=claim.category,
+        source="owner_edit",
+        trust_rank=trust.OWNER_VERIFIED,
+        author_person_id=owner.id,
+    )
+    session.add(chosen)
+    session.flush()
+    claim.superseded_by = chosen.id
+    if current is not None and current.valid_to is None:
+        current.valid_to, current.superseded_by = now, chosen.id
+    from superaide.context import vectors
+
+    vectors.schedule(session, chosen)
+    audit(session, "memory", "conflict_resolved", memory_id=claim.id, choice=choice, by=chosen.id)
+    return chosen
 
 
 def lock_document(session: Session, document_id: Any) -> Document | None:

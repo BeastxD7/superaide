@@ -207,12 +207,11 @@ def test_a_chat_introduction_carries_on_when_reading_fails(client, broken_brain)
 
 def test_a_web_page_cannot_set_the_owners_rules(client, brain, agent, monkeypatch):
     # Anyone can edit a web page, so its "facts" never become urgency, sharing or availability rules.
-    from superaide.knowledge import ingest
+    from superaide.knowledge import trust
 
-    assert ingest.safe_category("urgency", "link") == "about"
-    assert ingest.safe_category("sharing", "link") == "about"
-    assert ingest.safe_category("work", "link") == "work"
-    assert ingest.safe_category("urgency", "document") == "urgency"  # the owner's own file may
+    assert trust.needs_review("link", "urgency") and trust.needs_review("link", "sharing")
+    assert not trust.needs_review("link", "work") and not trust.needs_review("link", "about")
+    assert not trust.needs_review("document", "urgency")  # the owner's own file may
 
 
 def test_a_file_upload_does_not_run_on_the_event_loop(client, monkeypatch):

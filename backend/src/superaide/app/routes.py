@@ -46,7 +46,7 @@ from superaide.intentions import service as intentions
 from superaide.intentions.when import clean_task, find_moment, zone
 from superaide.knowledge import extract
 from superaide.knowledge.ingest import ingest
-from superaide.knowledge.store import contacts_of, preferences_for, retire_document
+from superaide.knowledge.store import conflicts_of, contacts_of, preferences_for, resolve_conflict, retire_document
 from superaide.policy import brake
 from superaide.policy.actions import ApprovalError, resolve
 from superaide.policy.killswitch import is_frozen
@@ -92,6 +92,11 @@ async def owner_person_id(user_id: uuid.UUID = Depends(current_user_id)) -> Asyn
     scope, person_id = found
     with use_instance(scope):
         yield person_id
+
+
+class ResolveConflict(BaseModel):
+    choice: Literal["keep", "new", "custom"]
+    text: str = Field(default="", max_length=2000)
 
 
 class HireBody(BaseModel):
@@ -505,7 +510,11 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             rows = s.execute(
                 select(MemoryItem, Document.title)
                 .outerjoin(Document, Document.id == MemoryItem.document_id)
-                .where(MemoryItem.subject_person_ids.contains([person_id]), MemoryItem.valid_to.is_(None))
+                .where(
+                    MemoryItem.subject_person_ids.contains([person_id]),
+                    MemoryItem.valid_to.is_(None),
+                    MemoryItem.conflict_status == "none",  # claims waiting for a decision are under /notebook/conflicts
+                )
                 .order_by(MemoryItem.created_at.desc())
                 .limit(300)
             ).all()
@@ -525,6 +534,61 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                     for m, title in rows
                 ]
             }
+
+    @router.get(
+        "/notebook/conflicts",
+        tags=["Owner: chat & notebook"],
+        summary="Which is current?",
+        description="Claims from a weaker source that disagree with what Ava knows, and link facts held for review. "
+        "Neither is used until the owner decides.",
+    )
+    def notebook_conflicts(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        with session_scope() as s:
+            docs = {
+                d.id: d.title or d.source
+                for d in s.scalars(select(Document).where(Document.owner_person_id == person_id))
+            }
+
+            def card(m: MemoryItem) -> dict[str, Any]:
+                return {
+                    "id": str(m.id),
+                    "text": m.content,
+                    "category": m.category,
+                    "source": m.source,
+                    "document": docs.get(m.document_id) if m.document_id else None,
+                    "at": m.created_at.isoformat(),
+                }
+
+            return {
+                "conflicts": [
+                    {"claim": card(claim), "current": card(current) if current else None}
+                    for claim, current in conflicts_of(s, person_id)
+                ]
+            }
+
+    @router.post(
+        "/notebook/conflicts/{memory_id}/resolve",
+        tags=["Owner: chat & notebook"],
+        summary="Decide which is current",
+        description="keep: the current fact stands. new: the claim is accepted. custom: the owner's own wording. "
+        "The answer is stored as a top-trust fact; the older rows stay, retired.",
+    )
+    def resolve_notebook_conflict(
+        memory_id: uuid.UUID, body: ResolveConflict, person_id: uuid.UUID = Depends(owner_person_id)
+    ) -> dict[str, str]:
+        with session_scope() as s:
+            claim = s.get(MemoryItem, memory_id)
+            if (
+                claim is None
+                or person_id not in (claim.subject_person_ids or [])
+                or claim.conflict_status not in ("pending", "review")
+                or claim.valid_to is not None
+            ):
+                raise HTTPException(404, "Not found in your notebook")
+            if body.choice == "custom" and not body.text.strip():
+                raise HTTPException(422, "Write what is true.")
+            resolve_conflict(s, require(s, Person, person_id), claim, body.choice, body.text)
+            return {"status": "resolved"}
 
     @router.get(
         "/people",

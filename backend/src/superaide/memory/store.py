@@ -16,6 +16,7 @@ from superaide.channels.base import InboundMessage
 from superaide.context.audience import Audience
 from superaide.db.models import Context, Event, MemoryItem
 from superaide.identity.resolver import Sender
+from superaide.knowledge import trust
 from superaide.knowledge.store import channel_source
 
 REMEMBER_RE = re.compile(r"^\s*remember(?:\s+that)?[:,]?\s+(.+)$", re.IGNORECASE | re.DOTALL)
@@ -214,7 +215,14 @@ def _same_fact(text: str) -> str:
 
 
 def remember(
-    session: Session, *, content: str, sender: Sender, context: Context, audience: Audience, source_event: Event
+    session: Session,
+    *,
+    content: str,
+    sender: Sender,
+    context: Context,
+    audience: Audience,
+    source_event: Event,
+    trust_rank: int = trust.OWNER_VERIFIED,
 ) -> MemoryItem:
     """Store a fact visible only to the audience it was told in. Saying it again keeps one note."""
     assert sender.person is not None
@@ -240,6 +248,8 @@ def remember(
         allowed_person_ids=audience_ids,
         min_trust=2,
         source=channel_source(context.provider),
+        trust_rank=trust_rank,
+        author_person_id=sender.person.id,
     )
     session.add(item)
     session.flush()
