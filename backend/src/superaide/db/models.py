@@ -146,7 +146,10 @@ class LinkChallenge(Scoped, Base):
 
 class Context(Scoped, Base):
     __tablename__ = "context"
-    __table_args__ = (UniqueConstraint("agent_id", "provider", "tenant_scope", "external_id", name="uq_context_key"),)
+    __table_args__ = (
+        UniqueConstraint("agent_id", "provider", "tenant_scope", "external_id", name="uq_context_key"),
+        Index("ix_context_activity", "agent_id", text("last_event_at DESC"), text("id DESC")),
+    )
 
     provider: Mapped[str] = mapped_column(String(20))
     tenant_scope: Mapped[str] = mapped_column(String(100), default="")
@@ -154,6 +157,11 @@ class Context(Scoped, Base):
     kind: Mapped[str] = mapped_column(String(20))  # dm | group | thread | meeting
     audience_class: Mapped[str] = mapped_column(String(30))  # private_1to1 | team | mixed_external
     title: Mapped[str] = mapped_column(String(200), default="")
+    # When the newest event landed (or the context was made, while it has none). Maintained in one place,
+    # memory.store.touch_context, so the console pages conversations by activity without a GROUP BY (ADR 0014).
+    last_event_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now()
+    )
 
 
 class Event(Scoped, Base):
@@ -171,6 +179,7 @@ class Event(Scoped, Base):
         Index("ix_event_context_thread", "context_id", "thread_id"),
         # Keyset paging of a conversation, newest first (ADR 0014): the order /app/messages and /api/events sort by.
         Index("ix_event_context_created", "context_id", text("created_at DESC"), text("id DESC")),
+        Index("ix_event_agent_created", "agent_id", text("created_at DESC"), text("id DESC")),
         Index("ix_event_fts", text("to_tsvector('english', content)"), postgresql_using="gin"),  # recall
     )
 
