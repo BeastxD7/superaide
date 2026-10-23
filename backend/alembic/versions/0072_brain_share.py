@@ -4,8 +4,8 @@ A platform lookup table like memory_socket_client (read from a token before an i
 from Row-Level Security in db/rls.py EXEMPT). It holds a token hash, an expiry of at most 7 days (a check
 enforces it) and a revoked time, and no memory. Nothing reads or writes it unless BRAIN_SHARE_ENABLED is on.
 
-Revision ID: PLACEHOLDER_SHARE
-Revises: 0068
+Revision ID: 0072
+Revises: 0071
 Create Date: 2026-10-24 11:00:00.000000
 
 """
@@ -16,8 +16,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "PLACEHOLDER_SHARE"
-down_revision: str | Sequence[str] | None = "0068"
+revision: str = "0072"
+down_revision: str | Sequence[str] | None = "0071"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
