@@ -221,7 +221,9 @@ def test_known_people_come_from_the_database_and_the_owner_stays(monkeypatch, ag
 
     monkeypatch.setattr(get_settings(), "airlock_enabled", True)
     c = TestClient(create_app(agent), headers={"X-Requested-With": "superaide"})
-    c.post("/auth/signup", json={"name": "Shashank Rao", "email": "s@example.com", "password": "correct horse battery"})
+    c.post(
+        "/auth/signup", json={"name": "Jordan Whitfield", "email": "s@example.com", "password": "correct horse battery"}
+    )
     c.post("/app/hire", json={"agent": "ava", "accepted_notice": True})
     with session_scope() as s:
         add_contact(s, owner=owner(s), name="Priya Tan", relationship="colleague")
@@ -233,8 +235,8 @@ def test_known_people_come_from_the_database_and_the_owner_stays(monkeypatch, ag
     inner = FakeLLM(lambda *a: "ok")
     RoutedLLM({"anthropic": inner}).complete(
         model="m", purpose="t", system=[SystemBlock("s")],
-        messages=[{"role": "user", "content": "Shashank Rao wants Priya to meet daniel@acme-example.com"}],
+        messages=[{"role": "user", "content": "Jordan Whitfield wants Priya to meet daniel@acme-example.com"}],
         max_tokens=10,
     )  # fmt: skip
     sent = inner.calls[-1]["messages"][0]["content"]
-    assert "Shashank Rao" in sent and "Priya" not in sent and "daniel@acme-example.com" not in sent
+    assert "Jordan Whitfield" in sent and "Priya" not in sent and "daniel@acme-example.com" not in sent

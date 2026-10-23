@@ -48,12 +48,12 @@ def seed_a() -> dict[str, str]:
     with session_scope() as s:
         owner = s.get(Person, owner_id)
         assert owner is not None
-        old = remember_fact(s, owner=owner, content="Shashank founded Acme Labs in Singapore.", category="work")
+        old = remember_fact(s, owner=owner, content="Jordan founded Acme Labs in Singapore.", category="work")
         assert old is not None
         old.valid_from = LONG_AGO
-        remember_fact(s, owner=owner, content="Shashank prefers calls before 11am.", category="preference")
-        remember_fact(s, owner=owner, content="Shashank is free on Fridays.", category="availability", shareable=True)
-        gone = remember_fact(s, owner=owner, content="Shashank's old flat code is 1234.", category="other")
+        remember_fact(s, owner=owner, content="Jordan prefers calls before 11am.", category="preference")
+        remember_fact(s, owner=owner, content="Jordan is free on Fridays.", category="availability", shareable=True)
+        gone = remember_fact(s, owner=owner, content="Jordan's old flat code is 1234.", category="other")
         assert gone is not None
         gone.valid_to = datetime.now(UTC)  # forgotten: must never leave
         doc = Document(
@@ -62,7 +62,7 @@ def seed_a() -> dict[str, str]:
             title="bio.txt",
             source="bio.txt",
             sha256="a" * 64,
-            text="Shashank runs Acme Labs.",
+            text="Jordan runs Acme Labs.",
             status="read",
         )
         s.add(doc)
@@ -77,7 +77,7 @@ def seed_a() -> dict[str, str]:
         remember_fact(s, owner=other, content=SECRET_OF_ANOTHER, category="about")
         # A fact about both the owner and someone else, learned in someone else's conversation.
         shared = MemoryItem(
-            content="Shashank and Priya are co-hosting a private dinner.",
+            content="Jordan and Priya are co-hosting a private dinner.",
             subject_person_ids=[owner_id, other.id],
             allowed_kind="persons",
             allowed_person_ids=[owner_id, other.id],
@@ -137,9 +137,9 @@ def test_export_holds_only_the_owners_own_live_data(browser):
     facts = jsonl(zf, "facts.jsonl")
     texts = {f["content"] for f in facts}
     assert texts == {
-        "Shashank founded Acme Labs in Singapore.",
-        "Shashank prefers calls before 11am.",
-        "Shashank is free on Fridays.",
+        "Jordan founded Acme Labs in Singapore.",
+        "Jordan prefers calls before 11am.",
+        "Jordan is free on Fridays.",
         "Acme Labs builds AI assistants.",
     }
     assert manifest["counts"] == {"facts": 4, "sources": 1, "people": 1}
@@ -159,7 +159,7 @@ def test_export_without_sources_leaves_file_text_out(browser):
     seed_a()
     zf = export_zip(a, sources="false")
     assert jsonl(zf, "sources.jsonl") == []
-    assert "Shashank runs Acme Labs." not in zf.read("facts.jsonl").decode()
+    assert "Jordan runs Acme Labs." not in zf.read("facts.jsonl").decode()
 
 
 # --- import ----------------------------------------------------------------------------------
@@ -179,9 +179,9 @@ def test_round_trip_into_a_fresh_account_keeps_facts_sources_and_valid_time(brow
     assert done["imported"] is True and uuid.UUID(done["import_id"])
     mem = {m["text"]: m for m in notebook(b)}
     assert set(mem) == {
-        "Shashank founded Acme Labs in Singapore.",
-        "Shashank prefers calls before 11am.",
-        "Shashank is free on Fridays.",
+        "Jordan founded Acme Labs in Singapore.",
+        "Jordan prefers calls before 11am.",
+        "Jordan is free on Fridays.",
         "Acme Labs builds AI assistants.",
     }
     assert mem["Acme Labs builds AI assistants."]["document"] == "bio.txt"
@@ -209,14 +209,14 @@ def test_round_trip_into_a_fresh_account_keeps_facts_sources_and_valid_time(brow
 def test_importing_never_overrides_or_duplicates_what_ava_knows(browser):
     a, b = owners(browser)
     seed_a()
-    b.post("/app/chat", json={"text": "Remember that Shashank prefers calls after 3pm"})
-    b.post("/app/chat", json={"text": "Remember that Shashank is free on fridays."})
+    b.post("/app/chat", json={"text": "Remember that Jordan prefers calls after 3pm"})
+    b.post("/app/chat", json={"text": "Remember that Jordan is free on fridays."})
     data = a.get("/app/passport/export").content
     preview = upload(b, data, confirm=False).json()
     assert preview["already_known_facts"] == 1  # "free on Fridays", said again
     assert upload(b, data, confirm=True).json()["imported"] is True
     texts = [m["text"] for m in notebook(b)]
-    assert "Shashank prefers calls after 3pm" in texts  # what B told Ava is still there, unchanged
+    assert "Jordan prefers calls after 3pm" in texts  # what B told Ava is still there, unchanged
     assert sum("free on fridays" in t.lower() for t in texts) == 1
     # Importing the same file again adds nothing.
     assert upload(b, data, confirm=True).status_code == 409

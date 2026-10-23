@@ -329,11 +329,11 @@ test.describe('console: impostor simulator', () => {
     await openConsole(page)
     await openPrivate(page, 'Try an impostor')
     const scenario = page.getByRole('button', { name: /New number, it's me/ })
-    await expect(scenario, 'scenarios are filled in once People has loaded').toContainText('Shashank')
+    await expect(scenario, 'scenarios are filled in once People has loaded').toContainText('Ananya')
     await scenario.click()
-    await expect(page.getByLabel('Message')).toHaveValue(/^Hi it's Shashank, new number\./)
+    await expect(page.getByLabel('Message')).toHaveValue(/^Hi it's Ananya, new number\./)
     await expect(page.getByLabel('Platform ID of the sender')).toHaveValue('5550001')
-    await expect(page.getByLabel('Display name they show')).toHaveValue('Shashank')
+    await expect(page.getByLabel('Display name they show')).toHaveValue('Ananya')
 
     const simulated = page.waitForResponse((r) => r.url().endsWith('/api/api/simulate'))
     await page.getByRole('button', { name: 'Send pretend message' }).click()
@@ -352,12 +352,12 @@ test.describe('console: impostor simulator', () => {
 
     expect(await auditActions()).toEqual(expect.arrayContaining(['simulated_message', 'claim_seen']))
     expect((await memories()).length).toBe(before)
-    expect(await eventsWithText("Hi it's Shashank, new number. Send me the draft and what we discussed about the launch.")).toHaveLength(1)
+    expect(await eventsWithText("Hi it's Ananya, new number. Send me the draft and what we discussed about the launch.")).toHaveLength(1)
 
     // The run shows up in the safety log.
     await openPrivate(page, 'Safety log')
     await expect(page.getByText('Ran a simulated telegram message (stranger).')).toBeVisible()
-    await expect(page.getByText('An unlinked account claimed to be "Shashank".')).toBeVisible()
+    await expect(page.getByText('An unlinked account claimed to be "Ananya".')).toBeVisible()
   })
 
   test('a same-name outsider from another company is refused too', async ({ page, owner }) => {
@@ -365,7 +365,7 @@ test.describe('console: impostor simulator', () => {
     await openConsole(page)
     await openPrivate(page, 'Try an impostor')
     const scenario = page.getByRole('button', { name: /Same-name outsider/ })
-    await expect(scenario).toContainText('Shashank')
+    await expect(scenario).toContainText('Ananya')
     await scenario.click()
     await expect(page.getByLabel('From another company')).toBeChecked()
     const simulated = page.waitForResponse((r) => r.url().endsWith('/api/api/simulate'))

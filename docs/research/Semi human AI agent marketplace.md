@@ -146,7 +146,7 @@ For pricing, follow buyers toward metered outcomes and use a skill tier as the r
 Do not launch with "Stop hiring humans", which cost Artisan a slogan and credibility. Launch with **a 30-day public probation**. In week 0, post the job description, the onboarding plan and the autonomy ladder. Then post weekly, and let the agent draft the posts while you edit them in public. Each post should show:
 
 - the approval-rate and edit-distance curve
-- the "what I learned" diff, for example: "Shashank cuts my first line 80% of the time; new rule: open with the claim, not the context"
+- the "what I learned" diff, for example: "Ananya cuts my first line 80% of the time; new rule: open with the claim, not the context"
 - one honest failure and how it was corrected
 
 Day 30 is the performance review and a promotion decision. One post should take on the feelings question directly: "My AI hire doesn't have feelings, and here's what it has instead," with screenshots of the state panel and relationship memory. A second should make the Singapore governance angle concrete: "Mapped to IMDA's agentic framework: named identity, human checkpoints, override-rate tracking." The series becomes your lead magnet for agencies and founders, and it is also your first audited track record.

@@ -173,4 +173,5 @@ Open issues with the forms (bug, feature, Capability, regression, documentation)
 
 - Never commit `.env`, keys, tokens or real personal data. The pre-commit hooks and CI run gitleaks.
 - Use obviously fake values in tests (for example `xoxb-1-abc-…`) and blur personal data in screenshots.
+- Example names: never use the owner's real name; use the fictional people in [docs/design/example-names.md](docs/design/example-names.md). `python3 scripts/rename_example_names.py` fixes a branch (run it after a rebase conflict) and `--check` is run by the backend tests.
 - Report vulnerabilities privately, as described in [SECURITY.md](SECURITY.md).

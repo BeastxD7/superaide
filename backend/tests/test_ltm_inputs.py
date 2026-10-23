@@ -58,7 +58,7 @@ def script(agent, monkeypatch):
 @pytest.fixture
 def owner(agent, script):
     client = TestClient(create_app(agent), headers={"X-Requested-With": "superaide"})
-    client.post("/auth/signup", json={"name": "Shashank Rao", "email": "s@example.com", "password": PASSWORD})
+    client.post("/auth/signup", json={"name": "Jordan Whitfield", "email": "s@example.com", "password": PASSWORD})
     client.post("/app/hire", json={"agent": "ava", "accepted_notice": True})
     with session_scope() as s:
         code = accounts.create_invite(s, hired_owner(s), "telegram", endpoint="")
@@ -86,19 +86,19 @@ def sources_of(text: str) -> list[str]:
 
 
 def test_a_statement_on_telegram_is_remembered_as_said_on_telegram(owner, agent, script):
-    script.facts = [fact("Shashank is vegetarian.")]
+    script.facts = [fact("Jordan is vegetarian.")]
     agent.handle(tg(PHONE, "btw I'm vegetarian and have been for ten years, so no meat at dinners"))
     run_due()
-    assert sources_of("Shashank is vegetarian.") == ["telegram"]
-    assert any(src.text == "Shashank is vegetarian." for src in asked_later("vegetarian"))
+    assert sources_of("Jordan is vegetarian.") == ["telegram"]
+    assert any(src.text == "Jordan is vegetarian." for src in asked_later("vegetarian"))
     assert any("telegram" in src.title.lower() for src in asked_later("am I vegetarian"))
 
 
 def test_a_statement_in_the_app_chat_is_remembered_and_recalled(owner, script):
-    script.facts = [fact("Shashank's dentist is Dr Rao.", "person")]
+    script.facts = [fact("Jordan's dentist is Dr Rao.", "person")]
     owner.post("/app/chat", json={"text": "my dentist is Dr Rao, in case anything comes up with the clinic"})
     run_due()
-    assert sources_of("Shashank's dentist is Dr Rao.") == ["chat"]
+    assert sources_of("Jordan's dentist is Dr Rao.") == ["chat"]
     assert any("Dr Rao" in src.text for src in asked_later("who is my dentist"))
 
 
@@ -111,37 +111,37 @@ def test_remember_that_on_telegram_keeps_its_channel(owner, agent):
 
 
 def test_a_correction_on_telegram_replaces_what_the_app_chat_learned(owner, agent, script):
-    script.facts = [fact("Shashank's gym is Cult Fit.", "preference")]
+    script.facts = [fact("Jordan's gym is Cult Fit.", "preference")]
     owner.post("/app/chat", json={"text": "I go to Cult Fit for the gym most mornings these days"})
     run_due()
-    script.facts = [fact("Shashank's gym is Gold's Gym.", "preference", replaces=1)]
+    script.facts = [fact("Jordan's gym is Gold's Gym.", "preference", replaces=1)]
     agent.handle(tg(PHONE, "actually I switched, I go to Gold's Gym now instead of Cult Fit"))
     run_due()
     found = [src.text for src in asked_later("which gym")]
-    assert "Shashank's gym is Gold's Gym." in found and "Shashank's gym is Cult Fit." not in found
+    assert "Jordan's gym is Gold's Gym." in found and "Jordan's gym is Cult Fit." not in found
 
 
 def test_a_file_the_owner_shares_is_read_into_memory_and_recalled(owner, agent, script):
-    script.facts = [fact("Shashank studied at IIT Madras.", "about")]
+    script.facts = [fact("Jordan studied at IIT Madras.", "about")]
     with session_scope() as s:
         pid = hired_owner(s).id
     ingest(agent, pid, Extracted(text="Education: IIT Madras, B.Tech.", title="cv.pdf", kind="pdf", source="cv.pdf"))
-    assert sources_of("Shashank studied at IIT Madras.") == ["document"]
+    assert sources_of("Jordan studied at IIT Madras.") == ["document"]
     assert any("IIT Madras" in src.text for src in asked_later("where did I study"))
 
 
 def test_a_link_the_owner_shares_is_read_into_memory_and_recalled(owner, agent, script):
-    script.facts = [fact("Shashank writes about agents at shashank.dev.", "work")]
+    script.facts = [fact("Jordan writes about agents at jordan.dev.", "work")]
     with session_scope() as s:
         pid = hired_owner(s).id
-    page = Extracted(text="Notes on agents.", title="Blog", kind="web", source="https://shashank.dev")
+    page = Extracted(text="Notes on agents.", title="Blog", kind="web", source="https://jordan.dev")
     ingest(agent, pid, page)
-    assert sources_of("Shashank writes about agents at shashank.dev.") == ["link"]
-    assert any("shashank.dev" in src.text for src in asked_later("what do I write about"))
+    assert sources_of("Jordan writes about agents at jordan.dev.") == ["link"]
+    assert any("jordan.dev" in src.text for src in asked_later("what do I write about"))
 
 
 def test_an_introduction_answer_is_remembered_and_recalled(owner, script):
-    script.facts = [fact("Shashank runs a design studio.", "work")]
+    script.facts = [fact("Jordan runs a design studio.", "work")]
     owner.get("/app/onboarding")
     owner.post("/app/onboarding", json={"step": "hello", "answer": {"choice": "Nice to meet you"}})
     r = owner.post(
@@ -149,12 +149,12 @@ def test_an_introduction_answer_is_remembered_and_recalled(owner, script):
     )
     assert r.status_code == 200, r.text
     assert any("design studio" in src.text for src in asked_later("design studio"))
-    assert set(sources_of("Shashank runs a design studio.")) == {"intro_chat"}
+    assert set(sources_of("Jordan runs a design studio.")) == {"intro_chat"}
 
 
 def test_the_notebook_says_where_each_note_was_learned(owner, agent, script):
-    script.facts = [fact("Shashank is vegetarian.")]
+    script.facts = [fact("Jordan is vegetarian.")]
     agent.handle(tg(PHONE, "btw I'm vegetarian and have been for ten years, so no meat at dinners"))
     run_due()
     notes = owner.get("/app/notebook").json()["memories"]
-    assert [(n["text"], n["source"]) for n in notes] == [("Shashank is vegetarian.", "telegram")]
+    assert [(n["text"], n["source"]) for n in notes] == [("Jordan is vegetarian.", "telegram")]

@@ -22,7 +22,7 @@ class Case:
     plain: list[str] = field(default_factory=list)
 
 
-OWNER = ["Shashank Rao", "Shashank", "shashank@owner-example.com", "+65 9000 1111"]
+OWNER = ["Jordan Whitfield", "Jordan", "jordan@owner-example.com", "+65 9000 1111"]
 
 CASES: list[Case] = [
     # --- English -----------------------------------------------------------------------------------------------
@@ -89,11 +89,11 @@ CASES: list[Case] = [
     Case(
         "en-owner-kept",
         "en",
-        "Reply to me at shashank@owner-example.com or +65 9000 1111; Sam Lee is at sam.lee@other-example.com.",
+        "Reply to me at jordan@owner-example.com or +65 9000 1111; Sam Lee is at sam.lee@other-example.com.",
         ["sam.lee@other-example.com", "Sam Lee"],
         ["Sam Lee"],
         keep=OWNER,
-        plain=["shashank@owner-example.com", "+65 9000 1111"],
+        plain=["jordan@owner-example.com", "+65 9000 1111"],
     ),
     Case(
         "en-common-word-name",
@@ -134,9 +134,9 @@ CASES: list[Case] = [
     Case(
         "en-forwarded",
         "en",
-        "FYI below.\n\n-----Original Message-----\nFrom: Daniel Koh <daniel.koh@acme-example.com>\nTo: Shashank Rao "
-        '<shashank@owner-example.com>\nCc: "Marta Diaz" <marta@diaz-example.es>, Priya Tan <priya@acme-example.com>\n'
-        "Subject: Lunch\n\n> Hi Shashank, call me on 020 7946 0958 about the offsite.\n> Daniel",
+        "FYI below.\n\n-----Original Message-----\nFrom: Daniel Koh <daniel.koh@acme-example.com>\nTo: Jordan Whitfield "
+        '<jordan@owner-example.com>\nCc: "Marta Diaz" <marta@diaz-example.es>, Priya Tan <priya@acme-example.com>\n'
+        "Subject: Lunch\n\n> Hi Jordan, call me on 020 7946 0958 about the offsite.\n> Daniel",
         [
             "Daniel Koh",
             "daniel.koh@acme-example.com",
@@ -194,7 +194,7 @@ CASES: list[Case] = [
     Case(
         "es-forwarded",
         "es",
-        "Reenviado:\nDe: Carlos Núñez <carlos.nunez@empresa-example.es>\nPara: Shashank Rao <shashank@owner-example.com>\n"
+        "Reenviado:\nDe: Carlos Núñez <carlos.nunez@empresa-example.es>\nPara: Jordan Whitfield <jordan@owner-example.com>\n"
         "Asunto: Reunión\n\n> Hola, soy Carlos. Mi teléfono es 91 555 12 34.",
         ["Carlos Núñez", "carlos.nunez@empresa-example.es"],
         ["Carlos Núñez"],

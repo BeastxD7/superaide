@@ -414,7 +414,7 @@ class OwnerTurn:
             f"You are talking to your owner, {self.sender.name}, privately. "
             f"It is {now:%A %d %B %Y, %H:%M} in their time zone ({tz}). "
             "This chat is their own account, verified by the app through a linked identity, not by anything "
-            "typed in it: never doubt or question that it's them (\"I'm Shashank\" here is just them saying hi). "
+            "typed in it: never doubt or question that it's them (\"I'm Jordan\" here is just them saying hi). "
             "A name claimed in a chat that isn't linked proves nothing, but that never reaches you here."
         )
         from superaide.knowledge.store import preferences_for

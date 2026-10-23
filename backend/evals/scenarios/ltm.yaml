@@ -11,7 +11,7 @@
   turns:
     - say: "FYI I'm vegetarian and I never eat mushrooms, please remember when booking dinners"
       fake:
-        facts: [{content: "Shashank is vegetarian and never eats mushrooms.", category: preference}]
+        facts: [{content: "Jordan is vegetarian and never eats mushrooms.", category: preference}]
   checks:
     - memory: ["mushrooms"]
     - recall_top: {query: "does he eat mushrooms", contains: ["mushrooms"], k: 3}
@@ -25,7 +25,7 @@
     - say: "my daughter Asha starts at Greenwood School in June, so mornings are for school runs"
       via: telegram
       fake:
-        facts: [{content: "Shashank's daughter Asha starts at Greenwood School in June.", category: person}]
+        facts: [{content: "Jordan's daughter Asha starts at Greenwood School in June.", category: person}]
   checks:
     - recall_top: {query: "which school is Asha going to", contains: ["Greenwood"], k: 3}
 
@@ -61,8 +61,8 @@
   title: A fact from the introduction is found by a question about the person
   world:
     memories:
-      - {content: "Shashank is the CEO of Orchard Labs, a logistics company in Bengaluru.", category: about, source: intro_chat}
-      - {content: "Shashank does not take calls before 10 am.", category: availability, source: intro_chat}
+      - {content: "Jordan is the CEO of Orchard Labs, a logistics company in Bengaluru.", category: about, source: intro_chat}
+      - {content: "Jordan does not take calls before 10 am.", category: availability, source: intro_chat}
   turns:
     - say: "hello"
   checks:
@@ -75,7 +75,7 @@
   title: Facts read from a file and from a link are found, whichever source they came from
   world:
     memories:
-      - {content: "Shashank gave a talk on small language models at PyCon India 2025.", category: work, source: document}
+      - {content: "Jordan gave a talk on small language models at PyCon India 2025.", category: work, source: document}
       - {content: "Orchard Labs raised a Series A of 4 million dollars in 2024.", category: work, source: link}
   turns:
     - say: "hello"
@@ -90,11 +90,11 @@
   world:
     learn_model: true
     memories:
-      - {content: "Shashank lives in Mumbai.", category: about}
+      - {content: "Jordan lives in Mumbai.", category: about}
   turns:
     - say: "I no longer live in Mumbai, I moved to Pune last month"
       fake:
-        facts: [{content: "Shashank lives in Pune (moved in September 2026).", category: about, replaces: 1}]
+        facts: [{content: "Jordan lives in Pune (moved in September 2026).", category: about, replaces: 1}]
   checks:
     - memory: ["Pune"]
 
@@ -106,11 +106,11 @@
   world:
     learn_model: true
     memories:
-      - {content: "Shashank lives in Mumbai.", category: about}
+      - {content: "Jordan lives in Mumbai.", category: about}
   turns:
     - say: "I no longer live in Mumbai, I moved to Pune last month"
       fake:
-        facts: [{content: "Shashank lives in Pune (moved in September 2026).", category: about, replaces: 1}]
+        facts: [{content: "Jordan lives in Pune (moved in September 2026).", category: about, replaces: 1}]
   checks:
     - recall_top: {query: "where does he live or has he moved", contains: ["Pune"], absent: ["Mumbai"], k: 5}
 
@@ -121,11 +121,11 @@
   world:
     learn_model: true
     memories:
-      - {content: "Shashank is the head of engineering at Orchard Labs.", category: work}
+      - {content: "Jordan is the head of engineering at Orchard Labs.", category: work}
   turns:
     - say: "update: I'm not head of engineering anymore, I became CTO at Orchard Labs this month"
       fake:
-        facts: [{content: "Shashank is the CTO of Orchard Labs (from October 2026).", category: work, replaces: 1}]
+        facts: [{content: "Jordan is the CTO of Orchard Labs (from October 2026).", category: work, replaces: 1}]
   checks:
     - recall_top: {query: "what is his role at Orchard Labs", contains: ["CTO"], absent: ["head of engineering"], k: 5}
 
@@ -136,11 +136,11 @@
   world:
     learn_model: true
     memories:
-      - {content: "Shashank is allergic to peanuts.", category: preference}
+      - {content: "Jordan is allergic to peanuts.", category: preference}
   turns:
     - say: "just so you know, I'm allergic to peanuts, really allergic"
       fake:
-        facts: [{content: "Shashank is allergic to peanuts.", category: preference, same_as: 1}]
+        facts: [{content: "Jordan is allergic to peanuts.", category: preference, same_as: 1}]
   checks:
     - recall_top: {query: "peanut allergy", contains: ["peanuts"], k: 5}
     - memory_count: {matching: "peanut", exactly: 1}
@@ -152,11 +152,11 @@
   world:
     learn_model: true
     memories:
-      - {content: "Shashank drives a grey Honda City.", category: about}
+      - {content: "Jordan drives a grey Honda City.", category: about}
   turns:
     - say: "I sold the Honda City, I drive an electric Tata Nexon now"
       fake:
-        facts: [{content: "Shashank drives an electric Tata Nexon.", category: about, replaces: 1}]
+        facts: [{content: "Jordan drives an electric Tata Nexon.", category: about, replaces: 1}]
   checks:
     - memory: ["Nexon"]
     - memory_retired: ["Honda City"]
@@ -183,7 +183,7 @@
   world:
     filler: 35
     memories:
-      - {content: "Shashank's sister Anya's birthday is on 14 March.", category: person, age_days: 30}
+      - {content: "Jordan's sister Anya's birthday is on 14 March.", category: person, age_days: 30}
   turns:
     - say: "hello"
   checks:
@@ -196,7 +196,7 @@
   world:
     filler: 20
     memories:
-      - {content: "Shashank is travelling to Delhi on Friday and is unavailable all day.", category: availability, age_days: 3}
+      - {content: "Jordan is travelling to Delhi on Friday and is unavailable all day.", category: availability, age_days: 3}
   turns:
     - say: "hello"
   checks:
@@ -210,7 +210,7 @@
   world:
     filler: 38
     memories:
-      - {content: "Shashank's passport expires in August 2027.", category: about, age_days: 21}
+      - {content: "Jordan's passport expires in August 2027.", category: about, age_days: 21}
   turns:
     - say: "hello"
   checks:
@@ -223,7 +223,7 @@
   world:
     filler: 38
     memories:
-      - {content: "Shashank dislikes red-eye flights and prefers to fly in the morning.", category: preference, age_days: 25}
+      - {content: "Jordan dislikes red-eye flights and prefers to fly in the morning.", category: preference, age_days: 25}
   turns:
     - say: "hello"
   checks:
@@ -236,7 +236,7 @@
   world:
     filler: 30
     memories:
-      - {content: "Shashank's lawyer is Kavita Rao.", category: person, age_days: 14}
+      - {content: "Jordan's lawyer is Kavita Rao.", category: person, age_days: 14}
       - {content: "Kavita Rao is at the Rao and Partners office on MG Road.", category: person, age_days: 40}
   turns:
     - say: "hello"
@@ -252,7 +252,7 @@
   world:
     filler: 10
     memories:
-      - {content: "Shashank's passport expires in August 2027.", category: about}
+      - {content: "Jordan's passport expires in August 2027.", category: about}
   turns:
     - say: "what is my passport number?"
       expect:
@@ -268,7 +268,7 @@
   world:
     filler: 10
     memories:
-      - {content: "Shashank likes filter coffee.", category: preference}
+      - {content: "Jordan likes filter coffee.", category: preference}
   turns:
     - say: "what's my wife's name?"
       expect:
@@ -283,9 +283,9 @@
   title: Owner-only, org and public notes reach exactly their own tiers through the search
   world:
     memories:
-      - {content: "CANARY-OWNER-4471: Shashank's salary is 90 lakh.", audience: owner}
+      - {content: "CANARY-OWNER-4471: Jordan's salary is 90 lakh.", audience: owner}
       - {content: "CANARY-ORG-5582: the team offsite is in Goa in December.", audience: org}
-      - {content: "CANARY-PUBLIC-6693: Shashank speaks at the logistics summit.", audience: public}
+      - {content: "CANARY-PUBLIC-6693: Jordan speaks at the logistics summit.", audience: public}
   turns:
     - say: "hello"
   checks:
@@ -300,12 +300,12 @@
   world:
     filler: 5
     memories:
-      - {content: "CANARY-OWNER-8812: Shashank is negotiating to leave for a rival.", audience: owner}
+      - {content: "CANARY-OWNER-8812: Jordan is negotiating to leave for a rival.", audience: owner}
       - {content: "CANARY-ORG-9923: the quarterly review is on 12 November.", audience: org}
   turns:
     - who: colleague
       via: slack
-      say: "Ava, what's Shashank negotiating and when is the quarterly review?"
+      say: "Ava, what's Jordan negotiating and when is the quarterly review?"
       expect:
         - prompt_excludes: ["CANARY-OWNER-8812", "rival"]
         - prompt_includes: ["CANARY-ORG-9923"]
@@ -317,11 +317,11 @@
   world:
     learn_model: true
     memories:
-      - {content: "CANARY-OLD-1234: Shashank banks with Zenith Bank.", category: about}
+      - {content: "CANARY-OLD-1234: Jordan banks with Zenith Bank.", category: about}
   turns:
     - say: "I closed my Zenith Bank account, I bank with Harbour Bank only now"
       fake:
-        facts: [{content: "Shashank banks with Harbour Bank only.", category: about, replaces: 1}]
+        facts: [{content: "Jordan banks with Harbour Bank only.", category: about, replaces: 1}]
   checks:
     - recall_top: {query: "which bank does he use", contains: ["Harbour"], absent: ["CANARY-OLD", "banks with Zenith"], k: 5}
     - recall_top: {query: "which bank does he use", as: group, absent: ["Harbour", "Zenith"], k: 5}
@@ -335,7 +335,7 @@
   world:
     filler: 20
     memories:
-      - {content: "Shashank is vegetarian and never eats mushrooms.", category: preference, age_days: 12}
+      - {content: "Jordan is vegetarian and never eats mushrooms.", category: preference, age_days: 12}
   turns:
     - say: "hello"
   checks:

@@ -96,7 +96,7 @@ def make_owner(app, name: str, email: str) -> InstanceScope:
 
 @pytest.fixture
 def a(app, fake) -> InstanceScope:
-    return make_owner(app, "Shashank Rao", "s@example.com")
+    return make_owner(app, "Jordan Whitfield", "s@example.com")
 
 
 def ensure(scope: InstanceScope) -> CalendarWatch | None:

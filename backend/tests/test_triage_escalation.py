@@ -48,7 +48,7 @@ def pushes(monkeypatch) -> dict[str, FakeMessenger]:
 def world(agent, colleague, pushes):
     """An owner who hired Ava (linked on Telegram and Slack), and Priya, a colleague on Slack."""
     c = TestClient(create_app(agent), headers={"X-Requested-With": "superaide"})
-    c.post("/auth/signup", json={"name": "Shashank Rao", "email": "s@example.com", "password": PASSWORD,
+    c.post("/auth/signup", json={"name": "Jordan Whitfield", "email": "s@example.com", "password": PASSWORD,
                                  "timezone": "Asia/Kolkata"})  # fmt: skip
     c.post("/app/hire", json={"agent": "ava", "accepted_notice": True})
     with session_scope() as s:

@@ -128,11 +128,11 @@ test.describe('sign-up', () => {
   }
 
   test('a password that contains your name as you typed it is refused', async ({ page, api }) => {
-    test.fail(true, 'BUG: the name check strips spaces from the name but not the password, so "Shashank Rao …" is accepted')
+    test.fail(true, 'BUG: the name check strips spaces from the name but not the password, so "Ananya Menon …" is accepted')
     void api
-    const person = newPerson('Shashank Rao')
+    const person = newPerson('Ananya Menon')
     await gotoSignup(page)
-    await fillSignup(page, { ...person, password: 'Shashank Rao rules ok' })
+    await fillSignup(page, { ...person, password: 'Ananya Menon rules ok' })
     const response = page.waitForResponse((r) => r.url().endsWith('/api/auth/signup'))
     await signupForm(page).submit.click()
     expect((await response).status()).toBe(422)
@@ -140,7 +140,7 @@ test.describe('sign-up', () => {
     expect(await countAccounts()).toBe(0)
   })
 
-  for (const email of ['not-an-email', 'a@b', 'shashank@', '@example.com']) {
+  for (const email of ['not-an-email', 'a@b', 'ananya@', '@example.com']) {
     test(`an invalid email (${email}) is refused next to the email field`, async ({ page, api }) => {
       void api
       await gotoSignup(page)
@@ -250,7 +250,7 @@ test.describe('sign-up', () => {
     await f.email.fill(newPerson().email)
     await f.password.fill(PASSWORD)
     await expect(f.submit, 'a name of only spaces is not a name').toBeDisabled()
-    await f.name.fill('Shashank Rao')
+    await f.name.fill('Ananya Menon')
     await expect(f.submit).toBeEnabled()
     await f.password.fill('')
     await expect(f.submit).toBeDisabled()

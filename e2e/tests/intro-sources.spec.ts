@@ -69,7 +69,7 @@ test.describe('files', () => {
   })
 
   test('a text PDF and a Word document are accepted, their text kept, and listed', async ({ page }) => {
-    await chooseFile(page, pdf(['Shashank Rao (applied AI)', 'Leads applied AI at PebbleRoad in Singapore.']))
+    await chooseFile(page, pdf(['Ananya Menon (applied AI)', 'Leads applied AI at PebbleRoad in Singapore.']))
     await expect(fileRow(page, 'resume.pdf')).toContainText(SAVED)
 
     await chooseFile(page, docx())
@@ -99,9 +99,9 @@ test.describe('files', () => {
     await chooseFile(page, textFile('about-me.txt', 'I lead applied AI at PebbleRoad.'))
     await expect(fileRow(page, 'about-me.txt')).toBeVisible()
     const [doc] = await documents()
-    await pretendRead(doc.id, 'Shashank leads applied AI at PebbleRoad.')
+    await pretendRead(doc.id, 'Ananya leads applied AI at PebbleRoad.')
     const before = await api.ok<{ memories: { text: string }[] }>(api.get('/app/notebook'))
-    expect(before.memories.map((m) => m.text)).toContain('Shashank leads applied AI at PebbleRoad.')
+    expect(before.memories.map((m) => m.text)).toContain('Ananya leads applied AI at PebbleRoad.')
 
     await page.getByRole('button', { name: 'Remove about-me.txt' }).click()
     await expect(fileRow(page, 'about-me.txt')).toHaveCount(0)
@@ -110,7 +110,7 @@ test.describe('files', () => {
     expect((await documents()).map((d) => d.removed)).toEqual([true])
     expect((await facts()).filter((f) => f.document_id === doc.id).map((f) => f.active)).toEqual([false])
     const after = await api.ok<{ memories: { text: string }[] }>(api.get('/app/notebook'))
-    expect(after.memories.map((m) => m.text)).not.toContain('Shashank leads applied AI at PebbleRoad.')
+    expect(after.memories.map((m) => m.text)).not.toContain('Ananya leads applied AI at PebbleRoad.')
     // …and it stays gone after a reload.
     await page.reload()
     await expect(introTabs(page)).toBeVisible()
@@ -123,7 +123,7 @@ test.describe('files', () => {
     await chooseFile(page, textFile('about-me.txt', 'I lead applied AI at PebbleRoad.'))
     await expect(fileRow(page, 'about-me.txt')).toBeVisible()
     const [doc] = await documents()
-    await pretendRead(doc.id, 'Shashank leads applied AI at PebbleRoad.')
+    await pretendRead(doc.id, 'Ananya leads applied AI at PebbleRoad.')
     await page.reload()
     const row = fileRow(page, 'about-me.txt')
     await expect(row).toContainText(/\d+ facts?/)
@@ -249,7 +249,7 @@ test.describe('files', () => {
     // Straight at the API, too, with a Windows-style path.
     const r = await page.request.post('/api/app/intro/files', {
       headers: CSRF,
-      multipart: { file: { name: 'C:\\Users\\shashank\\..\\cv.txt', mimeType: 'text/plain', buffer: Buffer.from('Another note about me.') } },
+      multipart: { file: { name: 'C:\\Users\\ananya\\..\\cv.txt', mimeType: 'text/plain', buffer: Buffer.from('Another note about me.') } },
     })
     expect(r.status(), await r.text()).toBe(200)
 
@@ -377,10 +377,10 @@ test.describe('links', () => {
       { what: 'a link with a password in it', url: 'https://me:secret@example.com/', message: "Links with a username or password in them aren't allowed." },
     ],
     'LinkedIn and X profiles, with advice on what to do instead': [
-      { what: 'a LinkedIn profile', url: 'https://www.linkedin.com/in/shashank-rao', message: LINKEDIN },
-      { what: 'a LinkedIn profile typed without https', url: 'linkedin.com/in/shashank-rao', message: LINKEDIN },
-      { what: 'an x.com profile', url: 'https://x.com/shashank', message: X },
-      { what: 'a twitter.com profile', url: 'twitter.com/shashank', message: X },
+      { what: 'a LinkedIn profile', url: 'https://www.linkedin.com/in/ananya-menon', message: LINKEDIN },
+      { what: 'a LinkedIn profile typed without https', url: 'linkedin.com/in/ananya-menon', message: LINKEDIN },
+      { what: 'an x.com profile', url: 'https://x.com/ananya', message: X },
+      { what: 'a twitter.com profile', url: 'twitter.com/ananya', message: X },
     ],
     'text that is not a web address': [
       { what: 'words with spaces', url: 'not a link at all', message: INVALID },
@@ -534,7 +534,7 @@ test.describe('video call', () => {
     const stored = await facts()
     expect(stored.map((f) => f.source)).toEqual(['intro_call', 'intro_call', 'intro_call', 'intro_call'])
     for (const [i, answer] of ANSWERS.entries()) {
-      expect(stored[i].content).toBe(`Asked "${CALL_QUESTIONS[i]}", Shashank Rao said: ${answer}`)
+      expect(stored[i].content).toBe(`Asked "${CALL_QUESTIONS[i]}", Ananya Menon said: ${answer}`)
     }
     // The conversation keeps the questions and answers too.
     for (const answer of ANSWERS) await expect(page.getByText(answer, { exact: true })).toBeVisible()
@@ -586,8 +586,8 @@ test.describe('video call', () => {
     await expect(dialog.getByText(CALL_QUESTIONS[2], { exact: true })).toBeVisible()
 
     expect((await facts()).map((f) => f.content)).toEqual([
-      `Asked "${CALL_QUESTIONS[0]}", Shashank Rao said: I lead applied AI at PebbleRoad.`,
-      `Asked "${CALL_QUESTIONS[1]}", Shashank Rao said: Busy weeks, mostly client work.`,
+      `Asked "${CALL_QUESTIONS[0]}", Ananya Menon said: I lead applied AI at PebbleRoad.`,
+      `Asked "${CALL_QUESTIONS[1]}", Ananya Menon said: Busy weeks, mostly client work.`,
     ])
     await leaveCall(page, dialog)
   })
@@ -611,8 +611,8 @@ test.describe('video call', () => {
     await leaveCall(page, dialog)
     const stored = await facts()
     expect(stored.map((f) => f.content)).toEqual([
-      `Asked "${CALL_QUESTIONS[0]}", Shashank Rao said: ${ANSWERS[0]}`,
-      `Asked "${CALL_QUESTIONS[1]}", Shashank Rao said: ${ANSWERS[1]}`,
+      `Asked "${CALL_QUESTIONS[0]}", Ananya Menon said: ${ANSWERS[0]}`,
+      `Asked "${CALL_QUESTIONS[1]}", Ananya Menon said: ${ANSWERS[1]}`,
     ])
     // No "thanks for the call" for a call you left, but what you said is in the conversation.
     expect((await agentLines()).filter((l) => l.startsWith('Thanks for the call'))).toEqual([])
@@ -698,7 +698,7 @@ test.describe('video call', () => {
     fail = false
     await dialog.getByRole('button', { name: 'Try again' }).click()
     await expect(dialog.getByText(CALL_QUESTIONS[1], { exact: true })).toBeVisible()
-    expect((await facts()).map((f) => f.content)).toEqual([`Asked "${CALL_QUESTIONS[0]}", Shashank Rao said: ${ANSWERS[0]}`])
+    expect((await facts()).map((f) => f.content)).toEqual([`Asked "${CALL_QUESTIONS[0]}", Ananya Menon said: ${ANSWERS[0]}`])
     await leaveCall(page, dialog)
   })
 

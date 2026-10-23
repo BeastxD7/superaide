@@ -31,7 +31,7 @@ class ReceptionSettings(Scoped, Base):
 
     person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), unique=True)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
-    show_first_name: Mapped[bool] = mapped_column(Boolean, default=False)  # "Hi, I'm Ava, Shashank's AI assistant"
+    show_first_name: Mapped[bool] = mapped_column(Boolean, default=False)  # "Hi, I'm Ava, Jordan's AI assistant"
     # Written by the owner for anyone: what they do, when they're reachable, the best way to reach them.
     public_profile: Mapped[str] = mapped_column(Text, default="")
     per_hour: Mapped[int] = mapped_column(Integer, default=PER_HOUR)

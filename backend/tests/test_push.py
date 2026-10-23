@@ -100,8 +100,8 @@ def browser(agent):
     return make
 
 
-def hired(client: TestClient, email: str = "shashank@example.com") -> TestClient:
-    r = client.post("/auth/signup", json={"name": "Shashank Rao", "email": email, "password": PASSWORD})
+def hired(client: TestClient, email: str = "jordan@example.com") -> TestClient:
+    r = client.post("/auth/signup", json={"name": "Jordan Whitfield", "email": email, "password": PASSWORD})
     assert r.status_code == 200, r.text
     assert client.post("/app/hire", json={"agent": "ava", "accepted_notice": True}).status_code == 200
     return client
@@ -209,7 +209,7 @@ def test_subscribe_list_and_unsubscribe(browser, push_on):
     key = client.get("/app/push/key")
     assert key.status_code == 200 and len(key.json()["public_key"]) == 87
     device = Device.make(APPLE)
-    r = client.put("/app/push/subscription", json=device.body(label="Shashank's iPhone"))
+    r = client.put("/app/push/subscription", json=device.body(label="Jordan's iPhone"))
     assert r.status_code == 200, r.text
     assert r.json()["created"] is True
     view = r.json()["device"]
@@ -219,7 +219,7 @@ def test_subscribe_list_and_unsubscribe(browser, push_on):
     # Every app start re-saves it: same row, refreshed.
     again = client.put("/app/push/subscription", json=device.body())
     assert again.json()["created"] is False and again.json()["device"]["id"] == view["id"]
-    assert again.json()["device"]["label"] == "Shashank's iPhone"
+    assert again.json()["device"]["label"] == "Jordan's iPhone"
     devices = client.get("/app/push/devices").json()
     assert [d["id"] for d in devices] == [view["id"]] and APPLE not in json.dumps(devices)
 
@@ -390,13 +390,13 @@ def test_a_payload_bigger_than_the_padding_is_a_bug():
 
 def _subscribe(*devices: Device, level: str = "none") -> list[PushSubscription]:
     with session_scope() as s:
-        owner = Person(display_name="Shashank", relation="manager")
+        owner = Person(display_name="Jordan", relation="manager")
         s.add(owner)
         s.flush()
         from superaide.db.models import UserAccount
 
         user = UserAccount(email="o@example.com", email_normalized="o@example.com", password_hash="x",
-                           display_name="Shashank", person_id=owner.id)  # fmt: skip
+                           display_name="Jordan", person_id=owner.id)  # fmt: skip
         s.add(user)
         s.flush()
         rows = []

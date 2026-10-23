@@ -186,7 +186,7 @@ class ElevenLabsTTS:
 # --- Fakes (tests and the end-to-end suite) -------------------------------------------------------
 
 FAKE_ANSWERS = [
-    "I'm Shashank. I lead applied AI at a design consultancy in Singapore.",
+    "I'm Jordan. I lead applied AI at a design consultancy in Singapore.",
     "Mostly client workshops and research. My wife Priya and my co-founder Arjun should always get through.",
     "Message me on Telegram if it's urgent. Please keep quiet after ten at night.",
     "You can say I'm in a meeting, but never share my phone number.",

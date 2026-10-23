@@ -75,7 +75,7 @@ body:
       placeholder: |
         1. Sign in as the owner and open Settings → Sharing.
         2. Mark "dentist appointment" as private.
-        3. From a colleague's Slack account, ask Ava "what's Shashank doing on Friday?"
+        3. From a colleague's Slack account, ask Ava "what's Jordan doing on Friday?"
     validations:
       required: true
 

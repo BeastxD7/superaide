@@ -44,7 +44,7 @@ test.beforeEach(async ({ api }) => {
 
 test.describe('owner B with A’s ids', () => {
   test('cannot snooze, finish or cancel A’s reminder', async ({ browser }) => {
-    const a = await introduced(browser, 'Shashank Rao')
+    const a = await introduced(browser, 'Ananya Menon')
     const b = await introduced(browser, 'Bella Tan')
     const rem = await a.api.ok<{ id: string }>(a.api.post('/app/reminders', { text: 'Call the bank tomorrow at 5pm' }))
     expect((await b.api.post(`/app/reminders/${rem.id}/snooze`, { minutes: 5 })).status()).toBe(404)
@@ -55,9 +55,9 @@ test.describe('owner B with A’s ids', () => {
   })
 
   test('cannot list or remove A’s shared file, and sharing the same file says nothing about A', async ({ browser }) => {
-    const a = await introduced(browser, 'Shashank Rao')
+    const a = await introduced(browser, 'Ananya Menon')
     const b = await introduced(browser, 'Bella Tan')
-    const file = { name: 'cv.txt', mimeType: 'text/plain', buffer: Buffer.from('Shashank Rao. Project NIGHTJAR. PebbleRoad.') }
+    const file = { name: 'cv.txt', mimeType: 'text/plain', buffer: Buffer.from('Ananya Menon. Project NIGHTJAR. PebbleRoad.') }
     const up = await a.context.request.post('/api/app/intro/files', {
       multipart: { file },
       headers: { 'X-Requested-With': 'superaide-e2e' },
@@ -75,7 +75,7 @@ test.describe('owner B with A’s ids', () => {
   })
 
   test('cannot confirm or unlink A’s linked accounts', async ({ browser }) => {
-    const a = await introduced(browser, 'Shashank Rao')
+    const a = await introduced(browser, 'Ananya Menon')
     const b = await introduced(browser, 'Bella Tan')
     const ids = await query<{ id: string }>(
       'SELECT ci.id FROM channel_identity ci JOIN user_account u ON u.person_id = ci.person_id WHERE u.email = $1',
@@ -91,7 +91,7 @@ test.describe('owner B with A’s ids', () => {
   })
 
   test('B’s own lists hold nothing of A’s', async ({ browser }) => {
-    const a = await introduced(browser, 'Shashank Rao')
+    const a = await introduced(browser, 'Ananya Menon')
     const b = await introduced(browser, 'Bella Tan')
     await a.api.ok(a.api.post('/app/chat', { text: `Remember that ${SECRET_A}` }))
     for (const path of ['/app/me', '/app/notebook', '/app/people', '/app/preferences', '/app/messages', '/app/approvals',
@@ -99,19 +99,19 @@ test.describe('owner B with A’s ids', () => {
       const seen = await (await b.api.get(path)).text()
       expect(seen, path).not.toContain(SECRET_WORDS)
       expect(seen, path).not.toContain(a.person.email)
-      expect(seen, path).not.toContain('Shashank')
+      expect(seen, path).not.toContain('Ananya')
     }
   })
 })
 
 test.describe('accounts that have not hired', () => {
   test('a sign-up is not stored inside the first owner’s Ava', async ({ browser }) => {
-    const a = await introduced(browser, 'Shashank Rao')
+    const a = await introduced(browser, 'Ananya Menon')
     const instanceA = await instanceOf(a)
     const b = await account(browser, 'Bella Tan') // signs up, never hires
     const [{ id: userB }] = await query<{ id: string }>('SELECT id FROM user_account WHERE email = $1', [b.person.email])
 
-    // What the operator sees, with a reason, as "Shashank's Ava's people" and safety log.
+    // What the operator sees, with a reason, as "Ananya's Ava's people" and safety log.
     const ctx = await browser.newContext({ baseURL: BASE_URL })
     const page = await ctx.newPage()
     const headers = { ...OPERATOR, 'X-Operator-Reason': 'qa: checking owner A people', 'X-Operator-Instance': instanceA }
@@ -126,7 +126,7 @@ test.describe('accounts that have not hired', () => {
       await page.getByLabel(/^Reason/).fill('qa: checking owner A people')
       await open.click()
     }
-    await expect(page.getByText('Shashank Rao').first()).toBeVisible()
+    await expect(page.getByText('Ananya Menon').first()).toBeVisible()
     await page.screenshot({ path: `${QA}/signup-in-first-instance-console-people.png`, fullPage: true })
     await ctx.close()
 
@@ -140,7 +140,7 @@ test.describe('accounts that have not hired', () => {
   })
 
   test('a second owner’s password and email changes are logged in their own Ava, not the first owner’s', async ({ browser }) => {
-    const a = await introduced(browser, 'Shashank Rao')
+    const a = await introduced(browser, 'Ananya Menon')
     const b = await introduced(browser, 'Bella Tan')
     const [instanceA, instanceB] = [await instanceOf(a), await instanceOf(b)]
     const [{ id: userB }] = await query<{ id: string }>('SELECT id FROM user_account WHERE email = $1', [b.person.email])
@@ -186,7 +186,7 @@ test.describe('signed out', () => {
 
   test('a forged or missing session cookie gets nothing', async ({ browser, api }) => {
     void api
-    await introduced(browser, 'Shashank Rao')
+    await introduced(browser, 'Ananya Menon')
     const ctx = await browser.newContext({ baseURL: BASE_URL })
     await ctx.addCookies([{ name: 'superaide_session', value: 'forged-session-token', url: BASE_URL }])
     expect((await ctx.request.get('/api/app/notebook')).status()).toBe(401)
@@ -197,7 +197,7 @@ test.describe('signed out', () => {
 
 test.describe('operator break-glass', () => {
   test('a look at B’s Ava is recorded in B’s Access log only, and shows only B’s content', async ({ browser, page }) => {
-    const a = await introduced(browser, 'Shashank Rao')
+    const a = await introduced(browser, 'Ananya Menon')
     const b = await introduced(browser, 'Bella Tan')
     await a.api.ok(a.api.post('/app/chat', { text: `Remember that ${SECRET_A}` }))
     const instanceB = await instanceOf(b)
@@ -218,7 +218,7 @@ test.describe('operator break-glass', () => {
   })
 
   test('without a reason, or with an unknown instance, the console gets no content', async ({ page, browser }) => {
-    await introduced(browser, 'Shashank Rao')
+    await introduced(browser, 'Ananya Menon')
     expect((await page.request.get('/api/api/memories', { headers: OPERATOR })).status()).toBe(403)
     expect((await page.request.get('/api/api/memories', { headers: { ...OPERATOR, 'X-Operator-Reason': 'short' } })).status()).toBe(403)
     const bad = { ...OPERATOR, 'X-Operator-Reason': 'qa: an instance that does not exist' }
@@ -256,7 +256,7 @@ test.describe('Ask my Ava link', () => {
   }
 
   test('B cannot take A’s handle, in any case', async ({ browser }) => {
-    const a = await introduced(browser, 'Shashank Rao')
+    const a = await introduced(browser, 'Ananya Menon')
     const b = await introduced(browser, 'Bella Tan')
     const h = handle('qa-a')
     await publish(a, h)
@@ -267,7 +267,7 @@ test.describe('Ask my Ava link', () => {
   })
 
   test('a request on A’s link reaches A only; B cannot dismiss, spam, reply to or approve it', async ({ browser, page }) => {
-    const a = await introduced(browser, 'Shashank Rao')
+    const a = await introduced(browser, 'Ananya Menon')
     const b = await introduced(browser, 'Bella Tan')
     const ha = handle('qa-a')
     const hb = handle('qa-b')
@@ -303,7 +303,7 @@ test.describe('Ask my Ava link', () => {
   })
 
   test('a form token from one link, a forged one, or none is refused', async ({ browser, page }) => {
-    const a = await introduced(browser, 'Shashank Rao')
+    const a = await introduced(browser, 'Ananya Menon')
     const b = await introduced(browser, 'Bella Tan')
     const ha = handle('qa-a')
     const hb = handle('qa-b')
@@ -328,7 +328,7 @@ test.describe('Ask my Ava link', () => {
   })
 
   test('hostile input is refused or kept as text, and the honeypot stores nothing', async ({ browser, page }) => {
-    const a = await introduced(browser, 'Shashank Rao')
+    const a = await introduced(browser, 'Ananya Menon')
     const h = handle('qa-a')
     await publish(a, h)
     const token = await form(page, h)
@@ -352,13 +352,13 @@ test.describe('Ask my Ava link', () => {
   })
 
   test('unknown, odd and path-trick handles all get the ordinary 404 page', async ({ page, browser }) => {
-    const a = await introduced(browser, 'Shashank Rao')
+    const a = await introduced(browser, 'Ananya Menon')
     const h = handle('qa-a')
     await publish(a, h)
     for (const path of ['/a/nobody-has-this-one', '/a/..%2F..%2Fapi%2Fapp%2Fme', '/a/%00', `/a/${'x'.repeat(300)}`, '/a/admin']) {
       const r = await page.request.get(path)
       expect(r.status(), path).toBe(404)
-      expect(await r.text(), path).not.toContain('Shashank')
+      expect(await r.text(), path).not.toContain('Ananya')
     }
     for (const raw of ['nobody-has-this-one', '..%2F..%2Fapp%2Fme', 'x'.repeat(300)]) {
       expect((await page.request.get(`/api/p/ask/${raw}`)).status(), raw).toBe(404)
@@ -369,7 +369,7 @@ test.describe('Ask my Ava link', () => {
   })
 
   test('a visitor over the hourly limit gets a plain 429, and the owner never sees the extras', async ({ browser, page }) => {
-    const a = await introduced(browser, 'Shashank Rao')
+    const a = await introduced(browser, 'Ananya Menon')
     const h = handle('qa-a')
     await publish(a, h)
     const token = await form(page, h)

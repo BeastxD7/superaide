@@ -69,7 +69,7 @@ def test_an_app_serves_one_ava_and_two_owners_in_one_workspace_bring_their_own(a
     monkeypatch.setattr(get_settings(), "allow_many_owners", True)
     monkeypatch.setattr(connections, "http_client", lambda: httpx.Client(transport=httpx.MockTransport(slack_api)))
     app = create_app(agent)
-    a, b = owner(app, "Shashank", "s@example.com"), owner(app, "Priya", "p@example.com")
+    a, b = owner(app, "Jordan", "s@example.com"), owner(app, "Priya", "p@example.com")
     assert a.post("/app/connections/slack", json={"bot_token": BOT_A, "app_token": APP_A}).status_code == 200
     taken = b.post("/app/connections/slack", json={"bot_token": BOT_B, "app_token": APP_A})
     assert taken.status_code == 409 and "another Ava" in taken.json()["detail"]
@@ -91,7 +91,7 @@ def _scopes() -> list[InstanceScope]:
 def test_every_owners_app_is_found_in_their_own_vault(agent, monkeypatch):
     monkeypatch.setattr(get_settings(), "allow_many_owners", True)
     app = create_app(agent)
-    owner(app, "Shashank", "s@example.com"), owner(app, "Priya", "p@example.com")
+    owner(app, "Jordan", "s@example.com"), owner(app, "Priya", "p@example.com")
     sa, sb = _scopes()
     for scope, bot, app_token in ((sa, BOT_A, APP_A), (sb, BOT_B, APP_B)):
         with use_instance(scope), session_scope() as s:

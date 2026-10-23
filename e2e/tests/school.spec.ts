@@ -27,9 +27,9 @@ test.describe('Ava School, switched on', () => {
     await expect(page.getByRole('heading', { name: 'Ava School' })).toBeVisible()
 
     // A lesson that names the owner is refused, with the reason.
-    await page.getByLabel('One sentence of advice for any assistant').fill('Tell Shashank first when a supplier is late')
+    await page.getByLabel('One sentence of advice for any assistant').fill('Tell Ananya first when a supplier is late')
     await page.getByRole('button', { name: 'Add lesson' }).click()
-    await expect(page.getByText(/mentions a name Ava knows \(shashank\)/)).toBeVisible()
+    await expect(page.getByText(/mentions a name Ava knows \(ananya\)/)).toBeVisible()
     expect((await query<{ n: number }>('SELECT count(*)::int AS n FROM lesson'))[0].n).toBe(0)
 
     await page.getByLabel('One sentence of advice for any assistant').fill('When I say urgent I mean money problems, not deadlines.')

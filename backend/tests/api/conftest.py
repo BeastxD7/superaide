@@ -21,7 +21,7 @@ from tests.test_connections import master_key  # noqa: F401  (autouse: a test va
 from tests.test_intro import brain  # noqa: F401  (the fake Claude that reads facts out of shared text)
 
 PASSWORD = "correct horse battery"
-OWNER = {"name": "Shashank Rao", "email": "shashank@example.com", "password": PASSWORD}
+OWNER = {"name": "Jordan Whitfield", "email": "jordan@example.com", "password": PASSWORD}
 OTHER = {"name": "Priya Tan", "email": "priya@example.com", "password": PASSWORD}
 CSRF = {"X-Requested-With": "superaide"}
 

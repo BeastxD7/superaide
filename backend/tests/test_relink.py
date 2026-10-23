@@ -47,7 +47,7 @@ def tgm(sender: str, body: str, bot: str, *, chat_kind: str = "dm") -> InboundMe
         "update_id": n,
         "message": {
             "message_id": n,
-            "from": {"id": int(sender), "first_name": "Shashank"},
+            "from": {"id": int(sender), "first_name": "Jordan"},
             "chat": {
                 "id": int(sender) if chat_kind == "dm" else -100,
                 "type": "private" if chat_kind == "dm" else "group",
@@ -81,7 +81,7 @@ def owner_app(agent: Agent) -> TestClient:
     c = TestClient(create_app(agent), headers={"X-Requested-With": "superaide"})
     assert (
         c.post(
-            "/auth/signup", json={"name": "Shashank Rao", "email": "s@example.com", "password": PASSWORD}
+            "/auth/signup", json={"name": "Jordan Whitfield", "email": "s@example.com", "password": PASSWORD}
         ).status_code
         == 200
     )
@@ -309,7 +309,7 @@ def test_link_codes_are_not_sent_to_an_account_on_an_unconfirmed_bot(bots, outbo
     link_on(old, OLD)
     from tests.conftest import sl
 
-    new.handle(sl("U_IMPOSTOR", "Hi, I'm Shashank"))
+    new.handle(sl("U_IMPOSTOR", "Hi, I'm Jordan"))
     assert not [m for m in outbox["telegram"].sent if re.search(r"\b\d{6}\b", m["text"])]
     tg_id = str(identity().id)
     assert all(d.get("via_identity_id") != tg_id for d in audits("link_challenge_sent"))

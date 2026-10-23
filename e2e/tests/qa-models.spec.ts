@@ -200,7 +200,7 @@ test.describe('credits', () => {
       headers: { Authorization: 'Bearer e2e-admin-token', 'X-Operator-Reason': 'QA: link a test contact', 'X-Operator-Instance': (await instance()).id },
     })
     expect(link.ok()).toBe(true)
-    const before = (await (await priyaSays('Is Shashank free on Friday?')).json()) as { mode: string; reply: string }
+    const before = (await (await priyaSays('Is Ananya free on Friday?')).json()) as { mode: string; reply: string }
     expect(before.mode).toBe('known')
     // Superaide's shared allowance for today is used up.
     await platformCapUsedUp()

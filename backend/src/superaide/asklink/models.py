@@ -51,7 +51,7 @@ class AskLink(Scoped, Base):
     owner_person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"))
     handle: Mapped[str] = mapped_column(String(40))
     published: Mapped[bool] = mapped_column(Boolean, default=False)
-    show_first_name: Mapped[bool] = mapped_column(Boolean, default=False)  # "Shashank's assistant"
+    show_first_name: Mapped[bool] = mapped_column(Boolean, default=False)  # "Jordan's assistant"
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
 

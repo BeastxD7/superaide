@@ -686,7 +686,7 @@ security or legal matters. Code: `skills/gmail_inbox.py`; the shared step is `tr
 1. **Strangers.** *Decided 2026-10-22:* receptionist mode, on by default, with an owner switch (see "Receptionist mode").
    The question was whether strangers' messages should be classified (take-a-message, one cheap model call,
    capped) or stay fixed-reply with no model call.
-2. **Known colleagues at Infant.** Is a fixed "I've noted this for Shashank" plus a draft for you to
+2. **Known colleagues at Infant.** Is a fixed "I've noted this for Ananya" plus a draft for you to
    approve acceptable, instead of today's direct model reply? Or should Infant keep answering from notes
    for colleagues while triage runs in shadow?
 3. **Default ladder timings.** Is 0 / +3 min / +5 min right, and should Slack or Telegram be the first

@@ -47,7 +47,7 @@ def services(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200 if ok else 401, json={"data": []})
     if "api.telegram.org" in url:
         ok = TG_TOKEN in url
-        return httpx.Response(200, json={"ok": ok, "result": {"username": "ava_for_shashank_bot", "first_name": "Ava"}})
+        return httpx.Response(200, json={"ok": ok, "result": {"username": "ava_for_jordan_bot", "first_name": "Ava"}})
     if "auth.test" in url:
         return httpx.Response(200, json={"ok": True, "team_id": "T123", "team": "PebbleRoad", "user": "ava"})
     if "apps.connections.open" in url:
@@ -70,7 +70,7 @@ def owner(agent, monkeypatch):
     monkeypatch.setattr(connections, "http_client", lambda: httpx.Client(transport=httpx.MockTransport(services)))
     app = create_app(agent)
     c = TestClient(app, headers={"X-Requested-With": "superaide"})
-    c.post("/auth/signup", json={"name": "Shashank Rao", "email": "s@example.com", "password": PASSWORD})
+    c.post("/auth/signup", json={"name": "Jordan Whitfield", "email": "s@example.com", "password": PASSWORD})
     c.post("/app/hire", json={"agent": "ava", "accepted_notice": True})
     c.app_ = app
     return c
@@ -122,7 +122,7 @@ def test_telegram_and_slack_connect_and_disconnect(owner):
     assert owner.post("/app/connections/telegram", json={"bot_token": "not-a-token-at-all"}).status_code == 400
     r = owner.post("/app/connections/telegram", json={"bot_token": TG_TOKEN}).json()
     telegram = r["services"]["telegram"]
-    assert telegram["connected"] and telegram["meta"]["username"] == "ava_for_shashank_bot"
+    assert telegram["connected"] and telegram["meta"]["username"] == "ava_for_jordan_bot"
     slack = {"bot_token": "xoxb-1-abc-defghijk", "app_token": "xapp-1-abc-defghi"}
     r = owner.post("/app/connections/slack", json=slack)
     assert r.json()["services"]["slack"]["connected"]

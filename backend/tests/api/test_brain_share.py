@@ -62,7 +62,7 @@ def token_of(link: dict) -> str:
 
 def test_a_link_shows_counts_only_never_names_or_notes(browser):
     a, _ = owners(browser)
-    seed(OWNER["email"], "Shashank is leading Project Bluebird with Arjun.", "Shashank prefers calls before 11am.")
+    seed(OWNER["email"], "Jordan is leading Project Bluebird with Arjun.", "Jordan prefers calls before 11am.")
     link = new_link(a)
     anonymous = browser()
     meta = anonymous.get(f"/p/brain/{token_of(link)}")
@@ -71,7 +71,7 @@ def test_a_link_shows_counts_only_never_names_or_notes(browser):
     assert meta.json()["origins"]["you"] == 2
     svg = anonymous.get(f"/p/brain/{token_of(link)}/picture.svg")
     assert svg.status_code == 200 and svg.headers["content-type"].startswith("image/svg+xml")
-    for private in ("Shashank", "Bluebird", "Arjun", "11am", "Rao"):
+    for private in ("Jordan", "Bluebird", "Arjun", "11am", "Whitfield"):
         assert private not in meta.text and private not in svg.text, private
     assert "things Ava knows" in svg.text
     for r in (meta, svg):  # never cached, never indexed, no referrer
@@ -151,7 +151,7 @@ def test_every_wrong_token_gets_the_same_404(browser):
 
 def test_a_link_shows_only_its_own_owners_counts(browser):
     a, b = owners(browser)
-    seed(OWNER["email"], "Shashank runs a design studio.")
+    seed(OWNER["email"], "Jordan runs a design studio.")
     seed(OTHER["email"], "Someone else tracks a secret project.", "And a second thing.", "And a third.")
     anonymous = browser()
     assert anonymous.get(f"/p/brain/{token_of(new_link(a))}").json()["things"] == 1

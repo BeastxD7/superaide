@@ -18,7 +18,7 @@ async function nextStep(page: Page, label: RegExp) {
 test('a new owner browses, hires Ava, introduces themselves and gets to work @smoke', async ({ page, api }) => {
   void api // fresh database
   test.setTimeout(120_000)
-  const me = newPerson('Shashank Rao')
+  const me = newPerson('Ananya Menon')
 
   await test.step('browse the marketplace and read about Ava', async () => {
     await page.goto('/')

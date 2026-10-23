@@ -48,7 +48,7 @@
   title: A fact from the introduction is recalled in chat
   world:
     memories:
-      - content: "Shashank runs a design studio in Singapore."
+      - content: "Jordan runs a design studio in Singapore."
         category: work
         source: intro_chat
   turns:
@@ -63,7 +63,7 @@
   title: A fact read from a shared file is recalled
   world:
     memories:
-      - content: "Shashank studied at IIT Madras."
+      - content: "Jordan studied at IIT Madras."
         category: about
         source: document
   turns:
@@ -79,7 +79,7 @@
   title: A fact read from a shared link is recalled
   world:
     memories:
-      - content: "Shashank writes about AI agents on shashank.dev."
+      - content: "Jordan writes about AI agents on jordan.dev."
         category: work
         source: link
   turns:

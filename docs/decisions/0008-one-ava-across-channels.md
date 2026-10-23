@@ -15,7 +15,7 @@ same. My friend knows what I told them on Discord and on WhatsApp."
 |---|---|---|
 | 19:13:54 | Telegram DM | Owner: "btw i dont like black clour at all!" |
 | 19:13:58 | Telegram DM | Ava: "Noted: you don't like black. **I can't save preferences to your profile from here, so I may not keep this beyond this chat.**" |
-| 19:14:02 | job | `learn_from_turn` stores `memory_item` "Shashank does not like the colour black." (`persons`, `[owner]`, `min_trust` 2, category `preference`) |
+| 19:14:02 | job | `learn_from_turn` stores `memory_item` "Ananya does not like the colour black." (`persons`, `[owner]`, `min_trust` 2, category `preference`) |
 | 19:14:35 | web chat | Owner: "do i like black colour?" |
 | 19:14:37 | web chat | Ava calls `recall("black colour favourite color preference")` and gets nothing (audit `recall:0`), then replies "I don't have anything in your notes or messages about whether you like black." |
 | 19:15:42 | web chat | Owner: "so remember what i said on telegram to you?" Ava calls `recall("Telegram")`, gets nothing, and says she has no record. |
@@ -54,7 +54,7 @@ it. Ava failed to find it.
    characters, so "I hate black." or "I'm vegetarian" is never learned on any channel. This report
    was learned only because "btw … at all!" made it long enough.
 6. **Dedupe is exact-string.** `knowledge.store.remember_fact` compares `content ==`, and
-   `memory.store.remember` has a second normaliser (`_same_fact`). "Shashank dislikes the color
+   `memory.store.remember` has a second normaliser (`_same_fact`). "Ananya dislikes the color
    black." said later in the app becomes a second row.
 
 ### Ruled out, with evidence
@@ -287,7 +287,7 @@ the reply plus citations (live):
    in the prompt with its label; the reply mentions Telegram.
 3. App, after learning: "color I hate?" → the fact is pinned in the brief and found by recall.
 4. Slack DM: "I really can't stand black as a colour" → still one fact, with two source events.
-5. Telegram group with a colleague: "what colour does Shashank dislike?" (asked by the colleague,
+5. Telegram group with a colleague: "what colour does Ananya dislike?" (asked by the colleague,
    then by the owner) → nothing from steps 1–4 in the prompt or the reply.
 6. Colleague's Slack DM: same question → nothing.
 7. App: "I like black now actually" → the old fact is superseded; the next question gets the new

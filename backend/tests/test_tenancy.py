@@ -34,7 +34,7 @@ def _scope() -> InstanceScope:
 
 def _hired_owner(email: str = "s@example.com", tz: str = "Asia/Kolkata") -> uuid.UUID:
     with session_scope() as s:
-        user, _ = signup(s, email=email, password=PASSWORD, name="Shashank Rao", client=Client())
+        user, _ = signup(s, email=email, password=PASSWORD, name="Jordan Whitfield", client=Client())
         user.timezone = tz
         accounts.hire(s, user)
         return user.id

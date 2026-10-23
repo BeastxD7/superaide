@@ -21,7 +21,7 @@ async function seedClaim(): Promise<void> {
   await query(
     `INSERT INTO identity_claim (id, tenant_id, agent_id, identity_id, matched_person_id, claimed_name, facts, status, asks)
      SELECT gen_random_uuid(), i.tenant_id, i.agent_id, i.id, p.id, 'Priya Tan',
-            '{"display_name":"Priya Tan","provider":"telegram","platform_user_id":"880001","handle":"priya_t","phone":"","first_message_at":"${first}","excerpt":"Hi, I need Shashank''s calendar for next week."}'::jsonb,
+            '{"display_name":"Priya Tan","provider":"telegram","platform_user_id":"880001","handle":"priya_t","phone":"","first_message_at":"${first}","excerpt":"Hi, I need Ananya''s calendar for next week."}'::jsonb,
             'open', 1
      FROM channel_identity i, person p WHERE i.stable_key = '880001' AND p.display_name = 'Priya Tan'`,
   )

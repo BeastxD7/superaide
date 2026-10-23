@@ -14,7 +14,7 @@ from superaide.triage.features import Features
 from superaide.triage.types import TriageOutput
 
 NOW = datetime(2026, 10, 22, 8, 30, tzinfo=UTC)
-MSG = "The payments API is returning 500s for every customer. Can you get Shashank on it by 3pm today?"
+MSG = "The payments API is returning 500s for every customer. Can you get Jordan on it by 3pm today?"
 
 
 def feat(**kw) -> Features:

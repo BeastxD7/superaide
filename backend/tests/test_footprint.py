@@ -15,7 +15,7 @@ from superaide.policy import footprint
 from superaide.policy.actions import action_kinds, decide
 
 
-def owner_sender(name="Shashank") -> Sender:
+def owner_sender(name="Jordan") -> Sender:
     from superaide.db.models import Person
 
     with session_scope() as s:

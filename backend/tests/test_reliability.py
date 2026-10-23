@@ -36,7 +36,7 @@ load()
 @pytest.fixture
 def owner(agent):
     c = TestClient(create_app(agent), headers={"X-Requested-With": "superaide"})
-    body = {"name": "Shashank Rao", "email": "s@example.com", "password": PASSWORD, "timezone": "Asia/Singapore"}
+    body = {"name": "Jordan Whitfield", "email": "s@example.com", "password": PASSWORD, "timezone": "Asia/Singapore"}
     c.post("/auth/signup", json=body)
     c.post("/app/hire", json={"agent": "ava", "accepted_notice": True})
     return c

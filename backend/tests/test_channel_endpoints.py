@@ -102,7 +102,7 @@ def test_connecting_a_bot_another_ava_uses_is_refused(agent, monkeypatch):
     monkeypatch.setattr(get_settings(), "allow_many_owners", True)
     monkeypatch.setattr(connections, "http_client", lambda: httpx.Client(transport=httpx.MockTransport(telegram_api)))
     app = create_app(agent)
-    a, b = owner(app, "Shashank", "s@example.com"), owner(app, "Priya", "p@example.com")
+    a, b = owner(app, "Jordan", "s@example.com"), owner(app, "Priya", "p@example.com")
     assert a.post("/app/connections/telegram", json={"bot_token": TOKEN_A}).status_code == 200
     r = b.post("/app/connections/telegram", json={"bot_token": TOKEN_A})
     assert r.status_code == 409 and "another Ava" in r.json()["detail"]
@@ -176,7 +176,7 @@ def test_each_owner_bot_is_polled_inside_its_owners_instance(monkeypatch):
 def test_bots_are_found_in_every_instances_own_vault(agent, monkeypatch):
     monkeypatch.setattr(get_settings(), "allow_many_owners", True)
     app = create_app(agent)
-    owner(app, "Shashank", "s@example.com"), owner(app, "Priya", "p@example.com")
+    owner(app, "Jordan", "s@example.com"), owner(app, "Priya", "p@example.com")
     with session_scope() as s:
         scopes = [
             InstanceScope(tenant_id=t, agent_id=i)
@@ -204,7 +204,7 @@ def test_with_a_public_address_each_bot_gets_its_own_webhook(agent, monkeypatch)
         telegram, "set_webhook", lambda token, url, secret, client=None: calls.append((token, url, secret)) or True
     )
     app = create_app()
-    a = owner(app, "Shashank", "s@example.com")
+    a = owner(app, "Jordan", "s@example.com")
     assert a.post("/app/connections/telegram", json={"bot_token": TOKEN_A}).status_code == 200
     with session_scope() as s:
         [endpoint] = s.scalars(select(ChannelEndpoint)).all()

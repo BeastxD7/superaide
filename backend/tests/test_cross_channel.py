@@ -1,7 +1,7 @@
 """One Ava across channels: what the owner says on Telegram, Ava knows in the app chat.
 
 Reproduces the bug from 2026-10-21 (dev DB): the owner said "btw i dont like black clour at
-all!" on Telegram, a fact "Shashank does not like the colour black." was learned, and then in
+all!" on Telegram, a fact "Jordan does not like the colour black." was learned, and then in
 the app chat "do i like black colour?" got "I don't have anything about that". The model's
 recall query was "black colour favourite color preference", which `websearch_to_tsquery`
 turns into an AND of all five words, so the fact never matched.
@@ -42,7 +42,7 @@ load()
 PASSWORD = "correct horse battery"
 PHONE = "777001"
 SAID_ON_TELEGRAM = "btw i dont like black colour at all!"
-LEARNED = "Shashank does not like the colour black."
+LEARNED = "Jordan does not like the colour black."
 # The query Haiku actually sent in the dev DB, and paraphrases a person would use.
 MODEL_QUERY = "black colour favourite color preference"
 PARAPHRASES = [MODEL_QUERY, "black color", "what colours do I dislike", "colors I hate"]
@@ -79,7 +79,7 @@ def scenario(agent, monkeypatch):
     agent.settings.web_tools_enabled = False
 
     client = TestClient(create_app(agent), headers={"X-Requested-With": "superaide"})
-    client.post("/auth/signup", json={"name": "Shashank Rao", "email": "s@example.com", "password": PASSWORD})
+    client.post("/auth/signup", json={"name": "Jordan Whitfield", "email": "s@example.com", "password": PASSWORD})
     client.post("/app/hire", json={"agent": "ava", "accepted_notice": True})
     with session_scope() as s:
         person = hired_owner(s)
@@ -189,7 +189,7 @@ def _live_preferences():
 
 
 def test_the_same_preference_said_again_in_other_words_is_kept_once(scenario, monkeypatch):
-    reader = Reader("Shashank dislikes the color black.", "same_as")
+    reader = Reader("Jordan dislikes the color black.", "same_as")
     monkeypatch.setattr("superaide.factory.build_llm", lambda settings: FakeLLM(reader))
     client, _ = scenario
     client.post("/app/chat", json={"text": "I really can't stand black as a colour, honestly"})
@@ -199,7 +199,7 @@ def test_the_same_preference_said_again_in_other_words_is_kept_once(scenario, mo
 
 
 def test_the_same_fact_in_other_spelling_is_kept_once_even_unflagged(scenario, monkeypatch):
-    reader = Reader("Shashank does not like the color black", "same_as", points_at="nothing matches this")
+    reader = Reader("Jordan does not like the color black", "same_as", points_at="nothing matches this")
     monkeypatch.setattr("superaide.factory.build_llm", lambda settings: FakeLLM(reader))
     client, _ = scenario
     client.post("/app/chat", json={"text": "Just so you know: I do not like black, the color, at all"})
@@ -208,12 +208,12 @@ def test_the_same_fact_in_other_spelling_is_kept_once_even_unflagged(scenario, m
 
 
 def test_changing_your_mind_retires_the_old_fact(scenario, monkeypatch):
-    reader = Reader("Shashank likes the colour black now.", "replaces")
+    reader = Reader("Jordan likes the colour black now.", "replaces")
     monkeypatch.setattr("superaide.factory.build_llm", lambda settings: FakeLLM(reader))
     client, _ = scenario
     client.post("/app/chat", json={"text": "Actually I've come round to black, I like it now"})
     run_due()
-    assert _live_preferences() == [("Shashank likes the colour black now.", 1)]
+    assert _live_preferences() == [("Jordan likes the colour black now.", 1)]
     with session_scope() as s:
         old = s.scalar(select(MemoryItem).where(MemoryItem.content == LEARNED))
         assert old is not None and old.valid_to is not None  # kept for history, no longer current
@@ -223,7 +223,7 @@ def test_a_fact_never_merges_into_one_with_a_different_audience(scenario, monkey
     with session_scope() as s:
         fact = s.scalar(select(MemoryItem).where(MemoryItem.content == LEARNED))
         fact.allowed_kind, fact.allowed_person_ids, fact.min_trust = "public", [], 0  # shared on purpose
-    reader = Reader("Shashank dislikes the color black.", "same_as")
+    reader = Reader("Jordan dislikes the color black.", "same_as")
     monkeypatch.setattr("superaide.factory.build_llm", lambda settings: FakeLLM(reader))
     client, _ = scenario
     client.post("/app/chat", json={"text": "I really can't stand black as a colour, honestly"})
@@ -231,7 +231,7 @@ def test_a_fact_never_merges_into_one_with_a_different_audience(scenario, monkey
     with session_scope() as s:
         shared = s.scalar(select(MemoryItem).where(MemoryItem.content == LEARNED))
         assert len(shared.source_event_ids) == 1  # the public note didn't absorb a private message
-        private = s.scalar(select(MemoryItem).where(MemoryItem.content == "Shashank dislikes the color black."))
+        private = s.scalar(select(MemoryItem).where(MemoryItem.content == "Jordan dislikes the color black."))
         assert private is not None and private.allowed_person_ids != []
 
 
@@ -248,7 +248,7 @@ def test_a_matching_note_is_attached_to_the_message_before_the_model_runs(scenar
 
 def test_offline_ava_makes_no_claim_about_learning(agent, model):
     client = TestClient(create_app(agent), headers={"X-Requested-With": "superaide"})
-    client.post("/auth/signup", json={"name": "Shashank Rao", "email": "s@example.com", "password": PASSWORD})
+    client.post("/auth/signup", json={"name": "Jordan Whitfield", "email": "s@example.com", "password": PASSWORD})
     client.post("/app/hire", json={"agent": "ava", "accepted_notice": True})
     client.post("/app/chat", json={"text": "hello"})
     assert model.systems and "learn from what your owner tells you" not in model.systems[-1]

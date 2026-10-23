@@ -75,14 +75,14 @@ test.describe('dashboard on a phone', () => {
     // The notebook page is the notebook, not Connections.
     await expect(page.getByRole('heading', { name: 'Connections' })).toBeHidden()
 
-    const priya = notebookFact(page, "Priya is Shashank Rao's partner")
+    const priya = notebookFact(page, "Priya is Ananya Menon's partner")
     await expect(priya).toBeVisible()
     await expect(priya).toContainText('from your introduction')
 
-    const arjun = notebookFact(page, "Arjun is Shashank Rao's team")
+    const arjun = notebookFact(page, "Arjun is Ananya Menon's team")
     await arjun.getByRole('button', { name: 'Forget this' }).tap()
     await arjun.getByRole('button', { name: 'Forget', exact: true }).tap()
-    await expect(notebookFact(page, "Arjun is Shashank Rao's team")).toHaveCount(0)
+    await expect(notebookFact(page, "Arjun is Ananya Menon's team")).toHaveCount(0)
     expect((await memories()).find((m) => m.content.startsWith('Arjun is'))?.valid_to).not.toBeNull()
     await expectNoSidewaysScroll(page)
 

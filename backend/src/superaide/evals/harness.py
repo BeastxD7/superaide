@@ -381,7 +381,7 @@ def _filler(s: Any, owner: Person, start: datetime, n: int) -> None:
 
     for i in range(n):
         topic = FILLER_TOPICS[i % len(FILLER_TOPICS)] + ("" if i < len(FILLER_TOPICS) else f" (note {i})")
-        item = remember_fact(s, owner=owner, content=f"Shashank's {topic}.", category="other")
+        item = remember_fact(s, owner=owner, content=f"Jordan's {topic}.", category="other")
         if item is not None:
             item.created_at = item.valid_from = start - timedelta(minutes=30 + i)
 

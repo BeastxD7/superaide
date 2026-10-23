@@ -184,7 +184,7 @@ def test_each_owner_gets_an_agent_built_from_their_own_connections(monkeypatch):
     monkeypatch.setattr(settings, "run_jobs_in_api", False)
     monkeypatch.setattr(settings, "run_channels_in_api", False)
     app = create_app()  # a real, per-instance runtime (no fixed test agent)
-    a = _owner(app, "Shashank", "s@example.com")
+    a = _owner(app, "Jordan", "s@example.com")
     b = _owner(app, "Priya", "p@example.com")
     save(_scope_of("s@example.com"), "anthropic", {"api_key": KEY_A})
     assert a.get("/app/me").json()["brain"] == "claude"
@@ -209,7 +209,7 @@ def test_google_sign_in_lands_in_the_instance_that_started_it(monkeypatch):
     monkeypatch.setattr(connections, "http_client", lambda: httpx.Client(transport=httpx.MockTransport(google_api)))
 
     app = create_app()
-    _owner(app, "Shashank", "s@example.com")
+    _owner(app, "Jordan", "s@example.com")
     b = _owner(app, "Priya", "p@example.com")
     sb = _scope_of("p@example.com")
     save(sb, "google", {"client_id": "client-b.apps.googleusercontent.com", "client_secret": "GOCSPX-b"})

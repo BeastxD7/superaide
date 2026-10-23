@@ -101,16 +101,16 @@ def web(monkeypatch) -> FakeWeb:
         ("photo.png", b"\x89PNG\r\n\x1a\n" + b"0" * 100, "isn't supported"),
         ("resume.doc", b"\xd0\xcf\x11\xe0" + b"0" * 100, "save it as .docx"),
         ("tool.exe", b"MZ\x90\x00", "isn't supported"),
-        ("page.html", b"<p>Hi, I'm Shashank</p>", "isn't supported"),
+        ("page.html", b"<p>Hi, I'm Jordan</p>", "isn't supported"),
         ("archive.zip", b"PK\x03\x04", "isn't supported"),
-        ("noextension", b"Shashank builds agents", "isn't supported"),
+        ("noextension", b"Jordan builds agents", "isn't supported"),
         ("resume.pdf.exe", b"%PDF-1.4", "isn't supported"),
         ("docs/", b"hello", "isn't supported"),
         ("empty.txt", b"", "empty"),
         ("empty.pdf", b"", "empty"),
-        ("resume.pdf", b"Shashank builds agents", "isn't a real PDF"),
+        ("resume.pdf", b"Jordan builds agents", "isn't a real PDF"),
         ("resume.pdf", b"%PDF-1.4 and then garbage", "couldn't read this PDF"),
-        ("resume.docx", b"Shashank builds agents", "isn't a real Word document"),
+        ("resume.docx", b"Jordan builds agents", "isn't a real Word document"),
         ("notes.txt", b"\x00\x01\x02\x03" * 64, "doesn't look like plain text"),
         ("notes.md", make_pdf(["hi"]), "doesn't look like plain text"),
     ],
@@ -137,7 +137,7 @@ def test_a_word_document_with_no_text_gets_a_helpful_422(owner):
 
 
 def test_a_password_protected_pdf_is_refused(owner):
-    r = upload(owner, "locked.pdf", encrypt_pdf(make_pdf(["Shashank Rao"]), "secret"))
+    r = upload(owner, "locked.pdf", encrypt_pdf(make_pdf(["Jordan Whitfield"]), "secret"))
     assert r.status_code == 422 and "password" in r.json()["detail"]
 
 
@@ -165,13 +165,13 @@ def test_a_file_over_the_real_limit_is_refused(owner):
         ("../../etc/passwd.txt", "passwd.txt"),
         ("..\\..\\Windows\\win.ini.txt", "win.ini.txt"),
         ("/etc/cron.d/evil.md", "evil.md"),
-        ("C:\\Users\\shashank\\Desktop\\cv.txt", "cv.txt"),
+        ("C:\\Users\\jordan\\Desktop\\cv.txt", "cv.txt"),
         ("a/b/../../c.txt", "c.txt"),
         ("\x1b[31mred\x1b[0m.txt", "[31mred[0m.txt"),
     ],
 )
 def test_file_names_with_paths_or_control_characters_are_reduced_to_a_plain_name(owner, name, kept_as):
-    r = upload(owner, name, f"Notes from {kept_as}: Shashank builds agents.".encode())
+    r = upload(owner, name, f"Notes from {kept_as}: Jordan builds agents.".encode())
     assert r.status_code == 200, r.text
     (doc,) = _documents()
     assert doc.title == doc.source == kept_as
@@ -179,20 +179,20 @@ def test_file_names_with_paths_or_control_characters_are_reduced_to_a_plain_name
 
 
 def test_a_long_file_name_is_shortened(owner):
-    r = upload(owner, "a" * 300 + ".txt", b"Shashank builds agents.")
+    r = upload(owner, "a" * 300 + ".txt", b"Jordan builds agents.")
     assert r.status_code == 200
     (doc,) = _documents()
     assert len(doc.title) == 200 and doc.title.endswith(".txt")
 
 
 def test_an_absurdly_long_file_name_is_refused_by_the_form_parser(owner):
-    r = upload(owner, "a" * 5000 + ".txt", b"Shashank builds agents.")
+    r = upload(owner, "a" * 5000 + ".txt", b"Jordan builds agents.")
     assert r.status_code == 400  # the multipart parser's own limit, before our code runs
     assert _documents() == []
 
 
 def test_nul_bytes_in_a_text_file_are_dropped_not_a_server_error(owner):
-    r = upload(owner, "notes.txt", b"Shashank\x00 builds\x00 agents.")
+    r = upload(owner, "notes.txt", b"Jordan\x00 builds\x00 agents.")
     assert r.status_code == 200, r.text
     (doc,) = _documents()
     assert "\x00" not in doc.text and "builds" in doc.text
@@ -201,8 +201,8 @@ def test_nul_bytes_in_a_text_file_are_dropped_not_a_server_error(owner):
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"json": {"file": "Shashank builds agents"}},
-        {"files": {"upload": ("cv.txt", b"Shashank", "text/plain")}},
+        {"json": {"file": "Jordan builds agents"}},
+        {"files": {"upload": ("cv.txt", b"Jordan", "text/plain")}},
         {"data": {"file": "cv.txt"}},
         {},
     ],
@@ -214,26 +214,26 @@ def test_upload_requests_without_a_file_are_refused(owner, kwargs):
 
 
 def test_the_same_file_twice_is_kept_once(owner):
-    assert upload(owner, "cv.txt", b"Shashank builds agents.").json()["duplicate"] is False
-    again = upload(owner, "cv.txt", b"Shashank builds agents.")
+    assert upload(owner, "cv.txt", b"Jordan builds agents.").json()["duplicate"] is False
+    again = upload(owner, "cv.txt", b"Jordan builds agents.")
     assert again.status_code == 200 and again.json()["duplicate"] is True
     assert len(_documents()) == 1
 
 
 def test_a_removed_file_can_be_shared_again_offline(owner):
-    first = upload(owner, "cv.txt", b"Shashank builds agents.").json()
+    first = upload(owner, "cv.txt", b"Jordan builds agents.").json()
     assert owner.post(f"/app/intro/documents/{first['document_id']}/remove").status_code == 200
-    again = upload(owner, "cv.txt", b"Shashank builds agents.")
+    again = upload(owner, "cv.txt", b"Jordan builds agents.")
     assert again.status_code == 200 and again.json()["duplicate"] is False
     assert [d["title"] for d in owner.get("/app/intro/documents").json()] == ["cv.txt"]
 
 
 def test_a_removed_file_can_be_shared_again_once_facts_were_read_from_it(owner, brain):
     """The facts from the first copy are retired but still point at it; sharing it again used to 500."""
-    first = upload(owner, "cv.txt", b"Shashank builds agents at PebbleRoad.").json()
+    first = upload(owner, "cv.txt", b"Jordan builds agents at PebbleRoad.").json()
     assert first["facts"] == 2
     assert owner.post(f"/app/intro/documents/{first['document_id']}/remove").json()["facts_removed"] == 2
-    again = upload(owner, "cv.txt", b"Shashank builds agents at PebbleRoad.")
+    again = upload(owner, "cv.txt", b"Jordan builds agents at PebbleRoad.")
     assert again.status_code == 200, again.text
     assert again.json()["duplicate"] is False and again.json()["facts"] == 2
     docs = owner.get("/app/intro/documents").json()
@@ -255,7 +255,7 @@ def test_a_removed_file_can_be_shared_again_once_facts_were_read_from_it(owner, 
         "javascript:alert(1)",
         "data:text/html,<p>hi</p>",
         "gopher://example.com/",
-        "mailto:shashank@example.com",
+        "mailto:jordan@example.com",
         "ssh://example.com",
         "ws://example.com/socket",
     ],
@@ -342,7 +342,7 @@ def test_a_redirect_to_a_private_address_is_refused_after_one_request(owner, web
 
 
 def test_an_oversized_page_is_cut_and_says_so(owner, web):
-    big = ("Shashank builds agents. " * 150_000).encode()  # 3.6 MB, over the 2 MB response limit
+    big = ("Jordan builds agents. " * 150_000).encode()  # 3.6 MB, over the 2 MB response limit
     web.pages["https://example.com/big"] = httpx.Response(200, headers={"Content-Type": "text/plain"}, content=big)
     r = share_link(owner, "https://example.com/big")
     assert r.status_code == 200, r.text
@@ -398,7 +398,7 @@ def test_links_that_arent_addresses_are_refused(owner, web, url):
 def test_a_readable_page_is_kept(owner, web):
     """The positive case for the same fake web, so the refusals above are meaningful."""
     web.pages["https://example.com/me"] = html_response(
-        "<html><head><title>Shashank</title></head><body><p>Shashank builds AI agents in Singapore.</p></body></html>"
+        "<html><head><title>Jordan</title></head><body><p>Jordan builds AI agents in Singapore.</p></body></html>"
     )
     r = share_link(owner, "  https://example.com/me  ")
     assert r.status_code == 200, r.text

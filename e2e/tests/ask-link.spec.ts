@@ -23,7 +23,7 @@ test('a visitor leaves a request and the owner sees it as a card', async ({ page
   await v.goto('/a/e2e-ask-link')
   await expect(v.getByRole('heading', { level: 1 })).toHaveText("A personal assistant's inbox")
   await expect(v.getByText(/AI assistant/).first()).toBeVisible()
-  await expect(v.getByText('Shashank')).toHaveCount(0) // the owner didn't opt in to their name
+  await expect(v.getByText('Ananya')).toHaveCount(0) // the owner didn't opt in to their name
   await v.getByLabel(/Your name/).fill('Lee Wong')
   await v.getByLabel(/How to reach you/).fill('lee@example.org')
   await v.getByLabel(/What it.s about/).fill('Speaking at our conference')

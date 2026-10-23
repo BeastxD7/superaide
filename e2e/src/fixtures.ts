@@ -14,7 +14,7 @@ export type Person = { name: string; email: string; password: string }
 export type OwnerState = 'account' | 'hired' | 'introduced'
 
 let counter = 0
-export function newPerson(name = 'Shashank Rao'): Person {
+export function newPerson(name = 'Ananya Menon'): Person {
   counter += 1
   const stamp = `${Date.now().toString(36)}${counter}`
   return { name, email: `e2e-${stamp}@example.com`, password: PASSWORD }
