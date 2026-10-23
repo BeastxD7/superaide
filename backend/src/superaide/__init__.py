@@ -5,3 +5,4 @@ def main() -> None:
     from superaide.cli import main as cli_main
 
     cli_main()
+# smoke probe: backend-only change, not for merge
