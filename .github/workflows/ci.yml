@@ -39,6 +39,7 @@ jobs:
         id: filter
         if: github.event_name == 'pull_request'
         with:
+          list-files: json
           filters: |
             backend_all:
               - 'backend/**'
@@ -57,17 +58,8 @@ jobs:
               - 'backend/uv.lock'
               - 'frontend/package.json'
               - 'frontend/package-lock.json'
-            # Everything that is not documentation. A file here that no filter above owns
-            # (Makefile, scripts, workflows, root config) makes the whole pipeline run.
-            code:
+            files:
               - '**'
-              - '!**/*.md'
-              - '!docs/**'
-              - '!LICENSE*'
-              - '!assets/**'
-              - '!.github/ISSUE_TEMPLATE/**'
-              - '!.github/CODEOWNERS'
-              - '!.github/pull_request_template.md'
             pipeline:
               - '.github/workflows/**'
               - 'scripts/**'
@@ -80,6 +72,7 @@ jobs:
         env:
           EVENT: ${{ github.event_name }}
           F: ${{ toJSON(steps.filter.outputs) }}
+          FILES: ${{ steps.filter.outputs.files_files }}
         run: |
           set -euo pipefail
           if [ "$EVENT" != "pull_request" ]; then
@@ -90,7 +83,11 @@ jobs:
             all=false
             # Fail closed: a code file no specific filter owns, or a pipeline file, runs everything.
             if has pipeline; then all=true; fi
-            if has code && ! has backend_all && ! has frontend_all && ! has e2e && ! has docker; then all=true; fi
+            # Code is every changed file that is not documentation (md files, docs/, license, assets,
+            # issue templates, CODEOWNERS, the PR template).
+            code=$(echo "$FILES" | jq -r '.[]' | grep -vE '\.md$|^docs/|^LICENSE|^assets/|^\.github/ISSUE_TEMPLATE/|^\.github/(CODEOWNERS|pull_request_template\.md)$' || true)
+            echo "Changed files:"; echo "$FILES" | jq -r '.[]'
+            if [ -n "$code" ] && ! has backend_all && ! has frontend_all && ! has e2e && ! has docker; then all=true; fi
           fi
           out() { echo "$1=$2" >> "$GITHUB_OUTPUT"; echo "$1=$2"; }
           if [ "$all" = true ]; then
