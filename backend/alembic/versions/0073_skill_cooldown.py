@@ -1,7 +1,7 @@
 """skill cooldown
 
-Revision ID: skillcd
-Revises: 0067
+Revision ID: 0073
+Revises: 0068
 Create Date: 2026-10-23 18:20:58.696358
 
 """
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "skillcd"
-down_revision: str | Sequence[str] | None = "0067"
+revision: str = "0073"
+down_revision: str | Sequence[str] | None = "0068"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
