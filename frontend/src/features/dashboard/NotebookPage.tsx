@@ -177,7 +177,7 @@ export function NotebookPage() {
         {mirror.data && (
           <Link
             href="/dashboard/notebook/mirror"
-            className="mt-4 inline-flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-sm font-medium text-ink hover:bg-surface"
+            className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-sm font-medium text-ink hover:bg-surface"
           >
             <Sparkles className="size-4 text-violet-700" aria-hidden /> The Mirror: patterns with receipts
           </Link>
@@ -187,7 +187,7 @@ export function NotebookPage() {
         {episodes.data && (
           <Link
             href="/dashboard/notebook/episodes"
-            className="mt-4 inline-flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-sm font-medium text-ink hover:bg-surface"
+            className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-sm font-medium text-ink hover:bg-surface"
           >
             <MessagesSquare className="size-4 text-violet-700" aria-hidden /> Conversations: what {name} summarised overnight
           </Link>
@@ -195,7 +195,7 @@ export function NotebookPage() {
 
         <Link
           href="/dashboard/notebook/brain"
-          className="mt-4 inline-flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-sm font-medium text-ink hover:bg-surface"
+          className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-sm font-medium text-ink hover:bg-surface"
         >
           <Network className="size-4 text-violet-700" aria-hidden /> Glass brain: see it as a map
         </Link>
@@ -204,7 +204,7 @@ export function NotebookPage() {
 
         <Link
           href="/dashboard/notebook/journal"
-          className="mt-4 inline-flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-sm font-medium text-ink hover:bg-surface"
+          className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-sm font-medium text-ink hover:bg-surface"
         >
           <Scale className="size-4 text-violet-700" aria-hidden /> Decision journal: how often are you right?
         </Link>
@@ -381,7 +381,7 @@ export function NotebookPage() {
                     </Button>
                   </div>
                 ) : (
-                  <button onClick={() => setConfirm(m.id)} className="mt-2 text-xs font-medium text-muted hover:text-danger">
+                  <button onClick={() => setConfirm(m.id)} className="mt-1 inline-flex touch:min-h-11 items-center text-xs font-medium text-muted hover:text-danger">
                     Forget this
                   </button>
                 )}
