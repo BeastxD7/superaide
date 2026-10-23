@@ -2,29 +2,8 @@ import type { NextConfig } from 'next'
 
 const dev = process.env.NODE_ENV !== 'production'
 
-// What the browser may load (#69, #80). Pictures only from this site or inline, so text from a web
-// page or a stranger can't send private details out through an image address; the app talks only to
-// itself (the /api proxy). Next writes small inline scripts and React sets inline styles, so those two
-// keep 'unsafe-inline' (a per-request nonce would need every page rendered per request through
-// proxy.ts; worth doing later). The dev server also needs eval and a websocket for hot reload.
-const contentSecurityPolicy = [
-  "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${dev ? " 'unsafe-eval'" : ''}`,
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data:",
-  "font-src 'self' data:",
-  `connect-src 'self'${dev ? ' ws: wss:' : ''}`,
-  "media-src 'self' blob:",
-  "worker-src 'self'",
-  "manifest-src 'self'",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'none'",
-].join('; ')
-
+// The Content-Security-Policy is set per request, with a nonce, in src/proxy.ts.
 const securityHeaders = [
-  { key: 'Content-Security-Policy', value: contentSecurityPolicy },
   // Browsers ignore this over plain http (start.command on localhost); it matters behind https.
   ...(dev ? [] : [{ key: 'Strict-Transport-Security', value: 'max-age=31536000' }]),
   { key: 'X-Content-Type-Options', value: 'nosniff' },

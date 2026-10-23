@@ -6,6 +6,9 @@ import '@/styles/console.css'
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 
+// Rendered per request so Next can stamp this request's CSP nonce on its scripts (src/proxy.ts).
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: 'Operator console | Superaide',
   robots: { index: false, follow: false },
