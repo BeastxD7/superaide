@@ -19,7 +19,7 @@ export type GoogleService = {
   client_ready?: boolean
   meta?: { scopes?: string[] }
 }
-export type GoogleGuide = { url: string; steps: string[]; redirect_uri?: string; signin_redirect_uri?: string }
+export type GoogleGuide = { url: string; steps: string[]; redirect_uri?: string; signin_redirect_uri?: string; redirect_uris?: string[]; signin_redirect_uris?: string[] }
 
 const EVENTS_SCOPE = 'https://www.googleapis.com/auth/calendar.events'
 type Saved = { services: { google: GoogleService } }
@@ -240,11 +240,13 @@ function ClientForm({
           </li>
         ))}
       </ol>
-      {guide.redirect_uri && <RedirectUri value={guide.redirect_uri} />}
+      {(guide.redirect_uris ?? (guide.redirect_uri ? [guide.redirect_uri] : [])).map((uri) => (
+        <RedirectUri key={uri} value={uri} />
+      ))}
       {guide.signin_redirect_uri && (
         <p className="mt-2 text-xs text-muted">
           The same client can also serve Sign in with Google; its redirect URI is{' '}
-          <span className="font-mono break-all">{guide.signin_redirect_uri}</span>.
+          <span className="font-mono break-all">{(guide.signin_redirect_uris ?? [guide.signin_redirect_uri]).join(', ')}</span>.
         </p>
       )}
       <p className="mt-2 text-xs text-muted">
