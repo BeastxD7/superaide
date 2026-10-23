@@ -54,7 +54,8 @@ export function ChatPage() {
   }, [])
 
   useEffect(() => {
-    call<Message[]>(`/messages?limit=${PAGE}`)
+    // No query: the server's default page is PAGE messages, and the newest-page URL stays plain.
+    call<Message[]>('/messages')
       .then((history) => {
         setMore(history.length >= PAGE)
         // Something sent before the history arrived stays, after it; a newer copy wins.
@@ -100,7 +101,7 @@ export function ChatPage() {
     const t = window.setInterval(() => {
       if (document.visibilityState !== 'visible') return
       if (++tries > 60) return window.clearInterval(t)
-      call<Message[]>(`/messages?limit=${PAGE}`)
+      call<Message[]>('/messages')
         .then((fresh) => {
           if (!unmounted.current && !refreshedWhileSending.current) showFresh(fresh)
         })
@@ -159,7 +160,7 @@ export function ChatPage() {
       if (unmounted.current) return
       // The stream closed without saying it was done (a proxy idle timeout, a restart): same as a dropped connection.
       if (started && !finished) throw new Error('stream ended early')
-      const fresh = await call<Message[]>(`/messages?limit=${PAGE}`)
+      const fresh = await call<Message[]>('/messages')
       refreshed.current = true
       showFresh(fresh)
       if (failure) setError(failure)
@@ -172,7 +173,7 @@ export function ChatPage() {
       if (unmounted.current) return
       if (started) {
         // The connection dropped mid-reply; the turn carries on server-side, so show what's saved.
-        call<Message[]>(`/messages?limit=${PAGE}`).then(showFresh).catch(() => {})
+        call<Message[]>('/messages').then(showFresh).catch(() => {})
         setError("Lost the live connection. The reply will appear here when it's ready.")
       } else {
         // Not sent: take the bubble back and give you your words to try again.
