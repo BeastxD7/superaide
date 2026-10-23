@@ -277,7 +277,8 @@ class Agent:
             except Exception as exc:
                 reply, notes = self._turn_failed(s, exc, msg), ["failed"]
             reply = self._steady(s, reply)
-            self._reply(s, ctx, aud, reply, thread)
+            outsider = sender.relation != "manager" and not self._is_owner(s, sender)  # the owner never gets the card
+            self._reply(s, ctx, aud, reply, thread, to=(sender.name if sender.known else "") if outsider else None)
             return HandleResult("known", reply, notes)
 
     @staticmethod
@@ -643,7 +644,19 @@ class Agent:
 
     # --- output ------------------------------------------------------------------
 
-    def _reply(self, s, ctx: Context, aud: Audience, text: str, thread: str = "", meta: dict | None = None) -> None:
+    def _reply(
+        self,
+        s,
+        ctx: Context,
+        aud: Audience,
+        text: str,
+        thread: str = "",
+        meta: dict | None = None,
+        *,
+        to: str | None = None,
+    ) -> None:
+        """`to` is set only for a model-written reply to someone who isn't the owner: on Telegram and Slack it
+        then ends with the Principal Card line (PRINCIPAL_CARD_ENABLED), as Gmail replies do (#135)."""
         messenger = self.messengers.get(ctx.provider)
         if messenger is None:
             audit(s, "pipeline", "no_messenger", provider=ctx.provider)
@@ -654,11 +667,16 @@ class Agent:
         # replies carry it as a footer (only _owner_turn sets sources); anywhere else the
         # marks are dropped so they don't point at nothing.
         sources = (meta or {}).get("sources") or None
+        wire = text
+        if to is not None and ctx.provider in {"telegram", "slack"}:
+            from superaide.principal import card
+
+            wire = text + card.footer(s, channel=ctx.provider, to=to)
         try:
             if sources and ctx.kind == "dm":
-                messenger.send_to_context(ctx, text, thread, sources=sources)
+                messenger.send_to_context(ctx, wire, thread, sources=sources)
             else:
-                messenger.send_to_context(ctx, strip_citations(text), thread)
+                messenger.send_to_context(ctx, strip_citations(wire), thread)
         except DeliveryFailed as exc:  # health is recorded by the messenger; keep the turn and its record
             log.warning("reply not delivered on %s: %s", ctx.provider, exc.kind)
             audit(s, "pipeline", "reply_not_delivered", provider=ctx.provider, reason=exc.kind)

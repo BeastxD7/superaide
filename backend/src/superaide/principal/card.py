@@ -26,6 +26,8 @@ from superaide.tenancy.context import InstanceScope, scope_or_default
 from superaide.vault.crypto import master_key
 
 STATE_KEY = "principal_card"
+SENT_KEY = "principal_card_sent"  # the owner's own log of cards sent: id, channel, time, expiry (no message text)
+MAX_SENT = 200
 DEFAULT_CAN = ["Propose times", "Pass on messages"]
 DEFAULT_CANNOT = ["Agree prices", "Sign anything", "Pay anyone"]
 MAX_LISTED, MAX_ITEM, MAX_NAME = 8, 80, 80
@@ -60,6 +62,7 @@ def settings_of(session: Session) -> dict[str, Any]:
         "can": list(s.get("can") or DEFAULT_CAN),
         "cannot": list(s.get("cannot") or DEFAULT_CANNOT),
         "generation": int(s.get("generation") or 0),
+        "revoked": [str(i) for i in (s.get("revoked") or [])][-MAX_SENT:],  # single cards the owner took back
     }
 
 
@@ -137,7 +140,8 @@ def verify(session: Session, token: str, *, now: float | None = None) -> dict[st
     claims = _claims(token)
     if claims is None or float(claims.get("exp", 0)) < (time.time() if now is None else now):
         return None
-    if int(claims.get("g", -1)) != settings_of(session)["generation"]:
+    cur = settings_of(session)
+    if int(claims.get("g", -1)) != cur["generation"] or str(claims.get("id")) in cur["revoked"]:
         return None
     return {
         "ai": True,
@@ -152,14 +156,45 @@ def verify(session: Session, token: str, *, now: float | None = None) -> dict[st
     }
 
 
-def footer(session: Session) -> str:
-    """The line added under an outbound message, or empty."""
+def footer(session: Session, *, channel: str = "", to: str = "") -> str:
+    """The line added under an outbound message, or empty. With `channel` the card is also noted in the
+    owner's sent list (id, channel, who it went to by name, time, expiry; never the message)."""
     token = issue(session)
     if token is None:
         return ""
+    if channel:
+        claims = _claims(token) or {}
+        log = list(get_state(session, SENT_KEY).get("sent") or [])
+        log.append(
+            {"id": claims.get("id"), "channel": channel[:20], "to": " ".join(to.split())[:80],
+             "at": int(claims.get("iat", 0)), "exp": int(claims.get("exp", 0)), "g": int(claims.get("g", 0))}
+        )  # fmt: skip
+        set_state(session, SENT_KEY, {"sent": log[-MAX_SENT:]})
     name = settings_of(session)["display_name"]
     base = get_settings().frontend_origin.rstrip("/")
     return (
         f"\n\n--\n{get_settings().agent_name} is an AI assistant acting for {name}. "
         f"What she may and may not agree to, and how to report a problem: {base}/c/{token}"
     )
+
+
+def sent(session: Session, *, now: float | None = None) -> list[dict[str, Any]]:
+    """Cards sent, newest first, each with its status: active, expired or revoked."""
+    cur = settings_of(session)
+    t = time.time() if now is None else now
+    out = []
+    for e in reversed(list(get_state(session, SENT_KEY).get("sent") or [])):
+        revoked = str(e.get("id")) in cur["revoked"] or int(e.get("g", 0)) < cur["generation"]
+        out.append({**e, "status": "revoked" if revoked else "expired" if e.get("exp", 0) < t else "active"})
+    return out
+
+
+def revoke_one(session: Session, card_id: str) -> bool:
+    """Take back a single card; False when it isn't one this instance sent."""
+    if card_id not in {str(e.get("id")) for e in get_state(session, SENT_KEY).get("sent") or []}:
+        return False
+    cur = settings_of(session)
+    if card_id not in cur["revoked"]:
+        cur["revoked"].append(card_id)
+        set_state(session, STATE_KEY, cur)
+    return True

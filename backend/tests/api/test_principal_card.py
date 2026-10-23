@@ -167,3 +167,26 @@ def test_the_owner_gets_a_preview_link_that_opens_the_public_page(browser, owner
     r = set_card(owner)
     token = r.json()["preview"].rsplit("/c/", 1)[1]
     assert browser().get(f"/p/card/{token}").json()["acts_for"] == "A. Tan"
+
+
+def test_the_owner_sees_the_cards_sent_and_can_take_one_back(owner, on):
+    set_card(owner)
+    with session_scope() as s:
+        card.footer(s, channel="slack", to="Priya Tan")
+        card.footer(s, channel="telegram", to="Jon Lee")
+    cards = owner.get("/app/principal-card/sent").json()["cards"]
+    assert [(c["to"], c["channel"], c["status"]) for c in cards] == [
+        ("Jon Lee", "telegram", "active"),
+        ("Priya Tan", "slack", "active"),
+    ]
+    assert set(cards[0]) == {"id", "channel", "to", "at", "exp", "g", "status"}  # never a message
+    assert owner.post(f"/app/principal-card/sent/{cards[1]['id']}/revoke", json={}).status_code == 200
+    assert owner.post("/app/principal-card/sent/nope/revoke", json={}).status_code == 404
+    assert [c["status"] for c in owner.get("/app/principal-card/sent").json()["cards"]] == ["active", "revoked"]
+    owner.post("/app/principal-card/revoke", json={})
+    assert {c["status"] for c in owner.get("/app/principal-card/sent").json()["cards"]} == {"revoked"}
+
+
+def test_sent_routes_are_off_with_the_flag(owner):
+    assert owner.get("/app/principal-card/sent").status_code == 404
+    assert owner.post("/app/principal-card/sent/x/revoke", json={}).status_code == 404

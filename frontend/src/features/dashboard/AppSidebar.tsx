@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/sidebar'
 import { useNeedsYou } from '@/features/needs-you/useNeedsYou'
 import { useRehearsalEnabled } from '@/features/rehearsal/useRehearsal'
+import { usePrincipalCardEnabled } from '@/features/principal-card/usePrincipalCard'
 import { useSchoolEnabled } from '@/features/school/useSchool'
 import type { Me } from '@/lib/api'
 import { agentStatus, navItemFor, NAV } from '@/features/dashboard/nav'
@@ -44,6 +45,7 @@ export function AppSidebar({ session, me }: { session: Session; me: Me }) {
   const triage = useNeedsYou(60_000)
   const rehearsal = useRehearsalEnabled()
   const school = useSchoolEnabled()
+  const principalCard = usePrincipalCardEnabled()
 
   return (
     <Sidebar collapsible="icon" variant="inset">
@@ -83,7 +85,7 @@ export function AppSidebar({ session, me }: { session: Session; me: Me }) {
             <SidebarGroupContent>
               <SidebarMenu>
                 {items
-                  .filter((i) => (!i.triage || triage.enabled) && (!i.rehearsal || rehearsal) && (!i.school || school))
+                  .filter((i) => (!i.triage || triage.enabled) && (!i.rehearsal || rehearsal) && (!i.school || school) && (!i.card || principalCard))
                   .map(({ href, label, icon: Icon, triage: counted }) => (
                   <SidebarMenuItem key={href}>
                     <SidebarMenuButton asChild isActive={isActive(href)} tooltip={label}>
