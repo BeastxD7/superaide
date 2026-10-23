@@ -382,6 +382,9 @@ def test_the_journal_routes_are_owner_routes_and_leak_nothing(app, browser, owne
     stranger = browser()
     signup(stranger, name="Mallory Tan", email="mallory@example.com")
     for method, path in JOURNAL_ROUTES:
+        r = stranger.request(method, fill_path(path), json={} if method == "POST" else None)
+        assert r.status_code == 403
+        _assert_no_owner_data(r, owner_data)
 
 
 # --- the Mirror (/app/mirror, MIRROR_ENABLED) --------------------------------------------------
