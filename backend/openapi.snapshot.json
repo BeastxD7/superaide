@@ -7090,7 +7090,7 @@
     },
     "/app/messages": {
       "get": {
-        "description": "The owner's conversation with Ava, oldest first (introduction included).",
+        "description": "The owner's conversation with Ava, oldest first (introduction included). Returns the newest `limit` messages; pass `before` (the id of the oldest message you have) to get the `limit` before it.",
         "operationId": "messages_app_messages_get",
         "parameters": [
           {
@@ -7101,6 +7101,23 @@
               "default": 200,
               "title": "Limit",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Before"
             }
           }
         ],

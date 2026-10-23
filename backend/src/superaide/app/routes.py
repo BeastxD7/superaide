@@ -53,6 +53,7 @@ from superaide.knowledge.ingest import ingest
 from superaide.knowledge.store import conflicts_of, contacts_of, preferences_for, resolve_conflict, retire_document
 from superaide.policy import brake
 from superaide.policy.actions import ApprovalError, resolve
+from superaide.policy.binding import expired
 from superaide.policy.killswitch import is_frozen
 from superaide.skills import registry as skill_registry
 from superaide.tenancy.context import InstanceScope, use_instance
@@ -501,17 +502,24 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         "/messages",
         tags=["Owner: chat & notebook"],
         summary="Conversation history",
-        description="The owner's conversation with Ava, oldest first (introduction included).",
+        description="The owner's conversation with Ava, oldest first (introduction included). Returns the newest "
+        "`limit` messages; pass `before` (the id of the oldest message you have) to get the `limit` before it.",
     )
-    def messages(person_id: uuid.UUID = Depends(owner_person_id), limit: int = 200) -> list[dict[str, Any]]:
+    def messages(
+        person_id: uuid.UUID = Depends(owner_person_id), limit: int = 200, before: uuid.UUID | None = None
+    ) -> list[dict[str, Any]]:
         limit = max(1, min(limit, 500))
         with session_scope() as s:
             ctx = s.scalar(select(Context).where(Context.provider == "web", Context.external_id == f"web:{person_id}"))
             if ctx is None:
                 return []
-            rows = s.scalars(
-                select(Event).where(Event.context_id == ctx.id).order_by(Event.created_at.desc()).limit(limit)
-            ).all()
+            q = select(Event).where(Event.context_id == ctx.id)
+            if before is not None:
+                anchor = s.get(Event, before)
+                if anchor is None or anchor.context_id != ctx.id:  # someone else's, or gone: nothing older to give
+                    return []
+                q = q.where(Event.created_at < anchor.created_at)
+            rows = s.scalars(q.order_by(Event.created_at.desc()).limit(limit)).all()
             return [
                 {
                     "id": str(e.id),
@@ -1301,7 +1309,8 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                     "kind": a.kind,
                     "summary": (a.payload or {}).get("summary", ""),
                     "requested_by": names.get(a.requested_by_person_id) if a.requested_by_person_id else None,
-                    "status": a.status,
+                    # A card past its expiry can no longer be answered: show it as such, not as waiting (#291).
+                    "status": "expired" if a.status == "pending" and expired(a) else a.status,
                     "result": (a.payload or {}).get("result"),
                     "notes": list((a.payload or {}).get("notes") or []),
                     "at": a.created_at.isoformat(),

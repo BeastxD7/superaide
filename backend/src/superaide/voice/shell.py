@@ -17,6 +17,7 @@ from superaide.brain.turn import TurnOutput
 from superaide.db.models import Approval
 from superaide.db.session import session_scope
 from superaide.identity.resolver import Sender
+from superaide.policy import binding
 from superaide.voice import gateway
 
 Understand = Callable[[str], TurnOutput]
@@ -43,5 +44,5 @@ class VoiceShell:
                 )
                 self.proposals.append({**result, "kind": out.requested_action.kind})
                 return str(result["spoken"])
-            waiting = list(s.scalars(select(Approval).where(Approval.status == "pending")).all())
+            waiting = list(s.scalars(select(Approval).where(binding.waiting())).all())
             return gateway.guard_spoken(out.reply, waiting)

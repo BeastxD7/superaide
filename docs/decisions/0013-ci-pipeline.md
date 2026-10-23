@@ -78,9 +78,19 @@ Rule (owner): whenever a feature is built, test cases are added for it. It is in
 - `CI result` requires it on `pull_request` events (fail closed: skipped or failed fails the gate) and ignores it elsewhere, since it never runs on main pushes, merge groups, workflow_call or manual runs.
 - Limits: it proves a test file changed, not that it is good. Review still judges the test.
 
+## Backend split (PR C)
+
+The single backend job ran about 40 seconds of lint, types and migration checks and then about 8 minutes of pytest (xdist, one worker per core). It is now `backend-static` (one migration head, ruff, format, mypy, migrations apply and roll back; the checks that fail fastest) and `backend-tests`, two runners that each run `pytest -n auto --shard i/2`. `--shard` (tests/conftest.py, tests/sharding.py) assigns whole test modules, biggest first, to the shard with the fewest tests; it depends only on the collected test ids, so each xdist worker and each runner agrees and every test runs on exactly one shard (the unit test checks the partition; collecting both shards locally yields all 2920 tests). Coverage on main and Full is reported per shard (informational; nothing gates on a coverage figure).
+
+The `CI result` gate needs `backend-static` and `backend-tests` (a matrix, so any failed shard fails it) and requires both to succeed whenever the backend filter asked for them.
+
 ## Plan
 
 1. Change detection and the gate (this PR).
 2. Cheaper runs: coverage only on main and Full, cached Playwright browsers, `--durations=25`, per-PR-ref cancellation (already so: `cancel-in-progress` is true only when the workflow is `CI`, so main pushes, Full and the called pipeline are never cancelled by a newer ref... see the PR for the exact check).
 3. pytest-xdist with one database per worker.
 4. Skipping e2e shards for backend-only changes that leave the API contract alone (optional).
+
+## Every push to main gets its own run
+
+GitHub keeps one queued run per concurrency group and cancels older *queued* runs even when `cancel-in-progress` is false, so merging several PRs in a row left `main` with cancelled runs and no verdict. On `main` the group now includes the commit SHA, so each push is verified. Pull requests keep one group per branch and still cancel their own older runs.
