@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  # A GitHub merge queue (if enabled) tests the merged result once, here.
+  merge_group:
   workflow_dispatch:
   # The scheduled full run (full.yml) calls this same pipeline.
   workflow_call:
@@ -18,8 +20,92 @@ concurrency:
   cancel-in-progress: ${{ github.workflow == 'CI' }}
 
 jobs:
+  # Decides which jobs a pull request needs (docs/0013). Pushes to main, merge groups, manual
+  # runs and the scheduled Full run ignore the filters and run everything.
+  changes:
+    name: Changed paths
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read # the filter lists the PR's files through the API
+    outputs:
+      backend: ${{ steps.out.outputs.backend }}
+      frontend: ${{ steps.out.outputs.frontend }}
+      e2e: ${{ steps.out.outputs.e2e }}
+      docker: ${{ steps.out.outputs.docker }}
+    steps:
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        if: github.event_name == 'pull_request'
+        with:
+          list-files: json
+          filters: |
+            backend_all:
+              - 'backend/**'
+            frontend_all:
+              - 'frontend/**'
+            e2e:
+              - 'e2e/**'
+            docker:
+              - '**/Dockerfile'
+              - '**/.dockerignore'
+              - 'deploy/**'
+              - 'compose.yaml'
+              - 'docker-compose.prod.yml'
+              - '.env.prod.example'
+              - 'backend/pyproject.toml'
+              - 'backend/uv.lock'
+              - 'frontend/package.json'
+              - 'frontend/package-lock.json'
+            files:
+              - '**'
+            pipeline:
+              - '.github/workflows/**'
+              - 'scripts/**'
+              - 'Makefile'
+              - 'compose.yaml'
+              - '.gitleaks.toml'
+
+      - name: Resolve what to run
+        id: out
+        env:
+          EVENT: ${{ github.event_name }}
+          F: ${{ toJSON(steps.filter.outputs) }}
+          FILES: ${{ steps.filter.outputs.files_files }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" != "pull_request" ]; then
+            echo "Event $EVENT: running everything."
+            all=true
+          else
+            has() { [ "$(echo "$F" | jq -r --arg k "$1" '.[$k] // "false"')" = "true" ]; }
+            all=false
+            # Fail closed: a code file no specific filter owns, or a pipeline file, runs everything.
+            if has pipeline; then all=true; fi
+            # Code is every changed file that is not documentation (md files, docs/, license, assets,
+            # issue templates, CODEOWNERS, the PR template).
+            code=$(echo "$FILES" | jq -r '.[]' | grep -vE '\.md$|^docs/|^LICENSE|^assets/|^\.github/ISSUE_TEMPLATE/|^\.github/(CODEOWNERS|pull_request_template\.md)$' || true)
+            echo "Changed files:"; echo "$FILES" | jq -r '.[]'
+            if [ -n "$code" ] && ! has backend_all && ! has frontend_all && ! has e2e && ! has docker; then all=true; fi
+          fi
+          out() { echo "$1=$2" >> "$GITHUB_OUTPUT"; echo "$1=$2"; }
+          if [ "$all" = true ]; then
+            for k in backend frontend e2e docker; do out $k true; done
+          else
+            b=false; fe=false; e=false; d=false
+            if has backend_all; then b=true; fi
+            if has frontend_all; then fe=true; fi
+            # e2e drives both halves, so a change to either one (or to e2e itself) runs it.
+            if has e2e || [ $b = true ] || [ $fe = true ]; then e=true; fi
+            if has docker; then d=true; fi
+            out backend $b; out frontend $fe; out e2e $e; out docker $d
+          fi
+
   backend:
     name: Backend (lint, types, migrations, tests)
+    needs: [changes]
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -87,6 +173,8 @@ jobs:
 
   frontend:
     name: Frontend (lint, types, build)
+    needs: [changes]
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -115,7 +203,9 @@ jobs:
     name: End-to-end (shard ${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    needs: [backend, frontend]
+    needs: [changes, backend, frontend]
+    # backend and frontend may be skipped (nothing in them changed); a failure still blocks.
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.changes.outputs.e2e == 'true' }}
     strategy:
       fail-fast: false
       matrix:
@@ -183,7 +273,8 @@ jobs:
     name: Docker images build
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [backend, frontend]
+    needs: [changes, backend, frontend]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.changes.outputs.docker == 'true' }}
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4
@@ -246,3 +337,34 @@ jobs:
           # .gitleaks.toml uses [[allowlists]] tables, which need gitleaks 8.25 or later
           # (the action's default, 8.24.3, ignores them).
           GITLEAKS_VERSION: 8.28.0
+
+  # The one check to require in branch protection. Skipped jobs count as success, a failed or
+  # cancelled one (or an unexpected state) fails it. Without this, a required job that was
+  # skipped would stay pending forever.
+  result:
+    name: CI result
+    if: always()
+    needs: [changes, backend, frontend, e2e, images, secrets]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Every needed job succeeded or was skipped
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          set -euo pipefail
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          # changes and the secret scan are never skipped.
+          for j in changes secrets; do
+            [ "$(echo "$NEEDS" | jq -r --arg j "$j" '.[$j].result')" = success ] || { echo "::error::$j did not succeed"; exit 1; }
+          done
+          bad=$(echo "$NEEDS" | jq -r 'to_entries[] | select(.value.result != "success" and .value.result != "skipped") | .key')
+          [ -z "$bad" ] || { echo "::error::failed, cancelled or unknown: $bad"; exit 1; }
+          # A job skipped although its filter asked for it ran into an upstream problem: fail.
+          for j in backend frontend e2e; do
+            want=$(echo "$NEEDS" | jq -r --arg j "$j" '.changes.outputs[$j]')
+            got=$(echo "$NEEDS" | jq -r --arg j "$j" '.[$j].result')
+            [ "$want" != true ] || [ "$got" = success ] || { echo "::error::$j was required but is $got"; exit 1; }
+          done
+          want=$(echo "$NEEDS" | jq -r '.changes.outputs.docker')
+          [ "$want" != true ] || [ "$(echo "$NEEDS" | jq -r '.images.result')" = success ] || { echo "::error::images was required but did not succeed"; exit 1; }
