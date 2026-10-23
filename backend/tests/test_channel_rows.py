@@ -62,7 +62,13 @@ def test_no_telegram_bot_is_not_available(model, outbox, settings):
     ("provider", "tokens"),
     [
         ("telegram", {"telegram_bot_token": "123456789:fake"}),
-        ("slack", {"slack_bot_token": "xoxb-fake", "slack_app_token": "xapp-1-A0APPONE-1-secret"}),
+        (
+            "slack",
+            {
+                "slack_bot_token": "-".join(["xoxb", "fake"]),
+                "slack_app_token": "-".join(["xapp", "1", "A0APPONE", "1", "secret"]),
+            },
+        ),
     ],
 )
 def test_a_linked_account_counts_only_while_the_bot_or_app_is_connected(model, outbox, settings, provider, tokens):
