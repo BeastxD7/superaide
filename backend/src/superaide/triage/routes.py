@@ -284,7 +284,12 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
     @router.get("/triage/settings", summary="Triage settings")
     def get_settings_(person_id: uuid.UUID = Depends(owner_on)) -> dict[str, Any]:
         with session_scope() as s:
-            return settings_view(settings_for(s, require(s, Person, person_id)))
+            view = settings_view(settings_for(s, require(s, Person, person_id)))
+            from superaide.triage import knn
+            from superaide.vault.store import runtime_settings
+
+            status = knn.shadow_status(s, enabled=runtime_settings().triage_knn_enabled)
+            return {**view, "knn_shadow": status if status["enabled"] else None}
 
     @router.put(
         "/triage/settings",

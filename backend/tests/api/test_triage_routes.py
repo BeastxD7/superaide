@@ -229,3 +229,12 @@ def test_the_promotion_view_reads_only_the_owners_own_feedback(owner_browser):
     v = body["verdict"]
     assert (v["useful"], v["not_urgent"], v["n"], v["stage"], v["next_stage"]) == (2, 1, 3, "infant", "child")
     assert v["ready_to_offer"] is False and v["needed_events"] == 30 and "never changes her own stage" in body["note"]
+
+
+def test_settings_carry_the_knn_shadow_line_only_while_that_flag_is_on(owner_browser, settings, monkeypatch):
+    assert owner_browser.get("/app/triage/settings").json()["knn_shadow"] is None
+    monkeypatch.setattr(settings, "triage_knn_enabled", True)
+    shadow = owner_browser.get("/app/triage/settings").json()["knn_shadow"]
+    assert shadow["mode"] == "shadow" and shadow["needs"] == 200 and shadow["eligible"] is False
+    assert shadow["text"].startswith("Shadow:")
+    assert "knn_shadow" not in owner_browser.put("/app/triage/settings", json={"max_per_day": 3}).json()

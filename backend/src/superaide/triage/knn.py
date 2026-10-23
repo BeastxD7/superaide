@@ -189,3 +189,45 @@ def compare(session: Session, embedder: Any, *, k: int = K) -> dict[str, Any] | 
         "knn": {"n": len(knn_pairs), "auc": auc(knn_pairs)},
         "model": {"n": len(model_pairs), "auc": auc(model_pairs)},
     }
+
+
+# --- shadow status: how often the head agrees with the owner's own corrections (#117) ----------------------
+
+SHADOW_MIN_SAMPLE = 200  # corrections with a recorded kNN score needed before promotion is even considered
+SHADOW_GATE = 0.8  # the lower end of the 95% Wilson interval on agreement that must be cleared
+
+
+def shadow_status(session: Session, *, enabled: bool) -> dict[str, Any]:
+    """Where the head stands, for the owner. It only ever runs in shadow: it records a score beside each
+    decision and nothing reads it. Agreement is how often its recorded score (urgent when >= 0.5) matched
+    the owner's own label on the same decision; the score was written before the label existed, so it never
+    saw the answer. Promotion to deciding is not built; `eligible` only says the evidence would allow asking.
+    Below `SHADOW_MIN_SAMPLE` corrections it is never eligible, however high the agreement."""
+    from superaide.triage.promotion import wilson_lower
+
+    n = agree = 0
+    for d, _ in _labelled(session):
+        stored = (d.features or {}).get("knn")
+        score = stored.get("score") if isinstance(stored, dict) else None
+        if not isinstance(score, int | float):
+            continue
+        n += 1
+        agree += (float(score) >= 0.5) == (LABEL_VALUE[str(d.feedback)] == 1.0)
+    pct = round(100 * agree / n) if n else None
+    lower = wilson_lower(agree, n)
+    eligible = enabled and n >= SHADOW_MIN_SAMPLE and lower >= SHADOW_GATE
+    if not enabled:
+        text = ""
+    elif n == 0:
+        text = f"Shadow: learning from your corrections, none compared yet, needs {SHADOW_MIN_SAMPLE}."
+    else:
+        text = (
+            f"Shadow: agrees with you {pct}% over {n} correction{'s' if n != 1 else ''}, needs {SHADOW_MIN_SAMPLE}."
+            if n < SHADOW_MIN_SAMPLE
+            else f"Shadow: agrees with you {pct}% over {n} corrections; it still decides nothing until you say so."
+        )
+    return {
+        "enabled": enabled, "mode": "shadow", "n": n, "agree": agree, "agreement": None if pct is None else pct / 100,
+        "lower_bound": round(lower, 3), "needs": SHADOW_MIN_SAMPLE, "gate": SHADOW_GATE, "eligible": eligible,
+        "text": text,
+    }  # fmt: skip

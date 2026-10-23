@@ -592,6 +592,8 @@ export type TriageSettings = {
   busy_until: string | null
   tell_sender_seen: boolean
   phone_enabled: boolean
+  // TRIAGE_KNN_ENABLED only (#117): the kNN head runs in shadow and never decides.
+  knn_shadow?: { text: string; n: number; needs: number; eligible: boolean } | null
 }
 
 // The "Ask my Ava" link (owner side). Every route answers 404 while ASK_LINK_ENABLED is off.

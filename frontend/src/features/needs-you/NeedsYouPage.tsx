@@ -280,6 +280,11 @@ function SettingsPanel({ name }: { name: string }) {
       <h2 id="triage-settings" className="text-lg font-medium text-ink">
         When {name} interrupts you
       </h2>
+      {settings.knn_shadow?.text && (
+        <p className="mt-2 text-sm text-muted" data-testid="knn-shadow">
+          {settings.knn_shadow.text}
+        </p>
+      )}
       {problem && (
         <div className="mt-3">
           <Notice tone="error">{problem}</Notice>
