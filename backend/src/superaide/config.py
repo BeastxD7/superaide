@@ -179,6 +179,9 @@ class Settings(BaseSettings):
     llm_providers: dict[str, dict[str, str]] = Field(default_factory=dict, exclude=True)
     # Use a scripted fake model instead of the real API (tests, offline demos).
     fake_llm: bool = False
+    # Empty the text of third parties' messages older than this many days (0 = never). Off: deleting by age is
+    # the owner's decision (issue #48).
+    third_party_message_retention_days: int = 0
     # Embeddings for recall (ADR 0008 WP2b): local (on this machine, free, the default) | voyage
     # (Voyage AI's API: private facts leave the machine, so it's opt-in) | fake (tests) | none
     embedder: str = "local"

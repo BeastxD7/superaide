@@ -497,6 +497,19 @@ function FilesAndLinks({ documents, reload, onContinue }: { documents: SharedDoc
     }
   }
 
+  // Remove hides a file and what was learned from it; erase deletes its text, passages and notes for good.
+  const [erasing, setErasing] = useState<string | null>(null)
+  async function erase(doc: SharedDoc) {
+    setBusy(`Erasing ${doc.title}…`)
+    try {
+      await call(`/intro/documents/${doc.id}/erase`, { method: 'POST' })
+      setErasing(null)
+      await reload()
+    } finally {
+      setBusy(null)
+    }
+  }
+
   function onDrop(e: DragEvent) {
     e.preventDefault()
     setDrag(false)
@@ -590,6 +603,20 @@ function FilesAndLinks({ documents, reload, onContinue }: { documents: SharedDoc
                   </>
                 ) : (
                   <span className="shrink-0 text-xs text-muted">{d.status === 'read' ? `${d.facts} facts` : 'Saved, not read yet'}</span>
+                )}
+                {erasing === d.id ? (
+                  <>
+                    <button onClick={() => void erase(d)} className="shrink-0 rounded-full bg-danger px-2 py-0.5 text-xs font-medium text-white">
+                      Erase for good
+                    </button>
+                    <button onClick={() => setErasing(null)} className="shrink-0 text-xs text-muted hover:text-ink">
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <button onClick={() => setErasing(d.id)} className="shrink-0 text-xs text-muted hover:text-danger" aria-label={`Erase ${d.title} for good`}>
+                    Erase
+                  </button>
                 )}
                 <button onClick={() => void remove(d)} className="grid size-7 shrink-0 place-items-center rounded-full text-muted hover:bg-mist hover:text-danger" aria-label={`Remove ${d.title}`}>
                   <Trash2 className="size-3.5" />

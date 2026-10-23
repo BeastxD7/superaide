@@ -32,6 +32,7 @@ from superaide.db.models import (
     Approval,
     AuditLog,
     ChannelIdentity,
+    Contact,
     Context,
     Document,
     DocumentChunk,
@@ -46,6 +47,8 @@ from superaide.factory import brain_ready, brain_status
 from superaide.intentions import service as intentions
 from superaide.intentions.when import clean_task, find_moment, zone
 from superaide.knowledge import extract
+from superaide.knowledge.erase import erase_document, erase_person
+from superaide.knowledge.erase import vacuum as erase_vacuum
 from superaide.knowledge.ingest import ingest
 from superaide.knowledge.store import conflicts_of, contacts_of, preferences_for, resolve_conflict, retire_document
 from superaide.policy import brake
@@ -415,6 +418,38 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             doc = s.get(Document, document_id)
             status = doc.status if doc is not None else "removed"
         return {"status": status, "facts": result.facts, "read": result.read}
+
+    @router.post(
+        "/intro/documents/{document_id}/erase",
+        tags=["Introduction"],
+        summary="Erase a file or link for good",
+        description="Deletes its text, its passages, what Ava learned only from it and their vectors. Unlike "
+        "remove, this cannot be undone. A fact you also said yourself, or that another file supports, stays.",
+    )
+    def erase_document_route(document_id: uuid.UUID, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        with session_scope() as s:
+            doc = s.get(Document, document_id)
+            if doc is None or doc.owner_person_id != person_id:
+                raise HTTPException(404, "Not found")
+            counts = erase_document(s, require(s, Person, person_id), doc)
+        erase_vacuum()
+        return {"status": "erased", **counts}
+
+    @router.post(
+        "/people/{contact_id}/erase",
+        tags=["Owner: people & rules"],
+        summary="Erase what Ava holds about a person",
+        description="Deletes the notes they asked Ava to keep and notes about them, and empties the text of their "
+        "messages. For a person on the owner's People list.",
+    )
+    def erase_person_route(contact_id: uuid.UUID, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        with session_scope() as s:
+            contact = s.get(Contact, contact_id)
+            if contact is None or contact.owner_person_id != person_id or contact.removed_at is not None:
+                raise HTTPException(404, "Not found")
+            counts = erase_person(s, require(s, Person, person_id), contact.person_id)
+        erase_vacuum()
+        return {"status": "erased", **counts}
 
     @router.get(
         "/intro/call",

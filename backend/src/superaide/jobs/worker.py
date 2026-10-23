@@ -42,6 +42,18 @@ def schedule_recurring() -> None:
         except Exception:
             log.exception("couldn't schedule the digest for instance %s", scope.agent_id)
         try:
+            from superaide.app.accounts import owner as hired_owner
+            from superaide.config import get_settings
+            from superaide.knowledge.erase import roll_off_third_party_messages
+
+            days = get_settings().third_party_message_retention_days
+            if days > 0:  # off unless the operator sets it
+                with use_instance(scope), session_scope() as s:
+                    if (who := hired_owner(s)) is not None:
+                        roll_off_third_party_messages(s, who, days)
+        except Exception:
+            log.exception("couldn't roll off old messages of instance %s", scope.agent_id)
+        try:
             with use_instance(scope), session_scope() as s:
                 reconcile_reminders(s)
                 auto_close_delivered(s)
