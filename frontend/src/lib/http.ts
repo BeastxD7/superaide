@@ -9,6 +9,8 @@ export const API_URL = '/api'
 export class ApiError extends Error {
   status: number
   field?: string
+  // The stable machine code from the error envelope (ADR 0013), e.g. `invalid_cursor`. Absent on old bodies.
+  code?: string
   constructor(status: number, message: string, field?: string) {
     super(message)
     this.status = status
@@ -78,6 +80,12 @@ export type ErrorBody = {
 
 // Read an error response body: `error.message` first (the envelope's `message`), the old `detail` as the fallback.
 export function errorFromBody(status: number, body: ErrorBody | null | undefined, fallback: string): ApiError {
+  const err = readErrorBody(status, body, fallback)
+  if (typeof body?.error?.code === 'string') err.code = body.error.code
+  return err
+}
+
+function readErrorBody(status: number, body: ErrorBody | null | undefined, fallback: string): ApiError {
   const nested = body?.error?.detail
   // Validation: the per-field list keeps the field name so the form can mark it.
   if (Array.isArray(nested) || Array.isArray(body?.detail)) return errorFromDetail(status, nested ?? body?.detail, fallback)
