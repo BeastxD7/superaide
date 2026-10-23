@@ -9,7 +9,7 @@ import { useReveal } from '@/hooks/use-reveal'
 import { Notice } from '@/components/site'
 import { Button } from '@/components/ui/button'
 import { call, callPage, streamChat, type Message } from '@/lib/api'
-import { SkeletonList } from '@/components/ui/skeleton'
+import { ChatSkeleton } from './ChatSkeleton'
 import { apply } from '@/lib/chat-turn'
 import { droppedBy, joinOlder, oldestSaved, PAGE } from '@/lib/chat-history'
 import { isSendKey } from '@/lib/keys'
@@ -255,7 +255,7 @@ export function ChatPage() {
               </Button>
             </div>
           )}
-          {!loaded && <SkeletonList count={4} rowHeight={72} what="your conversation" />}
+          {!loaded && <ChatSkeleton />}
           <Conversation messages={[...older, ...visible]} typing={typing} hue="indigo" agentName={name} live={live} />
         </div>
       </div>
