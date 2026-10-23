@@ -55,7 +55,7 @@ from superaide.pagination import SortKey, bind_for, cursor_param, encode_cursor,
 from superaide.policy import brake, kinds
 from superaide.policy.actions import ApprovalError, resolve
 from superaide.policy.binding import expired
-from superaide.policy.killswitch import is_frozen
+from superaide.policy.killswitch import instance_frozen, is_frozen, platform_frozen, set_frozen
 from superaide.skills import registry as skill_registry
 from superaide.tenancy.context import InstanceScope, use_instance
 from superaide.tenancy.endpoints import slack_key
@@ -271,6 +271,23 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         except IntegrityError as exc:  # someone else hired at the same moment
             raise HTTPException(409, f"{settings.agent_name} was just hired by someone else.") from exc
 
+    @router.post(
+        "/resume",
+        tags=["Owner"],
+        summary="Resume Ava",
+        description=(
+            "Lifts a pause that is the owner's own: the halt word, the circuit breaker or the action witness. "
+            "A pause set by the server's operator (the console) answers 409; only the operator can lift that."
+        ),
+    )
+    def resume(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        with session_scope() as s:
+            if platform_frozen(s):
+                raise HTTPException(409, "The server's operator paused every Ava here. Only they can resume it.")
+            if instance_frozen(s):
+                set_frozen(s, False, actor="owner_resume")
+            return {"paused": is_frozen(s)}
+
     @router.get(
         "/me",
         tags=["Owner: chat & notebook"],
@@ -295,6 +312,9 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 "brain": "claude" if brain_ready(settings) else "offline",
                 "brain_provider": brain_status(settings).provider,
                 "paused": is_frozen(s),
+                # The owner can lift a pause that is hers (the halt word, the circuit breaker, the witness);
+                # one the server's operator set is theirs to lift.
+                "can_resume": instance_frozen(s) and not platform_frozen(s),
                 # Which optional parts are on, so the app does not ask for what answers 404 by design.
                 "features": {"triage": bool(settings.triage_enabled)},
                 "channels": {

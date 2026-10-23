@@ -13,6 +13,7 @@ import { STAGES } from '@/components/stages'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { ResumeButton } from '@/features/dashboard/ResumeButton'
 import { Loadable, type LoadState } from '@/components/load-state'
 import { CATEGORY_LABEL, DIGEST_LABEL, CHANNEL_LABEL, capitalise, useAppData } from '@/features/dashboard/data'
 import { comingUp } from '@/features/dashboard/home-lists'
@@ -44,10 +45,13 @@ export function DashboardHome() {
         </h1>
         <p className="mt-1 text-body">
           {me.paused
-            ? `${name} is paused, so nobody gets a reply until you resume.`
+            ? me.can_resume
+              ? `${name} is paused, so nobody gets a reply until you resume her.`
+              : `${name} is paused by the operator of this server, so nobody gets a reply until they resume her.`
             : me.brain === 'claude'
               ? `${name} is on duty. She answers what you allowed and keeps the rest for you.`
               : `${name} is in offline mode, so her replies are placeholders for now.`}
+          {me.paused && me.can_resume && <ResumeButton name={name} />}
         </p>
 
         {me.brain === 'offline' && !me.paused && (

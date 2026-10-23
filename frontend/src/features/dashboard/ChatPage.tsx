@@ -15,6 +15,7 @@ import { droppedBy, joinOlder, oldestSaved, PAGE } from '@/lib/chat-history'
 import { isSendKey } from '@/lib/keys'
 import { useSession } from '@/lib/session-context'
 import { errorMessage } from '@/lib/action'
+import { ResumeButton } from '@/features/dashboard/ResumeButton'
 
 const QUICK = [
   { icon: Lightbulb, label: 'How would you handle…', prefill: 'If someone messages you saying ' },
@@ -170,7 +171,7 @@ export function ChatPage() {
       if (failure) setError(failure)
       // Paused: the message is kept, but say why nothing came back instead of leaving silence.
       else if (mode === 'frozen') {
-        setError(`${name} is paused, so she didn't reply. She'll see this once she's resumed.`)
+        setError(`${name} is paused, so she didn't reply. Your message is saved, but she won't answer it on her own. Send it again once she's resumed.`)
         void refresh() // the header, sidebar and Home learn about the pause too
       }
     } catch (e) {
@@ -226,7 +227,12 @@ export function ChatPage() {
           )}
           {me.paused && (
             <div className="mb-4">
-              <Notice tone="warn">{name} is paused from the operator console. She won&apos;t reply until she&apos;s resumed.</Notice>
+              <Notice tone="warn">
+                {me.can_resume
+                  ? `${name} is paused (you stopped her, or a safety limit did). She won't reply until you resume her.`
+                  : `${name} is paused by the operator of this server. She won't reply until they resume her.`}
+                {me.can_resume && <ResumeButton name={name} />}
+              </Notice>
             </div>
           )}
           {more && (

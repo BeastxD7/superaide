@@ -10664,6 +10664,35 @@
         ]
       }
     },
+    "/app/resume": {
+      "post": {
+        "description": "Lifts a pause that is the owner's own: the halt word, the circuit breaker or the action witness. A pause set by the server's operator (the console) answers 409; only the operator can lift that.",
+        "operationId": "resume_app_resume_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Resume App Resume Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Resume Ava",
+        "tags": [
+          "Owner"
+        ]
+      }
+    },
     "/app/school": {
       "get": {
         "description": "Lessons you wrote, and ones imported and waiting for you.",
