@@ -27,6 +27,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 from sqlalchemy import func, select, text
+from sqlalchemy.orm import aliased
 
 from superaide.app.accounts import owner as hired_owner
 from superaide.audit import audit
@@ -421,6 +422,181 @@ def conversations() -> list[dict[str, Any]]:
             }
             for c, n, last in rows
         ]
+
+
+def _names(s: Any, ids: set[uuid.UUID]) -> dict[uuid.UUID, str]:
+    """Display names for just these people: a page never reads the whole person table to label its rows."""
+    if not ids:
+        return {}
+    return {p.id: p.display_name for p in s.scalars(select(Person).where(Person.id.in_(ids)))}
+
+
+@router.get(
+    "/memories/page",
+    dependencies=content,
+    summary="Memories, newest first (paged)",
+    description="The rows of `/api/memories`, paged by cursor (limit 1 to 100, default 50). ADR 0014.",
+    response_model=Page[dict[str, Any]],
+)
+def memories_page(limit: int = limit_param(50, 100), cursor: str | None = cursor_param()) -> Page[dict[str, Any]]:
+    with session_scope() as s:
+        page = paginate(
+            s,
+            select(MemoryItem),
+            [SortKey(MemoryItem.created_at), SortKey(MemoryItem.id)],
+            endpoint="op-memories",
+            bind=bind_for("operator"),
+            limit=limit,
+            cursor=cursor,
+            maximum=100,
+            build=lambda m: m,
+        )
+        names = _names(s, {i for m in page.items for i in (m.allowed_person_ids or [])})
+        items = [
+            {
+                "id": str(m.id),
+                "content": m.content,
+                "allowed_kind": m.allowed_kind,
+                "allowed_people": [names.get(i, str(i)) for i in (m.allowed_person_ids or [])],
+                "min_trust": m.min_trust,
+                "at": _iso(m.created_at),
+            }
+            for m in page.items
+        ]
+    return Page[dict[str, Any]](items=items, next_cursor=page.next_cursor, has_more=page.has_more, total_estimate=None)
+
+
+@router.get(
+    "/approvals/page",
+    dependencies=content,
+    summary="Approvals, newest first (paged)",
+    description="The rows of `/api/approvals`, paged by cursor (limit 1 to 100, default 50). ADR 0014.",
+    response_model=Page[dict[str, Any]],
+)
+def approvals_page(limit: int = limit_param(50, 100), cursor: str | None = cursor_param()) -> Page[dict[str, Any]]:
+    with session_scope() as s:
+        page = paginate(
+            s,
+            select(Approval),
+            [SortKey(Approval.created_at), SortKey(Approval.id)],
+            endpoint="op-approvals",
+            bind=bind_for("operator"),
+            limit=limit,
+            cursor=cursor,
+            maximum=100,
+            build=lambda a: a,
+        )
+        names = _names(s, {a.requested_by_person_id for a in page.items if a.requested_by_person_id})
+        items = [
+            {
+                "id": str(a.id),
+                "kind": a.kind,
+                "summary": (a.payload or {}).get("summary", ""),
+                "requested_by": names.get(a.requested_by_person_id, "unknown")
+                if a.requested_by_person_id
+                else "unknown",
+                "status": a.status,
+                "at": _iso(a.created_at),
+            }
+            for a in page.items
+        ]
+    return Page[dict[str, Any]](items=items, next_cursor=page.next_cursor, has_more=page.has_more, total_estimate=None)
+
+
+LINK_EVENTS_PER_PERSON = 20
+
+
+def _identity_row(i: ChannelIdentity) -> dict[str, Any]:
+    return {
+        "id": str(i.id),
+        "provider": i.provider,
+        "tenant_scope": i.tenant_scope,
+        "stable_key": i.stable_key,
+        "display_name": (i.aux_handles or {}).get("display_name") or (i.aux_handles or {}).get("username") or "",
+        "trust_level": i.trust_level,
+        "method": (i.verification or {}).get("method", ""),
+        "risk_flags": i.risk_flags or [],
+        "last_seen_at": _iso(i.last_seen_at),
+    }
+
+
+@router.get(
+    "/people/page",
+    dependencies=content,
+    summary="People and trust, oldest first (paged)",
+    description="A page of people, each with its linked identities and its latest 20 link events. Unclaimed accounts "
+    "are `/api/people/unlinked/page`. Limit 1 to 100, default 50. ADR 0014.",
+    response_model=Page[dict[str, Any]],
+)
+def people_page(limit: int = limit_param(50, 100), cursor: str | None = cursor_param()) -> Page[dict[str, Any]]:
+    with session_scope() as s:
+        page = paginate(
+            s,
+            select(Person),
+            [SortKey(Person.created_at, desc=False), SortKey(Person.id, desc=False)],
+            endpoint="op-people",
+            bind=bind_for("operator"),
+            limit=limit,
+            cursor=cursor,
+            maximum=100,
+            build=lambda p: p,
+        )
+        ids = [p.id for p in page.items]
+        identities: dict[uuid.UUID, list[dict[str, Any]]] = {i: [] for i in ids}
+        events: dict[uuid.UUID, list[dict[str, Any]]] = {i: [] for i in ids}
+        if ids:
+            for ident in s.scalars(
+                select(ChannelIdentity).where(ChannelIdentity.person_id.in_(ids)).order_by(ChannelIdentity.created_at)
+            ):
+                identities[ident.person_id].append(_identity_row(ident))  # type: ignore[index]
+            rank = (
+                func.row_number()
+                .over(partition_by=IdentityLinkEvent.person_id, order_by=IdentityLinkEvent.created_at.desc())
+                .label("rank")
+            )
+            ranked = select(IdentityLinkEvent, rank).where(IdentityLinkEvent.person_id.in_(ids)).subquery()
+            latest = aliased(IdentityLinkEvent, ranked)
+            for e in s.scalars(
+                select(latest).where(ranked.c.rank <= LINK_EVENTS_PER_PERSON).order_by(ranked.c.created_at.desc())
+            ):
+                events[e.person_id].append(  # type: ignore[index]
+                    {"action": e.action, "method": e.method, "actor": e.actor, "at": _iso(e.created_at)}
+                )
+        items = [
+            {
+                "id": str(p.id),
+                "name": p.display_name,
+                "relation": p.relation,
+                "status": p.status,
+                "identities": identities[p.id],
+                "link_events": events[p.id],
+            }
+            for p in page.items
+        ]
+    return Page[dict[str, Any]](items=items, next_cursor=page.next_cursor, has_more=page.has_more, total_estimate=None)
+
+
+@router.get(
+    "/people/unlinked/page",
+    dependencies=content,
+    summary="Unlinked accounts, oldest first (paged)",
+    description="Channel accounts no person has claimed (the old response's `Unlinked accounts` entry). ADR 0014.",
+    response_model=Page[dict[str, Any]],
+)
+def unlinked_page(limit: int = limit_param(50, 100), cursor: str | None = cursor_param()) -> Page[dict[str, Any]]:
+    with session_scope() as s:
+        page = paginate(
+            s,
+            select(ChannelIdentity).where(ChannelIdentity.person_id.is_(None)),
+            [SortKey(ChannelIdentity.created_at, desc=False), SortKey(ChannelIdentity.id, desc=False)],
+            endpoint="op-unlinked",
+            bind=bind_for("operator"),
+            limit=limit,
+            cursor=cursor,
+            maximum=100,
+            build=_identity_row,
+        )
+    return page
 
 
 @router.get(

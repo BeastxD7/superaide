@@ -149,6 +149,7 @@ class ScriptedModel:
                             "kind": self.next_action.kind,
                             "summary": self.next_action.summary,
                             "rationale": "asked",
+                            "reaches_a_person": "yes",
                         },
                     }
                 ]
