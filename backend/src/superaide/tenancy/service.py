@@ -10,6 +10,7 @@ import uuid
 from typing import Any
 
 from sqlalchemy import Connection, select, text
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from superaide.config import DEFAULT_AGENT_ID, DEFAULT_TENANT_ID, get_settings
@@ -78,14 +79,16 @@ def place_hire(session: Session, user: UserAccount, agent_slug: str) -> Instance
 
 
 def _create(session: Session, user: UserAccount, agent_slug: str, scope: InstanceScope) -> AgentInstance:
-    if session.get(Tenant, scope.tenant_id) is None:
-        session.add(
-            Tenant(id=scope.tenant_id, name=user.display_name, default_timezone=user.timezone or "UTC", kind="personal")
-        )
-        session.flush()
-    instance = session.get(AgentInstance, scope.agent_id)
-    if instance is None:
-        instance = AgentInstance(
+    # Check-then-insert lost races: concurrent first hires all saw "no row" and all inserted. ON
+    # CONFLICT DO NOTHING lets the loser carry on with the winner's row.
+    session.execute(
+        pg_insert(Tenant)
+        .values(id=scope.tenant_id, name=user.display_name, default_timezone=user.timezone or "UTC", kind="personal")
+        .on_conflict_do_nothing(index_elements=[Tenant.id])
+    )
+    session.execute(
+        pg_insert(AgentInstance)
+        .values(
             id=scope.agent_id,
             tenant_id=scope.tenant_id,
             agent_slug=agent_slug,
@@ -93,8 +96,10 @@ def _create(session: Session, user: UserAccount, agent_slug: str, scope: Instanc
             owner_user_id=user.id,
             timezone=user.timezone or "UTC",
         )
-        session.add(instance)
-        session.flush()
+        .on_conflict_do_nothing(index_elements=[AgentInstance.id])
+    )
+    instance = session.get(AgentInstance, scope.agent_id, populate_existing=True)
+    assert instance is not None
     return instance
 
 
