@@ -36,6 +36,7 @@ FLAG_GATED = {
     # The "Ask my Ava" link (ASK_LINK_ENABLED); its public side is checked in test_public_ask_routes below.
     ("GET", "/app/ask-link"),
     ("GET", "/app/ask-link/requests"),
+    ("GET", "/app/principal-card"),  # PRINCIPAL_CARD_ENABLED (#135); its public side is in test_principal_card.py
     # The introduction's voice call, v2 (VOICE_INTRO_V2, ADR 0012); its POSTs are enumerated like every route.
     ("GET", "/app/intro/voice"),
     ("GET", "/app/import-leases"),  # IMPORT_LEASE_ENABLED (#133)
@@ -208,11 +209,12 @@ def test_removing_or_forgetting_twice_is_404_the_second_time(owner, owner_data):
 # --- the public "Ask my Ava" routes (no account) -------------------------------------------------------
 
 PUBLIC_ASK = {("GET", "/p/ask/{handle}"), ("POST", "/p/ask/{handle}"), ("POST", "/p/ask/{handle}/click")}
+PUBLIC_CARD = {("GET", "/p/card/{token}")}  # the Principal Card (#135), tested in test_principal_card.py
 
 
 def test_the_only_public_routes_outside_app_and_auth_are_the_ask_link(app):
     """A new public route has to be added here on purpose (and tested in tests/api/test_ask_link.py)."""
-    assert set(app_routes(app, "/p")) == PUBLIC_ASK
+    assert set(app_routes(app, "/p")) == PUBLIC_ASK | PUBLIC_CARD
 
 
 def test_public_ask_routes_are_404_while_off_and_carry_no_owner_data(browser, owner_data):

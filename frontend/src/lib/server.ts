@@ -45,3 +45,17 @@ export type AskPage = {
 export async function askPage(handle: string): Promise<AskPage | null> {
   return get<AskPage>(`/p/ask/${encodeURIComponent(handle)}`)
 }
+
+export type PrincipalCard = {
+  ai: true
+  agent: string
+  acts_for: string
+  can: string[]
+  cannot: string[]
+  valid_until: number
+  notice: string
+}
+
+export async function principalCard(token: string): Promise<PrincipalCard | null> {
+  return get<PrincipalCard>(`/p/card/${encodeURIComponent(token)}`)
+}
