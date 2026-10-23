@@ -75,6 +75,11 @@ class Settings(BaseSettings):
 
     # Every tool call is recorded as hashes only (tool, effect class, argument and result hashes; issue #110).
     trace_recorder: bool = True
+    # Audition (#110). Off: /app/audition/* answers 404. On: the owner can put 2 or 3 candidate skills through their
+    # last tasks side by side (instructions and tool choices only: every effect stubbed, no network), at the cost of
+    # small-model calls inside the spend cap.
+    audition_enabled: bool = False
+    audition_max_tasks: int = Field(default=20, ge=1, le=50)  # most recent tasks one audition replays
 
     # Hash-chained log of tool calls and executed approvals (issue #113). Off by default.
     action_log: bool = False

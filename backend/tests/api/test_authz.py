@@ -28,6 +28,7 @@ ID_ROUTES = {("GET", "/app/passages/{chunk_id}")}  # a cited passage of a shared
 FLAG_GATED = {
     ("GET", "/app/needs-you"),
     ("GET", "/app/triage/settings"),
+    ("GET", "/app/audition/candidates"),  # AUDITION_ENABLED (#110)
     ("GET", "/app/relationship-safety"),  # RELATIONSHIP_SAFETY_ENABLED (#124)
     ("GET", "/app/playbooks"),  # SKILL_RATCHET_ENABLED (#120)
     ("GET", "/app/tuner"),  # OVERNIGHT_TUNER_ENABLED (#118)

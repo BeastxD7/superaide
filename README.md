@@ -196,6 +196,7 @@ Every setting is an environment variable. [`backend/.env.example`](backend/.env.
 | `WHY_REPLAY_ENABLED` | `false` | "Why did you say that?" replay (up to `REPLAY_MAX_ABLATIONS` + 1 small-model calls) | Model key | Safe (small cost) |
 | `OWNER_TWIN_ENABLED` | `false` | Calibration page for a predictor of the owner's approve/reject choices | None | Safe |
 | `SKILL_RATCHET_ENABLED` | `false` | Ava drafts playbooks; only owner-edited ones go live, at most 50 | None | Safe |
+| `AUDITION_ENABLED` | `false` | Compare 2 or 3 candidate skills side by side on your last tasks (effects stubbed, no network, instructions only) | Model key; `AUDITION_MAX_TASKS` | Safe (small cost) |
 | `OVERNIGHT_TUNER_ENABLED` | `false` | Proposes a better triage prompt; the owner approves or rolls back | `TRIAGE_ENABLED=true`, model key | Safe |
 | `REHEARSAL_ENABLED` | `false` | Practise a hard conversation with Ava as the other side; nothing is sent | Model key | Safe |
 | `SCHOOL_ENABLED` | `false` | Write, consent to and export generic lessons, or import a file; local only | None | Safe |
