@@ -23,6 +23,27 @@ test('the transcript shows a skeleton and the composer does not move when the me
   expect(after?.height).toBe(before?.height)
 })
 
+test('the skeleton is drawn where the chat bubbles will be', async ({ page, owner }) => {
+  void owner
+  let release!: () => void
+  const gate = new Promise<void>((r) => (release = r))
+  await page.route('**/api/app/messages', async (route) => {
+    await gate
+    await route.continue()
+  })
+  await page.goto('/dashboard/chat')
+  const skeleton = page.getByTestId('skeleton-agent-bubble').first()
+  await expect(skeleton).toBeVisible()
+  const placeholder = await skeleton.boundingBox()
+  release()
+  const real = page.getByTestId('agent-bubble').first()
+  await expect(real).toBeVisible()
+  const bubble = await real.boundingBox()
+  // Ava's bubbles start at the same left edge (after the 32px avatar column), so nothing slides sideways.
+  expect(Math.round(placeholder!.x)).toBe(Math.round(bubble!.x))
+  expect(placeholder!.height).toBeGreaterThanOrEqual(44) // at least one line of text plus padding, like a real bubble
+})
+
 test('earlier messages load by cursor, from the keyboard, and the page is accessible', async ({ page, api, owner }) => {
   void owner
   test.setTimeout(180_000)

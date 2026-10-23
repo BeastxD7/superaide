@@ -22,7 +22,7 @@ export function ChatSkeleton({ what = 'your conversation' }: { what?: string }) 
         row.from === 'agent' ? (
           <div key={i} aria-hidden="true" className={`flex items-end gap-2.5 ${row.startsRun ? 'mt-3' : ''}`}>
             <div className="w-8 shrink-0">{row.endsRun && <Skeleton className="size-8 rounded-full" />}</div>
-            <Skeleton className="max-w-[85%] rounded-3xl rounded-bl-md" style={{ width: row.width, height: bubbleHeight(row.lines) }} />
+            <Skeleton data-testid="skeleton-agent-bubble" className="max-w-[85%] rounded-3xl rounded-bl-md" style={{ width: row.width, height: bubbleHeight(row.lines) }} />
           </div>
         ) : (
           <div key={i} aria-hidden="true" className={`flex justify-end ${row.startsRun ? 'mt-3' : ''}`}>
