@@ -1,7 +1,7 @@
 """update previews: what a skill, prompt or model change would do differently (issue 110)
 
-Revision ID: 0067
-Revises: 0066
+Revision ID: 0070
+Revises: 0069
 Create Date: 2026-10-23 18:00:00
 
 """
@@ -14,8 +14,8 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0067"
-down_revision: str | Sequence[str] | None = "0066"
+revision: str = "0070"
+down_revision: str | Sequence[str] | None = "0069"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
