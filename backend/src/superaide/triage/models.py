@@ -164,3 +164,18 @@ class TriageRule(Scoped, Base):
     source_decision_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("triage_decision.id"), nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     retired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class TriageLabelVector(Scoped, Base):
+    """A cached embedding of the message behind one owner label (#117), so the kNN head doesn't re-embed
+    the owner's history on every message. It is derived data: the label is `triage_decision.feedback`,
+    and the head reads a vector only while that feedback is still set by the owner, so clearing the
+    feedback removes the label's influence at once (and the row is deleted with it). The row goes with
+    its decision (ON DELETE CASCADE)."""
+
+    __tablename__ = "triage_label_vector"
+    __table_args__ = (UniqueConstraint("decision_id", "model", name="uq_triage_label_vector"),)
+
+    decision_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("triage_decision.id", ondelete="CASCADE"), index=True)
+    model: Mapped[str] = mapped_column(String(160))  # the embedder; another embedder means new rows
+    embedding: Mapped[list[float]] = mapped_column(JSONB)

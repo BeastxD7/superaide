@@ -2,6 +2,7 @@ import {
   AlarmClock,
   BookOpen,
   Brain,
+  Drama,
   House,
   Inbox,
   MessageCircle,
@@ -14,7 +15,8 @@ import {
 import type { Me } from '@/lib/api'
 
 // `triage`: shown only while the backend has triage turned on (ADR 0010).
-export type NavItem = { href: string; label: string; icon: typeof House; triage?: boolean }
+// `rehearsal`: shown only while the backend has the rehearsal room turned on (#58).
+export type NavItem = { href: string; label: string; icon: typeof House; triage?: boolean; rehearsal?: boolean }
 
 export const NAV: { group: string; items: NavItem[] }[] = [
   {
@@ -23,6 +25,7 @@ export const NAV: { group: string; items: NavItem[] }[] = [
       { href: '/dashboard', label: 'Home', icon: House },
       { href: '/dashboard/chat', label: 'Chat', icon: MessageCircle },
       { href: '/dashboard/needs-you', label: 'Needs you', icon: Inbox, triage: true },
+      { href: '/dashboard/rehearsal', label: 'Rehearsal room', icon: Drama, rehearsal: true },
       { href: '/dashboard/reminders', label: 'Reminders', icon: AlarmClock },
       { href: '/dashboard/notebook', label: 'Notebook', icon: BookOpen },
       { href: '/dashboard/people', label: 'People', icon: Users },

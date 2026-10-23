@@ -50,6 +50,10 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     settings = get_settings()
     from superaide.security import logredact
 
+    if settings.surface_check_on_boot:
+        from superaide.security import surface
+
+        surface.verify_boot()
     logredact.install()  # uvicorn and the worker log through this too: no bot token in any line
     app = FastAPI(
         title="Superaide API",
@@ -166,6 +170,9 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     from superaide.reception.routes import make_router as make_reception_router
 
     app.include_router(make_reception_router(get_agent))  # receptionist (ADR 0010 TR5)
+    from superaide.rehearsal.routes import make_router as make_rehearsal_router
+
+    app.include_router(make_rehearsal_router(get_agent))  # 404 everywhere while REHEARSAL_ENABLED is off
     from superaide.asklink.routes import make_owner_router as make_ask_owner_router
     from superaide.asklink.routes import make_public_router as make_ask_public_router
 
@@ -176,6 +183,20 @@ def create_app(agent: Agent | None = None) -> FastAPI:
 
     app.include_router(make_card_public_router())  # 404 everywhere while PRINCIPAL_CARD_ENABLED is off
     app.include_router(make_card_owner_router())
+    from superaide.memsocket.routes import make_owner_router as make_socket_owner_router
+    from superaide.memsocket.routes import make_public_router as make_socket_public_router
+
+    app.include_router(make_socket_public_router())  # 404 everywhere while MEMORY_SOCKET_ENABLED is off
+    app.include_router(make_socket_owner_router())
+    from superaide.dissent.routes import make_router as make_dissent_router
+
+    app.include_router(make_dissent_router(get_agent))  # 404 unless DISSENT_DESK_ENABLED and three models are set
+    from superaide.forknight.routes import make_router as make_fork_router
+
+    app.include_router(make_fork_router(get_agent))  # 404 unless FORK_NIGHT_ENABLED
+    from superaide.rules.routes import make_router as make_rules_router
+
+    app.include_router(make_rules_router(get_agent))  # 404 unless TIME_TRAVEL_RULES_ENABLED
     from superaide.push.routes import make_router as make_push_router
 
     app.include_router(make_push_router())  # 404 unless PUSH_ENABLED (ADR 0011)

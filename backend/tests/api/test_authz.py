@@ -29,6 +29,9 @@ FLAG_GATED = {
     ("GET", "/app/relationship-safety"),  # RELATIONSHIP_SAFETY_ENABLED (#124)
     ("GET", "/app/playbooks"),  # SKILL_RATCHET_ENABLED (#120)
     ("GET", "/app/tuner"),  # OVERNIGHT_TUNER_ENABLED (#118)
+    ("GET", "/app/rehearsal"),  # REHEARSAL_ENABLED (#58)
+    ("GET", "/app/rehearsal/{session_id}"),
+    ("GET", "/app/triage/promotion"),  # the Wilson-bound gate view (#117)
     ("GET", "/app/approvals/brake"),  # RUBBER_STAMP_BRAKE_ENABLED (#134)
     ("GET", "/app/question"),  # ONE_GOOD_QUESTION_ENABLED (#121)
     ("GET", "/app/why/{event_id}"),  # WHY_REPLAY_ENABLED (#122)
@@ -37,6 +40,9 @@ FLAG_GATED = {
     ("GET", "/app/ask-link"),
     ("GET", "/app/ask-link/requests"),
     ("GET", "/app/principal-card"),  # PRINCIPAL_CARD_ENABLED (#135); its public side is in test_principal_card.py
+    ("GET", "/app/memory-socket"),  # MEMORY_SOCKET_ENABLED (#138); its MCP side is checked in test_memory_socket.py
+    ("GET", "/app/fork-night"),  # FORK_NIGHT_ENABLED (#127)
+    ("GET", "/app/standing-orders"),  # TIME_TRAVEL_RULES_ENABLED (#52)
     # The introduction's voice call, v2 (VOICE_INTRO_V2, ADR 0012); its POSTs are enumerated like every route.
     ("GET", "/app/intro/voice"),
     ("GET", "/app/import-leases"),  # IMPORT_LEASE_ENABLED (#133)

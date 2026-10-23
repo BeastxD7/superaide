@@ -15,9 +15,11 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from superaide.audit import audit
+from superaide.config import get_settings
 from superaide.db.models import Approval
 from superaide.identity.resolver import Sender
 from superaide.identity.trust import Trust
+from superaide.policy.binding import EXPIRED_BY, check, expired, seal
 
 
 @dataclass(frozen=True)
@@ -140,6 +142,7 @@ def decide(
         },
         requested_by_person_id=requester.person.id if requester.person else None,
     )
+    seal(approval)
     session.add(approval)
     session.flush()
     audit(session, "policy", "approval_requested", kind=kind, approval_id=approval.id)
@@ -165,6 +168,33 @@ def _load_executors() -> None:
     EXECUTORS.setdefault("gmail_send", gmail.send_approved)
 
 
+def _binding_blocks(session: Session, approval: Approval) -> str | None:
+    """Re-derive the hash of what is about to run. In `strict` a difference stops it; in `record` it is only
+    audited (issue #111); `off` skips the check."""
+    mode = get_settings().approval_binding
+    if mode == "off":
+        return None
+    state = check(approval)
+    if state == "ok":
+        return None
+    audit(
+        session, "policy",
+        "approval_payload_mismatch" if state == "mismatch" else "approval_unsealed",
+        approval_id=approval.id, kind=approval.kind, mode=mode, layer="payload",
+    )  # fmt: skip
+    if mode == "strict":
+        return "Not run: this changed after you approved it. Ask Ava again."
+    return None
+
+
+def _log_executed(session: Session, approval: Approval) -> None:
+    from superaide.actionlog import chain
+    from superaide.tooltrace.effects import effect_of
+
+    tool = approval.kind
+    chain.append(session, kind="executed", tool=tool, effect=effect_of(tool), approval_id=approval.id)
+
+
 def resolve(session: Session, approval: Approval, *, approve: bool, decided_by: str, via: str = "") -> Approval:
     """Record the owner's yes or no on a pending approval, then carry it out if it can be.
 
@@ -180,11 +210,25 @@ def resolve(session: Session, approval: Approval, *, approve: bool, decided_by: 
         if problem:
             audit(session, "policy", "voice_confirmation_refused", approval_id=approval.id, via=via or "unknown")
             raise ApprovalError(409, problem)
-    approval.status = "approved" if approve else "rejected"
-    approval.decided_by = decided_by[:100]
     approval.decided_at = datetime.now(UTC)
     payload = dict(approval.payload or {})
+    if approve and expired(approval, now=approval.decided_at):
+        # A yes to a card that has gone stale is not a yes to what would happen now.
+        approval.status, approval.decided_by = "rejected", EXPIRED_BY
+        payload["result"] = "Not run: this request expired before it was answered. Ask Ava again."
+        approval.payload = payload
+        audit(session, "policy", "approval_expired", kind=approval.kind, approval_id=approval.id)
+        return approval
+    approval.status = "approved" if approve else "rejected"
+    approval.decided_by = decided_by[:100]
     if approve:
+        blocked = _binding_blocks(session, approval)
+        if blocked:
+            payload["result"] = blocked
+            approval.payload = payload
+            audit(session, "policy", "approval_approved", kind=approval.kind, approval_id=approval.id, by=decided_by,
+                  ran=False)  # fmt: skip
+            return approval
         from superaide.policy.breaker import allow
 
         if not allow(session, approval.kind):
@@ -196,6 +240,7 @@ def resolve(session: Session, approval: Approval, *, approve: bool, decided_by: 
             approval.payload = payload
             return approval
         _load_executors()
+        _log_executed(session, approval)
         executor = EXECUTORS.get(approval.kind)
         payload["result"] = executor(session, approval) if executor else "Approved. Nothing can carry this out yet."
     approval.payload = payload

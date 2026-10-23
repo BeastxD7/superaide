@@ -32,7 +32,7 @@ from superaide.config import get_settings
 from superaide.connectors import gmail as api
 from superaide.connectors import google
 from superaide.db.models import Approval, InstalledSkill, Person
-from superaide.policy.binding import content_hash
+from superaide.policy.binding import content_hash, seal
 
 SKILL_ID = "superaide/gmail"
 SLOT = ("google", "gmail_refresh_token")
@@ -292,6 +292,7 @@ def send(session: Session, owner: Person, args: dict[str, Any], *, tainted: bool
         },
         requested_by_person_id=owner.id,
     )
+    seal(approval)
     session.add(approval)
     session.flush()
     audit(session, "policy", "approval_requested", kind="gmail_send", approval_id=approval.id, tainted=tainted)
@@ -329,7 +330,13 @@ def send_approved(session: Session, approval: Approval) -> str:
             return f"Approved, but it couldn't be checked before sending: {exc} The draft is still in Gmail."
         if not expected or actual != expected:
             audit(
-                session, "policy", "approval_payload_mismatch", approval_id=approval.id, kind=approval.kind, mode=mode
+                session,
+                "policy",
+                "approval_payload_mismatch",
+                approval_id=approval.id,
+                kind=approval.kind,
+                mode=mode,
+                layer="draft",
             )
             if mode == "strict":
                 return "Not sent: the draft changed after you approved it. Ask Ava to write it again."

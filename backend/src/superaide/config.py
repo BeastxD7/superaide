@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     # audited but the send goes ahead (until the check is calibrated against real Gmail). strict: a
     # mismatch is not sent.
     approval_binding: Literal["off", "record", "strict"] = "record"
+    # A request nobody answers within this many hours can no longer be approved (0 = never expires). Off by
+    # default: an old "yes" to a stale card is exactly what this is for, but how long is the owner's call.
+    approval_ttl_hours: int = Field(default=0, ge=0, le=24 * 90)
 
     # Circuit breaker (#140). Off by default. When on, more than `circuit_breaker_limit` deletes or sends
     # carried out inside `circuit_breaker_window_seconds` freeze this owner's Ava (the kill switch), and the
@@ -70,6 +73,49 @@ class Settings(BaseSettings):
     principal_card_enabled: bool = False
     principal_card_days: int = Field(default=30, ge=1, le=365)
 
+    # Every tool call is recorded as hashes only (tool, effect class, argument and result hashes; issue #110).
+    trace_recorder: bool = True
+
+    # Hash-chained log of tool calls and executed approvals (issue #113). Off by default.
+    action_log: bool = False
+
+    # Refuse to start when a protected file differs from security/surface.lock.json (issue #114). Off by default.
+    surface_check_on_boot: bool = False
+
+    # Mandate cards: a signed, narrowing token lets Ava do a named, limited thing without asking each time
+    # (issue #112). Off by default; never covers send or spend.
+    mandates_enabled: bool = False
+
+    # An MCP tool whose description, schema or annotations differ from what the owner approved is blocked
+    # (issue #116). The MCP client calls mcp.pin.may_call; off by default until that client exists.
+    mcp_pinning: bool = False
+    # Memory Socket (#138). Off by default. A read-only MCP endpoint (POST /mcp/memory) lets the owner's other
+    # assistants ask Ava's memory one question at a time, with one token per consumer, a scope the owner picks
+    # per consumer, rows filtered by the audience gate in SQL, a per-minute limit and a visible access log.
+    memory_socket_enabled: bool = False
+    memory_socket_per_minute: int = Field(default=30, ge=1)
+    # Dissent Desk (#126). Off by default. For a high-stakes choice, three DIFFERENT models (DISSENT_MODELS, a
+    # comma-separated list of model ids the provider layer can route) answer independently; plain code, not a
+    # model, decides whether a minority view is worth showing. Only choices at or above DISSENT_MIN_STAKES run,
+    # and every call is reserved against the "dissent" daily bucket.
+    dissent_desk_enabled: bool = False
+    dissent_models: str = ""
+    dissent_min_stakes: int = Field(default=3, ge=1, le=5)
+    # Fork Night (#127). Off by default. The owner leaves a choice (a trip plan, a reply plan, a budget) and
+    # overnight three read-only drafts are written, each with its unknowns and confidence, for the owner to pick
+    # from in the morning. Drafts have no tools, read no outside content and are reserved against the "fork"
+    # daily bucket. FORK_NIGHT_HOUR is the local hour they run.
+    fork_night_enabled: bool = False
+    fork_night_hour: int = Field(default=2, ge=0, le=23)
+    # Time-travel rules (#52). Off by default. The owner writes a standing order in plain words; it is compiled to a
+    # deterministic rule (sender/keyword/channel -> label or draft a reply), replayed against the last
+    # TIME_TRAVEL_REPLAY_DAYS of the owner's own message log, and only then can be switched on. New rules run in
+    # shadow first; the owner promotes one after TIME_TRAVEL_PROMOTE_AFTER agreeing firings.
+    time_travel_rules_enabled: bool = False
+    time_travel_replay_days: int = Field(default=90, ge=1, le=365)
+    time_travel_promote_after: int = Field(default=20, ge=1)
+    time_travel_min_agreement: float = Field(default=0.9, ge=0, le=1)
+
     # Tenancy
     tenant_id: uuid.UUID = DEFAULT_TENANT_ID
     agent_id: uuid.UUID = DEFAULT_AGENT_ID
@@ -89,6 +135,9 @@ class Settings(BaseSettings):
     budget_daily_by_bucket: dict[str, float] = Field(
         default_factory=lambda: {
             "chat": 0.40,
+            "dissent": 0.10,
+            "fork": 0.15,
+            "rules": 0.02,
             "memory": 0.15,
             "research": 0.25,
             "triage": 0.05,
@@ -246,7 +295,19 @@ class Settings(BaseSettings):
     # Import lease (#133). Off: /app/import-leases/* answer 404. On: the owner can bring in context cards
     # converted on their own machine from a third-party export, under a time-limited lease that erases them.
     import_lease_enabled: bool = False
+    # Airlock (#128, pure-code half). Off: nothing changes. On: before a conversation goes to a model, contact
+    # details, cards and ID-like numbers in it become placeholders, and the reply gets the originals back.
+    # The on-device model and device attestation are not built.
+    airlock_enabled: bool = False
     gmail_poll_minutes: int = 5
+    # Rehearsal room (#58): the owner practises a hard conversation with Ava playing the other side. Off:
+    # /app/rehearsal/* answer 404. On: text role-play, nothing is sent to anyone, and a session is
+    # deleted after a day unless the owner keeps it.
+    rehearsal_enabled: bool = False
+    # Deletable kNN triage head (#117). Off: nothing changes. On (needs TRIAGE_ENABLED): each triage decision
+    # also records, in `features["knn"]`, how urgent the owner's own past feedback says similar messages
+    # were. It never changes the decision; it is a shadow score to compare against the model's.
+    triage_knn_enabled: bool = False
     # The owner's Gmail sign-in (same OAuth client as Calendar); kept per instance in the vault.
     gmail_refresh_token: str = ""
 

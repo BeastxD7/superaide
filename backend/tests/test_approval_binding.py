@@ -43,7 +43,7 @@ def test_the_request_keeps_a_hash_and_the_card_carries_everything_that_will_be_s
     request_send(gmail_fake, long_reply)
     with session_scope() as s:
         [a] = s.scalars(select(Approval)).all()
-        assert len(a.payload["content_hash"]) == 64
+        assert len(a.payload["content_hash"]) == 64 and len(a.bound_hash) == 64
         assert a.payload["summary"].endswith(
             long_reply.strip()
         )  # the card shows all of it, not the first 400 characters

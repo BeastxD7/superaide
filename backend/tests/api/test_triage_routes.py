@@ -193,3 +193,39 @@ def test_another_owner_never_sees_or_touches_the_items(browser, monkeypatch):
     assert b.post(f"/app/needs-you/{d}/action", json={"verb": "ack"}).status_code == 404
     assert b.post(f"/app/needs-you/{d}/feedback", json={"feedback": "useful"}).status_code == 404
     assert a.get("/app/needs-you").json()["counts"]["needs_you"] == 1
+
+
+# --- #117: take a correction back, and the promotion view ----------------------------------------
+
+
+def test_taking_feedback_back_erases_it(owner_browser):
+    did = a_decision(owner_of(OWNER["email"]))
+    assert owner_browser.post(f"/app/needs-you/{did}/feedback", json={"feedback": "not_urgent"}).status_code == 200
+    r = owner_browser.delete(f"/app/needs-you/{did}/feedback")
+    assert r.status_code == 200 and r.json()["changed"] is True and r.json()["item"]["feedback"] is None
+    assert owner_browser.delete(f"/app/needs-you/{did}/feedback").json()["changed"] is False
+    with session_scope() as s:
+        assert s.get(TriageDecision, did).feedback is None
+
+
+def test_taking_feedback_back_needs_the_owner_and_the_csrf_header(app, browser, owner_browser):
+    did = a_decision(owner_of(OWNER["email"]))
+    assert browser().delete(f"/app/needs-you/{did}/feedback").status_code == 401
+    stranger = browser()
+    assert signup(stranger, name="Priya Tan", email=OTHER["email"]).status_code == 200
+    assert stranger.delete(f"/app/needs-you/{did}/feedback").status_code == 403
+    from fastapi.testclient import TestClient
+
+    bare = TestClient(app, cookies=owner_browser.cookies)
+    assert bare.delete(f"/app/needs-you/{did}/feedback").status_code in {400, 403}
+
+
+def test_the_promotion_view_reads_only_the_owners_own_feedback(owner_browser):
+    owner = owner_of(OWNER["email"])
+    for i in range(3):
+        did = a_decision(owner)
+        owner_browser.post(f"/app/needs-you/{did}/feedback", json={"feedback": "useful" if i < 2 else "not_urgent"})
+    body = owner_browser.get("/app/triage/promotion").json()
+    v = body["verdict"]
+    assert (v["useful"], v["not_urgent"], v["n"], v["stage"], v["next_stage"]) == (2, 1, 3, "infant", "child")
+    assert v["ready_to_offer"] is False and v["needed_events"] == 30 and "never changes her own stage" in body["note"]

@@ -1,0 +1,38 @@
+# The editable-surface manifest (issue #114).
+#
+# Anything that learns (a prompt tuner, a reflector, the sleep job, a skill ratchet) may change ONLY what is
+# under [writable]. Everything under [protected] judges, gates or limits it, so nothing that learns may touch
+# it. Enforced three ways: surface.py refuses a candidate edit that touches a protected path; surface.lock.json
+# pins the hash of every protected file, and CI plus the optional boot check fail on a difference; CODEOWNERS
+# makes a human review any change to a protected path. Paths are repo-relative globs.
+
+[writable]
+prompts = ["backend/src/superaide/brain/charter.md"]
+skills = ["backend/src/superaide/skills/builtin/*/SKILL.md"]
+tables = ["memory_item", "memory_embedding", "triage_rule", "owner_preference", "intention"]  # with provenance/diff/rollback
+
+[protected]
+paths = [
+  # the eval harness, eval sets and graders
+  "backend/src/superaide/evals/**",
+  "backend/evals/**",
+  "backend/tests/redteam/**",
+  "backend/src/superaide/drills/**",
+  # the audience gate and row-level security
+  "backend/src/superaide/context/audience.py",
+  "backend/src/superaide/db/rls.py",
+  # stage promotion, tool effect classes, the approval ladder and the tool manifest
+  "backend/src/superaide/triage/policy.py",
+  "backend/src/superaide/triage/store.py",
+  "backend/src/superaide/policy/**",
+  "backend/src/superaide/skills/manifest.py",
+  "backend/src/superaide/skills/manifest.schema.json",
+  "backend/src/superaide/tooltrace/effects.py",
+  # the gateway's own log and its witness, the spend cap, security helpers
+  "backend/src/superaide/actionlog/**",
+  "backend/src/superaide/brain/budget.py",
+  "backend/src/superaide/brain/pricing.py",
+  "backend/src/superaide/security/**",
+]
+tables = ["approval", "audit_log", "action_log", "tool_trace", "spend_ledger", "person", "channel_identity",
+          "agent_state", "installed_skill", "integration_secret"]  # fmt: skip

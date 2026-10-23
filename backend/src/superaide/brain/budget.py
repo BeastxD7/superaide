@@ -55,6 +55,7 @@ BUCKETS = {
     "verify": "chat",
     "intro_facts": "memory",
     "web_research": "research",
+    "rehearsal": "chat",  # #58: practice conversations draw from the chat bucket
     "triage": "triage",  # ADR 0010: the triage classifier, rules only once this is spent
     # ADR 0012: the introduction's voice call (the interviewer's turns, speech-to-text, voices)
     "voice_turn": "voice",
@@ -68,6 +69,9 @@ BUCKETS = {
     "playbook": "learning",
     # Learning and trust features (#142)
     "tuner": "learning",
+    "dissent": "dissent",  # #126: three models on one high-stakes choice
+    "fork_night": "fork",  # #127: three read-only overnight drafts of one choice
+    "rule_compile": "rules",  # #52: turning a standing order into a structured rule (one small call)
 }
 
 

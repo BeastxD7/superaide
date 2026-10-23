@@ -63,13 +63,19 @@ TABLES: tuple[str, ...] = (
     "owner_model_price",
     "owner_preference",
     "person",
+    "rehearsal_session",  # the rehearsal room (#58)
     "push_send",  # web push (ADR 0011)
     "push_subscription",
     "spend_ledger",
     "escalation",  # triage (ADR 0010)
     "escalation_ack",
     "escalation_delivery",
+    "action_log",  # hash-chained gateway log (#113)
+    "mandate",  # signed narrowing tokens (#112)
+    "mcp_pin",  # approved MCP tool hashes (#116)
+    "tool_trace",  # hashes of tool calls (#110)
     "triage_decision",
+    "triage_label_vector",
     "triage_rule",
     "triage_settings",
     "reception_message",  # receptionist (ADR 0010 TR5)
@@ -83,6 +89,7 @@ TABLES: tuple[str, ...] = (
 EXEMPT: dict[str, str] = {
     "instance_member": "which instances an account belongs to: read at sign-in, before a scope exists",
     "channel_endpoint": "which instance a bot or Slack install belongs to: read to route a message",
+    "memory_socket_client": "which instance a Memory Socket token belongs to: read to route a call; holds no memory",
     "ask_handle": "which instance a public Ask link belongs to: read to route a visitor; holds no content",
 }
 
