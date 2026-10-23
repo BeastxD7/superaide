@@ -90,3 +90,7 @@ The `CI result` gate needs `backend-static` and `backend-tests` (a matrix, so an
 2. Cheaper runs: coverage only on main and Full, cached Playwright browsers, `--durations=25`, per-PR-ref cancellation (already so: `cancel-in-progress` is true only when the workflow is `CI`, so main pushes, Full and the called pipeline are never cancelled by a newer ref... see the PR for the exact check).
 3. pytest-xdist with one database per worker.
 4. Skipping e2e shards for backend-only changes that leave the API contract alone (optional).
+
+## Every push to main gets its own run
+
+GitHub keeps one queued run per concurrency group and cancels older *queued* runs even when `cancel-in-progress` is false, so merging several PRs in a row left `main` with cancelled runs and no verdict. On `main` the group now includes the commit SHA, so each push is verified. Pull requests keep one group per branch and still cancel their own older runs.
