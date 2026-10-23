@@ -2,21 +2,12 @@ import type { NextConfig } from 'next'
 
 const dev = process.env.NODE_ENV !== 'production'
 
-// What the browser may load (#69, #80). Pictures only from this site or inline, so text from a web
-// page or a stranger can't send private details out through an image address; the app talks only to
-// itself (the /api proxy). Next writes small inline scripts and React sets inline styles, so those two
-// keep 'unsafe-inline' (a per-request nonce would need every page rendered per request through
-// proxy.ts; worth doing later). The dev server also needs eval and a websocket for hot reload.
-const contentSecurityPolicy = [
-  "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${dev ? " 'unsafe-eval'" : ''}`,
-  "style-src 'self' 'unsafe-inline'",
+// Pages get a Content-Security-Policy per request, with a nonce, from src/proxy.ts. API answers (JSON, never rendered as pages)
+// get this fixed one from here, so large uploads still stream straight through the /api proxy route.
+const apiContentSecurityPolicy = [
+  "default-src 'none'",
   "img-src 'self' data:",
-  "font-src 'self' data:",
-  `connect-src 'self'${dev ? ' ws: wss:' : ''}`,
-  "media-src 'self' blob:",
-  "worker-src 'self'",
-  "manifest-src 'self'",
+  "connect-src 'self'",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -24,7 +15,6 @@ const contentSecurityPolicy = [
 ].join('; ')
 
 const securityHeaders = [
-  { key: 'Content-Security-Policy', value: contentSecurityPolicy },
   // Browsers ignore this over plain http (start.command on localhost); it matters behind https.
   ...(dev ? [] : [{ key: 'Strict-Transport-Security', value: 'max-age=31536000' }]),
   { key: 'X-Content-Type-Options', value: 'nosniff' },
@@ -50,6 +40,7 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: '/:path*', headers: securityHeaders },
+      { source: '/api/:path*', headers: [{ key: 'Content-Security-Policy', value: apiContentSecurityPolicy }] },
       // The service worker (ADR 0011): always fetched fresh, so a fix reaches every installed app.
       {
         source: '/sw.js',
