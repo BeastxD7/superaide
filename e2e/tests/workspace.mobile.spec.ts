@@ -9,6 +9,7 @@ import {
   memories,
   notebookFact,
   openChat,
+  openEmptyChat,
   sendButton,
   sidebarTrigger,
 } from '../src/helpers/workspace'
@@ -16,7 +17,8 @@ import {
 test.describe('dashboard on a phone', () => {
   test('chat fits the screen, and a message gets a reply', async ({ page, owner }) => {
     await openChat(page)
-    await expect(page.getByRole('heading', { level: 1, name: `Hello, ${owner.name.split(' ')[0]}. What shall we work on?` })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'Your conversation with Ava' })).toBeVisible()
+    void owner
     // The sidebar is tucked away behind its button; only the chat is showing.
     await expect(sidebarTrigger(page)).toBeVisible()
     await expect(page.getByRole('link', { name: 'Notebook', exact: true })).toBeHidden()
@@ -39,14 +41,25 @@ test.describe('dashboard on a phone', () => {
     await expect(sendButton(page)).toBeInViewport()
   })
 
-  test('quick actions scroll sideways inside their row, not the page', async ({ page, owner }) => {
+  test('the empty chat shows its quick actions in a grid that fits a phone, with the composer in view', async ({ page, owner }) => {
     void owner
-    await openChat(page)
-    const last = page.getByRole('button', { name: 'What do you know about me?' })
-    await last.scrollIntoViewIfNeeded()
-    await expect(last).toBeInViewport()
+    await openEmptyChat(page)
+    for (const label of ['How would you handle…', 'Draft a reply', 'Remember something', 'What do you know about me?']) {
+      await expect(page.getByRole('button', { name: label })).toBeInViewport()
+    }
+    await expect(composer(page)).toBeInViewport()
+    await expectNoSidewaysScroll(page)
     await page.getByRole('button', { name: 'Remember something' }).tap()
     await expect(composer(page)).toHaveValue('Remember that ')
+    await expectNoSidewaysScroll(page)
+  })
+
+  test('with messages, the transcript has the whole height: no greeting or quick actions, the composer in view', async ({ page, owner }) => {
+    void owner
+    await openChat(page)
+    await expect(page.getByText(/What shall we work on\?/)).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Draft a reply' })).toHaveCount(0)
+    await expect(composer(page)).toBeInViewport()
     await expectNoSidewaysScroll(page)
   })
 
