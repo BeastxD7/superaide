@@ -6,7 +6,6 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
 
-import pytest
 from sqlalchemy import select
 
 from superaide.brain.budget import BudgetExceeded
