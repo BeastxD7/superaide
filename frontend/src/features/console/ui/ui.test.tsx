@@ -1,6 +1,6 @@
 import { renderToStaticMarkup as html } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
-import { Badge, Button, Card, DataTable, EmptyState, Grid, LoadingBlock, Notice, PageHeader, Stat, Stats, type Column } from '@/features/console/ui'
+import { Badge, Button, Card, DataTable, EmptyState, evenCols, Grid, Meter, Tile, LoadingBlock, Notice, PageHeader, Stat, Stats, type Column } from '@/features/console/ui'
 
 type Row = { a: string }
 const columns: Column<Row>[] = [
@@ -69,5 +69,18 @@ describe('console primitives', () => {
     const out = html(<LoadingBlock label="Loading spend" lines={3} />)
     expect(out).toContain('Loading spend')
     expect(out.match(/c-skeleton-line/g)).toHaveLength(3)
+  })
+
+  it('evenCols never leaves a tile alone', () => {
+    expect([2, 3, 4, 5, 6, 7, 8, 9].map(evenCols)).toEqual([2, 3, 4, 2, 3, 2, 4, 3])
+  })
+
+  it('Meter is named and clamps its fill; Tile takes a tone', () => {
+    const out = html(<Meter label="Spend" value={20} max={10} />)
+    expect(out).toContain('role="meter"')
+    expect(out).toContain('aria-label="Spend"')
+    expect(out).toContain('width:100%')
+    expect(html(<Meter label="Spend" value={0} max={0} />)).toContain('width:0%')
+    expect(html(<Tile tone="warn">x</Tile>)).toContain('is-warn')
   })
 })
