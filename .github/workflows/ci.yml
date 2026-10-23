@@ -167,6 +167,8 @@ jobs:
           uv run alembic downgrade base
           uv run alembic upgrade head
 
+      # -n auto runs one worker per core, each on its own database (tests/conftest.py). To debug
+      # a failure that might be order or parallelism related, run `uv run pytest -p no:xdist`.
       # Coverage slows the suite down and nobody reads it on a pull request, so it is measured on
       # main and in the Full run only. --durations lists the slowest tests either way.
       - name: Tests
@@ -175,8 +177,8 @@ jobs:
         run: |
           psql -h localhost -U agent -d agent -c "CREATE DATABASE agent_test"
           case "$EVENT" in
-            pull_request|merge_group) uv run pytest --durations=25 ;;
-            *) uv run pytest --durations=25 --cov --cov-report=term-missing:skip-covered ;;
+            pull_request|merge_group) uv run pytest -n auto --durations=25 ;;
+            *) uv run pytest -n auto --durations=25 --cov --cov-report=term-missing:skip-covered ;;
           esac
 
   frontend:

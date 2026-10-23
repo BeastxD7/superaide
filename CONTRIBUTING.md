@@ -110,6 +110,7 @@ These come from the architecture and are checked in review:
 ## Tests, end to end and evals
 
 - **Backend tests** run against a real Postgres (`TEST_DATABASE_URL`, wiped on every run, so it must differ from `DATABASE_URL`) and a fake model, so they never spend money or call Claude, Telegram, Slack or websites. Add a test for every behaviour change; impostor and privacy scenarios go in `backend/tests/redteam/`.
+  CI runs them in parallel (`pytest -n auto`, one database per worker named `<test database>_gw0`, `_gw1`, ...). Locally `uv run pytest` stays serial; add `-n 4` to parallelise, or `-p no:xdist` to rule parallelism out when debugging. See [ADR 0013](docs/decisions/0013-ci-pipeline.md).
 - **End to end** (`e2e/`, Playwright) runs each stack in its own slot. See [e2e/README.md](e2e/README.md).
 - **Known bugs** get a failing test first, marked `test.fail(true, 'BUG: …')` or `@pytest.mark.xfail(strict=True)`, and a row in [docs/test-findings.md](docs/test-findings.md). Fix by removing the marker and committing the fix and test together.
 - **Evals** score Ava on scenarios in `backend/evals/scenarios/` (privacy, recall, citations, triage and more):
