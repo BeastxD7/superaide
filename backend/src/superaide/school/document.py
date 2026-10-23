@@ -14,6 +14,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 FORMAT = "superaide-lessons/1"
+SIGNED_FORMAT = "superaide-lessons/2"  # signed (school/signing.py); used when SCHOOL_SHARING_ENABLED
 MAX_LESSONS = 50
 
 
@@ -52,3 +53,29 @@ def parse(raw: Any) -> LessonFile:
     if doc.sha256 != checksum([ls.model_dump() for ls in doc.lessons]):
         raise ValueError("The file was changed after it was exported, so it isn't read.")
     return doc
+
+
+class SignedLessonFile(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    format: str
+    lessons: list[FileLesson] = Field(max_length=MAX_LESSONS)
+    signer: dict[str, str]
+    signature: str = Field(max_length=200)
+
+
+def parse_signed(raw: Any, verify: Any) -> tuple[SignedLessonFile, str]:
+    """Validate shape and signature; returns the file and the signer's public key. `verify(pub, payload, sig)`."""
+    from superaide.school import signing
+
+    try:
+        doc = SignedLessonFile.model_validate(raw)
+    except Exception as exc:
+        raise ValueError("That isn't a signed Superaide lesson file.") from exc
+    if doc.format != SIGNED_FORMAT:
+        raise ValueError(f"This file is {doc.format!r}; sharing reads {SIGNED_FORMAT!r}, which is signed.")
+    pub = doc.signer.get("public_key", "")
+    payload = signing.canonical(doc.format, [ls.model_dump() for ls in doc.lessons])
+    if not pub or not verify(pub, payload, doc.signature):
+        raise ValueError("The signature doesn't match, so the file isn't read. It was changed or isn't from a signer.")
+    return doc, pub
