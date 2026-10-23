@@ -204,7 +204,7 @@ Every setting is an environment variable. [`backend/.env.example`](backend/.env.
 | `RELATIONSHIP_SAFETY_ENABLED` | `false` | Fixed human-written replies for heavy or "do you love me?" owner messages; no claims of feelings | None | Safe |
 | `RUBBER_STAMP_BRAKE_ENABLED` | `false` | Adds friction to fast always-yes approvals (typed reason on high-risk cards) | None | Safe (only adds friction) |
 | `MEMORY_RECHECK_ENABLED` | `false` | Digest may ask "is this still true?" about a few lasting facts | `MEMORY_RECHECK_PER_WEEK` | Safe |
-| `SLEEP_JOB_ENABLED` | `false` | Nightly episodes and tidying of duplicate notes: exact copies, plus near-duplicates and contradictions judged by the small model inside the spend cap (at most a quarter a night, pre-image saved) | `SLEEP_JOB_HOUR`; the jobs run (`RUN_JOBS_IN_API` or worker) | Decision (edits memory) |
+| `SLEEP_JOB_ENABLED` | `false` | Nightly episodes and tidying of duplicate notes: exact copies, plus near-duplicates and contradictions judged by the small model inside the spend cap (at most a quarter a night, pre-image saved); owner-only list of conversation summaries in the Notebook | `SLEEP_JOB_HOUR`; the jobs run (`RUN_JOBS_IN_API` or worker) | Decision (edits memory) |
 | `VOICE_INTRO_V2` | `false` | Conversational voice interview in the introduction call | Free with browser speech; better voices need Deepgram/ElevenLabs keys | Safe |
 | `SURFACE_CHECK_ON_BOOT` | `false` | Refuses to start if a protected file differs from `security/surface.lock.json` | Lock file kept current | Safe, but can block start-up |
 | `ACTION_LOG` | `false` | Hash-chained log of tool calls and executed approvals | None | Safe |

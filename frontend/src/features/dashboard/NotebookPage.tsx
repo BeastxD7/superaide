@@ -1,6 +1,6 @@
 'use client'
 
-import { Network, Scale, Search, Sparkles } from 'lucide-react'
+import { MessagesSquare, Network, Scale, Search, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { AnimatePresence, motion } from 'motion/react'
 import { useMemo, useState } from 'react'
@@ -27,6 +27,8 @@ export function NotebookPage() {
 
   // The Mirror answers 404 while the server has it off; the link shows only when it answers.
   const mirror = useAppData<{ enabled: boolean }>('/mirror')
+  // Conversation summaries from the nightly job: 404 while it is off, so the link shows only when it answers.
+  const episodes = useAppData<{ episodes: unknown[] }>('/episodes')
   const [filter, setFilter] = useState<string>('all')
   const [where, setWhere] = useState<string>('all')
   const [query, setQuery] = useState('')
@@ -143,6 +145,15 @@ export function NotebookPage() {
           </Link>
         )}
 
+
+        {episodes.data && (
+          <Link
+            href="/dashboard/notebook/episodes"
+            className="mt-4 inline-flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-sm font-medium text-ink hover:bg-surface"
+          >
+            <MessagesSquare className="size-4 text-violet-700" aria-hidden /> Conversations: what {name} summarised overnight
+          </Link>
+        )}
 
         <Link
           href="/dashboard/notebook/brain"

@@ -53,6 +53,7 @@ FLAG_GATED = {
     ("GET", "/app/intro/voice"),
     ("GET", "/app/import-leases"),  # IMPORT_LEASE_ENABLED (#133)
     ("GET", "/app/mirror"),  # "The Mirror" (MIRROR_ENABLED)
+    ("GET", "/app/episodes"),  # conversation summaries of the sleep job (SLEEP_JOB_ENABLED)
 }
 SECRET_NOTE = "Project Bluebird is my secret side project"
 
@@ -404,6 +405,21 @@ def test_the_mirror_routes_are_owner_routes_behind_a_flag(app, browser, owner_da
     stranger = browser()
     signup(stranger, name="Mallory Tan", email="mallory@example.com")
     for method, path in MIRROR_ROUTES:
+        r = stranger.request(method, fill_path(path), json={} if method == "POST" else None)
+        assert r.status_code == 403
+        _assert_no_owner_data(r, owner_data)
+
+
+# --- episode summaries (/app/episodes, SLEEP_JOB_ENABLED) --------------------------------------
+
+EPISODE_ROUTES = {("GET", "/app/episodes"), ("POST", "/app/episodes/{episode_id}/erase")}
+
+
+def test_the_episode_routes_are_owner_routes_behind_a_flag(app, browser, owner_data):
+    assert EPISODE_ROUTES <= set(owner_routes(app))
+    stranger = browser()
+    signup(stranger, name="Mallory Tan", email="mallory@example.com")
+    for method, path in EPISODE_ROUTES:
         r = stranger.request(method, fill_path(path), json={} if method == "POST" else None)
         assert r.status_code == 403
         _assert_no_owner_data(r, owner_data)
