@@ -50,3 +50,9 @@ description = "Made-up Slack app token in the Slack owner-link tests"
 condition = "AND"
 paths = ['''(^|/)tests/test_slack_link\.py$''']
 regexes = ['''^xapp-1-A0APPONE-123456-secretsecret$''']
+
+[[allowlists]]
+description = "Made-up Slack app tokens in the channel-rows tests (a backend and an e2e spec)"
+condition = "AND"
+paths = ['''(^|/)tests/test_channel_rows\.py$''', '''(^|/)tests/channel-rows\.spec\.ts$''']
+regexes = ['''^xapp-1-A0APPONE-1-secret$''', '''^xapp-1-A0APPONE-123456-secretsecret$''']
