@@ -261,4 +261,7 @@ def resolve(session: Session, approval: Approval, *, approve: bool, decided_by: 
                 payload["outcome"] = quote.outcome_of(payload["result"])
     approval.payload = payload
     audit(session, "policy", f"approval_{approval.status}", kind=approval.kind, approval_id=approval.id, by=decided_by)
+    from superaide.skills import receipts
+
+    receipts.on_decision(session, approval, approve)  # SKILL_RECEIPTS_ENABLED (#131): a content-free receipt
     return approval

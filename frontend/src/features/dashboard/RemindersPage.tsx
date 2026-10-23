@@ -30,10 +30,12 @@ export function RemindersPage() {
     setProblem(null)
     try {
       await fn()
-      await reload()
     } catch (e) {
       setProblem(errorMessage(e))
     } finally {
+      // Read again even when it failed: "already cancelled" means this list was stale, and the reminder it
+      // still shows can never be acted on (#297).
+      await reload()
       setBusy(false)
     }
   }

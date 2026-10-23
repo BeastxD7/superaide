@@ -63,6 +63,8 @@ export const CARD = process.env.E2E_CARD === '1'
 
 // The nightly sleep job (#50) and its conversation summaries: E2E_SLEEP=1 switches it on (tests/episodes.spec.ts).
 export const SLEEP = process.env.E2E_SLEEP === '1'
+// The Glass brain share link (BRAIN_SHARE_ENABLED, #55): E2E_BRAIN_SHARE=1 switches it on (tests/brain-share.spec.ts).
+export const BRAIN_SHARE = process.env.E2E_BRAIN_SHARE === '1'
 
 export const ADMIN_TOKEN = 'e2e-admin-token'
 export const PASSWORD = 'correct horse battery staple'
@@ -112,6 +114,7 @@ export function apiEnv(): Record<string, string> {
       : {}),
     ...(REHEARSAL ? { REHEARSAL_ENABLED: 'true' } : {}),
     ...(SLEEP ? { SLEEP_JOB_ENABLED: 'true' } : {}),
+    ...(BRAIN_SHARE ? { BRAIN_SHARE_ENABLED: 'true' } : {}),
     ...(SCHOOL ? { SCHOOL_ENABLED: 'true' } : {}),
     ...(CARD ? { PRINCIPAL_CARD_ENABLED: 'true' } : {}),
     ...(VOICE ? { VOICE_INTRO_V2: 'true', VOICE_ASR: 'fake', VOICE_TTS: 'fake' } : {}),

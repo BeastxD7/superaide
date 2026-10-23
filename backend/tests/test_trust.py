@@ -123,6 +123,19 @@ def test_an_equally_trusted_correction_replaces(owner, script):
     assert old and new and old.superseded_by == new.id and new.conflict_status == "none"
 
 
+def test_an_equally_trusted_claim_cannot_replace_a_locked_fact_and_waits_for_the_owner(owner, script):
+    script.facts = [fact(GYM_CV)]
+    said_in_chat(owner, "I train at Cult Fit most mornings these days, it is close to home")
+    with session_scope() as s:
+        s.scalars(select(MemoryItem).where(MemoryItem.content == GYM_CV)).one().locked = True
+    script.facts = [fact(GYM_CHAT, replaces=1)]
+    said_in_chat(owner)
+    old, new = by_text(GYM_CV), by_text(GYM_CHAT)
+    assert old and new and old.valid_to is None and old.superseded_by is None  # the locked fact stands
+    assert new.conflict_status == "pending" and new.conflicts_with_id == old.id  # waits for the owner's decision
+    assert recalled("gym") == [GYM_CV]
+
+
 def test_the_owner_confirming_a_document_fact_raises_it_to_top_rank(owner, script, agent):
     script.facts = [fact(GYM_CV)]
     share(agent, "pdf", "Gym: Cult Fit")

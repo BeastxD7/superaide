@@ -57,12 +57,7 @@ def overlap(a: str, b: str) -> float:
 
 def eligible(m: MemoryItem) -> bool:
     """Only settled, unlocked notes: nothing pending a decision, nothing the owner is unsure about."""
-    return (
-        m.belief_state == "fact"
-        and m.conflict_status == "none"
-        and m.superseded_by is None
-        and not getattr(m, "locked", False)
-    )
+    return m.belief_state == "fact" and m.conflict_status == "none" and m.superseded_by is None and not m.locked
 
 
 def candidates(notes: list[MemoryItem], exclude: set[Any]) -> list[tuple[MemoryItem, MemoryItem]]:
