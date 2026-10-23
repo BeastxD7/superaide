@@ -89,6 +89,11 @@ class Settings(BaseSettings):
     # An MCP tool whose description, schema or annotations differ from what the owner approved is blocked
     # (issue #116). The MCP client calls mcp.pin.may_call; off by default until that client exists.
     mcp_pinning: bool = False
+    # Memory Socket (#138). Off by default. A read-only MCP endpoint (POST /mcp/memory) lets the owner's other
+    # assistants ask Ava's memory one question at a time, with one token per consumer, a scope the owner picks
+    # per consumer, rows filtered by the audience gate in SQL, a per-minute limit and a visible access log.
+    memory_socket_enabled: bool = False
+    memory_socket_per_minute: int = Field(default=30, ge=1)
 
     # Tenancy
     tenant_id: uuid.UUID = DEFAULT_TENANT_ID

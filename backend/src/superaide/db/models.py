@@ -799,6 +799,7 @@ from superaide.asklink import models as _asklink_models  # noqa: E402, F401
 from superaide.auth import models as _auth_models  # noqa: E402, F401
 from superaide.imports import models as _imports_models  # noqa: E402, F401
 from superaide.jobs import claim as _job_claim  # noqa: E402, F401  (the claim function, made after the job table)
+from superaide.memsocket import models as _memsocket_models  # noqa: E402, F401
 from superaide.push import models as _push_models  # noqa: E402, F401
 from superaide.reception import models as _reception_models  # noqa: E402, F401
 from superaide.rehearsal import models as _rehearsal_models  # noqa: E402, F401

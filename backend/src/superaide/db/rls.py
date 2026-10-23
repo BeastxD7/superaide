@@ -89,6 +89,7 @@ TABLES: tuple[str, ...] = (
 EXEMPT: dict[str, str] = {
     "instance_member": "which instances an account belongs to: read at sign-in, before a scope exists",
     "channel_endpoint": "which instance a bot or Slack install belongs to: read to route a message",
+    "memory_socket_client": "which instance a Memory Socket token belongs to: read to route a call; holds no memory",
     "ask_handle": "which instance a public Ask link belongs to: read to route a visitor; holds no content",
 }
 

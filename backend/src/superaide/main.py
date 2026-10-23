@@ -183,6 +183,11 @@ def create_app(agent: Agent | None = None) -> FastAPI:
 
     app.include_router(make_card_public_router())  # 404 everywhere while PRINCIPAL_CARD_ENABLED is off
     app.include_router(make_card_owner_router())
+    from superaide.memsocket.routes import make_owner_router as make_socket_owner_router
+    from superaide.memsocket.routes import make_public_router as make_socket_public_router
+
+    app.include_router(make_socket_public_router())  # 404 everywhere while MEMORY_SOCKET_ENABLED is off
+    app.include_router(make_socket_owner_router())
     from superaide.push.routes import make_router as make_push_router
 
     app.include_router(make_push_router())  # 404 unless PUSH_ENABLED (ADR 0011)
