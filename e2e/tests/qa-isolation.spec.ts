@@ -9,8 +9,8 @@ import { Api, expect, newPerson, query, test, type Person } from '../src/fixture
 import { ADMIN_TOKEN, ASK_LINK, BASE_URL } from '../src/env'
 
 const QA = `${process.env.QA_SHOTS_DIR ?? 'test-results/qa-shots'}/isolation`
-const SECRET_A = 'my locker code is 4417'
-const SECRET_WORDS = 'locker code' // not the digits: a random id or timestamp can contain 4417
+const SECRET_A = 'my locker code is zq4417'
+const SECRET_WORDS = 'locker code' // not the marker digits: a random id or timestamp can contain hex digits (markers carry a non-hex prefix, zq4417)
 const OPERATOR = { Authorization: `Bearer ${ADMIN_TOKEN}` }
 
 type Owner = { person: Person; api: Api; context: BrowserContext }

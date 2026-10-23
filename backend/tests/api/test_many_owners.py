@@ -89,17 +89,17 @@ def test_hiring_again_keeps_the_same_instance(browser, many):
 def test_what_an_owner_says_is_stored_in_their_own_instance(browser, many):
     a, b = two_owners(browser)
     ia, ib = instance_of(OWNER["email"]), instance_of(OTHER["email"])
-    assert b.post("/app/chat", json={"text": "Remember that my bike lock code is 9032"}).status_code == 200
-    assert a.post("/app/chat", json={"text": "Remember that my locker code is 4417"}).status_code == 200
+    assert b.post("/app/chat", json={"text": "Remember that my bike lock code is zq9032"}).status_code == 200
+    assert a.post("/app/chat", json={"text": "Remember that my locker code is zq4417"}).status_code == 200
     with session_scope() as s:
         by_text = {m.content: m.agent_id for m in s.scalars(select(MemoryItem))}
-        assert by_text["my bike lock code is 9032"] == ib.id
-        assert by_text["my locker code is 4417"] == ia.id
+        assert by_text["my bike lock code is zq9032"] == ib.id
+        assert by_text["my locker code is zq4417"] == ia.id
         web_b = s.scalar(select(Context).where(Context.external_id == f"web:{account(OTHER['email']).person_id}"))
         assert web_b is not None and web_b.agent_id == ib.id
         assert {e.agent_id for e in s.scalars(select(Event).where(Event.context_id == web_b.id))} == {ib.id}
-    assert "9032" in b.get("/app/notebook").text and "9032" not in a.get("/app/notebook").text
-    assert "4417" in a.get("/app/notebook").text and "4417" not in b.get("/app/notebook").text
+    assert "zq9032" in b.get("/app/notebook").text and "zq9032" not in a.get("/app/notebook").text
+    assert "zq4417" in a.get("/app/notebook").text and "zq4417" not in b.get("/app/notebook").text
 
 
 def test_a_streamed_turn_runs_in_the_owners_instance(browser, many):

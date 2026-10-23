@@ -8,8 +8,9 @@ import type { Browser, BrowserContext } from '@playwright/test'
 import { Api, expect, newPerson, test, type Person } from '../src/fixtures'
 import { BASE_URL } from '../src/env'
 
-const SECRET_A = 'my locker code is 4417'
-const SECRET_B = 'my bike lock code is 9032'
+// Markers carry a non-hex prefix (zq): random hex ids in responses can contain a plain number like 4417 by chance.
+const SECRET_A = 'my locker code is zq4417'
+const SECRET_B = 'my bike lock code is zq9032'
 
 type Owner = { person: Person; api: Api; context: BrowserContext }
 
@@ -48,12 +49,12 @@ test.describe('two owners', () => {
     for (const path of ['/app/me', '/app/notebook', '/app/messages', '/app/people', '/app/preferences', '/app/reminders']) {
       const r = await b.api.get(path)
       expect(r.status(), path).toBe(403)
-      expect(await r.text(), path).not.toContain('4417')
+      expect(await r.text(), path).not.toContain('zq4417')
     }
     // Nor by guessing an id.
     const [fact] = (await a.api.ok<{ memories?: { id: string }[] }>(a.api.get('/app/notebook'))).memories ?? []
     if (fact) expect((await b.api.post(`/app/notebook/${fact.id}/forget`)).status()).toBe(403)
-    expect(await notebook(a)).toContain('4417')
+    expect(await notebook(a)).toContain('zq4417')
   })
 
   test('the marketplace never names who hired Ava', async ({ browser }) => {
@@ -84,10 +85,10 @@ test.describe('two owners', () => {
     await tell(a, SECRET_A)
     await tell(b, SECRET_B)
     const [na, nb] = [await notebook(a), await notebook(b)]
-    expect(na).toContain('4417')
-    expect(na).not.toContain('9032')
-    expect(nb).toContain('9032')
-    expect(nb).not.toContain('4417')
+    expect(na).toContain('zq4417')
+    expect(na).not.toContain('zq9032')
+    expect(nb).toContain('zq9032')
+    expect(nb).not.toContain('zq4417')
   })
 
   test('each owner’s conversation, reminders and people stay their own', async ({ browser }) => {
@@ -97,7 +98,7 @@ test.describe('two owners', () => {
     await a.api.ok(a.api.post('/app/reminders', { text: 'Call the bank tomorrow at 5pm' }))
     for (const path of ['/app/messages', '/app/reminders', '/app/people']) {
       const seen = JSON.stringify(await b.api.ok(b.api.get(path)))
-      expect(seen, path).not.toContain('4417')
+      expect(seen, path).not.toContain('zq4417')
       expect(seen, path).not.toContain('Call the bank')
     }
   })
@@ -109,6 +110,6 @@ test.describe('two owners', () => {
     const [fact] = (await a.api.ok<{ memories?: { id: string }[] }>(a.api.get('/app/notebook'))).memories ?? []
     expect(fact).toBeTruthy()
     expect((await b.api.post(`/app/notebook/${fact.id}/forget`)).status()).toBe(404)
-    expect(await notebook(a)).toContain('4417')
+    expect(await notebook(a)).toContain('zq4417')
   })
 })

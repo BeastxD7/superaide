@@ -30,6 +30,7 @@ from superaide.intentions.service import owner_zone
 from superaide.intentions.when import zone
 from superaide.jobs.queue import enqueue, handler
 from superaide.knowledge.store import preferences_for
+from superaide.policy.binding import waiting as waiting_clause
 from superaide.proactive import prep
 from superaide.proactive.notify import notify_owner
 from superaide.skills import calendar
@@ -187,7 +188,7 @@ def compose(
                     extra = " — " + "; ".join(r.rstrip(".") for r in related)
             lines.append(f"- {u.label} {when} ({u.when:%a %d %b}){extra}")
 
-    waiting = session.scalar(select(func.count()).select_from(Approval).where(Approval.status == "pending")) or 0
+    waiting = session.scalar(select(func.count()).select_from(Approval).where(waiting_clause())) or 0
     if waiting:
         lines.append(f"**Waiting for your OK:** {waiting} on your dashboard")
 

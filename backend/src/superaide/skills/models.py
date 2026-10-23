@@ -74,3 +74,23 @@ class SkillReceipt(Scoped, Base):
     latency_s: Mapped[int] = mapped_column(Integer, default=0)  # seconds between the request and the decision
     batch: Mapped[bool] = mapped_column(Boolean, default=False)  # decided together with others
     at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class PayoutEntry(Scoped, Base):
+    """One line of the creator payout ledger (skills/payouts.py, issue #132). Whole minor units (cents), never a float.
+    Append-only in practice: a mistake is fixed by a new line, not an edit. Nothing here moves money."""
+
+    __tablename__ = "payout_entry"
+    __table_args__ = (UniqueConstraint("agent_id", "kind", "receipt_seq", name="uq_payout_entry_receipt"),)
+
+    kind: Mapped[str] = mapped_column(String(16))  # accrual | clawback | bond_deposit | bond_refund | settlement
+    creator: Mapped[str] = mapped_column(String(80), index=True)
+    skill_id: Mapped[str] = mapped_column(String(120), default="")
+    version: Mapped[str] = mapped_column(String(40), default="")
+    receipt_seq: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    gross_minor: Mapped[int] = mapped_column(Integer, default=0)
+    fee_minor: Mapped[int] = mapped_column(Integer, default=0)
+    amount_minor: Mapped[int] = mapped_column(Integer)  # signed: the effect on the creator's balance (payable or bond)
+    currency: Mapped[str] = mapped_column(String(3), default="USD")
+    available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))  # an accrual is payable only from here
+    note: Mapped[str] = mapped_column(String(200), default="")
