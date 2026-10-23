@@ -266,6 +266,10 @@ class Settings(BaseSettings):
     # Import lease (#133). Off: /app/import-leases/* answer 404. On: the owner can bring in context cards
     # converted on their own machine from a third-party export, under a time-limited lease that erases them.
     import_lease_enabled: bool = False
+    # Airlock (#128, pure-code half). Off: nothing changes. On: before a conversation goes to a model, contact
+    # details, cards and ID-like numbers in it become placeholders, and the reply gets the originals back.
+    # The on-device model and device attestation are not built.
+    airlock_enabled: bool = False
     gmail_poll_minutes: int = 5
     # The owner's Gmail sign-in (same OAuth client as Calendar); kept per instance in the vault.
     gmail_refresh_token: str = ""

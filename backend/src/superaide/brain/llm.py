@@ -243,11 +243,38 @@ class RoutedLLM:
 
     def step(self, *, model: str, **kwargs: Any) -> StepResult:
         llm, name = self._route(model)
-        return llm.step(model=name, **kwargs)
+        kwargs, mapping = _through_airlock(kwargs)
+        result = llm.step(model=name, **kwargs)
+        if mapping:
+            from superaide.privacy.airlock import restore_any
+
+            result.content = restore_any(result.content, mapping)
+        return result
 
     def complete(self, *, model: str, **kwargs: Any) -> LLMResult:
         llm, name = self._route(model)
-        return llm.complete(model=name, **kwargs)
+        kwargs, mapping = _through_airlock(kwargs)
+        result = llm.complete(model=name, **kwargs)
+        if mapping:
+            from superaide.privacy.airlock import restore_any
+
+            result.text = restore_any(result.text, mapping)
+            result.parsed = restore_any(result.parsed, mapping)
+        return result
+
+
+def _through_airlock(kwargs: dict[str, Any]) -> tuple[dict[str, Any], dict[str, str]]:
+    """With AIRLOCK_ENABLED on, other people's contact details in the conversation are replaced by
+    placeholders before anything is uploaded (privacy/airlock.py); the map stays here and is used to
+    put the originals back into the reply. Off (the default): nothing changes."""
+    from superaide.config import get_settings
+
+    if not get_settings().airlock_enabled or "messages" not in kwargs:
+        return kwargs, {}
+    from superaide.privacy.airlock import redact_messages
+
+    messages, r = redact_messages(kwargs["messages"])
+    return {**kwargs, "messages": messages}, r.mapping
 
 
 Responder = Callable[[str, list[SystemBlock], list[dict[str, Any]], type[BaseModel] | None], Any]
