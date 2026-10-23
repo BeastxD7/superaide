@@ -4,7 +4,7 @@ Additive only: a new per-instance table (memory_import, under Row-Level Security
 import_id on memory_item, document and contact, so erasing an import deletes exactly what it brought.
 
 Revision ID: 0050
-Revises: 0035
+Revises: 0037
 Create Date: 2026-10-23 01:10:41.360175
 
 """
@@ -17,7 +17,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "0050"
-down_revision: str | Sequence[str] | None = "0035"
+down_revision: str | Sequence[str] | None = "0037"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
