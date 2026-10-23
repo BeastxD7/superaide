@@ -40,7 +40,7 @@ describe('ListFooter', () => {
   })
   it('disables the button and says so while a page loads', () => {
     const out = footer({ hasMore: true, loading: true })
-    expect(out).toContain('disabled')
+    expect(out).toContain('aria-disabled="true"')
     expect(out).toContain('Loading...')
   })
   it('says End of list at the end, and nothing at all for an empty list', () => {

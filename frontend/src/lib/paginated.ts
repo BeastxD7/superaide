@@ -28,6 +28,8 @@ export type UsePaginatedOptions<T> = {
   getId?: (item: T) => string
   /** Another transport (the operator console's bearer-token client). Default: the signed-in /app client. */
   fetcher?: Fetcher<T>
+  /** The response key holding the rows, for a route that predates the standard (`memories` for /notebook). */
+  itemsKey?: string
   /** false: do not request anything yet (a filter is not ready). */
   enabled?: boolean
 }
@@ -39,7 +41,7 @@ const staleCursor = (e: unknown) => e instanceof AppError && e.code === 'invalid
 const defaultId = (item: unknown): string => String((item as { id: string | number }).id)
 
 export function usePaginated<T>(path: string, opts: UsePaginatedOptions<T> = {}) {
-  const { limit = 25, params, getId = defaultId, fetcher, enabled = true } = opts
+  const { limit = 25, params, getId = defaultId, fetcher, itemsKey, enabled = true } = opts
   const paramKey = JSON.stringify(params ?? {})
   const stableParams = useMemo(() => JSON.parse(paramKey) as NonNullable<typeof params>, [paramKey])
   const controller = useMemo(
@@ -50,12 +52,13 @@ export function usePaginated<T>(path: string, opts: UsePaginatedOptions<T> = {})
         params: stableParams,
         fetcher: fetcher ?? (appFetcher as Fetcher<T>),
         getId,
+        itemsKey,
         describeError: errorMessage,
         isStaleCursor: staleCursor,
       }),
     // `getId` is read once; pass a module-level function (or none). Filters compare by value through paramKey.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-    [path, limit, stableParams, fetcher],
+    [path, limit, stableParams, fetcher, itemsKey],
   )
 
   useEffect(() => {

@@ -28,7 +28,8 @@ export type PaginatedState<T> = {
   totalEstimate: number | null
 }
 
-export type Fetcher<T> = (path: string, signal: AbortSignal) => Promise<PageResponse<T>>
+// `items` is the usual key; a route that predates the standard keeps its own (`memories` for /notebook).
+export type Fetcher<T> = (path: string, signal: AbortSignal) => Promise<PageResponse<T> | Record<string, unknown>>
 
 export type ControllerOptions<T> = {
   path: string
@@ -36,6 +37,7 @@ export type ControllerOptions<T> = {
   params?: Record<string, string | number | boolean | null | undefined>
   fetcher: Fetcher<T>
   getId: (item: T) => string
+  itemsKey?: string
   describeError: (e: unknown) => string
   // The server refuses a cursor it can't trust or that expired (422 invalid_cursor): the list starts over.
   isStaleCursor?: (e: unknown) => boolean
@@ -134,8 +136,10 @@ export class PaginatedController<T> {
     this.abort = ctl
     const mine = ++this.generation
     try {
-      const page = await this.o.fetcher(pageUrl(this.o.path, this.o.limit, cursor, this.o.params), ctl.signal)
+      const raw = await this.o.fetcher(pageUrl(this.o.path, this.o.limit, cursor, this.o.params), ctl.signal)
       if (this.disposed || mine !== this.generation) return
+      const key = this.o.itemsKey ?? 'items'
+      const page = { ...(raw as PageResponse<T>), items: ((raw as Record<string, unknown>)[key] ?? []) as T[] }
       const seen = new Set(replace ? [] : this.state.items.map(this.o.getId))
       const fresh = page.items.filter((it) => {
         const id = this.o.getId(it)
@@ -143,13 +147,13 @@ export class PaginatedController<T> {
         seen.add(id)
         return true
       })
-      this.cursor = page.next_cursor
+      this.cursor = page.next_cursor ?? null
       this.set({
         items: replace ? fresh : [...this.state.items, ...fresh],
         status: 'ready',
         error: null,
         failed: null,
-        hasMore: page.has_more && page.next_cursor !== null,
+        hasMore: Boolean(page.has_more) && (page.next_cursor ?? null) !== null,
         totalEstimate: page.total_estimate ?? null,
       })
     } catch (e) {
