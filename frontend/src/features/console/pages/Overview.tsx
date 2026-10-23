@@ -89,7 +89,7 @@ export function Overview({ data }: { data: OverviewData }) {
             {spend.calls === 1 ? 'call' : 'calls'}. The cap is enforced before every call.
           </p>
         </div>
-        <div className="meter" role="meter" aria-valuemin={0} aria-valuemax={spend.cap_usd} aria-valuenow={spend.settled_usd}>
+        <div className="meter" role="meter" aria-label="Claude API spend against the cap" aria-valuemin={0} aria-valuemax={spend.cap_usd} aria-valuenow={spend.settled_usd}>
           <div className="meter-fill" style={{ width: `${Math.max(usedShare * 100, usedShare > 0 ? 0.6 : 0)}%` }} />
         </div>
         <p className="quiet">

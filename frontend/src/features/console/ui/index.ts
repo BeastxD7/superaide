@@ -1,0 +1,11 @@
+// The console's shared building blocks (design spec: docs/design/console-ui.md). Pages compose these; they never add page CSS.
+export { Badge } from '@/features/console/ui/Badge'
+export { Button, type Variant } from '@/features/console/ui/Button'
+export { Card, Grid } from '@/features/console/ui/Card'
+export { DataTable, type Column } from '@/features/console/ui/DataTable'
+export { EmptyState } from '@/features/console/ui/EmptyState'
+export { Notice } from '@/features/console/ui/Notice'
+export { PageHeader } from '@/features/console/ui/PageHeader'
+export { LoadingBlock } from '@/features/console/ui/Skeleton'
+export { Stat, Stats, type Tone } from '@/features/console/ui/Stat'
+export { Chip, Toolbar } from '@/features/console/ui/Toolbar'

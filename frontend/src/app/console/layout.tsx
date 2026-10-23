@@ -1,7 +1,5 @@
-import '@fontsource/atkinson-hyperlegible-next/400.css'
-import '@fontsource/atkinson-hyperlegible-next/600.css'
-import '@fontsource/atkinson-hyperlegible-next/700.css'
-import '@fontsource/atkinson-hyperlegible-mono/400.css'
+import '@fontsource-variable/geist'
+import '@/styles/app.css'
 import '@/styles/console.css'
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
@@ -14,8 +12,9 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-// The operator console has its own look, so it has its own root layout:
-// moving between it and the site is a full page load, and the styles never mix.
+// The console has its own root layout (a full page load from the site, no session providers) but shares the
+// site's design tokens and sidebar components (app.css), so it reads as one product. console.css sits in a
+// CSS layer, so Tailwind utilities on the shared components always win over it.
 export default function ConsoleLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
