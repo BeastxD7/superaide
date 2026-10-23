@@ -12,8 +12,9 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 ROOT="$(pwd)"
-API_PORT=8000
-WEB_PORT=3000
+# Both ports can be changed from outside (share.sh uses this): API_PORT=8010 WEB_PORT=3000 bash start.command
+API_PORT="${API_PORT:-8000}"
+WEB_PORT="${WEB_PORT:-3000}"
 bold() { printf "\n\033[1m%s\033[0m\n" "$*"; }
 
 RESET=0
@@ -214,5 +215,5 @@ echo "  Operator console:  http://localhost:$WEB_PORT/console?token=$TOKEN"
 echo "  Forgot your password? Run: (cd backend && uv run superaide reset-password --email you@example.com)"
 echo "  Hire from scratch? Press Ctrl+C, then run: bash start.command --reset"
 echo "Keep this window open. Ctrl+C stops everything."
-open "$APP_URL" 2>/dev/null || xdg-open "$APP_URL" 2>/dev/null || true
+[ "${NO_OPEN:-0}" = 1 ] || open "$APP_URL" 2>/dev/null || xdg-open "$APP_URL" 2>/dev/null || true
 wait "${PIDS[0]}"

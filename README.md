@@ -98,6 +98,8 @@ bash start.command
 
 It installs [uv](https://docs.astral.sh/uv/) and, if Node.js 20.9+ is missing, a private checksum-verified Node in `.tools/`. It starts Postgres (Docker if installed, else an embedded one), then the API and the frontend, and opens http://localhost:3000. Without an AI key Ava runs in offline mode and nothing is spent. `--reset` wipes the data first; `--no-docker` forces the embedded Postgres.
 
+**Share it on the internet from your Mac:** `bash share.sh` pulls the latest code, opens a free [Cloudflare quick tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/trycloudflare/), starts the app behind it and prints a public `https://….trycloudflare.com` link (install `cloudflared` first: `brew install cloudflared`). That address changes every run, and Google only accepts redirect addresses registered in advance, so for Google sign-in either use `http://localhost:3000` yourself (people you share with sign up with email and password), add the two redirect addresses the script prints, or give the tunnel a fixed address with `bash share.sh --hostname app.example.com --tunnel-token <token>` (steps in `share.sh --help`).
+
 **For development** you need [uv](https://docs.astral.sh/uv/), Node 24 (22 also works) and Docker:
 
 ```bash
