@@ -59,6 +59,8 @@ FLAG_GATED = {
     ("GET", "/app/episodes"),  # conversation summaries of the sleep job (SLEEP_JOB_ENABLED)
     ("GET", "/app/identity-claims"),  # IDENTITY_CLAIM_REVIEW (#93)
     ("GET", "/app/brain/share-links"),  # the Glass brain share link (BRAIN_SHARE_ENABLED)
+    ("GET", "/app/skill-releases"),  # SKILL_COOLDOWN_ENABLED (#129)
+    ("GET", "/app/skill-signals"),  # SKILL_SIGNALS_ENABLED (#130)
 }
 SECRET_NOTE = "Project Bluebird is my secret side project"
 
@@ -456,6 +458,45 @@ def test_the_share_link_routes_are_owner_routes_behind_a_flag(app, browser, owne
     stranger = browser()
     signup(stranger, name="Mallory Tan", email="mallory@example.com")
     for method, path in SHARE_ROUTES:
+        r = stranger.request(method, fill_path(path), json={} if method == "POST" else None)
+        assert r.status_code == 403
+        _assert_no_owner_data(r, owner_data)
+
+
+# --- skill release cooldown (/app/skill-releases, SKILL_COOLDOWN_ENABLED) ----------------------
+
+SKILL_RELEASE_ROUTES = {
+    ("GET", "/app/skill-releases"),
+    ("POST", "/app/skill-releases"),
+    ("POST", "/app/skill-releases/retire"),
+}
+
+
+def test_the_skill_release_routes_are_owner_routes_behind_a_flag(app, browser, owner_data):
+    assert SKILL_RELEASE_ROUTES <= set(owner_routes(app))
+    stranger = browser()
+    signup(stranger, name="Mallory Tan", email="mallory@example.com")
+    for method, path in SKILL_RELEASE_ROUTES:
+        r = stranger.request(method, fill_path(path), json={} if method == "POST" else None)
+        assert r.status_code == 403
+        _assert_no_owner_data(r, owner_data)
+
+
+# --- skill trust signals (/app/skill-signals, SKILL_SIGNALS_ENABLED) ----------------------------
+
+SKILL_SIGNAL_ROUTES = {
+    ("GET", "/app/skill-signals"),
+    ("POST", "/app/skill-signals/scan"),
+    ("POST", "/app/skill-signals/label"),
+    ("POST", "/app/skill-signals/clear-demotion"),
+}
+
+
+def test_the_skill_signal_routes_are_owner_routes_behind_a_flag(app, browser, owner_data):
+    assert SKILL_SIGNAL_ROUTES <= set(owner_routes(app))
+    stranger = browser()
+    signup(stranger, name="Mallory Tan", email="mallory@example.com")
+    for method, path in SKILL_SIGNAL_ROUTES:
         r = stranger.request(method, fill_path(path), json={} if method == "POST" else None)
         assert r.status_code == 403
         _assert_no_owner_data(r, owner_data)
