@@ -185,7 +185,7 @@ Every setting is an environment variable. [`backend/.env.example`](backend/.env.
 | `ENABLE_SIMULATOR` | `false` | Operator console impostor simulator (Simulator page) | `ADMIN_TOKEN`; for local testing see below; development only | Never on a public server |
 | `FAKE_LLM` | `false` | Offline echo replies, nothing spent | None | Safe (for demos) |
 | `TRIAGE_ENABLED` | `false` | A recorded handle/hold/interrupt/defer/verify decision for every non-owner message; interrupts escalate to the owner | None | Safe |
-| `TRIAGE_KNN_ENABLED` | `false` | Shadow urgency score from your own feedback beside each triage decision; never changes a decision | `TRIAGE_ENABLED=true` | Safe |
+| `TRIAGE_KNN_ENABLED` | `false` | Shadow-only urgency score from your own feedback beside each triage decision; never changes a decision. "Needs you" shows how often it agrees with your corrections (needs 200 before promotion is even considered) | `TRIAGE_ENABLED=true` | Safe |
 | `GMAIL_TRIAGE_ENABLED` | `false` | Polls each owner's Gmail inbox and triages new mail | `TRIAGE_ENABLED=true`, Google client, owner signs in to Gmail; `GMAIL_POLL_MINUTES` | Decision (reads mail) |
 | `GOOGLE_SIGNIN_ENABLED` | `false` | "Continue with Google" on log-in and sign-up | `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`, redirect URI registered | Safe |
 | `GOOGLE_CALENDAR_PUSH` | `false` | Google tells the server when the calendar changes | `PUBLIC_BASE_URL` on https with `/webhooks/*` reachable | Safe |

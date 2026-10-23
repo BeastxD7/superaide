@@ -317,6 +317,8 @@ class Settings(BaseSettings):
     # Deletable kNN triage head (#117). Off: nothing changes. On (needs TRIAGE_ENABLED): each triage decision
     # also records, in `features["knn"]`, how urgent the owner's own past feedback says similar messages
     # were. It never changes the decision; it is a shadow score to compare against the model's.
+    # The owner sees how often it agrees with their corrections ("Needs you"); promotion to deciding is not built
+    # and would need 200 corrections and a 0.8 Wilson lower bound (triage/knn.py shadow_status).
     triage_knn_enabled: bool = False
     # Ava School (#57), local part only: the owner writes generic lessons, consents to each one, and exports
     # them to a file to review, or imports a file from another Ava. Nothing is sent over the network and
