@@ -14,8 +14,8 @@ Measured with a throwaway Playwright script (Pixel 7 emulation, signed-out and a
 | `/forgot-password` | 320, 360, 390, 430, 768 | Tap targets under 44px, e.g. ['a[Superaide] 66x20', 'a[Back to log in] 90x20'] | |
 | `/reset-password?token=abc` | 320, 360, 390, 430, 768 | Tap targets under 44px, e.g. ['a[Superaide] 66x20', 'a[Ask for a new link] 114x18'] | |
 | `/verify-email` | 320, 360, 390, 430, 768 | Tap targets under 44px, e.g. ['a[Superaide] 66x20'] | |
-| `/agents/ava/hire` | 320, 360, 390, 430, 768 | Tap targets under 44px, e.g. ['a[Back] 40x40', 'button#radix-_r_0_[Account: signed in as Shashank] 40x40', 'input[] 19x20'] | |
-| `/meet` | 320, 360, 390, 430, 768 | Tap targets under 44px, e.g. ['button#radix-_r_0_[Account: signed in as Shashank] 40x40', 'a[Leave for now] 36x36'] | |
+| `/agents/ava/hire` | 320, 360, 390, 430, 768 | Tap targets under 44px, e.g. ['a[Back] 40x40', 'button#radix-_r_0_[Account: signed in as Ananya] 40x40', 'input[] 19x20'] | |
+| `/meet` | 320, 360, 390, 430, 768 | Tap targets under 44px, e.g. ['button#radix-_r_0_[Account: signed in as Ananya] 40x40', 'a[Leave for now] 36x36'] | |
 | `/dashboard` | 320, 360, 390, 430, 768 | Tap targets under 44px, e.g. ['a[Home] 224x32', 'a[Chat] 224x32', 'a[Reminders] 224x32', 'a[Notebook] 224x32'] | |
 | `/dashboard/chat` | 320, 360, 390, 430, 768 | Tap targets under 44px, e.g. ['a[Home] 224x32', 'a[Chat] 224x32', 'a[Reminders] 224x32', 'a[Notebook] 224x32'] | |
 | `/dashboard/notebook` | 768 | Inputs under 16px (iOS zooms on focus): ['input[Search the notebook] 14px'] | |
