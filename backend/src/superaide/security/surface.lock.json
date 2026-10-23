@@ -79,8 +79,8 @@
   "backend/src/superaide/triage/store.py": "e7da61116e86a880748f784a4e690cbbc74e23d24b17e58e84e0a802127ea079",
   "backend/tests/redteam/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "backend/tests/redteam/regressions.jsonl": "bd225aae46ab208d7b5ac54556a06001c7edcc381d27033a0b32cceba66edeb6",
-  "backend/tests/redteam/test_canaries.py": "d4fc76c11ab80c2786c8c18538792f1f81a6a6bc0713acc84248aff4d57f28bb",
+  "backend/tests/redteam/test_canaries.py": "aec68c9eea5ec08c0178baf7c32d182e770c27efa01f9d27fa0315a1065f9375",
   "backend/tests/redteam/test_impostors.py": "eb70a421a8d9dd58c4af7526da4ec285dfb9c75da61bad2e60dcd0b1547e49f6",
-  "backend/tests/redteam/test_name_claims.py": "82559d57e73d4c816e58e26ed8e5c2131d2e10269e0fa97fa50caff33109686f",
+  "backend/tests/redteam/test_name_claims.py": "20fe85dba21def6ef1af2c5d55f811bd15bf79fcc00e8b5b53743247c6c1b4f9",
   "backend/tests/redteam/test_poison_drills.py": "385c0c083bb68cc6774f29435ad1f560b6ea838253bb2f3e483c3e30e252ee86"
 }
