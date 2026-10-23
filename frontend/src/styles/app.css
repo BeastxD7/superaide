@@ -118,6 +118,22 @@
   dd {
     overflow-wrap: anywhere;
   }
+  /* Touch screens: every text field is 16px (iOS Safari zooms the page in on focus below that) and at least
+     44px tall, whatever its own classes say. The hidden spam-trap field is excluded. */
+  @media (max-width: 767.98px), (pointer: coarse) {
+    input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [type='hidden'], [tabindex='-1']),
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+    input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [type='hidden'], [tabindex='-1']),
+    select {
+      min-height: 44px;
+    }
+    label:has(> input[type='checkbox'], > input[type='radio']) {
+      min-height: 44px;
+    }
+  }
   img,
   svg,
   video,

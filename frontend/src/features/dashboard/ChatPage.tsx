@@ -303,7 +303,7 @@ export function ChatPage() {
               whileTap={{ scale: 0.9 }}
               onClick={() => void send(draft)}
               disabled={!draft.trim() || pending}
-              className="grid size-10 shrink-0 place-items-center rounded-xl bg-violet-600 text-white hover:bg-violet-700 disabled:bg-lilac-200"
+              className="grid size-10 touch:size-11 shrink-0 place-items-center rounded-xl bg-violet-600 text-white hover:bg-violet-700 disabled:bg-lilac-200"
               aria-label="Send"
             >
               <ArrowUp className="size-5" />

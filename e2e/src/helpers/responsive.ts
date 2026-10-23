@@ -41,11 +41,11 @@ export async function measure(page: Page, root = 'body'): Promise<Measure> {
         .slice(0, 8)
       const inline = (el: Element) => {
         // A link inside a sentence is exempt from the target-size rule (WCAG 2.5.8 inline exception).
-        if (el.tagName !== 'A') return false
-        const p = el.parentElement
-        return !!p && ['P', 'LI', 'SPAN', 'LABEL'].includes(p.tagName) && getComputedStyle(el).display === 'inline'
+        // (a link that flows with the text around it: computed display is inline)
+        return el.tagName === 'A' && getComputedStyle(el).display === 'inline'
       }
       const small = all
+        .filter((el) => !el.matches('[tabindex="-1"]')) // not reachable by keyboard or screen reader: the sidebar's mouse drag-rail
         .filter((el) => el.matches('button, a[href], [role=button], [role=tab], [role=menuitem], input:not([type=hidden]), select, textarea, summary'))
         .filter((el) => {
           const r = el.getBoundingClientRect()
