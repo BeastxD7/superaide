@@ -28,3 +28,13 @@ repos:
     rev: v8.30.1
     hooks:
       - id: gitleaks
+
+  # A new setting must be documented in backend/.env.example (frontend variables: frontend/.env.example).
+  - repo: local
+    hooks:
+      - id: env-example
+        name: every environment variable is in .env.example
+        entry: python3 scripts/check_env_example.py
+        language: system
+        pass_filenames: false
+        files: ^(backend/src/.*\.py|backend/\.env\.example|frontend/\.env\.example|frontend/(src|next\.config\.ts).*|scripts/check_env_example\.py)$
