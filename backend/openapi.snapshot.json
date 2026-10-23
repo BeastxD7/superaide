@@ -1357,6 +1357,53 @@
         "title": "RecheckBody",
         "type": "object"
       },
+      "ReleaseBody": {
+        "properties": {
+          "earned_tier": {
+            "default": "none",
+            "title": "Earned Tier",
+            "type": "string"
+          },
+          "effects": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 6,
+            "title": "Effects",
+            "type": "array"
+          },
+          "patch_signature": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Patch Signature"
+          },
+          "skill_id": {
+            "maxLength": 120,
+            "pattern": "^[a-z0-9-]+/[a-z0-9-]+$",
+            "title": "Skill Id",
+            "type": "string"
+          },
+          "version": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "skill_id",
+          "version"
+        ],
+        "title": "ReleaseBody",
+        "type": "object"
+      },
       "ReminderBody": {
         "properties": {
           "due_at": {
@@ -1477,6 +1524,27 @@
           "choice"
         ],
         "title": "ResolveConflict",
+        "type": "object"
+      },
+      "RetireBody": {
+        "properties": {
+          "reason": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Reason",
+            "type": "string"
+          },
+          "skill_id": {
+            "maxLength": 120,
+            "pattern": "^[a-z0-9-]+/[a-z0-9-]+$",
+            "title": "Skill Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "skill_id"
+        ],
+        "title": "RetireBody",
         "type": "object"
       },
       "RoleChoice": {
@@ -10650,6 +10718,131 @@
         "summary": "Choose which lesson categories may be shared",
         "tags": [
           "Owner: Ava School"
+        ]
+      }
+    },
+    "/app/skill-releases": {
+      "get": {
+        "description": "404 while SKILL_COOLDOWN_ENABLED is off.",
+        "operationId": "releases_app_skill_releases_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Releases App Skill Releases Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Skill releases and reserved names",
+        "tags": [
+          "Owner: skills"
+        ]
+      },
+      "post": {
+        "description": "Starts the cooldown clock; repeating it keeps the first.",
+        "operationId": "record_app_skill_releases_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReleaseBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Record App Skill Releases Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Record a skill release",
+        "tags": [
+          "Owner: skills"
+        ]
+      }
+    },
+    "/app/skill-releases/retire": {
+      "post": {
+        "description": "The name is reserved for good.",
+        "operationId": "retire_app_skill_releases_retire_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetireBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Retire App Skill Releases Retire Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Retire a skill name",
+        "tags": [
+          "Owner: skills"
         ]
       }
     },
