@@ -83,7 +83,6 @@ class Settings(BaseSettings):
             "triage": 0.05,
             "voice": 0.30,
             "receptionist": 0.10,
-            "learning": 0.10,
             "learning": 0.10,  # replay, second opinions, playbook drafts, tuner (#142)
         }
     )
