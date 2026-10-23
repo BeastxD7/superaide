@@ -229,7 +229,8 @@ Every setting is an environment variable. [`backend/.env.example`](backend/.env.
 | `FORK_NIGHT_ENABLED` | `false` | Three overnight drafts of a choice the owner leaves | `FORK_NIGHT_HOUR`; model key; bucket `fork` | Decision (cost) |
 | `TIME_TRAVEL_RULES_ENABLED` | `false` | Plain-words standing orders compiled to rules, replayed on past messages, shadow-run first | `TIME_TRAVEL_REPLAY_DAYS`, `TIME_TRAVEL_PROMOTE_AFTER`, `TIME_TRAVEL_MIN_AGREEMENT`; bucket `rules` | Decision (automates replies) |
 | `QUOTE_ODDS_ENABLED` | `false` | Approval cards show honest odds; low-odds approvals prepare instead of run | `QUOTE_MIN_SAMPLES`, `QUOTE_MIN_SUCCESS` | Decision (changes what approve does) |
-| `VOICE_TWO_CHANNEL` | `false` | A voice-call action becomes an approval only a text-channel tap can approve | A text channel connected | Safe (stricter) |
+| `VOICE_TWO_CHANNEL` | `false` | A voice-call action becomes an approval only a tap in the Superaide app can approve | Nothing extra | Safe (stricter) |
+| `VOICE_PROVIDER` | `none` | Live realtime voice provider: `none`, `fake` (scripted, offline) or `realtime` (adapter stub, no vendor wired) | `VOICE_TWO_CHANNEL=true`; vendor key under Connections (`VOICE_PROVIDER_API_KEY`) | **Decision (a vendor would cost money)** |
 | `REQUIRE_VERIFIED_EMAIL` | `false` | Hiring needs a confirmed email | `MAIL_BACKEND=smtp` working first | Decision (locks out until mail works) |
 | `SESSION_COOKIE_SECURE` | `false` | Session cookie only over HTTPS | Must be `true` on any https site (production compose forces it) | Safe |
 | `ALLOW_UNSAFE_PUBLIC_SELF_HOSTED` | `false` | Overrides the startup refusal of a public, open-sign-up, self-hosted server | None | Do not |

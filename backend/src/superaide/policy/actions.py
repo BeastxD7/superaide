@@ -94,7 +94,7 @@ def decide(
 ) -> Decision:
     """`rules` is RULES for propose_action, TOOL_RULES for a skill tool, which also passes the
     `payload` its executor needs. `origin` is "voice" for something heard on a call (voice/gateway.py):
-    such an approval can then be approved only from a text channel, never by what was said."""
+    such an approval can then be approved only from the Superaide app, never by what was said."""
     if kind == "none":
         return Decision("none", "no action requested")
     from superaide.policy import footprint
@@ -206,7 +206,7 @@ def resolve(session: Session, approval: Approval, *, approve: bool, decided_by: 
     """Record the owner's yes or no on a pending approval, then carry it out if it can be.
 
     `via` is the channel the decision came in on. A yes that came by voice is never accepted, and an
-    approval that began on a call is approved only from a text channel the caller names (voice/gateway.py).
+    approval that began on a call is approved only from the Superaide app (voice/gateway.py).
     A no is accepted from anywhere: refusing is always safe."""
     if approval.status != "pending":
         raise ApprovalError(409, f"This was already {approval.status}.")

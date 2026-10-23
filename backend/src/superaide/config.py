@@ -315,9 +315,13 @@ class Settings(BaseSettings):
     # predictor of the owner's approve/reject choices. It reads approvals only and grants nothing.
     owner_twin_enabled: bool = False
     # Two-channel voice (#125). Off: voice can propose nothing. On: an action heard on a call becomes an approval
-    # marked as voice-origin; it can be approved only by a tap in a text channel, never by what is said, and the
+    # marked as voice-origin; it can be approved only by a tap in the Superaide app, never by what is said, and the
     # call reads it back as a structured proposal and never says it is done. The voice shell holds no tools.
     voice_two_channel: bool = False
+    # Live voice (#125): which realtime voice provider carries the call. none | fake (scripted, offline) | realtime
+    # (the adapter stub for a real vendor; no vendor is wired yet). Default none: nothing is bought or locked in.
+    voice_provider: str = "none"
+    voice_provider_api_key: str = ""  # saved under the voice_provider connection; never logged
     # Import lease (#133). Off: /app/import-leases/* answer 404. On: the owner can bring in context cards
     # converted on their own machine from a third-party export, under a time-limited lease that erases them.
     import_lease_enabled: bool = False

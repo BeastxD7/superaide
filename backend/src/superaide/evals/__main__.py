@@ -70,6 +70,8 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--name", help="scorecard file name (default scorecard-<mode>)")
     r.add_argument("--wipe-ledger", action="store_true", help="forget earlier eval spend (resets the cap)")
     sub.add_parser("list", help="list scenarios")
+    v = sub.add_parser("voice-vs-text", help="30 tasks by text and by voice, offline (#125): how often voice diverges")
+    v.add_argument("--out", help="where to write the JSON report (default backend/evals/results)")
     g = sub.add_parser("gate", help="long-term-memory regression gate: offline, fails if a scenario regresses")
     g.add_argument("--update", action="store_true", help="record today's results as the baseline")
     t = sub.add_parser("triage", help="triage precision and recall on the labelled set (ADR 0010)")
@@ -96,6 +98,12 @@ def main(argv: list[str] | None = None) -> int:
             f"US${s['cost_usd']:.4f}"
         )
         return 0
+
+    if args.cmd == "voice-vs-text":
+        from superaide.evals import voice_vs_text
+
+        _env(args_for_offline())
+        return voice_vs_text.main(args.out)
 
     if args.cmd == "gate":
         from superaide.evals.gate import run_gate
