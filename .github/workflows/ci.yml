@@ -13,11 +13,12 @@ on:
 permissions:
   contents: read
 
-# A newer push cancels the run before it. When full.yml calls this, github.workflow is the
-# caller's name, so its runs land in their own group and are never cancelled.
+# A newer push to a pull request cancels the run before it. Runs on main are never cancelled
+# (each push gets its verdict), and when full.yml calls this, github.workflow is the caller's
+# name, so its runs land in their own group and are never cancelled either.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.workflow == 'CI' }}
+  cancel-in-progress: ${{ github.workflow == 'CI' && github.ref != 'refs/heads/main' }}
 
 jobs:
   # Decides which jobs a pull request needs (docs/0013). Pushes to main, merge groups, manual
@@ -166,10 +167,17 @@ jobs:
           uv run alembic downgrade base
           uv run alembic upgrade head
 
+      # Coverage slows the suite down and nobody reads it on a pull request, so it is measured on
+      # main and in the Full run only. --durations lists the slowest tests either way.
       - name: Tests
+        env:
+          EVENT: ${{ github.event_name }}
         run: |
           psql -h localhost -U agent -d agent -c "CREATE DATABASE agent_test"
-          uv run pytest --cov --cov-report=term-missing:skip-covered
+          case "$EVENT" in
+            pull_request|merge_group) uv run pytest --durations=25 ;;
+            *) uv run pytest --durations=25 --cov --cov-report=term-missing:skip-covered ;;
+          esac
 
   frontend:
     name: Frontend (lint, types, build)
@@ -248,7 +256,29 @@ jobs:
         run: |
           (cd backend && uv python install && uv sync --locked --no-dev)
           (cd frontend && npm ci --no-audit --no-fund && npm run build)
-          (cd e2e && npm ci --no-audit --no-fund && npx playwright install --with-deps chromium)
+          (cd e2e && npm ci --no-audit --no-fund)
+
+      # The browser download is the slow part; it is keyed on the Playwright version. System
+      # libraries are not cached, so install-deps still runs.
+      - name: Playwright version
+        id: pw
+        working-directory: e2e
+        run: echo "version=$(node -p "require('./node_modules/@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v6
+        id: pw-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+
+      - name: Install the browser
+        working-directory: e2e
+        run: |
+          if [ "${{ steps.pw-cache.outputs.cache-hit }}" = true ]; then
+            npx playwright install-deps chromium
+          else
+            npx playwright install --with-deps chromium
+          fi
 
       - name: Run end-to-end tests
         working-directory: e2e
