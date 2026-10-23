@@ -1,7 +1,4 @@
-import '@fontsource/atkinson-hyperlegible-next/400.css'
-import '@fontsource/atkinson-hyperlegible-next/600.css'
-import '@fontsource/atkinson-hyperlegible-next/700.css'
-import '@fontsource/atkinson-hyperlegible-mono/400.css'
+import '@fontsource-variable/geist'
 import '@/styles/console.css'
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'

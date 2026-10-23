@@ -24,7 +24,7 @@ export function SpendPage({ conn }: { conn: Connection }) {
           </p>
         </div>
       ) : (
-        <table className="spend-table">
+        <table className="spend-table legacy-table">
           <thead>
             <tr>
               <th>When</th>

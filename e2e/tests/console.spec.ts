@@ -432,8 +432,8 @@ test.describe('console: separate from the site', () => {
     await expect(page.getByRole('heading', { name: 'Connect to your agent' })).toBeVisible()
     expect(await page.evaluate(() => (window as unknown as { __sameDocument?: boolean }).__sameDocument), 'a full page load').toBeUndefined()
     const consoleFont = await page.evaluate(() => getComputedStyle(document.body).fontFamily)
-    expect(consoleFont).toContain('Atkinson Hyperlegible Next')
-    expect(consoleFont).not.toContain('Geist')
+    // The console shares the site's typeface (docs/design/console-ui.md) but keeps its own stylesheet.
+    expect(consoleFont).toContain('Geist')
     expect(await hasCss(page, '--font-sans'), 'the console has no site styles').toBe(false)
 
     await page.goBack()

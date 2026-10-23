@@ -6,6 +6,7 @@
 import { useState, type FormEvent } from 'react'
 import type { Access, Connection, InstanceRow } from '@/features/console/api'
 import { ago } from '@/features/console/format'
+import { Button, Notice } from '@/features/console/ui'
 import { useApi } from '@/features/console/useApi'
 
 const MIN_REASON = 10
@@ -29,7 +30,7 @@ export function BreakGlass({ conn, onOpen }: { conn: Connection; onOpen: (access
         Open it only to help with a problem. Say why: every page you open is recorded with your reason in that
         owner's own log, and they can read it.
       </p>
-      {instances.error && <p className="error">{instances.error.message}</p>}
+      {instances.error && <Notice tone="danger">{instances.error.message}</Notice>}
       <label>
         Which Ava
         <select value={chosen} onChange={(e) => setInstance(e.target.value)} disabled={!instances.data?.length}>
@@ -51,9 +52,9 @@ export function BreakGlass({ conn, onOpen }: { conn: Connection; onOpen: (access
           placeholder="e.g. the owner reported a reminder that never arrived"
         />
       </label>
-      <button className="primary" type="submit" disabled={!ready}>
+      <Button type="submit" disabled={!ready}>
         Open, and record it in the owner's log
-      </button>
+      </Button>
     </form>
   )
 }

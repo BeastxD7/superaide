@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState, type FormEvent } from 'react'
+import { BrandMark } from '@/components/BrandMark'
 import { api, defaultBase, loadConnection, saveConnection, type Access, type Connection, type Overview as OverviewData } from '@/features/console/api'
 import { BreakGlass } from '@/features/console/components/BreakGlass'
 import { Conversations } from '@/features/console/pages/Conversations'
@@ -9,15 +10,17 @@ import { People } from '@/features/console/pages/People'
 import { SafetyLog } from '@/features/console/pages/SafetyLog'
 import { Simulator } from '@/features/console/pages/Simulator'
 import { SpendPage } from '@/features/console/pages/SpendPage'
+import { Badge, Button, Notice, PageHeader } from '@/features/console/ui'
 import { useApi } from '@/features/console/useApi'
 
+// `about` is the line under each page's title (Overview writes its own heading).
 const TABS = [
-  { key: 'overview', label: 'Overview' },
-  { key: 'people', label: 'People' },
-  { key: 'conversations', label: 'Conversations' },
-  { key: 'log', label: 'Safety log' },
-  { key: 'spend', label: 'Spend' },
-  { key: 'simulator', label: 'Try an impostor' },
+  { key: 'overview', label: 'Overview', about: '' },
+  { key: 'people', label: 'People', about: 'Everyone Ava knows, and every account that has written in.' },
+  { key: 'conversations', label: 'Conversations', about: 'Every chat, and who could see each answer.' },
+  { key: 'log', label: 'Safety log', about: 'Identity checks, refusals and controls, in plain words.' },
+  { key: 'spend', label: 'Spend', about: 'What Claude has cost, against the cap.' },
+  { key: 'simulator', label: 'Try an impostor', about: 'Try to fool Ava without any risk.' },
 ] as const
 type TabKey = (typeof TABS)[number]['key']
 // An owner's content: opened only by break-glass (ADR 0009).
@@ -64,6 +67,11 @@ function Connect({ onConnect }: { onConnect: (c: Connection) => void }) {
   return (
     <main className="connect">
       <form onSubmit={submit}>
+        <div className="c-brand">
+          <BrandMark />
+          <span className="c-brand-name">Superaide</span>
+          <span className="c-brand-tag">Console</span>
+        </div>
         <h1>Connect to your agent</h1>
         <p className="quiet">The dashboard reads the agent's admin API on your laptop. Nothing leaves your machine.</p>
         <label>
@@ -74,10 +82,10 @@ function Connect({ onConnect }: { onConnect: (c: Connection) => void }) {
           Admin token (ADMIN_TOKEN in backend/.env)
           <input type="password" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" />
         </label>
-        <button className="primary" type="submit" disabled={!token}>
+        <Button type="submit" disabled={!token}>
           Connect
-        </button>
-        {error && <p className="error">{error}</p>}
+        </Button>
+        {error && <Notice tone="danger">{error}</Notice>}
       </form>
     </main>
   )
@@ -110,63 +118,78 @@ function Dashboard({ conn, onDisconnect }: { conn: Connection; onDisconnect: () 
     }
   }
 
+  const current = TABS.find((t) => t.key === tab)!
+
   return (
-    <div className={data?.frozen ? 'app paused' : 'app'}>
-      <header className="topbar">
-        <div className="identity">
-          <span className="agent-name">{data?.agent_name ?? 'Agent'}</span>
-          {data && <span className="stage-pill">{data.stage}</span>}
-          {data?.frozen && <span className="paused-note">Paused: no model calls, no replies</span>}
-        </div>
-        <div className="controls">
-          {data && (
-            <button className={data.frozen ? 'pause resume' : 'pause'} onClick={togglePause} disabled={switching}>
-              {data.frozen ? `Resume ${data.agent_name}` : `Pause ${data.agent_name}`}
-            </button>
+    <div className="c-app">
+      <div className="c-bar-wrap">
+        <div className="c-container">
+          <div className="c-bar">
+            <div className="c-brand">
+              <BrandMark />
+              <span className="c-brand-name">Superaide</span>
+              <span className="c-brand-tag">Console</span>
+            </div>
+            <nav className="c-nav" aria-label="Sections">
+              {TABS.map((t) => (
+                <button key={t.key} className="c-tab" aria-current={tab === t.key ? 'page' : undefined} onClick={() => setTab(t.key)}>
+                  {t.label}
+                </button>
+              ))}
+            </nav>
+            <div className="c-bar-end">
+              {data && (
+                <Badge tone={data.frozen ? 'danger' : 'ok'} dot>
+                  {data.frozen ? 'Paused' : 'Running'}
+                </Badge>
+              )}
+              {data && (
+                <Button variant={data.frozen ? 'ok' : 'danger'} onClick={togglePause} disabled={switching}>
+                  {data.frozen ? `Resume ${data.agent_name}` : `Pause ${data.agent_name}`}
+                </Button>
+              )}
+              <Button variant="ghost" onClick={onDisconnect}>
+                Disconnect
+              </Button>
+            </div>
+          </div>
+          {data?.frozen && (
+            <p className="c-banner" role="status">
+              Paused: no model calls, no replies
+            </p>
           )}
-          <button className="link-button" onClick={onDisconnect}>
-            Disconnect
-          </button>
         </div>
-      </header>
+      </div>
 
-      {switchError && (
-        <p className="error" role="alert">
-          {switchError}
-        </p>
-      )}
-
-      <nav className="tabs" aria-label="Sections">
-        {TABS.map((t) => (
-          <button key={t.key} className={tab === t.key ? 'tab on' : 'tab'} aria-current={tab === t.key ? 'page' : undefined} onClick={() => setTab(t.key)}>
-            {t.label}
-          </button>
-        ))}
-      </nav>
-
-      <main className="content">
+      <main className="c-container c-main">
+        {switchError && <Notice tone="danger">{switchError}</Notice>}
         {overview.error && overview.error.status === 401 ? (
-          <p className="error">
+          <Notice tone="danger">
             The admin token was refused. <button className="link-button" onClick={onDisconnect}>Enter it again</button>
-          </p>
+          </Notice>
         ) : overview.error ? (
-          <p className="error">{overview.error.message}</p>
+          <Notice tone="danger">{overview.error.message}</Notice>
         ) : null}
-        {tab === 'overview' && data && <Overview data={data} />}
-        {PRIVATE.includes(tab) && !access && <BreakGlass conn={conn} onOpen={setAccess} />}
-        {PRIVATE.includes(tab) && access && (
-          <p className="break-glass-open">
-            Open for one owner's Ava ({access.instance ? access.instance.slice(0, 8) : "the server's first"}), recorded with your reason: “{access.reason}”.{' '}
-            <button className="link-button" onClick={() => setAccess(null)}>
-              Close
-            </button>
-          </p>
-        )}
-        {tab === 'people' && access && <People conn={opened} />}
-        {tab === 'conversations' && access && <Conversations conn={opened} />}
-        {tab === 'log' && access && <SafetyLog conn={opened} />}
-        {tab === 'spend' && <SpendPage conn={conn} />}
-        {tab === 'simulator' && access && <Simulator conn={opened} enabled={data?.simulator ?? false} agentName={data?.agent_name ?? 'The agent'} />}
+        <div className="c-page" key={tab}>
+          {tab !== 'overview' && <PageHeader title={current.label} description={current.about} />}
+          {tab === 'overview' && data && <Overview data={data} />}
+          {PRIVATE.includes(tab) && !access && <BreakGlass conn={conn} onOpen={setAccess} />}
+          {PRIVATE.includes(tab) && access && (
+            <Notice className="break-glass-open">
+              <span>
+                Open for one owner's Ava ({access.instance ? access.instance.slice(0, 8) : "the server's first"}), recorded with your reason: “{access.reason}”.
+              </span>
+              <button className="link-button" onClick={() => setAccess(null)}>
+                Close
+              </button>
+            </Notice>
+          )}
+          {tab === 'people' && access && <People conn={opened} />}
+          {tab === 'conversations' && access && <Conversations conn={opened} />}
+          {tab === 'log' && access && <SafetyLog conn={opened} />}
+          {tab === 'spend' && <SpendPage conn={conn} />}
+          {tab === 'simulator' && access && <Simulator conn={opened} enabled={data?.simulator ?? false} agentName={data?.agent_name ?? 'The agent'} />}
+        </div>
       </main>
     </div>
   )

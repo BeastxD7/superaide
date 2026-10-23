@@ -67,7 +67,7 @@ export function People({ conn }: { conn: Connection }) {
               accounts you know are yours: anyone else should prove it with a code.
             </p>
           )}
-          <table>
+          <table className="legacy-table">
             <thead>
               <tr>
                 <th>Channel</th>
