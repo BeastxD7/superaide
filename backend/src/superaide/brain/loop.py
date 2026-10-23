@@ -88,6 +88,7 @@ def _action_description() -> str:
         f"approves each kind: {lines}."
     )
 
+
 # In a channel or thread the owner is still the owner, but others can read the reply. Only tools whose result
 # is safe to say in public (or that end in the owner's own approval) are offered there: recall is audience-gated
 # to the public level in SQL; create_reminder only echoes what the owner just wrote; propose_action queues a card
