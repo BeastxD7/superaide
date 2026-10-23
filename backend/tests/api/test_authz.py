@@ -177,6 +177,7 @@ def test_the_owner_cannot_remove_someone_elses_document_or_forget_their_facts(ow
     doc_id, fact_id = _other_persons_rows()
     r = owner.post(f"/app/intro/documents/{doc_id}/remove")
     assert r.status_code == 404 and "priya" not in r.text.lower()
+    assert owner.post(f"/app/intro/documents/{doc_id}/retry").status_code == 404
     r = owner.post(f"/app/notebook/{fact_id}/forget")
     assert r.status_code == 404 and "surprise" not in r.text
     with session_scope() as s:
@@ -188,7 +189,13 @@ def test_the_owner_cannot_remove_someone_elses_document_or_forget_their_facts(ow
 
 
 @pytest.mark.parametrize(
-    "path", ["/app/intro/documents/{}/remove", "/app/notebook/{}/forget", "/app/notebook/{}/confirm"]
+    "path",
+    [
+        "/app/intro/documents/{}/remove",
+        "/app/intro/documents/{}/retry",
+        "/app/notebook/{}/forget",
+        "/app/notebook/{}/confirm",
+    ],
 )
 def test_ids_that_dont_exist_or_arent_ids(owner, path):
     assert owner.post(path.format(uuid.uuid4())).status_code == 404
@@ -213,7 +220,7 @@ PUBLIC_CARD = {("GET", "/p/card/{token}")}  # the Principal Card (#135), tested 
 
 def test_the_only_public_routes_outside_app_and_auth_are_the_ask_link(app):
     """A new public route has to be added here on purpose (and tested in tests/api/test_ask_link.py)."""
-    assert set(app_routes(app, "/p")) == PUBLIC_ASK
+    assert set(app_routes(app, "/p")) == PUBLIC_ASK | PUBLIC_CARD
 
 
 def test_public_ask_routes_are_404_while_off_and_carry_no_owner_data(browser, owner_data):
