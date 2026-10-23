@@ -238,6 +238,28 @@
         "title": "Body_turn_app_intro_voice_turn_post",
         "type": "object"
       },
+      "BondBody": {
+        "properties": {
+          "amount_minor": {
+            "maximum": 100000000.0,
+            "minimum": 1.0,
+            "title": "Amount Minor",
+            "type": "integer"
+          },
+          "creator": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Creator",
+            "type": "string"
+          }
+        },
+        "required": [
+          "creator",
+          "amount_minor"
+        ],
+        "title": "BondBody",
+        "type": "object"
+      },
       "BusyBody": {
         "properties": {
           "minutes": {
@@ -1426,6 +1448,41 @@
           "answer"
         ],
         "title": "RecheckBody",
+        "type": "object"
+      },
+      "RefundBody": {
+        "properties": {
+          "amount_minor": {
+            "maximum": 100000000.0,
+            "minimum": 1.0,
+            "title": "Amount Minor",
+            "type": "integer"
+          },
+          "creator": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Creator",
+            "type": "string"
+          },
+          "reason": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Reason",
+            "type": "string"
+          },
+          "skill_id": {
+            "maxLength": 120,
+            "pattern": "^[a-z0-9-]+/[a-z0-9-]+$",
+            "title": "Skill Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "creator",
+          "amount_minor",
+          "skill_id"
+        ],
+        "title": "RefundBody",
         "type": "object"
       },
       "ReleaseBody": {
@@ -10818,6 +10875,187 @@
         "summary": "Choose which lesson categories may be shared",
         "tags": [
           "Owner: Ava School"
+        ]
+      }
+    },
+    "/app/skill-payouts": {
+      "get": {
+        "description": "404 while off.",
+        "operationId": "overview_app_skill_payouts_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Overview App Skill Payouts Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Ledger, balances, bonds and the dry-run simulation",
+        "tags": [
+          "Owner: skills"
+        ]
+      }
+    },
+    "/app/skill-payouts/accrue": {
+      "post": {
+        "operationId": "accrue_app_skill_payouts_accrue_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Accrue App Skill Payouts Accrue Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Write ledger lines for accepted outcomes and clawbacks",
+        "tags": [
+          "Owner: skills"
+        ]
+      }
+    },
+    "/app/skill-payouts/bond": {
+      "post": {
+        "operationId": "bond_app_skill_payouts_bond_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BondBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Bond App Skill Payouts Bond Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Record a refund bond a creator posted (no money moves)",
+        "tags": [
+          "Owner: skills"
+        ]
+      }
+    },
+    "/app/skill-payouts/refund": {
+      "post": {
+        "operationId": "refund_app_skill_payouts_refund_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefundBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Refund App Skill Payouts Refund Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Owe a harmed owner a refund, drawn from the creator's bond",
+        "tags": [
+          "Owner: skills"
+        ]
+      }
+    },
+    "/app/skill-payouts/settle": {
+      "post": {
+        "operationId": "settle_app_skill_payouts_settle_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Settle App Skill Payouts Settle Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Ask the settlement provider to pay what is due (the null one pays nothing)",
+        "tags": [
+          "Owner: skills"
         ]
       }
     },
