@@ -194,10 +194,13 @@ def test_a_stop_between_jobs_gives_back_the_claims_that_never_started(ran):
         stop.set()  # a shutdown arrives while the first job runs
 
     run_due(NOW, stop=stop)
-    assert ran == ["0"]
+    # Which job is claimed first is not what this test is about (it varies when the database is busy):
+    # exactly one ran, and the claims that never started went back at once.
+    assert len(ran) == 1
+    first = int(ran[0])
     rows = {j.payload["n"]: j for j in jobs_of("ok")}
-    assert rows[0].status == "done"
-    for n in (1, 2):
+    assert rows[first].status == "done"
+    for n in {0, 1, 2} - {first}:
         assert rows[n].status == "queued" and rows[n].attempts == 0  # not "running" for 10 more minutes
     assert run_due(NOW) == 2
 
