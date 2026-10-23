@@ -1583,6 +1583,38 @@
         "title": "SearchKeyBody",
         "type": "object"
       },
+      "SharingBody": {
+        "properties": {
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Categories",
+            "type": "array"
+          },
+          "trusted_keys": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 50,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trusted Keys"
+          }
+        },
+        "required": [
+          "categories"
+        ],
+        "title": "SharingBody",
+        "type": "object"
+      },
       "SignupBody": {
         "properties": {
           "email": {
@@ -10123,6 +10155,81 @@
           }
         ],
         "summary": "Agree (or stop agreeing) to share a lesson",
+        "tags": [
+          "Owner: Ava School"
+        ]
+      }
+    },
+    "/app/school/sharing": {
+      "get": {
+        "description": "Default none. Only lessons whose category (role) you allow here go into a signed file.",
+        "operationId": "sharing_app_school_sharing_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Sharing App School Sharing Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Which lesson categories may be shared",
+        "tags": [
+          "Owner: Ava School"
+        ]
+      },
+      "put": {
+        "operationId": "set_sharing_app_school_sharing_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharingBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Set Sharing App School Sharing Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Choose which lesson categories may be shared",
         "tags": [
           "Owner: Ava School"
         ]
