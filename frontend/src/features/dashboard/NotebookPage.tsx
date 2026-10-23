@@ -1,6 +1,6 @@
 'use client'
 
-import { Network, Scale, Search } from 'lucide-react'
+import { Network, Scale, Search, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { AnimatePresence, motion } from 'motion/react'
 import { useMemo, useState } from 'react'
@@ -23,6 +23,10 @@ export function NotebookPage() {
   const files = useAppData<SharedDoc[]>('/intro/documents')
   const failed = (files.data ?? []).filter((d) => d.status === 'failed')
   const [retrying, setRetrying] = useState<string | null>(null)
+
+
+  // The Mirror answers 404 while the server has it off; the link shows only when it answers.
+  const mirror = useAppData<{ enabled: boolean }>('/mirror')
   const [filter, setFilter] = useState<string>('all')
   const [where, setWhere] = useState<string>('all')
   const [query, setQuery] = useState('')
@@ -128,6 +132,15 @@ export function NotebookPage() {
               </div>
             ))}
           </section>
+        )}
+
+        {mirror.data && (
+          <Link
+            href="/dashboard/notebook/mirror"
+            className="mt-4 inline-flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-sm font-medium text-ink hover:bg-surface"
+          >
+            <Sparkles className="size-4 text-violet-700" aria-hidden /> The Mirror: patterns with receipts
+          </Link>
         )}
 
 

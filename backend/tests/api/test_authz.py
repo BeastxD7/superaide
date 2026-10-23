@@ -49,6 +49,7 @@ FLAG_GATED = {
     # The introduction's voice call, v2 (VOICE_INTRO_V2, ADR 0012); its POSTs are enumerated like every route.
     ("GET", "/app/intro/voice"),
     ("GET", "/app/import-leases"),  # IMPORT_LEASE_ENABLED (#133)
+    ("GET", "/app/mirror"),  # "The Mirror" (MIRROR_ENABLED)
 }
 SECRET_NOTE = "Project Bluebird is my secret side project"
 
@@ -381,6 +382,25 @@ def test_the_journal_routes_are_owner_routes_and_leak_nothing(app, browser, owne
     stranger = browser()
     signup(stranger, name="Mallory Tan", email="mallory@example.com")
     for method, path in JOURNAL_ROUTES:
+        r = stranger.request(method, fill_path(path), json={} if method == "POST" else None)
+        assert r.status_code == 403
+        _assert_no_owner_data(r, owner_data)
+
+
+# --- the Mirror (/app/mirror, MIRROR_ENABLED) --------------------------------------------------
+
+MIRROR_ROUTES = {
+    ("GET", "/app/mirror"),
+    ("POST", "/app/mirror/settings"),
+    ("POST", "/app/mirror/notes/{note_id}/findings/{index}/feedback"),
+}
+
+
+def test_the_mirror_routes_are_owner_routes_behind_a_flag(app, browser, owner_data):
+    assert MIRROR_ROUTES <= set(owner_routes(app))
+    stranger = browser()
+    signup(stranger, name="Mallory Tan", email="mallory@example.com")
+    for method, path in MIRROR_ROUTES:
         r = stranger.request(method, fill_path(path), json={} if method == "POST" else None)
         assert r.status_code == 403
         _assert_no_owner_data(r, owner_data)

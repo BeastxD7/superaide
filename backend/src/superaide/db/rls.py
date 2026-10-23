@@ -49,6 +49,8 @@ TABLES: tuple[str, ...] = (
     "intention",
     "journal_setting",  # the decision journal ("Ava keeps score")
     "prediction",
+    "mirror_note",  # "The Mirror"
+    "mirror_setting",
     "job",
     "link_challenge",
     "llm_provider",
