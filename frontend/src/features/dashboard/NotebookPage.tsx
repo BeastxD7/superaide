@@ -3,7 +3,7 @@
 import { MessagesSquare, Network, Scale, Search, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { AnimatePresence, motion } from 'motion/react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ActionError, LoadError } from '@/components/load-state'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -43,6 +43,24 @@ export function NotebookPage() {
   const name = me?.agent.name ?? 'Ava'
 
   const memories = data?.memories
+  // A link from a [n] mark in the chat lands on #note-<id>: show every note, scroll to it and mark it. A note
+  // that was forgotten since says so, instead of leaving a dead link.
+  const [focusNote, setFocusNote] = useState<{ id: string; found: boolean } | null>(null)
+  useEffect(() => {
+    if (!memories) return
+    const m = /^#note-([0-9a-f-]{8,64})$/i.exec(window.location.hash)
+    if (!m) return
+    const found = memories.some((x) => x.id === m[1])
+    setFocusNote({ id: m[1], found })
+    if (found) {
+      setFilter('all')
+      setWhere('all')
+      setQuery('')
+      window.requestAnimationFrame(() =>
+        document.getElementById(`note-${m[1]}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }),
+      )
+    }
+  }, [memories])
   const categories = useMemo(() => [...new Set((memories ?? []).map((m) => m.category))], [memories])
   // The kind filter can outlive its last note (forgotten, or gone after a reload): fall back to Everything.
   const active = categories.includes(filter) ? filter : 'all'
@@ -298,6 +316,11 @@ export function NotebookPage() {
           </div>
         )}
 
+        {focusNote && !focusNote.found && (
+          <p role="status" className="mt-6 rounded-xl border border-dashed border-line p-4 text-sm text-body">
+            This source was deleted. {name} no longer has that note.
+          </p>
+        )}
         <ul className="mt-6 space-y-2">
           {!memories &&
             !error &&
@@ -311,11 +334,13 @@ export function NotebookPage() {
             {shown.map((m) => (
               <motion.li
                 key={m.id}
+                id={`note-${m.id}`}
                 layout
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, x: 24, transition: { duration: 0.2 } }}
-                className="rounded-xl border border-line bg-white p-4"
+                data-highlighted={focusNote?.found && focusNote.id === m.id ? 'true' : undefined}
+                className="rounded-xl border border-line bg-white p-4 data-[highlighted=true]:border-violet-500 data-[highlighted=true]:ring-2 data-[highlighted=true]:ring-violet-300"
               >
                 <div className="mb-2 flex flex-wrap items-center gap-1.5 text-xs text-muted">
                   <Badge variant="secondary" className="text-violet-700">
