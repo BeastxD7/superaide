@@ -3,6 +3,7 @@
 import AxeBuilder from '@axe-core/playwright'
 import type { Page } from '@playwright/test'
 import { expect, test } from '../src/fixtures'
+import { triageOn } from '../src/helpers/triage'
 
 const at = '2026-10-22T10:00:00Z'
 
@@ -46,6 +47,7 @@ test('dashboard pages have no axe violations', async ({ page, owner }) => {
 
 test('the Needs-you list switcher is a group of toggle buttons that work from the keyboard', async ({ page, owner }) => {
   void owner
+  await triageOn(page)
   await page.route('**/api/app/needs-you', (r) =>
     r.fulfill({ json: { needs_you: [], handled: [], held: [], counts: { needs_you: 0, handled: 0, held: 0 }, stage: 'infant' } }),
   )

@@ -55,7 +55,7 @@ def test_every_admin_route_needs_the_right_token(app, browser, authorization):
     for method, path in admin_routes(app):
         r = _call(c, method, path, headers)
         assert r.status_code == 401, (method, path, authorization, r.status_code)
-        assert r.json() == {"detail": "Bad admin token"}
+        assert r.json()["detail"] == "Bad admin token"
     with session_scope() as s:
         assert not is_frozen(s)  # the kill switch wasn't flipped
     assert _events() == 0  # and nothing was simulated

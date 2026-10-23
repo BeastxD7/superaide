@@ -47,6 +47,10 @@ Migrations live in `backend/alembic/versions/`. CI checks that they match the mo
 
 `vault/` keeps connected credentials. The master key comes from `SECRETS_MASTER_KEY`, else the OS keychain, else a key file readable only by the user. Each credential is checked with its service before it is saved, and only a hint is shown back. When credentials change, the agent and the channel listeners are rebuilt in place.
 
+## API responses
+
+Every error is one envelope (`status`, `status_code`, `message`, `data`, `error{code, detail, request_id}`) built in `backend/src/superaide/envelope.py`, with an `X-Request-ID` on every response. See ADR 0013.
+
 ## Decisions
 
 Significant choices are recorded in [decisions/](decisions/).

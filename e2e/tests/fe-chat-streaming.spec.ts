@@ -4,6 +4,7 @@
 import type { Page } from '@playwright/test'
 import { ADMIN_TOKEN } from '../src/env'
 import { expect, test } from '../src/fixtures'
+import { triageOn } from '../src/helpers/triage'
 
 function sse(events: [string, unknown][]): string {
   return ': open\n\n' + events.map(([event, data]) => `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`).join('')
@@ -119,6 +120,7 @@ const NEEDS_YOU = { needs_you: [], handled: [], held: [], counts: { needs_you: 0
 // The sidebar, the tab bar and the page each ask once, so "the first call" is really "while it is down".
 async function needsYouDown(page: Page): Promise<{ up: () => void }> {
   let down = true
+  await triageOn(page)
   await page.route('**/api/app/needs-you', (route) =>
     down ? route.fulfill({ status: 502, body: 'bad gateway' }) : route.fulfill({ json: NEEDS_YOU }),
   )

@@ -1,6 +1,6 @@
 // The person-facing API under /app on the backend. Signed-in calls send the
 // session token that /app/hire (or the owner-link command) gave this browser.
-import { API_URL, ApiError, createClient, errorFromDetail } from '@/lib/http'
+import { API_URL, ApiError, createClient, errorFromBody, type ErrorBody } from '@/lib/http'
 
 export type Hue = 'indigo' | 'sky' | 'rose'
 
@@ -26,6 +26,8 @@ export type Me = {
   onboarding: { step: string; done: boolean }
   brain: 'claude' | 'offline'
   paused: boolean
+  // Which optional parts of the product this server has switched on. Optional: an older API doesn't send it.
+  features?: { triage?: boolean }
   channels: {
     web: boolean
     telegram: boolean
@@ -269,8 +271,8 @@ export async function streamChat(text: string, onEvent: (e: ChatEvent) => void, 
     throw new ApiError(0, "Can't reach Superaide. Check your connection, or that start.command is still running.")
   }
   if (!res.ok || !res.body) {
-    const body = (await res.json().catch(() => null)) as { detail?: unknown } | null
-    const err = errorFromDetail(res.status, body?.detail, `Request failed (${res.status})`)
+    const body = (await res.json().catch(() => null)) as ErrorBody | null
+    const err = errorFromBody(res.status, body, `Request failed (${res.status})`)
     sessionEnded(err, '/app/chat/stream')
     throw err
   }
@@ -327,8 +329,8 @@ export async function streamApp(
     throw new ApiError(0, "Can't reach Superaide. Check your connection, or that start.command is still running.")
   }
   if (!res.ok || !res.body) {
-    const detail = (await res.json().catch(() => null)) as { detail?: unknown } | null
-    throw errorFromDetail(res.status, detail?.detail, `Request failed (${res.status})`)
+    const body = (await res.json().catch(() => null)) as ErrorBody | null
+    throw errorFromBody(res.status, body, `Request failed (${res.status})`)
   }
   await readEvents(res.body, (event, data) => onEvent(event, data as Record<string, unknown>))
 }

@@ -38,18 +38,17 @@ export function createClient(baseURL: string, { token, withCredentials = false }
   })
   client.interceptors.response.use(
     (res) => res,
-    (err: AxiosError<{ detail?: unknown }>) => {
+    (err: AxiosError<ErrorBody>) => {
       if (!err.response) {
         return Promise.reject(new ApiError(0, "Can't reach Superaide. Check your connection, or that start.command is still running."))
       }
       const { status, data } = err.response
-      const detail = data?.detail
-      if (status === 404 && detail === 'Not Found') {
+      if (status === 404 && data?.detail === 'Not Found') {
         return Promise.reject(
           new ApiError(404, 'The Superaide API is an older version without this feature. Stop it and run start.command again.'),
         )
       }
-      return Promise.reject(errorFromDetail(status, detail, err.message))
+      return Promise.reject(errorFromBody(status, data, err.message))
     },
   )
   return client
@@ -67,4 +66,22 @@ export function errorFromDetail(status: number, detail: unknown, fallback: strin
     return new ApiError(status, first?.msg ?? 'Check the form and try again.', first?.loc?.at(-1))
   }
   return new ApiError(status, typeof detail === 'string' ? detail : fallback)
+}
+
+// The standard error body (ADR 0013): { status, status_code, message, data, error: { code, detail, request_id } }.
+// `detail` at the top level is the old shape, kept for one release.
+export type ErrorBody = {
+  message?: string
+  detail?: unknown
+  error?: { code?: string; detail?: unknown; request_id?: string } | null
+}
+
+// Read an error response body: `error.message` first (the envelope's `message`), the old `detail` as the fallback.
+export function errorFromBody(status: number, body: ErrorBody | null | undefined, fallback: string): ApiError {
+  const nested = body?.error?.detail
+  // Validation: the per-field list keeps the field name so the form can mark it.
+  if (Array.isArray(nested) || Array.isArray(body?.detail)) return errorFromDetail(status, nested ?? body?.detail, fallback)
+  const field = nested && typeof nested === 'object' && 'field' in nested ? String((nested as { field: unknown }).field) : undefined
+  if (typeof body?.message === 'string' && body.message) return new ApiError(status, body.message, field)
+  return errorFromDetail(status, body?.detail, fallback)
 }
