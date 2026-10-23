@@ -406,13 +406,42 @@ jobs:
           # (the action's default, 8.24.3, ignores them).
           GITLEAKS_VERSION: 8.28.0
 
+  # Every feat or fix PR that changes source ships a test (CONTRIBUTING.md, docs/0013). Only runs on pull
+  # requests. Title, labels and files are read live from the API, so editing the title or adding the
+  # `tests-not-needed` label and re-running this job is enough. No third-party action, no checkout of the PR.
+  tests-required:
+    name: Tests required (feat and fix)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts/tests_required.py
+          sparse-checkout-cone-mode: false
+      - name: Feat and fix change tests too
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          # Only the script is checked out; the PR itself is read through the API.
+          pr=$(gh api "repos/$REPO/pulls/$PR")
+          export PR_TITLE=$(echo "$pr" | jq -r .title)
+          export PR_LABELS=$(echo "$pr" | jq -r '[.labels[].name] | join(",")')
+          gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[].filename' | python3 scripts/tests_required.py
+
   # The one check to require in branch protection. Skipped jobs count as success, a failed or
   # cancelled one (or an unexpected state) fails it. Without this, a required job that was
   # skipped would stay pending forever.
   result:
     name: CI result
     if: always()
-    needs: [changes, backend, frontend, e2e, e2e-smoke, images, secrets]
+    needs: [changes, backend, frontend, e2e, e2e-smoke, images, secrets, tests-required]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
@@ -448,3 +477,9 @@ jobs:
           [ "$smoke" != true ] || [ "$(res e2e-smoke)" = success ] || { echo "::error::smoke e2e was required but is $(res e2e-smoke)"; exit 1; }
           want=$(echo "$NEEDS" | jq -r '.changes.outputs.docker')
           [ "$want" != true ] || [ "$(echo "$NEEDS" | jq -r '.images.result')" = success ] || { echo "::error::images was required but did not succeed"; exit 1; }
+          # tests-required only runs on pull requests (the job decides by PR title type, so a docs PR
+          # passes it). Anywhere else it is skipped. On a pull request a skipped one fails closed.
+          tr=$(echo "$NEEDS" | jq -r '.["tests-required"].result')
+          if [ "$EVENT" = pull_request ]; then
+            [ "$tr" = success ] || { echo "::error::tests-required is $tr: a feat or fix pull request must change a test file (see its log)"; exit 1; }
+          fi

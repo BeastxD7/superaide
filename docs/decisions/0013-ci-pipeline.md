@@ -68,6 +68,16 @@ Any backend change used to run all four e2e shards. The browser suite only notic
 
 What this accepts: a backend change that alters behaviour without altering the schema (say, how a reply is worded) is checked by the backend tests and the smoke subset, not the full browser suite, until it reaches `main`, where the full suite runs on every push.
 
+## Tests required for feat and fix (added 2026-10-23)
+
+Rule (owner): whenever a feature is built, test cases are added for it. It is in CONTRIBUTING.md ("Every change ships with tests"), the PR template and CLAUDE.md, and CI enforces the checkable part.
+
+- Job `tests-required` runs on pull requests only. It reads the PR title, labels and file list live through the API (`gh api`, no third-party action, only `scripts/tests_required.py` is checked out) and runs that script. Reading live means that fixing the title or adding the label and re-running the job is enough; no extra workflow triggers are needed.
+- It fails when the title type is `feat` or `fix` (`feat(scope):`, `fix!:`), a file under `backend/src/`, `frontend/src/` or `e2e/src/` changed, and no test file did (`backend/tests/**`, `frontend/**/*.test.*` or `*.spec.*`, `e2e/tests/**`). Other types, PRs that touch no source (docs only), and titles without a Conventional prefix (a warning) pass.
+- The label `tests-not-needed` skips it; the PR body must give a one-line reason.
+- `CI result` requires it on `pull_request` events (fail closed: skipped or failed fails the gate) and ignores it elsewhere, since it never runs on main pushes, merge groups, workflow_call or manual runs.
+- Limits: it proves a test file changed, not that it is good. Review still judges the test.
+
 ## Plan
 
 1. Change detection and the gate (this PR).

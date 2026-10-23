@@ -113,6 +113,24 @@ These come from the architecture and are checked in review:
 
 ## Tests, end to end and evals
 
+### Every change ships with tests
+
+A feature or behaviour change is not done until its tests are in the same pull request.
+
+- **Backend logic:** pytest tests with the fake model (`backend/tests/`).
+- **Anything a user can see:** also an end-to-end (Playwright, `e2e/tests/`) or Vitest test.
+- **A feature behind a flag:** test it with the flag off and on.
+- **Identity, trust, memory audience or approvals:** also a negative test (`backend/tests/redteam/` or the `test_auth_negative.py` style) that shows the wrong person is refused.
+- **New `/app` routes:** classify each in `tests/api/test_authz.py` and `test_auth_negative.py`.
+- **A bug fix:** a regression test that fails before the fix and passes after it.
+- **New settings:** add them to `.env.example` (`make check-env`).
+
+Exempt: docs-only changes, pure refactors that change no behaviour and are covered by existing tests, CI, chore and build tooling, and dependency bumps. Say why in the "Tests" section of the PR (`No tests needed because ...`).
+
+CI enforces it: a pull request titled `feat` or `fix` that changes a file under `backend/src/`, `frontend/src/` or `e2e/src/` and no test file (`backend/tests/**`, `frontend/**/*.test.*` or `*.spec.*`, `e2e/tests/**`) fails the `Tests required` job, and so `CI result`. Other types (`docs`, `chore`, `ci`, `build`, `refactor`, `perf`, `test`, `style`) are not checked. If a `feat` or `fix` truly needs no test, a maintainer adds the label `tests-not-needed`; the PR body must give a one-line reason. Then re-run the job. The logic is `scripts/tests_required.py` ([ADR 0013](docs/decisions/0013-ci-pipeline.md)).
+
+### Details
+
 - **Backend tests** run against a real Postgres (`TEST_DATABASE_URL`, wiped on every run, so it must differ from `DATABASE_URL`) and a fake model, so they never spend money or call Claude, Telegram, Slack or websites. Add a test for every behaviour change; impostor and privacy scenarios go in `backend/tests/redteam/`.
   CI runs them in parallel (`pytest -n auto`, one database per worker named `<test database>_gw0`, `_gw1`, ...). Locally `uv run pytest` stays serial; add `-n 4` to parallelise, or `-p no:xdist` to rule parallelism out when debugging. See [ADR 0013](docs/decisions/0013-ci-pipeline.md).
 - **End to end** (`e2e/`, Playwright) runs each stack in its own slot. See [e2e/README.md](e2e/README.md).

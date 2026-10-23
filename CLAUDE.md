@@ -39,6 +39,7 @@ Read `README.md` for the overview and `docs/architecture.md` for how a request f
 
 ## Conventions
 
+- **Every feature or behaviour change ships with tests** (backend + e2e/vitest for UI, flag off and on, negative/redteam for security code, a regression test per bug fix); exempt only docs/refactor/ci/chore/deps with a stated reason. CI fails a `feat`/`fix` PR that changes source but no test.
 - Conventional Commits (`feat:`, `fix(auth):`, `test(e2e):` …), small commits, a test with every behaviour change.
 - Copy in the UI: plain words, sentence case, active voice; errors say what to do next.
 - A bug found by a test agent gets a failing test first (`test.fail(true, 'BUG: …')` or `xfail(strict=True)`), then the fix.

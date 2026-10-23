@@ -35,6 +35,16 @@
 | Tests and evals | |
 | Docs | |
 
+## Tests
+
+<!-- Every feat and fix ships tests (CONTRIBUTING.md, "Every change ships with tests"); CI fails a feat or fix without a test file. -->
+
+- [ ] Tests added or updated: <!-- name the files -->
+- [ ] Flag covered both off and on, or no flag
+- [ ] Negative or redteam test for security-relevant code (identity, trust, memory audience, approvals), or not security-relevant
+- [ ] Bug fix: a regression test that fails before the fix
+- [ ] No tests needed because <!-- docs / refactor / ci / chore / deps, plus a one-line reason. For a feat or fix, a maintainer adds the label `tests-not-needed` -->
+
 ## How it was tested
 
 <!-- The same checks CI runs. Tick what you ran; strike through what doesn't apply. -->
