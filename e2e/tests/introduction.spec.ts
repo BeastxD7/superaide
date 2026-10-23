@@ -907,7 +907,7 @@ test.describe('coming back to the introduction', () => {
     await api.answer('connect', { choice: 'done' })
     await page.goto('/dashboard/chat')
     await expect(page).toHaveURL(/\/dashboard\/chat$/)
-    await expect(page.getByRole('heading', { name: /^Hello, \w+\. What shall we work on\?$/ })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: /^Your conversation with \w+$/ })).toBeVisible()
     // The old /workspace link goes to the same chat.
     await page.goto('/workspace')
     await expect(page).toHaveURL(/\/dashboard\/chat$/)

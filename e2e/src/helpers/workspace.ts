@@ -141,9 +141,22 @@ export function homeHeading(page: Page, person: Person) {
   return page.getByRole('heading', { level: 1, name: new RegExp(`^Good (morning|afternoon|evening), ${first}$`) })
 }
 
-// The chat page's greeting.
+// The chat page's heading: visually hidden, so the page keeps an h1 (the greeting only shows in an empty conversation).
 export function chatHeading(page: Page, person: Person) {
-  return page.getByRole('heading', { level: 1, name: `Hello, ${person.name.split(' ')[0]}. What shall we work on?` })
+  void person
+  return page.getByRole('heading', { level: 1, name: 'Your conversation with Ava' })
+}
+
+// A chat with no history, to see the empty state and its quick actions (the owner's conversation always has the introduction in it
+// otherwise). The saved messages are hidden until the first message is sent, then the real ones come through.
+export async function openEmptyChat(page: Page): Promise<void> {
+  let sent = false
+  page.on('request', (r) => {
+    if (r.method() === 'POST' && r.url().includes('/api/app/chat')) sent = true
+  })
+  await page.route('**/api/app/messages**', (route) => (sent ? route.fallback() : route.fulfill({ json: [] })))
+  await page.goto('/dashboard/chat')
+  await expect(page.getByTestId('chat-empty')).toBeVisible()
 }
 
 // On a phone the sidebar is a sheet behind the "Toggle Sidebar" button.

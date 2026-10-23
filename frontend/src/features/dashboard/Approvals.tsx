@@ -106,6 +106,20 @@ export function ApprovalsCard({ name, empty = null, showExpired = false }: { nam
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-ink">{KIND_LABEL[a.kind] ?? a.kind}</p>
                 <p className="mt-0.5 break-words text-sm text-body">{a.summary}</p>
+                {a.executes === false ? (
+                  <p
+                    className="mt-1 break-words rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-900"
+                    data-testid="approval-no-executor"
+                  >
+                    Approving this will not do anything. {a.on_approval}
+                  </p>
+                ) : (
+                  a.on_approval && (
+                    <p className="mt-1 break-words text-xs text-muted" data-testid="approval-on-approval">
+                      If you say yes: {a.on_approval}
+                    </p>
+                  )
+                )}
                 {a.origin === 'voice' && a.readback && <VoiceReadback readback={a.readback} />}
                 {a.notes?.map((n) => (
                   <p key={n} className="mt-1 break-words text-xs text-violet-700">
