@@ -413,6 +413,9 @@ class Settings(BaseSettings):
     # Off: /app/mirror/* answer 404 (owner routes still 401/403 first). On: an owner may opt in. The patterns
     # are counted in code and worded from templates, so it makes no model call at all.
     mirror_enabled: bool = False
+    # How long a list's "next page" cursor stays valid (ADR 0014). Cursors are signed and bound to one list and
+    # one owner; expiry only bounds how long a leaked one is useful. A page left open longer reloads the list.
+    pagination_cursor_max_age_s: int = 24 * 3600
     # Signs the public form's token (time-to-submit and same-form check). Blank: a random key per
     # process, so a restart only means a visitor reloads the page.
     ask_form_secret: str = ""
