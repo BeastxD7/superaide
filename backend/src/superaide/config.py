@@ -238,6 +238,9 @@ class Settings(BaseSettings):
     # marked as voice-origin; it can be approved only by a tap in a text channel, never by what is said, and the
     # call reads it back as a structured proposal and never says it is done. The voice shell holds no tools.
     voice_two_channel: bool = False
+    # Import lease (#133). Off: /app/import-leases/* answer 404. On: the owner can bring in context cards
+    # converted on their own machine from a third-party export, under a time-limited lease that erases them.
+    import_lease_enabled: bool = False
     gmail_poll_minutes: int = 5
     # The owner's Gmail sign-in (same OAuth client as Calendar); kept per instance in the vault.
     gmail_refresh_token: str = ""

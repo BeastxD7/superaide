@@ -213,6 +213,8 @@ class MemoryItem(Scoped, Base):
     source: Mapped[str] = mapped_column(String(30), default="chat", server_default="chat")
     document_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("document.id"), nullable=True, index=True)
     confidence: Mapped[float] = mapped_column(Float, default=1.0, server_default="1")
+    # The import lease this card came in under (imports/lease.py, #133); ending the lease deletes the row.
+    lease_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("import_lease.id"), nullable=True, index=True)
     # fact | hearsay (#137): hearsay came from outside the owner and has fewer than two independent roots.
     belief_state: Mapped[str] = mapped_column(String(10), default="fact", server_default="fact")
 
@@ -729,6 +731,7 @@ class CalendarWatch(Scoped, Base):
 # the tests' create_all) sees them.
 from superaide.asklink import models as _asklink_models  # noqa: E402, F401
 from superaide.auth import models as _auth_models  # noqa: E402, F401
+from superaide.imports import models as _imports_models  # noqa: E402, F401
 from superaide.jobs import claim as _job_claim  # noqa: E402, F401  (the claim function, made after the job table)
 from superaide.push import models as _push_models  # noqa: E402, F401
 from superaide.reception import models as _reception_models  # noqa: E402, F401
