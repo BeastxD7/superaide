@@ -48,14 +48,16 @@
     },
     {
       "name": "gmail_send",
-      "description": "Ask the owner to approve sending a reply in a thread. Saves it as a draft and waits for their OK; it is sent only after they approve.",
+      "description": "Ask the owner to approve sending a reply in a thread. Read the thread first (gmail_read_thread). Code checks the history: if the message would not reach a person (an automated or unmonitored address, a contact page as the route), NO approval is created and you get the findings back; tell the owner plainly and offer alternatives. Otherwise it saves a draft and waits for their OK; it is sent only after they approve.",
       "inputSchema": {
         "type": "object",
         "properties": {
           "thread_id": {"type": "string", "description": "The thread id from gmail_search"},
-          "text": {"type": "string", "description": "The reply's text"}
+          "text": {"type": "string", "description": "The reply's text"},
+          "reaches_a_person": {"type": "string", "enum": ["yes", "no", "unknown"], "description": "Whether a person will read this reply, from what you read in the thread. Anything but yes is not sent for approval."},
+          "evidence": {"type": "string", "description": "Why you believe that, from the thread (one sentence)"}
         },
-        "required": ["thread_id", "text"],
+        "required": ["thread_id", "text", "reaches_a_person", "evidence"],
         "additionalProperties": false
       },
       "effect": "send"

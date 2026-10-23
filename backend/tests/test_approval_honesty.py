@@ -83,7 +83,11 @@ def test_the_tool_description_tells_the_model_what_each_kind_does():
 def test_approving_a_card_with_no_executor_says_it_did_nothing(owner_client):
     with session_scope() as s:
         script = Script(
-            tool_use("propose_action", {"kind": "message_someone_else", "summary": "x", "rationale": "y"}), "ok"
+            tool_use(
+                "propose_action",
+                {"kind": "message_someone_else", "summary": "x", "rationale": "y", "reaches_a_person": "yes"},
+            ),
+            "ok",
         )
         turn_for(s, script).run([{"role": "user", "content": "x"}])
     got = owner_client.get("/app/approvals").json()
