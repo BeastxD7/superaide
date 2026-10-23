@@ -259,3 +259,51 @@ def test_sharing_the_same_file_at_the_same_moment_is_not_a_server_error(client, 
     assert r.status_code == 200, r.text
     assert r.json()["duplicate"] is True
     assert len(client.get("/app/intro/documents").json()) == 1
+
+
+def test_a_document_whose_facts_cannot_be_saved_is_failed_not_read_and_can_be_retried(client, brain, monkeypatch):
+    """The fact insert raised (e.g. a missing column) and the document still ended as 'read' with 0 facts."""
+    import superaide.knowledge.ingest as ingest_module
+
+    real = ingest_module.remember_fact
+
+    def broken(*a, **k):
+        raise RuntimeError("column memory_item.importance does not exist")
+
+    monkeypatch.setattr(ingest_module, "remember_fact", broken)
+    body = upload(client, "cv.txt", b"Shashank Rao. Applied AI lead at PebbleRoad.").json()
+    assert body["status"] == "failed" and "try again" in body["message"] and body["facts"] == 0
+    [doc] = client.get("/app/intro/documents").json()
+    assert doc["status"] == "failed" and any("Reading failed" in w for w in doc["warnings"])
+    assert "column" not in str(doc)  # only the error type is kept
+    said = [m["text"] for m in client.get("/app/messages").json()]
+    assert any("couldn't read cv.txt" in t and "try again" in t for t in said)
+    # Retry, once the fault is gone, reads it for real.
+    monkeypatch.setattr(ingest_module, "remember_fact", real)
+    r = client.post(f"/app/intro/documents/{doc['id']}/retry")
+    assert r.status_code == 200 and r.json() == {"status": "read", "facts": 2, "read": True}
+    assert client.get("/app/intro/documents").json()[0]["status"] == "read"
+
+
+def test_pending_documents_that_fail_to_save_are_failed_too(client, agent, brain, monkeypatch):
+    import superaide.knowledge.ingest as ingest_module
+
+    doc_id = upload(client, "cv.txt", b"Shashank Rao. Applied AI lead.").json()["document_id"]
+    with session_scope() as s:
+        d = s.get(Document, doc_id)
+        d.status = "stored"  # as if saved while offline
+        owner_id = d.owner_person_id
+
+    def broken(*a, **k):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(ingest_module, "remember_fact", broken)
+    results = ingest_module.read_documents(agent, owner_id)
+    assert [r.read for r in results] == [False]
+    assert client.get("/app/intro/documents").json()[0]["status"] == "failed"
+
+
+def test_retrying_someone_elses_or_unknown_document_is_404(client):
+    import uuid
+
+    assert client.post(f"/app/intro/documents/{uuid.uuid4()}/retry").status_code == 404
