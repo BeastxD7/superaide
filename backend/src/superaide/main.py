@@ -50,6 +50,10 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     settings = get_settings()
     from superaide.security import logredact
 
+    if settings.surface_check_on_boot:
+        from superaide.security import surface
+
+        surface.verify_boot()
     logredact.install()  # uvicorn and the worker log through this too: no bot token in any line
     app = FastAPI(
         title="Superaide API",

@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     # audited but the send goes ahead (until the check is calibrated against real Gmail). strict: a
     # mismatch is not sent.
     approval_binding: Literal["off", "record", "strict"] = "record"
+    # A request nobody answers within this many hours can no longer be approved (0 = never expires). Off by
+    # default: an old "yes" to a stale card is exactly what this is for, but how long is the owner's call.
+    approval_ttl_hours: int = Field(default=0, ge=0, le=24 * 90)
 
     # Circuit breaker (#140). Off by default. When on, more than `circuit_breaker_limit` deletes or sends
     # carried out inside `circuit_breaker_window_seconds` freeze this owner's Ava (the kill switch), and the
@@ -69,6 +72,23 @@ class Settings(BaseSettings):
     # to, and until when. Only if the owner has set a display name. The page shows nothing else.
     principal_card_enabled: bool = False
     principal_card_days: int = Field(default=30, ge=1, le=365)
+
+    # Every tool call is recorded as hashes only (tool, effect class, argument and result hashes; issue #110).
+    trace_recorder: bool = True
+
+    # Hash-chained log of tool calls and executed approvals (issue #113). Off by default.
+    action_log: bool = False
+
+    # Refuse to start when a protected file differs from security/surface.lock.json (issue #114). Off by default.
+    surface_check_on_boot: bool = False
+
+    # Mandate cards: a signed, narrowing token lets Ava do a named, limited thing without asking each time
+    # (issue #112). Off by default; never covers send or spend.
+    mandates_enabled: bool = False
+
+    # An MCP tool whose description, schema or annotations differ from what the owner approved is blocked
+    # (issue #116). The MCP client calls mcp.pin.may_call; off by default until that client exists.
+    mcp_pinning: bool = False
 
     # Tenancy
     tenant_id: uuid.UUID = DEFAULT_TENANT_ID

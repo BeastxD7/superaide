@@ -69,6 +69,10 @@ TABLES: tuple[str, ...] = (
     "escalation",  # triage (ADR 0010)
     "escalation_ack",
     "escalation_delivery",
+    "action_log",  # hash-chained gateway log (#113)
+    "mandate",  # signed narrowing tokens (#112)
+    "mcp_pin",  # approved MCP tool hashes (#116)
+    "tool_trace",  # hashes of tool calls (#110)
     "triage_decision",
     "triage_rule",
     "triage_settings",

@@ -63,3 +63,17 @@ and every skill must validate against it before it can be listed or installed.
   same install, consent and enforcement path applies to everything.
 - Signing, review and revocation for a public marketplace come later; the manifest already has
   the fields they need.
+
+## Amendment (October 2026): MCP spec 2026-07-28 and tool pinning (issue #116)
+
+- The MCP client targets spec **2026-07-28**. It does not depend on sessions or the `initialize` handshake
+  (both removed), nor on Roots, Sampling or Logging (deprecated).
+- `tools/list` results carry `ttlMs` and `cacheScope`. The client re-reads a list when `ttlMs` runs out (a
+  missing value means 60 seconds, and nothing is trusted for more than an hour).
+- Remote servers are registered with **Client ID Metadata Documents**, not Dynamic Client Registration
+  (deprecated). The client validates the `iss` parameter on authorization responses and refuses a response
+  without a matching one.
+- **Tool pinning:** each tool's (name, description, inputSchema, annotations) is hashed when the owner approves
+  the skill (`mcp/pin.py`). A tool that later differs, and any new tool, is blocked and shown to the owner as a
+  diff until they approve it again. The model never sees a blocked tool. Controlled by `MCP_PINNING`, off until
+  the MCP client that calls `mcp.pin.may_call` ships.

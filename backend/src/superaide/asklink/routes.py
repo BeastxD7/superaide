@@ -33,6 +33,7 @@ from superaide.auth.routes import client_of, reject_nul_text, require_csrf_heade
 from superaide.config import get_settings
 from superaide.db.models import Approval, Person
 from superaide.db.session import require, session_scope
+from superaide.policy.binding import seal
 from superaide.tenancy.context import scope_or_default, use_instance
 
 MAX_BODY = 8 * 1024
@@ -382,6 +383,7 @@ def make_owner_router(get_agent: Callable[[], Any] | None = None) -> APIRouter:
                 },
                 requested_by_person_id=person_id,
             )
+            seal(approval)
             s.add(approval)
             s.flush()
             req.approval_id = approval.id

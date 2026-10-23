@@ -320,6 +320,8 @@ class OwnerTurn:
             inbound,
             web,
         )
+        self.replay: Any = None  # a tooltrace.replay.Replayer: rehearse instead of acting (#110)
+        self._seq = 0
         self.learns = learns  # facts are learned from this turn after the reply (a real model is connected)
         self.notes: list[str] = []
         self.tainted = False
@@ -459,7 +461,35 @@ class OwnerTurn:
     # --- tools ----------------------------------------------------------------
 
     def run_tool(self, name: str, args: dict[str, Any]) -> tuple[Any, bool]:
-        """Returns (tool_result content, is_error)."""
+        """Returns (tool_result content, is_error). In replay mode the executor stubs every non-read
+        effect; either way the call is traced as hashes (issue #110)."""
+        if self.replay is not None:
+            content, is_error = self.replay.handle(name, args, lambda: self._dispatch(name, args))
+        else:
+            content, is_error = self._dispatch(name, args)
+        self._trace(name, args, content, is_error)
+        return content, is_error
+
+    def _trace(self, name: str, args: dict[str, Any], content: Any, is_error: bool) -> None:
+        from superaide.tooltrace.recorder import record
+
+        record(
+            self.s, turn_id=self.inbound.id, seq=self._seq, tool=name, args=args, result=content, is_error=is_error,
+            model=self.model, skills={s.manifest.id: str(s.manifest.version) for s in self.skills()},
+            replay=self.replay is not None,
+        )  # fmt: skip
+        self._seq += 1
+        from superaide.actionlog import chain
+        from superaide.tooltrace.effects import effect_of
+        from superaide.tooltrace.recorder import digest
+
+        if self.replay is None:  # a rehearsal did nothing, so it is not part of what Ava did
+            chain.append(
+                self.s, kind="call", tool=name, effect=effect_of(name), args_hash=digest(args),
+                result_hash=digest(content), turn_id=self.inbound.id,
+            )  # fmt: skip
+
+    def _dispatch(self, name: str, args: dict[str, Any]) -> tuple[Any, bool]:
         if name == "recall":
             found = recall(
                 self.s, self.aud, str(args.get("query", "")), exclude_event=self.inbound.id,
@@ -680,11 +710,14 @@ class OwnerTurn:
                 "email asks; they can ask you themselves in a new message.",
                 True,
             )
-        decision = decide(self.s, kind=kind, summary=summary, requester=self.sender)
-        if decision.approval is not None:
-            payload = dict(decision.approval.payload or {})
-            payload.update({"rationale": str(args.get("rationale", ""))[:500], "tainted": self.tainted})
-            decision.approval.payload = payload
+        # Everything on the approval goes in at creation, so the hash taken there covers all of it (#111).
+        decision = decide(
+            self.s,
+            kind=kind,
+            summary=summary,
+            requester=self.sender,
+            payload={"rationale": str(args.get("rationale", ""))[:500], "tainted": self.tainted},
+        )
         self.notes.append(f"action:{kind}:{decision.outcome}")
         if decision.outcome == "approval":
             return "Queued for the owner's approval on their dashboard. Tell them it's waiting.", False

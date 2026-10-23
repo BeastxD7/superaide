@@ -360,6 +360,72 @@ class Approval(Scoped, Base):
     status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | approved | rejected
     decided_by: Mapped[str | None] = mapped_column(String(100), nullable=True)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Issue #111: the hash of kind + payload when the request was opened (policy/binding.py), and when the
+    # request stops being answerable (empty = never).
+    bound_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ToolTrace(Scoped, Base):
+    """One tool call, as hashes only (issue #110): enough to compare two runs, never the content."""
+
+    __tablename__ = "tool_trace"
+
+    turn_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    seq: Mapped[int] = mapped_column(Integer, default=0)
+    tool: Mapped[str] = mapped_column(String(64))
+    effect: Mapped[str] = mapped_column(String(20))
+    args_hash: Mapped[str] = mapped_column(String(64))
+    result_hash: Mapped[str] = mapped_column(String(64))
+    is_error: Mapped[bool] = mapped_column(Boolean, default=False)
+    model: Mapped[str] = mapped_column(String(80), default="")
+    skills: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)  # skill id -> version in this turn
+    replay: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+
+
+class ActionLog(Scoped, Base):
+    """Append-only, hash-chained (actionlog/chain.py, issue #113). Hashes and names only, never content."""
+
+    __tablename__ = "action_log"
+    __table_args__ = (UniqueConstraint("agent_id", "seq", name="uq_action_log_seq"),)
+
+    seq: Mapped[int] = mapped_column(Integer)
+    prev_hash: Mapped[str] = mapped_column(String(64))
+    entry_hash: Mapped[str] = mapped_column(String(64))
+    kind: Mapped[str] = mapped_column(String(12))  # call | executed
+    tool: Mapped[str] = mapped_column(String(64))
+    effect: Mapped[str] = mapped_column(String(20))
+    args_hash: Mapped[str] = mapped_column(String(64), default="")
+    result_hash: Mapped[str] = mapped_column(String(64), default="")
+    approval_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    turn_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class Mandate(Scoped, Base):
+    """A mandate card the owner signed (issue #112): the token, the card text, and how often it was used."""
+
+    __tablename__ = "mandate"
+
+    token: Mapped[str] = mapped_column(Text)
+    card: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(12), default="active")  # active | revoked
+    uses: Mapped[int] = mapped_column(Integer, default=0)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class McpPin(Scoped, Base):
+    """The hash and text of one MCP tool as the owner approved it (issue #116)."""
+
+    __tablename__ = "mcp_pin"
+    __table_args__ = (UniqueConstraint("agent_id", "skill_id", "server", "tool", name="uq_mcp_pin"),)
+
+    skill_id: Mapped[str] = mapped_column(String(120))
+    server: Mapped[str] = mapped_column(String(300))
+    tool: Mapped[str] = mapped_column(String(64))
+    hash: Mapped[str] = mapped_column(String(64))
+    snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    approved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
 class AuditLog(Scoped, Base):
