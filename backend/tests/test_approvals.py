@@ -48,7 +48,7 @@ def test_the_owner_sees_a_request_and_approves_it_once(browser, model):
     r = owner.post(f"/app/approvals/{pending['id']}/approve")
     assert r.status_code == 200 and r.json()["status"] == "approved"
     # Nothing can carry it out yet, and Ava says so instead of pretending.
-    assert "Nothing can carry this out yet" in r.json()["result"]
+    assert "will not do anything" in r.json()["result"]
     assert owner.get("/app/approvals").json()[0]["status"] == "approved"
 
     again = owner.post(f"/app/approvals/{pending['id']}/reject")

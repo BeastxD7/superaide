@@ -46,7 +46,7 @@ test('a reply cannot load pictures, run scripts or make javascript: and data: li
   // The picture's description stays as plain text; raw HTML is shown as text, not run.
   await expect(transcript.getByText('tracking pixel')).toBeVisible()
   expect(await page.evaluate(() => (window as unknown as { __pwned?: number }).__pwned)).toBeUndefined()
-  await page.locator('summary', { hasText: 'Sources' }).click()
+  await expect(page.locator('details', { has: page.locator('summary', { hasText: 'Sources' }) })).toHaveJSProperty('open', true) // open by default for 3 or fewer sources
   const hrefs = await transcript.locator('a').evaluateAll((as) => as.map((a) => a.getAttribute('href') ?? ''))
   expect(hrefs.filter((h) => /^(javascript|data|vbscript):/i.test(h))).toEqual([])
   expect(hrefs).toContain('https://example.org/ok')
