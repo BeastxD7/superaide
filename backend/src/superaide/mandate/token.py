@@ -170,7 +170,7 @@ _WORDS = {
 
 def card(tok: Token) -> str:
     """The plain-language card, built from the fields (the same ones the gateway enforces)."""
-    parts = [_WORDS[n](v) if n in _WORDS else f"unknown limit {n}" for n, v in tok.caveats]
+    parts = [_WORDS[n](v) if n in _WORDS else f"unknown limit {n}" for n, v in effective(tok).items()]
     return "; ".join(parts) or "no limits written (this card allows nothing)"
 
 
