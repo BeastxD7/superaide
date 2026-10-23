@@ -7,8 +7,10 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { Conversation, type LiveTurn } from '@/components/Conversation'
 import { useReveal } from '@/hooks/use-reveal'
 import { Notice } from '@/components/site'
+import { Button } from '@/components/ui/button'
 import { call, streamChat, type Message } from '@/lib/api'
 import { apply } from '@/lib/chat-turn'
+import { droppedBy, joinOlder, oldestSaved, PAGE } from '@/lib/chat-history'
 import { isSendKey } from '@/lib/keys'
 import { useSession } from '@/lib/session-context'
 import { errorMessage } from '@/lib/action'
@@ -23,6 +25,11 @@ const QUICK = [
 export function ChatPage() {
   const { me, refresh } = useSession()
   const [messages, setMessages] = useState<Message[]>([])
+  // Messages older than the newest page, fetched on request; `more` is false once the start has been reached.
+  const [older, setOlder] = useState<Message[]>([])
+  const [more, setMore] = useState(false)
+  const [loadingOlder, setLoadingOlder] = useState(false)
+  const shownRef = useRef<Message[]>([])
   const [pending, setPending] = useState(false)
   const [live, setLive] = useState<LiveTurn | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -47,14 +54,43 @@ export function ChatPage() {
   }, [])
 
   useEffect(() => {
+    // No query: the server's default page is PAGE messages, and the newest-page URL stays plain.
     call<Message[]>('/messages')
       .then((history) => {
+        setMore(history.length >= PAGE)
         // Something sent before the history arrived stays, after it; a newer copy wins.
         if (!refreshed.current) setMessages((now) => [...history, ...now.filter((m) => m.id.startsWith('local-'))])
       })
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoaded(true))
   }, [])
+
+  useEffect(() => {
+    shownRef.current = messages
+  }, [messages])
+
+  // A fresh read holds only the newest page: what fell out of it joins the older messages instead of vanishing.
+  function showFresh(fresh: Message[]) {
+    const dropped = droppedBy(shownRef.current, fresh)
+    if (dropped.length) setOlder((o) => joinOlder(o, dropped))
+    setMessages(fresh)
+  }
+
+  async function showEarlier() {
+    const oldest = oldestSaved(older, messages)
+    if (!oldest || loadingOlder) return
+    setLoadingOlder(true)
+    setError(null)
+    try {
+      const batch = await call<Message[]>(`/messages?limit=${PAGE}&before=${oldest.id}`)
+      setOlder((o) => joinOlder(batch, o))
+      setMore(batch.length >= PAGE)
+    } catch (e) {
+      setError(errorMessage(e))
+    } finally {
+      setLoadingOlder(false)
+    }
+  }
 
   // The last saved message is the owner's and no reply is streaming: the reply is still being written
   // (they left mid-turn, or the stream was cut). Check again every few seconds, for a few minutes.
@@ -67,7 +103,7 @@ export function ChatPage() {
       if (++tries > 60) return window.clearInterval(t)
       call<Message[]>('/messages')
         .then((fresh) => {
-          if (!unmounted.current && !refreshedWhileSending.current) setMessages(fresh)
+          if (!unmounted.current && !refreshedWhileSending.current) showFresh(fresh)
         })
         .catch(() => {})
     }, 3000)
@@ -126,7 +162,7 @@ export function ChatPage() {
       if (started && !finished) throw new Error('stream ended early')
       const fresh = await call<Message[]>('/messages')
       refreshed.current = true
-      setMessages(fresh)
+      showFresh(fresh)
       if (failure) setError(failure)
       // Paused: the message is kept, but say why nothing came back instead of leaving silence.
       else if (mode === 'frozen') {
@@ -137,7 +173,7 @@ export function ChatPage() {
       if (unmounted.current) return
       if (started) {
         // The connection dropped mid-reply; the turn carries on server-side, so show what's saved.
-        call<Message[]>('/messages').then(setMessages).catch(() => {})
+        call<Message[]>('/messages').then(showFresh).catch(() => {})
         setError("Lost the live connection. The reply will appear here when it's ready.")
       } else {
         // Not sent: take the bubble back and give you your words to try again.
@@ -208,7 +244,15 @@ export function ChatPage() {
               <Notice tone="warn">{name} is paused from the operator console. She won&apos;t reply until she&apos;s resumed.</Notice>
             </div>
           )}
-          <Conversation messages={visible} typing={typing} hue="indigo" agentName={name} live={live} />
+          {more && (
+            <div className="mb-4 text-center">
+              <p className="text-xs text-muted">Showing the latest messages. Earlier ones are saved.</p>
+              <Button size="sm" variant="outline" className="mt-2" disabled={loadingOlder} onClick={() => void showEarlier()}>
+                {loadingOlder ? 'Loading…' : 'Show earlier messages'}
+              </Button>
+            </div>
+          )}
+          <Conversation messages={[...older, ...visible]} typing={typing} hue="indigo" agentName={name} live={live} />
         </div>
       </div>
 

@@ -98,3 +98,36 @@ def test_actions_that_need_a_stepped_up_identity_are_refused_in_chat(agent, mana
         refusals = [a.detail for a in s.scalars(select(AuditLog).where(AuditLog.action == "action_refused"))]
         assert {d["reason"] for d in refusals} == {"identity not verified strongly enough"}
         assert all(d["required_trust"] == 4 and d["trust"] == 2 for d in refusals)
+
+
+def _expire(approval_id: str) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    with session_scope() as s:
+        a = s.get(Approval, approval_id)
+        assert a is not None
+        a.expires_at = datetime.now(UTC) - timedelta(hours=2)
+
+
+def test_an_expired_request_is_listed_as_expired_not_waiting(browser, model):
+    """#291: a card past its expiry was still `pending`, offered with a Yes and counted as waiting."""
+    from superaide.policy.binding import waiting
+
+    owner = hired(browser)
+    ask_for(owner, model, "publish_post", "Post: We are hiring")
+    ask_for(owner, model, "publish_post", "Post: Launch day")
+    rows = {r["summary"]: r for r in owner.get("/app/approvals").json()}
+    _expire(rows["Post: We are hiring"]["id"])
+
+    rows = {r["summary"]: r for r in owner.get("/app/approvals").json()}
+    assert rows["Post: We are hiring"]["status"] == "expired"
+    assert rows["Post: Launch day"]["status"] == "pending"
+    with session_scope() as s:
+        from sqlalchemy import func
+
+        assert s.scalar(select(func.count()).select_from(Approval).where(waiting())) == 1
+
+    # A yes that still arrives is refused and says why, instead of vanishing.
+    r = owner.post(f"/app/approvals/{rows['Post: We are hiring']['id']}/approve")
+    assert r.status_code == 200 and r.json()["status"] == "rejected"
+    assert "expired" in r.json()["result"]

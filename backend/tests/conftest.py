@@ -87,6 +87,7 @@ from superaide.db.models import Base, Person  # noqa: E402
 from superaide.db.session import ensure_extensions, get_engine, session_scope  # noqa: E402
 from superaide.identity.linking import bootstrap_person  # noqa: E402
 from superaide.pipeline import Agent  # noqa: E402
+from tests import sharding  # noqa: E402
 
 MANAGER_TG = "1001"
 MANAGER_SLACK = "U_MGR"
@@ -233,3 +234,20 @@ def codes_sent(messenger: FakeMessenger) -> list[str]:
 
 
 Factory = Callable[..., InboundMessage]
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    parser.addoption(
+        "--shard", default=None, help="run one slice of the suite, e.g. --shard 1/2 (CI splits the backend tests)"
+    )
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    spec = config.getoption("--shard")
+    if not spec:
+        return
+    index, total = sharding.parse(spec)
+    owner = sharding.assign([i.nodeid for i in items], total)
+    mine = [i for i in items if owner[sharding.module_of(i.nodeid)] == index]
+    config.hook.pytest_deselected(items=[i for i in items if i not in mine])
+    items[:] = mine

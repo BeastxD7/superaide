@@ -86,10 +86,10 @@ fi
 if [ "$UPDATE" = 1 ] && git rev-parse --git-dir >/dev/null 2>&1; then
   if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
     echo "You have local changes, so not updating the code."
-  elif git pull --ff-only --quiet 2>/dev/null; then
+  elif git fetch --quiet origin main 2>/dev/null && git merge --ff-only --quiet origin/main 2>/dev/null; then  # also works on a detached HEAD
     bold "Code is at $(git log -1 --format='%h %s' | cut -c1-70)"
   else
-    echo "Could not fast-forward (offline, detached HEAD or a diverged branch): running the code as it is."
+    echo "Could not fast-forward (offline, or commits here that main does not have): running the code as it is."
   fi
 fi
 

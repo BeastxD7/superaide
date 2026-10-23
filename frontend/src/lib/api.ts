@@ -220,7 +220,7 @@ export { ApiError as AppError }
 // Axios client for the backend, sending the session cookie with each request.
 const client = createClient(API_URL, { withCredentials: true })
 
-type Init = { method?: 'GET' | 'POST' | 'PUT' | 'DELETE'; json?: unknown }
+type Init = { method?: 'GET' | 'POST' | 'PUT' | 'DELETE'; json?: unknown; signal?: AbortSignal }
 
 // A 401 from /app/* means the session has ended (signed out elsewhere, expired, password changed).
 // The session provider registers one handler that clears the signed-in state and sends the person
@@ -245,7 +245,7 @@ function sessionEnded(e: unknown, url: string): void {
 
 async function request<T>(url: string, init?: Init): Promise<T> {
   try {
-    const res = await client.request<T>({ url, method: init?.method ?? 'GET', data: init?.json })
+    const res = await client.request<T>({ url, method: init?.method ?? 'GET', data: init?.json, signal: init?.signal })
     return res.data
   } catch (e) {
     sessionEnded(e, url)
@@ -431,7 +431,8 @@ export type ApprovalItem = {
   kind: string
   summary: string
   requested_by: string | null
-  status: 'pending' | 'approved' | 'rejected'
+  // `expired`: still unanswered but past its time limit, so it can no longer be approved.
+  status: 'pending' | 'approved' | 'rejected' | 'expired'
   result: string | null
   notes?: string[]
   at: string
@@ -468,6 +469,7 @@ export type SkillCard = {
   cost: string | null
   // Settings that give the skill more tools (Google Calendar's "actions"), each with its own consent.
   options?: SkillOption[]
+  google_connected?: boolean // Google Calendar and Gmail only: whether Google is connected right now
   google_url?: string | null // after switching calendar actions on: Google's consent page to finish
 }
 

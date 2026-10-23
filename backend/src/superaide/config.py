@@ -125,6 +125,19 @@ class Settings(BaseSettings):
     skill_receipts_enabled: bool = False
     skill_receipt_min_days: int = Field(default=3, ge=0)
     skill_receipt_owner_cap: int = Field(default=20, ge=1)
+    # Creator payout LEDGER (#132). Off by default. Counts accepted outcomes from the receipt log, writes ledger lines
+    # in whole minor units (cents). It moves no money: PAYOUT_PROVIDER can only be "null" until the owner chooses and
+    # connects a settlement provider. A community creator is paid per outcome the owner accepted unedited, after a
+    # floor of seconds, not in a batch, with a daily cap per owner; a revert inside the clawback window takes it back.
+    payouts_enabled: bool = False
+    payout_provider: str = "null"
+    payout_currency: str = Field(default="USD", min_length=3, max_length=3)
+    payout_per_outcome_minor: int = Field(default=50, ge=0)
+    payout_fee_bps: int = Field(default=2000, ge=0, le=10000)
+    payout_floor_seconds: int = Field(default=10, ge=0)
+    payout_clawback_days: int = Field(default=7, ge=0)
+    payout_bond_minor: int = Field(default=5000, ge=0)
+    payout_daily_owner_cap: int = Field(default=10, ge=1)
     memory_socket_enabled: bool = False
     memory_socket_per_minute: int = Field(default=30, ge=1)
     # Glass brain share link (#55). Off by default. The owner can create an unlisted link (a long random token,
@@ -400,6 +413,9 @@ class Settings(BaseSettings):
     # Off: /app/mirror/* answer 404 (owner routes still 401/403 first). On: an owner may opt in. The patterns
     # are counted in code and worded from templates, so it makes no model call at all.
     mirror_enabled: bool = False
+    # How long a list's "next page" cursor stays valid (ADR 0014). Cursors are signed and bound to one list and
+    # one owner; expiry only bounds how long a leaked one is useful. A page left open longer reloads the list.
+    pagination_cursor_max_age_s: int = 24 * 3600
     # Signs the public form's token (time-to-submit and same-form check). Blank: a random key per
     # process, so a restart only means a visitor reloads the page.
     ask_form_secret: str = ""

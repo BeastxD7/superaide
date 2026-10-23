@@ -10,19 +10,15 @@ import { People } from '@/features/console/pages/People'
 import { SafetyLog } from '@/features/console/pages/SafetyLog'
 import { Simulator } from '@/features/console/pages/Simulator'
 import { SpendPage } from '@/features/console/pages/SpendPage'
+import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb'
+import { Separator } from '@/components/ui/separator'
+import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import { ConsoleSidebar } from '@/features/console/ConsoleSidebar'
+import { TABS, type TabKey } from '@/features/console/tabs'
 import { Badge, Button, Notice, PageHeader } from '@/features/console/ui'
 import { useApi } from '@/features/console/useApi'
 
-// `about` is the line under each page's title (Overview writes its own heading).
-const TABS = [
-  { key: 'overview', label: 'Overview', about: '' },
-  { key: 'people', label: 'People', about: 'Everyone Ava knows, and every account that has written in.' },
-  { key: 'conversations', label: 'Conversations', about: 'Every chat, and who could see each answer.' },
-  { key: 'log', label: 'Safety log', about: 'Identity checks, refusals and controls, in plain words.' },
-  { key: 'spend', label: 'Spend', about: 'What Claude has cost, against the cap.' },
-  { key: 'simulator', label: 'Try an impostor', about: 'Try to fool Ava without any risk.' },
-] as const
-type TabKey = (typeof TABS)[number]['key']
 // An owner's content: opened only by break-glass (ADR 0009).
 const PRIVATE: TabKey[] = ['people', 'conversations', 'log', 'simulator']
 
@@ -119,78 +115,76 @@ function Dashboard({ conn, onDisconnect }: { conn: Connection; onDisconnect: () 
   }
 
   const current = TABS.find((t) => t.key === tab)!
+  // The sidebar's open state is shared with the app's (same cookie), so both remember it.
+  const defaultOpen = !document.cookie.split('; ').includes('sidebar_state=false')
 
   return (
-    <div className="c-app">
-      <div className="c-bar-wrap">
-        <div className="c-container">
-          <div className="c-bar">
-            <div className="c-brand">
-              <BrandMark />
-              <span className="c-brand-name">Superaide</span>
-              <span className="c-brand-tag">Console</span>
-            </div>
-            <nav className="c-nav" aria-label="Sections">
-              {TABS.map((t) => (
-                <button key={t.key} className="c-tab" aria-current={tab === t.key ? 'page' : undefined} onClick={() => setTab(t.key)}>
-                  {t.label}
-                </button>
-              ))}
-            </nav>
-            <div className="c-bar-end">
-              {data && (
-                <Badge tone={data.frozen ? 'danger' : 'ok'} dot>
-                  {data.frozen ? 'Paused' : 'Running'}
-                </Badge>
-              )}
-              {data && (
-                <Button variant={data.frozen ? 'ok' : 'danger'} onClick={togglePause} disabled={switching}>
-                  {data.frozen ? `Resume ${data.agent_name}` : `Pause ${data.agent_name}`}
-                </Button>
-              )}
-              <Button variant="ghost" onClick={onDisconnect}>
-                Disconnect
+    <TooltipProvider delayDuration={300}>
+      <SidebarProvider defaultOpen={defaultOpen}>
+        <ConsoleSidebar tab={tab} onTab={setTab} data={data ?? null} onDisconnect={onDisconnect} />
+        <SidebarInset>
+          <header className="c-topbar">
+            <SidebarTrigger className="-ml-1" />
+            <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4" />
+            <Breadcrumb className="min-w-0 flex-1">
+              <BreadcrumbList className="flex-nowrap">
+                <BreadcrumbItem className="hidden sm:inline-flex">Console</BreadcrumbItem>
+                <BreadcrumbSeparator className="hidden sm:block" />
+                <BreadcrumbItem className="min-w-0">
+                  <BreadcrumbPage className="truncate" aria-current={undefined}>
+                    {current.label}
+                  </BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
+            {data && (
+              <Badge tone={data.frozen ? 'danger' : 'ok'} dot className="c-topbar-status">
+                {data.frozen ? 'Paused' : 'Running'}
+              </Badge>
+            )}
+            {data && (
+              <Button variant={data.frozen ? 'ok' : 'danger'} size="sm" onClick={togglePause} disabled={switching}>
+                {data.frozen ? `Resume ${data.agent_name}` : `Pause ${data.agent_name}`}
               </Button>
-            </div>
-          </div>
+            )}
+          </header>
           {data?.frozen && (
             <p className="c-banner" role="status">
               Paused: no model calls, no replies
             </p>
           )}
-        </div>
-      </div>
-
-      <main className="c-container c-main">
-        {switchError && <Notice tone="danger">{switchError}</Notice>}
-        {overview.error && overview.error.status === 401 ? (
-          <Notice tone="danger">
-            The admin token was refused. <button className="link-button" onClick={onDisconnect}>Enter it again</button>
-          </Notice>
-        ) : overview.error ? (
-          <Notice tone="danger">{overview.error.message}</Notice>
-        ) : null}
-        <div className="c-page" key={tab}>
-          {tab !== 'overview' && <PageHeader title={current.label} description={current.about} />}
-          {tab === 'overview' && data && <Overview data={data} />}
-          {PRIVATE.includes(tab) && !access && <BreakGlass conn={conn} onOpen={setAccess} />}
-          {PRIVATE.includes(tab) && access && (
-            <Notice className="break-glass-open">
-              <span>
-                Open for one owner's Ava ({access.instance ? access.instance.slice(0, 8) : "the server's first"}), recorded with your reason: “{access.reason}”.
-              </span>
-              <button className="link-button" onClick={() => setAccess(null)}>
-                Close
-              </button>
-            </Notice>
-          )}
-          {tab === 'people' && access && <People conn={opened} />}
-          {tab === 'conversations' && access && <Conversations conn={opened} />}
-          {tab === 'log' && access && <SafetyLog conn={opened} />}
-          {tab === 'spend' && <SpendPage conn={conn} />}
-          {tab === 'simulator' && access && <Simulator conn={opened} enabled={data?.simulator ?? false} agentName={data?.agent_name ?? 'The agent'} />}
-        </div>
-      </main>
-    </div>
+          <main className="c-container c-main">
+            {switchError && <Notice tone="danger">{switchError}</Notice>}
+            {overview.error && overview.error.status === 401 ? (
+              <Notice tone="danger">
+                The admin token was refused. <button className="link-button" onClick={onDisconnect}>Enter it again</button>
+              </Notice>
+            ) : overview.error ? (
+              <Notice tone="danger">{overview.error.message}</Notice>
+            ) : null}
+            <div className="c-page" key={tab}>
+              {tab !== 'overview' && <PageHeader title={current.label} description={current.about} />}
+              {tab === 'overview' && data && <Overview data={data} />}
+              {PRIVATE.includes(tab) && !access && <BreakGlass conn={conn} onOpen={setAccess} />}
+              {PRIVATE.includes(tab) && access && (
+                <Notice className="break-glass-open">
+                  <span>
+                    Open for one owner's Ava ({access.instance ? access.instance.slice(0, 8) : "the server's first"}), recorded with your reason: “{access.reason}”.
+                  </span>
+                  <button className="link-button" onClick={() => setAccess(null)}>
+                    Close
+                  </button>
+                </Notice>
+              )}
+              {tab === 'people' && access && <People conn={opened} />}
+              {tab === 'conversations' && access && <Conversations conn={opened} />}
+              {tab === 'log' && access && <SafetyLog conn={opened} />}
+              {tab === 'spend' && <SpendPage conn={conn} />}
+              {tab === 'simulator' && access && <Simulator conn={opened} enabled={data?.simulator ?? false} agentName={data?.agent_name ?? 'The agent'} />}
+            </div>
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
+    </TooltipProvider>
   )
 }

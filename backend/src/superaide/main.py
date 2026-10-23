@@ -245,6 +245,9 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     from superaide.app.skill_receipts import make_skill_receipts_router
 
     app.include_router(make_skill_receipts_router(get_agent))  # 404 unless SKILL_RECEIPTS_ENABLED (#131)
+    from superaide.app.skill_payouts import make_skill_payouts_router
+
+    app.include_router(make_skill_payouts_router(get_agent))  # 404 unless PAYOUTS_ENABLED (#132)
     from superaide.voice.routes import make_router as make_voice_router
 
     app.include_router(make_voice_router(get_agent))  # 404 unless VOICE_INTRO_V2 (ADR 0012)
