@@ -80,6 +80,7 @@ class Decision:
     outcome: str  # approval | refused | none
     reason: str
     approval: Approval | None = None
+    unsupported: bool = False  # refused because nothing can carry this kind or route out (#326)
 
 
 def decide(
@@ -91,10 +92,13 @@ def decide(
     rules: dict[str, Rule] = RULES,
     payload: dict[str, Any] | None = None,
     origin: str = "",
+    require_executor: bool = False,
 ) -> Decision:
     """`rules` is RULES for propose_action, TOOL_RULES for a skill tool, which also passes the
     `payload` its executor needs. `origin` is "voice" for something heard on a call (voice/gateway.py):
-    such an approval can then be approved only from the Superaide app, never by what was said."""
+    such an approval can then be approved only from the Superaide app, never by what was said.
+    `require_executor` (the model's propose_action): a kind nothing can carry out, or a route nothing
+    can use (a web form), creates no approval at all (issue #326, APPROVAL_REQUIRE_EXECUTOR)."""
     if kind == "none":
         return Decision("none", "no action requested")
     from superaide.policy import footprint
@@ -105,6 +109,12 @@ def decide(
         audit(session, "policy", "action_refused", kind=kind, reason="not allowed via chat", requester=requester.name)
         return Decision("refused", "not allowed via chat")
     rule = rules[kind]
+    if require_executor and get_settings().approval_require_executor:
+        from superaide.policy import kinds
+
+        if not kinds.has_executor(kind) or kinds.unsupported_route(summary):
+            audit(session, "policy", "action_refused", kind=kind, reason="no executor", requester=requester.name)
+            return Decision("refused", kinds.unsupported_message(kind, summary), unsupported=True)
     if rule.manager_only and requester.relation != "manager":
         audit(
             session,
@@ -165,6 +175,7 @@ EXECUTORS: dict[str, Callable[[Session, Approval], str]] = {}
 
 def _load_executors() -> None:
     """Capabilities that carry out approved actions (imported here, not at the top: they import policy)."""
+    import superaide.asklink.service  # noqa: F401  (registers ask_reply)
     import superaide.skills.calendar  # noqa: F401  (registers the calendar executors)
     from superaide.skills import gmail
 
@@ -256,7 +267,11 @@ def resolve(session: Session, approval: Approval, *, approve: bool, decided_by: 
             _load_executors()
             _log_executed(session, approval)
             executor = EXECUTORS.get(approval.kind)
-            payload["result"] = executor(session, approval) if executor else "Approved. Nothing can carry this out yet."
+            payload["result"] = (
+                executor(session, approval)
+                if executor
+                else "Approved, but this will not do anything: nothing can carry this out yet."
+            )
             if executor:
                 payload["outcome"] = quote.outcome_of(payload["result"])
     approval.payload = payload

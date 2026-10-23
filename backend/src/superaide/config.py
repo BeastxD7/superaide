@@ -54,6 +54,11 @@ class Settings(BaseSettings):
     # default: an old "yes" to a stale card is exactly what this is for, but how long is the owner's call.
     approval_ttl_hours: int = Field(default=0, ge=0, le=24 * 90)
 
+    # A kind of approval nothing can carry out (message_someone_else, publish_post, ...), or a route nothing can
+    # use (a web form, a contact page), is refused when Ava proposes it: no approval card is created, so she
+    # cannot say "queued" for something that would do nothing (#326). false restores the old behaviour.
+    approval_require_executor: bool = True
+
     # Circuit breaker (#140). Off by default. When on, more than `circuit_breaker_limit` deletes or sends
     # carried out inside `circuit_breaker_window_seconds` freeze this owner's Ava (the kill switch), and the
     # owner's own message that is exactly `halt_word` freezes her before any model sees it.
