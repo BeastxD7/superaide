@@ -476,16 +476,17 @@ def conversations_page(limit: int = limit_param(50, 100), cursor: str | None = c
     dependencies=content,
     summary="Messages",
     description="Recent messages, newest first in pages, optionally for one conversation (`context_id`). `limit` is "
-    "1 to 200 (default 100). When older ones exist the response has `X-Next-Cursor`, `Link: rel=next` and "
+    "1 to 200, clamped (default 100). When older ones exist the response has `X-Next-Cursor`, `Link: rel=next` and "
     "`X-Has-More: true`; send the cursor back as `cursor`. The body stays a bare array. ADR 0014.",
 )
 def events(
     request: Request,
     response: Response,
     context_id: uuid.UUID | None = None,
-    limit: int = limit_param(100, 200),
+    limit: int = 100,
     cursor: str | None = cursor_param(),
 ) -> list[dict[str, Any]]:
+    limit = max(1, min(limit, 200))  # clamped, as before (the console's contract), now at 200 instead of 500
     q: Any = select(Event, Person.display_name).join(Person, Person.id == Event.resolved_person_id, isouter=True)
     if context_id:
         q = q.where(Event.context_id == context_id)

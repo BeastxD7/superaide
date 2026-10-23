@@ -3177,7 +3177,7 @@
     },
     "/api/events": {
       "get": {
-        "description": "Recent messages, newest first in pages, optionally for one conversation (`context_id`). `limit` is 1 to 200 (default 100). When older ones exist the response has `X-Next-Cursor`, `Link: rel=next` and `X-Has-More: true`; send the cursor back as `cursor`. The body stays a bare array. ADR 0014.",
+        "description": "Recent messages, newest first in pages, optionally for one conversation (`context_id`). `limit` is 1 to 200, clamped (default 100). When older ones exist the response has `X-Next-Cursor`, `Link: rel=next` and `X-Has-More: true`; send the cursor back as `cursor`. The body stays a bare array. ADR 0014.",
         "operationId": "events_api_events_get",
         "parameters": [
           {
@@ -3198,15 +3198,11 @@
             }
           },
           {
-            "description": "Page size, 1 to 200. Default 100.",
             "in": "query",
             "name": "limit",
             "required": false,
             "schema": {
               "default": 100,
-              "description": "Page size, 1 to 200. Default 100.",
-              "maximum": 200,
-              "minimum": 1,
               "title": "Limit",
               "type": "integer"
             }

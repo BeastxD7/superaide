@@ -17,7 +17,7 @@ from superaide.app.accounts import owner as hired_owner
 from superaide.db.models import Context, Event
 from superaide.db.session import session_scope
 from superaide.main import create_app
-from superaide.memory.store import get_or_create_context, log_event, touch_context
+from superaide.memory.store import log_event, touch_context
 from superaide.pagination import SortKey, bind_for, encode_cursor, page_query
 from superaide.skills import gmail_inbox
 from tests.gmail_fake import mail, owner_client_fixture  # noqa: F401  (fixture)
@@ -182,7 +182,7 @@ def test_events_page_by_cursor_keeps_the_bare_array(api):
         page = api.get("/api/events", params={"limit": 10, "cursor": page.headers["X-Next-Cursor"]}, headers=ADMIN)
         seen += page.json()
     assert len(seen) == 30 == len({e["id"] for e in seen})
-    assert api.get("/api/events", params={"limit": 201}, headers=ADMIN).status_code == 422
+    assert len(api.get("/api/events", params={"limit": 5000}, headers=ADMIN).json()) == 30  # clamped, not refused
 
 
 def test_events_cursor_is_bound_to_its_conversation_filter(api):
