@@ -59,3 +59,16 @@ export type PrincipalCard = {
 export async function principalCard(token: string): Promise<PrincipalCard | null> {
   return get<PrincipalCard>(`/p/card/${encodeURIComponent(token)}`)
 }
+
+// The counts-only picture an owner shared by an unlisted link (Glass brain). null for an unknown, forged,
+// expired or revoked link (the API answers each with the same 404), and while the feature is off.
+export type SharedBrain = {
+  things: number
+  topics: { topic: string; count: number }[]
+  origins: Record<string, number>
+  expires_at: string | null
+}
+
+export async function sharedBrain(token: string): Promise<SharedBrain | null> {
+  return get<SharedBrain>(`/p/brain/${encodeURIComponent(token)}`)
+}
