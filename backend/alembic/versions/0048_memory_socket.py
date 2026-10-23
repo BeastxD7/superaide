@@ -4,8 +4,8 @@ A platform lookup table like ask_handle (read from a bearer token before an inst
 Row-Level Security in db/rls.py EXEMPT). It holds a token hash, a name and a scope, and no memory. Nothing
 reads or writes it unless MEMORY_SOCKET_ENABLED is on.
 
-Revision ID: 0047
-Revises: 0045
+Revision ID: 0048
+Revises: 0046
 Create Date: 2026-10-23 12:00:00.000000
 
 """
@@ -17,8 +17,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0047"
-down_revision: str | Sequence[str] | None = "0045"
+revision: str = "0048"
+down_revision: str | Sequence[str] | None = "0046"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
