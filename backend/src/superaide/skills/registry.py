@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from superaide.audit import audit
 from superaide.db.models import InstalledSkill
+from superaide.skills import signals
 from superaide.skills.manifest import Skill, load_skill
 
 BUILTIN = Path(__file__).with_name("builtin")
@@ -55,6 +56,8 @@ def active(session: Session) -> list[Skill]:
     for skill_id, skill in catalog().items():
         row = rows.get(skill_id)
         if row and row.enabled and row.removed_at is None and set(skill.manifest.permissions) <= set(row.granted):
+            if signals.is_demoted(session, skill_id, skill.manifest.version):  # SKILL_SIGNALS_ENABLED (#130)
+                continue
             out.append(skill)
     return out
 
@@ -63,6 +66,12 @@ def install(session: Session, skill_id: str, accepted: list[str]) -> InstalledSk
     skill = catalog().get(skill_id)
     if skill is None:
         raise SkillUnavailable(404, "No such capability")
+    from superaide.skills import cooldown
+
+    try:
+        cooldown.guard_install(session, skill_id, skill.manifest.version)  # SKILL_COOLDOWN_ENABLED (#129)
+    except cooldown.CooldownError as exc:
+        raise SkillUnavailable(exc.status, str(exc)) from exc
     needed = skill.manifest.permissions
     if sorted(set(accepted)) != sorted(needed):
         raise SkillUnavailable(
