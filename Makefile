@@ -2,7 +2,7 @@
 # Non-developers: double-click start.command (or `bash start.command`) instead.
 
 .DEFAULT_GOAL := help
-.PHONY: help setup db db-down migrate migration api web dev lint fmt typecheck test e2e e2e-ui eval eval-live eval-gate eval-ltm-live check check-env build stack stack-down clean
+.PHONY: help setup db db-down migrate migration api web dev lint fmt typecheck test e2e e2e-ui eval eval-live eval-gate eval-ltm-live eval-mem0 check check-env build stack stack-down clean
 
 BACKEND = cd backend &&
 FRONTEND = cd frontend &&
@@ -71,6 +71,9 @@ eval-gate: ## Long-term-memory regression gate, offline and free: fails if a sce
 
 eval-ltm-live: ## Memory scenarios on the real model (~US$0.10, hard cap US$0.25): scorecard in backend/evals/results/
 	$(BACKEND) uv run python -m superaide.evals run --live --cap 0.25 --name scorecard-ltm-live --env-file $(or $(env),.env) $(foreach c,ltm_inputs ltm_update ltm_temporal ltm_multisession ltm_abstain ltm_canary,--category $(c))
+
+eval-mem0: ## OPT-IN, never in CI: Ava's recall questions against open-source Mem0 on the same notes (needs `uv sync --extra eval-mem0`)
+	$(BACKEND) uv run --extra eval-mem0 python evals/baselines/mem0_baseline.py
 
 eval-live: ## Scenario evals on the real model, 3 runs each (costs ~US$0.15; hard cap US$1): k=1 for one run
 	$(BACKEND) uv run python -m superaide.evals run --live --k $(or $(k),3)

@@ -302,6 +302,7 @@ make check      # lint, types, backend tests, frontend build (what CI runs, minu
 make e2e        # browser tests on an isolated stack; E2E_SLOT=n for another slot
 make eval       # scenario evals, offline with a fake model, free
 make eval-gate  # long-term-memory regression gate, offline and free
+make eval-mem0  # opt-in, never in CI: compare recall with open-source Mem0 on the same notes (uv sync --extra eval-mem0)
 ```
 
 Tests need a running Postgres and never call the real API (`FAKE_LLM`). `make eval-live` and `make eval-ltm-live` use the real model and cost a few cents with a hard cap. CLI commands (run from `backend/` with `uv run superaide <command>`): `serve`, `reset-password`, `freeze`/`unfreeze`, `spend`, `hello`, `add-manager`/`add-colleague`/`unlink`, `telegram-poll`/`slack-socket`.

@@ -36,6 +36,11 @@ dependencies = [
     "uvicorn[standard]>=0.54.0",
 ]
 
+[project.optional-dependencies]
+# The open-source Mem0 baseline for the memory evals (evals/baselines/mem0_baseline.py, #51). Never installed by
+# default, never imported by the app, never run in CI: `uv sync --extra eval-mem0` on your own machine.
+eval-mem0 = ["mem0ai==2.2.1"]
+
 [project.scripts]
 superaide = "superaide:main"
 
