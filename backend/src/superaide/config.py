@@ -443,6 +443,10 @@ class Settings(BaseSettings):
     # Identity linking
     link_code_ttl_minutes: int = 10
     link_code_max_attempts: int = 5
+    # Someone unknown whose name is a known person's name is a stranger; the owner is asked who they are, and
+    # only the owner's answer links the account (issue #93). Off by default.
+    identity_claim_review: bool = False
+    claim_questions_per_day: int = Field(default=5, ge=1)  # pushes to the owner per day, all senders together
     link_challenges_per_identity_per_day: int = 3
     link_challenges_per_person_per_day: int = 6  # all accounts together that claim to be one person
     # A linked Telegram/Slack account silent this long must be confirmed again in the app (0 = never).

@@ -258,19 +258,31 @@ def preferences_for(session: Session, person: Person) -> OwnerPreference:
 
 
 def add_contact(
-    session: Session, *, owner: Person, name: str, relationship: str = "other", vip: bool = False, notes: str = ""
+    session: Session,
+    *,
+    owner: Person,
+    name: str,
+    relationship: str = "other",
+    vip: bool = False,
+    notes: str = "",
+    separate: bool = False,
 ) -> Contact:
     """Someone who matters to the owner. They become a Person (relation 'contact', no
-    authority), so their Telegram or Slack can be linked to them later."""
+    authority), so their Telegram or Slack can be linked to them later. With `separate`, a contact who
+    shares the name is not reused: the owner said this is someone else (issue #93)."""
     name = " ".join(name.split())[:120]
-    existing = session.scalar(
-        select(Contact)
-        .join(Person, Person.id == Contact.person_id)
-        .where(
-            Contact.owner_person_id == owner.id,
-            Contact.removed_at.is_(None),
-            # Case-insensitive equality, not ILIKE: in a name, % _ and \ are just characters.
-            func.lower(Person.display_name) == name.lower(),
+    existing = (
+        None
+        if separate
+        else session.scalar(
+            select(Contact)
+            .join(Person, Person.id == Contact.person_id)
+            .where(
+                Contact.owner_person_id == owner.id,
+                Contact.removed_at.is_(None),
+                # Case-insensitive equality, not ILIKE: in a name, % _ and \ are just characters.
+                func.lower(Person.display_name) == name.lower(),
+            )
         )
     )
     if existing is not None:

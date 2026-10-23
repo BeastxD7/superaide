@@ -47,6 +47,8 @@ export const PG_URL = withDatabase(PG_ADMIN_URL, DB_NAME)
 export const DATABASE_URL = PG_URL.replace(/^postgres(ql)?:\/\//, 'postgresql+psycopg://')
 
 export const ASK_LINK = process.env.E2E_ASK_LINK === '1'
+// "Who is this?" (IDENTITY_CLAIM_REVIEW, #93): E2E_CLAIMS=1 switches it on for tests/identity-claims.spec.ts.
+export const CLAIMS = process.env.E2E_CLAIMS === '1'
 // "The Mirror" (MIRROR_ENABLED) is off by default; E2E_MIRROR=1 turns it on for tests/mirror.spec.ts.
 export const MIRROR = process.env.E2E_MIRROR === '1'
 // The voice call v2 (ADR 0012) with fake speech services; E2E_VOICE=1 for tests/voice-intro.spec.ts.
@@ -96,6 +98,7 @@ export function apiEnv(): Record<string, string> {
         }
       : {}),
     ...(MIRROR ? { MIRROR_ENABLED: 'true' } : {}),
+    ...(CLAIMS ? { IDENTITY_CLAIM_REVIEW: 'true' } : {}),
     ...(ASK_LINK ? { ASK_LINK_ENABLED: 'true', ASK_MIN_SECONDS: '1' } : {}),
     ...(GOOGLE
       ? {

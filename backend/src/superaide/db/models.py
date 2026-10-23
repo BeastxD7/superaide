@@ -483,6 +483,25 @@ class McpPin(Scoped, Base):
     approved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
+class IdentityClaim(Scoped, Base):
+    """An unknown account whose name is a known person's name, and the owner's answer (issue #93)."""
+
+    __tablename__ = "identity_claim"
+    __table_args__ = (UniqueConstraint("agent_id", "identity_id", name="uq_identity_claim_identity"),)
+
+    identity_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("channel_identity.id", ondelete="CASCADE"), index=True)
+    matched_person_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("person.id"), nullable=True)
+    claimed_name: Mapped[str] = mapped_column(String(80), default="")
+    # What the platform told us and the first message (display name, channel, user id, handle, phone if
+    # supplied, time, excerpt). Never model output.
+    facts: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    status: Mapped[str] = mapped_column(String(12), default="open")  # open | linked | new_person | stranger | blocked
+    asks: Mapped[int] = mapped_column(Integer, default=1)
+    notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    decided_by: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+
 class AuditLog(Scoped, Base):
     """Append-only record of decisions, model calls and refused actions."""
 

@@ -81,11 +81,12 @@ def trusted_identities(session: Session, person: Person) -> list[ChannelIdentity
     return [r for r in rows if "external" not in (r.risk_flags or [])]
 
 
-def find_person_by_name(session: Session, name: str) -> Person | None:
+def find_person_by_name(session: Session, name: str, *, exact: bool = False) -> Person | None:
     """Match a claimed name to a person who has at least one trusted channel.
 
-    Matches the full display name or the first name, case-insensitively. The
-    result is only used to decide where to send a code, never to grant access.
+    Matches the full display name or the first name, case-insensitively; with `exact` only the full name
+    (IDENTITY_CLAIM_REVIEW, issue #93). The result is only used to decide where to send a code, never to
+    grant access.
     """
     wanted = name.casefold().strip()
     if not wanted:
@@ -95,7 +96,7 @@ def find_person_by_name(session: Session, name: str) -> Person | None:
         full = p.display_name.casefold().strip()
         if not full:
             continue
-        if wanted == full or wanted == full.split()[0] or wanted.split()[0] == full.split()[0]:
+        if wanted == full or (not exact and (wanted == full.split()[0] or wanted.split()[0] == full.split()[0])):
             if trusted_identities(session, p):
                 return p
     return None

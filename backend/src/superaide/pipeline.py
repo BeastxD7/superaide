@@ -228,6 +228,20 @@ class Agent:
                 return HandleResult("unconfirmed", reply)
 
             if not sender.known:
+                from superaide.identity import claims
+
+                if claims.enabled():
+                    # An unknown account that is named like someone Ava knows is still a stranger; the owner is
+                    # asked who they are (issue #93). A blocked account gets no reply at all.
+                    if claims.is_blocked(s, sender.identity):
+                        audit(s, "identity", "blocked_sender_ignored", identity_id=sender.identity.id)
+                        return HandleResult("stranger", None, ["blocked"])
+                    if ctx.kind == "dm":
+                        try:
+                            with s.begin_nested():
+                                claims.review(s, sender.identity, msg)
+                        except Exception:  # the neutral reply still goes out, as for every stranger
+                            log.warning("claim review failed", exc_info=True)
                 # Receptionist mode (ADR 0010 TR5): a real conversation on the owner's behalf, from public
                 # information only. None: off, not a DM, or a linking code, so the fixed reply as before.
                 from superaide.reception.service import handle_stranger
@@ -491,7 +505,9 @@ class Agent:
     def _claim(self, s, sender: Sender, claimed: str) -> None:
         """Someone unknown said a name: if it's someone we know, send a code to their linked channel.
         Whatever the answer, the caller replies the same way, so nobody can probe who Ava knows."""
-        person = linking.find_person_by_name(s, claimed)
+        from superaide.identity import claims
+
+        person = linking.find_person_by_name(s, claimed, exact=claims.enabled())
         if person is not None:
             linking.start_challenge(
                 s,

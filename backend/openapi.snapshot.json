@@ -65,24 +65,6 @@
         "title": "AddressBody",
         "type": "object"
       },
-      "AnswerBody": {
-        "properties": {
-          "answer": {
-            "additionalProperties": true,
-            "title": "Answer",
-            "type": "object"
-          },
-          "step": {
-            "title": "Step",
-            "type": "string"
-          }
-        },
-        "required": [
-          "step"
-        ],
-        "title": "AnswerBody",
-        "type": "object"
-      },
       "AnswerQuestionBody": {
         "properties": {
           "answer": {
@@ -2024,6 +2006,24 @@
         "title": "SettingsBody",
         "type": "object"
       },
+      "superaide__app__routes__AnswerBody": {
+        "properties": {
+          "answer": {
+            "additionalProperties": true,
+            "title": "Answer",
+            "type": "object"
+          },
+          "step": {
+            "title": "Step",
+            "type": "string"
+          }
+        },
+        "required": [
+          "step"
+        ],
+        "title": "AnswerBody",
+        "type": "object"
+      },
       "superaide__app__routes__LinkBody": {
         "properties": {
           "url": {
@@ -2167,6 +2167,31 @@
           "options"
         ],
         "title": "AskBody",
+        "type": "object"
+      },
+      "superaide__identity__claims_routes__AnswerBody": {
+        "additionalProperties": false,
+        "properties": {
+          "choice": {
+            "enum": [
+              "contact",
+              "new",
+              "stranger",
+              "block"
+            ],
+            "title": "Choice",
+            "type": "string"
+          },
+          "relation": {
+            "default": "contact",
+            "title": "Relation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "choice"
+        ],
+        "title": "AnswerBody",
         "type": "object"
       },
       "superaide__mandate__routes__CreateBody": {
@@ -5015,6 +5040,96 @@
         ]
       }
     },
+    "/app/identity-claims": {
+      "get": {
+        "description": "Open questions with everything the platform told us. Nothing is linked until you answer.",
+        "operationId": "list_claims_app_identity_claims_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Claims App Identity Claims Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Who is this? Accounts named like someone you know",
+        "tags": [
+          "Owner: identity claims"
+        ]
+      }
+    },
+    "/app/identity-claims/{claim_id}/answer": {
+      "post": {
+        "description": "Only this links the account. Each question is answered once.",
+        "operationId": "answer_claim_app_identity_claims__claim_id__answer_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "claim_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Claim Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/superaide__identity__claims_routes__AnswerBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Answer Claim App Identity Claims  Claim Id  Answer Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Answer: link, add as a person, keep as a stranger, or block",
+        "tags": [
+          "Owner: identity claims"
+        ]
+      }
+    },
     "/app/import-leases": {
       "get": {
         "description": "Each import lease: what it may hold, when it ends, how many cards it holds now.",
@@ -7300,7 +7415,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AnswerBody"
+                "$ref": "#/components/schemas/superaide__app__routes__AnswerBody"
               }
             }
           },
