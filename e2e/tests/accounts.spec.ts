@@ -675,7 +675,7 @@ test.describe('log-out', () => {
       // Watch the page for the workspace greeting from the moment we log out.
       await page.addInitScript(() => {
         const check = () => {
-          if (sessionStorage.getItem('e2e-armed') && document.body?.innerText.includes('What shall we work on?')) {
+          if (sessionStorage.getItem('e2e-armed') && document.body?.innerText.includes('Your conversation with')) {
             sessionStorage.setItem('e2e-leak', location.pathname)
           }
         }

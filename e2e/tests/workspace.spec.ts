@@ -16,7 +16,9 @@ import {
   notebookFact,
   INTRO_LINE,
   OFFLINE_REPLY,
+  chatHeading,
   openChat,
+  openEmptyChat,
   openConnections,
   openNotebookPage,
   recordOutsideCalls,
@@ -28,18 +30,37 @@ import {
 const greeting = (name: string) => `Hello, ${name.split(' ')[0]}. What shall we work on?`
 
 test.describe('workspace: chat', () => {
-  test('greets the owner by first name, with an empty composer and quick actions', async ({ page, owner }) => {
-    await openChat(page)
-    await expect(page.getByRole('heading', { level: 1, name: greeting(owner.name) })).toBeVisible()
+  test('an empty conversation greets the owner by first name, with the four quick actions centred in the transcript', async ({ page, owner }) => {
+    await openEmptyChat(page)
+    await expect(chatHeading(page, owner)).toBeAttached() // the page always keeps its (visually hidden) h1
+    const empty = page.getByTestId('chat-empty')
+    await expect(empty.getByText(greeting(owner.name))).toBeVisible()
+    for (const label of ['How would you handle…', 'Draft a reply', 'Remember something', 'What do you know about me?']) {
+      await expect(empty.getByRole('button', { name: label })).toBeVisible()
+    }
     await expect(composer(page)).toBeVisible()
     await expect(composer(page)).toHaveValue('')
     await expect(sendButton(page)).toBeDisabled()
-    for (const label of ['How would you handle…', 'Draft a reply', 'Remember something', 'What do you know about me?']) {
-      await expect(page.getByRole('button', { name: label })).toBeVisible()
-    }
     await expect(page.getByRole('main').getByText('Ava: offline mode')).toBeVisible()
-    // The introduction's conversation is already there.
-    await expect(page.getByText(INTRO_LINE, { exact: true })).toBeVisible()
+  })
+
+  test('once there is a message, no greeting and no quick actions are drawn and the transcript starts at the top', async ({ page, owner }) => {
+    void owner
+    await openChat(page)
+    await expect(page.getByTestId('chat-empty')).toHaveCount(0)
+    await expect(page.getByText(/What shall we work on\?/)).toHaveCount(0)
+    for (const label of ['How would you handle…', 'Draft a reply', 'Remember something', 'What do you know about me?']) {
+      await expect(page.getByRole('button', { name: label })).toHaveCount(0)
+    }
+    // Nothing sits between the app's top bar and the transcript any more (a greeting block used to take about 120px there).
+    const gap = await page.getByText(INTRO_LINE, { exact: true }).evaluate((el) => {
+      let scroller: Element | null = el
+      while (scroller && getComputedStyle(scroller).overflowY !== 'auto') scroller = scroller.parentElement
+      const bar = document.querySelector('header')
+      return scroller && bar ? scroller.getBoundingClientRect().top - bar.getBoundingClientRect().bottom : -1
+    })
+    expect(gap, 'the transcript starts right under the top bar').toBeGreaterThanOrEqual(0)
+    expect(gap).toBeLessThan(10)
   })
 
   test('a message gets a reply, and both survive a reload and a new tab', async ({ page, owner }) => {
@@ -287,7 +308,7 @@ test.describe('workspace: chat', () => {
 
   test('quick actions fill the composer and focus it, without sending', async ({ page, owner }) => {
     void owner
-    await openChat(page)
+    await openEmptyChat(page)
     const before = (await webConversation()).length
     const cases: [string, string][] = [
       ['How would you handle…', 'If someone messages you saying '],
@@ -308,7 +329,7 @@ test.describe('workspace: chat', () => {
 
   test('"What do you know about me?" asks straight away', async ({ page, owner }) => {
     void owner
-    await openChat(page)
+    await openEmptyChat(page)
     await page.getByRole('button', { name: 'What do you know about me?' }).click()
     await expect(page.getByText('What do you know about me so far?', { exact: true })).toBeVisible()
     await expect(page.getByText('You said: "What do you know about me so far?"')).toBeVisible()
@@ -351,7 +372,7 @@ test.describe('workspace: chat', () => {
     await page.getByLabel('Email').fill(owner.email)
     await page.getByLabel('Password', { exact: true }).fill(owner.password)
     await page.getByRole('button', { name: 'Log in' }).click()
-    await expect(page.getByRole('heading', { level: 1, name: greeting(owner.name) })).toBeVisible()
+    await expect(chatHeading(page, owner)).toBeVisible()
     await expect(page).toHaveURL(/\/dashboard\/chat$/)
     expect(visited, 'straight to the chat, never via the home page').not.toContain('/')
   })
@@ -380,7 +401,7 @@ test.describe('workspace: notebook', () => {
 
   test('"Remember that…" in chat adds a note from chat', async ({ page, owner }) => {
     void owner
-    await openChat(page)
+    await openEmptyChat(page)
     await page.getByRole('button', { name: 'Remember something' }).click()
     // The quick action focuses the composer on the next tick; type only once it has.
     await expect(composer(page)).toHaveValue('Remember that ')
@@ -467,7 +488,7 @@ test.describe('workspace: notebook', () => {
 
   test('"Remember that" with nothing after it does not save a note', async ({ page, owner }) => {
     void owner
-    await openChat(page)
+    await openEmptyChat(page)
     await page.getByRole('button', { name: 'Remember something' }).click()
     await sendButton(page).click()
     await expect(page.getByText('Remember that', { exact: true })).toBeVisible()
