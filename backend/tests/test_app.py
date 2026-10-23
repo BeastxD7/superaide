@@ -198,6 +198,9 @@ def test_telegram_invite_links_the_phone_to_the_app_account(client, agent):
     assert agent.handle(tg("777001", "hello again")).mode == "known"
     # The link works only once.
     assert "expired or was already used" in (agent.handle(tg("777002", f"/start {code}")).reply or "")
+    # "Linked" counts while the bot is connected (the test agent has none, so connect one first).
+    assert client.get("/app/me").json()["channels"]["telegram"] is False
+    agent.settings = agent.settings.model_copy(update={"telegram_bot_token": "123456789:fake-bot-token"})
     assert client.get("/app/me").json()["channels"]["telegram"] is True
     with session_scope() as s:
         identity = s.scalar(select(ChannelIdentity).where(ChannelIdentity.stable_key == "777001"))
