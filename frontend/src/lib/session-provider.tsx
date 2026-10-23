@@ -7,6 +7,9 @@ import { PWA_ENABLED } from '@/lib/flags'
 import { SessionContext } from '@/lib/session-context'
 import { needsAccount } from '@/lib/session'
 
+// How often a visible tab re-reads the agent's state (see `sync`).
+const SYNC_MS = 15_000
+
 type ProviderProps = { initialAccount: Account | null; hasSession: boolean; children: ReactNode }
 
 // The signed-in account comes from the server render, so every page knows at
@@ -69,6 +72,35 @@ export function SessionProvider({ initialAccount, hasSession, children }: Provid
   useEffect(() => {
     if (hasSession || initialAccount) void refresh()
   }, [refresh, hasSession, initialAccount])
+
+  // One shared source for "what is Ava's state": every surface (header, sidebar, Home, Chat) reads `me`, so it is re-read
+  // whenever something outside this tab may have changed it (the operator pausing Ava, another tab, a channel linked in
+  // Telegram) and not only after this tab's own actions: when the tab regains focus or becomes visible, and on a light poll while
+  // it is visible. A quiet read: nothing re-renders unless the state really changed, and a failed read changes nothing.
+  const sync = useCallback(async () => {
+    const current = latest.current
+    if (!current.account?.hire) return
+    try {
+      const fresh = await call<Me>('/me')
+      if (JSON.stringify(fresh) !== JSON.stringify(latest.current.me)) commit(latest.current.account, fresh, false)
+    } catch (e) {
+      if (isUnauthorized(e)) void refresh() // the session ended: the same path as any other 401
+    }
+  }, [commit, refresh])
+  useEffect(() => {
+    if (!hasSession && !initialAccount) return
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void sync()
+    }
+    window.addEventListener('focus', onVisible)
+    document.addEventListener('visibilitychange', onVisible)
+    const timer = window.setInterval(onVisible, SYNC_MS)
+    return () => {
+      window.removeEventListener('focus', onVisible)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.clearInterval(timer)
+    }
+  }, [sync, hasSession, initialAccount])
 
   // The session ended while a page was open (a 401 from any /app call): forget the account, and on
   // a page that needs one go to log in, coming back here afterwards.

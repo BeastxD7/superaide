@@ -21,7 +21,7 @@ const QUICK = [
 ]
 
 export function ChatPage() {
-  const { me } = useSession()
+  const { me, refresh } = useSession()
   const [messages, setMessages] = useState<Message[]>([])
   const [pending, setPending] = useState(false)
   const [live, setLive] = useState<LiveTurn | null>(null)
@@ -129,7 +129,10 @@ export function ChatPage() {
       setMessages(fresh)
       if (failure) setError(failure)
       // Paused: the message is kept, but say why nothing came back instead of leaving silence.
-      else if (mode === 'frozen') setError(`${name} is paused, so she didn't reply. She'll see this once she's resumed.`)
+      else if (mode === 'frozen') {
+        setError(`${name} is paused, so she didn't reply. She'll see this once she's resumed.`)
+        void refresh() // the header, sidebar and Home learn about the pause too
+      }
     } catch (e) {
       if (unmounted.current) return
       if (started) {
