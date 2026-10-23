@@ -62,6 +62,7 @@ os.environ.update(
         "SLACK_TEAM_ID": "T_OURS",
         "ADMIN_TOKEN": "test-admin-token",
         "ENABLE_SIMULATOR": "true",
+        "APPROVAL_REQUIRE_EXECUTOR": "false",  # tests opt in (tests/test_approval_honesty.py)
         "FAKE_LLM": "true",
         "EMBEDDER": "fake",
         "VOYAGE_API_KEY": "",

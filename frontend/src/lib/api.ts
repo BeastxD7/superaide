@@ -445,6 +445,9 @@ export type ApprovalItem = {
   id: string
   kind: string
   summary: string
+  // One line: what really happens when the owner says yes. executes=false: nothing can carry it out (#326).
+  on_approval?: string
+  executes?: boolean
   requested_by: string | null
   // `expired`: still unanswered but past its time limit, so it can no longer be approved.
   status: 'pending' | 'approved' | 'rejected' | 'expired'
