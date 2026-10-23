@@ -1,6 +1,6 @@
 'use client'
 
-import { AlertTriangle, AudioLines, Check, ChevronDown, ExternalLink, KeyRound, ShieldAlert } from 'lucide-react'
+import { AlertTriangle, AudioLines, Check, ChevronDown, Copy, ExternalLink, KeyRound, ShieldAlert } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { call, type Me } from '@/lib/api'
@@ -301,6 +301,9 @@ function ConnectForm({
       {provider === 'telegram' && service.connected && !rejected(service) && !linked.some((a) => a.provider === 'telegram' && a.mine) && (
         <TelegramPairing me={me} refreshMe={refreshMe} username={service.meta?.username ?? null} />
       )}
+      {provider === 'slack' && service.connected && !rejected(service) && !linked.some((a) => a.provider === 'slack' && a.mine) && (
+        <SlackPairing me={me} refreshMe={refreshMe} onLinked={onLinkedChanged} />
+      )}
       {(!(service.connected && service.via === 'app') || rejected(service)) && (
         <>
           <ol className="space-y-1.5 text-sm text-body">
@@ -407,6 +410,99 @@ function TelegramPairing({ me, refreshMe, username }: { me: Me; refreshMe: () =>
       {error && (
         <div className="mt-2">
           <ActionError action="make the link" error={error} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+// After the Slack app is connected: link the owner's own Slack account. Slack has no start link, so the owner types a
+// one-time code in a direct message to Ava. The code is shown only here, in the signed-in app.
+function SlackPairing({ me, refreshMe, onLinked }: { me: Me; refreshMe: () => Promise<Me | null>; onLinked: () => Promise<void> }) {
+  const [invite, setInvite] = useState<{ code: string; instruction: string; expiresAt: number } | null>(null)
+  const [linked, setLinked] = useState(me.channels.slack)
+  const [now, setNow] = useState(() => Date.now())
+  const [copied, setCopied] = useState(false)
+  const { run, busy, error } = useAction()
+
+  const make = () =>
+    run(async () => {
+      const r = await call<{ code: string; instruction: string; expires_at: string }>('/channels/slack/invite', { method: 'POST' })
+      setInvite({ code: r.code, instruction: r.instruction, expiresAt: new Date(r.expires_at).getTime() })
+      setCopied(false)
+      setNow(Date.now())
+    })
+
+  const left = invite ? Math.max(0, Math.round((invite.expiresAt - now) / 1000)) : 0
+  const live = invite !== null && left > 0
+
+  useEffect(() => {
+    if (!live || linked) return
+    const tick = window.setInterval(() => setNow(Date.now()), 1000)
+    const poll = window.setInterval(async () => {
+      const m = await refreshMe()
+      if (m?.channels.slack) {
+        setLinked(true)
+        await onLinked()
+      }
+    }, 3000)
+    return () => {
+      window.clearInterval(tick)
+      window.clearInterval(poll)
+    }
+  }, [live, linked, refreshMe, onLinked])
+
+  async function copy() {
+    if (!invite) return
+    try {
+      await navigator.clipboard.writeText(`link ${invite.code}`)
+      setCopied(true)
+    } catch {
+      setCopied(false) // the sentence is on screen to select by hand
+    }
+  }
+
+  if (linked)
+    return (
+      <p className="mb-3 flex items-center gap-2 rounded-xl bg-sky-100 px-3 py-2 text-sm text-ink">
+        <Check className="size-4 text-ok" /> Your Slack account is linked. Messages from you there are from you.
+      </p>
+    )
+  return (
+    <div className="mb-3 rounded-xl bg-sky-100 px-3 py-3 text-sm text-ink">
+      <p>
+        Slack app connected. Now link <strong>your</strong> Slack account, so I know it's you there.
+      </p>
+      {live && invite ? (
+        <div className="mt-2 space-y-2">
+          <p>
+            Open a direct message with {me.agent.name} in Slack and send: <strong>link {invite.code}</strong>
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={() => void copy()} className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-ink">
+              <Copy className="size-3.5" aria-hidden /> {copied ? 'Copied' : 'Copy the message'}
+            </button>
+            <span className="text-xs text-muted" aria-live="off">
+              Works once, for {Math.floor(left / 60)}:{String(left % 60).padStart(2, '0')} more.
+            </span>
+          </div>
+          <p className="text-xs text-muted">Send it in a direct message, never in a channel.</p>
+        </div>
+      ) : (
+        <>
+          {invite && <p className="mt-2 text-muted">That code has expired. Make a new one.</p>}
+          <button
+            onClick={() => void make()}
+            disabled={busy}
+            className="mt-2 rounded-full bg-ink px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
+          >
+            Link my Slack account
+          </button>
+        </>
+      )}
+      {error && (
+        <div className="mt-2">
+          <ActionError action="make the code" error={error} />
         </div>
       )}
     </div>

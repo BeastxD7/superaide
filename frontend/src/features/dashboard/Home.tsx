@@ -130,18 +130,31 @@ function AgentCard({ me }: { me: Me }) {
   )
 }
 
+// The bot or app is connected but the owner has not proven which account is theirs, so Ava treats them as a stranger there.
+const NOT_LINKED = {
+  telegram: 'Bot connected, your Telegram account is not linked yet',
+  slack: 'Bot connected, your Slack account is not linked yet',
+}
+
 function ReachCard({ me }: { me: Me }) {
   // A token the service refused means nothing reaches the owner there, whatever "linked" says.
   const refused = (provider: 'telegram' | 'slack') => me.channels[provider] && me.channels.health?.[provider]?.status === 'auth_failed'
   const rows = [
-    { key: 'web', on: me.channels.web, bad: false, note: 'Always on' },
+    { key: 'web', on: me.channels.web, bad: false, note: 'Always on', todo: false },
     {
       key: 'telegram',
       on: me.channels.telegram,
       bad: refused('telegram'),
-      note: me.channels.telegram ? 'Linked to you' : me.channels.telegram_available ? 'Not linked yet' : 'Not connected',
+      note: me.channels.telegram ? 'Linked to you' : me.channels.telegram_available ? NOT_LINKED.telegram : 'Not connected',
+      todo: !me.channels.telegram && me.channels.telegram_available,
     },
-    { key: 'slack', on: me.channels.slack, bad: refused('slack'), note: me.channels.slack ? 'Linked to you' : 'Not connected' },
+    {
+      key: 'slack',
+      on: me.channels.slack,
+      bad: refused('slack'),
+      note: me.channels.slack ? 'Linked to you' : me.channels.slack_available ? NOT_LINKED.slack : 'Not connected',
+      todo: !me.channels.slack && !!me.channels.slack_available,
+    },
   ]
   return (
     <Card>
@@ -168,9 +181,15 @@ function ReachCard({ me }: { me: Me }) {
                   Token rejected: reconnect
                 </Link>
               ) : (
-                <span className={`ml-auto inline-flex items-center gap-1 ${r.on ? 'text-ok' : 'text-muted'}`}>
-                  {r.on ? <Check className="size-3.5" aria-hidden /> : <Plug className="size-3.5" aria-hidden />}
-                  {r.note}
+                <span className={`ml-auto inline-flex items-center gap-1 text-right ${r.on ? 'text-ok' : 'text-muted'}`}>
+                  {r.on ? <Check className="size-3.5 shrink-0" aria-hidden /> : <Plug className="size-3.5 shrink-0" aria-hidden />}
+                  {r.todo ? (
+                    <Link href="/dashboard/connections" className="hover:underline">
+                      {r.note}
+                    </Link>
+                  ) : (
+                    r.note
+                  )}
                 </span>
               )}
             </li>

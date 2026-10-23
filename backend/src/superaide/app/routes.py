@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import AsyncIterator, Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 from typing import Any, Literal
 
@@ -56,7 +56,12 @@ from superaide.policy.actions import ApprovalError, resolve
 from superaide.policy.killswitch import is_frozen
 from superaide.skills import registry as skill_registry
 from superaide.tenancy.context import InstanceScope, use_instance
+from superaide.tenancy.endpoints import slack_key
 from superaide.voice import gateway
+
+
+def slack_connected(settings: Any) -> bool:
+    return bool(settings.slack_bot_token and settings.slack_app_token)
 
 
 @lru_cache
@@ -284,6 +289,8 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                     "telegram": "telegram" in providers,
                     "telegram_available": bool(telegram_username(settings.telegram_bot_token)),
                     "slack": "slack" in providers,
+                    # The Slack app is connected (its account may still be unlinked), like telegram_available.
+                    "slack_available": slack_connected(settings),
                     # Whether each service still accepts our token (stored, never fetched here): "Linked to
                     # you" on Home means nothing if Telegram rejects the bot token.
                     "health": {p: health.get(s, p) for p in health.PROVIDERS},
@@ -1388,6 +1395,29 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 s, require(s, Person, person_id), "telegram", endpoint=bot_id(settings.telegram_bot_token)
             )
         return {"available": True, "url": f"https://t.me/{username}?start={code}", "expires_minutes": 15}
+
+    @router.post(
+        "/channels/slack/invite",
+        tags=["Connections"],
+        summary="Link my Slack account",
+        description=(
+            "A one-time code (15 minutes) the owner sends to Ava in a direct message on Slack: `link <code>`. "
+            "It works only through the Slack app that is connected now. 404 when no Slack app is connected."
+        ),
+    )
+    def invite_slack(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        settings = get_agent().settings
+        if not slack_connected(settings):
+            raise HTTPException(404, "Connect Slack first.")
+        endpoint = slack_key(settings.slack_team_id, settings.slack_app_token)
+        with session_scope() as s:
+            code = accounts.create_invite(s, require(s, Person, person_id), "slack", endpoint=endpoint)
+        return {
+            "code": code,
+            "expires_minutes": accounts.INVITE_TTL_MINUTES,
+            "expires_at": (datetime.now(UTC) + timedelta(minutes=accounts.INVITE_TTL_MINUTES)).isoformat(),
+            "instruction": f"Open a direct message with {settings.agent_name} in Slack and send: link {code}",
+        }
 
     @router.get(
         "/access-log",

@@ -38,3 +38,9 @@ description = "A made-up opaque escalation token in the push payload tests"
 condition = "AND"
 paths = ['''(^|/)tests/test_push\.py$''']
 regexes = ['''^AbCdEfGh1234$''']
+
+[[allowlists]]
+description = "Made-up Slack app token in the Slack owner-link tests"
+condition = "AND"
+paths = ['''(^|/)tests/test_slack_link\.py$''']
+regexes = ['''^xapp-1-A0APPONE-123456-secretsecret$''']
