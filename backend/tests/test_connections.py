@@ -27,6 +27,7 @@ GOOGLE_CLIENT = "1234-abc.apps.googleusercontent.com"
 NO_SCOPE_CLIENT = "5678-def.apps.googleusercontent.com"
 GOOGLE_SECRET = "test-google-client-secret-9z"
 GOOGLE_REFRESH = "1//test-refresh-token-7q"
+TOKEN_FORMS: list[dict[str, list[str]]] = []  # what each token exchange sent to (the fake) Google
 
 
 @pytest.fixture(autouse=True)
@@ -53,6 +54,7 @@ def services(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={"ok": True, "url": "wss://example"})
     if "oauth2.googleapis.com/token" in url:
         form = parse_qs(request.content.decode())
+        TOKEN_FORMS.append(form)
         if form.get("code") != ["good-code"] or not form.get("code_verifier"):
             return httpx.Response(400, json={"error": "invalid_grant"})
         scope = (
@@ -64,6 +66,7 @@ def services(request: httpx.Request) -> httpx.Response:
 
 @pytest.fixture
 def owner(agent, monkeypatch):
+    TOKEN_FORMS.clear()
     monkeypatch.setattr(connections, "http_client", lambda: httpx.Client(transport=httpx.MockTransport(services)))
     app = create_app(agent)
     c = TestClient(app, headers={"X-Requested-With": "superaide"})
@@ -282,3 +285,126 @@ def test_the_deployments_google_client_serves_every_owners_calendar_even_when_ho
     google = owner.get("/app/connections").json()["services"]["google"]
     assert google["connected"] and google["via"] == "app" and GOOGLE_SECRET not in json.dumps(google)
     assert runtime_settings().google_refresh_token == GOOGLE_REFRESH
+
+
+# --- connecting from the address the owner is using (not always FRONTEND_ORIGIN) ---------------------
+
+PUBLIC = "https://superaide.webgraph.fun"
+HOME = "http://localhost:3000"
+
+
+def public_setup(owner, monkeypatch, *, registered: bool = True) -> None:
+    from superaide.config import get_settings
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "link_origins", PUBLIC)  # an address we serve (links.py)
+    monkeypatch.setattr(settings, "google_redirect_origins", PUBLIC if registered else "")
+    owner.post("/app/connections/google", json={"client_id": GOOGLE_CLIENT, "client_secret": GOOGLE_SECRET})
+
+
+def start_on(owner, headers: dict[str, str]) -> httpx.Response:
+    return owner.post("/app/connections/google/start", headers=headers)
+
+
+def test_connect_on_the_public_address_uses_it_for_the_authorise_url_the_token_exchange_and_the_way_back(
+    owner, monkeypatch
+):
+    public_setup(owner, monkeypatch)
+    r = start_on(owner, {"Origin": PUBLIC})
+    assert r.status_code == 200, r.text
+    q = {k: v[0] for k, v in parse_qs(urlparse(r.json()["url"]).query).items()}
+    assert q["redirect_uri"] == f"{PUBLIC}/api/app/connections/google/callback"
+    done = callback(owner, code="good-code", state=q["state"])
+    assert done.headers["location"] == f"{PUBLIC}/dashboard/connections?google=connected"  # not localhost
+    assert TOKEN_FORMS[-1]["redirect_uri"] == [q["redirect_uri"]]  # Google needs the same address twice
+    # The forwarded host works too, as behind a tunnel or proxy.
+    r = start_on(owner, {"X-Forwarded-Host": "superaide.webgraph.fun", "X-Forwarded-Proto": "https"})
+    assert parse_qs(urlparse(r.json()["url"]).query)["redirect_uri"] == [
+        f"{PUBLIC}/api/app/connections/google/callback"
+    ]
+
+
+def test_the_guide_lists_the_addresses_for_where_the_owner_is_and_the_configured_ones(owner, monkeypatch):
+    public_setup(owner, monkeypatch)
+    g = owner.get("/app/connections", headers={"Origin": PUBLIC}).json()["guides"]["google"]
+    assert g["redirect_uri"] == f"{PUBLIC}/api/app/connections/google/callback"
+    assert g["signin_redirect_uri"] == f"{PUBLIC}/api/auth/google/callback"
+    assert g["redirect_uris"] == [f"{PUBLIC}{p}" for p in ("/api/app/connections/google/callback",)] + [
+        f"{HOME}/api/app/connections/google/callback"
+    ]
+    assert f"{HOME}/api/auth/google/callback" in g["signin_redirect_uris"]
+    # Unchanged on the normal address.
+    g = owner.get("/app/connections").json()["guides"]["google"]
+    assert g["redirect_uri"] == f"{HOME}/api/app/connections/google/callback"
+
+
+def test_an_allowed_address_that_google_does_not_know_gets_a_message_not_a_failed_google_page(owner, monkeypatch):
+    public_setup(owner, monkeypatch, registered=False)
+    r = start_on(owner, {"Origin": PUBLIC})
+    detail = r.json()["detail"]
+    assert r.status_code == 409 and "registered in Google Cloud" in detail
+    assert f"{PUBLIC}/api/app/connections/google/callback" in detail and f"{PUBLIC}/api/auth/google/callback" in detail
+    assert f"open the app at {HOME}" in detail
+    assert "google_pending" not in str(owner.get("/app/connections").json())  # nothing was started
+    with session_scope() as s:
+        from superaide.tenancy.models import PlatformState
+
+        assert s.scalars(select(PlatformState).where(PlatformState.key.like("google_pending:%"))).all() == []
+
+
+@pytest.mark.parametrize(
+    "headers",
+    [
+        {"Origin": "https://evil.example"},
+        {"Origin": f"{PUBLIC}.evil.example"},
+        {"X-Forwarded-Host": "evil.example", "X-Forwarded-Proto": "https"},
+        {"Origin": "javascript://superaide.webgraph.fun"},
+    ],
+)
+def test_a_spoofed_origin_is_never_reflected(owner, monkeypatch, headers):
+    public_setup(owner, monkeypatch)
+    from superaide.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "google_redirect_origins", f"{PUBLIC},https://evil.example")  # even if listed
+    r = start_on(owner, headers)
+    assert r.status_code == 200
+    q = {k: v[0] for k, v in parse_qs(urlparse(r.json()["url"]).query).items()}
+    assert q["redirect_uri"] == f"{HOME}/api/app/connections/google/callback"
+    done = callback(owner, code="good-code", state=q["state"])
+    assert done.headers["location"].startswith(f"{HOME}/") and "evil" not in done.headers["location"]
+
+
+def test_the_stored_address_is_checked_again_at_the_callback(owner, monkeypatch):
+    from superaide.tenancy.models import PlatformState
+
+    public_setup(owner, monkeypatch)
+    q = {k: v[0] for k, v in parse_qs(urlparse(start_on(owner, {"Origin": PUBLIC}).json()["url"]).query).items()}
+    # Un-registered meanwhile: the way back and the token request fall back to the normal address.
+    monkeypatch.setattr(get_settings_(), "google_redirect_origins", "")
+    done = callback(owner, code="good-code", state=q["state"])
+    assert done.headers["location"].startswith(f"{HOME}/") and PUBLIC not in done.headers["location"]
+    # A tampered record (someone with database access, or a bug) cannot send the browser anywhere else.
+    monkeypatch.setattr(get_settings_(), "google_redirect_origins", PUBLIC)
+    q = {k: v[0] for k, v in parse_qs(urlparse(start_on(owner, {"Origin": PUBLIC}).json()["url"]).query).items()}
+    with session_scope() as s:
+        row = s.get(PlatformState, connections._pending_key(q["state"]))
+        row.value = {**row.value, "origin": "https://evil.example"}
+    done = callback(owner, code="good-code", state=q["state"])
+    assert done.headers["location"].startswith(f"{HOME}/") and "evil" not in done.headers["location"]
+    assert TOKEN_FORMS[-1]["redirect_uri"] == [f"{HOME}/api/app/connections/google/callback"]
+
+
+def get_settings_():
+    from superaide.config import get_settings
+
+    return get_settings()
+
+
+def test_the_default_localhost_flow_is_unchanged(owner):
+    owner.post("/app/connections/google", json={"client_id": GOOGLE_CLIENT, "client_secret": GOOGLE_SECRET})
+    for headers in ({}, {"Origin": HOME}):
+        q = {k: v[0] for k, v in parse_qs(urlparse(start_on(owner, headers).json()["url"]).query).items()}
+        assert q["redirect_uri"] == f"{HOME}/api/app/connections/google/callback"
+    done = callback(owner, code="good-code", state=q["state"])
+    assert done.headers["location"] == f"{HOME}/dashboard/connections?google=connected"
+    assert TOKEN_FORMS[-1]["redirect_uri"] == [f"{HOME}/api/app/connections/google/callback"]

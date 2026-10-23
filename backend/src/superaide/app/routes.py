@@ -14,7 +14,7 @@ from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -1162,6 +1162,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         publisher: str,
         name: str,
         body: OptionBody,
+        request: Request,
         person_id: uuid.UUID = Depends(owner_person_id),
         user_id: uuid.UUID = Depends(current_user_id),
     ) -> dict[str, Any]:
@@ -1176,10 +1177,11 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             card = next(v for v in skills_view(s) if v["id"] == skill_id)
             upgrade = skill_id == calendar.SKILL_ID and body.on and not calendar.can_write(s)
         if upgrade:
-            from superaide.app.connections import begin_google
+            from superaide.app.connections import begin_google, connect_origin
 
+            origin = connect_origin(request)  # an address Google doesn't know gets a message, not a failed page
             try:
-                card["google_url"] = begin_google(user_id, events=True, back="skills")
+                card["google_url"] = begin_google(user_id, events=True, origin=origin, back="skills")
             except HTTPException:
                 card["google_url"] = None  # no OAuth client yet: connect Google Calendar first
         return card
