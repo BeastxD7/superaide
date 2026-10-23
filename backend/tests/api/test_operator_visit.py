@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+
 from tests.api.conftest import hire, signup
 
 ADMIN = {"Authorization": "Bearer test-admin-token"}
