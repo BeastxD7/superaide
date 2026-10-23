@@ -97,7 +97,8 @@ def unsupported_route(text: str) -> bool:
 def can_do_list() -> str:
     return (
         "Ava can: save a reply draft in a Gmail thread (gmail_draft_reply), ask the owner to approve sending "
-        "a reply in a Gmail thread (gmail_send, needs Gmail connected with drafts on), write a self-contained "
+        "a reply in a Gmail thread (gmail_send) or a new email to an address the owner typed (gmail_compose), "
+        "both needing Gmail connected with drafts on, write a self-contained "
         "email or message as text for the owner to copy and send themselves, and set reminders."
     )
 
