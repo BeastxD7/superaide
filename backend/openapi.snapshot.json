@@ -398,6 +398,28 @@
         "title": "ChatBody",
         "type": "object"
       },
+      "ClearBody": {
+        "properties": {
+          "skill_id": {
+            "maxLength": 120,
+            "pattern": "^[a-z0-9-]+/[a-z0-9-]+$",
+            "title": "Skill Id",
+            "type": "string"
+          },
+          "version": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "skill_id",
+          "version"
+        ],
+        "title": "ClearBody",
+        "type": "object"
+      },
       "ClientBody": {
         "properties": {
           "name": {
@@ -956,6 +978,40 @@
           "on"
         ],
         "title": "KillBody",
+        "type": "object"
+      },
+      "LabelBody": {
+        "properties": {
+          "concern": {
+            "title": "Concern",
+            "type": "boolean"
+          },
+          "scanner": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Scanner",
+            "type": "string"
+          },
+          "skill_id": {
+            "maxLength": 120,
+            "pattern": "^[a-z0-9-]+/[a-z0-9-]+$",
+            "title": "Skill Id",
+            "type": "string"
+          },
+          "version": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "skill_id",
+          "version",
+          "scanner",
+          "concern"
+        ],
+        "title": "LabelBody",
         "type": "object"
       },
       "LeaseRequest": {
@@ -1675,6 +1731,21 @@
           "delay_s"
         ],
         "title": "Rung",
+        "type": "object"
+      },
+      "ScanBody": {
+        "properties": {
+          "skill_id": {
+            "maxLength": 120,
+            "pattern": "^[a-z0-9-]+/[a-z0-9-]+$",
+            "title": "Skill Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "skill_id"
+        ],
+        "title": "ScanBody",
         "type": "object"
       },
       "SearchKeyBody": {
@@ -10841,6 +10912,179 @@
           }
         ],
         "summary": "Retire a skill name",
+        "tags": [
+          "Owner: skills"
+        ]
+      }
+    },
+    "/app/skill-signals": {
+      "get": {
+        "description": "404 while off.",
+        "operationId": "overview_app_skill_signals_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Overview App Skill Signals Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Scanner ledger, behaviour cards and demotions",
+        "tags": [
+          "Owner: skills"
+        ]
+      }
+    },
+    "/app/skill-signals/clear-demotion": {
+      "post": {
+        "operationId": "clear_app_skill_signals_clear_demotion_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClearBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Clear App Skill Signals Clear Demotion Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Put a demoted skill version back after reviewing it",
+        "tags": [
+          "Owner: skills"
+        ]
+      }
+    },
+    "/app/skill-signals/label": {
+      "post": {
+        "operationId": "label_app_skill_signals_label_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LabelBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Label App Skill Signals Label Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Label a scanner verdict as a real concern or not",
+        "tags": [
+          "Owner: skills"
+        ]
+      }
+    },
+    "/app/skill-signals/scan": {
+      "post": {
+        "operationId": "scan_app_skill_signals_scan_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScanBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Scan App Skill Signals Scan Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Run every scanner on an installed catalog skill",
         "tags": [
           "Owner: skills"
         ]
