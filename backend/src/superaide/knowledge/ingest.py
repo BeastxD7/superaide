@@ -21,7 +21,7 @@ from superaide.db.models import Document, DocumentChunk, MemoryItem, Person
 from superaide.db.session import require, session_scope
 from superaide.knowledge import chunking
 from superaide.knowledge.extract import Extracted
-from superaide.knowledge.facts import extract_facts, extract_from_chunks
+from superaide.knowledge.facts import extract_from_chunks
 from superaide.knowledge.learn import neighbours
 from superaide.knowledge.store import lock_document, remember_fact, supersede
 from superaide.proactive.notify import notify_owner
