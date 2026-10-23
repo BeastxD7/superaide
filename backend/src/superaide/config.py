@@ -64,6 +64,11 @@ class Settings(BaseSettings):
     # owner's approval and is logged, and an outbound message that names someone outside the owner's contacts
     # is flagged on its approval card.
     footprint_guard_enabled: bool = False
+    # Memory Socket (#138). Off by default. A read-only MCP endpoint (POST /mcp/memory) lets the owner's other
+    # assistants ask Ava's memory one question at a time, with one token per consumer, a scope the owner picks
+    # per consumer, rows filtered by the audience gate in SQL, a per-minute limit and a visible access log.
+    memory_socket_enabled: bool = False
+    memory_socket_per_minute: int = Field(default=30, ge=1)
 
     # Tenancy
     tenant_id: uuid.UUID = DEFAULT_TENANT_ID

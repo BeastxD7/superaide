@@ -36,6 +36,7 @@ FLAG_GATED = {
     # The "Ask my Ava" link (ASK_LINK_ENABLED); its public side is checked in test_public_ask_routes below.
     ("GET", "/app/ask-link"),
     ("GET", "/app/ask-link/requests"),
+    ("GET", "/app/memory-socket"),  # MEMORY_SOCKET_ENABLED (#138); its MCP side is checked in test_memory_socket.py
     # The introduction's voice call, v2 (VOICE_INTRO_V2, ADR 0012); its POSTs are enumerated like every route.
     ("GET", "/app/intro/voice"),
 }
