@@ -173,11 +173,17 @@ class OptionBody(BaseModel):
 
 
 def skills_view(s: Any) -> list[dict[str, Any]]:
-    """The skills list, plus whether Google still has to grant what calendar actions need."""
+    """The skills list, plus whether Google is connected and still has to grant what calendar actions need."""
     from superaide.skills import calendar
+    from superaide.skills import gmail as gmail_skill
+    from superaide.vault.store import find
 
     cards = skill_registry.view(s)
+    google_on = find(s, "google", "refresh_token") is not None
     for card in cards:
+        # Capabilities that live on Google say whether Google is still connected: "installed" means nothing without it.
+        if card["id"] in (calendar.SKILL_ID, gmail_skill.SKILL_ID):
+            card["google_connected"] = google_on
         for option in card.get("options", []):
             if card["id"] == calendar.SKILL_ID and option["setting"] == calendar.OPTION:
                 option["needs_google"] = bool(option["on"]) and not calendar.can_write(s)
