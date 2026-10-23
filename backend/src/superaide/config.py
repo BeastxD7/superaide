@@ -118,6 +118,13 @@ class Settings(BaseSettings):
     # shown only above a minimum number of installs; a skill whose behaviour leaves its manifest is demoted.
     skill_signals_enabled: bool = False
     skill_card_min_cohort: int = Field(default=5, ge=2)
+    # Receipt log and computed tiers (#131). Off by default. Each approval decision on a skill action writes a
+    # content-free receipt into an append-only hash chain; a skill's tier is computed from the receipts by a stdlib
+    # script anyone can run. An owner counts only after SKILL_RECEIPT_MIN_DAYS of decisions on that skill, and at
+    # most SKILL_RECEIPT_OWNER_CAP of their receipts count per skill version.
+    skill_receipts_enabled: bool = False
+    skill_receipt_min_days: int = Field(default=3, ge=0)
+    skill_receipt_owner_cap: int = Field(default=20, ge=1)
     memory_socket_enabled: bool = False
     memory_socket_per_minute: int = Field(default=30, ge=1)
     # Glass brain share link (#55). Off by default. The owner can create an unlisted link (a long random token,
