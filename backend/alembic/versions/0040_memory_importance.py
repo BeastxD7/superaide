@@ -3,8 +3,8 @@
 Additive columns with defaults, so existing rows keep working: importance 0.5, not time bound,
 never verified. No new table; the columns ride on memory_item's existing Row-Level Security.
 
-Revision ID: 0039
-Revises: 0038
+Revision ID: 0040
+Revises: 0039
 Create Date: 2026-10-23 09:00:00.000000
 
 """
@@ -15,8 +15,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "0039"
-down_revision: str | Sequence[str] | None = "0038"
+revision: str = "0040"
+down_revision: str | Sequence[str] | None = "0039"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
