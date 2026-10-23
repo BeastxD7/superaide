@@ -1,7 +1,7 @@
 /* Superaide operator console: design system (docs/design/console-ui.md).
    One violet accent on a white canvas, Geist, 28px panels, pill controls, the landing page's easing.
-   Tokens first, then base, shell, primitives; the "legacy" block at the end styles pages not yet
-   moved onto the primitives in src/features/console/ui and is deleted as they move. */
+   Tokens first, then base, shell, primitives; then page parts that are not shared
+   primitives (trust ticks, conversations, log rows, simulator, growth chart). Pages compose src/features/console/ui. */
 
 @layer components {
 :root {
@@ -53,7 +53,7 @@
   --bar-border: rgb(255 255 255 / 0.6);
   --mesh: radial-gradient(60% 50% at 12% 0%, #f6e8ff 0%, transparent 70%), radial-gradient(50% 45% at 92% 0%, #e7efff 0%, transparent 70%);
 
-  /* Aliases used by the legacy block and the growth chart */
+  /* Aliases used by the growth chart, trust ticks and simulator */
   --paper: var(--canvas);
   --surface: var(--canvas);
   --ink-quiet: var(--muted);
@@ -446,8 +446,7 @@ textarea {
 }
 
 /* Buttons: primary, secondary, ghost, destructive */
-.c-btn,
-.primary {
+.c-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -465,18 +464,15 @@ textarea {
   transition: background-color 200ms var(--ease), border-color 200ms var(--ease), transform 200ms var(--ease);
 }
 
-.c-btn:hover,
-.primary:hover {
+.c-btn:hover {
   background: var(--accent-hover);
 }
 
-.c-btn:active,
-.primary:active {
+.c-btn:active {
   transform: scale(0.98);
 }
 
-.c-btn:disabled,
-.primary:disabled {
+.c-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
   transform: none;
@@ -574,8 +570,7 @@ input[type='checkbox'] {
   flex-wrap: wrap;
 }
 
-.c-chip,
-.chip {
+.c-chip {
   border: 1px solid var(--line-strong);
   background: var(--canvas);
   color: var(--body);
@@ -587,21 +582,18 @@ input[type='checkbox'] {
   transition: background-color 200ms var(--ease), color 200ms var(--ease);
 }
 
-.c-chip:hover,
-.chip:hover {
+.c-chip:hover {
   background: var(--mist);
 }
 
-.c-chip[aria-pressed='true'],
-.chip.on {
+.c-chip[aria-pressed='true'] {
   background: var(--ink);
   border-color: var(--ink);
   color: var(--canvas);
 }
 
 /* Notice: error, success and info messages */
-.c-notice,
-.error {
+.c-notice {
   display: flex;
   gap: var(--s-2);
   align-items: baseline;
@@ -613,8 +605,7 @@ input[type='checkbox'] {
   font-size: 14px;
 }
 
-.c-notice.is-danger,
-.error {
+.c-notice.is-danger {
   background: var(--danger-soft);
   color: var(--danger);
 }
@@ -629,8 +620,7 @@ input[type='checkbox'] {
   color: var(--warn);
 }
 
-.c-notice .link-button,
-.error .link-button {
+.c-notice .link-button {
   color: inherit;
 }
 
@@ -843,8 +833,6 @@ input[type='checkbox'] {
   width: 100%;
   padding: 11px 18px;
 }
-
-/* ---- Legacy: pages not yet on the primitives (removed as each moves) ----- */
 
 /* ---- Overview ---------------------------------------------------------- */
 
@@ -1120,117 +1108,102 @@ input[type='checkbox'] {
   font-size: 13px;
 }
 
-/* ---- Simulator -------------------------------------------------------------- */
-
-.sim {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 24px;
-}
-
-.sim-grid {
-  display: grid;
-  grid-template-columns: minmax(260px, 360px) 1fr;
-  gap: 32px;
-  align-items: start;
-}
+/* ---- Simulator ------------------------------------------------------------- */
 
 .scenarios {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 8px;
+  gap: var(--s-2);
 }
 
 .scenario {
   width: 100%;
   display: grid;
-  gap: 4px;
+  gap: var(--s-1);
   text-align: left;
-  background: var(--surface);
-  border: 1px solid var(--rule);
-  border-radius: 10px;
-  padding: 12px 14px;
+  background: var(--mist);
+  border: 1px solid transparent;
+  border-radius: var(--r-field);
+  padding: var(--s-3) var(--s-4);
   cursor: pointer;
+  transition: background-color 200ms var(--ease), border-color 200ms var(--ease);
+}
+
+.scenario strong {
+  color: var(--ink);
 }
 
 .scenario span {
   font-size: 14px;
-  color: var(--ink-quiet);
+  color: var(--muted);
+}
+
+.scenario:hover:not(:disabled) {
+  background: var(--lilac);
 }
 
 .scenario.on {
-  border-color: var(--trust);
-  box-shadow: inset 3px 0 0 var(--trust);
+  background: var(--lilac);
+  border-color: var(--accent);
 }
 
 .scenario:disabled {
-  cursor: default;
+  cursor: not-allowed;
   opacity: 0.7;
 }
 
 .sim-form {
   display: grid;
-  gap: 14px;
+  gap: var(--s-4);
   align-content: start;
 }
 
-.sim-form .row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
+.sim-send {
+  justify-self: start;
 }
 
 .check {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--s-2);
   align-self: end;
   padding-bottom: 10px;
 }
 
-.sim-form .primary {
-  justify-self: start;
-}
-
 .sim-result {
-  border-top: 1px solid var(--rule);
-  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  padding-top: var(--s-4);
   display: grid;
-  gap: 8px;
+  gap: var(--s-2);
 }
 
 .mode {
-  font-weight: 700;
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .mode-stranger {
-  color: var(--stranger);
+  color: var(--warn);
 }
 
 .mode-known {
-  color: var(--trust);
+  color: var(--ok);
 }
 
 blockquote {
   margin: 0;
-  padding: 10px 14px;
-  background: var(--surface);
-  border-left: 3px solid var(--rule-strong);
-  border-radius: 0 8px 8px 0;
+  padding: var(--s-3) var(--s-4);
+  background: var(--mist);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--r-field) var(--r-field) 0;
   white-space: pre-wrap;
 }
 
-/* ---- Small screens -------------------------------------------------------------- */
+/* ---- Growth chart: scroll sideways on a phone rather than shrink the text ---- */
 
 @media (max-width: 760px) {
-  .sim-grid,
-  .sim-form .row {
-    grid-template-columns: 1fr;
-  }
-
-  /* Keep the growth chart legible: scroll it sideways rather than shrink it. */
   .growth-frame {
     overflow-x: auto;
   }
@@ -1238,7 +1211,6 @@ blockquote {
   .growth {
     min-width: 640px;
   }
-
 }
 
 /* Break-glass (ADR 0009): an owner's content opens only with a reason, recorded in their log. */

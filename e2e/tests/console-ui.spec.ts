@@ -204,6 +204,32 @@ test.describe('console design: one grid, every width', () => {
     expect(Math.abs(m2!.width - s2!.width)).toBeLessThanOrEqual(1)
   })
 
+  test('the simulator: balanced split, equal fields, and the result state is accessible and fits a phone', async ({ page, api, owner }) => {
+    void api
+    void owner
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await openConsole(page)
+    await goTo(page, 'Try an impostor')
+    const side = await page.locator('.c-split-side').boundingBox()
+    const main = await page.locator('.c-split-main').boundingBox()
+    expect(main!.width / side!.width).toBeGreaterThan(1.8)
+    expect(main!.width / side!.width).toBeLessThan(2.2)
+    const pair = await page.locator('.c-fields').first().locator('> label').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().width)))
+    expect(pair[0], 'two equal fields in a row').toBe(pair[1])
+
+    await page.getByRole('button', { name: /New number, it's me/ }).click()
+    await page.getByRole('button', { name: 'Send pretend message' }).click()
+    await expect(page.getByText('Handled as a stranger: no memory, no model call, no actions.')).toBeVisible()
+    await page.waitForTimeout(700)
+    expect(await violations(page), 'simulator result').toEqual([])
+
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.waitForTimeout(300)
+    expect(await overflow(page), 'simulator result scrolls sideways on a phone').toBeLessThanOrEqual(0)
+    const f = await page.locator('.c-fields').first().locator('> label').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().width)))
+    expect(f[0], 'fields stack at full width').toBe(f[1])
+  })
+
   test('the sidebar is reachable from the keyboard in reading order, with a focus ring', async ({ page, api }) => {
     void api
     await page.setViewportSize({ width: 1440, height: 900 })
