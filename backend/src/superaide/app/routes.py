@@ -143,6 +143,12 @@ class OutcomeBody(BaseModel):
     distance: float = Field(ge=0, le=1)
 
 
+class DrillBody(BaseModel):
+    model_a: str = Field(default="", max_length=120)  # empty: the model Ava uses now
+    model_b: str = Field(max_length=120)
+    tasks: int | None = Field(default=None, ge=1, le=50)
+
+
 class ReminderBody(BaseModel):
     text: str = Field(min_length=1, max_length=500)
     # Either an exact moment, or a time in the text ("Call Priya tomorrow at 5").
@@ -1059,6 +1065,53 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         with session_scope() as s:
             tuner.roll_back(s, require(s, Person, person_id))
         return {"status": "built-in prompt"}
+
+    def drill_on(person_id: uuid.UUID = Depends(owner_person_id)) -> uuid.UUID:
+        if not get_settings().model_drill_enabled:
+            raise HTTPException(404, "Not found")
+        return person_id
+
+    @router.get(
+        "/model-drill",
+        tags=["Owner: skills"],
+        summary="Model-swap drill",
+        description=(
+            "MODEL_DRILL_ENABLED (off by default; 404 while off): the model Ava uses now and how many recent tasks "
+            "a drill can replay."
+        ),
+    )
+    def drill_info(person_id: uuid.UUID = Depends(drill_on)) -> dict[str, Any]:
+        from superaide.tooltrace.rehearse import recent_tasks
+
+        settings = get_settings()
+        with session_scope() as s:
+            owner = require(s, Person, person_id)
+            return {
+                "current_model": settings.model_chat,
+                "max_tasks": settings.drill_max_tasks,
+                "tasks_available": len(recent_tasks(s, owner, settings.drill_max_tasks)),
+            }
+
+    @router.post(
+        "/model-drill",
+        tags=["Owner: skills"],
+        summary="Replay on two models",
+        description=(
+            "Replays your last tasks (at most DRILL_MAX_TASKS) on each model with effects stubbed and no network, and "
+            "reports where the call sequences differ (tool names and short argument hashes only)."
+        ),
+    )
+    def drill_run(body: DrillBody, person_id: uuid.UUID = Depends(drill_on)) -> dict[str, Any]:
+        from superaide.tooltrace import drill
+        from superaide.tooltrace.rehearse import RehearsalError
+
+        agent = get_agent()
+        with session_scope() as s:
+            owner = require(s, Person, person_id)
+            try:
+                return drill.run(agent, s, owner, body.model_a, body.model_b, body.tasks)
+            except RehearsalError as exc:
+                raise HTTPException(exc.status, str(exc)) from exc
 
     @router.post(
         "/notebook/{memory_id}/forget",
