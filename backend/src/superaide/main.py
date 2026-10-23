@@ -168,6 +168,9 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     from superaide.reception.routes import make_router as make_reception_router
 
     app.include_router(make_reception_router(get_agent))  # receptionist (ADR 0010 TR5)
+    from superaide.tooltrace.audition_routes import make_router as make_audition_routes_router
+
+    app.include_router(make_audition_routes_router(get_agent))  # 404 everywhere while its flag is off
     from superaide.rehearsal.routes import make_router as make_rehearsal_router
 
     app.include_router(make_rehearsal_router(get_agent))  # 404 everywhere while REHEARSAL_ENABLED is off
