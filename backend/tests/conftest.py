@@ -18,8 +18,41 @@ os.environ.setdefault(
     "TEST_DATABASE_URL",
     _from_file.get("TEST_DATABASE_URL") or "postgresql+psycopg://agent:agent@localhost:5432/agent_test",
 )
-if os.environ["TEST_DATABASE_URL"] == (os.environ.get("DATABASE_URL") or _from_file.get("DATABASE_URL")):
+# An xdist worker inherits the controller's DATABASE_URL (already set to the test database below),
+# so the guard runs in the controller only.
+if not os.environ.get("PYTEST_XDIST_WORKER") and os.environ["TEST_DATABASE_URL"] == (
+    os.environ.get("DATABASE_URL") or _from_file.get("DATABASE_URL")
+):
     raise RuntimeError("TEST_DATABASE_URL must differ from DATABASE_URL: the tests wipe their database")
+
+
+def _worker_database(url: str, worker: str) -> str:
+    """pytest-xdist: give worker gwN its own database `<name>_gwN`, created on demand.
+
+    The suite truncates every table before each test, so workers cannot share one database.
+    Databases are created from the admin database of the same server and never dropped (the
+    schema fixture rebuilds the tables on every run). Without xdist (or with `-p no:xdist`)
+    nothing changes and the plain TEST_DATABASE_URL is used.
+    """
+    from sqlalchemy import create_engine
+    from sqlalchemy.engine import make_url
+
+    parsed = make_url(url)
+    name = f"{parsed.database}_{worker}"
+    admin = create_engine(parsed.set(database="postgres"), isolation_level="AUTOCOMMIT")
+    try:
+        with admin.connect() as conn:
+            exists = conn.exec_driver_sql("SELECT 1 FROM pg_database WHERE datname = %s", (name,)).first()
+            if not exists:
+                conn.exec_driver_sql(f'CREATE DATABASE "{name}"')
+    finally:
+        admin.dispose()
+    return parsed.set(database=name).render_as_string(hide_password=False)
+
+
+_xdist_worker = os.environ.get("PYTEST_XDIST_WORKER")  # "gw0", "gw1", ...; unset without xdist
+if _xdist_worker:
+    os.environ["TEST_DATABASE_URL"] = _worker_database(os.environ["TEST_DATABASE_URL"], _xdist_worker)
 os.environ["DATABASE_URL"] = os.environ["TEST_DATABASE_URL"]
 os.environ.update(
     {

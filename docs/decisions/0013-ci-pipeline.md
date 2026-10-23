@@ -40,6 +40,10 @@ Pushes to `main`, `workflow_dispatch`, `merge_group` and the scheduled Full run 
 - Concurrency: a pull request's newer push cancels its older run; runs on `main` and the called Full pipeline are never cancelled (before, a push to main could cancel the previous push's run).
 - uv, npm and Docker layer caches were already in place and stay.
 
+## Parallel backend tests (PR 3)
+
+CI runs `pytest -n auto` (pytest-xdist). The suite truncates every table before each test, so each worker gets its own database, `<TEST_DATABASE_URL name>_gw0`, `_gw1`, and so on, created on demand from the server's `postgres` database by `tests/conftest.py` and never dropped. Locally nothing changes: plain `uv run pytest` is serial on `TEST_DATABASE_URL`; add `-n 4` to parallelise. The escape hatch for a failure that looks order- or parallelism-related is `uv run pytest -p no:xdist` (also in CI by editing the step). A test that cannot run in parallel is marked and fixed rather than skipping the parallel run.
+
 ## Plan
 
 1. Change detection and the gate (this PR).
