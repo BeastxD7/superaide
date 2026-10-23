@@ -87,7 +87,16 @@ def decide(
     r = rules.evaluate(f)
     # The classifier runs when the rules didn't decide, or for a VIP over budget (only a critical one gets past).
     wants_model = r.decision is None or (r.vip_rule and f.budget_left <= 0)
-    c = classify.classify(llm, model=model, f=f, earlier=_earlier(session, event), ready=ready) if wants_model else None
+    c = None
+    if wants_model:
+        from superaide.config import get_settings
+
+        system = None  # the built-in prompt, unless the owner approved a tuned one (OVERNIGHT_TUNER_ENABLED)
+        if get_settings().overnight_tuner_enabled:
+            from superaide.trust.tuner import active_text
+
+            system = active_text(session)
+        c = classify.classify(llm, model=model, f=f, earlier=_earlier(session, event), ready=ready, system=system)
     out = c.output if c is not None else None
     o = policy.decide(f, r, out, agreement=c.agreement if c else None, deadline_at=c.deadline_at if c else None)
     if c is not None and c.fallback:

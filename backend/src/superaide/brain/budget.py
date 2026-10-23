@@ -66,6 +66,8 @@ BUCKETS = {
     "second_opinion": "learning",
     # Learning and trust features (#142)
     "playbook": "learning",
+    # Learning and trust features (#142)
+    "tuner": "learning",
 }
 
 

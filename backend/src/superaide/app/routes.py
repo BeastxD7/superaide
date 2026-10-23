@@ -837,6 +837,70 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             except ratchet.RatchetError as exc:
                 raise HTTPException(exc.status, str(exc)) from exc
 
+    def tuner_on(person_id: uuid.UUID = Depends(owner_person_id)) -> uuid.UUID:
+        if not get_settings().overnight_tuner_enabled:
+            raise HTTPException(404, "Not found")
+        return person_id
+
+    def _version_view(v: Any) -> dict[str, Any]:
+        return {
+            "id": str(v.id), "key": v.key, "version": v.version, "status": v.status, "text": v.text,
+            "base_score": v.base_score, "cand_score": v.cand_score, "held_out": v.held_out,
+            "failed": (v.invariants or {}).get("failed", []), "rationale": v.rationale,
+        }  # fmt: skip
+
+    @router.get(
+        "/tuner",
+        tags=["Owner: people & rules"],
+        summary="Prompt versions",
+        description=(
+            "Overnight Tuner (OVERNIGHT_TUNER_ENABLED, off by default; 404 while off): the triage prompt versions Ava "
+            "proposed, what the grader scored, and which one is active. Nothing changes without your approval."
+        ),
+    )
+    def tuner_list(person_id: uuid.UUID = Depends(tuner_on)) -> dict[str, Any]:
+        from superaide.trust import tuner
+        from superaide.trust.models import PromptVersion
+
+        with session_scope() as s:
+            rows = s.scalars(select(PromptVersion).order_by(PromptVersion.version.desc()).limit(30)).all()
+            return {"current": tuner.active_text(s), "versions": [_version_view(v) for v in rows]}
+
+    @router.post("/tuner/run", tags=["Owner: people & rules"], summary="Propose a better triage prompt")
+    def tuner_run(person_id: uuid.UUID = Depends(tuner_on)) -> dict[str, Any]:
+        from superaide.trust import tuner
+
+        agent = get_agent()
+        with session_scope() as s:
+            try:
+                return _version_view(tuner.propose(agent, s))
+            except tuner.TunerError as exc:
+                raise HTTPException(exc.status, str(exc)) from exc
+
+    @router.post(
+        "/tuner/{version_id}/{verdict}", tags=["Owner: people & rules"], summary="Approve or reject a proposal"
+    )
+    def tuner_decide(version_id: uuid.UUID, verdict: str, person_id: uuid.UUID = Depends(tuner_on)) -> dict[str, Any]:
+        from superaide.trust import tuner
+
+        if verdict not in {"approve", "reject"}:
+            raise HTTPException(404, "Not found")
+        with session_scope() as s:
+            owner = require(s, Person, person_id)
+            try:
+                fn = tuner.approve if verdict == "approve" else tuner.reject
+                return _version_view(fn(s, owner, version_id))
+            except tuner.TunerError as exc:
+                raise HTTPException(exc.status, str(exc)) from exc
+
+    @router.post("/tuner/rollback", tags=["Owner: people & rules"], summary="Go back to the built-in prompt")
+    def tuner_rollback(person_id: uuid.UUID = Depends(tuner_on)) -> dict[str, str]:
+        from superaide.trust import tuner
+
+        with session_scope() as s:
+            tuner.roll_back(s, require(s, Person, person_id))
+        return {"status": "built-in prompt"}
+
     @router.post(
         "/notebook/{memory_id}/forget",
         tags=["Owner: chat & notebook"],

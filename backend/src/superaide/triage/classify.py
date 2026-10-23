@@ -113,11 +113,13 @@ def _deadline(out: TriageOutput, f: Features) -> datetime | None:
     return found[0].astimezone(UTC)
 
 
-def _once(llm: Any, model: str, f: Features, earlier: list[str]) -> tuple[TriageOutput | None, Decimal]:
+def _once(
+    llm: Any, model: str, f: Features, earlier: list[str], system: str | None = None
+) -> tuple[TriageOutput | None, Decimal]:
     result = llm.complete(
         purpose=PURPOSE,
         model=model,
-        system=[SystemBlock(SYSTEM, cache=True)],
+        system=[SystemBlock(system or SYSTEM, cache=True)],
         messages=[{"role": "user", "content": prompt(f, earlier)}],
         max_tokens=MAX_TOKENS,
         output_model=TriageOutput,
@@ -127,7 +129,15 @@ def _once(llm: Any, model: str, f: Features, earlier: list[str]) -> tuple[Triage
     return parsed, Decimal(result.cost_usd or 0)
 
 
-def classify(llm: Any, *, model: str, f: Features, earlier: list[str] | None = None, ready: bool = True) -> Classified:
+def classify(
+    llm: Any,
+    *,
+    model: str,
+    f: Features,
+    earlier: list[str] | None = None,
+    ready: bool = True,
+    system: str | None = None,
+) -> Classified:
     """`ready` is whether a model is connected (factory.brain_ready); without one, rules only."""
     c = Classified(model=model)
     if not ready or llm is None:
@@ -135,7 +145,7 @@ def classify(llm: Any, *, model: str, f: Features, earlier: list[str] | None = N
         return c
     earlier = earlier or []
     try:
-        first, cost = _once(llm, model, f, earlier)
+        first, cost = _once(llm, model, f, earlier, system)
         c.cost_usd += cost
         c.samples = 1
         if first is None:
@@ -153,7 +163,7 @@ def classify(llm: Any, *, model: str, f: Features, earlier: list[str] | None = N
             return c
         samples = [first]
         for _ in range(RESAMPLES):
-            more, cost = _once(llm, model, f, earlier)
+            more, cost = _once(llm, model, f, earlier, system)
             c.cost_usd += cost
             c.samples += 1
             if more is not None and quotes_hold(more, f.text):
