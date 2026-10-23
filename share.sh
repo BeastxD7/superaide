@@ -5,8 +5,11 @@
 #   bash share.sh --no-update         do not pull the latest code first
 #   bash share.sh --reset             wipe the data first (passed to start.command)
 #   bash share.sh --no-docker         embedded Postgres instead of Docker (passed to start.command)
+#   bash share.sh --hostname app.example.com --tunnel superaide
+#                                     a STABLE address: a named Cloudflare tunnel you created once with
+#                                     `cloudflared tunnel create superaide` + `cloudflared tunnel route dns superaide app.example.com`
 #   bash share.sh --hostname app.example.com --tunnel-token <token>
-#                                     a STABLE address: a named Cloudflare tunnel you created once (see below)
+#                                     the same for a tunnel managed in the Cloudflare dashboard (uses a token instead)
 #   bash share.sh --ngrok-domain your-name.ngrok-free.app
 #                                     a STABLE free address from ngrok (one free static domain per account, see below)
 #
@@ -49,11 +52,12 @@ export WEB_PORT="${WEB_PORT:-3000}"
 export API_PORT="${API_PORT:-8010}"
 bold() { printf "\n\033[1m%s\033[0m\n" "$*"; }
 
-UPDATE=1; HOSTNAME_ARG=""; TOKEN_ARG=""; NGROK_DOMAIN=""; PASS=()
+UPDATE=1; HOSTNAME_ARG=""; TOKEN_ARG=""; TUNNEL_NAME=""; NGROK_DOMAIN=""; PASS=()
 while [ $# -gt 0 ]; do
   case "$1" in
     --no-update) UPDATE=0 ;;
     --hostname) HOSTNAME_ARG="${2:?--hostname needs a value}"; shift ;;
+    --tunnel) TUNNEL_NAME="${2:?--tunnel needs a tunnel name}"; shift ;;
     --tunnel-token) TOKEN_ARG="${2:?--tunnel-token needs a value}"; shift ;;
     --ngrok-domain) NGROK_DOMAIN="${2:?--ngrok-domain needs a value}"; shift ;;
     --reset|--no-docker) PASS+=("$1") ;;
@@ -62,8 +66,11 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
-if { [ -n "$HOSTNAME_ARG" ] && [ -z "$TOKEN_ARG" ]; } || { [ -z "$HOSTNAME_ARG" ] && [ -n "$TOKEN_ARG" ]; }; then
-  echo "--hostname and --tunnel-token go together."; exit 2
+if [ -n "$HOSTNAME_ARG" ] && [ -z "$TOKEN_ARG" ] && [ -z "$TUNNEL_NAME" ]; then
+  echo "--hostname needs --tunnel <name> (a tunnel made with cloudflared tunnel create) or --tunnel-token <token>."; exit 2
+fi
+if [ -z "$HOSTNAME_ARG" ] && { [ -n "$TOKEN_ARG" ] || [ -n "$TUNNEL_NAME" ]; }; then
+  echo "--tunnel and --tunnel-token need --hostname."; exit 2
 fi
 
 # 1. Latest code (never touches your changes: only a clean fast-forward)
@@ -111,9 +118,16 @@ elif [ -n "$HOSTNAME_ARG" ]; then
   # (Zero Trust > Networks > Tunnels > your tunnel > Public hostname), or by `cloudflared tunnel route dns`.
   PUBLIC_URL="https://$HOSTNAME_ARG"
   bold "Starting your named tunnel for $PUBLIC_URL …"
-  cloudflared tunnel --no-autoupdate run --token "$TOKEN_ARG" >"$TUNNEL_LOG" 2>&1 &
-  TUNNEL_PID=$!
-  echo "(In Cloudflare, the public hostname $HOSTNAME_ARG must point to http://localhost:$WEB_PORT.)"
+  if [ -n "$TUNNEL_NAME" ]; then
+    # A tunnel made with the cloudflared command line: its credentials are in ~/.cloudflared and the route to this
+    # Mac's site is given here, so nothing else is needed in the Cloudflare dashboard.
+    cloudflared tunnel --no-autoupdate run --url "http://localhost:$WEB_PORT" "$TUNNEL_NAME" >"$TUNNEL_LOG" 2>&1 &
+    TUNNEL_PID=$!
+  else
+    cloudflared tunnel --no-autoupdate run --token "$TOKEN_ARG" >"$TUNNEL_LOG" 2>&1 &
+    TUNNEL_PID=$!
+    echo "(In Cloudflare, the public hostname $HOSTNAME_ARG must point to http://localhost:$WEB_PORT.)"
+  fi
 else
   bold "Opening a quick Cloudflare tunnel to http://localhost:$WEB_PORT …"
   cloudflared tunnel --no-autoupdate --url "http://localhost:$WEB_PORT" >"$TUNNEL_LOG" 2>&1 &
