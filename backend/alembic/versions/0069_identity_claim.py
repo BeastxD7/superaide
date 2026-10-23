@@ -1,7 +1,7 @@
 """identity_claim: unknown accounts named like a known person, waiting for the owner (issue 93)
 
-Revision ID: 0067
-Revises: 0066
+Revision ID: 0069
+Revises: 0068
 Create Date: 2026-10-24 09:00:00.000000
 
 """
@@ -14,8 +14,8 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 from superaide.db.rls import disable, enable
 
-revision: str = "0067"
-down_revision: str | Sequence[str] | None = "0066"
+revision: str = "0069"
+down_revision: str | Sequence[str] | None = "0068"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
