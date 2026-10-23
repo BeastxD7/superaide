@@ -1,7 +1,7 @@
 """rehearsal_session: the rehearsal room (#58), per instance, under Row-Level Security
 
-Revision ID: 0032
-Revises: 0031
+Revision ID: 0040
+Revises: 0039
 Create Date: 2026-10-23 02:51:34.448691
 
 """
@@ -14,8 +14,8 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0032"
-down_revision: str | Sequence[str] | None = "0031"
+revision: str = "0040"
+down_revision: str | Sequence[str] | None = "0039"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
