@@ -9,8 +9,8 @@ from superaide.config import get_settings
 from superaide.db.models import Approval, AuditLog
 from superaide.db.session import session_scope
 from superaide.policy import breaker
-from superaide.policy.binding import seal
 from superaide.policy.actions import resolve
+from superaide.policy.binding import seal
 from superaide.policy.killswitch import is_frozen
 from tests.conftest import MANAGER_TG, tg
 
