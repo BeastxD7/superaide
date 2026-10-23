@@ -20,6 +20,8 @@ from superaide.tenancy.models import InstanceMember
 from tests.api.conftest import OTHER, OWNER, hire, signup
 
 ADMIN = {"Authorization": "Bearer test-admin-token"}
+# Secret markers must contain a non-hex letter ("zq"): responses carry random hex ids (uuids, request_id), and a
+# plain number like 4417 turns up inside one now and then, failing "not in response.text" checks at random.
 REASON = "owner reported a missing reminder"
 CONTENT = ["/api/people", "/api/conversations", "/api/events", "/api/memories", "/api/approvals", "/api/audit"]
 
@@ -30,8 +32,8 @@ def owners(browser, monkeypatch):
     a, b = browser(), browser()
     signup(a), hire(a)
     signup(b, **OTHER), hire(b)
-    assert a.post("/app/chat", json={"text": "Remember that my locker code is 4417"}).status_code == 200
-    assert b.post("/app/chat", json={"text": "Remember that my bike lock code is 9032"}).status_code == 200
+    assert a.post("/app/chat", json={"text": "Remember that my locker code is zq4417"}).status_code == 200
+    assert b.post("/app/chat", json={"text": "Remember that my bike lock code is zq9032"}).status_code == 200
     return a, b
 
 
@@ -57,7 +59,7 @@ def test_owner_content_needs_a_reason(browser, owners, path, reason):
     headers = ADMIN | ({"X-Operator-Reason": reason} if reason is not None else {})
     r = browser(csrf=False).get(path, headers=headers)
     assert r.status_code == 403 and r.json()["detail"]["code"] == "reason_required"
-    assert "4417" not in r.text and accesses() == []
+    assert "zq4417" not in r.text and accesses() == []
 
 
 def test_linking_needs_a_reason_too(browser, owners):
@@ -74,7 +76,7 @@ def test_metadata_needs_no_reason_and_shows_no_owner(browser, owners):
     listed = c.get("/api/instances", headers=ADMIN).json()
     assert len(listed) == 2 and all(i["counts"]["memories"] >= 1 for i in listed)
     text = json.dumps(listed)
-    for private in (OWNER["name"], OWNER["email"], OTHER["name"], OTHER["email"], "4417", "9032"):
+    for private in (OWNER["name"], OWNER["email"], OTHER["name"], OTHER["email"], "zq4417", "zq9032"):
         assert private not in text
     assert accesses() == []
 
@@ -85,7 +87,7 @@ def test_break_glass_opens_one_instance_and_tells_its_owner(browser, owners):
     b_id = instance_id(OTHER["email"])
     r = c.get("/api/memories", headers=ADMIN | {"X-Operator-Reason": REASON, "X-Operator-Instance": b_id})
     assert r.status_code == 200
-    assert "9032" in r.text and "4417" not in r.text  # only the instance named
+    assert "zq9032" in r.text and "zq4417" not in r.text  # only the instance named
     [row] = accesses()
     assert str(row.agent_id) == b_id and row.actor == "operator"
     assert row.detail["reason"] == REASON and row.detail["path"] == "/api/memories"
@@ -98,7 +100,7 @@ def test_break_glass_opens_one_instance_and_tells_its_owner(browser, owners):
 def test_without_an_instance_named_the_servers_first_is_opened(browser, owners):
     a, _ = owners
     r = browser(csrf=False).get("/api/memories", headers=ADMIN | {"X-Operator-Reason": REASON})
-    assert r.status_code == 200 and "4417" in r.text and "9032" not in r.text
+    assert r.status_code == 200 and "zq4417" in r.text and "zq9032" not in r.text
     assert len(a.get("/app/access-log").json()) == 1
 
 
