@@ -1,11 +1,11 @@
-"""Two-channel voice (#125): the voice call is a thin shell, and what it proposes is confirmed in text.
+"""Two-channel voice (#125): the voice call is a thin shell, and what it proposes is confirmed in the app.
 
 Full-duplex voice agents keep a fraction of text capability on rule-bound tasks and mishear. So the
 rules are in code, not in the model:
 - The shell holds no tools (`VOICE_TOOLS` is empty; the call already passes `tools=[]`). It turns
   speech into text, hands the intent to the text agent's usual proposal, and reads back what was proposed.
 - An action heard on a call is an ordinary approval marked `origin: voice`. It can be approved only
-  from a text channel the caller names (`TEXT_CHANNELS`); a yes that came by voice is refused, and so
+  from the Superaide app (`TEXT_CHANNELS`); a yes that came by voice is refused, and so
   is an approval whose channel is unknown. A no is accepted from anywhere.
 - The read-back is the exact proposal as a structured list of fields, ends with where to confirm, and
   says nothing has happened. A spoken reply that claims completion while something is waiting is
@@ -26,7 +26,9 @@ from superaide.db.models import Approval
 from superaide.identity.resolver import Sender
 
 VOICE_TOOLS: tuple[()] = ()  # the shell holds no tools
-TEXT_CHANNELS = ("app", "telegram", "slack")
+# Owner decision (#125): only a tap inside the Superaide app is the second channel. A Telegram or Slack
+# tap is not enough, because a chat account is easier to take over than a signed-in session. Fail closed.
+TEXT_CHANNELS = ("app",)
 INTERNAL_KEYS = {"summary", "trust_at_request", "required_trust", "origin", "result"}
 MAX_FIELD = 120
 
@@ -46,9 +48,9 @@ def from_voice(approval: Approval) -> bool:
 def check_confirmation(approval: Approval, via: str) -> str:
     """Why this yes is refused, or "" if it may stand. Called for every approval."""
     if via == "voice":
-        return "A spoken yes isn't accepted. Confirm this in the app or in chat."
+        return "A spoken yes isn't accepted. Confirm this in the app."
     if from_voice(approval) and via not in TEXT_CHANNELS:
-        return "This was asked for on a call. Confirm it in the app or in chat."
+        return "This was asked for on a call. Confirm it in the app."
     return ""
 
 

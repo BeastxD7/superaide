@@ -42,6 +42,7 @@ FIELDS: dict[tuple[str, str], str] = {
     # The voice call (ADR 0012): speech-to-text and natural voices.
     ("deepgram", "api_key"): "deepgram_api_key",
     ("elevenlabs", "api_key"): "elevenlabs_api_key",
+    ("voice_provider", "api_key"): "voice_provider_api_key",  # the realtime live-voice vendor (#125)
 }
 SECRET_NAMES = {
     "api_key",

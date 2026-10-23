@@ -435,6 +435,9 @@ export type ApprovalItem = {
   at: string
   decided_at: string | null
   needs_reason?: boolean
+  // Set when the action was asked for on a voice call (#125). Only a tap here confirms it.
+  origin?: 'voice'
+  readback?: { kind: string; summary: string; fields: { label: string; value: string }[]; spoken: string }
 }
 
 export type Reminder = {

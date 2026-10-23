@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, ShieldQuestion, X } from 'lucide-react'
+import { Check, Phone, ShieldQuestion, X } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { Notice } from '@/components/site'
 import { Badge } from '@/components/ui/badge'
@@ -20,6 +20,36 @@ const KIND_LABEL: Record<string, string> = {
   grant_access: 'Grant access',
   delete_memory: 'Delete something she remembers',
   ask_reply: 'Reply to someone from your Ask link',
+}
+
+// The read-back of something asked for on a voice call: exactly what was proposed, field by field, and
+// the sentence that was spoken. Saying yes out loud does nothing; only the button below counts (#125).
+function VoiceReadback({ readback }: { readback: NonNullable<ApprovalItem['readback']> }) {
+  return (
+    <div
+      className="mt-2 rounded-lg border border-violet-200 bg-violet-50 p-3"
+      role="group"
+      aria-label="What was heard on the call"
+    >
+      <p className="flex items-center gap-1.5 text-xs font-medium text-violet-700">
+        <Phone className="size-3.5" aria-hidden /> Heard on a call. Nothing has happened yet.
+      </p>
+      {readback.fields.length > 0 && (
+        <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+          {readback.fields.map((f) => (
+            <div key={f.label} className="contents">
+              <dt className="text-muted capitalize">{f.label}</dt>
+              <dd className="min-w-0 break-words text-ink">{f.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+      <p className="mt-2 break-words text-xs text-body">
+        <span className="text-muted">Read back as: </span>&ldquo;{readback.spoken}&rdquo;
+      </p>
+      <p className="mt-2 text-xs text-muted">A spoken yes does not count. Tap here to confirm.</p>
+    </div>
+  )
 }
 
 // What Ava was asked to do that needs your yes first. Shown only while something is waiting.
@@ -69,13 +99,14 @@ export function ApprovalsCard({ name, empty = null }: { name: string; empty?: Re
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-ink">{KIND_LABEL[a.kind] ?? a.kind}</p>
                 <p className="mt-0.5 break-words text-sm text-body">{a.summary}</p>
+                {a.origin === 'voice' && a.readback && <VoiceReadback readback={a.readback} />}
                 {a.notes?.map((n) => (
                   <p key={n} className="mt-1 break-words text-xs text-violet-700">
                     {n}
                   </p>
                 ))}
                 <p className="mt-1 text-xs text-muted">
-                  {a.requested_by ? `Asked by ${a.requested_by}` : 'Asked in a chat'} ·{' '}
+                  {a.requested_by ? `Asked by ${a.requested_by}` : a.origin === 'voice' ? 'Asked on a call' : 'Asked in a chat'} ·{' '}
                   {formatWhen(a.at)}
                 </p>
                 {a.needs_reason && (
@@ -93,7 +124,7 @@ export function ApprovalsCard({ name, empty = null }: { name: string; empty?: Re
                   <X aria-hidden /> No
                 </Button>
                 <Button size="sm" disabled={busy === a.id} onClick={() => void decide(a.id, 'approve')}>
-                  <Check aria-hidden /> Yes, go ahead
+                  <Check aria-hidden /> {a.origin === 'voice' ? 'Yes, confirm it here' : 'Yes, go ahead'}
                 </Button>
               </div>
             </li>
