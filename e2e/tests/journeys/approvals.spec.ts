@@ -1,4 +1,4 @@
-// Ava asks before acting: a request waits on the dashboard until the owner says yes or no.
+// Ava asks before acting: a @smoke request waits on the dashboard until the owner says yes or no.
 import { expect, query, test } from '../../src/fixtures'
 
 const TENANT = '00000000-0000-4000-8000-000000000001'
@@ -29,7 +29,7 @@ test.describe('approvals', () => {
     expect(rows).toEqual([{ status: 'approved', decided_by: 'Shashank Rao' }])
   })
 
-  test('"No" rejects it, and it never comes back', async ({ page, owner }) => {
+  test('"No" rejects it, and it never comes back @smoke', async ({ page, owner }) => {
     void owner
     await askFor('message_someone_else', "Tell Priya I'm running late")
     await page.goto('/dashboard')

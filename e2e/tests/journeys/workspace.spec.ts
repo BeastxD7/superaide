@@ -2,7 +2,7 @@
 import { expect, test } from '../../src/fixtures'
 
 test.describe('workspace, day to day', () => {
-  test('a message shows in the chat straight away and Ava answers it', async ({ page, owner }) => {
+  test('a message shows in the chat straight away and Ava answers it @smoke', async ({ page, owner }) => {
     void owner
     await page.goto('/workspace')
     const chat = page
@@ -16,7 +16,7 @@ test.describe('workspace, day to day', () => {
     await page.screenshot({ path: 'test-results/journey/workspace-reply.png' })
   })
 
-  test('"remember that…" lands in the notebook and can be forgotten', async ({ page, owner }) => {
+  test('"remember that…" lands in the notebook and can be forgotten @smoke', async ({ page, owner }) => {
     void owner
     await page.goto('/workspace')
     await expect(page).toHaveURL(/\/dashboard\/chat$/)

@@ -34,6 +34,7 @@ jobs:
       backend: ${{ steps.out.outputs.backend }}
       frontend: ${{ steps.out.outputs.frontend }}
       e2e: ${{ steps.out.outputs.e2e }}
+      e2e_smoke: ${{ steps.out.outputs.e2e_smoke }}
       docker: ${{ steps.out.outputs.docker }}
     steps:
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
@@ -48,6 +49,8 @@ jobs:
               - 'frontend/**'
             e2e:
               - 'e2e/**'
+            contract:
+              - 'backend/openapi.snapshot.json'
             docker:
               - '**/Dockerfile'
               - '**/.dockerignore'
@@ -63,6 +66,7 @@ jobs:
               - '**'
             pipeline:
               - '.github/workflows/**'
+              - '.github/actions/**'
               - 'scripts/**'
               - 'Makefile'
               - 'compose.yaml'
@@ -93,14 +97,18 @@ jobs:
           out() { echo "$1=$2" >> "$GITHUB_OUTPUT"; echo "$1=$2"; }
           if [ "$all" = true ]; then
             for k in backend frontend e2e docker; do out $k true; done
+            out e2e_smoke false
           else
-            b=false; fe=false; e=false; d=false
+            b=false; fe=false; e=false; sm=false; d=false
             if has backend_all; then b=true; fi
             if has frontend_all; then fe=true; fi
-            # e2e drives both halves, so a change to either one (or to e2e itself) runs it.
-            if has e2e || [ $b = true ] || [ $fe = true ]; then e=true; fi
+            # e2e drives both halves. The full matrix runs when the frontend, e2e itself or the API
+            # contract snapshot changes; a change only under backend/ runs the short smoke subset
+            # (a schema change fails the backend test until the snapshot is regenerated, which then
+            # selects the full matrix). Pushes to main, merge groups and Full always run the full matrix.
+            if has e2e || has contract || [ $fe = true ]; then e=true; elif [ $b = true ]; then sm=true; fi
             if has docker; then d=true; fi
-            out backend $b; out frontend $fe; out e2e $e; out docker $d
+            out backend $b; out frontend $fe; out e2e $e; out e2e_smoke $sm; out docker $d
           fi
 
   backend:
@@ -251,56 +259,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: astral-sh/setup-uv@v7
-        with:
-          version: "0.11.32"
-          enable-cache: true
-          cache-dependency-glob: backend/uv.lock
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-          cache: npm
-          cache-dependency-path: |
-            frontend/package-lock.json
-            e2e/package-lock.json
-
-      # Next's build cache: unchanged modules are not recompiled. Keyed on the lockfile and the sources;
-      # an older entry for the same lockfile is a valid starting point.
-      - uses: actions/cache@v6
-        with:
-          path: frontend/.next/cache
-          key: nextjs-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}-${{ hashFiles('frontend/**/*.ts', 'frontend/**/*.tsx', 'frontend/**/*.css') }}
-          restore-keys: |
-            nextjs-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}-
-
-      - name: Install
-        run: |
-          (cd backend && uv python install && uv sync --locked --no-dev)
-          (cd frontend && npm ci --no-audit --no-fund && npm run build)
-          (cd e2e && npm ci --no-audit --no-fund)
-
-      # The browser download is the slow part; it is keyed on the Playwright version. System
-      # libraries are not cached, so install-deps still runs.
-      - name: Playwright version
-        id: pw
-        working-directory: e2e
-        run: echo "version=$(node -p "require('./node_modules/@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
-
-      - uses: actions/cache@v6
-        id: pw-cache
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
-
-      - name: Install the browser
-        working-directory: e2e
-        run: |
-          if [ "${{ steps.pw-cache.outputs.cache-hit }}" = true ]; then
-            npx playwright install-deps chromium
-          else
-            npx playwright install --with-deps chromium
-          fi
+      # Backend, frontend build, Playwright and its browser, with caches: .github/actions/e2e-setup.
+      - uses: ./.github/actions/e2e-setup
 
       - name: Run end-to-end tests
         working-directory: e2e
@@ -320,6 +280,56 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: playwright-report-${{ matrix.shard }}
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+          retention-days: 7
+
+  e2e-smoke:
+    name: End-to-end (smoke)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Runs beside backend, not after it: it builds its own API and web. A frontend failure still stops it,
+    # and the CI result gate still requires backend, so main loses no protection (docs/0013).
+    needs: [changes, frontend]
+    # frontend may be skipped (nothing in it changed); a failure still blocks.
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.changes.outputs.e2e_smoke == 'true' }}
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: agent
+          POSTGRES_PASSWORD: agent
+          POSTGRES_DB: agent
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U agent -d agent"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      E2E_PG_ADMIN_URL: postgresql://agent:agent@localhost:5432/postgres
+      NEXT_TELEMETRY_DISABLED: 1
+    steps:
+      - uses: actions/checkout@v7
+
+      # Backend, frontend build, Playwright and its browser, with caches: .github/actions/e2e-setup.
+      - uses: ./.github/actions/e2e-setup
+
+      # Tests tagged @smoke in their title: sign-up and log-in, hire, the introduction, chat and
+      # streaming, memory, approvals, a settings page, a console page, owner isolation.
+      - name: Run the smoke tests
+        working-directory: e2e
+        run: |
+          npx playwright test --list --grep @smoke | tail -1
+          npx playwright test --grep @smoke
+
+      - name: Upload report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-smoke
           path: |
             e2e/playwright-report
             e2e/test-results
@@ -402,13 +412,14 @@ jobs:
   result:
     name: CI result
     if: always()
-    needs: [changes, backend, frontend, e2e, images, secrets]
+    needs: [changes, backend, frontend, e2e, e2e-smoke, images, secrets]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
       - name: Every needed job succeeded or was skipped
         env:
           NEEDS: ${{ toJSON(needs) }}
+          EVENT: ${{ github.event_name }}
         run: |
           set -euo pipefail
           echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
@@ -419,10 +430,21 @@ jobs:
           bad=$(echo "$NEEDS" | jq -r 'to_entries[] | select(.value.result != "success" and .value.result != "skipped") | .key')
           [ -z "$bad" ] || { echo "::error::failed, cancelled or unknown: $bad"; exit 1; }
           # A job skipped although its filter asked for it ran into an upstream problem: fail.
-          for j in backend frontend e2e; do
-            want=$(echo "$NEEDS" | jq -r --arg j "$j" '.changes.outputs[$j]')
-            got=$(echo "$NEEDS" | jq -r --arg j "$j" '.[$j].result')
-            [ "$want" != true ] || [ "$got" = success ] || { echo "::error::$j was required but is $got"; exit 1; }
+          out() { echo "$NEEDS" | jq -r --arg k "$1" '.changes.outputs[$k]'; }
+          res() { echo "$NEEDS" | jq -r --arg j "$1" '.[$j].result'; }
+          for j in backend frontend; do
+            [ "$(out $j)" != true ] || [ "$(res $j)" = success ] || { echo "::error::$j was required but is $(res $j)"; exit 1; }
           done
+          # End-to-end: either the full matrix or the smoke subset must have succeeded, never neither.
+          full=$(out e2e); smoke=$(out e2e_smoke)
+          [ "$full" != true ] || [ "$smoke" != true ] || { echo "::error::both the full and the smoke e2e were selected"; exit 1; }
+          # Anything but a pull request (main, merge group, Full, manual) must run the full matrix.
+          if [ "$EVENT" != pull_request ] && [ "$full" != true ]; then echo "::error::event $EVENT must run the full e2e"; exit 1; fi
+          # Backend or frontend code changed but no e2e was selected: an upstream problem, fail closed.
+          if { [ "$(out backend)" = true ] || [ "$(out frontend)" = true ]; } && [ "$full" != true ] && [ "$smoke" != true ]; then
+            echo "::error::code changed but no e2e path was selected"; exit 1
+          fi
+          [ "$full" != true ] || [ "$(res e2e)" = success ] || { echo "::error::full e2e was required but is $(res e2e)"; exit 1; }
+          [ "$smoke" != true ] || [ "$(res e2e-smoke)" = success ] || { echo "::error::smoke e2e was required but is $(res e2e-smoke)"; exit 1; }
           want=$(echo "$NEEDS" | jq -r '.changes.outputs.docker')
           [ "$want" != true ] || [ "$(echo "$NEEDS" | jq -r '.images.result')" = success ] || { echo "::error::images was required but did not succeed"; exit 1; }

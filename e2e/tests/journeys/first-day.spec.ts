@@ -15,7 +15,7 @@ async function nextStep(page: Page, label: RegExp) {
   await expect(page.getByText(label).first()).toBeVisible({ timeout: 15_000 })
 }
 
-test('a new owner browses, hires Ava, introduces themselves and gets to work', async ({ page, api }) => {
+test('a new owner browses, hires Ava, introduces themselves and gets to work @smoke', async ({ page, api }) => {
   void api // fresh database
   test.setTimeout(120_000)
   const me = newPerson('Shashank Rao')

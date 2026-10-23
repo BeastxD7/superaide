@@ -2,7 +2,7 @@
 # Non-developers: double-click start.command (or `bash start.command`) instead.
 
 .DEFAULT_GOAL := help
-.PHONY: help setup db db-down migrate migration api web dev lint fmt typecheck test e2e e2e-ui eval eval-live eval-gate eval-ltm-live check check-env build stack stack-down clean
+.PHONY: help setup db db-down migrate migration api web dev lint fmt typecheck test e2e e2e-ui eval eval-live eval-gate eval-ltm-live check check-env openapi build stack stack-down clean
 
 BACKEND = cd backend &&
 FRONTEND = cd frontend &&
@@ -53,6 +53,9 @@ typecheck: ## Type-check backend (mypy) and frontend (tsc)
 
 check-env: ## Every environment variable the app reads is in the .env.example files
 	python3 scripts/check_env_example.py
+
+openapi: ## Regenerate backend/openapi.snapshot.json after an API change (CI runs the full e2e when it changes)
+	$(BACKEND) uv run python scripts/openapi_snapshot.py
 
 test: ## Backend tests (needs TEST_DATABASE_URL, see backend/.env.example)
 	$(BACKEND) uv run pytest
