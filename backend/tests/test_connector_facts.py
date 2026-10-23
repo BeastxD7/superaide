@@ -142,6 +142,23 @@ def test_a_changed_event_retires_the_old_facts_and_keeps_the_new(owner, cal, scr
     assert live["Shashank's dentist visit moved to Friday 3pm."] is None
 
 
+def test_a_locked_fact_is_not_retired_when_the_event_is_read_again(owner, cal, script):
+    script.facts = [fact("Shashank's dentist visit is on Thursday.")]
+    with session_scope() as s:
+        cf.schedule_calendar(s, [EVENT])
+    run_due()
+    with session_scope() as s:
+        for m in kept():
+            s.get(MemoryItem, m.id).locked = True  # the owner pinned it
+    cal["event"] = {**EVENT, "updated": "2026-10-25T08:00:00Z"}
+    script.facts = [fact("Shashank's dentist visit moved to Friday 3pm.")]
+    with session_scope() as s:
+        cf.schedule_calendar(s, [cal["event"]])
+    run_due()
+    live = {r.content: r.valid_to for r in kept()}
+    assert live["Shashank's dentist visit is on Thursday."] is None  # still current: only the owner changes it
+
+
 def test_a_deleted_event_takes_its_facts_with_it(owner, cal, script):
     script.facts = [fact("Shashank has a dentist visit.")]
     with session_scope() as s:

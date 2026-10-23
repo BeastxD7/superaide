@@ -63,8 +63,11 @@ def owner_audience(owner_id: uuid.UUID) -> Audience:
     return Audience(person_ids={owner_id}, has_unknown=False, min_trust=int(Trust.LINKED), all_internal=True)
 
 
-def _freshness(created: datetime, now: datetime) -> float:
-    """1 for something just learned, fading towards 0.35 over a year, so old notes look older."""
+def _freshness(created: datetime, now: datetime, locked: bool = False) -> float:
+    """1 for something just learned, fading towards 0.35 over a year, so old notes look older. A locked note
+    does not fade."""
+    if locked:
+        return 1.0
     days = max(0.0, (now - created).total_seconds() / 86400)
     return round(max(0.35, 1 - days / 365 * 0.65), 2)
 
@@ -125,7 +128,8 @@ def build_map(session: Session, owner_id: uuid.UUID) -> dict[str, Any]:
                 "source": m.source,
                 "document": doc.title if doc else None,
                 "confidence": m.confidence,
-                "freshness": _freshness(m.created_at, now),
+                "freshness": _freshness(m.created_at, now, m.locked),
+                "locked": m.locked,
                 "learned": m.created_at.isoformat(),
                 "shareable": m.allowed_kind == "public",
             }
@@ -202,6 +206,22 @@ def build_map(session: Session, owner_id: uuid.UUID) -> dict[str, Any]:
         ],
         "origins": {k: {"label": ORIGIN_LABEL[k], "count": counts.get(k, 0)} for k in ORIGIN_LABEL},
         "truncated": len(live) >= MAX_FACTS,
+    }
+
+
+def share_counts(session: Session, owner_id: uuid.UUID) -> dict[str, Any]:
+    """The shape of the memory in numbers: how many notes per fixed topic word and per origin. Nothing else."""
+    live = session.scalars(
+        select(MemoryItem).where(
+            MemoryItem.subject_person_ids.contains([owner_id]), memory_filter(owner_audience(owner_id))
+        )
+    ).all()
+    by_topic: Counter[str] = Counter(m.category for m in live)
+    by_origin: Counter[str] = Counter(ORIGIN.get(m.source, "you") for m in live)
+    return {
+        "things": len(live),
+        "topics": [{"topic": c, "count": by_topic[c]} for c in CATEGORIES if by_topic.get(c)],
+        "origins": {k: by_origin.get(k, 0) for k in ORIGIN_LABEL},
     }
 
 
@@ -283,6 +303,37 @@ def make_brain_router(get_agent: Callable[[], Any]) -> APIRouter:
             old.superseded_by = new.id  # the map shows the old wording struck through, pointing at the new one
             audit(s, "app", "memory_corrected", memory_id=old.id, new_memory_id=new.id, person_id=person_id)
             return {"id": str(new.id)}
+
+    def set_lock(memory_id: uuid.UUID, person_id: uuid.UUID, locked: bool) -> dict[str, Any]:
+        with session_scope() as s:
+            m = s.get(MemoryItem, memory_id)
+            if m is None or person_id not in (m.subject_person_ids or []) or m.valid_to is not None:
+                raise HTTPException(404, "Not found in your notebook")
+            # Only a fact the owner may see can be locked: the same gate as the map itself.
+            if (
+                s.scalar(select(MemoryItem.id).where(MemoryItem.id == m.id, memory_filter(owner_audience(person_id))))
+                is None
+            ):
+                raise HTTPException(404, "Not found in your notebook")
+            if m.locked != locked:
+                m.locked = locked
+                audit(s, "app", "memory_locked" if locked else "memory_unlocked", memory_id=m.id, person_id=person_id)
+            return {"id": str(m.id), "locked": m.locked}
+
+    @router.post(
+        "/facts/{memory_id}/lock",
+        summary="Lock a fact",
+        description=(
+            "Ava keeps this fact as it is: the nightly job never merges or retires it, it does not fade, and a "
+            "newer claim against it waits for the owner. The owner can still correct, forget or unlock it."
+        ),
+    )
+    def lock(memory_id: uuid.UUID, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        return set_lock(memory_id, person_id, True)
+
+    @router.post("/facts/{memory_id}/unlock", summary="Unlock a fact", description="Back to the normal rules.")
+    def unlock(memory_id: uuid.UUID, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        return set_lock(memory_id, person_id, False)
 
     @router.get(
         "/share.svg",

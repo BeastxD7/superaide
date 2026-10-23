@@ -240,6 +240,9 @@ class MemoryItem(Scoped, Base):
     trust_rank: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     author_person_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("person.id"), nullable=True)
     superseded_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("memory_item.id"), nullable=True)
+    # The owner locked this fact (Glass brain, #55): nothing automatic retires, merges or fades it. Only the owner can
+    # change it (correct, forget, unlock); a newer claim against it waits as a conflict for the owner to decide.
+    locked: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     # none | pending (a weaker claim against a stronger fact) | review (a link fact outside about/work) | resolved
     conflict_status: Mapped[str] = mapped_column(String(10), default="none", server_default="none")
     conflicts_with_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("memory_item.id"), nullable=True)
@@ -914,6 +917,34 @@ class InstalledSkill(Scoped, Base):
     removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class SkillRelease(Scoped, Base):
+    """When one version of a skill was released and how risky it is (issue #129). The cooldown counts from
+    `released_at`, which is set once and never moves; `effect_class` is the highest effect the version can have."""
+
+    __tablename__ = "skill_release"
+    __table_args__ = (UniqueConstraint("agent_id", "skill_id", "version", name="uq_skill_release"),)
+
+    skill_id: Mapped[str] = mapped_column(String(120), index=True)
+    version: Mapped[str] = mapped_column(String(40))
+    effect_class: Mapped[str] = mapped_column(String(20))
+    earned_tier: Mapped[str] = mapped_column(String(12), default="none")  # none | reviewed: shortens the wait
+    released_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    patch_signature: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )  # reviewer HMAC; see skills/cooldown.py
+
+
+class SkillTombstone(Scoped, Base):
+    """A retired skill name. It is never issued again, to anyone (issue #129)."""
+
+    __tablename__ = "skill_tombstone"
+    __table_args__ = (UniqueConstraint("agent_id", "skill_id", name="uq_skill_tombstone"),)
+
+    skill_id: Mapped[str] = mapped_column(String(120))
+    reason: Mapped[str] = mapped_column(String(200), default="")
+    retired_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class CalendarWatch(Scoped, Base):
     """One Google Calendar push channel (events.watch) on an owner's primary calendar. Google calls
     the webhook with the channel's token when events change; see proactive/calendar_watch.py."""
@@ -932,6 +963,7 @@ class CalendarWatch(Scoped, Base):
 # the tests' create_all) sees them.
 from superaide.asklink import models as _asklink_models  # noqa: E402, F401
 from superaide.auth import models as _auth_models  # noqa: E402, F401
+from superaide.brainshare import models as _brainshare_models  # noqa: E402, F401
 from superaide.imports import models as _imports_models  # noqa: E402, F401
 from superaide.jobs import claim as _job_claim  # noqa: E402, F401  (the claim function, made after the job table)
 from superaide.memsocket import models as _memsocket_models  # noqa: E402, F401
@@ -939,6 +971,7 @@ from superaide.push import models as _push_models  # noqa: E402, F401
 from superaide.reception import models as _reception_models  # noqa: E402, F401
 from superaide.rehearsal import models as _rehearsal_models  # noqa: E402, F401
 from superaide.school import models as _school_models  # noqa: E402, F401
+from superaide.skills import models as _skills_models  # noqa: E402, F401
 from superaide.tenancy import models as _tenancy_models  # noqa: E402, F401
 from superaide.tooltrace import models as _tooltrace_models  # noqa: E402, F401
 from superaide.triage import models as _triage_models  # noqa: E402, F401

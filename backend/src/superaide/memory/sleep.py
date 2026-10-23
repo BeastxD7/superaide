@@ -183,9 +183,10 @@ def _owner_notes(session: Session, owner: Person) -> list[MemoryItem]:
     )
 
 
-def _rank(m: MemoryItem) -> tuple[int, int, float]:
-    """Best first: said by the owner over read from a file or link, confirmed over not, then the older."""
-    return (0 if m.source in TRUSTED_SOURCES else 1, -m.verify_count, m.created_at.timestamp())
+def _rank(m: MemoryItem) -> tuple[int, int, int, float]:
+    """Best first: locked by the owner, said by the owner over read from a file or link, confirmed over not, then
+    the older."""
+    return (0 if m.locked else 1, 0 if m.source in TRUSTED_SOURCES else 1, -m.verify_count, m.created_at.timestamp())
 
 
 def duplicates(notes: list[MemoryItem]) -> list[tuple[MemoryItem, MemoryItem]]:
@@ -197,7 +198,7 @@ def duplicates(notes: list[MemoryItem]) -> list[tuple[MemoryItem, MemoryItem]]:
     for group in by.values():
         if len(group) > 1:
             group.sort(key=_rank)
-            out += [(group[0], d) for d in group[1:]]
+            out += [(group[0], d) for d in group[1:] if not d.locked]  # a locked note is never merged away
     return out
 
 

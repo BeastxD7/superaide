@@ -322,3 +322,30 @@ def test_without_a_model_no_pair_is_merged():
         o, a, b = pair_world(s, "My office is in Pune near the river.", "My office is in Mumbai near the river.")
         run = sleep.run_for_owner(s, o, NOW)
         assert not run.retired_ids and a.valid_to is None
+
+
+# --- locked notes (#55) ----------------------------------------------------------------------------
+
+
+def test_a_locked_note_is_never_merged_away_as_a_duplicate():
+    with session_scope() as s:
+        o, _ = world(s)
+        doc = notes(s, o, ["Shashank is the CEO of Orchard Labs."], source="document")[0]
+        said = notes(s, o, ["shashank is the CEO of Orchard Labs"], source="chat")[0]
+        doc.locked = True  # the owner pinned the copy read from the file
+        notes(s, o, [f"Fact number {i} about Shashank." for i in range(6)])
+        run = sleep.run_for_owner(s, o, NOW)
+        assert doc.valid_to is None and said.valid_to is not None and run.retired_ids == [said.id]
+        said.valid_to = None
+        said.locked = True  # both locked: neither goes
+        run = sleep.run_for_owner(s, o, NOW + timedelta(days=1))
+        assert not run.retired_ids and doc.valid_to is None and said.valid_to is None
+
+
+def test_a_locked_note_is_never_offered_for_near_duplicate_or_contradiction_merging():
+    with session_scope() as s:
+        o, a, b = pair_world(s, "My office is in Pune near the river.", "My office is in Mumbai near the river.")
+        a.locked = True
+        judge = Judge(["newer_replaces"])
+        run = sleep.run_for_owner(s, o, NOW, judge, SET)
+        assert not run.retired_ids and a.valid_to is None and not judge.prompts  # never even asked about

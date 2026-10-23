@@ -153,6 +153,8 @@ def test_the_brain_routes_need_the_owner(browser):
         ("GET", "/app/brain"),
         ("GET", "/app/brain/share.svg"),
         ("POST", f"/app/brain/facts/{uuid.uuid4()}/correct"),
+        ("POST", f"/app/brain/facts/{uuid.uuid4()}/lock"),
+        ("POST", f"/app/brain/facts/{uuid.uuid4()}/unlock"),
     ):
         assert anonymous.request(method, path, json={"text": "x"} if method == "POST" else None).status_code == 401
         assert unhired.request(method, path, json={"text": "x"} if method == "POST" else None).status_code == 403
@@ -214,3 +216,42 @@ def test_a_retired_fact_the_owner_may_not_see_is_never_on_the_shelf_or_struck_th
     assert "Board seat" not in text
     assert "Visible but replaced elsewhere." in text  # forgotten shelf (owner may see it) but never struck through
     assert not [n for n in a.get("/app/brain").json()["nodes"] if n.get("superseded")]
+
+
+def test_locking_a_fact_pins_it_and_unlocking_puts_it_back(browser):
+    a, b = owners(browser)
+    ids = seed()
+    nodes = lambda: {n["id"]: n for n in a.get("/app/brain").json()["nodes"]}  # noqa: E731
+    assert nodes()[f"fact:{ids['old']}"]["locked"] is False and nodes()[f"fact:{ids['old']}"]["freshness"] == 0.35
+    r = a.post(f"/app/brain/facts/{ids['old']}/lock")
+    assert r.status_code == 200 and r.json() == {"id": ids["old"], "locked": True}
+    pinned = nodes()[f"fact:{ids['old']}"]
+    assert pinned["locked"] is True and pinned["freshness"] == 1.0  # a locked note does not fade
+    assert a.post(f"/app/brain/facts/{ids['old']}/lock").status_code == 200  # idempotent
+    with session_scope() as s:
+        assert s.get(MemoryItem, uuid.UUID(ids["old"])).locked is True  # type: ignore[union-attr]
+    assert b.post(f"/app/brain/facts/{ids['old']}/unlock").status_code == 404  # not their note
+    assert a.post(f"/app/brain/facts/{ids['old']}/unlock").json()["locked"] is False
+    assert nodes()[f"fact:{ids['old']}"]["freshness"] == 0.35
+
+
+def test_lock_refuses_other_peoples_retired_and_unseen_notes(browser):
+    a, _ = owners(browser)
+    ids = seed()
+    assert a.post(f"/app/brain/facts/{uuid.uuid4()}/lock").status_code == 404
+    a.post(f"/app/notebook/{ids['chat']}/forget")
+    assert a.post(f"/app/brain/facts/{ids['chat']}/lock").status_code == 404  # already forgotten
+    with session_scope() as s:
+        hidden = s.scalar(select(MemoryItem).where(MemoryItem.content.contains("board seat")))
+        assert hidden is not None
+        hidden_id = str(hidden.id)
+    assert a.post(f"/app/brain/facts/{hidden_id}/lock").status_code == 404  # about the owner, but they may not see it
+    with session_scope() as s:
+        assert s.get(MemoryItem, uuid.UUID(hidden_id)).locked is False  # type: ignore[union-attr]
+
+
+def test_a_locked_fact_can_still_be_corrected_by_the_owner(browser):
+    a, _ = owners(browser)
+    ids = seed()
+    a.post(f"/app/brain/facts/{ids['old']}/lock")
+    assert a.post(f"/app/brain/facts/{ids['old']}/correct", json={"text": "Shashank lives in Goa."}).status_code == 200

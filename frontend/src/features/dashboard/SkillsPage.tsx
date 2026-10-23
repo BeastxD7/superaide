@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAppData } from '@/features/dashboard/data'
 import { GmailPanel } from '@/features/dashboard/GmailPanel'
+import { SkillReleasesPanel } from '@/features/dashboard/SkillReleasesPanel'
 import { call, type SkillCard, type SkillOption } from '@/lib/api'
 import { useSession } from '@/lib/session-context'
 import { errorMessage } from '@/lib/action'
@@ -246,6 +247,7 @@ export function SkillsPage({ google = null }: { google?: string | null }) {
             )
           })}
         </ul>
+        <SkillReleasesPanel />
         <p className="mt-6 text-xs text-muted">
           Capabilities follow one open protocol: instructions in the Agent Skills format, tools over MCP, and a manifest
           that says what each one may touch.
