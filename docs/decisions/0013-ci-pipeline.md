@@ -33,6 +33,13 @@ Pushes to `main`, `workflow_dispatch`, `merge_group` and the scheduled Full run 
 - A build system with an affected graph (Nx, Bazel, Turborepo): this is a two-package repository; path filters give the same result without adopting a tool.
 - Per-test impact analysis for pytest: coverage-based selection is fragile and a missed test is a missed regression. Not worth it while the full backend run is a few minutes.
 
+## Cheaper runs (PR 2)
+
+- Coverage (`--cov`) runs on pushes to main, manual runs and Full only; pull requests and merge groups run plain pytest. Every run prints `--durations=25`.
+- The Playwright browser is cached by `actions/cache`, keyed on the installed Playwright version. System libraries are not part of the cache, so `playwright install-deps` still runs on a hit.
+- Concurrency: a pull request's newer push cancels its older run; runs on `main` and the called Full pipeline are never cancelled (before, a push to main could cancel the previous push's run).
+- uv, npm and Docker layer caches were already in place and stay.
+
 ## Plan
 
 1. Change detection and the gate (this PR).
