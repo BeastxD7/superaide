@@ -333,3 +333,44 @@ Everything the owner says reaches long-term memory, owner-only by default, with 
 | Calendar and Gmail | **not stored.** Looked up live with `ava://cal` and `ava://mail` citations. Copying a mailbox or calendar into memory is an owner decision and is not built. | none |
 
 The `ltm_inputs` eval category has one scenario per path.
+
+## Addendum (October 2026): the owner in a channel or thread (issue #305)
+
+The owner is the same Person on every channel, because identity is by immutable platform id
+(provider, tenant_scope, stable_key). A Slack `app_mention` in a channel or thread resolves to the
+same `ChannelIdentity` as the DM. So the sender is recognised everywhere; what a shared room changes
+is the **audience for disclosure**, never who is speaking and never who has authority. Authority
+comes from the sender of the message being answered, not from the thread: a colleague in the
+owner's thread gets the colleague path and cannot borrow the owner's rights.
+
+For the owner in a non-DM context (`ctx.kind != "dm"`) the pipeline runs the owner tool loop with
+`shared=True`:
+
+- **Audience:** unchanged. A room has `has_unknown=True` until channel membership is verified, so
+  recall and the pre-recall notes return public-level memories only, and past messages and
+  documents are not searched. A private note from the DM does not appear; Ava says it is in the DM.
+- **History:** this conversation (thread) only. The owner's other-channel DM turns are never in a
+  room's prompt. Other people's messages in the thread are labelled "Another person in this
+  channel, not your owner".
+- **Not learned:** nothing from a room is saved to memory or the journal, and the second opinion
+  and the playbook experiment are skipped.
+- **Reply:** the system prompt tells Ava to address the owner by name.
+
+| Action | In the DM | In a channel or thread |
+|---|---|---|
+| Recall (notes, messages, documents) | audience of the DM: private notes | public-level notes only |
+| Web search and fetch | yes | yes |
+| `create_reminder` | yes | yes (it echoes what the owner just wrote) |
+| List, update, cancel reminders | yes | no, DM only (reminder text is private) |
+| Gmail and calendar tools (read, draft, send, create, move, decline) | yes, writes still need approval | no, DM only |
+| `propose_action` for `message_someone_else`, `publish_post`, creation kinds | queues an approval card | queues an approval card (it happens in the signed-in app) |
+| `propose_action` for `grant_access`, `delete_memory` (need a fresh step-up) | refused unless step-up trust | refused: "ask me in a direct message" |
+| `NEVER_VIA_CHAT` (settings, credentials, trust, export, delete data) | refused | refused |
+| "remember that ..." and learning from the message | yes | no |
+| Link codes | redeemed | never redeemed, never repeated |
+| Unlinked or unconfirmed Slack user | stranger path / fixed reply | unchanged (unconfirmed: silent) |
+| Any other person in the room | their own relation, as before | their own relation, as before |
+
+Open: promoting a private memory to the channel ("want me to share it here?") would be a
+disclosure write and is not built; Ava points to the DM. Slack replies in a thread that do not
+@-mention Ava are not delivered to her (Slack `message` events in channels are ignored by design).
