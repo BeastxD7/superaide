@@ -17,7 +17,9 @@ permissions:
 # (each push gets its verdict), and when full.yml calls this, github.workflow is the caller's
 # name, so its runs land in their own group and are never cancelled either.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  # On main every push has its own group: GitHub keeps only ONE queued run per group and cancels older queued
+  # ones, so merging several PRs in a row left main with cancelled runs and no verdict.
+  group: ci-${{ github.workflow }}-${{ github.ref }}${{ github.ref == 'refs/heads/main' && format('-{0}', github.sha) || '' }}
   cancel-in-progress: ${{ github.workflow == 'CI' && github.ref != 'refs/heads/main' }}
 
 jobs:
