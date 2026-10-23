@@ -329,6 +329,33 @@ def _import_cards(args: argparse.Namespace) -> None:
     print(json.dumps(batch, indent=2, ensure_ascii=False))
 
 
+def _lobster(args: argparse.Namespace) -> None:
+    """Lobster Rescue: read an OpenClaw or Hermes workspace folder on this machine. Writes nothing."""
+    import json
+
+    from superaide.imports import lobster
+
+    try:
+        if args.cmd == "lobster-kit":
+            from superaide.imports import lobster_kit
+
+            lobster_kit.run(args.folder, args.out, assume_yes=args.yes)
+            return
+        if args.cmd == "lobster-kit-summary":
+            from superaide.imports import lobster_kit
+
+            summary = lobster_kit.summarise(args.files)
+            print(json.dumps(summary, indent=2) if args.json else lobster_kit.render_summary(summary))
+            return
+        if args.cmd == "lobster-audit":
+            report = lobster.audit(args.folder)
+            print(json.dumps(report.as_dict(), indent=2) if args.json else report.render())
+        else:
+            print(json.dumps(lobster.cards(args.folder), indent=2, ensure_ascii=False))
+    except ValueError as exc:
+        sys.exit(str(exc))
+
+
 def main() -> None:
     from superaide.security import logredact
 
@@ -387,6 +414,24 @@ def main() -> None:
     p.add_argument("file")
     p.add_argument("--scope", default="", help="chat | calendar | notes (default: the usual one for the kind)")
     p.set_defaults(func=_import_cards)
+    p = sub.add_parser("lobster-audit", help="audit an OpenClaw or Hermes workspace folder (reads, writes nothing)")
+    p.add_argument("folder")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=_lobster)
+    p = sub.add_parser(
+        "lobster-kit", help="guided leak audit that saves an anonymous result file you can review and send"
+    )
+    p.add_argument("folder")
+    p.add_argument("--out", help="where to save the result (default: the current folder)")
+    p.add_argument("--yes", action="store_true", help="save without asking")
+    p.set_defaults(func=_lobster)
+    p = sub.add_parser("lobster-kit-summary", help="combine the result files volunteers sent back")
+    p.add_argument("files", nargs="+")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=_lobster)
+    p = sub.add_parser("lobster-cards", help="turn a workspace's memory files into context cards (prints JSON)")
+    p.add_argument("folder")
+    p.set_defaults(func=_lobster)
     sub.add_parser("hello", help="one tiny real Claude call to test the key").set_defaults(func=_hello)
     sub.add_parser("seed-demo", help="add demo people if none exist").set_defaults(func=_seed_demo)
     p = sub.add_parser("reset-password", help="set a new password for an app account")
