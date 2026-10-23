@@ -26,11 +26,12 @@ import {
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent, type ReactNode } from 'react'
-import { browserTimeZone, call, upload, type IngestResult, type Me, type SharedDoc, type StepInput } from '@/lib/api'
+import { browserTimeZone, call, retryDocument, upload, type IngestResult, type Me, type SharedDoc, type StepInput } from '@/lib/api'
 import { Connections } from '@/features/workspace/Connections'
 import { BrandIcon } from '@/components/BrandIcon'
 import { Button, Notice } from '@/components/site'
 import { isSendKey } from '@/lib/keys'
+import { DocDone, DocLoader, workingFile, workingLink, type Working } from '@/features/onboarding/DocLoader'
 import { errorMessage } from '@/lib/action'
 
 // The answer panel for each step of the introduction. Each control calls
@@ -394,52 +395,95 @@ function FilesAndLinks({ documents, reload, onContinue }: { documents: SharedDoc
   const [error, setError] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
   const [done, setDone] = useState<string | null>(null)
+  const [working, setWorking] = useState<Working | null>(null)
+  const [retry, setRetry] = useState<(() => void) | null>(null)
   const [url, setUrl] = useState('')
   const [drag, setDrag] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   // One upload or link at a time: a ref, because two drops can land before a re-render shows `busy`.
-  const working = useRef(false)
+  const inFlight = useRef(false)
   async function sendFile(file: File) {
-    if (working.current) return
-    working.current = true
+    if (inFlight.current) return
+    inFlight.current = true
     setBusy(`Reading ${file.name}…`)
+    setWorking(workingFile(file))
+    setRetry(null)
     setError(null)
     setNote(null)
     setDone(null)
     try {
       const r = await upload<IngestResult>('/intro/files', file)
-      if (r.duplicate) setNote(r.message)
+      if (r.status === 'failed') {
+        setError(`I couldn't read ${r.title}.`)
+        setRetry(() => () => void retryDoc(r.document_id, workingFile(file)))
+      } else if (r.duplicate) setNote(r.message)
       else setDone(readStatus(r))
       if (r.warnings.length) setNote(r.warnings.join(' '))
       await reload()
     } catch (e) {
       setError(errorMessage(e))
+      setRetry(() => () => void sendFile(file))
     } finally {
-      working.current = false
+      inFlight.current = false
       setBusy(null)
+      setWorking(null)
     }
   }
 
   async function sendLink() {
     const u = url.trim()
-    if (!u || working.current) return
-    working.current = true
+    if (!u || inFlight.current) return
+    inFlight.current = true
     setBusy(`Reading ${u}…`)
+    setWorking(workingLink(u))
+    setRetry(null)
     setError(null)
     setNote(null)
     setDone(null)
     try {
       const r = await call<IngestResult>('/intro/links', { method: 'POST', json: { url: u.includes('://') ? u : `https://${u}` } })
-      if (r.duplicate) setNote(r.message)
+      if (r.status === 'failed') {
+        setError(`I couldn't read ${r.title}.`)
+        setRetry(() => () => void retryDoc(r.document_id, workingLink(u)))
+      } else if (r.duplicate) setNote(r.message)
       else setDone(readStatus(r))
       setUrl('')
       await reload()
     } catch (e) {
       setError(errorMessage(e))
+      setRetry(() => () => void sendLink())
     } finally {
-      working.current = false
+      inFlight.current = false
       setBusy(null)
+      setWorking(null)
+    }
+  }
+
+  // A document that failed to save facts: ask the server to read it again, with the same loader.
+  async function retryDoc(id: string, work: Working) {
+    if (inFlight.current) return
+    inFlight.current = true
+    setBusy(`Reading ${work.name}…`)
+    setWorking(work)
+    setRetry(null)
+    setError(null)
+    setNote(null)
+    setDone(null)
+    try {
+      const r = await retryDocument(id)
+      if (r.status === 'failed') {
+        setError(`I couldn't read ${r.title || work.name}.`)
+        setRetry(() => () => void retryDoc(id, work))
+      } else setDone(readStatus(r))
+      await reload()
+    } catch (e) {
+      setError(errorMessage(e))
+      setRetry(() => () => void retryDoc(id, work))
+    } finally {
+      inFlight.current = false
+      setBusy(null)
+      setWorking(null)
     }
   }
 
@@ -505,10 +549,20 @@ function FilesAndLinks({ documents, reload, onContinue }: { documents: SharedDoc
           Add
         </button>
       </div>
-      {busy && <p className="text-center text-sm text-muted" aria-live="polite">{busy}</p>}
-      {error && <Notice tone="error">{error}</Notice>}
+      {working && <DocLoader work={working} />}
+      {busy && !working && <p className="text-center text-sm text-muted" aria-live="polite">{busy}</p>}
+      {error && (
+        <div className="space-y-2">
+          <Notice tone="error">{error}</Notice>
+          {retry && (
+            <Button onClick={retry} disabled={Boolean(busy)}>
+              Try again
+            </Button>
+          )}
+        </div>
+      )}
       {note && <Notice tone="warn">{note}</Notice>}
-      {done && !busy && <Notice tone="info">{done}</Notice>}
+      {done && !busy && <DocDone text={done} />}
       {documents.length > 0 && (
         <ul className="space-y-1.5">
           {documents.map((d) => {
@@ -523,7 +577,20 @@ function FilesAndLinks({ documents, reload, onContinue }: { documents: SharedDoc
                 <span className="min-w-0 flex-1 truncate text-ink" title={d.source}>
                   {d.title}
                 </span>
-                <span className="shrink-0 text-xs text-muted">{d.status === 'read' ? `${d.facts} facts` : 'Saved, not read yet'}</span>
+                {d.status === 'failed' ? (
+                  <>
+                    <span className="shrink-0 text-xs text-danger">I couldn&apos;t read it</span>
+                    <button
+                      onClick={() => void retryDoc(d.id, d.kind === 'web' || d.kind === 'github' ? workingLink(d.source) : { kind: 'file', name: d.title, detail: d.title.split('.').pop()?.toUpperCase() ?? 'File' })}
+                      disabled={Boolean(busy)}
+                      className="shrink-0 rounded-full border border-lilac-200 px-2.5 py-1 text-xs font-medium text-violet-700 disabled:opacity-40"
+                    >
+                      Retry
+                    </button>
+                  </>
+                ) : (
+                  <span className="shrink-0 text-xs text-muted">{d.status === 'read' ? `${d.facts} facts` : 'Saved, not read yet'}</span>
+                )}
                 <button onClick={() => void remove(d)} className="grid size-7 shrink-0 place-items-center rounded-full text-muted hover:bg-mist hover:text-danger" aria-label={`Remove ${d.title}`}>
                   <Trash2 className="size-3.5" />
                 </button>
