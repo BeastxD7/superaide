@@ -22,11 +22,11 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.parse import unquote
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Security
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, Security
 from fastapi.concurrency import run_in_threadpool
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 
 from superaide.app.accounts import owner as hired_owner
 from superaide.audit import audit
@@ -47,6 +47,15 @@ from superaide.db.models import (
 from superaide.db.session import session_scope
 from superaide.factory import brain_ready
 from superaide.identity.linking import operator_link, unlink
+from superaide.pagination import (
+    Page,
+    SortKey,
+    bind_for,
+    cursor_param,
+    limit_param,
+    paginate,
+    set_next_headers,
+)
 from superaide.policy import binding
 from superaide.policy.killswitch import instance_frozen, is_frozen, set_platform_frozen
 from superaide.tenancy.context import InstanceScope, default_scope, use_instance
@@ -67,6 +76,7 @@ def require_admin(credentials: HTTPAuthorizationCredentials | None = Security(ad
 router = APIRouter(prefix="/api", tags=["Operator console"], dependencies=[Depends(require_admin)])
 
 MIN_REASON = 10
+MESSAGE_COUNT_CAP = 1000  # a conversation's message count is read up to here (no COUNT(*) over a long one)
 
 
 def _reason(request: Request) -> str:
@@ -414,32 +424,98 @@ def conversations() -> list[dict[str, Any]]:
 
 
 @router.get(
+    "/conversations/page",
+    dependencies=content,
+    summary="Conversations, newest activity first (paged)",
+    description="The same rows as `/api/conversations`, ordered by when each last moved (`last_event_at`) and paged "
+    "by cursor. `messages` counts up to 1000 (`messages_more` is true beyond that): an exact count over a long "
+    "conversation is the scan this route exists to avoid. ADR 0014.",
+    response_model=Page[dict[str, Any]],
+)
+def conversations_page(limit: int = limit_param(50, 100), cursor: str | None = cursor_param()) -> Page[dict[str, Any]]:
+    with session_scope() as s:
+        page = paginate(
+            s,
+            select(Context),
+            [SortKey(Context.last_event_at), SortKey(Context.id)],
+            endpoint="op-conversations",
+            bind=bind_for("operator"),
+            limit=limit,
+            cursor=cursor,
+            maximum=100,
+            build=lambda c: c,
+        )
+        counts: dict[uuid.UUID, int] = {}
+        if page.items:
+            rows = s.execute(
+                text(
+                    "SELECT c.id, (SELECT count(*) FROM (SELECT 1 FROM event e WHERE e.context_id = c.id "
+                    f"LIMIT {MESSAGE_COUNT_CAP + 1}) x) FROM unnest(CAST(:ids AS uuid[])) AS c(id)"
+                ),
+                {"ids": [c.id for c in page.items]},
+            ).all()
+            counts = {r[0]: int(r[1]) for r in rows}
+        items = [
+            {
+                "id": str(c.id),
+                "provider": c.provider,
+                "kind": c.kind,
+                "audience_class": c.audience_class,
+                "title": c.title or c.external_id,
+                "messages": min(counts.get(c.id, 0), MESSAGE_COUNT_CAP),
+                "messages_more": counts.get(c.id, 0) > MESSAGE_COUNT_CAP,
+                "last_at": _iso(c.last_event_at),
+            }
+            for c in page.items
+        ]
+    return Page[dict[str, Any]](items=items, next_cursor=page.next_cursor, has_more=page.has_more, total_estimate=None)
+
+
+@router.get(
     "/events",
     dependencies=content,
     summary="Messages",
-    description="Recent messages, optionally for one conversation (`context_id`).",
+    description="Recent messages, newest first in pages, optionally for one conversation (`context_id`). `limit` is "
+    "1 to 200, clamped (default 100). When older ones exist the response has `X-Next-Cursor`, `Link: rel=next` and "
+    "`X-Has-More: true`; send the cursor back as `cursor`. The body stays a bare array. ADR 0014.",
 )
-def events(context_id: uuid.UUID | None = None, limit: int = 100) -> list[dict[str, Any]]:
-    limit = max(1, min(limit, 500))
+def events(
+    request: Request,
+    response: Response,
+    context_id: uuid.UUID | None = None,
+    limit: int = 100,
+    cursor: str | None = cursor_param(),
+) -> list[dict[str, Any]]:
+    limit = max(1, min(limit, 200))  # clamped, as before (the console's contract), now at 200 instead of 500
+    q: Any = select(Event, Person.display_name).join(Person, Person.id == Event.resolved_person_id, isouter=True)
+    if context_id:
+        q = q.where(Event.context_id == context_id)
     with session_scope() as s:
-        q = select(Event, Person.display_name).join(Person, Person.id == Event.resolved_person_id, isouter=True)
-        if context_id:
-            q = q.where(Event.context_id == context_id)
-        rows = s.execute(q.order_by(Event.created_at.desc()).limit(limit)).all()
-        return [
-            {
-                "id": str(e.id),
-                "context_id": str(e.context_id),
-                "direction": e.direction,
-                "sender": name or ("agent" if e.direction == "out" else "stranger"),
-                "trust": e.trust_at_time,
-                "audience_size": len(e.audience_person_ids or []),
-                "audience_has_unknown": e.audience_has_unknown,
-                "content": e.content,
-                "at": _iso(e.created_at),
-            }
-            for e, name in rows
-        ]
+        page = paginate(
+            s,
+            q,
+            [SortKey(Event.created_at), SortKey(Event.id)],
+            endpoint=f"op-events:{context_id or 'all'}",
+            bind=bind_for("operator"),
+            limit=limit,
+            cursor=cursor,
+            maximum=200,
+            entity_of=lambda row: row[0],
+            build=lambda row: {
+                "id": str(row[0].id),
+                "context_id": str(row[0].context_id),
+                "direction": row[0].direction,
+                "sender": row[1] or ("agent" if row[0].direction == "out" else "stranger"),
+                "trust": row[0].trust_at_time,
+                "audience_size": len(row[0].audience_person_ids or []),
+                "audience_has_unknown": row[0].audience_has_unknown,
+                "content": row[0].content,
+                "at": _iso(row[0].created_at),
+            },
+        )
+    response.headers["X-Has-More"] = "true" if page.has_more else "false"
+    set_next_headers(response, str(request.url), page.next_cursor)
+    return page.items
 
 
 @router.get(

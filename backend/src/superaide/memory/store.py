@@ -7,7 +7,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta, tzinfo
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -95,7 +95,20 @@ def log_event(
     )
     session.add(event)
     session.flush()
+    touch_context(session, event)
     return event
+
+
+def touch_context(session: Session, event: Event) -> None:
+    """Move the conversation's `last_event_at` forward to this event. The ONE place that maintains it: every code
+    path that inserts an Event calls this (log_event, the Gmail intake). GREATEST means an event that arrives out of
+    order, or a backfilled one, can never move it backwards."""
+    session.execute(
+        update(Context)
+        .where(Context.id == event.context_id)
+        .values(last_event_at=func.greatest(Context.last_event_at, event.created_at))
+        .execution_options(synchronize_session=False)
+    )
 
 
 def seen_before(session: Session, context: Context, external_id: str) -> bool:

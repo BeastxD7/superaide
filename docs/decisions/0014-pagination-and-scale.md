@@ -50,12 +50,12 @@ Columns: **Limit** is what the code does now. **Order** is the `ORDER BY`. **Ind
 | `GET /app/brain/share-links`, `/push/devices`, `/channels/linked`, `/identity-claims`, `/import-leases`, `/standing-orders`, `/fork-night`, `/journal`, `/mirror`, `/twin`, `/updates`, `/audition/candidates`, `/model-drill`, `/playbooks` | none | small | n/a | bounded by product rules (`MAX_ACTIVE`, `MAX_RULES`, a handful of devices); `/identity-claims` and `/import-leases` are unbounded in code | Settings and card components |
 | `GET /app/agents`, `/app/providers`, `/app/connections`, `/app/onboarding`, `/app/me`, `/app/preferences` | fixed small sets | n/a | n/a | n/a | fixed | catalog, settings |
 
-#### Operator console routes (`/api/*`, bearer `ADMIN_TOKEN`)
+#### Operator console routes (`/api/*`, bearer `ADMIN_TOKEN`; content routes run inside one instance after a break-glass reason, so "unbounded" below means one instance's whole table, not the platform's)
 
 | Route | Limit now | Order | Index | 1M rows | Consumer |
 |---|---|---|---|---|---|
 | `GET /api/events` | `limit` 1..500, default 100, optional `context_id` | `event.created_at desc` | `context_id` only | 500 rows; sort reads all events (all instances when no `context_id`) | console `Conversations` (polls every 3 s with `limit=200`) |
-| `GET /api/memories` | **none** | `created_at desc` | none | **every memory of every instance**: ~0.4 KB each = ~400 MB JSON, plus the `person` read | console `Memories` |
+| `GET /api/memories` | **none** | `created_at desc` | none | **every memory of the instance**: ~0.4 KB each = ~400 MB JSON, plus the `person` read | console `Memories` |
 | `GET /api/approvals` | **none** | `created_at desc` | none | every approval, plus every `person` | console `Approvals` |
 | `GET /api/people` | **none** | `created_at` | none | loads **all** persons, **all** channel identities and **all** link events, joins in Python | console `People`, `Simulator` (polls every 15 s) |
 | `GET /api/conversations` | **none** | `max(event.created_at) desc` | none | `GROUP BY context` over **all** events: a full scan of `event` for every poll | console `Conversations` |
@@ -144,6 +144,10 @@ Pagination metadata lives **inside `data`**, so that the envelope stays `{status
 
 Errors are the existing error envelope (`invalid_cursor`, `invalid_limit`, `validation_failed`). Until ADR 0013 phase 2 wraps successes, a migrated route returns the `Page` object itself as the body; phase 2 wraps it without touching the route. A bare-array route that must not change shape yet keeps its array and gains the next page in headers (`X-Next-Cursor` and `Link: <url?cursor=...>; rel="next"`) via `set_next_headers`. A dict-shaped route (`{memories: [...]}`) keeps its key and gains `next_cursor` and `has_more` beside it. Both are additive; old clients ignore them. Once every consumer reads the new fields the old shape is dropped, in the same release as the ADR 0013 `detail` removal.
 
+### Compatibility mode for routes that answer a bare array (`/app/messages`)
+
+A route whose body is a bare JSON array (the chat history, which existing clients and e2e stubs read as an array) keeps that body. Paging rides in headers instead: `X-Has-More: true|false`, `X-Next-Cursor` and `Link: <url?cursor=...>; rel="next"` (the last two only when there is another page). The `cursor` query parameter is the standard signed cursor. A legacy anchor parameter (`before=<id>`, from #318) keeps working: the server turns it into the same keyset position a cursor holds (`(created_at, id)` of that row, verified to belong to the caller's conversation), so a client that tracks "the oldest message I have" (the chat does, because its visible window moves as messages are sent) needs no stored cursor. `limit` is bounded 1 to 200 and a value outside answers 422 instead of being clamped silently. Once every consumer reads the new shape, the array body goes with the ADR 0013 `detail` removal.
+
 ### Indexes
 
 - Every paginated list has an index whose columns are the equality filters followed by the sort keys in the sort direction: `(context_id, created_at desc, id desc)`. A leading `agent_id` is added when the route is not already narrowed by an indexed owner column, because the instance scope is always in the `WHERE`.
@@ -185,3 +189,9 @@ Errors are the existing error envelope (`invalid_cursor`, `invalid_limit`, `vali
 - **Unsigned base64 cursors.** A client could forge a position or move one between endpoints and tenants. Rejected: the signature is cheap.
 - **A virtualisation library (TanStack Virtual, react-window).** Good libraries, but heavier than the three screens need. Revisit if a list needs variable-height windowing with sticky groups.
 - **Server-side cursors held open in the database.** Ties up a connection per reader; rejected.
+
+## Update 2026-10-24: operator paging and `context.last_event_at`
+
+- `/api/events` keeps its bare array and gains `cursor` plus the `X-Next-Cursor` / `Link` / `X-Has-More` headers (compatibility mode above), `limit` 1 to 200.
+- `GET /api/conversations/page` lists conversations by last activity as a standard `Page`. The old `/api/conversations` stays until the console adopts the new route. Its `GROUP BY context` over every event is replaced by a maintained column, `context.last_event_at` (migration 0078, indexed with `(agent_id, last_event_at desc, id desc)`). It is written in one place, `memory.store.touch_context`, called by every code path that inserts an `Event` (`log_event` and the Gmail intake); the update uses `GREATEST` so an out-of-order or backfilled event never moves it backwards; a test fails if a new `Event(` appears anywhere else. A conversation's message count is read up to 1000 (`messages_more` beyond), never an exact count over a long conversation.
+- Cursors on operator routes are bound to the endpoint (and, for events, the conversation filter) and to the instance in scope.
