@@ -186,6 +186,10 @@ def _binding_blocks(session: Session, approval: Approval) -> str | None:
         approval_id=approval.id, kind=approval.kind, mode=mode, layer="payload",
     )  # fmt: skip
     if mode == "strict":
+        if state == "unsealed":  # made before the check existed (or while it was off): can't be verified, so ask again
+            return (
+                "Not run: this request was made before approvals were checked, so it can't be verified. Ask Ava again."
+            )
         return "Not run: this changed after you approved it. Ask Ava again."
     return None
 

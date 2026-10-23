@@ -227,3 +227,28 @@ def test_report_says_when_strict_is_safe(monkeypatch, ran):
     with session_scope() as s:
         r = report(s)
         assert not r["ready"] and r["kinds"]["calendar_create_event"]["mismatches"] == 1
+
+
+def test_strict_is_the_default():
+    from superaide.config import Settings
+
+    assert Settings.model_fields["approval_binding"].default == "strict"
+
+
+@pytest.mark.parametrize("kind", KINDS)
+def test_an_old_approval_with_no_recorded_hash_is_re_requested_never_run(monkeypatch, ran, kind):
+    """Made before the check existed (no bound_hash): in strict it is not run, the owner is told to ask again, and
+    the audit trail says why. It never slips through unchecked."""
+    monkeypatch.setattr(get_settings(), "approval_binding", "strict")
+    with session_scope() as s:
+        a = Approval(kind=kind, payload=payload_for(kind, "Hello", random.Random(3)))  # not sealed
+        s.add(a)
+        s.flush()
+        aid = str(a.id)
+    a = decide(aid)
+    assert (
+        ran == [] and "Ask Ava again" in a.payload["result"] and "before approvals were checked" in a.payload["result"]
+    )
+    with session_scope() as s:
+        [log] = s.scalars(select(AuditLog).where(AuditLog.action == "approval_unsealed")).all()
+        assert log.detail["kind"] == kind and log.detail["mode"] == "strict"

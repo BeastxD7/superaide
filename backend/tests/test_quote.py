@@ -10,6 +10,7 @@ from superaide.db.session import session_scope
 from superaide.identity.resolver import Sender
 from superaide.identity.trust import Trust
 from superaide.policy import actions, quote
+from superaide.policy.binding import seal
 
 
 @pytest.fixture
@@ -78,6 +79,8 @@ def test_odds_are_per_kind(on):
 def test_resolve_records_the_outcome_for_next_time():
     ok = Approval(kind="x_ok", payload={})
     bad = Approval(kind="x_bad", payload={})
+    seal(ok)
+    seal(bad)
     with session_scope() as s:
         s.add_all([ok, bad])
         s.flush()
