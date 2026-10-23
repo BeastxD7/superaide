@@ -1,4 +1,5 @@
-"""SLACK_THREAD_HISTORY_ENABLED: the owner @-mentions Ava in a thread and she reads it (public level, off by default)."""
+# ruff: noqa: F811
+"""SLACK_THREAD_HISTORY_ENABLED: the owner @-mentions Ava in a thread and she reads it (public level, flag off)."""
 
 from __future__ import annotations
 
