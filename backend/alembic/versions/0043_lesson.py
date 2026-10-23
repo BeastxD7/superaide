@@ -1,7 +1,7 @@
 """lesson: Ava School lessons an owner wrote or imported (#57), per instance, under Row-Level Security
 
-Revision ID: 0042
-Revises: 0039
+Revision ID: 0043
+Revises: 0040
 Create Date: 2026-10-23 03:22:36.043835
 
 """
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0042"
-down_revision: str | Sequence[str] | None = "0039"
+revision: str = "0043"
+down_revision: str | Sequence[str] | None = "0040"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
