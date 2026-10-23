@@ -204,7 +204,7 @@ export function Meet({ session }: { session: Session }) {
         )}
       </header>
 
-      <main ref={scrollerRef} className="min-h-0 flex-1 overflow-y-auto">
+      <main ref={scrollerRef} tabIndex={0} aria-label="Conversation" className="min-h-0 flex-1 overflow-y-auto">
         <div ref={contentRef} className="mx-auto w-full max-w-2xl px-4 pt-6 pb-6">
           {!loaded && !error && <p className="text-center text-muted">{agentName} is getting ready…</p>}
           {fresh && (
