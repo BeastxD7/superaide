@@ -165,4 +165,5 @@ def mine(session: Session, owner_id: uuid.UUID, now: datetime | None = None) -> 
         found.extend(miner(session, owner_id, now))
     return [f for f in found if f.receipts]
 
+
 # demo: touches only the mirror module so CI shows a narrowed selection
