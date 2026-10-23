@@ -244,7 +244,14 @@ class RoutedLLM:
     def step(self, *, model: str, **kwargs: Any) -> StepResult:
         llm, name = self._route(model)
         kwargs, mapping = _through_airlock(kwargs)
+        finish = None
+        if mapping and kwargs.get("on_event") is not None:
+            from superaide.privacy.airlock import restoring_events
+
+            kwargs["on_event"], finish = restoring_events(kwargs["on_event"], mapping)
         result = llm.step(model=name, **kwargs)
+        if finish is not None:
+            finish()
         if mapping:
             from superaide.privacy.airlock import restore_any
 
@@ -264,16 +271,19 @@ class RoutedLLM:
 
 
 def _through_airlock(kwargs: dict[str, Any]) -> tuple[dict[str, Any], dict[str, str]]:
-    """With AIRLOCK_ENABLED on, other people's contact details in the conversation are replaced by
-    placeholders before anything is uploaded (privacy/airlock.py); the map stays here and is used to
-    put the originals back into the reply. Off (the default): nothing changes."""
+    """With AIRLOCK_ENABLED on (the default), other people's contact details, ids, addresses and names in the
+    conversation are replaced by placeholders before anything is uploaded (privacy/airlock.py); the map stays
+    here and is used to put the originals back into the reply, including text streamed to the owner. Off
+    (AIRLOCK_ENABLED=false): nothing changes."""
     from superaide.config import get_settings
 
     if not get_settings().airlock_enabled or "messages" not in kwargs:
         return kwargs, {}
     from superaide.privacy.airlock import redact_messages
+    from superaide.privacy.people import known_people
 
-    messages, r = redact_messages(kwargs["messages"])
+    names, keep = known_people()
+    messages, r = redact_messages(kwargs["messages"], names=names, keep=keep)
     return {**kwargs, "messages": messages}, r.mapping
 
 

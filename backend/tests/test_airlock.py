@@ -65,17 +65,18 @@ def test_messages_are_redacted_across_text_blocks_and_tool_results_without_touch
         {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "t1", "content": "sent to bob@x.com"}]},
     ]
     out, r = airlock.redact_messages(messages)
-    assert "bob@x.com" not in str(out[0]) + str(out[1]["content"][0]) + str(out[2])
-    assert out[1]["content"][1]["input"] == {"to": "bob@x.com"}  # the model's own tool call is not rewritten
+    assert "bob@x.com" not in str(out)
+    assert out[1]["content"][1]["input"] == {"to": "[email 1]"}  # an earlier tool call carries no original either
     assert messages[0]["content"] == "Mail bob@x.com"
-    assert r.found == {"email": 3} and list(r.mapping) == ["[email 1]"]
+    assert r.found == {"email": 4} and list(r.mapping) == ["[email 1]"]
 
 
 class Reply(BaseModel):
     reply: str
 
 
-def test_off_by_default_the_model_sees_the_conversation_unchanged(settings):
+def test_with_the_switch_off_the_model_sees_the_conversation_unchanged(settings, monkeypatch):
+    monkeypatch.setattr(settings, "airlock_enabled", False)
     llm = FakeLLM(lambda purpose, system, messages, out: "ok")
     RoutedLLM({"anthropic": llm}).complete(
         model="m",
@@ -88,7 +89,6 @@ def test_off_by_default_the_model_sees_the_conversation_unchanged(settings):
 
 
 def test_on_the_upload_is_clean_and_the_reply_gets_the_originals_back(monkeypatch, settings):
-    monkeypatch.setattr(settings, "airlock_enabled", True)
     seen = {}
 
     def responder(purpose, system, messages, out):
