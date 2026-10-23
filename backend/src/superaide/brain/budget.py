@@ -70,6 +70,7 @@ BUCKETS = {
     # Learning and trust features (#142)
     "tuner": "learning",
     "dissent": "dissent",  # #126: three models on one high-stakes choice
+    "fork_night": "fork",  # #127: three read-only overnight drafts of one choice
 }
 
 

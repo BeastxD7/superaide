@@ -191,6 +191,9 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     from superaide.dissent.routes import make_router as make_dissent_router
 
     app.include_router(make_dissent_router(get_agent))  # 404 unless DISSENT_DESK_ENABLED and three models are set
+    from superaide.forknight.routes import make_router as make_fork_router
+
+    app.include_router(make_fork_router(get_agent))  # 404 unless FORK_NIGHT_ENABLED
     from superaide.push.routes import make_router as make_push_router
 
     app.include_router(make_push_router())  # 404 unless PUSH_ENABLED (ADR 0011)
