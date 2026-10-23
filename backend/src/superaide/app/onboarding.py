@@ -553,9 +553,24 @@ class Onboarder:
         people = len(contacts_of(session, person))
         pref = preferences_for(session, person)
         if closing:
-            parts = [f"{n} things about you"]
+            # Each person named has a note of their own ("Priya is your partner"). They are counted as people,
+            # not again as things about you (#302).
+            about_people = (
+                session.scalar(
+                    select(func.count())
+                    .select_from(MemoryItem)
+                    .where(
+                        MemoryItem.subject_person_ids.contains([person.id]),
+                        MemoryItem.valid_to.is_(None),
+                        MemoryItem.category == "person",
+                    )
+                )
+                or 0
+            )
+            things = max(0, n - min(people, about_people))
+            parts = [f"{things} {'thing' if things == 1 else 'things'} about you"]
             if people:
-                parts.append(f"{people} {'person' if people == 1 else 'people'} who matter to you")
+                parts.append(f"{people} people who matter to you" if people != 1 else "1 person who matters to you")
             urgent = (
                 f" I'll interrupt you for: {_join([_mid_sentence(t) for t in pref.urgent_topics])}."
                 if pref.urgent_topics

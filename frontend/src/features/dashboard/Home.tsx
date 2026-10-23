@@ -258,28 +258,45 @@ function PeopleCard({ state }: { state: LoadState<{ people: PersonCard[] }> }) {
             people.length === 0 ? (
               <p className="text-sm text-muted">No one yet.</p>
             ) : (
-              <ul className="space-y-2">
-                {people.slice(0, 5).map((p) => (
-                  <li key={p.id} className="flex items-center gap-2 text-sm">
-                    <span className="grid size-7 place-items-center rounded-full bg-mist text-xs font-semibold text-violet-700">
-                      {initialOf(p.name)}
-                    </span>
-                    <span className="min-w-0 font-medium text-ink [overflow-wrap:anywhere]">{p.name}</span>
-                    <span className="text-muted">{capitalise(p.relationship)}</span>
-                    {p.vip && (
-                      <Badge className="ml-auto gap-1">
-                        <Star className="size-3" aria-hidden />
-                        VIP
-                      </Badge>
-                    )}
-                  </li>
-                ))}
-              </ul>
+              <PeopleList people={people} />
             )
           }
         </Loadable>
       </CardContent>
     </Card>
+  )
+}
+
+function PeopleList({ people: all }: { people: PersonCard[] }) {
+  const people = all.slice(0, 5)
+  const more = all.length - people.length // the card shows five; say so when there are others (#301)
+  return (
+    <>
+      <ul className="space-y-2">
+        {people.map((p) => (
+          <li key={p.id} className="flex items-center gap-2 text-sm">
+            <span className="grid size-7 place-items-center rounded-full bg-mist text-xs font-semibold text-violet-700">
+              {initialOf(p.name)}
+            </span>
+            <span className="min-w-0 font-medium text-ink [overflow-wrap:anywhere]">{p.name}</span>
+            <span className="text-muted">{capitalise(p.relationship)}</span>
+            {p.vip && (
+              <Badge className="ml-auto gap-1">
+                <Star className="size-3" aria-hidden />
+                VIP
+              </Badge>
+            )}
+          </li>
+        ))}
+      </ul>
+      {more > 0 && (
+        <p className="mt-2.5 text-xs text-muted">
+          <Link href="/dashboard/people" className="font-medium text-violet-700 hover:underline">
+            +{more} more on the People page
+          </Link>
+        </p>
+      )}
+    </>
   )
 }
 
