@@ -709,9 +709,20 @@ class Agent:
         )
         reply = out.reply
         if out.requested_action.kind != "none":
-            decision = decide(s, kind=out.requested_action.kind, summary=out.requested_action.summary, requester=sender)
+            decision = decide(
+                s,
+                kind=out.requested_action.kind,
+                summary=out.requested_action.summary,
+                requester=sender,
+                require_executor=True,
+            )
             notes.append(f"action:{out.requested_action.kind}:{decision.outcome}")
-            if decision.outcome == "refused":
+            if decision.unsupported:
+                reply = (
+                    "I can't do that myself: nothing in Superaide can carry it out yet. "
+                    "I can write the text for you to send."
+                )
+            elif decision.outcome == "refused":
                 reply += f"\n\n(I can't do that: {decision.reason}.)"
             elif decision.outcome == "approval":
                 reply += "\n\n(Queued for approval. Nothing happens until it's approved.)"

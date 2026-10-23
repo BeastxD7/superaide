@@ -52,7 +52,7 @@ from superaide.knowledge.erase import vacuum as erase_vacuum
 from superaide.knowledge.ingest import ingest
 from superaide.knowledge.store import conflicts_of, contacts_of, preferences_for, resolve_conflict, retire_document
 from superaide.pagination import SortKey, bind_for, cursor_param, encode_cursor, limit_param, paginate, set_next_headers
-from superaide.policy import brake
+from superaide.policy import brake, kinds
 from superaide.policy.actions import ApprovalError, resolve
 from superaide.policy.binding import expired
 from superaide.policy.killswitch import is_frozen
@@ -1333,6 +1333,8 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                     "id": str(a.id),
                     "kind": a.kind,
                     "summary": (a.payload or {}).get("summary", ""),
+                    "on_approval": kinds.on_approval(a.kind),  # what yes does, one line
+                    "executes": kinds.has_executor(a.kind),  # False: approving will not do anything (#326)
                     "requested_by": names.get(a.requested_by_person_id) if a.requested_by_person_id else None,
                     # A card past its expiry can no longer be answered: show it as such, not as waiting (#291).
                     "status": "expired" if a.status == "pending" and expired(a) else a.status,
