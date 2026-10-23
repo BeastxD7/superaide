@@ -143,6 +143,7 @@ def test_owner_channel_turn_offers_only_public_safe_tools(agent, owner_linked, r
     llm_calls = agent.llm.calls[-1]["tools"]
     names = {t["name"] for t in llm_calls}
     assert names <= {"recall", "create_reminder", "propose_action", "web_search", "web_fetch"}
+    assert "list_approvals" not in names
     assert not names & {"gmail_search", "gmail_send", "calendar_events", "list_reminders", "cancel_reminder"}
 
 

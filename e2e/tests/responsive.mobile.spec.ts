@@ -152,3 +152,44 @@ for (const width of WIDTHS) {
     })
   })
 }
+
+// The signed-in dashboard: every page, at phone and tablet widths.
+const DASHBOARD = ['/dashboard', '/dashboard/chat', '/dashboard/notebook', '/dashboard/reminders', '/dashboard/approvals', '/dashboard/people', '/dashboard/connections', '/dashboard/models', '/dashboard/capabilities', '/dashboard/settings', '/dashboard/skills']
+
+for (const width of WIDTHS) {
+  test.describe(`dashboard at ${width}px`, () => {
+    test.use({ viewport: { width, height: 780 } })
+
+    test('every page fits, has comfortable targets and 16px fields, and ends above the bottom edge', async ({ page, owner }) => {
+      void owner
+      test.setTimeout(180_000)
+      for (const path of DASHBOARD) {
+        await page.goto(path)
+        await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible()
+        await page.waitForTimeout(500)
+        await expectFits(page, path)
+        // Scroll the page's own scroller to its end: the last thing on it must be fully on screen.
+        const gap = await page.evaluate(() => {
+          const main = Array.from(document.querySelectorAll('div')).find((d) => d.scrollHeight > d.clientHeight + 1 && getComputedStyle(d).overflowY === 'auto' && d.getBoundingClientRect().height > 200)
+          if (!main) return 0
+          main.scrollTop = main.scrollHeight
+          const last = Array.from(main.querySelectorAll('*')).filter((e) => e.getBoundingClientRect().height > 0).pop()
+          return last ? last.getBoundingClientRect().bottom - window.innerHeight : 0
+        })
+        expect(gap, `${path}: the last element is hidden below the bottom edge`).toBeLessThanOrEqual(1)
+      }
+    })
+
+    test('the sidebar menu opens as a sheet that fits (phones)', async ({ page, owner }) => {
+      void owner
+      test.skip(width >= 768, 'the sidebar is a column on tablets')
+      await page.goto('/dashboard')
+      await page.getByRole('button', { name: 'Toggle Sidebar' }).first().tap()
+      const sheet = page.getByRole('dialog')
+      await expect(sheet.getByRole('link', { name: 'Notebook' })).toBeVisible()
+      await expect.poll(async () => { const b = (await sheet.boundingBox())!; return b.x + b.width }).toBeLessThanOrEqual(width + 1)
+      const m = await measure(page, '[role=dialog]')
+      expect(m.small, 'sidebar targets under 44px').toEqual([])
+    })
+  })
+}

@@ -26,7 +26,9 @@ const row = (id: string, context: string, content: string) => ({
 
 test('a slow answer for the first conversation never shows under the second', async ({ page, api }) => {
   void api
-  await page.route('**/api/api/conversations', (r) => r.fulfill({ json: [conv('conv-a', 'telegram'), conv('conv-b', 'slack')] }))
+  await page.route('**/api/api/conversations/page*', (r) =>
+    r.fulfill({ json: { items: [conv('conv-a', 'telegram'), conv('conv-b', 'slack')], next_cursor: null, has_more: false } }),
+  )
   let releaseA: () => void = () => {}
   const heldA = new Promise<void>((resolve) => (releaseA = resolve))
   await page.route('**/api/api/events?context_id=conv-a*', async (r) => {
@@ -43,7 +45,7 @@ test('a slow answer for the first conversation never shows under the second', as
     await open.click()
   }
   // A is selected first (its answer is held); then B is chosen and answers at once.
-  await expect(page.getByText('Loading messages…')).toBeVisible()
+  await expect(page.getByRole('status').filter({ hasText: 'Loading messages' })).toBeAttached()
   await page.getByRole('navigation', { name: 'Conversations' }).getByRole('button', { name: /slack/ }).click()
   await expect(page.getByText('message of owner B')).toBeVisible()
 

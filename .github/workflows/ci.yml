@@ -38,6 +38,13 @@ jobs:
       e2e: ${{ steps.out.outputs.e2e }}
       e2e_smoke: ${{ steps.out.outputs.e2e_smoke }}
       docker: ${{ steps.out.outputs.docker }}
+      # Test selection (docs/design/test-modules.md): which backend test files, e2e specs and unit tests a pull request
+      # needs. "full" on main, in Full, manually, with the full-suite label, for shared files and when the selector fails.
+      selection_mode: ${{ steps.out.outputs.selection_mode }}
+      backend_tests: ${{ steps.out.outputs.backend_tests }}
+      backend_files: ${{ steps.out.outputs.backend_files }}
+      e2e_only: ${{ steps.out.outputs.e2e_only }}
+      vitest_files: ${{ steps.out.outputs.vitest_files }}
     steps:
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
@@ -74,12 +81,49 @@ jobs:
               - 'compose.yaml'
               - '.gitleaks.toml'
 
+      # Which tests does this change need? scripts/select_tests.py reads ci/modules.toml and the import graph of the
+      # backend. The checkout is the PR merged into its base (depth 2: HEAD^1 is the base), so `HEAD^1...HEAD` is
+      # exactly the PR's change, renames and deletions included. Anything that goes wrong selects the full suite.
+      - uses: actions/checkout@v7
+        if: github.event_name == 'pull_request'
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@v7
+        if: github.event_name == 'pull_request'
+        with:
+          version: "0.11.32"
+
+      - name: Select the tests
+        id: select
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set +e
+          # Read live (like tests-required), so adding the label and re-running this job is enough.
+          labels=$(gh api "repos/$REPO/pulls/$PR" --jq '[.labels[].name] | join(",")')
+          if [ $? -ne 0 ]; then force="could not read the pull request labels"; fi
+          case ",$labels," in *,full-suite,*) force="label full-suite" ;; esac
+          if [ -n "${force:-}" ]; then args=(--force-full "$force"); else args=(--base HEAD^1 --head HEAD); fi
+          uv run --python 3.14 --no-project python scripts/select_tests.py "${args[@]}" --format github --summary-file "$GITHUB_STEP_SUMMARY" > select.out
+          if [ $? -ne 0 ] || ! grep -q '^selection=' select.out; then
+            echo "::warning::the test selector failed; running the full suite"
+            echo "Test selection failed, so the full suite runs." >> "$GITHUB_STEP_SUMMARY"
+            printf '%s\n' 'mode=full' 'backend_run=true' 'selection={"mode":"full","reasons":["selector failed"],"modules":[],"changed_modules":[],"backend":{"mode":"all","run":true,"files":[]},"e2e":{"mode":"all","specs":[]},"vitest":{"mode":"all","files":[]},"counts":{}}' > select.out
+          fi
+          cat select.out >> "$GITHUB_OUTPUT"
+
       - name: Resolve what to run
         id: out
         env:
           EVENT: ${{ github.event_name }}
           F: ${{ toJSON(steps.filter.outputs) }}
           FILES: ${{ steps.filter.outputs.files_files }}
+          SEL: ${{ steps.select.outputs.selection }}
         run: |
           set -euo pipefail
           if [ "$EVENT" != "pull_request" ]; then
@@ -97,9 +141,24 @@ jobs:
             if [ -n "$code" ] && ! has backend_all && ! has frontend_all && ! has e2e && ! has docker; then all=true; fi
           fi
           out() { echo "$1=$2" >> "$GITHUB_OUTPUT"; echo "$1=$2"; }
+          # The selection narrows only what runs inside the jobs below; whether a job runs at all is still decided
+          # by the filters above. Without a usable selection (main, merge group, manual, Full, or "everything" for
+          # any other reason) every test runs.
+          sel_mode=full
+          if [ "$all" != true ] && [ -n "${SEL:-}" ]; then sel_mode=$(echo "$SEL" | jq -r '.mode'); fi
+          out selection_mode "$sel_mode"
+          if [ "$sel_mode" = selected ] || [ "$sel_mode" = none ]; then
+            bt_sel=$(echo "$SEL" | jq -r '.backend.run')
+            out backend_files "$(echo "$SEL" | jq -r '.backend.files | join(" ")')"
+            if [ "$(echo "$SEL" | jq -r '.e2e.mode')" = specs ]; then out e2e_only "$(echo "$SEL" | jq -r '.e2e.specs | join(" ")')"; else out e2e_only ""; fi
+            if [ "$(echo "$SEL" | jq -r '.vitest.mode')" = files ]; then out vitest_files "$(echo "$SEL" | jq -r '.vitest.files | join(" ")')"; else out vitest_files "ALL"; fi
+          else
+            bt_sel=true; out backend_files ""; out e2e_only ""; out vitest_files "ALL"
+          fi
           if [ "$all" = true ]; then
             for k in backend frontend e2e docker; do out $k true; done
             out e2e_smoke false
+            out backend_tests true
           else
             b=false; fe=false; e=false; sm=false; d=false
             if has backend_all; then b=true; fi
@@ -111,6 +170,9 @@ jobs:
             if has e2e || has contract || [ $fe = true ]; then e=true; elif [ $b = true ]; then sm=true; fi
             if has docker; then d=true; fi
             out backend $b; out frontend $fe; out e2e $e; out e2e_smoke $sm; out docker $d
+            # Backend files changed, but none of the tests they affect (say, only a README under backend/): the test
+            # jobs have nothing to do. The lint, types and migration job still runs.
+            if [ $b = true ] && [ "$bt_sel" = true ]; then out backend_tests true; else out backend_tests false; fi
           fi
 
   backend-static:
@@ -179,7 +241,7 @@ jobs:
   backend-tests:
     name: Backend tests (shard ${{ matrix.shard }}/2)
     needs: [changes]
-    if: needs.changes.outputs.backend == 'true'
+    if: needs.changes.outputs.backend_tests == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -227,16 +289,26 @@ jobs:
       # Coverage slows the suite down and nobody reads it on a pull request, so it is measured on
       # main and in the Full run only (each shard reports its own half). --durations lists the
       # slowest tests either way.
+      #
+      # A pull request runs only the test files of the modules it changes and of the modules that import them
+      # (needs.changes.outputs.backend_files, docs/design/test-modules.md); the selected files are still split over
+      # the two shards. Empty means everything. A shard that gets none of the selected files exits 5, which is fine.
       - name: Tests
         env:
           EVENT: ${{ github.event_name }}
           SHARD: ${{ matrix.shard }}/2
+          FILES: ${{ needs.changes.outputs.backend_files }}
         run: |
           psql -h localhost -U agent -d agent -c "CREATE DATABASE agent_test"
+          if [ -n "$FILES" ]; then echo "Selected $(echo $FILES | wc -w) test files: $FILES"; else echo "Running the whole suite"; fi
+          set +e
           case "$EVENT" in
-            pull_request|merge_group) uv run pytest -n auto --shard "$SHARD" --durations=25 ;;
+            pull_request|merge_group) uv run pytest -n auto --shard "$SHARD" --durations=25 $FILES ;;
             *) uv run pytest -n auto --shard "$SHARD" --durations=25 --cov --cov-report=term-missing:skip-covered ;;
           esac
+          rc=$?
+          if [ "$rc" -eq 5 ] && [ -n "$FILES" ]; then echo "None of the selected test files fell on this shard."; rc=0; fi
+          exit $rc
 
   frontend:
     name: Frontend (lint, types, build)
@@ -268,8 +340,13 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run lint
       - run: npm run typecheck
+      # Only the unit tests of the changed feature groups on a pull request (docs/design/test-modules.md); all of them
+      # for shared code, on main and when selection is off.
       - name: Unit tests
-        run: npm test
+        env:
+          VITEST_FILES: ${{ needs.changes.outputs.vitest_files }}
+        run: |
+          if [ "$VITEST_FILES" = ALL ] || [ -z "$VITEST_FILES" ]; then npm test; else npx vitest run --passWithNoTests $VITEST_FILES; fi
       - name: Build
         run: npm run build
         env:
@@ -314,13 +391,18 @@ jobs:
       - name: Run end-to-end tests
         working-directory: e2e
         # Spec files are split by measured time (e2e/shard-timings.json), not test count.
+        # E2E_ONLY (a pull request that only needs some specs, docs/design/test-modules.md) limits the list; a shard
+        # that gets none of them has nothing to do.
+        env:
+          E2E_ONLY: ${{ needs.changes.outputs.e2e_only }}
         run: |
           files=$(node scripts/shard.mjs ${{ matrix.shard }} 4)
+          if [ -z "$files" ] && [ -n "$E2E_ONLY" ]; then echo "None of the selected specs fell on this shard."; exit 0; fi
           test -n "$files" || { echo "::error::shard.mjs listed no spec files"; exit 1; }
           npx playwright test $files
 
       - name: Run the API proxy contract tests
-        if: matrix.shard == 1
+        if: matrix.shard == 1 && needs.changes.outputs.e2e_only == ''
         working-directory: e2e
         run: E2E_PROXY=1 npx playwright test --project=proxy
 
@@ -510,9 +592,14 @@ jobs:
           # A job skipped although its filter asked for it ran into an upstream problem: fail.
           out() { echo "$NEEDS" | jq -r --arg k "$1" '.changes.outputs[$k]'; }
           res() { echo "$NEEDS" | jq -r --arg j "$1" '.[$j].result'; }
-          for j in backend-static backend-tests; do
-            [ "$(out backend)" != true ] || [ "$(res $j)" = success ] || { echo "::error::$j was required but is $(res $j)"; exit 1; }
-          done
+          [ "$(out backend)" != true ] || [ "$(res backend-static)" = success ] || { echo "::error::backend-static was required but is $(res backend-static)"; exit 1; }
+          # Test selection (docs/design/test-modules.md): backend-tests is required whenever it was selected, and ALWAYS
+          # on anything but a pull request (main, merge group, Full, manual); a selection can only trim a pull request.
+          if [ "$EVENT" != pull_request ]; then
+            [ "$(out backend_tests)" = true ] || { echo "::error::event $EVENT must run all backend tests"; exit 1; }
+            [ "$(out selection_mode)" = full ] || { echo "::error::event $EVENT must select the full suite, got $(out selection_mode)"; exit 1; }
+          fi
+          [ "$(out backend_tests)" != true ] || [ "$(res backend-tests)" = success ] || { echo "::error::backend-tests was required but is $(res backend-tests)"; exit 1; }
           [ "$(out frontend)" != true ] || [ "$(res frontend)" = success ] || { echo "::error::frontend was required but is $(res frontend)"; exit 1; }
           # End-to-end: either the full matrix or the smoke subset must have succeeded, never neither.
           full=$(out e2e); smoke=$(out e2e_smoke)

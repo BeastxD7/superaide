@@ -1,0 +1,960 @@
+# Module map for selective CI (docs/design/test-modules.md). Read by scripts/select_tests.py.
+#
+# A module is a unit of code (a backend package or a frontend feature group) plus the tests that
+# belong to it. When a pull request changes a file, the selector runs the tests of that module and
+# of every module that (transitively) imports it, and the e2e specs listed here. Anything that no
+# module claims, or that is listed under [full], runs the whole suite.
+#
+#   src     files the module owns (repo-relative globs; ** crosses directories)
+#   tests   the module's own tests: backend pytest files or frontend vitest files. Each test file
+#           belongs to exactly ONE module (a test fails if one is unmapped or claimed twice)
+#   e2e     Playwright specs that exercise the module; a spec may be listed under several modules
+#           (every spec must appear at least once)
+#   core    a change here runs the whole suite (shared by nearly everything)
+#   always  its tests run with every selection (cross-cutting guards)
+#
+# A new test file can also declare itself instead of editing this file: first lines "# ci-module: <name>".
+
+[settings]
+# transitive: tests of every module that imports the changed code, directly or through others.
+# direct: only modules that import it themselves (faster, can miss an indirect break).
+expansion = "transitive"
+
+# Paths that never need a test run (documentation and repository chrome).
+[ignore]
+paths = [
+  "**/*.md", "docs/**", ".github/ISSUE_TEMPLATE/**", ".github/CODEOWNERS",
+  ".github/pull_request_template.md", ".gitignore", "backend/.dockerignore", "frontend/.dockerignore",
+  "share.sh", "start.command", # local launchers; no test or CI step runs them
+]
+
+# Paths that run EVERYTHING (shared infrastructure, the build, the contract, this selector).
+[full]
+paths = [
+  "backend/alembic/**", "backend/alembic.ini", "backend/pyproject.toml", "backend/uv.lock",
+  "backend/openapi.snapshot.json", "backend/tests/conftest.py", "backend/tests/**/conftest.py",
+  "backend/tests/__init__.py", "backend/tests/sharding.py", "backend/tests/fixtures/**",
+  "backend/src/superaide/**/models.py", "backend/scripts/**", "backend/Dockerfile",
+  ".github/**", "ci/**", "scripts/**", "Makefile",
+  "frontend/package.json", "frontend/package-lock.json", "frontend/*.ts", "frontend/*.mjs", "frontend/*.json",
+  "frontend/public/**", "frontend/scripts/**", "frontend/Dockerfile",
+  "e2e/package.json", "e2e/package-lock.json", "e2e/*.ts", "e2e/*.json", "e2e/src/**", "e2e/fixtures/**", "e2e/scripts/**",
+]
+
+[modules.config]
+# settings every module reads
+core = true
+src = [
+  "backend/src/superaide/config.py",
+  "backend/src/superaide/__init__.py",
+]
+tests = [
+  "backend/tests/test_env_example.py",
+]
+e2e = []
+
+[modules.db]
+# engine, session, row-level security, models
+core = true
+src = [
+  "backend/src/superaide/db/**",
+]
+tests = [
+  "backend/tests/test_migration_downgrade.py",
+]
+e2e = []
+
+[modules.audit]
+core = true
+src = [
+  "backend/src/superaide/audit.py",
+]
+tests = []
+e2e = []
+
+[modules.tenancy]
+core = true
+src = [
+  "backend/src/superaide/tenancy/**",
+]
+tests = [
+  "backend/tests/test_tenancy.py",
+  "backend/tests/test_rls.py",
+  "backend/tests/api/test_many_owners.py",
+  "backend/tests/api/test_operator_access.py",
+]
+e2e = [
+  "e2e/tests/isolation.spec.ts",
+  "e2e/tests/qa-isolation.spec.ts",
+]
+
+[modules.actionlog]
+src = [
+  "backend/src/superaide/actionlog/**",
+]
+tests = [
+  "backend/tests/test_actionlog.py",
+]
+e2e = [
+  "e2e/tests/access-log.spec.ts",
+]
+
+[modules.app]
+src = [
+  "backend/src/superaide/app/**",
+]
+tests = [
+  "backend/tests/test_app.py",
+  "backend/tests/test_stream.py",
+  "backend/tests/api/test_connections_negative.py",
+  "backend/tests/api/test_hire_negative.py",
+  "backend/tests/api/test_onboarding_negative.py",
+  "backend/tests/api/test_episodes.py",
+  "backend/tests/api/test_brain_map.py",
+  "backend/tests/test_connections.py",
+  "backend/tests/api/test_stream_tenancy.py",
+]
+e2e = [
+  "e2e/tests/hire-path.spec.ts",
+  "e2e/tests/chat-history.spec.ts",
+  "e2e/tests/fe-chat-streaming.spec.ts",
+  "e2e/tests/glass-brain.spec.ts",
+  "e2e/tests/episodes.spec.ts",
+  "e2e/tests/models.spec.ts",
+  "e2e/tests/qa-models.spec.ts",
+  "e2e/tests/journeys/live-chat.spec.ts",
+  "e2e/tests/journeys/real-life.spec.ts",
+  "e2e/tests/journeys/first-day.spec.ts",
+]
+
+[modules.asklink]
+src = [
+  "backend/src/superaide/asklink/**",
+]
+tests = [
+  "backend/tests/api/test_ask_link.py",
+]
+e2e = [
+  "e2e/tests/ask-link.spec.ts",
+]
+
+[modules.auth]
+src = [
+  "backend/src/superaide/auth/**",
+  "backend/src/superaide/links.py",
+]
+tests = [
+  "backend/tests/test_auth.py",
+  "backend/tests/api/test_change_email.py",
+  "backend/tests/api/test_email_links.py",
+  "backend/tests/api/test_google_signin.py",
+  "backend/tests/api/test_account_events.py",
+]
+e2e = [
+  "e2e/tests/accounts.spec.ts",
+  "e2e/tests/accounts.mobile.spec.ts",
+  "e2e/tests/qa-accounts.spec.ts",
+  "e2e/tests/qa-accounts.mobile.spec.ts",
+  "e2e/tests/google-signin.spec.ts",
+  "e2e/tests/session-switch.spec.ts",
+]
+
+[modules.mail]
+src = [
+  "backend/src/superaide/mail/**",
+]
+tests = [
+  "backend/tests/test_mail_log.py",
+]
+e2e = []
+
+[modules.brain]
+src = [
+  "backend/src/superaide/brain/**",
+]
+tests = [
+  "backend/tests/test_capabilities.py",
+  "backend/tests/test_anthropic_wire.py",
+  "backend/tests/test_budget.py",
+  "backend/tests/test_budget_instances.py",
+  "backend/tests/test_pricing.py",
+  "backend/tests/test_providers_base.py",
+  "backend/tests/test_providers_config.py",
+  "backend/tests/test_openai_compat.py",
+  "backend/tests/test_key_rejected.py",
+  "backend/tests/test_outsider_text_in_history.py",
+  "backend/tests/test_pinned_network.py",
+  "backend/tests/test_platform_credits.py",
+  "backend/tests/test_citations_verify.py",
+  "backend/tests/test_reliability.py",
+  "backend/tests/test_second_opinion.py",
+  "backend/tests/api/test_model_drill.py",
+  "backend/tests/live/**",
+]
+e2e = []
+
+[modules.brainshare]
+src = [
+  "backend/src/superaide/brainshare/**",
+]
+tests = [
+  "backend/tests/api/test_brain_share.py",
+]
+e2e = [
+  "e2e/tests/brain-share.spec.ts",
+]
+
+[modules.channels]
+src = [
+  "backend/src/superaide/channels/**",
+]
+tests = [
+  "backend/tests/test_typing_indicators.py",
+  "backend/tests/test_channel_endpoints.py",
+  "backend/tests/test_channel_format.py",
+  "backend/tests/test_channel_health.py",
+  "backend/tests/test_channel_rows.py",
+  "backend/tests/test_channel_runner.py",
+  "backend/tests/test_slack.py",
+  "backend/tests/test_slack_instances.py",
+  "backend/tests/test_slack_link.py",
+  "backend/tests/test_telegram.py",
+]
+e2e = [
+  "e2e/tests/channel-rows.spec.ts",
+  "e2e/tests/slack-link.spec.ts",
+]
+
+[modules.connectors]
+src = [
+  "backend/src/superaide/connectors/**",
+]
+tests = [
+  "backend/tests/test_gmail_compose.py",
+  "backend/tests/test_recipient_preflight.py",
+  "backend/tests/test_calendar_actions.py",
+  "backend/tests/test_calendar_push.py",
+  "backend/tests/test_gmail.py",
+  "backend/tests/test_connector_facts.py",
+  "backend/tests/gmail_fake.py",
+]
+e2e = [
+  "e2e/tests/capability-google.spec.ts",
+  "e2e/tests/gmail-api-disabled.spec.ts",
+  "e2e/tests/journeys/calendar-connect.spec.ts",
+]
+
+[modules.context]
+src = [
+  "backend/src/superaide/context/**",
+]
+tests = [
+  "backend/tests/test_audience.py",
+  "backend/tests/test_recall.py",
+  "backend/tests/test_embeddings.py",
+  "backend/tests/test_importance.py",
+  "backend/tests/test_instance_filter.py",
+  "backend/tests/test_ltm_inputs.py",
+  "backend/tests/test_cross_channel.py",
+  "backend/tests/api/test_echo_filter.py",
+]
+e2e = []
+
+[modules.console]
+src = [
+  "backend/src/superaide/api/**",
+  "backend/src/superaide/docs.py",
+  "backend/src/superaide/main.py",
+  "backend/src/superaide/cli.py",
+]
+tests = [
+  "backend/tests/test_operator_paging.py",
+  "backend/tests/test_main.py",
+  "backend/tests/test_api.py",
+  "backend/tests/test_cli.py",
+  "backend/tests/test_worker_service.py",
+  "backend/tests/test_dashboard_api.py",
+  "backend/tests/test_db_behind.py",
+  "backend/tests/test_operator_key_e2e.py",
+  "backend/tests/api/test_admin_negative.py",
+  "backend/tests/api/test_console_sync.py",
+  "backend/tests/api/test_operator_visit.py",
+  "backend/tests/api/test_envelope.py",
+]
+e2e = [
+  "e2e/tests/console.spec.ts",
+  "e2e/tests/console-sync.spec.ts",
+  "e2e/tests/operator-visit.spec.ts",
+  "e2e/tests/people-counts.spec.ts",
+  "e2e/tests/people-counts.mobile.spec.ts",
+  "e2e/tests/status-sync.spec.ts",
+]
+
+[modules.dissent]
+src = [
+  "backend/src/superaide/dissent/**",
+]
+tests = [
+  "backend/tests/test_dissent.py",
+  "backend/tests/api/test_dissent_route.py",
+]
+e2e = []
+
+[modules.drills]
+src = [
+  "backend/src/superaide/drills/**",
+]
+tests = []
+e2e = []
+
+[modules.evals]
+src = [
+  "backend/evals/**",
+  "backend/src/superaide/evals/**",
+]
+tests = [
+  "backend/tests/test_evals.py",
+  "backend/tests/test_evals_baseline.py",
+]
+e2e = []
+
+[modules.factory]
+src = [
+  "backend/src/superaide/factory.py",
+  "backend/src/superaide/runtime.py",
+]
+tests = [
+  "backend/tests/test_factory.py",
+]
+e2e = []
+
+[modules.forknight]
+src = [
+  "backend/src/superaide/forknight/**",
+]
+tests = [
+  "backend/tests/test_fork_night.py",
+  "backend/tests/api/test_fork_night_route.py",
+]
+e2e = []
+
+[modules.identity]
+src = [
+  "backend/src/superaide/identity/**",
+]
+tests = [
+  "backend/tests/test_identity.py",
+  "backend/tests/test_relink.py",
+  "backend/tests/test_footprint.py",
+  "backend/tests/test_quote.py",
+]
+e2e = [
+  "e2e/tests/identity-claims.spec.ts",
+]
+
+[modules.imports]
+src = [
+  "backend/src/superaide/imports/**",
+]
+tests = [
+  "backend/tests/api/test_import_lease.py",
+  "backend/tests/api/test_lobster.py",
+]
+e2e = []
+
+[modules.jobs]
+src = [
+  "backend/src/superaide/jobs/**",
+]
+tests = [
+  "backend/tests/test_jobs.py",
+  "backend/tests/test_jobs_instances.py",
+]
+e2e = []
+
+[modules.journal]
+src = [
+  "backend/src/superaide/journal/**",
+]
+tests = [
+  "backend/tests/test_journal_score.py",
+  "backend/tests/api/test_journal.py",
+]
+e2e = [
+  "e2e/tests/decision-journal.spec.ts",
+]
+
+[modules.knowledge]
+src = [
+  "backend/src/superaide/knowledge/**",
+]
+tests = [
+  "backend/tests/test_extract.py",
+  "backend/tests/test_chunks.py",
+  "backend/tests/test_document_removal_race.py",
+  "backend/tests/test_erase.py",
+  "backend/tests/test_learn.py",
+  "backend/tests/test_profile.py",
+  "backend/tests/test_read_pending.py",
+  "backend/tests/test_intro.py",
+  "backend/tests/test_intro_brain.py",
+  "backend/tests/api/test_intro_negative.py",
+]
+e2e = [
+  "e2e/tests/brain-first.spec.ts",
+  "e2e/tests/doc-loader.spec.ts",
+  "e2e/tests/doc-loader.mobile.spec.ts",
+  "e2e/tests/intro-failures.spec.ts",
+  "e2e/tests/intro-sources.spec.ts",
+  "e2e/tests/intro-sources.mobile.spec.ts",
+  "e2e/tests/introduction.spec.ts",
+  "e2e/tests/introduction.mobile.spec.ts",
+  "e2e/tests/notebook-sync.spec.ts",
+  "e2e/tests/journeys/sources.spec.ts",
+]
+
+[modules.mandate]
+src = [
+  "backend/src/superaide/mandate/**",
+]
+tests = [
+  "backend/tests/test_mandate.py",
+  "backend/tests/test_mandate_delegation.py",
+  "backend/tests/api/test_mandates_route.py",
+]
+e2e = []
+
+[modules.mcp]
+src = [
+  "backend/src/superaide/mcp/**",
+]
+tests = [
+  "backend/tests/test_mcp_pin.py",
+]
+e2e = []
+
+[modules.memory]
+src = [
+  "backend/src/superaide/memory/**",
+]
+tests = [
+  "backend/tests/test_sleep.py",
+  "backend/tests/test_timeline.py",
+  "backend/tests/test_threads.py",
+  "backend/tests/test_first_message_race.py",
+]
+e2e = []
+
+[modules.memsocket]
+src = [
+  "backend/src/superaide/memsocket/**",
+]
+tests = [
+  "backend/tests/api/test_memory_socket.py",
+]
+e2e = []
+
+[modules.mirror]
+src = [
+  "backend/src/superaide/mirror/**",
+]
+tests = [
+  "backend/tests/api/test_mirror.py",
+]
+e2e = [
+  "e2e/tests/mirror.spec.ts",
+]
+
+[modules.pagination]
+src = [
+  "backend/src/superaide/pagination.py",
+  "backend/src/superaide/envelope.py",
+]
+tests = [
+  "backend/tests/test_pagination.py",
+  "backend/tests/test_messages_paging.py",
+]
+e2e = [
+  "e2e/tests/pagination-chat.spec.ts",
+]
+
+[modules.passport]
+src = [
+  "backend/src/superaide/passport/**",
+]
+tests = [
+  "backend/tests/api/test_passport.py",
+]
+e2e = [
+  "e2e/tests/memory-passport.spec.ts",
+]
+
+[modules.pipeline]
+src = [
+  "backend/src/superaide/pipeline.py",
+]
+tests = [
+  "backend/tests/test_loop.py",
+  "backend/tests/test_turn_failure.py",
+  "backend/tests/test_cross_channel_scenario.py",
+  "backend/tests/test_remind_via_ava.py",
+]
+e2e = []
+
+[modules.policy]
+src = [
+  "backend/src/superaide/policy/**",
+]
+tests = [
+  "backend/tests/api/test_halt_resume.py",
+  "backend/tests/api/test_halt_resume_concurrency.py",
+  "backend/tests/test_approval_honesty.py",
+  "backend/tests/test_approvals.py",
+  "backend/tests/test_approval_binding.py",
+  "backend/tests/test_approval_binding_all_kinds.py",
+  "backend/tests/test_breaker.py",
+  "backend/tests/api/test_brake.py",
+]
+e2e = [
+  "e2e/tests/halt-resume.spec.ts",
+  "e2e/tests/journeys/approval-honesty.spec.ts",
+  "e2e/tests/journeys/approval-recipient.spec.ts",
+  "e2e/tests/approvals-sync.spec.ts",
+  "e2e/tests/journeys/approvals.spec.ts",
+]
+
+[modules.principal]
+src = [
+  "backend/src/superaide/principal/**",
+]
+tests = [
+  "backend/tests/api/test_principal_card.py",
+  "backend/tests/test_principal_card_channels.py",
+]
+e2e = [
+  "e2e/tests/principal-card.spec.ts",
+]
+
+[modules.privacy]
+src = [
+  "backend/src/superaide/privacy/**",
+]
+tests = [
+  "backend/tests/test_airlock.py",
+  "backend/tests/test_airlock_fixtures.py",
+  "backend/tests/airlock_fixtures.py",
+]
+e2e = []
+
+[modules.proactive]
+src = [
+  "backend/src/superaide/proactive/**",
+]
+tests = [
+  "backend/tests/test_digest.py",
+  "backend/tests/test_briefing.py",
+]
+e2e = []
+
+[modules.push]
+src = [
+  "backend/src/superaide/push/**",
+]
+tests = [
+  "backend/tests/test_push.py",
+]
+e2e = [
+  "e2e/tests/settings-notifications.spec.ts",
+]
+
+[modules.reception]
+src = [
+  "backend/src/superaide/reception/**",
+]
+tests = [
+  "backend/tests/test_reception.py",
+  "backend/tests/api/test_reception_instances.py",
+]
+e2e = []
+
+[modules.rehearsal]
+src = [
+  "backend/src/superaide/rehearsal/**",
+]
+tests = [
+  "backend/tests/test_rehearse.py",
+  "backend/tests/api/test_rehearsal.py",
+  "backend/tests/rehearsal_support.py",
+]
+e2e = [
+  "e2e/tests/rehearsal.spec.ts",
+]
+
+[modules.reminders]
+src = [
+  "backend/src/superaide/intentions/**",
+]
+tests = [
+  "backend/tests/test_reminders.py",
+  "backend/tests/test_reminder_dates.py",
+  "backend/tests/test_reminder_tools.py",
+]
+e2e = [
+  "e2e/tests/reminders-sync.spec.ts",
+  "e2e/tests/journeys/reminders.spec.ts",
+]
+
+[modules.rules]
+src = [
+  "backend/src/superaide/rules/**",
+]
+tests = [
+  "backend/tests/test_time_travel.py",
+]
+e2e = []
+
+[modules.school]
+src = [
+  "backend/src/superaide/school/**",
+]
+tests = [
+  "backend/tests/api/test_school.py",
+  "backend/tests/api/test_school_sharing.py",
+]
+e2e = [
+  "e2e/tests/school.spec.ts",
+]
+
+[modules.security]
+src = [
+  "backend/src/superaide/security/**",
+]
+tests = [
+  "backend/tests/test_deploy_safety.py",
+  "backend/tests/test_log_redaction.py",
+]
+e2e = [
+  "e2e/tests/hardening.spec.ts",
+]
+
+[modules.skills]
+src = [
+  "backend/src/superaide/skills/**",
+]
+tests = [
+  "backend/tests/test_skills.py",
+  "backend/tests/api/test_skill_payouts.py",
+  "backend/tests/api/test_skill_receipts.py",
+  "backend/tests/api/test_skill_releases.py",
+  "backend/tests/api/test_skill_signals.py",
+  "backend/tests/api/test_audition.py",
+  "backend/tests/api/test_update_preview.py",
+]
+e2e = [
+  "e2e/tests/journeys/skills.spec.ts",
+]
+
+[modules.tools]
+src = [
+  "backend/src/superaide/tools/**",
+]
+tests = [
+  "backend/tests/test_web_tools.py",
+]
+e2e = []
+
+[modules.tooltrace]
+src = [
+  "backend/src/superaide/tooltrace/**",
+]
+tests = [
+  "backend/tests/test_tooltrace.py",
+]
+e2e = []
+
+[modules.triage]
+src = [
+  "backend/src/superaide/triage/**",
+]
+tests = [
+  "backend/tests/test_triage_buttons.py",
+  "backend/tests/test_triage_classify.py",
+  "backend/tests/test_triage_digest.py",
+  "backend/tests/test_triage_escalation.py",
+  "backend/tests/test_triage_knn.py",
+  "backend/tests/test_triage_labels.py",
+  "backend/tests/test_triage_rules.py",
+  "backend/tests/test_triage_schema.py",
+  "backend/tests/test_knn_shadow.py",
+  "backend/tests/test_gmail_triage.py",
+  "backend/tests/api/test_triage_instances.py",
+  "backend/tests/api/test_triage_routes.py",
+  "backend/tests/api/test_tuner.py",
+]
+e2e = []
+
+[modules.trust]
+src = [
+  "backend/src/superaide/trust/**",
+]
+tests = [
+  "backend/tests/test_trust.py",
+  "backend/tests/api/test_companion.py",
+  "backend/tests/api/test_question.py",
+  "backend/tests/api/test_ratchet.py",
+  "backend/tests/api/test_twin.py",
+  "backend/tests/api/test_replay.py",
+]
+e2e = []
+
+[modules.vault]
+src = [
+  "backend/src/superaide/vault/**",
+]
+tests = [
+  "backend/tests/test_vault_check.py",
+  "backend/tests/test_credentials_instances.py",
+  "backend/tests/api/test_standing_orders_route.py",
+]
+e2e = []
+
+[modules.voice]
+src = [
+  "backend/src/superaide/voice/**",
+]
+tests = [
+  "backend/tests/test_voice_gateway.py",
+  "backend/tests/test_voice_provider.py",
+  "backend/tests/api/test_voice_gateway_route.py",
+  "backend/tests/api/test_voice_intro.py",
+]
+e2e = [
+  "e2e/tests/voice-confirm.spec.ts",
+  "e2e/tests/voice-intro.spec.ts",
+  "e2e/tests/speech-language.spec.ts",
+]
+
+[modules.guards]
+# route-wide authorisation, API contract and impostor scenarios
+always = true
+src = []
+tests = [
+  "backend/tests/test_example_names.py",
+  "backend/tests/api/test_authz.py",
+  "backend/tests/api/test_auth_negative.py",
+  "backend/tests/test_openapi_snapshot.py",
+  "backend/tests/test_surface.py",
+  "backend/tests/redteam/**",
+]
+e2e = []
+
+[modules.repo]
+src = [
+  "deploy/**",
+  "compose.yaml",
+  "docker-compose.prod.yml",
+  ".env.prod.example",
+  "backend/.env.example",
+  "frontend/.env.example",
+]
+tests = [
+  "backend/tests/test_prod_compose.py",
+  "backend/tests/test_tests_required.py",
+  "backend/tests/test_sharding.py",
+  "backend/tests/test_select_tests.py",
+]
+e2e = []
+
+[modules.web-shell]
+core = true
+src = [
+  "frontend/src/lib/**",
+  "frontend/src/components/**",
+  "frontend/src/hooks/**",
+  "frontend/src/styles/**",
+  "frontend/src/proxy.ts",
+  "frontend/src/instrumentation.ts",
+  "frontend/src/instrumentation.test.ts",
+  "frontend/src/app/api/**",
+  "frontend/src/app/icon.svg",
+  "frontend/src/app/favicon.ico",
+  "frontend/src/app/apple-icon.png",
+  "frontend/src/app/app.webmanifest/**",
+  "frontend/src/app/global-error.tsx",
+  "frontend/src/app/(site)/layout.tsx",
+  "frontend/src/app/(site)/providers.tsx",
+  "frontend/src/app/(site)/error.tsx",
+  "frontend/src/app/(site)/not-found.tsx",
+  "frontend/src/app/(site)/page.tsx",
+  "frontend/src/app/(site)/screens.tsx",
+  "frontend/src/app/(site)/[...rest]/**",
+  "frontend/src/features/pwa/**",
+  "frontend/src/features/mobile/**",
+]
+tests = [
+  "frontend/src/headers.test.ts",
+  "frontend/src/app/api/**/*.test.ts",
+  "frontend/src/instrumentation.test.ts",
+  "frontend/src/lib/*.test.ts",
+  "frontend/src/components/**/*.test.ts",
+]
+e2e = [
+  "e2e/tests/responsive.mobile.spec.ts",
+  "e2e/tests/csp.spec.ts",
+  "e2e/tests/fe-a11y.spec.ts",
+  "e2e/tests/fe-a11y.mobile.spec.ts",
+  "e2e/tests/fe-a11y-pages.spec.ts",
+  "e2e/tests/fe-focus.spec.ts",
+  "e2e/tests/fe-forms-nav.spec.ts",
+  "e2e/tests/fe-links.dev.spec.ts",
+  "e2e/tests/fe-longtext.mobile.spec.ts",
+  "e2e/tests/mobile-nav.mobile.spec.ts",
+  "e2e/tests/proxy.proxy.spec.ts",
+  "e2e/tests/smoke.spec.ts",
+]
+
+[modules.web-dashboard]
+src = [
+  "frontend/src/features/dashboard/**",
+  "frontend/src/features/needs-you/**",
+  "frontend/src/features/workspace/**",
+  "frontend/src/features/principal-card/**",
+  "frontend/src/features/rehearsal/**",
+  "frontend/src/features/school/**",
+  "frontend/src/features/reception/**",
+  "frontend/src/app/(site)/dashboard/**",
+  "frontend/src/app/(site)/workspace/**",
+  "frontend/src/app/(site)/c/**",
+  "frontend/src/app/(site)/s/**",
+]
+tests = [
+  "frontend/src/features/dashboard/*.test.ts",
+]
+e2e = [
+  "e2e/tests/halt-resume.spec.ts",
+  "e2e/tests/chat-empty.mobile.spec.ts",
+  "e2e/tests/citation-marks.mobile.spec.ts",
+  "e2e/tests/citation-marks.spec.ts",
+  "e2e/tests/journeys/approval-honesty.spec.ts",
+  "e2e/tests/journeys/approval-recipient.spec.ts",
+  "e2e/tests/workspace.spec.ts",
+  "e2e/tests/workspace.mobile.spec.ts",
+  "e2e/tests/qa-dashboard.spec.ts",
+  "e2e/tests/qa-dashboard.mobile.spec.ts",
+  "e2e/tests/approvals-sync.spec.ts",
+  "e2e/tests/journeys/workspace.spec.ts",
+  "e2e/tests/journeys/approvals.spec.ts",
+  "e2e/tests/journeys/reminders.spec.ts",
+  "e2e/tests/journeys/calendar-connect.spec.ts",
+  "e2e/tests/journeys/skills.spec.ts",
+  "e2e/tests/status-sync.spec.ts",
+  "e2e/tests/access-log.spec.ts",
+  "e2e/tests/brain-share.spec.ts",
+  "e2e/tests/chat-history.spec.ts",
+  "e2e/tests/episodes.spec.ts",
+  "e2e/tests/glass-brain.spec.ts",
+  "e2e/tests/mirror.spec.ts",
+  "e2e/tests/memory-passport.spec.ts",
+  "e2e/tests/models.spec.ts",
+  "e2e/tests/qa-models.spec.ts",
+  "e2e/tests/notebook-sync.spec.ts",
+  "e2e/tests/principal-card.spec.ts",
+  "e2e/tests/rehearsal.spec.ts",
+  "e2e/tests/reminders-sync.spec.ts",
+  "e2e/tests/school.spec.ts",
+  "e2e/tests/settings-notifications.spec.ts",
+  "e2e/tests/decision-journal.spec.ts",
+  "e2e/tests/capability-google.spec.ts",
+  "e2e/tests/fe-chat-streaming.spec.ts",
+  "e2e/tests/pagination-chat.spec.ts",
+  "e2e/tests/brain-first.spec.ts",
+  "e2e/tests/journeys/live-chat.spec.ts",
+]
+
+[modules.web-auth]
+src = [
+  "frontend/src/features/auth/**",
+  "frontend/src/features/identity/**",
+  "frontend/src/app/(site)/login/**",
+  "frontend/src/app/(site)/signup/**",
+  "frontend/src/app/(site)/forgot-password/**",
+  "frontend/src/app/(site)/reset-password/**",
+  "frontend/src/app/(site)/verify-email/**",
+]
+tests = []
+e2e = [
+  "e2e/tests/accounts.spec.ts",
+  "e2e/tests/accounts.mobile.spec.ts",
+  "e2e/tests/qa-accounts.spec.ts",
+  "e2e/tests/qa-accounts.mobile.spec.ts",
+  "e2e/tests/google-signin.spec.ts",
+  "e2e/tests/session-switch.spec.ts",
+  "e2e/tests/identity-claims.spec.ts",
+  "e2e/tests/hire-path.spec.ts",
+  "e2e/tests/journeys/first-day.spec.ts",
+]
+
+[modules.web-onboarding]
+src = [
+  "frontend/src/features/onboarding/**",
+  "frontend/src/app/(site)/meet/**",
+]
+tests = [
+  "frontend/src/features/onboarding/*.test.ts",
+]
+e2e = [
+  "e2e/tests/doc-loader.spec.ts",
+  "e2e/tests/doc-loader.mobile.spec.ts",
+  "e2e/tests/fe-a11y-intro.spec.ts",
+  "e2e/tests/intro-failures.spec.ts",
+  "e2e/tests/intro-sources.spec.ts",
+  "e2e/tests/intro-sources.mobile.spec.ts",
+  "e2e/tests/introduction.spec.ts",
+  "e2e/tests/introduction.mobile.spec.ts",
+  "e2e/tests/speech-language.spec.ts",
+  "e2e/tests/voice-confirm.spec.ts",
+  "e2e/tests/voice-intro.spec.ts",
+  "e2e/tests/journeys/sources.spec.ts",
+  "e2e/tests/journeys/first-day.spec.ts",
+  "e2e/tests/journeys/phone.mobile.spec.ts",
+  "e2e/tests/journeys/real-life.spec.ts",
+]
+
+[modules.web-hire]
+src = [
+  "frontend/src/features/hire/**",
+  "frontend/src/features/marketplace/**",
+  "frontend/src/app/(site)/agents/**",
+  "frontend/src/app/(site)/a/**",
+  "frontend/src/features/ask/**",
+]
+tests = []
+e2e = [
+  "e2e/tests/hire-path.spec.ts",
+  "e2e/tests/qa-hiring.spec.ts",
+  "e2e/tests/qa-hiring.mobile.spec.ts",
+  "e2e/tests/ask-link.spec.ts",
+  "e2e/tests/journeys/first-day.spec.ts",
+]
+
+[modules.web-console]
+src = [
+  "frontend/src/features/console/**",
+  "frontend/src/app/console/**",
+]
+tests = [
+  "frontend/src/features/console/**/*.test.tsx",
+  "frontend/src/features/console/*.test.ts",
+]
+e2e = [
+  "e2e/tests/console-ui.spec.ts",
+  "e2e/tests/console.spec.ts",
+  "e2e/tests/console-sync.spec.ts",
+  "e2e/tests/fe-console-race.spec.ts",
+  "e2e/tests/fe-safety.spec.ts",
+  "e2e/tests/operator-visit.spec.ts",
+  "e2e/tests/people-counts.spec.ts",
+  "e2e/tests/people-counts.mobile.spec.ts",
+  "e2e/tests/channel-rows.spec.ts",
+  "e2e/tests/status-sync.spec.ts",
+]

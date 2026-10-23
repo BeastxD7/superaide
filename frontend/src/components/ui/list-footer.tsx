@@ -35,7 +35,16 @@ export function ListFooter({
             </Button>
           </>
         ) : hasMore ? (
-          <Button type="button" size="sm" variant="outline" disabled={loading} aria-busy={loading} onClick={onLoadMore}>
+          // aria-disabled, not disabled: a disabled button drops keyboard focus, and the next Enter would go nowhere.
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            aria-disabled={loading}
+            aria-busy={loading}
+            className={loading ? "opacity-60" : undefined}
+            onClick={() => !loading && onLoadMore()}
+          >
             {loading ? "Loading..." : "Load more"}
           </Button>
         ) : (

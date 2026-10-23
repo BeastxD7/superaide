@@ -227,6 +227,17 @@ def _log_executed(session: Session, approval: Approval) -> None:
 
 
 def resolve(session: Session, approval: Approval, *, approve: bool, decided_by: str, via: str = "") -> Approval:
+    """Decide an approval (see `_resolve`), then write the outcome into the owner's conversation (#340)."""
+    from superaide.policy import outcomes
+
+    was_pending = approval.status == "pending"
+    done = _resolve(session, approval, approve=approve, decided_by=decided_by, via=via)
+    if was_pending and done.status != "pending":
+        outcomes.announce(session, done)
+    return done
+
+
+def _resolve(session: Session, approval: Approval, *, approve: bool, decided_by: str, via: str = "") -> Approval:
     """Record the owner's yes or no on a pending approval, then carry it out if it can be.
 
     `via` is the channel the decision came in on. A yes that came by voice is never accepted, and an

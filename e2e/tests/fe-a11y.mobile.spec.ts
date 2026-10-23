@@ -10,7 +10,7 @@ const at = '2026-10-22T10:00:00Z'
 
 test('a 100-character URL in a note, a name and a rule does not scroll the page sideways', async ({ page, owner }) => {
   void owner
-  await page.route('**/api/app/notebook', (r) =>
+  await page.route('**/api/app/notebook*', (r) =>
     r.fulfill({ json: { memories: [{ id: 'n1', text: LONG, category: 'about', source: 'chat', document: null, shareable: false, private: false, at }] } }),
   )
   await page.route('**/api/app/people', (r) =>

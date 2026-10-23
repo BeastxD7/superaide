@@ -355,7 +355,9 @@ def draft_reply(session: Session, owner: Person, args: dict[str, Any]) -> tuple[
     ), False
 
 
-def send(session: Session, owner: Person, args: dict[str, Any], *, tainted: bool) -> tuple[str, bool]:
+def send(
+    session: Session, owner: Person, args: dict[str, Any], *, tainted: bool, channel: str = ""
+) -> tuple[str, bool]:
     """Never sends: saves the draft and asks the owner to approve sending exactly that draft."""
     from superaide.triage.store import current_stage
 
@@ -385,6 +387,7 @@ def send(session: Session, owner: Person, args: dict[str, Any], *, tainted: bool
             + list(ctx["notes"]),
             "reaches_a_person": ctx["reaches"],
             "evidence": ctx["evidence"],
+            "channel": channel,
             "content_hash": bound,
             "draft_id": str(draft.get("id", "")),
             "thread_id": str(original.get("threadId", "")),
@@ -413,7 +416,14 @@ COMPOSE_ADDR = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
 
 
 def compose(
-    session: Session, owner: Person, args: dict[str, Any], *, tainted: bool, typed_by_owner: str, mail_read: bool
+    session: Session,
+    owner: Person,
+    args: dict[str, Any],
+    *,
+    tainted: bool,
+    typed_by_owner: str,
+    mail_read: bool,
+    channel: str = "",
 ) -> tuple[str, bool]:
     """A brand-new email (issue #339): saved as a draft and approved like a reply, then sent by the same
     executor. The recipient is checked here, in code: one address, typed by the owner in this conversation (never
@@ -477,6 +487,7 @@ def compose(
             "warnings": ["New recipient: not seen before in your mail."] if new else [],
             "reaches_a_person": reaches,
             "evidence": evidence,
+            "channel": channel,
             "tainted": tainted,
             "stage": str(current_stage(session)),
         },
@@ -548,6 +559,7 @@ def run(
     tainted: bool,
     typed_by_owner: str = "",
     mail_read: bool = False,
+    channel: str = "",
 ) -> tuple[Any, bool]:
     """One Gmail tool call from the owner's own turn. Refused for anyone else, and when the
     capability isn't installed (a model can name a tool it wasn't offered)."""
@@ -566,9 +578,11 @@ def run(
     if name == "gmail_draft_reply":
         return draft_reply(session, owner, args)
     if name == "gmail_send":
-        return send(session, owner, args, tainted=tainted)
+        return send(session, owner, args, tainted=tainted, channel=channel)
     if name == "gmail_compose":
-        return compose(session, owner, args, tainted=tainted, typed_by_owner=typed_by_owner, mail_read=mail_read)
+        return compose(
+            session, owner, args, tainted=tainted, typed_by_owner=typed_by_owner, mail_read=mail_read, channel=channel
+        )
     return f"Unknown tool {name!r}.", True
 
 

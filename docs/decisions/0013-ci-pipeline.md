@@ -84,6 +84,10 @@ The single backend job ran about 40 seconds of lint, types and migration checks 
 
 The `CI result` gate needs `backend-static` and `backend-tests` (a matrix, so any failed shard fails it) and requires both to succeed whenever the backend filter asked for them.
 
+## Test selection by module (added 2026-10-24)
+
+Pull requests no longer run the whole suite inside the jobs they trigger: `ci/modules.toml` maps modules to source, tests and e2e specs, `scripts/select_tests.py` expands a change through the import graph, and shared or unmapped files fall back to everything. The earlier "per-test impact analysis" objection above still holds (coverage-based selection is fragile); this is path and import based, fails safe and is checked by a test that fails when the map rots. Details, limits and the `full-suite` label: [docs/design/test-modules.md](../design/test-modules.md).
+
 ## Plan
 
 1. Change detection and the gate (this PR).

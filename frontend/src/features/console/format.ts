@@ -47,7 +47,11 @@ const OPENED: Record<string, string> = {
   '/api/audit': 'Safety log',
 }
 
-function accessed(path: string): string {
+// The paged routes (ADR 0014) open the same screens as their unpaged ones.
+const unpaged = (path: string) => path.replace(/\/unlinked\/page$/, '').replace(/\/page$/, '')
+
+function accessed(raw: string): string {
+  const path = unpaged(raw)
   if (OPENED[path]) return `opened ${OPENED[path]}`
   if (path.startsWith('/api/identities/')) return path.endsWith('/unlink') ? 'unlinked an account' : 'linked an account'
   return `opened ${path || 'a private page'}`

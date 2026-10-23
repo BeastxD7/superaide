@@ -1,12 +1,14 @@
 'use client'
 
-import { useState } from 'react'
-import { api, type Connection, type PersonRow } from '@/features/console/api'
+import { useMemo, useState } from 'react'
+import { api, pageFetcher, type Connection, type Identity, type PersonRow } from '@/features/console/api'
 import { BrandIcon } from '@/components/BrandIcon'
 import { isBrand } from '@/components/brands/marks'
 import { TrustTier } from '@/features/console/components/TrustTier'
 import { ago, METHOD_NAMES } from '@/features/console/format'
-import { useApi } from '@/features/console/useApi'
+import { ListFooter } from '@/components/ui/list-footer'
+import { SkeletonList } from '@/components/ui/skeleton'
+import { usePaginated } from '@/lib/paginated'
 
 const RELATION: Record<string, string> = {
   manager: 'Manager',
@@ -16,7 +18,24 @@ const RELATION: Record<string, string> = {
 }
 
 export function People({ conn }: { conn: Connection }) {
-  const { data, error, reload } = useApi<PersonRow[]>(conn, '/api/people')
+  // People and unclaimed accounts are two paged lists (ADR 0014); the unclaimed ones show as one "not linked" section.
+  const peopleFetch = useMemo(() => pageFetcher<PersonRow>(conn), [conn])
+  const strayFetch = useMemo(() => pageFetcher<Identity>(conn), [conn])
+  const people = usePaginated<PersonRow>('/api/people/page', { limit: 50, fetcher: peopleFetch })
+  const stray = usePaginated<Identity>('/api/people/unlinked/page', { limit: 50, fetcher: strayFetch })
+  const error = people.failed === 'first' ? people.error : stray.failed === 'first' ? stray.error : null
+  const loading = people.status === 'loading' || stray.status === 'loading'
+  const data: PersonRow[] | null = loading
+    ? null
+    : [
+        ...people.items,
+        ...(stray.items.length
+          ? [{ id: 'unlinked', name: 'Unlinked accounts', relation: 'unknown', status: 'stranger', identities: stray.items, link_events: [] }]
+          : []),
+      ]
+  const reload = async () => {
+    await Promise.all([people.refresh(), stray.refresh()])
+  }
   const [busy, setBusy] = useState<string | null>(null)
   const [choice, setChoice] = useState<Record<string, string>>({})
 
@@ -40,8 +59,8 @@ export function People({ conn }: { conn: Connection }) {
     }
   }
 
-  if (error) return <p className="error">{error.message}</p>
-  if (!data) return <p className="quiet">Loading people…</p>
+  if (error) return <p className="error">{error}</p>
+  if (!data) return <SkeletonList count={4} rowHeight={96} what="people" variant="card" />
   if (data.length === 0)
     return (
       <div className="empty">
@@ -149,6 +168,8 @@ export function People({ conn }: { conn: Connection }) {
           )}
         </section>
       ))}
+      <ListFooter {...people.footer} endLabel="That is everyone" />
+      {stray.footer.hasMore || stray.footer.error ? <ListFooter {...stray.footer} endLabel="" /> : null}
     </div>
   )
 }
