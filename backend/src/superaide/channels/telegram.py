@@ -9,9 +9,11 @@ import contextvars
 import hmac
 import logging
 import threading
+import time
 from collections import deque
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
+from contextvars import ContextVar
 from typing import Any
 
 import httpx
@@ -101,10 +103,65 @@ def _handle_press(token: str, action: InboundAction) -> None:
     on_telegram_press(token, action)
 
 
+TYPING_INTERVAL = 4.0  # Telegram shows "typing" for about 5 seconds, so it is sent again every ~4
+TYPING_MAX_SECONDS = 600.0  # a safety stop: an indicator never outlives this, whatever else goes wrong
+TYPING_GIVE_UP = 3  # consecutive refusals (e.g. the person blocked the bot) after which it stops trying
+# The typing loop of the turn running in this thread: the reply stops it just before it is posted, so no "typing" is
+# sent after the message (the pipeline also closes it when the turn ends, whatever happens).
+_TYPING: ContextVar[TypingLoop | None] = ContextVar("telegram_typing", default=None)
+
+
+class TypingLoop:
+    """Shows "typing..." in one chat until `close()`. The first action is sent from its own thread so a
+    slow Telegram never delays the turn; every failure is swallowed (it is cosmetic) and never recorded as
+    channel health. `close()` is idempotent and is always called by the pipeline, even on an exception."""
+
+    def __init__(self, messenger: TelegramMessenger, chat_id: str, thread_id: str, interval: float) -> None:
+        self._stop = threading.Event()
+        self._body: dict[str, Any] = {"chat_id": chat_id, "action": "typing"}
+        if thread_id.isdigit():  # a forum topic
+            self._body["message_thread_id"] = int(thread_id)
+        self._messenger, self._interval, self.chat_id = messenger, interval, chat_id
+        self._thread = threading.Thread(target=self._run, name="telegram-typing", daemon=True)
+        self._thread.start()
+
+    def _run(self) -> None:
+        deadline = time.monotonic() + TYPING_MAX_SECONDS
+        refused = 0
+        while not self._stop.is_set() and time.monotonic() < deadline:
+            try:
+                r = self._messenger._call("sendChatAction", self._body)
+                refused = 0 if r is not None and r.status_code == 200 else refused + 1
+            except Exception:
+                refused += 1
+            if refused >= TYPING_GIVE_UP:
+                return
+            self._stop.wait(self._interval)
+
+    @property
+    def running(self) -> bool:
+        return self._thread.is_alive()
+
+    def close(self) -> None:
+        self._stop.set()
+        if _TYPING.get() is self:
+            _TYPING.set(None)
+        if self._thread is not threading.current_thread():
+            self._thread.join(timeout=1)
+
+
 class TelegramMessenger:
+    typing_interval = TYPING_INTERVAL
+
     def __init__(self, token: str, client: httpx.Client | None = None) -> None:
         self.base = f"https://api.telegram.org/bot{token}"
         self.http = client or httpx.Client(timeout=15)
+
+    def working(self, chat_id: str, thread_id: str = "") -> TypingLoop | None:
+        """ "typing..." in this chat until the returned loop is closed."""
+        loop = TypingLoop(self, chat_id, thread_id, self.typing_interval)
+        _TYPING.set(loop)
+        return loop
 
     def _post(self, body: dict[str, Any]) -> httpx.Response:
         try:
@@ -121,6 +178,9 @@ class TelegramMessenger:
         True when Telegram took it. Raises DeliveryFailed when the token is rejected or Telegram
         can't be reached (and records the channel's health); False for a per-chat refusal, e.g. the
         person blocked the bot (403), which says nothing about the token."""
+        typing = _TYPING.get()
+        if typing is not None and typing.chat_id == chat_id:
+            typing.close()  # nothing is sent as "typing" after this message
         for html_text, markdown in fmt.outgoing(
             text, sources, render=fmt.to_telegram_html, footer=fmt.telegram_footer, limit=fmt.TELEGRAM_LIMIT
         ):

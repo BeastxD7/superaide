@@ -182,6 +182,7 @@ Every setting is an environment variable. [`backend/.env.example`](backend/.env.
 | `TRACE_RECORDER` | `true` | Hashes-only record of every tool call | None | Safe |
 | `ENABLE_API_DOCS` | `true` | Interactive API docs at `/docs` | Turn off on a public server (production compose does) | Safe locally |
 | `RUN_CHANNELS_IN_API` | `true` | Telegram and Slack listeners inside the API | `false` when a separate worker runs them (production compose) | Safe |
+| `TYPING_INDICATORS` | `true` | "typing..." on Telegram and a status or "Working on it..." placeholder on Slack while Ava prepares a reply; the reply is a new message (so it notifies) and the placeholder is deleted after it | Slack status needs the `assistant:write` scope; without it the placeholder is used | Safe |
 | `RUN_JOBS_IN_API` | `true` | Reminders, follow-ups, digests inside the API | `false` when a separate worker runs them | Safe |
 | `ALLOW_MANY_OWNERS` | `true` | Anyone who signs up can hire their own Ava | `false` = single-owner mode | Decision (sign-up policy) |
 | `ENABLE_SIMULATOR` | `false` | Operator console impostor simulator (Simulator page) | `ADMIN_TOKEN`; for local testing see below; development only | Never on a public server |
