@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Loadable, type LoadState } from '@/components/load-state'
 import { CATEGORY_LABEL, DIGEST_LABEL, CHANNEL_LABEL, capitalise, useAppData } from '@/features/dashboard/data'
+import { comingUp } from '@/features/dashboard/home-lists'
 import type { Me, Memory, Message, PersonCard, Preferences, Reminder } from '@/lib/api'
 import { initialOf } from '@/lib/initial'
 import { useSession } from '@/lib/session-context'
@@ -341,19 +342,37 @@ function ComingUpCard({ name, state }: { name: string; state: LoadState<{ remind
                 Nothing yet. Tell {name} &ldquo;remind me to…&rdquo; and she&apos;ll bring it back on time.
               </p>
             ) : (
-              <ul className="space-y-2.5">
-                {reminders.slice(0, 3).map((r) => (
-                  <li key={r.id} className="text-sm">
-                    <p className="line-clamp-1 font-medium text-ink">{r.text}</p>
-                    <p className="text-xs text-muted">{r.due_text}</p>
-                  </li>
-                ))}
-              </ul>
+              <ComingUpList reminders={reminders} />
             )
           }
         </Loadable>
       </CardContent>
     </Card>
+  )
+}
+
+function ComingUpList({ reminders }: { reminders: Reminder[] }) {
+  const { shown, more, sent } = comingUp(reminders, 3)
+  return (
+    <>
+      {shown.length === 0 ? (
+        <p className="text-sm text-muted">Nothing coming up.</p>
+      ) : (
+        <ul className="space-y-2.5">
+          {shown.map((r) => (
+            <li key={r.id} className="text-sm">
+              <p className="line-clamp-1 font-medium text-ink">{r.text}</p>
+              <p className="text-xs text-muted">{r.due_text}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+      {(more > 0 || sent > 0) && (
+        <p className="mt-2.5 text-xs text-muted">
+          {[more > 0 && `+${more} more coming up`, sent > 0 && `${sent} already sent, not marked done`].filter(Boolean).join(' · ')}
+        </p>
+      )}
+    </>
   )
 }
 
