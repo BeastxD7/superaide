@@ -10,7 +10,7 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Path
 from pydantic import BaseModel, ConfigDict, Field
 
 from superaide.app.routes import owner_person_id
@@ -106,6 +106,23 @@ def make_owner_router() -> APIRouter:
         with session_scope() as s:
             gen = card.revoke_all(s)
             audit(s, "owner", "principal_card_revoked", generation=gen)
+            return {"revoked": True}
+
+    @router.get(
+        "/sent",
+        summary="Cards I have sent",
+        description="Newest first: channel, who it went to, when, and whether it is still valid.",
+    )
+    def sent(person_id: uuid.UUID = Depends(owner_on)) -> dict[str, Any]:
+        with session_scope() as s:
+            return {"cards": card.sent(s)}
+
+    @router.post("/sent/{card_id}/revoke", summary="Revoke one card I have sent")
+    def revoke_one(card_id: str = Path(max_length=40), person_id: uuid.UUID = Depends(owner_on)) -> dict[str, Any]:
+        with session_scope() as s:
+            if not card.revoke_one(s, card_id):
+                raise _not_found()
+            audit(s, "owner", "principal_card_revoked_one", card_id=card_id)
             return {"revoked": True}
 
     return router

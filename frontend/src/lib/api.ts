@@ -692,3 +692,14 @@ export type LessonExport = {
   skipped: { id: string; problems: LessonProblem[] }[]
 }
 export type LessonImport = { added: number; rejected: { index: number; problems: LessonProblem[] }[] }
+
+// Principal Card (#135). Every /principal-card route answers 404 while PRINCIPAL_CARD_ENABLED is off.
+export type PrincipalCard = { display_name: string; can: string[]; cannot: string[]; active: boolean; preview: string | null }
+export type SentCard = {
+  id: string
+  channel: string
+  to: string
+  at: number
+  exp: number
+  status: 'active' | 'expired' | 'revoked'
+}
