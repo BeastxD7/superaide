@@ -42,6 +42,7 @@ FLAG_GATED = {
     ("GET", "/app/principal-card"),  # PRINCIPAL_CARD_ENABLED (#135); its public side is in test_principal_card.py
     ("GET", "/app/memory-socket"),  # MEMORY_SOCKET_ENABLED (#138); its MCP side is checked in test_memory_socket.py
     ("GET", "/app/fork-night"),  # FORK_NIGHT_ENABLED (#127)
+    ("GET", "/app/standing-orders"),  # TIME_TRAVEL_RULES_ENABLED (#52)
     # The introduction's voice call, v2 (VOICE_INTRO_V2, ADR 0012); its POSTs are enumerated like every route.
     ("GET", "/app/intro/voice"),
     ("GET", "/app/import-leases"),  # IMPORT_LEASE_ENABLED (#133)

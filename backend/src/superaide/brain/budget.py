@@ -71,6 +71,7 @@ BUCKETS = {
     "tuner": "learning",
     "dissent": "dissent",  # #126: three models on one high-stakes choice
     "fork_night": "fork",  # #127: three read-only overnight drafts of one choice
+    "rule_compile": "rules",  # #52: turning a standing order into a structured rule (one small call)
 }
 
 

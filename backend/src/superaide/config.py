@@ -107,6 +107,14 @@ class Settings(BaseSettings):
     # daily bucket. FORK_NIGHT_HOUR is the local hour they run.
     fork_night_enabled: bool = False
     fork_night_hour: int = Field(default=2, ge=0, le=23)
+    # Time-travel rules (#52). Off by default. The owner writes a standing order in plain words; it is compiled to a
+    # deterministic rule (sender/keyword/channel -> label or draft a reply), replayed against the last
+    # TIME_TRAVEL_REPLAY_DAYS of the owner's own message log, and only then can be switched on. New rules run in
+    # shadow first; the owner promotes one after TIME_TRAVEL_PROMOTE_AFTER agreeing firings.
+    time_travel_rules_enabled: bool = False
+    time_travel_replay_days: int = Field(default=90, ge=1, le=365)
+    time_travel_promote_after: int = Field(default=20, ge=1)
+    time_travel_min_agreement: float = Field(default=0.9, ge=0, le=1)
 
     # Tenancy
     tenant_id: uuid.UUID = DEFAULT_TENANT_ID
@@ -129,6 +137,7 @@ class Settings(BaseSettings):
             "chat": 0.40,
             "dissent": 0.10,
             "fork": 0.15,
+            "rules": 0.02,
             "memory": 0.15,
             "research": 0.25,
             "triage": 0.05,
