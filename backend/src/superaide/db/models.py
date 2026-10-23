@@ -244,6 +244,47 @@ class MemoryOrigin(Scoped, Base):
     origin_root: Mapped[str] = mapped_column(String(64))
 
 
+class Episode(Scoped, Base):
+    """A stretch of one conversation about one thing (#50). A pointer into the event log, which stays the
+    source of truth: the summary helps find it, it never replaces it. Written only by the sleep job."""
+
+    __tablename__ = "episode"
+
+    owner_person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), index=True)
+    context_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("context.id"), index=True)
+    channel: Mapped[str] = mapped_column(String(20), default="")
+    participant_person_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(UUID(as_uuid=True)), default=list)
+    # Who may ever be shown this episode: the people in every one of its messages' audiences.
+    audience_person_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(UUID(as_uuid=True)), default=list)
+    audience_has_unknown: Mapped[bool] = mapped_column(Boolean, default=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    ended_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    event_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(UUID(as_uuid=True)), default=list)
+    summary: Mapped[str] = mapped_column(Text, default="")
+    summary_by: Mapped[str] = mapped_column(String(20), default="extract")  # extract (code) | model
+    hints: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)  # words to find it by
+    importance: Mapped[float] = mapped_column(Float, default=0.5)
+
+
+class ConsolidationRun(Scoped, Base):
+    """One night's consolidation for one owner (#50): what it retired, saved first so it can be put back."""
+
+    __tablename__ = "consolidation_run"
+
+    owner_person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), index=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="running")  # running | done | skipped
+    degraded: Mapped[bool] = mapped_column(Boolean, default=False)  # money ran out: only the cheap steps ran
+    episodes_made: Mapped[int] = mapped_column(Integer, default=0)
+    entries_before: Mapped[int] = mapped_column(Integer, default=0)
+    retired_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(UUID(as_uuid=True)), default=list)
+    # The pre-image, written before anything is retired: [{id, content, valid_to}] for every retired entry.
+    snapshot: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list)
+    cost_usd: Mapped[Decimal] = mapped_column(Numeric(12, 6), default=Decimal(0))
+    notes: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
+    restored_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class Document(Scoped, Base):
     """Something the owner shared for the agent to read: a file or a link.
 

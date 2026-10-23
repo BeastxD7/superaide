@@ -250,6 +250,10 @@ class Settings(BaseSettings):
     # Spaced "is this still true?" (#49). Off: Ava never asks. On: the digest may carry a few facts that
     # matter and don't fade ("Still true that you don't eat shellfish?"), at most this many a week, never
     # as an interruption; the owner answers Yes / No / Changed.
+    # The nightly "sleep" job (#50): groups the day's conversations into episodes and tidies the owner's
+    # notes (exact duplicates only, at most a quarter of them a night, pre-image saved first). Off: nothing runs.
+    sleep_job_enabled: bool = False
+    sleep_job_hour: int = 3  # local hour in the owner's time zone
     memory_recheck_enabled: bool = False
     memory_recheck_per_week: int = 2
     # Signs the public form's token (time-to-submit and same-form check). Blank: a random key per
