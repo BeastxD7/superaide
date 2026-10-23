@@ -1,7 +1,7 @@
 """triage_label_vector: cached embeddings of the owner's labels for the kNN triage head (#117), per instance
 
-Revision ID: 0053
-Revises: 0046
+Revision ID: 0055
+Revises: 0054
 Create Date: 2026-10-23 03:13:01.739354
 
 """
@@ -14,8 +14,8 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0053"
-down_revision: str | Sequence[str] | None = "0046"
+revision: str = "0055"
+down_revision: str | Sequence[str] | None = "0054"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

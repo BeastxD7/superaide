@@ -2,8 +2,8 @@
 
 The table is append-only at the database too: a trigger refuses UPDATE and DELETE.
 
-Revision ID: 0052
-Revises: 0051
+Revision ID: 0051
+Revises: 0050
 Create Date: 2026-10-23 13:00:00.000000
 
 """
@@ -15,8 +15,8 @@ import sqlalchemy as sa
 from alembic import op
 from superaide.db.rls import disable, enable
 
-revision: str = "0052"
-down_revision: str | Sequence[str] | None = "0051"
+revision: str = "0051"
+down_revision: str | Sequence[str] | None = "0050"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

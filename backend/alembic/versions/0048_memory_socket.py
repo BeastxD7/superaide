@@ -5,7 +5,7 @@ Row-Level Security in db/rls.py EXEMPT). It holds a token hash, a name and a sco
 reads or writes it unless MEMORY_SOCKET_ENABLED is on.
 
 Revision ID: 0048
-Revises: 0046
+Revises: 0047
 Create Date: 2026-10-23 12:00:00.000000
 
 """
@@ -18,7 +18,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "0048"
-down_revision: str | Sequence[str] | None = "0046"
+down_revision: str | Sequence[str] | None = "0047"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
