@@ -4,6 +4,7 @@ per-instance isolation, and everything 404 while ASK_LINK_ENABLED is off."""
 
 from __future__ import annotations
 
+import re
 import statistics
 import time
 import uuid
@@ -124,7 +125,7 @@ def test_with_the_flag_off_everything_is_404_but_owner_routes_check_sign_in_firs
     monkeypatch.setattr(get_settings(), "ask_link_enabled", False)
     v = browser()
     for r in (v.get("/p/ask/ava-k3q9tz"), v.post("/p/ask/ava-k3q9tz", json=form()), v.post("/p/ask/ava-k3q9tz/click")):
-        assert r.status_code == 404 and r.json() == {"detail": "Not Found"}
+        assert r.status_code == 404 and r.json()["detail"] == "Not Found"
     assert owner.get("/app/ask-link").status_code == 404
     assert owner.get("/app/ask-link/requests").status_code == 404
     assert browser().get("/app/ask-link").status_code == 401  # signed out: 401 before the flag
@@ -152,14 +153,19 @@ def test_the_page_names_nobody_unless_the_owner_opts_in(owner, browser):
     assert "Rao" not in page.text and OWNER["email"] not in page.text
 
 
+def _shape(r) -> tuple[int, bytes, str | None]:
+    """What a caller can compare: the request id is different on every response by design (ADR 0013)."""
+    return (
+        r.status_code,
+        re.sub(rb'"request_id":"[^"]*"', b'"request_id":"-"', r.content),
+        r.headers.get("content-type"),
+    )
+
+
 def _same(responses) -> None:
     first = responses[0]
     for r in responses[1:]:
-        assert (r.status_code, r.content, r.headers.get("content-type")) == (
-            first.status_code,
-            first.content,
-            first.headers.get("content-type"),
-        )
+        assert _shape(r) == _shape(first)
 
 
 def test_unknown_unpublished_and_revoked_handles_look_exactly_alike(owner, browser):
@@ -173,7 +179,7 @@ def test_unknown_unpublished_and_revoked_handles_look_exactly_alike(owner, brows
     _same([v.get(f"/p/ask/{h}") for h in names])
     _same([v.post(f"/p/ask/{h}", json={**form(), "token": "v1.1.a.b"}) for h in names])
     _same([v.post(f"/p/ask/{h}/click") for h in names])
-    assert v.get("/p/ask/was-live").json() == {"detail": "Not Found"}
+    assert v.get("/p/ask/was-live").json()["detail"] == "Not Found"
 
 
 def test_unknown_and_unpublished_take_about_as_long(owner, browser):

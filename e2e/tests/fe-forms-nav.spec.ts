@@ -2,6 +2,7 @@
 // backend can't produce on demand are scripted with page.route; everything else runs against the real stack.
 import type { Page, Route } from '@playwright/test'
 import { expect, test } from '../src/fixtures'
+import { triageOn } from '../src/helpers/triage'
 
 const iso = (daysAgo: number) => new Date(Date.now() - daysAgo * 86_400_000).toISOString()
 
@@ -40,6 +41,7 @@ const item = (id: string, createdAt: string) => ({
 })
 
 async function mockNeedsYou(page: Page, handled: unknown[] = []) {
+  await triageOn(page)
   await page.route('**/api/app/needs-you', (r) =>
     r.fulfill({ json: { needs_you: [], handled, held: [], counts: { needs_you: 0, handled: handled.length, held: 0 }, stage: 'infant' } }),
   )

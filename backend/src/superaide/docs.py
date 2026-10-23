@@ -7,6 +7,14 @@ The backend for **Superaide**: Ava's marketplace page, accounts, hiring, the int
 the owner's chat and notebook, connections to Telegram/Slack, the AI model providers, the operator console and
 the channel webhooks. JSON only; the web app on port 3000 calls it through its `/api` proxy.
 
+### Errors
+
+Every error, whatever its status, has one shape (ADR 0013): `{"status": "error", "status_code": 404, "message":
+"<a sentence>", "data": null, "error": {"code": "not_found", "detail": null, "request_id": "..."}}`. The HTTP status
+is unchanged. `error.code` is stable (`validation_failed`, `unauthorized`, `forbidden`, `not_found`, `conflict`,
+`rate_limited`, `service_unavailable`, `internal_error`...). Every response has an `X-Request-ID` header, the same id
+as `error.request_id`; quote it in a bug report. The old top-level `detail` is kept for one release.
+
 ### How requests are authorised
 
 | Who | How | Used by |

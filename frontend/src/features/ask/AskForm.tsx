@@ -20,6 +20,17 @@ function today(): string {
 }
 
 // What the API's error body says, and which field it's about.
+// The API's standard error body (ADR 0013) carries the sentence in `message`; the old `detail` is the fallback.
+function errorDetail(body: { message?: string; detail?: unknown; error?: { detail?: unknown } | null }): unknown {
+  const nested = body.error?.detail
+  if (Array.isArray(nested)) return nested
+  if (body.error && body.message) {
+    const field = nested && typeof nested === 'object' ? (nested as { field?: Field }).field : undefined
+    return { message: body.message, field }
+  }
+  return body.detail
+}
+
 function problemOf(status: number, detail: unknown): { text: string; field?: Field } {
   // A link turned off while the form was open: the API's bare "Not Found" is not for people.
   if (status === 404) return { text: 'This link has just been turned off.' }
@@ -71,9 +82,9 @@ export function AskForm({ page }: { page: AskPage }) {
           token: page.token,
         }),
       })
-      const body = (await res.json().catch(() => ({}))) as { detail?: unknown } & Partial<Sent>
+      const body = (await res.json().catch(() => ({}))) as { detail?: unknown; error?: { detail?: unknown } | null } & Partial<Sent>
       if (!res.ok) {
-        setProblem(problemOf(res.status, body.detail))
+        setProblem(problemOf(res.status, errorDetail(body)))
         requestAnimationFrame(() => summary.current?.focus())
         return
       }

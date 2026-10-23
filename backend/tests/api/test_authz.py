@@ -116,7 +116,7 @@ def test_signed_out_gets_401_everywhere(app, browser, owner_data):
     for method, path in owner_routes(app):
         r = _call(anonymous, method, path, owner_data)
         assert r.status_code == 401, (method, path, r.status_code, r.text)
-        assert r.json() == {"detail": "Please log in."}
+        assert r.json()["detail"] == "Please log in."
 
 
 def test_a_signed_in_stranger_gets_403_everywhere_and_sees_nothing(app, browser, owner_data):
@@ -230,7 +230,7 @@ def test_public_ask_routes_are_404_while_off_and_carry_no_owner_data(browser, ow
     for method, path in sorted(PUBLIC_ASK):
         r = browser().request(method, path.replace("{handle}", "shashank"), json={} if method == "POST" else None)
         assert r.status_code == 404, (method, path, r.status_code, r.text)
-        assert r.json() == {"detail": "Not Found"}
+        assert r.json()["detail"] == "Not Found"
         _assert_no_owner_data(r, owner_data)
 
 

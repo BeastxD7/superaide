@@ -3,18 +3,27 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AppError, call, type NeedsYou } from '@/lib/api'
 import { errorMessage } from '@/lib/action'
+import { useSession } from '@/lib/session-context'
 
-// The Needs-you inbox. `enabled` is false while the backend has triage turned off (it answers
-// 404), so callers render nothing and the app looks exactly as it did before.
+// The Needs-you inbox. `enabled` is false while the backend has triage turned off, so callers render nothing
+// and the app looks exactly as it did before. /app/me says so (`features.triage`), so the list is not even
+// requested then (it would answer 404 by design and show as a failed request). An API that predates
+// `features` is asked, and its 404 means the same thing.
 export function useNeedsYou(poll = 0) {
-  const [enabled, setEnabled] = useState<boolean | null>(null)
+  const { me } = useSession()
+  const known = me !== null
+  const off = me?.features?.triage === false
+  const [asked, setEnabled] = useState<boolean | null>(null)
+  const enabled = off ? false : asked
   const [data, setData] = useState<NeedsYou | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   // State is set only once the request settles (written with .then so the effect lint can see that).
   const reload = useCallback(
     () =>
-      call<NeedsYou>('/needs-you').then(
+      !known || off
+        ? Promise.resolve()
+        : call<NeedsYou>('/needs-you').then(
         (d) => {
           setData(d)
           setEnabled(true)
@@ -29,7 +38,7 @@ export function useNeedsYou(poll = 0) {
           setError(errorMessage(e))
         },
       ),
-    [],
+    [known, off],
   )
 
   useEffect(() => {

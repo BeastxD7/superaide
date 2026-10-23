@@ -9,13 +9,10 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request
-from fastapi.encoders import jsonable_encoder
-from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from superaide import docs
+from superaide import docs, envelope
 from superaide.api.admin import require_admin
 from superaide.api.admin import router as admin_router
 from superaide.audit import audit
@@ -24,6 +21,7 @@ from superaide.channels import slack, telegram
 from superaide.channels.base import FakeMessenger, InboundMessage
 from superaide.config import get_settings
 from superaide.db.session import session_scope
+from superaide.envelope import error_response
 from superaide.jobs.worker import JobWorker
 from superaide.pipeline import Agent
 from superaide.runtime import Runtime
@@ -54,6 +52,8 @@ def create_app(agent: Agent | None = None) -> FastAPI:
         from superaide.security import surface
 
         surface.verify_boot()
+
+    envelope.install_log_context()
     logredact.install()  # uvicorn and the worker log through this too: no bot token in any line
     app = FastAPI(
         title="Superaide API",
@@ -81,13 +81,6 @@ def create_app(agent: Agent | None = None) -> FastAPI:
         allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
     )
 
-    @app.exception_handler(RequestValidationError)
-    async def validation_error(_: Request, exc: RequestValidationError) -> JSONResponse:
-        """FastAPI's own 422, minus the "input" it echoes back: that can be a password or an API key
-        (for a missing field it is the whole body, other credentials included)."""
-        errors = [{k: v for k, v in error.items() if k != "input"} for error in exc.errors()]
-        return JSONResponse(status_code=422, content={"detail": jsonable_encoder(errors)})
-
     app.include_router(admin_router)
     app.include_router(make_auth_router())
 
@@ -112,10 +105,12 @@ def create_app(agent: Agent | None = None) -> FastAPI:
         # halfway with a 500 (security/dbcheck.py).
         message = db_gate.current()
         if message and request.url.path not in {"/health", "/docs", "/redoc", "/openapi.json"}:
-            from fastapi.responses import JSONResponse
-
-            return JSONResponse({"detail": message}, status_code=503)
+            return error_response(
+                503, message, code="service_unavailable", detail={"reason": "database_behind"}, legacy_detail=message
+            )
         return await call_next(request)
+
+    envelope.install(app)  # added last = outermost: the request id exists before anything else answers
 
     worker = JobWorker()
 

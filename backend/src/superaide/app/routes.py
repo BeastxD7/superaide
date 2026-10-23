@@ -274,6 +274,8 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 "brain": "claude" if brain_ready(settings) else "offline",
                 "brain_provider": brain_status(settings).provider,
                 "paused": is_frozen(s),
+                # Which optional parts are on, so the app does not ask for what answers 404 by design.
+                "features": {"triage": bool(settings.triage_enabled)},
                 "channels": {
                     "web": True,
                     "telegram": "telegram" in providers,
