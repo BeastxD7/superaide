@@ -150,6 +150,15 @@ class Agent:
             except IntegrityError:
                 return HandleResult("duplicate")
 
+            if self.settings.time_travel_rules_enabled and not self._is_owner(s, sender):
+                try:  # shadow bookkeeping only: it never changes the reply or acts
+                    with s.begin_nested():
+                        from superaide.rules.timetravel import record_firing
+
+                        record_firing(s, inbound, provider=msg.provider, sender=sender.name if sender.known else "")
+                except Exception:
+                    log.exception("couldn't record standing-order firings")
+
             if sender.known and not sender.unconfirmed and (sender.relation == "manager" or self._is_owner(s, sender)):
                 from superaide.policy.breaker import halt, is_halt_word
 

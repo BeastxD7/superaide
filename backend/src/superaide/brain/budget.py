@@ -68,6 +68,7 @@ BUCKETS = {
     "playbook": "learning",
     # Learning and trust features (#142)
     "tuner": "learning",
+    "rule_compile": "rules",  # #52: turning a standing order into a structured rule (one small call)
 }
 
 
