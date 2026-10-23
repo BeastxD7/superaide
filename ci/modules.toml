@@ -228,6 +228,7 @@ src = [
   "backend/src/superaide/connectors/**",
 ]
 tests = [
+  "backend/tests/test_recipient_preflight.py",
   "backend/tests/test_calendar_actions.py",
   "backend/tests/test_calendar_push.py",
   "backend/tests/test_gmail.py",
@@ -264,6 +265,7 @@ src = [
   "backend/src/superaide/cli.py",
 ]
 tests = [
+  "backend/tests/test_operator_paging.py",
   "backend/tests/test_main.py",
   "backend/tests/test_api.py",
   "backend/tests/test_cli.py",
@@ -500,6 +502,7 @@ src = [
   "backend/src/superaide/policy/**",
 ]
 tests = [
+  "backend/tests/test_approval_honesty.py",
   "backend/tests/test_approvals.py",
   "backend/tests/test_approval_binding.py",
   "backend/tests/test_approval_binding_all_kinds.py",
@@ -507,6 +510,8 @@ tests = [
   "backend/tests/api/test_brake.py",
 ]
 e2e = [
+  "e2e/tests/journeys/approval-honesty.spec.ts",
+  "e2e/tests/journeys/approval-recipient.spec.ts",
   "e2e/tests/approvals-sync.spec.ts",
   "e2e/tests/journeys/approvals.spec.ts",
 ]
@@ -727,6 +732,7 @@ e2e = [
 always = true
 src = []
 tests = [
+  "backend/tests/test_example_names.py",
   "backend/tests/api/test_authz.py",
   "backend/tests/api/test_auth_negative.py",
   "backend/tests/test_openapi_snapshot.py",
@@ -784,6 +790,7 @@ tests = [
   "frontend/src/components/**/*.test.ts",
 ]
 e2e = [
+  "e2e/tests/responsive.mobile.spec.ts",
   "e2e/tests/csp.spec.ts",
   "e2e/tests/fe-a11y.spec.ts",
   "e2e/tests/fe-a11y.mobile.spec.ts",
@@ -815,6 +822,11 @@ tests = [
   "frontend/src/features/dashboard/*.test.ts",
 ]
 e2e = [
+  "e2e/tests/chat-empty.mobile.spec.ts",
+  "e2e/tests/citation-marks.mobile.spec.ts",
+  "e2e/tests/citation-marks.spec.ts",
+  "e2e/tests/journeys/approval-honesty.spec.ts",
+  "e2e/tests/journeys/approval-recipient.spec.ts",
   "e2e/tests/workspace.spec.ts",
   "e2e/tests/workspace.mobile.spec.ts",
   "e2e/tests/qa-dashboard.spec.ts",
@@ -921,9 +933,11 @@ src = [
   "frontend/src/app/console/**",
 ]
 tests = [
+  "frontend/src/features/console/**/*.test.tsx",
   "frontend/src/features/console/*.test.ts",
 ]
 e2e = [
+  "e2e/tests/console-ui.spec.ts",
   "e2e/tests/console.spec.ts",
   "e2e/tests/console-sync.spec.ts",
   "e2e/tests/fe-console-race.spec.ts",
