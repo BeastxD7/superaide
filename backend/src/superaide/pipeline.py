@@ -662,7 +662,9 @@ class Agent:
             labels = timeline.labels
             if shared:  # who wrote what: only the owner's own messages carry the owner's authority
                 me = sender.person.id
-                labels = {e.id: OTHER_PERSON for e in timeline.events if e.direction == "in" and e.resolved_person_id != me}
+                labels = {
+                    e.id: OTHER_PERSON for e in timeline.events if e.direction == "in" and e.resolved_person_id != me
+                }
             result = turn.run(build_messages(timeline.events, msg.text, labels, tz=owner_tz))
         except BudgetExceeded as exc:
             return self._budget_reply(s, exc), ["budget"], {}

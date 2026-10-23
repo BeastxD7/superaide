@@ -119,7 +119,14 @@ def decide(
     if in_channel and rule.min_trust >= int(Trust.STEPPED_UP):
         # Said in a channel others can read: approval-type actions still queue a card for the signed-in app,
         # but the ones that need a stronger identity check than a chat account are for a direct message or the app.
-        audit(session, "policy", "action_refused", kind=kind, reason="needs a private conversation", requester=requester.name)
+        audit(
+            session,
+            "policy",
+            "action_refused",
+            kind=kind,
+            reason="needs a private conversation",
+            requester=requester.name,
+        )
         return Decision("refused", "ask me in a direct message, not in a channel")
     if rule.manager_only and requester.relation != "manager":
         audit(

@@ -69,7 +69,9 @@ def rec(agent) -> Recorder:
 def owner_linked(agent, colleague, rec):
     """The signed-up, hired owner with a linked Slack account (as after the DM link flow)."""
     app = TestClient(create_app(agent), headers={"X-Requested-With": "superaide"})
-    app.post("/auth/signup", json={"name": OWNER_NAME, "email": "jordan@example.com", "password": "correct horse battery"})
+    app.post(
+        "/auth/signup", json={"name": OWNER_NAME, "email": "jordan@example.com", "password": "correct horse battery"}
+    )
     app.post("/app/hire", json={"agent": "ava", "accepted_notice": True})
     with session_scope() as s:
         me = hired_owner(s)
