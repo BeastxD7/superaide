@@ -35,6 +35,7 @@ const OUTCOMES: Record<string, { tone: 'info' | 'error'; text: string }> = {
     tone: 'error',
     text: "Google didn't give access. Check the client ID and secret, and that the redirect URI in Google Cloud matches exactly, then try again.",
   },
+  api_disabled: { tone: 'error', text: "The Google Calendar API isn't switched on for your Google project. In Google Cloud open APIs & Services, Library, search Google Calendar API, press Enable, then try again." },
   no_calendar: { tone: 'error', text: "Calendar access wasn't granted. Connect again and tick the calendar box on Google's screen." },
   no_actions: { tone: 'error', text: "Changing your calendar wasn't allowed. Connect again and tick both calendar boxes on Google's screen." },
 }

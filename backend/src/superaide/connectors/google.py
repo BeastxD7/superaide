@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import logging
 import secrets
 import threading
 import time
@@ -31,8 +32,52 @@ EVENTS_SCOPE = "https://www.googleapis.com/auth/calendar.events"  # change event
 PENDING_TTL = timedelta(minutes=10)
 
 
+log = logging.getLogger(__name__)
+
+
 class GoogleError(Exception):
     pass
+
+
+class ApiDisabled(GoogleError):
+    """Google answered 403 because the API (Gmail, Calendar) isn't switched on in the owner's Google Cloud project."""
+
+
+DISABLED_REASONS = {"accessNotConfigured", "SERVICE_DISABLED", "API_KEY_SERVICE_BLOCKED"}
+
+
+def error_reason(response: Any) -> str:
+    """Google's reason code from an error answer (e.g. "accessNotConfigured"), or "". Never the request or any token."""
+    try:
+        err = response.json().get("error")
+    except ValueError, AttributeError:
+        return ""
+    if isinstance(err, str):  # the token endpoint: {"error": "invalid_grant", ...}
+        return err[:80]
+    if not isinstance(err, dict):
+        return ""
+    for item in err.get("errors") or []:
+        if isinstance(item, dict) and item.get("reason"):
+            return str(item["reason"])[:80]
+    for item in err.get("details") or []:
+        if isinstance(item, dict) and item.get("reason"):
+            return str(item["reason"])[:80]
+    return str(err.get("status") or "")[:80]
+
+
+def log_failure(what: str, response: Any) -> None:
+    """Say in the log why Google refused (status and Google's reason code only: never a token, code or secret)."""
+    log.warning("%s failed: HTTP %s %s", what, getattr(response, "status_code", "?"), error_reason(response))
+
+
+def raise_for_error(response: Any, service: str) -> None:
+    """GoogleError for a non-200 answer from `service`; ApiDisabled when the API isn't enabled in the project."""
+    reason = error_reason(response)
+    log_failure(f"{service} API call", response)
+    if response.status_code == 403 and reason in DISABLED_REASONS:
+        raise ApiDisabled(f"The {service} API isn't switched on for your Google project.")
+    suffix = f", {reason}" if reason else ""
+    raise GoogleError(f"{service} answered with an error ({response.status_code}{suffix}).")
 
 
 class ScopeNotGranted(GoogleError):
@@ -96,6 +141,7 @@ def exchange_code(
     except (httpx.HTTPError, ValueError) as exc:
         raise GoogleError("Couldn't reach Google. Try again in a minute.") from exc
     if r.status_code != 200 or not isinstance(data, dict) or "refresh_token" not in data:
+        log_failure("google token exchange", r)
         raise GoogleError("Google didn't give Ava access. Try connecting again, and allow calendar access.")
     granted = set(str(data.get("scope", "")).split())
     if not set(scopes or SCOPES) <= granted:
@@ -157,7 +203,7 @@ def list_events(
     except (httpx.HTTPError, ValueError) as exc:
         raise GoogleError("Couldn't reach Google Calendar just now.") from exc
     if r.status_code != 200 or not isinstance(data, dict):
-        raise GoogleError(f"Google Calendar answered with an error ({r.status_code}).")
+        raise_for_error(r, "Google Calendar")
     items = data.get("items")
     return items if isinstance(items, list) else []
 
@@ -178,7 +224,7 @@ def get_event(token: str, event_id: str, client: httpx.Client | None = None) -> 
     except ValueError as exc:
         raise GoogleError("Google Calendar sent something unreadable.") from exc
     if r.status_code != 200 or not isinstance(data, dict):
-        raise GoogleError(f"Google Calendar answered with an error ({r.status_code}).")
+        raise_for_error(r, "Google Calendar")
     return data
 
 

@@ -26,6 +26,7 @@ const GOOGLE_OUTCOME: Record<string, { tone: 'info' | 'error'; text: string }> =
   no_calendar: { tone: 'error', text: "Google didn't allow calendar access. Try again and tick the calendar boxes." },
   cancelled: { tone: 'error', text: 'You cancelled on Google. Calendar actions stay unusable until you allow them there.' },
   expired: { tone: 'error', text: 'That Google page expired. Press Finish on Google again.' },
+  api_disabled: { tone: 'error', text: "The Google Calendar API isn't switched on for your Google project. In Google Cloud open APIs & Services, Library, search Google Calendar API, press Enable, then try again." },
   failed: { tone: 'error', text: "Google didn't confirm. Try again in a minute." },
 }
 
