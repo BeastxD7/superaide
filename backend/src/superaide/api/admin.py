@@ -58,9 +58,10 @@ from superaide.pagination import (
     set_next_headers,
 )
 from superaide.policy import binding
-from superaide.policy.killswitch import instance_frozen, is_frozen, set_platform_frozen
+from superaide.policy.killswitch import instance_frozen, is_frozen, set_frozen, set_platform_frozen
 from superaide.tenancy.context import InstanceScope, default_scope, use_instance
 from superaide.tenancy.models import AgentInstance, ChannelEndpoint, Tenant
+from superaide.tenancy.service import active_scopes
 
 admin_bearer = HTTPBearer(scheme_name="Admin token", description="`ADMIN_TOKEN` from `.env`.", auto_error=False)
 
@@ -189,6 +190,17 @@ def _runtime_live() -> dict[str, bool]:
     return live
 
 
+def _any_instance_frozen() -> bool:
+    """Some hired Ava is paused for itself (the halt word, the circuit breaker, the witness)."""
+    with session_scope() as s:
+        scopes = active_scopes(s)
+    for scope in scopes:
+        with use_instance(scope), session_scope() as s:
+            if instance_frozen(s, scope):
+                return True
+    return False
+
+
 def _audit_count(s: Any, *actions: str) -> int:
     return int(s.scalar(select(func.count()).select_from(AuditLog).where(AuditLog.action.in_(actions))) or 0)
 
@@ -261,6 +273,7 @@ def overview() -> dict[str, Any]:
     spend = BudgetGuard.for_instance(settings).summary().as_dict()
     day_ago = datetime.now(UTC) - timedelta(days=1)
     live = _runtime_live()
+    any_instance_frozen = _any_instance_frozen()
     with session_scope() as s:
         introduced = int(
             s.scalar(select(func.count()).select_from(Onboarding).where(Onboarding.completed_at.is_not(None))) or 0
@@ -284,7 +297,7 @@ def overview() -> dict[str, Any]:
         return {
             "agent_name": settings.agent_name,
             "stage": "Infant",
-            "frozen": is_frozen(s),
+            "frozen": is_frozen(s) or any_instance_frozen,
             "model_mode": "Claude API (real replies)" if live["brain"] else "offline (no API key, replies are echoes)",
             "channels": {"telegram": live["telegram"], "slack": live["slack"]},
             "simulator": settings.enable_simulator,
@@ -787,6 +800,13 @@ class KillBody(BaseModel):
 def kill(body: KillBody) -> dict[str, bool]:
     with session_scope() as s:
         set_platform_frozen(s, body.on, actor="dashboard")
+        scopes = [] if body.on else active_scopes(s)
+    # Resume means resume: an Ava the owner halted in chat, the circuit breaker or the witness stopped is frozen
+    # per instance, and the console's button used to clear only the server-wide flag (issue #281).
+    for scope in scopes:
+        with use_instance(scope), session_scope() as s:
+            if instance_frozen(s, scope):
+                set_frozen(s, False, actor="dashboard")
     return {"frozen": body.on}
 
 

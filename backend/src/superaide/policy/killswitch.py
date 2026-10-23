@@ -47,13 +47,15 @@ def set_frozen(session: Session, on: bool, *, actor: str) -> None:
 
 def set_platform_frozen(session: Session, on: bool, *, actor: str) -> None:
     """Freeze or unfreeze every instance on the server."""
+    from sqlalchemy.dialects.postgresql import insert
+
     from superaide.tenancy.models import PlatformState
 
-    row = session.get(PlatformState, PLATFORM_KEY)
-    if row is None:
-        row = PlatformState(key=PLATFORM_KEY, value={})
-        session.add(row)
-    row.value = {"on": on}
+    # An upsert: two operators (or two clicks) switching it at once must not race on creating the row.
+    session.flush()  # keep what the caller already changed before objects are expired below
+    stmt = insert(PlatformState).values(key=PLATFORM_KEY, value={"on": on})
+    session.execute(stmt.on_conflict_do_update(index_elements=[PlatformState.key], set_={"value": {"on": on}}))
+    session.expire_all()
     audit(session, actor, "kill_switch", on=on, scope="platform")
 
 
@@ -64,9 +66,15 @@ def get_state(session: Session, key: str) -> dict:
 
 
 def set_state(session: Session, key: str, value: dict) -> None:
+    from sqlalchemy.dialects.postgresql import insert
+
     scope = scope_or_default()
-    row = _row(session, scope, key)
-    if row is None:
-        row = AgentState(tenant_id=scope.tenant_id, agent_id=scope.agent_id, key=key, value={})
-        session.add(row)
-    row.value = value
+    # An upsert: two requests creating the same instance's row at once (two halts) must not race.
+    session.flush()
+    stmt = insert(AgentState).values(tenant_id=scope.tenant_id, agent_id=scope.agent_id, key=key, value=value)
+    session.execute(
+        stmt.on_conflict_do_update(
+            index_elements=[AgentState.tenant_id, AgentState.agent_id, AgentState.key], set_={"value": value}
+        )
+    )
+    session.expire_all()
