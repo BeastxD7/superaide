@@ -10,6 +10,7 @@ import { errorMessage } from '@/lib/action'
 const RESULT: Record<string, { tone: 'info' | 'error'; text: string }> = {
   connected: { tone: 'info', text: 'Gmail is connected.' },
   no_access: { tone: 'error', text: "Google didn't allow that. Try again and tick the Gmail box on Google's screen." },
+  api_disabled: { tone: 'error', text: "The Gmail API isn't switched on for your Google project. In Google Cloud open APIs & Services, Library, search Gmail API, press Enable, then try again." },
   failed: { tone: 'error', text: "Google didn't connect. Try again in a minute." },
 }
 

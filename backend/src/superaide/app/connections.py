@@ -8,6 +8,7 @@ a credential, only a masked hint.
 from __future__ import annotations
 
 import hashlib
+import logging
 import secrets
 import uuid
 from collections.abc import Callable
@@ -34,6 +35,8 @@ from superaide.tenancy.models import PlatformState
 from superaide.vault import check, store
 from superaide.vault.crypto import master_key
 from superaide.vault.store import runtime_settings
+
+log = logging.getLogger(__name__)
 
 
 def _pending_key(state: str) -> str:
@@ -352,7 +355,10 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
             wanted_events = google.EVENTS_SCOPE in (pending.get("scopes") or [])
             outcome = "no_actions" if wanted_events else "no_calendar"
             return RedirectResponse(f"{back}?google={outcome}", status_code=303)
-        except google.GoogleError:
+        except google.ApiDisabled:
+            return RedirectResponse(f"{back}?google=api_disabled", status_code=303)
+        except google.GoogleError as exc:
+            log.warning("google sign-in failed: %s", exc)  # status and Google's reason only
             return RedirectResponse(f"{back}?google=failed", status_code=303)
         with session_scope() as s:
             store.save(

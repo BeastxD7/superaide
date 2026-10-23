@@ -23,6 +23,7 @@ from urllib.parse import quote, urlencode
 
 import httpx
 
+from superaide.connectors import google
 from superaide.connectors.google import AUTH_URL, TOKEN_URL, GoogleError
 
 READONLY = "https://www.googleapis.com/auth/gmail.readonly"
@@ -85,6 +86,7 @@ def exchange_code(
     except (httpx.HTTPError, ValueError) as exc:
         raise GoogleError("Couldn't reach Google. Try again in a minute.") from exc
     if r.status_code != 200 or not isinstance(data, dict) or "refresh_token" not in data:
+        google.log_failure("gmail token exchange", r)
         raise GoogleError("Google didn't give Ava access. Try connecting Gmail again.")
     granted = sorted(set(str(data.get("scope", "")).split()))
     if not set(wanted) <= set(granted):
@@ -108,7 +110,7 @@ def _get(client: httpx.Client, token: str, path: str, params: dict[str, Any] | N
     except ValueError as exc:
         raise GoogleError("Gmail sent something unreadable.") from exc
     if r.status_code != 200 or not isinstance(data, dict):
-        raise GoogleError(f"Gmail answered with an error ({r.status_code}).")
+        google.raise_for_error(r, "Gmail")
     return data
 
 
@@ -119,7 +121,7 @@ def _post(client: httpx.Client, token: str, path: str, body: dict[str, Any]) -> 
     except (httpx.HTTPError, ValueError) as exc:
         raise GoogleError("Couldn't reach Gmail just now.") from exc
     if r.status_code != 200 or not isinstance(data, dict):
-        raise GoogleError(f"Gmail answered with an error ({r.status_code}).")
+        google.raise_for_error(r, "Gmail")
     return data
 
 
