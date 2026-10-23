@@ -160,6 +160,43 @@ test.describe('console design: one grid, every width', () => {
     expect(await violations(page)).toEqual([])
   })
 
+  test('People tables line up across people; Conversations is a balanced split; the log rows are uniform', async ({ page, api, owner }) => {
+    void owner
+    await api.ok(api.post('/app/chat', { text: 'Console design check' }))
+    await new Admin(page.request).post('/simulate', { provider: 'telegram', sender_id: '5550001', sender_display: 'Shashank', chat_kind: 'dm', text: "Hi it's Shashank, new number." })
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await openConsole(page)
+
+    await goTo(page, 'People')
+    const tables = page.getByRole('region', { name: /^Channels for / })
+    expect(await tables.count(), 'one table per person').toBeGreaterThanOrEqual(2)
+    const heads = await tables.evaluateAll((els) => els.map((el) => Array.from(el.querySelectorAll('th')).map((th) => Math.round(th.getBoundingClientRect().x))))
+    for (const h of heads) expect(h, 'same column positions in every person card').toEqual(heads[0])
+    await expect(page.getByRole('heading', { level: 2 }).first()).toBeVisible()
+
+    await goTo(page, 'Conversations')
+    const side = await page.locator('.c-split-side').boundingBox()
+    const main = await page.locator('.c-split-main').boundingBox()
+    expect(Math.abs(side!.height - main!.height), 'list and thread cards are equal height').toBeLessThanOrEqual(1)
+    expect(main!.width / side!.width, 'one third and two thirds').toBeGreaterThan(1.8)
+    expect(main!.width / side!.width).toBeLessThan(2.2)
+
+    await goTo(page, 'Safety log')
+    const heights = await page.locator('.log-row').evaluateAll((rows) => rows.map((r) => Math.round(r.getBoundingClientRect().height)))
+    expect(heights.length).toBeGreaterThan(2)
+    expect(Math.max(...heights) - Math.min(...heights), 'log rows keep one height on a wide screen').toBeLessThanOrEqual(1)
+    await page.getByRole('group', { name: 'Filter the log' }).getByRole('button', { name: 'Refusals' }).click()
+    await expect(page.getByRole('heading', { name: 'Nothing here yet.' })).toBeVisible()
+
+    // On a phone the split stacks: the list above the thread, both full width.
+    await page.setViewportSize({ width: 390, height: 844 })
+    await goTo(page, 'Conversations')
+    const s2 = await page.locator('.c-split-side').boundingBox()
+    const m2 = await page.locator('.c-split-main').boundingBox()
+    expect(m2!.y).toBeGreaterThan(s2!.y + s2!.height - 1)
+    expect(Math.abs(m2!.width - s2!.width)).toBeLessThanOrEqual(1)
+  })
+
   test('the section tabs are reachable from the keyboard, in reading order, and show a focus ring', async ({ page, api }) => {
     void api
     await openConsole(page)

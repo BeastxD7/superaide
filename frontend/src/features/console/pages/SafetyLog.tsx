@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { AuditRow, Connection } from '@/features/console/api'
 import { ago, describeAudit, type AuditKind } from '@/features/console/format'
+import { Badge, Card, Chip, EmptyState, LoadingBlock, Notice, Toolbar, type Tone } from '@/features/console/ui'
 import { useApi } from '@/features/console/useApi'
 
 const FILTERS: { key: AuditKind | 'all'; label: string }[] = [
@@ -14,36 +15,47 @@ const FILTERS: { key: AuditKind | 'all'; label: string }[] = [
   { key: 'control', label: 'Approvals and controls' },
 ]
 
+const KIND: Record<AuditKind, { tone: Tone; label: string }> = {
+  refusal: { tone: 'danger', label: 'Refusal' },
+  identity: { tone: 'accent', label: 'Identity' },
+  model: { tone: 'neutral', label: 'Model' },
+  memory: { tone: 'neutral', label: 'Memory' },
+  control: { tone: 'warn', label: 'Control' },
+}
+
 export function SafetyLog({ conn }: { conn: Connection }) {
   const { data, error } = useApi<AuditRow[]>(conn, '/api/audit?limit=300')
   const [filter, setFilter] = useState<AuditKind | 'all'>('all')
 
-  if (error) return <p className="error">{error.message}</p>
-  if (!data) return <p className="quiet">Loading the log…</p>
+  if (error) return <Notice tone="danger">{error.message}</Notice>
+  if (!data) return <LoadingBlock label="Loading the log…" />
 
   const rows = data.map((r) => ({ row: r, ...describeAudit(r) })).filter((r) => filter === 'all' || r.kind === filter)
 
   return (
-    <div className="log">
-      <div className="filters" role="group" aria-label="Filter the log">
+    <Card>
+      <Toolbar label="Filter the log">
         {FILTERS.map((f) => (
-          <button key={f.key} aria-pressed={filter === f.key} className={filter === f.key ? 'chip on' : 'chip'} onClick={() => setFilter(f.key)}>
+          <Chip key={f.key} pressed={filter === f.key} onClick={() => setFilter(f.key)}>
             {f.label}
-          </button>
+          </Chip>
         ))}
-      </div>
+      </Toolbar>
       {rows.length === 0 ? (
-        <p className="quiet">Nothing here yet.</p>
+        <EmptyState title="Nothing here yet.">Entries appear here as they happen.</EmptyState>
       ) : (
-        <ol className="log-list">
-          {rows.map(({ row, kind, text }) => (
-            <li key={row.id} className={`log-row log-${kind}`}>
-              <span className="log-when">{ago(row.at)}</span>
-              <span className="log-text">{text}</span>
-            </li>
-          ))}
-        </ol>
+        <div className="c-table-wrap" tabIndex={0} role="region" aria-label="Safety log entries" style={{ maxHeight: 640 }}>
+          <ol className="log-list">
+            {rows.map(({ row, kind, text }) => (
+              <li key={row.id} className={`log-row log-${kind}`}>
+                <span className="log-when">{ago(row.at)}</span>
+                <Badge tone={KIND[kind].tone}>{KIND[kind].label}</Badge>
+                <span className="log-text">{text}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
       )}
-    </div>
+    </Card>
   )
 }
