@@ -14,7 +14,8 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage, BreadcrumbS
 import { Separator } from '@/components/ui/separator'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { ConsoleSidebar, TABS, type TabKey } from '@/features/console/ConsoleSidebar'
+import { ConsoleSidebar } from '@/features/console/ConsoleSidebar'
+import { TABS, type TabKey } from '@/features/console/tabs'
 import { Badge, Button, Notice, PageHeader } from '@/features/console/ui'
 import { useApi } from '@/features/console/useApi'
 

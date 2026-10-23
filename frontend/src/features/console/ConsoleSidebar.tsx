@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { Activity, Gauge, LogOut, MessagesSquare, Users, WalletCards, FlaskConical, type LucideIcon } from 'lucide-react'
+import { LogOut } from 'lucide-react'
 import { BrandMark } from '@/components/BrandMark'
 import { Orb } from '@/components/Orb'
 import type { Overview } from '@/features/console/api'
+import { GROUPS, TABS, type TabKey } from '@/features/console/tabs'
 import {
   Sidebar,
   SidebarContent,
@@ -19,24 +20,6 @@ import {
   SidebarRail,
   useSidebar,
 } from '@/components/ui/sidebar'
-
-export type TabKey = 'overview' | 'people' | 'conversations' | 'log' | 'spend' | 'simulator'
-
-// `about` is the line under each page's title (Overview writes its own heading).
-export const TABS: { key: TabKey; label: string; about: string; icon: LucideIcon }[] = [
-  { key: 'overview', label: 'Overview', about: '', icon: Gauge },
-  { key: 'spend', label: 'Spend', about: 'What Claude has cost, against the cap.', icon: WalletCards },
-  { key: 'people', label: 'People', about: 'Everyone Ava knows, and every account that has written in.', icon: Users },
-  { key: 'conversations', label: 'Conversations', about: 'Every chat, and who could see each answer.', icon: MessagesSquare },
-  { key: 'log', label: 'Safety log', about: 'Identity checks, refusals and controls, in plain words.', icon: Activity },
-  { key: 'simulator', label: 'Try an impostor', about: 'Try to fool Ava without any risk.', icon: FlaskConical },
-]
-
-// Two groups: what the operator may always see, and an owner's content, which opens only with a reason (ADR 0009).
-const GROUPS: { label: string; keys: TabKey[] }[] = [
-  { label: 'Monitor', keys: ['overview', 'spend'] },
-  { label: "Owner's content (needs a reason)", keys: ['people', 'conversations', 'log', 'simulator'] },
-]
 
 export function ConsoleSidebar({
   tab,
@@ -59,7 +42,7 @@ export function ConsoleSidebar({
   }, [openMobile])
   return (
     <Sidebar collapsible="icon" variant="inset">
-      <SidebarHeader>
+      <SidebarHeader className="pt-[max(0.5rem,env(safe-area-inset-top))]">
         <div className="flex items-center gap-2 px-1 py-1">
           <BrandMark className="size-8 shrink-0" />
           <span className="grid text-left leading-tight group-data-[collapsible=icon]:hidden">
@@ -114,7 +97,7 @@ export function ConsoleSidebar({
         </nav>
       </SidebarContent>
 
-      <SidebarFooter>
+      <SidebarFooter className="pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         <p className="px-2 text-xs text-muted group-data-[collapsible=icon]:hidden">
           Connected with the admin token, which is kept in this browser only.
         </p>
