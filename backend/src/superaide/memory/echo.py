@@ -23,7 +23,7 @@ from superaide.audit import audit
 from superaide.db.models import MemoryItem
 from superaide.db.session import rows_affected
 
-HEARSAY_SOURCES = frozenset({"link", "telegram", "slack"})
+HEARSAY_SOURCES = frozenset({"link", "telegram", "slack", "gmail"})
 PROMOTE_AT = 2  # independent roots needed
 _TRACKING = ("utm_", "fbclid", "gclid", "mc_", "ref", "igshid", "spm")
 

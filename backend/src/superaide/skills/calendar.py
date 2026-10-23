@@ -90,6 +90,9 @@ def calendar_events(session: Session, owner: Person, args: dict[str, Any]) -> tu
         return google.tool_text(exc), True
     if not events:
         return f"No events between {start:%a %d %b} and {end - timedelta(seconds=1):%a %d %b}.", False
+    from superaide.knowledge import connector_facts
+
+    connector_facts.schedule_calendar(session, events)  # a few short facts, if the owner turned that on
     out = []
     for e in events:
         title, line = google.event_text(e, tz)

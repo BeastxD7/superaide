@@ -28,6 +28,8 @@ export const SOURCE_LABEL: Record<string, string> = {
   telegram: 'from Telegram',
   slack: 'from Slack',
   owner_edit: 'added by you',
+  gmail: 'from your email',
+  calendar: 'from your calendar',
   imported: 'from a memory passport',
 }
 

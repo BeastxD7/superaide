@@ -263,6 +263,12 @@ class Settings(BaseSettings):
     # every few minutes and goes through the same triage. Needs TRIAGE_ENABLED too. Off: Gmail is
     # read only when the owner asks in chat.
     gmail_triage_enabled: bool = False
+    # Short facts from calendar reads and Gmail triage (owner decision, 2026-10): after the owner's calendar is
+    # read or a verified sender's mail is triaged, a small-model call may keep up to 3 short facts per item
+    # ("dentist moved to Friday 3pm") as owner-only notes with the item id as provenance. Never the raw text.
+    # Off by default. At most CONNECTOR_FACTS_PER_DAY facts a day, inside the spend cap.
+    connector_facts_enabled: bool = False
+    connector_facts_per_day: int = 20
     # Memory-free second opinion (#123, tracking #142). Off: replies go out as before. On: when the owner asks
     # Ava to judge their own claim or choice, a small-model call with an EMPTY memory context gives a second
     # view, replies are logged as validating the owner or not, and above agreement_limit the reply must carry the

@@ -198,6 +198,10 @@ def poll(session: Session, *, llm: Any = None, model: str = "", ready: bool = Fa
         event = ingest(session, owner, msg)
         if event is not None and triage(session, owner, event, llm=llm, model=model, ready=ready, now=now):
             done += 1
+        if event is not None:
+            from superaide.knowledge import connector_facts
+
+            connector_facts.schedule_gmail(session, event)  # a few short facts, if the owner turned that on
     set_state(session, STATE_KEY, {"history_id": latest, "at": now.isoformat()})
     audit(session, "skills", "gmail_polled", new=len(ids), triaged=done, skipped=max(0, len(ids) - MAX_PER_POLL))
     return done

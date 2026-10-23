@@ -382,6 +382,11 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
             raise HTTPException(404, "Unknown connection")
         with session_scope() as s:
             store.remove(s, provider, user_id=user_id)
+            if provider == "google":  # the mail and calendar are gone: so are the short facts read from them
+                from superaide.knowledge.connector_facts import erase_source
+
+                for source in ("gmail", "calendar"):
+                    erase_source(s, source)
             if provider in ("telegram", "slack"):
                 endpoints.remove(s, provider)
             if provider in health.PROVIDERS:

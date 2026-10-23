@@ -243,6 +243,8 @@ class MemoryItem(Scoped, Base):
     # none | pending (a weaker claim against a stronger fact) | review (a link fact outside about/work) | resolved
     conflict_status: Mapped[str] = mapped_column(String(10), default="none", server_default="none")
     conflicts_with_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("memory_item.id"), nullable=True)
+    # The calendar event or email a fact was read from ("calendar:<id>", "gmail:<id>"); only its id, never its text.
+    source_ref: Mapped[str | None] = mapped_column(String(200), nullable=True, index=True)
     # The passage of the document this fact was read from (the owner can click through to it).
     chunk_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("document_chunk.id", ondelete="SET NULL"), nullable=True
