@@ -239,7 +239,9 @@ def _draft(session: Session, args: dict[str, Any]) -> tuple[dict[str, Any], dict
         raise NotReady("There's no one to reply to in that thread.")
     original = theirs[-1]
     to = api.sender(original)[1]  # chosen here, from the thread: never an address the model wrote
-    raw = api.reply_raw(original=original, to=[to], from_addr=mine, text=text[:5000])
+    from superaide.principal import card
+
+    raw = api.reply_raw(original=original, to=[to], from_addr=mine, text=text[:5000] + card.footer(session))
     draft = api.create_draft(client, tok, raw, str(found.get("id") or original.get("threadId") or ""))
     return draft, original, to
 

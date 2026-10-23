@@ -64,6 +64,11 @@ class Settings(BaseSettings):
     # owner's approval and is logged, and an outbound message that names someone outside the owner's contacts
     # is flagged on its approval card.
     footprint_guard_enabled: bool = False
+    # Principal Card (#135). Off by default. When on, an outbound Gmail reply carries one honest line and a
+    # link to a signed public page saying Ava is an AI acting for the owner, what she may and may not agree
+    # to, and until when. Only if the owner has set a display name. The page shows nothing else.
+    principal_card_enabled: bool = False
+    principal_card_days: int = Field(default=30, ge=1, le=365)
 
     # Tenancy
     tenant_id: uuid.UUID = DEFAULT_TENANT_ID
