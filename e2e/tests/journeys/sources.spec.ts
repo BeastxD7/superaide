@@ -18,11 +18,13 @@ test('an answer with sources lists them, with the words that were used', async (
     [TENANT, AGENT, ctx.id, 'Your flight is on Friday [1], and there are no delays at SFO [2].', JSON.stringify({ sources })],
   )
   await page.goto('/dashboard/chat')
-  await expect(page.getByText('Your flight is on Friday [1], and there are no delays at SFO [2].')).toBeVisible()
-  await page.getByText('Sources (2)').click()
+  // The [n] marks are buttons that name their source, and the list under the reply is open (2 sources).
+  await expect(page.getByText(/Your flight is on Friday/)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Source 1: Note, about' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Source 2: Web, SFO delays today' })).toBeVisible()
   const list = page.getByRole('list', { name: 'Sources' })
   await expect(list.getByText(/flight to Bangalore is on Friday/)).toBeVisible()
-  const link = list.getByRole('link', { name: 'SFO delays today' })
+  const link = list.getByRole('link', { name: /Open the page/ })
   await expect(link).toHaveAttribute('href', 'https://example.com/sfo')
   await expect(link).toHaveAttribute('rel', /noopener/)
 })
