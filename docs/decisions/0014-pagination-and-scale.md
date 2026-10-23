@@ -144,6 +144,10 @@ Pagination metadata lives **inside `data`**, so that the envelope stays `{status
 
 Errors are the existing error envelope (`invalid_cursor`, `invalid_limit`, `validation_failed`). Until ADR 0013 phase 2 wraps successes, a migrated route returns the `Page` object itself as the body; phase 2 wraps it without touching the route. A bare-array route that must not change shape yet keeps its array and gains the next page in headers (`X-Next-Cursor` and `Link: <url?cursor=...>; rel="next"`) via `set_next_headers`. A dict-shaped route (`{memories: [...]}`) keeps its key and gains `next_cursor` and `has_more` beside it. Both are additive; old clients ignore them. Once every consumer reads the new fields the old shape is dropped, in the same release as the ADR 0013 `detail` removal.
 
+### Compatibility mode for routes that answer a bare array (`/app/messages`)
+
+A route whose body is a bare JSON array (the chat history, which existing clients and e2e stubs read as an array) keeps that body. Paging rides in headers instead: `X-Has-More: true|false`, `X-Next-Cursor` and `Link: <url?cursor=...>; rel="next"` (the last two only when there is another page). The `cursor` query parameter is the standard signed cursor. A legacy anchor parameter (`before=<id>`, from #318) keeps working: the server turns it into the same keyset position a cursor holds (`(created_at, id)` of that row, verified to belong to the caller's conversation), so a client that tracks "the oldest message I have" (the chat does, because its visible window moves as messages are sent) needs no stored cursor. `limit` is bounded 1 to 200 and a value outside answers 422 instead of being clamped silently. Once every consumer reads the new shape, the array body goes with the ADR 0013 `detail` removal.
+
 ### Indexes
 
 - Every paginated list has an index whose columns are the equality filters followed by the sort keys in the sort direction: `(context_id, created_at desc, id desc)`. A leading `agent_id` is added when the route is not already narrowed by an indexed owner column, because the instance scope is always in the `WHERE`.
