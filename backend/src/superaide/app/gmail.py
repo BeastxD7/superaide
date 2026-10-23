@@ -17,14 +17,13 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 
 from superaide.app.routes import owner_person_id
 from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header
-from superaide.config import get_settings
 from superaide.connectors import gmail as api
 from superaide.connectors import google
 from superaide.db.models import ChannelIdentity, Contact, InstalledSkill
@@ -56,11 +55,13 @@ def _pending_key(state: str) -> str:
     return key(state)
 
 
-def _redirect_uri() -> str:
-    return f"{get_settings().frontend_origin.rstrip('/')}/api/app/connections/google/callback"
+def _redirect_uri(origin: str) -> str:
+    from superaide.app.connections import google_redirect_uri
+
+    return google_redirect_uri(origin)
 
 
-def start_url(user_id: uuid.UUID, scopes: list[str]) -> str:
+def start_url(user_id: uuid.UUID, scopes: list[str], origin: str) -> str:
     """A Google sign-in URL asking for `scopes` on top of what was granted before."""
     settings = runtime_settings()
     if not (settings.google_client_id and settings.google_client_secret):
@@ -78,23 +79,26 @@ def start_url(user_id: uuid.UUID, scopes: list[str]) -> str:
                 value={
                     "purpose": "gmail", "scopes": scopes, "verifier": verifier, "user_id": str(user_id),
                     "at": datetime.now(UTC).isoformat(), "agent_id": str(scope.agent_id),
-                    "tenant_id": str(scope.tenant_id),
+                    "tenant_id": str(scope.tenant_id), "origin": origin,
                 },
             )
         )  # fmt: skip
-    return api.auth_url(settings.google_client_id, _redirect_uri(), state, challenge, scopes)
+    return api.auth_url(settings.google_client_id, _redirect_uri(origin), state, challenge, scopes)
 
 
 def finish(code: str, pending: dict[str, Any]) -> RedirectResponse:
     """The Google callback for a Gmail sign-in, in the instance that started it."""
-    back = f"{get_settings().frontend_origin.rstrip('/')}{BACK}"
+    from superaide.app.connections import pending_origin
+
+    origin = pending_origin(pending)  # re-checked at the callback; never a tampered or unregistered address
+    back = f"{origin}{BACK}"
     settings = runtime_settings()
     wanted = [str(x) for x in pending.get("scopes") or [api.READONLY]]
     client = api.http_client()
     try:
         refresh, granted, access = api.exchange_code(
             client_id=settings.google_client_id, client_secret=settings.google_client_secret, code=code,
-            verifier=str(pending["verifier"]), redirect_uri=_redirect_uri(), wanted=wanted, client=client,
+            verifier=str(pending["verifier"]), redirect_uri=_redirect_uri(origin), wanted=wanted, client=client,
         )  # fmt: skip
         address = str(api.profile(client, access).get("emailAddress") or "").lower() if access else ""
     except api.ScopeMissing:
@@ -129,12 +133,17 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         summary="Connect Gmail (read-only)",
         description="Returns a Google sign-in URL asking to read Gmail (gmail.readonly). Install the capability first.",
     )
-    def connect(_: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)) -> dict:
+    def connect(
+        request: Request, _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
+    ) -> dict:
+        from superaide.app.connections import connect_origin
+
+        origin = connect_origin(request)
         with session_scope() as s:
             if gmail.installed(s) is None:
                 raise HTTPException(409, "Install the Gmail capability first.")
             scopes = sorted(gmail.granted(s) | {api.READONLY})
-        return {"url": start_url(user_id, scopes)}
+        return {"url": start_url(user_id, scopes, origin)}
 
     @router.post(
         "/drafts",
@@ -145,8 +154,14 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         ),
     )
     def drafts(
-        body: DraftsBody, _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
+        request: Request,
+        body: DraftsBody,
+        _: uuid.UUID = Depends(owner_person_id),
+        user_id: uuid.UUID = Depends(current_user_id),
     ) -> dict[str, Any]:
+        from superaide.app.connections import connect_origin
+
+        origin = connect_origin(request) if body.enabled else ""
         with session_scope() as s:
             if gmail.installed(s) is None:
                 raise HTTPException(409, "Install the Gmail capability first.")
@@ -159,7 +174,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             audit(s, "skills", "gmail_drafts", enabled=body.enabled)
         url = None
         if body.enabled and api.COMPOSE not in granted:
-            url = start_url(user_id, sorted(granted | {api.READONLY, api.COMPOSE}))
+            url = start_url(user_id, sorted(granted | {api.READONLY, api.COMPOSE}), origin)
         with session_scope() as s:
             return {**gmail.status(s), "url": url}
 

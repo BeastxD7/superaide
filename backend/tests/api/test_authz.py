@@ -58,6 +58,11 @@ FLAG_GATED = {
     ("GET", "/app/mirror"),  # "The Mirror" (MIRROR_ENABLED)
     ("GET", "/app/episodes"),  # conversation summaries of the sleep job (SLEEP_JOB_ENABLED)
     ("GET", "/app/identity-claims"),  # IDENTITY_CLAIM_REVIEW (#93)
+    ("GET", "/app/brain/share-links"),  # the Glass brain share link (BRAIN_SHARE_ENABLED)
+    ("GET", "/app/skill-releases"),  # SKILL_COOLDOWN_ENABLED (#129)
+    ("GET", "/app/skill-signals"),  # SKILL_SIGNALS_ENABLED (#130)
+    ("GET", "/app/skill-receipts"),  # SKILL_RECEIPTS_ENABLED (#131)
+    ("GET", "/app/skill-receipts/export"),
 }
 SECRET_NOTE = "Project Bluebird is my secret side project"
 
@@ -228,11 +233,21 @@ def test_removing_or_forgetting_twice_is_404_the_second_time(owner, owner_data):
 
 PUBLIC_ASK = {("GET", "/p/ask/{handle}"), ("POST", "/p/ask/{handle}"), ("POST", "/p/ask/{handle}/click")}
 PUBLIC_CARD = {("GET", "/p/card/{token}")}  # the Principal Card (#135), tested in test_principal_card.py
+# The Glass brain share link (#55), tested in test_brain_share.py: counts only, 404 for anything but a live link.
+PUBLIC_BRAIN = {("GET", "/p/brain/{token}"), ("GET", "/p/brain/{token}/picture.svg")}
 
 
 def test_the_only_public_routes_outside_app_and_auth_are_the_ask_link(app):
     """A new public route has to be added here on purpose (and tested in tests/api/test_ask_link.py)."""
-    assert set(app_routes(app, "/p")) == PUBLIC_ASK | PUBLIC_CARD
+    assert set(app_routes(app, "/p")) == PUBLIC_ASK | PUBLIC_CARD | PUBLIC_BRAIN
+
+
+def test_public_brain_routes_are_404_while_off_and_carry_no_owner_data(browser, owner_data):
+    for method, path in sorted(PUBLIC_BRAIN):
+        r = browser().request(method, path.replace("{token}", "sa_brain_" + "x" * 43))
+        assert r.status_code == 404, (method, path, r.status_code, r.text)
+        assert r.json()["detail"] == "Not Found"
+        _assert_no_owner_data(r, owner_data)
 
 
 def test_public_ask_routes_are_404_while_off_and_carry_no_owner_data(browser, owner_data):
@@ -426,6 +441,84 @@ def test_the_episode_routes_are_owner_routes_behind_a_flag(app, browser, owner_d
     stranger = browser()
     signup(stranger, name="Mallory Tan", email="mallory@example.com")
     for method, path in EPISODE_ROUTES:
+        r = stranger.request(method, fill_path(path), json={} if method == "POST" else None)
+        assert r.status_code == 403
+        _assert_no_owner_data(r, owner_data)
+
+
+# --- the Glass brain share link (/app/brain/share-links, BRAIN_SHARE_ENABLED) -----------------
+
+SHARE_ROUTES = {
+    ("GET", "/app/brain/share-links"),
+    ("POST", "/app/brain/share-links"),
+    ("POST", "/app/brain/share-links/{share_id}/revoke"),
+}
+
+
+def test_the_share_link_routes_are_owner_routes_behind_a_flag(app, browser, owner_data):
+    assert SHARE_ROUTES <= set(owner_routes(app))
+    stranger = browser()
+    signup(stranger, name="Mallory Tan", email="mallory@example.com")
+    for method, path in SHARE_ROUTES:
+        r = stranger.request(method, fill_path(path), json={} if method == "POST" else None)
+        assert r.status_code == 403
+        _assert_no_owner_data(r, owner_data)
+
+
+# --- skill release cooldown (/app/skill-releases, SKILL_COOLDOWN_ENABLED) ----------------------
+
+SKILL_RELEASE_ROUTES = {
+    ("GET", "/app/skill-releases"),
+    ("POST", "/app/skill-releases"),
+    ("POST", "/app/skill-releases/retire"),
+}
+
+
+def test_the_skill_release_routes_are_owner_routes_behind_a_flag(app, browser, owner_data):
+    assert SKILL_RELEASE_ROUTES <= set(owner_routes(app))
+    stranger = browser()
+    signup(stranger, name="Mallory Tan", email="mallory@example.com")
+    for method, path in SKILL_RELEASE_ROUTES:
+        r = stranger.request(method, fill_path(path), json={} if method == "POST" else None)
+        assert r.status_code == 403
+        _assert_no_owner_data(r, owner_data)
+
+
+# --- skill trust signals (/app/skill-signals, SKILL_SIGNALS_ENABLED) ----------------------------
+
+SKILL_SIGNAL_ROUTES = {
+    ("GET", "/app/skill-signals"),
+    ("POST", "/app/skill-signals/scan"),
+    ("POST", "/app/skill-signals/label"),
+    ("POST", "/app/skill-signals/clear-demotion"),
+}
+
+
+def test_the_skill_signal_routes_are_owner_routes_behind_a_flag(app, browser, owner_data):
+    assert SKILL_SIGNAL_ROUTES <= set(owner_routes(app))
+    stranger = browser()
+    signup(stranger, name="Mallory Tan", email="mallory@example.com")
+    for method, path in SKILL_SIGNAL_ROUTES:
+        r = stranger.request(method, fill_path(path), json={} if method == "POST" else None)
+        assert r.status_code == 403
+        _assert_no_owner_data(r, owner_data)
+
+
+# --- skill receipts (/app/skill-receipts, SKILL_RECEIPTS_ENABLED) -------------------------------
+
+SKILL_RECEIPT_ROUTES = {
+    ("GET", "/app/skill-receipts"),
+    ("GET", "/app/skill-receipts/export"),
+    ("POST", "/app/skill-receipts/revert"),
+    ("POST", "/app/skill-receipts/claim"),
+}
+
+
+def test_the_skill_receipt_routes_are_owner_routes_behind_a_flag(app, browser, owner_data):
+    assert SKILL_RECEIPT_ROUTES <= set(owner_routes(app))
+    stranger = browser()
+    signup(stranger, name="Mallory Tan", email="mallory@example.com")
+    for method, path in SKILL_RECEIPT_ROUTES:
         r = stranger.request(method, fill_path(path), json={} if method == "POST" else None)
         assert r.status_code == 403
         _assert_no_owner_data(r, owner_data)

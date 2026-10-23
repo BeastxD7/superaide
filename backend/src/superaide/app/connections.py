@@ -18,12 +18,13 @@ from typing import Any
 from urllib.parse import quote
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from superaide.app.routes import owner_person_id, telegram_username
+from superaide.auth import google as google_auth
 from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header
 from superaide.channels import health
 from superaide.config import get_settings
@@ -43,15 +44,44 @@ def _pending_key(state: str) -> str:
     return f"google_pending:{hashlib.sha256(state.encode()).hexdigest()[:40]}"  # fits platform_state.key
 
 
-def google_redirect_uri() -> str:
+CALLBACK_PATH = "/api/app/connections/google/callback"
+SIGNIN_CALLBACK_PATH = "/api/auth/google/callback"
+
+
+def google_redirect_uri(origin: str | None = None) -> str:
     # The browser comes back through the web app's /api proxy, so the session cookie is sent.
-    return f"{get_settings().frontend_origin.rstrip('/')}/api/app/connections/google/callback"
+    return f"{(origin or get_settings().frontend_origin).rstrip('/')}{CALLBACK_PATH}"
+
+
+def connect_origin(request: Request) -> str:
+    """The origin to connect Google on: where the owner is using the app, so the session cookie is
+    there when Google sends the browser back. Only an allowed origin (superaide/links.py) that is also
+    registered with Google is used; any other address gets a message that says what to register."""
+    used, ok = google_auth.origin_in_use(request)
+    if ok:
+        return used
+    home = get_settings().frontend_origin.rstrip("/")
+    raise HTTPException(
+        409,
+        "Google only accepts redirect addresses registered in Google Cloud. Add "
+        f"{google_redirect_uri(used)} and {used}{SIGNIN_CALLBACK_PATH} there (and list {used} in "
+        f"GOOGLE_REDIRECT_ORIGINS), or open the app at {home}.",
+    )
+
+
+def pending_origin(pending: dict[str, Any]) -> str:
+    """The origin a pending Google connect started on, checked again at the callback: only a registered
+    origin is ever used; anything else (a tampered record) falls back to the server's own address."""
+    stored = str(pending.get("origin") or "")
+    if stored and google_auth.is_registered(stored):
+        return stored.rstrip("/")
+    return get_settings().frontend_origin.rstrip("/")
 
 
 BACK_PAGES = {"connections": "/dashboard/connections", "skills": "/dashboard/capabilities"}
 
 
-def begin_google(user_id: uuid.UUID, *, events: bool, back: str = "connections") -> str:
+def begin_google(user_id: uuid.UUID, *, events: bool, origin: str, back: str = "connections") -> str:
     """Google's consent URL for the owner in scope: calendar.readonly, plus calendar.events when
     calendar actions are on (asked for incrementally, with include_granted_scopes). Raises
     HTTPException 409 when no OAuth client is set up."""
@@ -74,11 +104,11 @@ def begin_google(user_id: uuid.UUID, *, events: bool, back: str = "connections")
                 value={
                     "verifier": verifier, "user_id": str(user_id), "at": datetime.now(UTC).isoformat(),
                     "agent_id": str(scope.agent_id), "tenant_id": str(scope.tenant_id), "scopes": scopes,
-                    "back": back if back in BACK_PAGES else "connections",
+                    "back": back if back in BACK_PAGES else "connections", "origin": origin,
                 },
             )
         )  # fmt: skip
-    return google.auth_url(settings.google_client_id, google_redirect_uri(), state, challenge, scopes)
+    return google.auth_url(settings.google_client_id, google_redirect_uri(origin), state, challenge, scopes)
 
 
 def http_client() -> httpx.Client:
@@ -172,7 +202,7 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
         dependencies=[Depends(require_csrf_header), Depends(reject_nul_text)],
     )
 
-    def view() -> dict[str, Any]:
+    def view(request: Request) -> dict[str, Any]:
         settings = get_agent().settings
         with session_scope() as s:
             result = store.status(s, settings)
@@ -180,13 +210,16 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
         _, where = master_key()
         guides = {k: dict(v) for k, v in GUIDES.items()}
         guides["slack"]["url"] = slack_manifest_url()
-        guides["google"]["redirect_uri"] = google_redirect_uri()
-        guides["google"]["signin_redirect_uri"] = (
-            f"{get_settings().frontend_origin.rstrip('/')}/api/auth/google/callback"
-        )
+        # The addresses to register: where the owner is now (first), then the configured ones.
+        used, _ = google_auth.origin_in_use(request)
+        origins = list(dict.fromkeys([used, *google_auth.registered_origins()]))
+        guides["google"]["redirect_uri"] = google_redirect_uri(used)
+        guides["google"]["signin_redirect_uri"] = f"{used}{SIGNIN_CALLBACK_PATH}"
+        guides["google"]["redirect_uris"] = [google_redirect_uri(o) for o in origins]
+        guides["google"]["signin_redirect_uris"] = [f"{o}{SIGNIN_CALLBACK_PATH}" for o in origins]
         return {"services": result, "guides": guides, "keys_kept_in": where}
 
-    def connect(provider: str, checked: check.Checked, user_id: uuid.UUID) -> dict[str, Any]:
+    def connect(request: Request, provider: str, checked: check.Checked, user_id: uuid.UUID) -> dict[str, Any]:
         with session_scope() as s:
             if provider == "telegram":  # each owner's own bot, serving their Ava only (ADR 0009 T4)
                 bot = checked.values["bot_token"].split(":", 1)[0]
@@ -208,7 +241,7 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
                 health.reset(s, provider)  # the service just accepted this token
         telegram_username.cache_clear()
         apply()
-        return view()
+        return view(request)
 
     def checked_or_400(fn: Callable[[], check.Checked]) -> check.Checked:
         try:
@@ -221,8 +254,8 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
         summary="Connection status",
         description="Which services are connected, how, and a masked hint of each credential.",
     )
-    def status(_: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
-        return view()
+    def status(request: Request, _: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        return view(request)
 
     @router.post(
         "/telegram",
@@ -230,9 +263,14 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
         description="Checks the bot token with Telegram, stores it encrypted and starts the listener.",
     )
     def connect_telegram(
-        body: TelegramBody, _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
+        request: Request,
+        body: TelegramBody,
+        _: uuid.UUID = Depends(owner_person_id),
+        user_id: uuid.UUID = Depends(current_user_id),
     ) -> dict[str, Any]:
-        return connect("telegram", checked_or_400(lambda: check.check_telegram(body.bot_token, http_client())), user_id)
+        return connect(
+            request, "telegram", checked_or_400(lambda: check.check_telegram(body.bot_token, http_client())), user_id
+        )
 
     @router.post(
         "/slack",
@@ -240,10 +278,16 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
         description="Checks the bot and app-level tokens with Slack, stores them encrypted and starts Socket Mode.",
     )
     def connect_slack(
-        body: SlackBody, _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
+        request: Request,
+        body: SlackBody,
+        _: uuid.UUID = Depends(owner_person_id),
+        user_id: uuid.UUID = Depends(current_user_id),
     ) -> dict[str, Any]:
         return connect(
-            "slack", checked_or_400(lambda: check.check_slack(body.bot_token, body.app_token, http_client())), user_id
+            request,
+            "slack",
+            checked_or_400(lambda: check.check_slack(body.bot_token, body.app_token, http_client())),
+            user_id,
         )
 
     @router.post(
@@ -252,9 +296,14 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
         description="Checks the API key with Deepgram and stores it encrypted. Used for speech-to-text on the call.",
     )
     def connect_deepgram(
-        body: VoiceKeyBody, _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
+        request: Request,
+        body: VoiceKeyBody,
+        _: uuid.UUID = Depends(owner_person_id),
+        user_id: uuid.UUID = Depends(current_user_id),
     ) -> dict[str, Any]:
-        return connect("deepgram", checked_or_400(lambda: check.check_deepgram(body.api_key, http_client())), user_id)
+        return connect(
+            request, "deepgram", checked_or_400(lambda: check.check_deepgram(body.api_key, http_client())), user_id
+        )
 
     @router.post(
         "/elevenlabs",
@@ -262,10 +311,13 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
         description="Checks the API key with ElevenLabs and stores it encrypted. Used for Ava's voice on the call.",
     )
     def connect_elevenlabs(
-        body: VoiceKeyBody, _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
+        request: Request,
+        body: VoiceKeyBody,
+        _: uuid.UUID = Depends(owner_person_id),
+        user_id: uuid.UUID = Depends(current_user_id),
     ) -> dict[str, Any]:
         return connect(
-            "elevenlabs", checked_or_400(lambda: check.check_elevenlabs(body.api_key, http_client())), user_id
+            request, "elevenlabs", checked_or_400(lambda: check.check_elevenlabs(body.api_key, http_client())), user_id
         )
 
     @router.post(
@@ -277,7 +329,10 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
         ),
     )
     def google_client(
-        body: GoogleClientBody, _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
+        request: Request,
+        body: GoogleClientBody,
+        _: uuid.UUID = Depends(owner_person_id),
+        user_id: uuid.UUID = Depends(current_user_id),
     ) -> dict[str, Any]:
         client_id = body.client_id.strip()
         if not client_id.endswith(".apps.googleusercontent.com"):
@@ -289,9 +344,9 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
             store.remove_field(s, "google", "refresh_token")
             store.save(
                 s, "google", {"client_id": client_id, "client_secret": body.client_secret.strip()},
-                user_id=user_id, meta={"redirect_uri": google_redirect_uri()},
+                user_id=user_id, meta={"redirect_uri": google_redirect_uri(google_auth.origin_in_use(request)[0])},
             )  # fmt: skip
-        return view()
+        return view(request)
 
     @router.post(
         "/google/start",
@@ -299,13 +354,15 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
         description="Returns the Google sign-in URL (OAuth 2.1 with PKCE). Open it in the browser.",
     )
     def google_start(
-        _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
+        request: Request, _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
     ) -> dict[str, str]:
         from superaide.skills import calendar
 
+        origin = connect_origin(request)
+
         with session_scope() as s:
             events = calendar.actions_on(s)  # reconnecting keeps the right to change events, if it was given
-        return {"url": begin_google(user_id, events=events)}
+        return {"url": begin_google(user_id, events=events, origin=origin)}
 
     @router.get(
         "/google/callback",
@@ -326,7 +383,8 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
                 pending = dict(row.value or {})
                 s.delete(row)  # one use only; a stray request can't wipe a real sign-in
         page = BACK_PAGES.get(str(pending.get("back") or ""), BACK_PAGES["connections"])
-        back = f"{get_settings().frontend_origin.rstrip('/')}{page}"
+        origin = pending_origin(pending)  # re-checked: the stored address must still be allowed and registered
+        back = f"{origin}{page}"
         matches = bool(pending)
         fresh = (
             bool(pending.get("at")) and datetime.now(UTC) - datetime.fromisoformat(pending["at"]) < google.PENDING_TTL
@@ -345,10 +403,11 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
 
     def _finish_google(code: str, pending: dict[str, Any], back: str) -> RedirectResponse:
         settings = runtime_settings()
+        redirect = google_redirect_uri(pending_origin(pending))  # the address Google was given at the start
         try:
             tokens = google.exchange_code(
                 client_id=settings.google_client_id, client_secret=settings.google_client_secret, code=code,
-                verifier=str(pending["verifier"]), redirect_uri=google_redirect_uri(), client=http_client(),
+                verifier=str(pending["verifier"]), redirect_uri=redirect, client=http_client(),
                 scopes=list(pending.get("scopes") or google.SCOPES),
             )  # fmt: skip
         except google.ScopeNotGranted:
@@ -376,7 +435,10 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
         ),
     )
     def disconnect(
-        provider: str, _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
+        request: Request,
+        provider: str,
+        _: uuid.UUID = Depends(owner_person_id),
+        user_id: uuid.UUID = Depends(current_user_id),
     ) -> dict[str, Any]:
         if provider not in {"telegram", "slack", "google", "deepgram", "elevenlabs"}:
             raise HTTPException(404, "Unknown connection")
@@ -393,6 +455,6 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
                 health.reset(s, provider)
         telegram_username.cache_clear()
         apply()
-        return view()
+        return view(request)
 
     return router

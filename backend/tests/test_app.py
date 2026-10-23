@@ -198,6 +198,9 @@ def test_telegram_invite_links_the_phone_to_the_app_account(client, agent):
     assert agent.handle(tg("777001", "hello again")).mode == "known"
     # The link works only once.
     assert "expired or was already used" in (agent.handle(tg("777002", f"/start {code}")).reply or "")
+    # "Linked" counts while the bot is connected (the test agent has none, so connect one first).
+    assert client.get("/app/me").json()["channels"]["telegram"] is False
+    agent.settings = agent.settings.model_copy(update={"telegram_bot_token": "123456789:fake-bot-token"})
     assert client.get("/app/me").json()["channels"]["telegram"] is True
     with session_scope() as s:
         identity = s.scalar(select(ChannelIdentity).where(ChannelIdentity.stable_key == "777001"))
@@ -283,3 +286,42 @@ def test_saying_the_same_thing_twice_keeps_one_note(agent, manager):
         notes = s.scalars(select(MemoryItem.content)).all()
         assert notes == ["my flight is on Friday"]
         assert s.scalar(select(func.count()).select_from(MemoryItem)) == 1
+
+
+def _finish_intro(client, people):
+    _hire(client)
+    _answer(client, None, "hello", choice="What will you do for me?")
+    _answer(client, None, "about", mode="chat", text="I run an AI consultancy in Singapore.")
+    _answer(client, None, "people", people=people)
+    _answer(client, None, "urgent", topics=["A family emergency"], other="", digest="morning")
+    _answer(client, None, "reach", channel="app", quiet_start="22:30", quiet_end="07:00", timezone="Asia/Singapore")
+    _answer(client, None, "share", shareable=["availability"], never="")
+    _answer(client, None, "rules")
+    assert _answer(client, None, "connect", choice="done")["done"] is True
+    return client.get("/app/messages").json()[-1]["text"], client.get("/app/notebook").json()["memories"]
+
+
+def test_the_closing_line_counts_each_person_once_and_in_good_english(client):
+    """#302: the note about each person was counted as a thing about you and again as a person, and one
+    person read "1 person who matter"."""
+    line, notebook = _finish_intro(client, [{"name": "Priya", "relationship": "Partner", "vip": True}])
+    about_people = [m for m in notebook if m["category"] == "person"]
+    assert len(about_people) == 1
+    others = len(notebook) - len(about_people)
+    assert f"So far I know {others} things about you and 1 person who matters to you." in line
+    assert "who matter " not in line
+
+
+def test_the_closing_line_with_several_people(client):
+    people = [
+        {"name": "Priya", "relationship": "Partner", "vip": True},
+        {"name": "Arjun", "relationship": "Team", "vip": False},
+    ]
+    line, notebook = _finish_intro(client, people)
+    others = len([m for m in notebook if m["category"] != "person"])
+    assert f"So far I know {others} things about you and 2 people who matter to you." in line
+
+
+def test_the_closing_line_without_people(client):
+    line, notebook = _finish_intro(client, [])
+    assert f"So far I know {len(notebook)} things about you." in line and "who matter" not in line

@@ -11,6 +11,23 @@ import type { PersonCard } from '@/lib/api'
 import { initialOf } from '@/lib/initial'
 import { useSession } from '@/lib/session-context'
 
+// Where someone is recognised, or that they are not yet. The table shows it as a column from the small
+// breakpoint up; below it the same line sits under the name, so a phone loses nothing (#300).
+function Channels({ channels }: { channels: string[] }) {
+  return channels.length ? (
+    <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      {channels.map((c) => (
+        <span key={c} className="inline-flex items-center gap-1.5">
+          {isBrand(c) && <BrandIcon brand={c} size={14} decorative />}
+          {CHANNEL_LABEL[c] ?? capitalise(c)}
+        </span>
+      ))}
+    </span>
+  ) : (
+    <span className="text-muted">Not linked yet</span>
+  )
+}
+
 export function PeoplePage() {
   const { me } = useSession()
   const { data, error } = useAppData<{ people: PersonCard[] }>('/people')
@@ -60,21 +77,14 @@ export function PeoplePage() {
                       </span>
                       <span className="min-w-0 font-medium text-ink [overflow-wrap:anywhere]">{p.name}</span>
                     </span>
+                    <span className="mt-1.5 block text-xs text-body sm:hidden">
+                      <span className="text-muted">Recognised on: </span>
+                      <Channels channels={p.channels} />
+                    </span>
                   </td>
                   <td className="px-4 py-3 text-body">{capitalise(p.relationship)}</td>
                   <td className="hidden px-4 py-3 text-body sm:table-cell">
-                    {p.channels.length ? (
-                      <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                        {p.channels.map((c) => (
-                          <span key={c} className="inline-flex items-center gap-1.5">
-                            {isBrand(c) && <BrandIcon brand={c} size={14} decorative />}
-                            {CHANNEL_LABEL[c] ?? capitalise(c)}
-                          </span>
-                        ))}
-                      </span>
-                    ) : (
-                      <span className="text-muted">Not linked yet</span>
-                    )}
+                    <Channels channels={p.channels} />
                   </td>
                   <td className="px-4 py-3 text-right">
                     {p.vip && (
