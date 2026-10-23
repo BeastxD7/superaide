@@ -20,13 +20,14 @@ test.describe('paused or resumed while the app is open', () => {
     await admin.pause(true)
     await page.clock.fastForward(16_000) // the light poll
     await expect(chip(page)).toHaveText('Ava: paused')
-    await expect(page.getByText(/is paused, so nobody gets a reply until you resume/)).toBeVisible()
+    // The wording differs by who paused her (the owner's own pause or the server operator's), the fact is the same.
+    await expect(page.getByText(/is paused.*so nobody gets a reply/)).toBeVisible()
     await expect(page.getByText('Offline mode, infant stage')).toHaveCount(0)
     if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${process.env.SHOT_PREFIX ?? 'after'}-paused-home-${info.project.name}.png` })
     await admin.pause(false)
     await page.evaluate(() => window.dispatchEvent(new Event('focus'))) // coming back to the tab
     await expect(chip(page)).toHaveText('Ava: offline mode')
-    await expect(page.getByText(/is paused, so nobody gets a reply/)).toHaveCount(0)
+    await expect(page.getByText(/is paused.*so nobody gets a reply/)).toHaveCount(0)
   })
 
   test('when Chat learns Ava is paused, the header says so too', async ({ page, owner }) => {

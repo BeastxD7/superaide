@@ -14,7 +14,7 @@ from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -275,6 +275,11 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             person = require(s, Person, person_id)
             state = onboarder().state(s, person)
             providers = accounts.linked_providers(s, person)
+            # The channel's app/bot is connected (from the app or .env); its token is in the runtime settings either
+            # way. A linked account only counts while the app/bot is there: with it disconnected, nothing reaches
+            # the owner on that channel.
+            telegram_on = bool(settings.telegram_bot_token)
+            slack_on = slack_connected(settings)
             return {
                 "person": {"id": str(person.id), "name": person.display_name},
                 "agent": {"name": settings.agent_name, "role": "Personal assistant", "stage": "Infant"},
@@ -286,11 +291,12 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 "features": {"triage": bool(settings.triage_enabled)},
                 "channels": {
                     "web": True,
-                    "telegram": "telegram" in providers,
-                    "telegram_available": bool(telegram_username(settings.telegram_bot_token)),
-                    "slack": "slack" in providers,
+                    "telegram": "telegram" in providers and telegram_on,
+                    # The bot is connected (the owner's own account may still be unlinked).
+                    "telegram_available": telegram_on,
+                    "slack": "slack" in providers and slack_on,
                     # The Slack app is connected (its account may still be unlinked), like telegram_available.
-                    "slack_available": slack_connected(settings),
+                    "slack_available": slack_on,
                     # Whether each service still accepts our token (stored, never fetched here): "Linked to
                     # you" on Home means nothing if Telegram rejects the bot token.
                     "health": {p: health.get(s, p) for p in health.PROVIDERS},
@@ -1162,6 +1168,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         publisher: str,
         name: str,
         body: OptionBody,
+        request: Request,
         person_id: uuid.UUID = Depends(owner_person_id),
         user_id: uuid.UUID = Depends(current_user_id),
     ) -> dict[str, Any]:
@@ -1176,10 +1183,11 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             card = next(v for v in skills_view(s) if v["id"] == skill_id)
             upgrade = skill_id == calendar.SKILL_ID and body.on and not calendar.can_write(s)
         if upgrade:
-            from superaide.app.connections import begin_google
+            from superaide.app.connections import begin_google, connect_origin
 
+            origin = connect_origin(request)  # an address Google doesn't know gets a message, not a failed page
             try:
-                card["google_url"] = begin_google(user_id, events=True, back="skills")
+                card["google_url"] = begin_google(user_id, events=True, origin=origin, back="skills")
             except HTTPException:
                 card["google_url"] = None  # no OAuth client yet: connect Google Calendar first
         return card

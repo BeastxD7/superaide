@@ -98,7 +98,9 @@ export function People({ conn }: { conn: Connection }) {
                   <td>{METHOD_NAMES[i.method] ?? i.method}</td>
                   <td className="quiet">{ago(i.last_seen_at)}</td>
                   <td>
-                    {p.status !== 'stranger' ? (
+                    {i.method === 'account_signed_in' ? (
+                      <span className="quiet">Owner&apos;s own sign-in; cannot be unlinked</span>
+                    ) : p.status !== 'stranger' ? (
                       <button className="link-button" disabled={busy === i.id} onClick={() => unlinkIdentity(i.id)}>
                         Unlink
                       </button>
