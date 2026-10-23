@@ -1075,13 +1075,20 @@ class OwnerTurn:
         return provider if provider in {"telegram", "slack"} else ""
 
     def _typed_by_owner(self) -> str:
-        """What the owner typed in this conversation (this message and the recent ones): the only place a
+        """What the owner typed in this conversation (this message and the owner's recent ones in this same
+        context, never another person's in a shared channel or the owner's other contexts): the only place a
         brand-new email's recipient may come from (#339)."""
+        assert self.sender.person is not None
         from superaide.db.models import Event
 
         rows = self.s.scalars(
             select(Event.content)
-            .where(Event.context_id == self.inbound.context_id, Event.direction == "in")
+            .where(
+                Event.context_id == self.inbound.context_id,
+                Event.direction == "in",
+                Event.resolved_person_id == self.sender.person.id,  # the owner's own words, never a colleague's
+                Event.webhook_verified.is_(True),
+            )
             .order_by(Event.created_at.desc())
             .limit(20)
         ).all()

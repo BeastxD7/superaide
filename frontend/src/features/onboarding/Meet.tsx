@@ -185,7 +185,7 @@ export function Meet({ session }: { session: Session }) {
             </p>
           </div>
           <AccountMenu session={session} />
-          <Link href="/" className="grid size-9 place-items-center rounded-full text-muted hover:bg-white hover:text-ink" aria-label="Leave for now" title="Leave for now. Ava will pick up where you left off.">
+          <Link href="/" className="grid size-11 shrink-0 place-items-center rounded-full text-muted hover:bg-white hover:text-ink" aria-label="Leave for now" title="Leave for now. Ava will pick up where you left off.">
             <X className="size-4" />
           </Link>
         </div>
