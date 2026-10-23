@@ -7,7 +7,7 @@ holder can't remove one: that would need the signature before it. A verifier tha
 know denies (fails closed). The card the owner reads is rendered from these fields in code, never by a model.
 
 Caveats:  tools [names]  | expires "ISO time" | max_amount number | recipient_domains [domains]
-          max_uses int (counted by the service, not the token)
+          topics [words] | max_uses int (counted by the service, not the token)
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
-KNOWN = {"tools", "expires", "max_amount", "recipient_domains", "max_uses"}
+KNOWN = {"tools", "expires", "max_amount", "recipient_domains", "topics", "max_uses"}
 
 
 class MandateError(ValueError):
@@ -55,13 +55,17 @@ def issue(key: bytes, *, agent_id: uuid.UUID | str, issuer: uuid.UUID | str, **c
     return tok
 
 
+_LISTS = {"tools", "recipient_domains", "topics"}
+_LOWER = {"recipient_domains", "topics"}
+
+
 def _clean(name: str, value: Any) -> Any:
     if name not in KNOWN:
         raise MandateError(f"unknown constraint {name!r}")
-    if name == "tools" or name == "recipient_domains":
+    if name in _LISTS:
         if not isinstance(value, (list, tuple)) or not value or not all(isinstance(v, str) and v for v in value):
             raise MandateError(f"{name} must be a non-empty list of names")
-        return sorted({v.strip().lower() if name == "recipient_domains" else v.strip() for v in value})
+        return sorted({v.strip().lower() if name in _LOWER else v.strip() for v in value})
     if name == "expires":
         return datetime.fromisoformat(str(value)).astimezone(UTC).isoformat()
     if name in {"max_amount", "max_uses"}:
@@ -77,7 +81,7 @@ def narrow(tok: Token, name: str, value: Any) -> Token:
     value = _clean(name, value)
     current = tok.caveat(name)
     if current:
-        if name == "tools" or name == "recipient_domains":
+        if name in _LISTS:
             if not set(value) <= set(current[-1]):
                 raise MandateError(f"can't widen {name}")
         elif name == "expires":
@@ -147,6 +151,10 @@ def authorize(
             recipients = [str(r).lower() for r in (args.get("recipients") or [])]
             if any(r.rpartition("@")[2] not in value for r in recipients):
                 return Verdict(False, "a recipient is outside the allowed domains")
+        if name == "topics":
+            topic = args.get("topic")
+            if topic is not None and str(topic).strip().lower() not in value:
+                return Verdict(False, "that topic isn't covered")
     return Verdict(True)
 
 
@@ -155,11 +163,58 @@ _WORDS = {
     "expires": lambda v: "until " + v[:16].replace("T", " ") + " UTC",
     "max_amount": lambda v: f"at most {v:g}",
     "recipient_domains": lambda v: "only to " + ", ".join(v),
+    "topics": lambda v: "only about " + ", ".join(v),
     "max_uses": lambda v: f"{v:g} time(s) at most",
 }
 
 
 def card(tok: Token) -> str:
     """The plain-language card, built from the fields (the same ones the gateway enforces)."""
-    parts = [_WORDS[n](v) if n in _WORDS else f"unknown limit {n}" for n, v in tok.caveats]
+    parts = [_WORDS[n](v) if n in _WORDS else f"unknown limit {n}" for n, v in effective(tok).items()]
     return "; ".join(parts) or "no limits written (this card allows nothing)"
+
+
+def is_extension(parent: Token, child: Token) -> bool:
+    """The child is the parent's token with more caveats after it: same root, the parent's caveats first and
+    unchanged. A token that rewrote or dropped one of them does not pass (its signature would not either)."""
+    n = len(parent.caveats)
+    return (
+        parent.root() == child.root() and len(child.caveats) >= n and tuple(child.caveats[:n]) == tuple(parent.caveats)
+    )
+
+
+def effective(tok: Token) -> dict[str, Any]:
+    """The limits that actually bind: the narrowest value of each caveat."""
+    out: dict[str, Any] = {}
+    for name, value in tok.caveats:
+        if name in _LISTS:
+            out[name] = sorted(set(out[name]) & set(value)) if name in out else list(value)
+        elif name in out:
+            out[name] = min(out[name], value)
+        else:
+            out[name] = value
+    return out
+
+
+def never_wider(parent: Token, child: Token) -> bool:
+    """Re-checked at execution (not only when the child was made): every limit the child has is at least as
+    narrow as the parent's, and it has every limit the parent has."""
+    if not is_extension(parent, child):
+        return False
+    p, c = effective(parent), effective(child)
+    for name, value in p.items():
+        if name not in c:
+            return False
+        if name in _LISTS and not set(c[name]) <= set(value):
+            return False
+        if name == "expires" and c[name] > value:
+            return False
+        if name in {"max_amount", "max_uses"} and c[name] > value:
+            return False
+    return True
+
+
+def added_words(parent: Token, child: Token) -> str:
+    """What a child changed, in plain words: the caveats after the parent's."""
+    extra = child.caveats[len(parent.caveats) :]
+    return "; ".join(_WORDS[n](v) if n in _WORDS else f"unknown limit {n}" for n, v in extra) or "the same limits"
