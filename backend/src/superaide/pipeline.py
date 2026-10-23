@@ -12,6 +12,7 @@ import re
 import threading
 from dataclasses import dataclass, field
 from functools import lru_cache
+from typing import cast
 
 from sqlalchemy.exc import IntegrityError
 
@@ -25,7 +26,7 @@ from superaide.channels.format import strip_citations
 from superaide.channels.health import DeliveryFailed
 from superaide.config import Settings, get_settings
 from superaide.context.audience import Audience, audience_for, visible_memories
-from superaide.db.models import Context
+from superaide.db.models import Context, Person
 from superaide.db.session import session_scope
 from superaide.identity import linking
 from superaide.identity.resolver import Sender, resolve
@@ -230,12 +231,22 @@ class Agent:
                 self._reply(s, ctx, aud, reply, thread)
                 return HandleResult("known", reply, ["remembered"])
 
+            if self.settings.relationship_safety_enabled and ctx.kind == "dm" and self._is_owner(s, sender):
+                from superaide.trust import companion
+
+                if (
+                    steady := companion.route(s, cast(Person, sender.person), msg.text)
+                ) is not None:  # fixed script, no model call
+                    self._reply(s, ctx, aud, steady, thread)
+                    return HandleResult("known", steady, ["steady_voice"])
+
             if ctx.kind == "dm" and self._is_owner(s, sender):
                 try:
                     with s.begin_nested():  # a failed turn undoes its own half-done work, not the inbound record
                         reply, notes, meta = self._owner_turn(s, sender, ctx, aud, msg, inbound, emit)
                 except Exception as exc:
                     reply, notes, meta = self._turn_failed(s, exc, msg), ["failed"], {"failed": type(exc).__name__}
+                reply = self._steady(s, reply)
                 self._reply(s, ctx, aud, reply, thread, meta=meta)
                 from superaide.knowledge import learn
 
@@ -249,6 +260,7 @@ class Agent:
                     reply, notes = self._think(s, sender, ctx, aud, msg)
             except Exception as exc:
                 reply, notes = self._turn_failed(s, exc, msg), ["failed"]
+            reply = self._steady(s, reply)
             self._reply(s, ctx, aud, reply, thread)
             return HandleResult("known", reply, notes)
 
@@ -259,6 +271,17 @@ class Agent:
         log.error("turn failed on %s: %s", msg.provider, type(exc).__name__, exc_info=exc)
         audit(s, "pipeline", "turn_failed", provider=msg.provider, error=type(exc).__name__)
         return "I couldn't think that through just now. Please try again in a moment."
+
+    def _steady(self, s, text: str) -> str:
+        """Whatever the model wrote, Ava claims no love or feelings (RELATIONSHIP_SAFETY_ENABLED, issue #124)."""
+        if not self.settings.relationship_safety_enabled:
+            return text
+        from superaide.trust.companion import filter_output
+
+        if (clean := filter_output(text)) != text:
+            audit(s, "safety", "feelings_claim_filtered")
+            return clean
+        return text
 
     def _shadow_triage(self, s, sender: Sender, inbound) -> None:
         """Queue a recorded triage decision for a known non-owner's message. A failure here never
@@ -597,6 +620,7 @@ class Agent:
         if messenger is None:
             audit(s, "pipeline", "no_messenger", provider=ctx.provider)
             return
+        text = self._steady(s, text)
         # The stored event keeps the Markdown and the sources list as they are (the app shows
         # both). Over a channel the "[n]" marks need the list beside them: the owner's own
         # replies carry it as a footer (only _owner_turn sets sources); anywhere else the

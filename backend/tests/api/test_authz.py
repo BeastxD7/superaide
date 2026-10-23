@@ -26,6 +26,7 @@ ACCOUNT_ONLY = {("POST", "/app/hire")}  # any signed-in account (tested in test_
 FLAG_GATED = {
     ("GET", "/app/needs-you"),
     ("GET", "/app/triage/settings"),
+    ("GET", "/app/relationship-safety"),  # RELATIONSHIP_SAFETY_ENABLED (#124)
     ("GET", "/app/approvals/brake"),  # RUBBER_STAMP_BRAKE_ENABLED (#134)
     ("GET", "/app/question"),  # ONE_GOOD_QUESTION_ENABLED (#121)
     ("GET", "/app/why/{event_id}"),  # WHY_REPLAY_ENABLED (#122)
