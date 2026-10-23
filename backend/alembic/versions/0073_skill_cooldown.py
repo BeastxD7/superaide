@@ -1,7 +1,7 @@
 """skill cooldown
 
 Revision ID: 0073
-Revises: 0068
+Revises: 0072
 Create Date: 2026-10-23 18:20:58.696358
 
 """
@@ -14,7 +14,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "0073"
-down_revision: str | Sequence[str] | None = "0068"
+down_revision: str | Sequence[str] | None = "0072"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
