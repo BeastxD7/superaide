@@ -79,6 +79,20 @@
         "title": "AnswerQuestionBody",
         "type": "object"
       },
+      "ApprovePreviewBody": {
+        "properties": {
+          "accepted": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Accepted",
+            "type": "array"
+          }
+        },
+        "title": "ApprovePreviewBody",
+        "type": "object"
+      },
       "AuditionBody": {
         "properties": {
           "skills": {
@@ -1171,6 +1185,51 @@
           "confidence_pct"
         ],
         "title": "PredictionBody",
+        "type": "object"
+      },
+      "PreviewBody": {
+        "properties": {
+          "kind": {
+            "maxLength": 10,
+            "title": "Kind",
+            "type": "string"
+          },
+          "model": {
+            "default": "",
+            "maxLength": 120,
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Prompt",
+            "type": "string"
+          },
+          "skill_id": {
+            "default": "",
+            "maxLength": 80,
+            "title": "Skill Id",
+            "type": "string"
+          },
+          "tasks": {
+            "anyOf": [
+              {
+                "maximum": 50.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tasks"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "PreviewBody",
         "type": "object"
       },
       "PriceBody": {
@@ -11340,6 +11399,202 @@
         "summary": "How well Ava can predict your approvals",
         "tags": [
           "Owner: approvals"
+        ]
+      }
+    },
+    "/app/updates": {
+      "get": {
+        "description": "Replay before update (REPLAY_BEFORE_UPDATE_ENABLED, off by default; 404 while off): what a skill, prompt or model change would have done differently on your recent tasks, as tool names and short hashes only.",
+        "operationId": "updates_list_app_updates_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Updates List App Updates Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Update previews",
+        "tags": [
+          "Owner: skills",
+          "Owner: skills"
+        ]
+      }
+    },
+    "/app/updates/preview": {
+      "post": {
+        "description": "Replays your last tasks (at most REPLAY_MAX_TASKS) with the current setup and with the change, effects stubbed and no network, and reports how the calls differ. Nothing is changed.",
+        "operationId": "updates_preview_app_updates_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Updates Preview App Updates Preview Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Preview an update",
+        "tags": [
+          "Owner: skills",
+          "Owner: skills"
+        ]
+      }
+    },
+    "/app/updates/{preview_id}/approve": {
+      "post": {
+        "description": "Approving a skill installs it (send the permissions you agreed to); other changes are recorded.",
+        "operationId": "updates_approve_app_updates__preview_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "preview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Preview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovePreviewBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Updates Approve App Updates  Preview Id  Approve Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Approve an update",
+        "tags": [
+          "Owner: skills",
+          "Owner: skills"
+        ]
+      }
+    },
+    "/app/updates/{preview_id}/reject": {
+      "post": {
+        "operationId": "updates_reject_app_updates__preview_id__reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "preview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Preview Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Updates Reject App Updates  Preview Id  Reject Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Reject an update",
+        "tags": [
+          "Owner: skills",
+          "Owner: skills"
         ]
       }
     },

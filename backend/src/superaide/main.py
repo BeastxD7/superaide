@@ -179,8 +179,6 @@ def create_app(agent: Agent | None = None) -> FastAPI:
 
     app.include_router(make_drill_routes_router(get_agent))  # 404 everywhere while its flag is off
 
-
-
     from superaide.tooltrace.preview_routes import make_router as make_preview_routes_router
 
     app.include_router(make_preview_routes_router(get_agent))  # 404 everywhere while its flag is off

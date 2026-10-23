@@ -86,8 +86,6 @@ class Settings(BaseSettings):
     model_drill_enabled: bool = False
     drill_max_tasks: int = Field(default=20, ge=1, le=50)  # most recent tasks one drill replays on each model
 
-
-
     # Replay before update (#110). Off: /app/updates/* answers 404. On: before a skill, prompt or model change goes
     # live, the owner can replay their last tasks with and without it (effects stubbed, local reads only, small-model
     # calls inside the spend cap) and see how the calls differ by name and argument hash, then approve or reject.
