@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { api, type Connection, type PersonRow, type SimResult } from '@/features/console/api'
+import { Button, Card, EmptyState, Notice } from '@/features/console/ui'
 import { useApi } from '@/features/console/useApi'
 
 type Form = {
@@ -104,13 +105,10 @@ export function Simulator({ conn, enabled, agentName }: { conn: Connection; enab
 
   if (!enabled)
     return (
-      <div className="empty">
-        <h2>The simulator is off</h2>
-        <p>
-          Set <code>ENABLE_SIMULATOR=true</code> in <code>.env</code> and restart <code>uv run superaide serve</code>. Only use it on
-          your own laptop: it lets the dashboard inject messages as if they came from any account.
-        </p>
-      </div>
+      <EmptyState title="The simulator is off">
+        Set <code>ENABLE_SIMULATOR=true</code> in <code>.env</code> and restart <code>uv run superaide serve</code>. Only use it on your own laptop: it lets the
+        dashboard inject messages as if they came from any account.
+      </EmptyState>
     )
 
   async function run() {
@@ -128,11 +126,12 @@ export function Simulator({ conn, enabled, agentName }: { conn: Connection; enab
   const set = <K extends keyof Form>(key: K, value: Form[K]) => setForm((f) => ({ ...f, [key]: value }))
 
   return (
-    <div className="sim">
+    <>
       <p className="lede">
         Send a pretend message as any account and watch what {agentName} does. Replies and link codes are captured here instead of being sent.
       </p>
-      <div className="sim-grid">
+      <div className="c-split">
+        <Card title="Scenarios" titleId="scenarios-title" className="c-split-side">
         <ul className="scenarios">
           {list.map((s) => (
             <li key={s.id}>
@@ -153,9 +152,11 @@ export function Simulator({ conn, enabled, agentName }: { conn: Connection; enab
             </li>
           ))}
         </ul>
+        </Card>
 
+        <Card title="Details" titleId="sim-title" className="c-split-main">
         <div className="sim-form">
-          <div className="row">
+          <div className="c-fields">
             <label>
               Channel
               <select value={form.provider} onChange={(e) => set('provider', e.target.value as Form['provider'])}>
@@ -171,7 +172,7 @@ export function Simulator({ conn, enabled, agentName }: { conn: Connection; enab
               </select>
             </label>
           </div>
-          <div className="row">
+          <div className="c-fields">
             <label>
               Platform ID of the sender
               <input value={form.sender_id} onChange={(e) => set('sender_id', e.target.value)} />
@@ -182,7 +183,7 @@ export function Simulator({ conn, enabled, agentName }: { conn: Connection; enab
             </label>
           </div>
           {form.provider === 'slack' && (
-            <div className="row">
+            <div className="c-fields">
               <label>
                 Sender's Slack team
                 <input value={form.tenant_scope} onChange={(e) => set('tenant_scope', e.target.value)} />
@@ -197,10 +198,10 @@ export function Simulator({ conn, enabled, agentName }: { conn: Connection; enab
             Message
             <textarea rows={3} value={form.text} onChange={(e) => set('text', e.target.value)} />
           </label>
-          <button className="primary" disabled={running || !form.sender_id || !form.text} onClick={run}>
+          <Button disabled={running || !form.sender_id || !form.text} onClick={run} className="sim-send">
             {running ? 'Sending…' : 'Send pretend message'}
-          </button>
-          {error && <p className="error">{error}</p>}
+          </Button>
+          {error && <Notice tone="danger">{error}</Notice>}
 
           {result && (
             <div className="sim-result" aria-live="polite">
@@ -228,7 +229,8 @@ export function Simulator({ conn, enabled, agentName }: { conn: Connection; enab
             </div>
           )}
         </div>
+        </Card>
       </div>
-    </div>
+    </>
   )
 }
