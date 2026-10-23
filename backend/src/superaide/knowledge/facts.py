@@ -26,6 +26,15 @@ class Fact(BaseModel):
     content: str = Field(description="One self-contained fact, written in the third person about the owner by name.")
     category: Category
     confidence: float = Field(ge=0, le=1, description="How clearly the source states this (1 = stated outright).")
+    importance: float | None = Field(
+        default=None,
+        ge=0,
+        le=1,
+        description="How much an assistant needs this to work for them (1 = essential, 0 = trivia).",
+    )
+    time_bound: bool | None = Field(
+        default=None, description="True if it stops being true soon by itself (a plan, a trip, who is free when)."
+    )
     same_as: int | None = Field(
         default=None,
         description="The id of a known fact that says the same thing, if any (then it isn't stored again).",

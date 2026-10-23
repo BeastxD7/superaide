@@ -27,6 +27,7 @@ from sqlalchemy.orm import Session, aliased
 from superaide.context import lexicon
 from superaide.context.audience import Audience, memory_filter
 from superaide.db.models import Context, Event, MemoryItem
+from superaide.memory import importance
 from superaide.memory.echo import label as echo_label
 
 LANG = "english"
@@ -101,14 +102,15 @@ def _arms(
 
 
 def _fuse(arms: list[list[Any]]) -> list[Any]:
-    """Reciprocal rank fusion; ties go to the newer row."""
+    """Reciprocal rank fusion, times each note's importance and decay (memory/importance.py); ties go to
+    the newer row."""
     score: dict[Any, float] = {}
     rows: dict[Any, Any] = {}
     for arm in arms:
         for rank, row in enumerate(arm):
             score[row.id] = score.get(row.id, 0.0) + 1.0 / (RRF_K + rank + 1)
             rows[row.id] = row
-    return sorted(rows.values(), key=lambda r: (score[r.id], r.created_at), reverse=True)
+    return sorted(rows.values(), key=lambda r: (score[r.id] * importance.weight(r), r.created_at), reverse=True)
 
 
 def _contexts(session: Session, ids: set[Any]) -> dict[Any, Context]:
