@@ -113,6 +113,11 @@ class Settings(BaseSettings):
     # is reserved forever. SKILL_REVIEWER_KEY signs the one bypass, a reviewed security patch; blank means no bypass.
     skill_cooldown_enabled: bool = False
     skill_reviewer_key: str = ""
+    # Measured trust signals for skills (#130). Off by default. Several independent scanners per skill version, routed
+    # by the pattern of their disagreement (none alone can promote); a behaviour card built from allowlisted counters,
+    # shown only above a minimum number of installs; a skill whose behaviour leaves its manifest is demoted.
+    skill_signals_enabled: bool = False
+    skill_card_min_cohort: int = Field(default=5, ge=2)
     memory_socket_enabled: bool = False
     memory_socket_per_minute: int = Field(default=30, ge=1)
     # Glass brain share link (#55). Off by default. The owner can create an unlisted link (a long random token,

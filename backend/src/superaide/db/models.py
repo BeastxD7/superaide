@@ -971,6 +971,7 @@ from superaide.push import models as _push_models  # noqa: E402, F401
 from superaide.reception import models as _reception_models  # noqa: E402, F401
 from superaide.rehearsal import models as _rehearsal_models  # noqa: E402, F401
 from superaide.school import models as _school_models  # noqa: E402, F401
+from superaide.skills import models as _skills_models  # noqa: E402, F401
 from superaide.tenancy import models as _tenancy_models  # noqa: E402, F401
 from superaide.tooltrace import models as _tooltrace_models  # noqa: E402, F401
 from superaide.triage import models as _triage_models  # noqa: E402, F401

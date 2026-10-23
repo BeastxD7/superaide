@@ -239,6 +239,9 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     from superaide.app.skill_releases import make_skill_releases_router
 
     app.include_router(make_skill_releases_router(get_agent))  # 404 unless SKILL_COOLDOWN_ENABLED (#129)
+    from superaide.app.skill_signals import make_skill_signals_router
+
+    app.include_router(make_skill_signals_router(get_agent))  # 404 unless SKILL_SIGNALS_ENABLED (#130)
     from superaide.voice.routes import make_router as make_voice_router
 
     app.include_router(make_voice_router(get_agent))  # 404 unless VOICE_INTRO_V2 (ADR 0012)
