@@ -245,3 +245,4 @@ The shape of this README borrows from [Docling](https://github.com/docling-proje
 ## License
 
 Proprietary. All rights reserved. The repository is public to read, but there is no `LICENSE` file granting reuse rights.
+<!-- probe -->
