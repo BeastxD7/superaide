@@ -7,7 +7,8 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { Conversation, type LiveTurn } from '@/components/Conversation'
 import { useReveal } from '@/hooks/use-reveal'
 import { Notice } from '@/components/site'
-import { call, streamChat, type ChatEvent, type Message, type WorkStep } from '@/lib/api'
+import { call, streamChat, type Message } from '@/lib/api'
+import { apply } from '@/lib/chat-turn'
 import { isSendKey } from '@/lib/keys'
 import { useSession } from '@/lib/session-context'
 import { errorMessage } from '@/lib/action'
@@ -241,32 +242,4 @@ export function ChatPage() {
       </div>
     </div>
   )
-}
-
-// Fold one streamed event into the reply being shown.
-function apply(turn: LiveTurn, e: ChatEvent): LiveTurn {
-  switch (e.event) {
-    case 'status':
-      return { ...turn, status: e.data.text }
-    case 'reasoning':
-      return { ...turn, reasoning: turn.reasoning + e.data.delta }
-    case 'text':
-      return { ...turn, text: turn.text + e.data.delta, status: 'Writing' }
-    case 'narration': {
-      // What she wrote before using a tool was her saying what she's doing, not the answer.
-      const say: WorkStep = { kind: 'say', label: e.data.text }
-      return { ...turn, text: '', steps: [...turn.steps, say] }
-    }
-    case 'retract':
-      // The draft failed the source check; the rewrite streams in its place.
-      return { ...turn, text: '' }
-    case 'tool': {
-      const step: WorkStep = { kind: 'tool', ...e.data }
-      const at = turn.steps.findIndex((s) => s.kind === 'tool' && s.id === e.data.id)
-      const steps = at >= 0 ? turn.steps.map((s, i) => (i === at ? step : s)) : [...turn.steps, step]
-      return { ...turn, steps, status: e.data.state === 'running' ? 'Working' : 'Thinking' }
-    }
-    default:
-      return turn
-  }
 }
