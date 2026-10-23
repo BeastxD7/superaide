@@ -397,6 +397,9 @@ class Settings(BaseSettings):
     # Email (verification and password-reset links). "log" writes each email to the server log
     # (development); "smtp" sends through any SMTP server or provider.
     mail_backend: str = "log"  # log | smtp
+    # With the log backend, print the whole email (the link is the point in development). Off: only
+    # the recipient and subject are logged, which the end-to-end suite uses to keep its output readable.
+    mail_log_body: bool = True
     mail_from: str = "Superaide <no-reply@localhost>"
     smtp_host: str = ""
     smtp_port: int = 587

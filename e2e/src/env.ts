@@ -65,6 +65,7 @@ export function apiEnv(): Record<string, string> {
     DATABASE_URL,
     FRONTEND_ORIGIN: `http://localhost:${WEB_PORT}`,
     FAKE_LLM: 'true',
+    MAIL_LOG_BODY: 'false', // the suite never reads the emails; keep its output free of confirmation links
     ANTHROPIC_API_KEY: '',
     TELEGRAM_BOT_TOKEN: '',
     SLACK_BOT_TOKEN: '',

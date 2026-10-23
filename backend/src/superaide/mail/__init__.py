@@ -43,6 +43,9 @@ class LogMailer:
     def send(self, mail: Mail) -> None:
         self.sent.append(mail)
         # WARNING, not INFO: the dev server only shows warnings, and this is the only way to get the link.
+        if not get_settings().mail_log_body:
+            log.warning("email (not sent, MAIL_BACKEND=log) to %s: %s", mail.to, mail.subject)
+            return
         log.warning("email (not sent, MAIL_BACKEND=log) to %s: %s\n%s", mail.to, mail.subject, mail.text)
 
 
