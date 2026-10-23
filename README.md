@@ -175,6 +175,7 @@ Every setting is an environment variable. [`backend/.env.example`](backend/.env.
 
 | Variable | Default | Turns on | Extra setup | Verdict |
 | --- | --- | --- | --- | --- |
+| `MAIL_LOG_BODY` | `true` | With `MAIL_BACKEND=log`, the whole email (live verification and reset links) goes to the API log; `false` logs only recipient and subject | `MAIL_BACKEND=log` | Safe (set `false` anywhere logs are shared) |
 | `WEB_TOOLS_ENABLED` | `true` | Ava searches and reads the web (about US$0.01 a search from the research budget) | Optional `BRAVE_SEARCH_API_KEY` for models with no built-in search | Safe |
 | `TRACE_RECORDER` | `true` | Hashes-only record of every tool call | None | Safe |
 | `ENABLE_API_DOCS` | `true` | Interactive API docs at `/docs` | Turn off on a public server (production compose does) | Safe locally |
