@@ -16,11 +16,28 @@ from superaide.app.routes import owner_person_id
 from superaide.audit import audit
 from superaide.auth.routes import reject_nul_text, require_csrf_header
 from superaide.db.session import session_scope
-from superaide.school import checks, document
+from superaide.policy.killswitch import get_state, set_state
+from superaide.school import checks, document, signing
 from superaide.school.models import Lesson
 from superaide.tenancy.context import scope_or_default
 
 LIMIT = 200
+SHARE_KEY = "school_share"
+MAX_CATEGORIES, MAX_TRUSTED = 20, 50
+
+
+class SharingBody(BaseModel):
+    categories: list[str] = Field(max_length=MAX_CATEGORIES)  # lesson roles that may leave; empty means none
+    trusted_keys: list[str] | None = Field(default=None, max_length=MAX_TRUSTED)
+
+
+def _norm(cat: str) -> str:
+    return " ".join(cat.lower().split())
+
+
+def sharing_of(s: Any) -> dict[str, Any]:
+    st = get_state(s, SHARE_KEY)
+    return {"categories": list(st.get("categories") or []), "trusted_keys": list(st.get("trusted_keys") or [])}
 
 
 class LessonBody(BaseModel):
@@ -72,6 +89,15 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         tags=["Owner: Ava School"],
         dependencies=[Depends(require_csrf_header), Depends(reject_nul_text)],
     )
+
+    def sharing_on() -> bool:
+        return bool(get_agent().settings.school_sharing_enabled)
+
+    def signer() -> signing.Signer:
+        try:
+            return signing.signer_for(get_agent().settings.school_signer)
+        except ValueError as exc:
+            raise HTTPException(503, str(exc)) from exc
 
     def _mine(s: Any, person_id: uuid.UUID, lesson_id: uuid.UUID) -> Lesson:
         row = s.scalar(
@@ -138,6 +164,37 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             audit(s, "owner", "lesson_deleted", lesson_id=str(lesson_id))
             return {"ok": True}
 
+    @router.get(
+        "/sharing",
+        summary="Which lesson categories may be shared",
+        description="Default none. Only lessons whose category (role) you allow here go into a signed file.",
+    )
+    def sharing(person_id: uuid.UUID = Depends(owner_on)) -> dict[str, Any]:
+        if not sharing_on():
+            raise HTTPException(404, "Not Found")
+        with session_scope() as s:
+            mine = [r for (r,) in s.execute(select(Lesson.role).where(Lesson.owner_person_id == person_id).distinct())]
+            pub = signer().public_key()
+            return {
+                **sharing_of(s),
+                "available_categories": sorted(mine),
+                "signer": {"alg": signer().alg, "public_key": pub, "key_id": signing.key_id(pub)},
+            }
+
+    @router.put("/sharing", summary="Choose which lesson categories may be shared")
+    def set_sharing(body: SharingBody, person_id: uuid.UUID = Depends(owner_on)) -> dict[str, Any]:
+        if not sharing_on():
+            raise HTTPException(404, "Not Found")
+        with session_scope() as s:
+            cur = sharing_of(s)
+            cats = sorted({_norm(c) for c in body.categories if c.strip()})
+            cur["categories"] = cats
+            if body.trusted_keys is not None:
+                cur["trusted_keys"] = sorted({k.strip() for k in body.trusted_keys if k.strip()})
+            set_state(s, SHARE_KEY, cur)
+            audit(s, "owner", "school_sharing_set", categories=len(cats), trusted=len(cur["trusted_keys"]))
+            return cur
+
     @router.post(
         "/lessons/{lesson_id}/accept",
         summary="Accept an imported lesson",
@@ -175,16 +232,25 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             names, private = checks.known_names(s, person_id), checks._private_shingles(s)
             out: list[dict[str, str]] = []
             skipped: list[dict[str, Any]] = []
+            held_back = 0
+            allowed = {_norm(c) for c in sharing_of(s)["categories"]}
             now = datetime.now(UTC)
             for r in rows:
+                if sharing_on() and _norm(r.role) not in allowed:
+                    held_back += 1  # consented, but its category isn't one the owner allows to leave
+                    continue
                 found = checks.check(s, person_id, r.text, names=names, private=private)
                 if found:
                     skipped.append({"id": str(r.id), "problems": problems(found)})
                     continue
                 out.append({"text": r.text, "role": r.role})
                 r.exported_at = now
-            audit(s, "owner", "lessons_exported", count=len(out), skipped=len(skipped))
-            return {"document": document.build(out), "count": len(out), "skipped": skipped}
+            audit(s, "owner", "lessons_exported", count=len(out), skipped=len(skipped), held_back=held_back)
+            if sharing_on():
+                doc = signing.sign_document(signer(), document.SIGNED_FORMAT, out)
+            else:
+                doc = document.build(out)
+            return {"document": doc, "count": len(out), "skipped": skipped, "held_back": held_back}
 
     @router.post(
         "/import",
@@ -192,11 +258,23 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         description="Each lesson is checked and waits for you to accept it. Nothing is applied.",
     )
     def import_(body: ImportBody, person_id: uuid.UUID = Depends(owner_on)) -> dict[str, Any]:
+        signer_info: dict[str, Any] | None = None
+        doc: document.LessonFile | document.SignedLessonFile
         try:
-            doc = document.parse(body.document)
+            if sharing_on():
+                doc, pub = document.parse_signed(body.document, signer().verify)
+                signer_info = {"key_id": signing.key_id(pub), "alg": doc.signer.get("alg", "")}
+            else:
+                doc = document.parse(body.document)
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from exc
         with session_scope() as s:
+            if signer_info is not None:
+                trusted = sharing_of(s)["trusted_keys"]
+                known = {signing.key_id(k) for k in trusted} | set(trusted)
+                signer_info["trusted"] = signer_info["key_id"] in known
+                if trusted and not signer_info["trusted"]:
+                    raise HTTPException(422, "This file is signed by someone you haven't trusted, so it isn't read.")
             have = set(
                 s.scalars(
                     select(Lesson.text).where(
@@ -223,6 +301,6 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 have.add(text)
                 added += 1
             audit(s, "owner", "lessons_imported", added=added, rejected=len(rejected))
-            return {"added": added, "rejected": rejected}
+            return {"added": added, "rejected": rejected, **({"signer": signer_info} if signer_info else {})}
 
     return router

@@ -341,6 +341,11 @@ class Settings(BaseSettings):
     # them to a file to review, or imports a file from another Ava. Nothing is sent over the network and
     # nothing here changes how Ava answers. Off: /app/school/* answer 404.
     school_enabled: bool = False
+    # Ava School sharing beyond this instance (#57): exports are signed files limited to the lesson categories
+    # (roles) the owner allows (default none), imports must carry a valid signature. Still a file the owner
+    # hands over; nothing is sent. Needs SCHOOL_ENABLED. School signer provider: "local" (Ed25519, no service).
+    school_sharing_enabled: bool = False
+    school_signer: str = "local"
     # The owner's Gmail sign-in (same OAuth client as Calendar); kept per instance in the vault.
     gmail_refresh_token: str = ""
 

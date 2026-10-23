@@ -206,6 +206,8 @@ Every setting is an environment variable. [`backend/.env.example`](backend/.env.
 | `OVERNIGHT_TUNER_ENABLED` | `false` | Proposes a better triage prompt; the owner approves or rolls back | `TRIAGE_ENABLED=true`, model key | Safe |
 | `REHEARSAL_ENABLED` | `false` | Practise a hard conversation with Ava as the other side; nothing is sent | Model key | Safe |
 | `SCHOOL_ENABLED` | `false` | Write, consent to and export generic lessons, or import a file; local only | None | Safe |
+| `SCHOOL_SHARING_ENABLED` | `false` | Signed lesson files limited to categories you allow; imports must be signed (needs `SCHOOL_ENABLED`) | None | Safe |
+| `SCHOOL_SIGNER` | `local` | Who signs lesson files; `local` is a built-in Ed25519 key, no service | None | Safe |
 | `RELATIONSHIP_SAFETY_ENABLED` | `false` | Fixed human-written replies for heavy or "do you love me?" owner messages; no claims of feelings | None | Safe |
 | `RUBBER_STAMP_BRAKE_ENABLED` | `false` | Adds friction to fast always-yes approvals (typed reason on high-risk cards) | None | Safe (only adds friction) |
 | `MEMORY_RECHECK_ENABLED` | `false` | Digest may ask "is this still true?" about a few lasting facts | `MEMORY_RECHECK_PER_WEEK` | Safe |
