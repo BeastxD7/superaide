@@ -47,9 +47,9 @@ class Settings(BaseSettings):
     reminder_auto_close_days: int = Field(default=7, ge=0)
 
     # Approvals are bound to the content the owner saw (#111). off: not checked. record: a mismatch is
-    # audited but the send goes ahead (until the check is calibrated against real Gmail). strict: a
-    # mismatch is not sent.
-    approval_binding: Literal["off", "record", "strict"] = "record"
+    # audited but the send goes ahead. strict (the default): a mismatch, or an approval with no recorded hash
+    # (made before the check existed), is not run and the owner is told to ask Ava again.
+    approval_binding: Literal["off", "record", "strict"] = "strict"
     # A request nobody answers within this many hours can no longer be approved (0 = never expires). Off by
     # default: an old "yes" to a stale card is exactly what this is for, but how long is the owner's call.
     approval_ttl_hours: int = Field(default=0, ge=0, le=24 * 90)

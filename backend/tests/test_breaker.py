@@ -9,6 +9,7 @@ from superaide.config import get_settings
 from superaide.db.models import Approval, AuditLog
 from superaide.db.session import session_scope
 from superaide.policy import breaker
+from superaide.policy.binding import seal
 from superaide.policy.actions import resolve
 from superaide.policy.killswitch import is_frozen
 from tests.conftest import MANAGER_TG, tg
@@ -23,6 +24,8 @@ def on(monkeypatch, limit=3):
 def approvals(n: int, kind="delete_memory") -> list:
     with session_scope() as s:
         rows = [Approval(kind=kind, payload={"summary": f"x{i}"}) for i in range(n)]
+        for r in rows:
+            seal(r)  # a real request is sealed when it is made
         s.add_all(rows)
         s.flush()
         return [r.id for r in rows]
