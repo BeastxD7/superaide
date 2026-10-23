@@ -39,6 +39,7 @@ from superaide.db.models import (
     Event,
     IdentityLinkEvent,
     MemoryItem,
+    Onboarding,
     Person,
     SpendEntry,
 )
@@ -120,7 +121,43 @@ def _iso(dt: datetime | None) -> str | None:
     return dt.isoformat() if dt else None
 
 
-VERIFIED_LINK_METHODS = ("code_via_trusted_channel", "operator_bootstrap", "operator_dashboard")
+# "account_signed_in": the owner's own web identity, made by signing in to the account (app/accounts.py).
+VERIFIED_LINK_METHODS = ("account_signed_in", "code_via_trusted_channel", "operator_bootstrap", "operator_dashboard")
+
+
+def _live_memories() -> Any:
+    """What the owner's notebook lists: not forgotten, not waiting for a decision (same rule as GET /app/notebook)."""
+    return (
+        select(func.count())
+        .select_from(MemoryItem)
+        .where(MemoryItem.valid_to.is_(None), MemoryItem.conflict_status == "none")
+    )
+
+
+def _runtime_live() -> dict[str, bool]:
+    """What is connected on this server, as the app sees it: the server's .env plus the credentials each hired Ava
+    saved in the app (the vault), not .env alone (issues #277, #278). Metadata only."""
+    from superaide.tenancy.service import active_scopes
+    from superaide.vault.store import runtime_settings
+
+    env = get_settings()
+    live = {
+        "brain": brain_ready(env),
+        "telegram": bool(env.telegram_bot_token),
+        "slack": bool(env.slack_bot_token and env.slack_app_token),
+    }
+    with session_scope() as s:
+        scopes = active_scopes(s)
+    for scope in scopes:
+        try:
+            with use_instance(scope):
+                mine = runtime_settings()
+                live["brain"] = live["brain"] or brain_ready(mine)
+                live["telegram"] = live["telegram"] or bool(mine.telegram_bot_token)
+                live["slack"] = live["slack"] or bool(mine.slack_bot_token and mine.slack_app_token)
+        except Exception:  # one instance's trouble never hides the others
+            continue
+    return live
 
 
 def _audit_count(s: Any, *actions: str) -> int:
@@ -170,7 +207,7 @@ def instances() -> list[dict[str, Any]]:
                             select(func.count()).select_from(Event).where(Event.created_at > day_ago)
                         )
                         or 0,
-                        "memories": s.scalar(select(func.count()).select_from(MemoryItem)) or 0,
+                        "memories": s.scalar(_live_memories()) or 0,
                     },
                     "spend_usd": float(
                         s.scalar(
@@ -194,7 +231,11 @@ def overview() -> dict[str, Any]:
     settings = get_settings()
     spend = BudgetGuard.for_instance(settings).summary().as_dict()
     day_ago = datetime.now(UTC) - timedelta(days=1)
+    live = _runtime_live()
     with session_scope() as s:
+        introduced = int(
+            s.scalar(select(func.count()).select_from(Onboarding).where(Onboarding.completed_at.is_not(None))) or 0
+        )
         unverified_links = int(
             s.scalar(
                 select(func.count())
@@ -215,19 +256,18 @@ def overview() -> dict[str, Any]:
             "agent_name": settings.agent_name,
             "stage": "Infant",
             "frozen": is_frozen(s),
-            "model_mode": "Claude API (real replies)"
-            if brain_ready(settings)
-            else "offline (no API key, replies are echoes)",
-            "channels": {
-                "telegram": bool(settings.telegram_bot_token),
-                "slack": bool(settings.slack_bot_token and settings.slack_app_token),
-            },
+            "model_mode": "Claude API (real replies)" if live["brain"] else "offline (no API key, replies are echoes)",
+            "channels": {"telegram": live["telegram"], "slack": live["slack"]},
             "simulator": settings.enable_simulator,
             "spend": spend,
             # Gates from Infant to Child. Most are measured from phase 2 onward.
             "next_stage": "Child",
             "gates": [
-                {"label": "Onboarding interview done", "status": "later", "detail": "Arrives in phase 2"},
+                {
+                    "label": "Onboarding interview done",
+                    "status": "met" if introduced else "later",
+                    "detail": f"{introduced} owner(s) finished the introduction" if introduced else "Nobody has yet",
+                },
                 {"label": "Past posts ingested", "status": "later", "detail": "Arrives in phase 2"},
                 {
                     "label": "20 corrections absorbed",
@@ -256,7 +296,7 @@ def overview() -> dict[str, Any]:
                 ),
                 "conversations": s.scalar(select(func.count()).select_from(Context)),
                 "messages_24h": s.scalar(select(func.count()).select_from(Event).where(Event.created_at > day_ago)),
-                "memories": s.scalar(select(func.count()).select_from(MemoryItem)),
+                "memories": s.scalar(_live_memories()),
                 "pending_approvals": s.scalar(
                     select(func.count()).select_from(Approval).where(Approval.status == "pending")
                 ),
