@@ -317,7 +317,7 @@ def test_slack_status_is_cleared_when_the_turn_ends_without_a_reply():
     assert client.calls[-1][1]["status"] == ""
 
 
-def test_slack_without_status_falls_back_to_a_placeholder_and_the_reply_edits_it():
+def test_slack_without_status_falls_back_to_a_placeholder_and_the_reply_is_a_new_message():
     client = SlackClient(fail={"assistant_threads_setStatus": "missing_scope"})
     m = messenger(client)
     handle = m.working("D1", "1700.0")
@@ -325,12 +325,13 @@ def test_slack_without_status_falls_back_to_a_placeholder_and_the_reply_edits_it
     assert m.status_unavailable  # not asked again
     m.send_to_context(type("C", (), {"external_id": "D1"})(), "The answer", "1700.0")  # type: ignore[arg-type]
     handle.close()
-    assert client.names() == ["assistant_threads_setStatus", "chat_postMessage", "chat_update"]
-    update = client.calls[-1][1]
-    assert update["ts"] == "1700.1" and "The answer" in update["text"]
-    assert "chat_delete" not in client.names()  # one message in the end, not two
+    # An edit would not notify: the reply is a new message and the placeholder is deleted after it.
+    assert client.names() == ["assistant_threads_setStatus", "chat_postMessage", "chat_postMessage", "chat_delete"]
+    assert "chat_update" not in client.names()
     posts = [kw for n, kw in client.calls if n == "chat_postMessage"]
-    assert posts == [{"channel": "D1", "text": slack.WORKING_TEXT, "thread_ts": "1700.0"}]
+    assert posts[0] == {"channel": "D1", "text": slack.WORKING_TEXT, "thread_ts": "1700.0"}
+    assert "The answer" in posts[1]["text"] and posts[1]["thread_ts"] == "1700.0"
+    assert client.calls[-1][1] == {"channel": "D1", "ts": "1700.1"}
     client.calls.clear()
     assert m.working("D1", "1700.0") is not None
     assert "assistant_threads_setStatus" not in client.names()  # remembered
@@ -346,16 +347,16 @@ def test_slack_dm_without_a_thread_uses_the_placeholder_directly():
     handle.close()
 
 
-def test_slack_placeholder_that_cannot_be_edited_is_removed_and_the_reply_is_posted_normally():
-    client = SlackClient(fail={"chat_update": "message_not_found"})
+def test_slack_placeholder_that_cannot_be_deleted_is_left_and_the_reply_is_still_delivered():
+    client = SlackClient(fail={"chat_delete": "message_not_found"})
     m = messenger(client)
     handle = m.working("D1", "")
     assert handle is not None
-    m.send_to_context(type("C", (), {"external_id": "D1"})(), "The answer", "")  # type: ignore[arg-type]
+    assert m.send_to_context(type("C", (), {"external_id": "D1"})(), "The answer", "")  # type: ignore[arg-type]
     handle.close()
-    assert client.names() == ["chat_postMessage", "chat_update", "chat_delete", "chat_postMessage"]
-    assert client.names().count("chat_delete") == 1  # close() does not delete again
-    assert "The answer" in client.calls[-1][1]["text"]
+    assert client.names() == ["chat_postMessage", "chat_postMessage", "chat_delete"]
+    assert "The answer" in client.calls[1][1]["text"]
+    assert client.names().count("chat_delete") == 1  # close() does not try again
 
 
 def test_slack_placeholder_is_removed_when_the_turn_ends_with_no_reply():
@@ -368,7 +369,7 @@ def test_slack_placeholder_is_removed_when_the_turn_ends_with_no_reply():
     assert client.names() == ["chat_postMessage", "chat_delete"]
 
 
-def test_slack_long_reply_edits_the_placeholder_with_the_first_part_and_posts_the_rest():
+def test_slack_long_reply_is_all_new_messages_and_the_placeholder_goes_after_the_first():
     client = SlackClient()
     m = messenger(client)
     handle = m.working("D1", "")
@@ -377,8 +378,8 @@ def test_slack_long_reply_edits_the_placeholder_with_the_first_part_and_posts_th
     m.send_to_context(type("C", (), {"external_id": "D1"})(), long, "")  # type: ignore[arg-type]
     handle.close()
     names = client.names()
-    assert names[:2] == ["chat_postMessage", "chat_update"] and names.count("chat_update") == 1
-    assert names.count("chat_postMessage") >= 2 and "chat_delete" not in names
+    assert "chat_update" not in names and names.count("chat_delete") == 1
+    assert names[:3] == ["chat_postMessage", "chat_postMessage", "chat_delete"] and names.count("chat_postMessage") >= 3
 
 
 def test_slack_working_never_raises_when_everything_fails():
@@ -394,7 +395,7 @@ def test_slack_a_reply_elsewhere_does_not_take_over_the_placeholder():
     handle = m.working("D1", "")
     assert handle is not None
     m.send_to_context(type("C", (), {"external_id": "D_OTHER"})(), "Not for this chat", "")  # type: ignore[arg-type]
-    assert "chat_update" not in client.names()
+    assert client.names()[-1] == "chat_postMessage"  # the placeholder was not touched by a reply elsewhere
     handle.close()
     assert client.names()[-1] == "chat_delete"
 

@@ -117,8 +117,8 @@ def _error_code(exc: BaseException) -> str:
 
 class SlackWorking:
     """Either an assistant-thread status (cleared by Slack when the reply is posted) or a "Working on it…"
-    placeholder message that the reply edits in place (no second message). `close()` removes a placeholder
-    that was never turned into a reply (the turn failed), and is safe to call twice."""
+    placeholder message. The reply is posted as a new message (an edit would not notify) and the placeholder is deleted
+    after it. `close()` removes a placeholder that got no reply (the turn failed), and is safe to call twice."""
 
     def __init__(self, messenger: SlackMessenger, channel: str, thread_id: str, ts: str = "", status: bool = False):
         self.messenger, self.channel, self.thread_id, self.ts, self.status = messenger, channel, thread_id, ts, status
@@ -214,22 +214,16 @@ class SlackMessenger:
             active = None
         pending = active if active is not None and active.ts else None  # a status has no ts
         for mrkdwn, _ in messages:
-            if pending is not None:  # the first piece replaces the placeholder: one message, not two
-                holder, pending = pending, None
-                try:
-                    self._call("chat_update", channel=channel, ts=holder.ts, text=mrkdwn)
-                    holder.consumed = True  # from here the placeholder IS the reply: close() must not delete it
-                    continue
-                except Exception as exc:
-                    log.warning("slack: couldn't edit the placeholder (%s), posting normally", type(exc).__name__)
-                    holder.consumed = True
-                    self._discard(channel, holder.ts)  # so the person doesn't see it beside the reply
             if thread_id:
                 self._call("chat_postMessage", channel=channel, text=mrkdwn, thread_ts=thread_id)
             else:
                 self._call("chat_postMessage", channel=channel, text=mrkdwn)
-            if active is not None:
+            if active is not None and not active.consumed:
                 active.consumed = True  # a status is cleared by Slack once a message is posted
+                if pending is not None:
+                    # An edit would not notify anyone, so the reply is a new message; the placeholder goes after it
+                    # (best-effort: if the delete fails it stays, the reply is never lost).
+                    self._discard(channel, pending.ts)
         return True
 
     def send_dm(self, identity: ChannelIdentity, text: str) -> bool:
