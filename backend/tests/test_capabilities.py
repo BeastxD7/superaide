@@ -43,7 +43,12 @@ def test_connected_gmail_with_drafts_lists_exactly_what_she_can_do(owner_client,
     connect(scopes=(api.READONLY, api.COMPOSE), drafts=True)
     with session_scope() as s:
         text = system_text(s)
-    assert "drafts on" in text and "save a reply draft" in text and "cannot start a brand-new email" in text
+    assert (
+        "drafts on" in text
+        and "save a reply draft" in text
+        and "brand-new email to an address the owner typed" in text
+        and "cannot forward" in text
+    )
     assert "since " in text  # when it was connected, so a change since earlier in the chat is visible
 
 

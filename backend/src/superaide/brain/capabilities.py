@@ -16,6 +16,11 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
+# Where each thing is turned on, named as the app's own nav shows it (frontend/src/features/dashboard/nav.ts:
+# "Capabilities" for skills, "Connections" for chat channels). One place, so the wording cannot drift.
+PLACE_GMAIL = "Capabilities → Gmail"
+PLACE_CALENDAR = "Capabilities → Google Calendar"
+
 CHANGED_RULE = (
     "When a capability below changed since earlier in this conversation (its 'since' time is after something "
     "you said), say plainly that it is connected or enabled now. Say 'I was wrong' only if you actually stated "
@@ -37,21 +42,22 @@ def gmail_line(session: Session, tz: str) -> str:
 
     st = gmail.status(session)
     if not st["installed"]:
-        return "Gmail: not added. The owner can add it under Capabilities → Gmail."
+        return f"Gmail: not added. The owner can add it under {PLACE_GMAIL}."
     if not st["connected"]:
         why = "" if st["client_ready"] else " (a Google sign-in client must be saved first)"
-        return f"Gmail: not connected{why}. To connect: Capabilities → Gmail → Connect, then approve on Google."
+        return f"Gmail: not connected{why}. To connect: {PLACE_GMAIL} → Connect, then approve on Google."
     row = stored(session).get(gmail.SLOT)
     since = _since(getattr(row, "updated_at", None), tz)
     can = "search and read email, and open a thread"
     if not st["drafts"] or not st["drafts_allowed"]:
         return (
             f"Gmail: connected{since}, read-only: you can {can}. You cannot save drafts or ask to send yet. "
-            "To enable: Capabilities → Gmail → turn on drafts (Google will ask permission)."
+            f"To enable: {PLACE_GMAIL} → turn on drafts (Google will ask permission)."
         )
     return (
         f"Gmail: connected{since}, drafts on: you can {can}, save a reply draft in a thread, and ask the owner to "
-        "approve sending a reply. You cannot start a brand-new email or forward."
+        "approve sending a reply. You can also write a brand-new email to an address the owner typed "
+        "(gmail_compose, approval first). You cannot forward."
     )
 
 
@@ -59,9 +65,9 @@ def calendar_line(session: Session) -> str:
     from superaide.skills import calendar
 
     if not calendar.enabled(session):
-        return "Calendar: not added. The owner can add Google Calendar under Capabilities."
+        return f"Calendar: not added. The owner can add it under {PLACE_CALENDAR}."
     if not calendar.connected():
-        return "Calendar: added but not connected. To connect: Capabilities → Google Calendar → Connect."
+        return f"Calendar: added but not connected. To connect: {PLACE_CALENDAR} → Connect."
     return "Calendar: connected: you can read events and free time, and ask the owner to approve changes."
 
 
@@ -133,7 +139,7 @@ def block(session: Session, *, tz: str, web: bool) -> str:
 _CLAIMS: list[tuple[re.Pattern[str], set[str], str]] = [
     (
         re.compile(r"\b(i(?:'ve| have)?\s+(?:just\s+)?(?:saved|created|written)\b[^.\n]{0,30}\bdraft)", re.I),
-        {"gmail_draft_reply", "gmail_send"},
+        {"gmail_draft_reply", "gmail_send", "gmail_compose"},
         "a saved draft",
     ),
     (
@@ -150,7 +156,7 @@ _CLAIMS: list[tuple[re.Pattern[str], set[str], str]] = [
     ),
     (
         re.compile(r"\b(i(?:'ve| have)?\s+(?:just\s+)?queued\b|queued (?:it |that )?for your approval)", re.I),
-        {"propose_action", "gmail_send", "create_event", "move_event", "decline_event"},
+        {"propose_action", "gmail_send", "gmail_compose", "create_event", "move_event", "decline_event"},
         "an approval",
     ),
 ]
