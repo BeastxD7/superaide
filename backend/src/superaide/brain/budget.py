@@ -64,6 +64,8 @@ BUCKETS = {
     # Learning and trust features (#142): replay ablations and memory-free second opinions
     "replay": "learning",
     "second_opinion": "learning",
+    # Learning and trust features (#142)
+    "playbook": "learning",
 }
 
 

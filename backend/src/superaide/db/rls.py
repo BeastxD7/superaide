@@ -53,6 +53,7 @@ TABLES: tuple[str, ...] = (
     "memory_influence",  # which notes changed a reply (#122)
     "agreement_log",  # replies that judged the owner (#123)
     "emotional_use",  # relationship safety counter (#124)
+    "playbook",  # Skill Ratchet (#120)
     "model_role",
     "onboarding",
     "owner_model_price",

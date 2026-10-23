@@ -4,8 +4,22 @@ from __future__ import annotations
 
 import uuid
 from datetime import date
+from typing import Any
 
-from sqlalchemy import Boolean, CheckConstraint, Date, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    DDL,
+    Boolean,
+    CheckConstraint,
+    Date,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    event,
+)
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from superaide.db.models import Base, Scoped
@@ -79,3 +93,52 @@ class EmotionalUse(Scoped, Base):
 
     person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), index=True)
     kind: Mapped[str] = mapped_column(String(10))  # crisis | heavy | meta
+
+
+MAX_ACTIVE_PLAYBOOKS = 50
+
+
+class Playbook(Scoped, Base):
+    """A reusable how-to ("how Shashank wants board updates") Ava drafts and only the owner can switch on (#120)."""
+
+    __tablename__ = "playbook"
+    __table_args__ = (
+        # Only an owner-approved playbook may be active: the database refuses anything else.
+        CheckConstraint("status in ('draft', 'active', 'retired')", name="ck_playbook_status"),
+        CheckConstraint("status <> 'active' OR approved_by_person_id IS NOT NULL", name="ck_playbook_active_approved"),
+    )
+
+    owner_person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), index=True)
+    title: Mapped[str] = mapped_column(String(120))
+    drafted_body: Mapped[str] = mapped_column(Text)  # what Ava wrote; never changes
+    body: Mapped[str] = mapped_column(Text)  # what runs: the owner's edit
+    tools: Mapped[list[Any]] = mapped_column(JSONB, default=list)
+    status: Mapped[str] = mapped_column(String(10), default="draft")
+    approved_by_person_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("person.id"), nullable=True)
+    retired_reason: Mapped[str] = mapped_column(String(200), default="")
+    # The coin-flip A/B (outcomes are edit distance: how much the owner changed Ava's draft, 0 to 1).
+    used_n: Mapped[int] = mapped_column(Integer, default=0)
+    used_dist: Mapped[float] = mapped_column(Float, default=0.0)
+    unused_n: Mapped[int] = mapped_column(Integer, default=0)
+    unused_dist: Mapped[float] = mapped_column(Float, default=0.0)
+
+
+# A hard cap of 50 active playbooks per Ava, enforced by the database (not by the code that activates them).
+event.listen(
+    Playbook.__table__,
+    "after_create",
+    DDL(
+        f"""
+CREATE OR REPLACE FUNCTION playbook_active_cap() RETURNS trigger AS $$
+BEGIN
+  IF NEW.status = 'active' AND (SELECT count(*) FROM playbook
+       WHERE agent_id = NEW.agent_id AND status = 'active' AND id <> NEW.id) >= {MAX_ACTIVE_PLAYBOOKS} THEN
+    RAISE EXCEPTION 'at most {MAX_ACTIVE_PLAYBOOKS} active playbooks';
+  END IF;
+  RETURN NEW;
+END $$ LANGUAGE plpgsql;
+CREATE TRIGGER playbook_active_cap BEFORE INSERT OR UPDATE ON playbook
+  FOR EACH ROW EXECUTE FUNCTION playbook_active_cap();
+"""
+    ).execute_if(dialect="postgresql"),
+)

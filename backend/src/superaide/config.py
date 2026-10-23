@@ -83,7 +83,7 @@ class Settings(BaseSettings):
             "triage": 0.05,
             "voice": 0.30,
             "receptionist": 0.10,
-            "learning": 0.10,
+            "learning": 0.10,  # replay, second opinions, playbook drafts, tuner (#142)
         }
     )
     # These limits apply to each hired Ava on its own; an instance may set its own (agent_instance.spend_limits).
@@ -203,6 +203,9 @@ class Settings(BaseSettings):
     # heavy or "do you love me?" owner messages get a fixed human-written reply with no model call, any reply
     # that claims love or feelings is rewritten, and a reach-out-to-a-person rule applies. All in code.
     relationship_safety_enabled: bool = False
+    # Skill Ratchet (#120, tracking #142). Off: /app/playbooks answers 404. On: Ava can draft playbooks, only ones
+    # the owner edited can go live (database rule), at most 50 are active, and a playbook retires when it stops helping.
+    skill_ratchet_enabled: bool = False
     # Rubber-Stamp Brake (#134, tracking #142). Off: approvals work as before. On: when the owner's recent
     # approvals are all yes and faster than a card can be read, high-risk cards need a typed reason and only
     # a few cards show at once. It can only add friction, never remove it.
