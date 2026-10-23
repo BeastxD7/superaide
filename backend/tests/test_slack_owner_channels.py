@@ -154,6 +154,15 @@ def test_a_private_tool_is_refused_even_if_the_model_asks_for_it(agent, owner_li
         assert s.scalar(select(AuditLog).where(AuditLog.action == "tool_refused_in_channel")) is not None
 
 
+def test_compose_and_mail_tools_are_not_offered_or_run_in_a_channel(agent, owner_linked, rec):
+    rec.call_tool = "gmail_compose"
+    agent.handle(_mention(OWNER_SLACK, "<@UAVA> email bob@example.com that we are late"))
+    names = {t["name"] for t in agent.llm.calls[0]["tools"]}
+    assert "gmail_compose" not in names and "gmail_send" not in names
+    assert "direct message" in rec.calls[-1].get("tool_result", "")
+    assert "gmail_" not in rec.calls[0]["system"]
+
+
 def test_nothing_is_learned_from_a_channel_turn(agent, owner_linked, rec):
     result = agent.handle(_mention(OWNER_SLACK, "<@UAVA> I am vegetarian and I hate black"))
     assert "shared_context" in result.notes

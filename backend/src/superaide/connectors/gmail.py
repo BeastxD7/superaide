@@ -305,6 +305,17 @@ def subject(msg: dict[str, Any]) -> str:
 # --- writing a reply ----------------------------------------------------------------------
 
 
+def new_raw(*, to: list[str], from_addr: str, subject: str, text: str) -> str:
+    """A brand-new message (no thread), base64url-encoded for drafts.create."""
+    m = EmailMessage()
+    m["Subject"] = subject.strip()
+    m["To"] = ", ".join(to)
+    if from_addr:
+        m["From"] = from_addr
+    m.set_content(text)
+    return base64.urlsafe_b64encode(m.as_bytes()).decode().rstrip("=")
+
+
 def reply_raw(*, original: dict[str, Any], to: list[str], from_addr: str, text: str) -> str:
     """A reply in the original's thread, base64url-encoded for drafts.create."""
     h = headers(original)

@@ -63,6 +63,25 @@ class Messenger(Protocol):
     ) -> bool | None: ...
 
 
+class Working(Protocol):
+    """A "working on it" signal shown to the person while a reply is prepared (typing, a status or a
+    placeholder). `close()` ends it and is safe to call twice; the pipeline always calls it, error or not."""
+
+    def close(self) -> None: ...
+
+
+@dataclass
+class FakeWorking:
+    log: list[str]
+    key: str
+    closed: bool = False
+
+    def close(self) -> None:
+        if not self.closed:  # idempotent, like the real ones
+            self.closed = True
+            self.log.append(f"close {self.key}")
+
+
 @dataclass
 class FakeMessenger:
     """Records outbound messages instead of sending them (tests and dry runs)."""
@@ -70,6 +89,16 @@ class FakeMessenger:
     sent: list[dict[str, Any]] = field(default_factory=list)
     edits: list[dict[str, Any]] = field(default_factory=list)
     answers: list[dict[str, Any]] = field(default_factory=list)
+    # "start <chat>[/<thread>]" and "close <chat>[/<thread>]" for every working indicator (typing, status, placeholder).
+    working_log: list[str] = field(default_factory=list)
+    working_fails: bool = False  # the platform refuses the indicator: start-up must not break the reply
+
+    def working(self, chat_id: str, thread_id: str = "") -> Working | None:
+        if self.working_fails:
+            raise RuntimeError("platform refused the typing indicator")
+        key = f"{chat_id}/{thread_id}" if thread_id else chat_id
+        self.working_log.append(f"start {key}")
+        return FakeWorking(self.working_log, key)
 
     def send_buttons(self, chat_id: str, text: str, buttons: list[Button]) -> str:
         """Like TelegramMessenger.send_buttons: returns "chat_id:message_id" for later edits."""

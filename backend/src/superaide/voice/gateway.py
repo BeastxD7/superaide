@@ -67,7 +67,14 @@ def propose(
 
     if not get_settings().voice_two_channel:
         return {"status": "off", "spoken": "I can't take actions by voice yet. Please type it in the app."}
-    decision = decide(session, kind=kind, summary=summary, requester=requester, payload=payload, origin="voice")
+    decision = decide(
+        session, kind=kind, summary=summary, requester=requester, payload=payload, origin="voice", require_executor=True
+    )
+    if decision.unsupported:  # nothing could carry it out (#326): no card, and no pretending on the call
+        return {
+            "status": "refused",
+            "spoken": "I can't do that myself: nothing in Superaide can carry it out yet. I can write the text.",
+        }
     if decision.approval is None:
         return {"status": decision.outcome, "spoken": f"I can't do that. {decision.reason.capitalize()}."}
     return {"status": "waiting", "approval_id": str(decision.approval.id), **readback(decision.approval)}

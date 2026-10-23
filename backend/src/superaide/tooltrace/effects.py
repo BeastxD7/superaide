@@ -26,6 +26,7 @@ EFFECTS: dict[str, str] = {
     "move_event": "write_external",
     "decline_event": "send",
     "gmail_send": "send",
+    "gmail_compose": "send",
 }
 
 

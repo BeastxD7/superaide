@@ -11,6 +11,7 @@ import hmac
 import logging
 import time
 from collections.abc import Callable
+from contextvars import ContextVar
 from typing import Any
 
 from superaide.channels import format as fmt
@@ -96,7 +97,54 @@ def parse_event(payload: dict[str, Any], *, our_team_id: str, verified: bool) ->
     )
 
 
+WORKING_TEXT = "Working on it…"
+WORKING_STATUS = "is working on it…"
+# Slack errors that say the status API will never work for this app (so we stop asking and use the placeholder).
+STATUS_UNAVAILABLE = frozenset(
+    {"missing_scope", "unknown_method", "method_deprecated", "not_allowed_token_type", "feature_not_enabled"}
+)
+# The working signal of the turn running in this thread, so the reply that ends it can take over its placeholder.
+_ACTIVE: ContextVar[SlackWorking | None] = ContextVar("slack_working", default=None)
+
+
+def _error_code(exc: BaseException) -> str:
+    response = getattr(exc, "response", None)
+    try:
+        return str(response.get("error") or "") if response is not None else ""
+    except Exception:
+        return ""
+
+
+class SlackWorking:
+    """Either an assistant-thread status (cleared by Slack when the reply is posted) or a "Working on it…"
+    placeholder message. The reply is posted as a new message (an edit would not notify) and the placeholder is deleted
+    after it. `close()` removes a placeholder that got no reply (the turn failed), and is safe to call twice."""
+
+    def __init__(self, messenger: SlackMessenger, channel: str, thread_id: str, ts: str = "", status: bool = False):
+        self.messenger, self.channel, self.thread_id, self.ts, self.status = messenger, channel, thread_id, ts, status
+        self.consumed = False
+        self.closed = False
+
+    def close(self) -> None:
+        if self.closed:
+            return
+        self.closed = True
+        if _ACTIVE.get() is self:
+            _ACTIVE.set(None)
+        if self.ts and not self.consumed:
+            self.messenger._discard(self.channel, self.ts)
+        if self.status and not self.consumed:
+            try:  # an empty status clears it; Slack also clears it when a message is posted
+                self.messenger.client.assistant_threads_setStatus(
+                    channel_id=self.channel, thread_ts=self.thread_id, status=""
+                )
+            except Exception:
+                log.debug("slack: clearing the status failed", exc_info=True)
+
+
 class SlackMessenger:
+    status_unavailable = False  # set once Slack says assistant.threads.setStatus can't be used by this app
+
     def __init__(self, token: str, client: Any = None) -> None:
         if client is None:
             from slack_sdk import WebClient
@@ -121,14 +169,61 @@ class SlackMessenger:
         health.record("slack", health.OK)
         return result
 
+    def working(self, chat_id: str, thread_id: str = "") -> SlackWorking | None:
+        """Show that Ava is working: the assistant-thread status where Slack offers it (needs a thread and the
+        assistant:write scope), otherwise a "Working on it…" placeholder that the reply later edits. Never raises."""
+        handle: SlackWorking | None = None
+        try:
+            if thread_id and not self.status_unavailable and hasattr(self.client, "assistant_threads_setStatus"):
+                try:
+                    self.client.assistant_threads_setStatus(
+                        channel_id=chat_id, thread_ts=thread_id, status=WORKING_STATUS
+                    )
+                    handle = SlackWorking(self, chat_id, thread_id, status=True)
+                except Exception as exc:
+                    if _error_code(exc) in STATUS_UNAVAILABLE:
+                        self.status_unavailable = True
+            if handle is None:
+                kwargs: dict[str, Any] = {"channel": chat_id, "text": WORKING_TEXT}
+                if thread_id:
+                    kwargs["thread_ts"] = thread_id
+                posted = self._call("chat_postMessage", **kwargs)
+                handle = SlackWorking(self, chat_id, thread_id, ts=str(posted["ts"]))
+        except Exception as exc:  # cosmetic: the reply goes out normally without it
+            log.warning("slack: working indicator unavailable (%s)", type(exc).__name__)
+            return None
+        _ACTIVE.set(handle)
+        return handle
+
+    def _discard(self, channel: str, ts: str) -> None:
+        try:
+            self._call("chat_delete", channel=channel, ts=ts)
+        except Exception as exc:
+            log.warning("slack: couldn't remove the placeholder (%s)", type(exc).__name__)
+
     def _post(self, channel: str, text: str, thread_id: str = "", sources: Sources | None = None) -> bool:
         """Markdown goes out as Slack mrkdwn, split under Slack's recommended length."""
         messages = fmt.outgoing(text, sources, render=fmt.to_slack, footer=fmt.slack_footer, limit=fmt.SLACK_LIMIT)
+        active = _ACTIVE.get()
+        if not (
+            active is not None
+            and not active.consumed
+            and active.messenger is self
+            and (active.channel, active.thread_id) == (channel, thread_id)
+        ):
+            active = None
+        pending = active if active is not None and active.ts else None  # a status has no ts
         for mrkdwn, _ in messages:
             if thread_id:
                 self._call("chat_postMessage", channel=channel, text=mrkdwn, thread_ts=thread_id)
             else:
                 self._call("chat_postMessage", channel=channel, text=mrkdwn)
+            if active is not None and not active.consumed:
+                active.consumed = True  # a status is cleared by Slack once a message is posted
+                if pending is not None:
+                    # An edit would not notify anyone, so the reply is a new message; the placeholder goes after it
+                    # (best-effort: if the delete fails it stays, the reply is never lost).
+                    self._discard(channel, pending.ts)
         return True
 
     def send_dm(self, identity: ChannelIdentity, text: str) -> bool:
