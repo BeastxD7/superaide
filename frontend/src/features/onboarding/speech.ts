@@ -105,10 +105,51 @@ export function speechSupport(): SpeechSupport {
   }
 }
 
-/** The language to listen in: the browser's own, or US English. */
-export function recognitionLang(): string {
+const LANG_KEY = 'superaide-speech-lang'
+
+/** Languages the picker always offers (BCP 47 codes the browsers' speech recognition understands). */
+export const SPEECH_LANGUAGES: { code: string; label: string }[] = [
+  { code: 'en-US', label: 'English (US)' },
+  { code: 'en-GB', label: 'English (UK)' },
+  { code: 'en-IN', label: 'English (India)' },
+  { code: 'en-AU', label: 'English (Australia)' },
+  { code: 'en-SG', label: 'English (Singapore)' },
+  { code: 'es-ES', label: 'Español' },
+  { code: 'fr-FR', label: 'Français' },
+  { code: 'de-DE', label: 'Deutsch' },
+  { code: 'pt-BR', label: 'Português (Brasil)' },
+  { code: 'it-IT', label: 'Italiano' },
+  { code: 'nl-NL', label: 'Nederlands' },
+  { code: 'hi-IN', label: 'हिन्दी' },
+  { code: 'ja-JP', label: '日本語' },
+  { code: 'ko-KR', label: '한국어' },
+  { code: 'zh-CN', label: '中文 (普通话)' },
+  { code: 'ar-SA', label: 'العربية' },
+]
+
+/** The browser's own language, or US English. */
+export function browserLang(): string {
   const lang = typeof navigator !== 'undefined' ? navigator.language.split('@')[0] : ''
   return lang || 'en-US'
+}
+
+/** The language to listen in: what the person picked on this browser, else the browser's own. */
+export function recognitionLang(): string {
+  try {
+    const saved = typeof localStorage !== 'undefined' ? localStorage.getItem(LANG_KEY) : null
+    if (saved && /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/.test(saved)) return saved
+  } catch {
+    // storage blocked: fall through to the browser's language
+  }
+  return browserLang()
+}
+
+export function setRecognitionLang(code: string): void {
+  try {
+    localStorage.setItem(LANG_KEY, code)
+  } catch {
+    // not persisted (private window): it still applies until the page reloads, via the picker's own state
+  }
 }
 
 // ---------- Synthesis ----------
