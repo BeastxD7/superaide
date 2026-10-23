@@ -8,6 +8,7 @@ then save the facts and tell the owner what was learned.
 from __future__ import annotations
 
 import hashlib
+import logging
 import uuid
 from dataclasses import dataclass
 from typing import Any
@@ -24,6 +25,8 @@ from superaide.knowledge.learn import neighbours
 from superaide.knowledge.store import lock_document, remember_fact, supersede
 from superaide.proactive.notify import notify_owner
 
+log = logging.getLogger(__name__)
+
 
 @dataclass
 class IngestResult:
@@ -36,7 +39,6 @@ class IngestResult:
 
 
 def ingest(agent: Any, owner_id: uuid.UUID, extracted: Extracted, *, size_bytes: int = 0) -> IngestResult:
-    from superaide.factory import brain_ready
 
     source_kind = "link" if extracted.kind in {"web", "github"} else "document"
     digest = hashlib.sha256((extracted.source + "\n" + extracted.text).encode()).hexdigest()
@@ -78,6 +80,26 @@ def ingest(agent: Any, owner_id: uuid.UUID, extracted: Extracted, *, size_bytes:
     facts = extract_facts(agent, owner_name=owner_name, text=extracted.text, source=title, known=[k for _, k in known])
 
     # 3. Keep the facts, linked to the document.
+    try:
+        return _keep_facts(
+            agent, owner_id, doc_id, title, source_kind, facts, dict(enumerate((i for i, _ in known), 1))
+        )
+    except Exception as exc:  # not `read`: say it failed, keep the text, offer a retry
+        mark_failed(doc_id, title, exc)
+        return IngestResult(doc_id, title, 0, False, "failed", f"I saved {title} but couldn't read it: try again.")
+
+
+def _keep_facts(
+    agent: Any,
+    owner_id: uuid.UUID,
+    doc_id: uuid.UUID,
+    title: str,
+    source_kind: str,
+    facts: list[Any] | None,
+    known_ids: dict[int, uuid.UUID],
+) -> IngestResult:
+    from superaide.factory import brain_ready
+
     with session_scope() as s:
         owner = require(s, Person, owner_id)
         locked = lock_document(s, doc_id)
@@ -91,7 +113,7 @@ def ingest(agent: Any, owner_id: uuid.UUID, extracted: Extracted, *, size_bytes:
                 f"{title} was removed while I was reading it. I kept nothing from it.",
             )
         doc = locked
-        n = save_facts(s, owner, doc, facts or [], source_kind, dict(enumerate((i for i, _ in known), 1)))
+        n = save_facts(s, owner, doc, facts or [], source_kind, known_ids)
         if facts is None:  # reading failed: keep it as saved so it is tried again
             message = f"I've saved {title}, but couldn't read it just now. I'll try again shortly."
         elif brain_ready(agent.settings):
@@ -129,6 +151,42 @@ def save_facts(
         if old is not None and item.conflict_status == "none":
             supersede(session, old, item)
     return n
+
+
+def mark_failed(doc_id: uuid.UUID, title: str, exc: BaseException) -> None:
+    """Saving what was learnt from a document failed (the model's own failure stays `stored` and is retried).
+    Say so, in a fresh transaction: the document becomes `failed` instead of `read` with nothing to show, the
+    owner is told in the app, and Retry (POST /app/intro/documents/{id}/retry) reads it again. Only the error's
+    type is kept: its text can hold SQL or values."""
+    log.error("couldn't save the facts of a document: %s", type(exc).__name__, exc_info=exc)
+    try:
+        with session_scope() as s:
+            doc = lock_document(s, doc_id)
+            if doc is None or doc.removed_at is not None:
+                return
+            doc.status = "failed"
+            doc.warnings = [*(doc.warnings or []), f"Reading failed ({type(exc).__name__})."][-5:]
+            audit(s, "knowledge", "document_read_failed", document_id=doc_id, error=type(exc).__name__)
+            owner = s.get(Person, doc.owner_person_id)
+            if owner is not None:
+                notify_owner(
+                    s, owner, f"I couldn't read {title}: try again.",
+                    {"kind": "document_failed", "document_id": str(doc_id)}, channel="app",
+                )  # fmt: skip
+    except Exception:
+        log.exception("couldn't record that a document failed")
+
+
+def retry_document(agent: Any, owner_id: uuid.UUID, document_id: uuid.UUID) -> ReadResult | None:
+    """Put a failed document back to be read and read it now. None: no such document of this owner's."""
+    with session_scope() as s:
+        doc = lock_document(s, document_id)
+        if doc is None or doc.owner_person_id != owner_id or doc.removed_at is not None:
+            return None
+        if doc.status == "failed":
+            doc.status = "stored"
+    results = [r for r in read_documents(agent, owner_id) if r.document_id == document_id]
+    return results[0] if results else ReadResult(document_id, "", 0, False)
 
 
 @dataclass
@@ -170,18 +228,29 @@ def read_documents(agent: Any, owner_id: uuid.UUID) -> list[ReadResult]:
                 break  # the key was refused: the next document would be refused too
             continue
         source = "link" if kind in {"web", "github"} else "document"
-        with session_scope() as s:
-            owner, doc = require(s, Person, owner_id), lock_document(s, doc_id)
-            if doc is None or doc.status != "stored" or doc.removed_at is not None:
-                continue  # read or removed while the model worked
-            n = save_facts(s, owner, doc, facts, source, {})
-            doc.status = "read"
-            note = (
-                f"I've read {title}: {n} {'fact' if n == 1 else 'facts'} saved."
-                if n
-                else f"I've read {title}, but didn't find anything new about you in it."
-            )
-            meta = {"kind": "document_read", "document_id": str(doc_id), "facts": n}
-            notify_owner(s, owner, note, meta, channel="app")  # in the app chat, for the owner only
-            results.append(ReadResult(doc_id, title, n, True))
+        try:
+            saved = _save_read(owner_id, doc_id, title, source, facts)
+        except Exception as exc:
+            mark_failed(doc_id, title, exc)
+            results.append(ReadResult(doc_id, title, 0, False))
+            continue
+        if saved is not None:
+            results.append(saved)
     return results
+
+
+def _save_read(owner_id: uuid.UUID, doc_id: uuid.UUID, title: str, source: str, facts: list[Any]) -> ReadResult | None:
+    with session_scope() as s:
+        owner, doc = require(s, Person, owner_id), lock_document(s, doc_id)
+        if doc is None or doc.status != "stored" or doc.removed_at is not None:
+            return None  # read or removed while the model worked
+        n = save_facts(s, owner, doc, facts, source, {})
+        doc.status = "read"
+        note = (
+            f"I've read {title}: {n} {'fact' if n == 1 else 'facts'} saved."
+            if n
+            else f"I've read {title}, but didn't find anything new about you in it."
+        )
+        meta = {"kind": "document_read", "document_id": str(doc_id), "facts": n}
+        notify_owner(s, owner, note, meta, channel="app")  # in the app chat, for the owner only
+        return ReadResult(doc_id, title, n, True)

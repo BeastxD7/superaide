@@ -170,6 +170,7 @@ def test_the_owner_cannot_remove_someone_elses_document_or_forget_their_facts(ow
     doc_id, fact_id = _other_persons_rows()
     r = owner.post(f"/app/intro/documents/{doc_id}/remove")
     assert r.status_code == 404 and "priya" not in r.text.lower()
+    assert owner.post(f"/app/intro/documents/{doc_id}/retry").status_code == 404
     r = owner.post(f"/app/notebook/{fact_id}/forget")
     assert r.status_code == 404 and "surprise" not in r.text
     with session_scope() as s:
@@ -181,7 +182,13 @@ def test_the_owner_cannot_remove_someone_elses_document_or_forget_their_facts(ow
 
 
 @pytest.mark.parametrize(
-    "path", ["/app/intro/documents/{}/remove", "/app/notebook/{}/forget", "/app/notebook/{}/confirm"]
+    "path",
+    [
+        "/app/intro/documents/{}/remove",
+        "/app/intro/documents/{}/retry",
+        "/app/notebook/{}/forget",
+        "/app/notebook/{}/confirm",
+    ],
 )
 def test_ids_that_dont_exist_or_arent_ids(owner, path):
     assert owner.post(path.format(uuid.uuid4())).status_code == 404

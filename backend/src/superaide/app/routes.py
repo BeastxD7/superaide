@@ -396,6 +396,23 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 raise HTTPException(404, "Not found")
             return {"status": "removed", "facts_removed": retire_document(s, doc)}
 
+    @router.post(
+        "/intro/documents/{document_id}/retry",
+        tags=["Introduction"],
+        summary="Try reading a file or link again",
+        description="For one that failed to be read: reads it again now and says how it went.",
+    )
+    def retry_document_route(document_id: uuid.UUID, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        from superaide.knowledge.ingest import retry_document
+
+        result = retry_document(get_agent(), person_id, document_id)
+        if result is None:
+            raise HTTPException(404, "Not found")
+        with session_scope() as s:
+            doc = s.get(Document, document_id)
+            status = doc.status if doc is not None else "removed"
+        return {"status": status, "facts": result.facts, "read": result.read}
+
     @router.get(
         "/intro/call",
         tags=["Introduction"],
