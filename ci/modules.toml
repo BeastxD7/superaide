@@ -173,6 +173,7 @@ src = [
   "backend/src/superaide/brain/**",
 ]
 tests = [
+  "backend/tests/test_capabilities.py",
   "backend/tests/test_anthropic_wire.py",
   "backend/tests/test_budget.py",
   "backend/tests/test_budget_instances.py",
@@ -503,6 +504,8 @@ src = [
   "backend/src/superaide/policy/**",
 ]
 tests = [
+  "backend/tests/api/test_halt_resume.py",
+  "backend/tests/api/test_halt_resume_concurrency.py",
   "backend/tests/test_approval_honesty.py",
   "backend/tests/test_approvals.py",
   "backend/tests/test_approval_binding.py",
@@ -511,6 +514,7 @@ tests = [
   "backend/tests/api/test_brake.py",
 ]
 e2e = [
+  "e2e/tests/halt-resume.spec.ts",
   "e2e/tests/journeys/approval-honesty.spec.ts",
   "e2e/tests/journeys/approval-recipient.spec.ts",
   "e2e/tests/approvals-sync.spec.ts",
@@ -786,6 +790,8 @@ src = [
   "frontend/src/features/mobile/**",
 ]
 tests = [
+  "frontend/src/headers.test.ts",
+  "frontend/src/app/api/**/*.test.ts",
   "frontend/src/instrumentation.test.ts",
   "frontend/src/lib/*.test.ts",
   "frontend/src/components/**/*.test.ts",
@@ -823,6 +829,7 @@ tests = [
   "frontend/src/features/dashboard/*.test.ts",
 ]
 e2e = [
+  "e2e/tests/halt-resume.spec.ts",
   "e2e/tests/chat-empty.mobile.spec.ts",
   "e2e/tests/citation-marks.mobile.spec.ts",
   "e2e/tests/citation-marks.spec.ts",
