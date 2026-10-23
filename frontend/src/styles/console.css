@@ -3,6 +3,7 @@
    Tokens first, then base, shell, primitives; the "legacy" block at the end styles pages not yet
    moved onto the primitives in src/features/console/ui and is deleted as they move. */
 
+@layer components {
 :root {
   /* Palette (light) */
   --canvas: #ffffff;
@@ -70,41 +71,6 @@
   --font: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
   --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
-  color-scheme: light dark;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --canvas: #0f0c1f;
-    --mist: #17132e;
-    --haze: #1d1838;
-    --lilac: #241d4a;
-    --lilac-strong: #342a6b;
-    --ink: #f1eeff;
-    --body: #cdc8e6;
-    --muted: #a8a2cf;
-    --line: #2b2552;
-    --line-strong: #453d78;
-    --accent: #6747ee;
-    --accent-hover: #7a5cf5;
-    --accent-text: #b9a8ff;
-    --focus: #a894ff;
-    --ok: #6fd1a1;
-    --ok-soft: #12301f;
-    --warn: #f0b95e;
-    --warn-soft: #33260c;
-    --danger: #ff8fa6;
-    --danger-soft: #3a1522;
-    --info: #b9a8ff;
-    --info-soft: #241d4a;
-    --shadow-bar: 0 8px 30px -18px rgba(0, 0, 0, 0.8);
-    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
-    --glass: rgb(23 19 46 / 0.78);
-    --bar-border: rgb(255 255 255 / 0.08);
-    --mesh: radial-gradient(60% 50% at 12% 0%, #2a1d52 0%, transparent 70%), radial-gradient(50% 45% at 92% 0%, #16204a 0%, transparent 70%);
-    --grid: #1b1736;
-    --grid-strong: #262048;
-  }
 }
 
 /* ---- Base --------------------------------------------------------------- */
@@ -218,12 +184,7 @@ textarea {
   cursor: default;
 }
 
-/* ---- Shell: one container, a floating glass bar, a content area ----------- */
-
-.c-app {
-  min-height: 100vh;
-  background: var(--mesh) no-repeat top / 100% 480px;
-}
+/* ---- Shell: the shared sidebar, a slim top bar, one container ------------------ */
 
 .c-container {
   width: 100%;
@@ -232,30 +193,25 @@ textarea {
   padding-inline: var(--gutter);
 }
 
-.c-bar-wrap {
+.c-topbar {
   position: sticky;
   top: 0;
-  z-index: 30;
-  padding-top: var(--s-4);
-}
-
-.c-bar {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-areas: 'brand nav end';
+  z-index: 20;
+  display: flex;
   align-items: center;
-  gap: var(--s-4);
-  padding: var(--s-2) var(--s-2) var(--s-2) var(--s-5);
-  border: 1px solid var(--bar-border);
-  border-radius: 999px;
+  gap: var(--s-2);
+  height: 56px;
+  padding-inline: var(--s-4);
+  border-bottom: 1px solid var(--line);
   background: var(--glass);
   backdrop-filter: blur(18px) saturate(1.4);
   -webkit-backdrop-filter: blur(18px) saturate(1.4);
-  box-shadow: var(--shadow-bar);
+  border-radius: inherit;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 .c-brand {
-  grid-area: brand;
   display: flex;
   align-items: center;
   gap: var(--s-2);
@@ -285,56 +241,8 @@ textarea {
   border-radius: 999px;
 }
 
-.c-nav {
-  grid-area: nav;
-  justify-self: center;
-  display: flex;
-  gap: var(--s-1);
-  padding: var(--s-1);
-  border-radius: 999px;
-  background: var(--mist);
-  overflow-x: auto;
-  scrollbar-width: none;
-  max-width: 100%;
-}
-
-.c-nav::-webkit-scrollbar {
-  display: none;
-}
-
-.c-tab {
-  border: 0;
-  background: transparent;
-  color: var(--body);
-  font-size: 14px;
-  font-weight: 500;
-  padding: 6px 12px;
-  border-radius: 999px;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: background-color 200ms var(--ease), color 200ms var(--ease);
-}
-
-.c-tab:hover {
-  background: var(--canvas);
-  color: var(--ink);
-}
-
-.c-tab[aria-current='page'] {
-  background: var(--ink);
-  color: var(--canvas);
-}
-
-.c-bar-end {
-  grid-area: end;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--s-2);
-}
-
 .c-banner {
-  margin-top: var(--s-3);
+  margin: var(--s-3) var(--s-4) 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -581,6 +489,11 @@ textarea {
 
 .c-btn.is-secondary:hover {
   background: var(--lilac);
+}
+
+.c-btn.is-sm {
+  padding: 4px 12px;
+  font-size: 13px;
 }
 
 .c-btn.is-ghost {
@@ -1346,50 +1259,9 @@ blockquote {
   width: 100%;
 }
 
-/* Narrower windows: the tabs drop to their own row; on phones the bar stacks in three equal rows. */
-@media (max-width: 1199px) {
-  .c-bar {
-    grid-template-columns: 1fr auto;
-    grid-template-areas: 'brand end' 'nav nav';
-    border-radius: 32px;
-    padding: var(--s-2) var(--s-2) var(--s-2) var(--s-5);
-  }
-
-  .c-nav {
-    justify-self: stretch;
-    justify-content: center;
-  }
-}
-
-@media (max-width: 1279px) {
-  .c-brand-tag {
-    display: none;
-  }
-}
-
 @media (max-width: 720px) {
   :root {
     --gutter: 16px;
-  }
-
-  .c-bar-wrap {
-    position: static;
-  }
-
-  .c-bar {
-    grid-template-columns: 1fr;
-    grid-template-areas: 'brand' 'nav' 'end';
-    gap: var(--s-3);
-    padding: var(--s-4);
-    border-radius: var(--r-panel);
-  }
-
-  .c-nav {
-    justify-content: flex-start;
-  }
-
-  .c-bar-end {
-    justify-content: space-between;
   }
 
   .c-grid,
@@ -1429,10 +1301,10 @@ blockquote {
     animation: none;
   }
 
-  .c-tab,
   .c-btn,
   .c-chip,
   .c-meter-fill {
     transition: none;
   }
+}
 }

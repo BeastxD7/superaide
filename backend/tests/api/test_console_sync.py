@@ -65,10 +65,10 @@ def test_connections_saved_in_the_app_show_as_connected_in_the_console(owner_app
 
 def test_a_forgotten_note_is_not_counted(owner_app):
     base = overview(owner_app)["counts"]["memories"]
-    assert owner_app.post("/app/chat", json={"text": "Remember that my locker code is 4417"}).status_code == 200
+    assert owner_app.post("/app/chat", json={"text": "Remember that my locker code is zq4417"}).status_code == 200
     one = overview(owner_app)["counts"]["memories"]
     assert one == base + 1
-    [note] = [m for m in owner_app.get("/app/notebook").json()["memories"] if "4417" in m["text"]]
+    [note] = [m for m in owner_app.get("/app/notebook").json()["memories"] if "zq4417" in m["text"]]
     assert owner_app.post(f"/app/notebook/{note['id']}/forget").status_code == 200
     assert overview(owner_app)["counts"]["memories"] == base
 

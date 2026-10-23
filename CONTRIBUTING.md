@@ -70,7 +70,7 @@ A pull request merges when CI is green. Run the same checks locally first:
 
 `make check` runs everything except end to end.
 
-CI runs the full browser suite when `frontend/`, `e2e/` or the API contract changes, and a short `@smoke` subset when only `backend/` changed. If you change an endpoint, request or response model, run `make openapi` and commit `backend/openapi.snapshot.json`; the backend tests fail until you do, and committing it selects the full browser suite. See [ADR 0013](docs/decisions/0013-ci-pipeline.md).
+CI runs the full browser suite when `frontend/`, `e2e/` or the API contract changes, and a short `@smoke` subset when only `backend/` changed. If you change an endpoint, request or response model, run `make openapi` and commit `backend/openapi.snapshot.json`; the backend tests fail until you do, and committing it selects the full browser suite. See [ADR 0013](docs/decisions/0013-ci-pipeline.md). CI runs the backend tests as two shards (`uv run pytest --shard 1/2`); locally `uv run pytest` still runs everything.
 
  CI also builds the Docker images and validates the production compose file and Caddyfile.
 

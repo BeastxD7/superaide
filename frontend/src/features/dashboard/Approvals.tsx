@@ -7,9 +7,9 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { useAppData } from '@/features/dashboard/data'
+import { useApprovals } from '@/features/dashboard/useApprovals'
 import { call, type ApprovalItem } from '@/lib/api'
-import { announceApprovalsChanged, useApprovalsChanged } from '@/lib/approvals-sync'
+import { announceApprovalsChanged } from '@/lib/approvals-sync'
 import { formatWhen } from '@/lib/dates'
 import { errorMessage } from '@/lib/action'
 
@@ -53,20 +53,25 @@ function VoiceReadback({ readback }: { readback: NonNullable<ApprovalItem['readb
 }
 
 // What Ava was asked to do that needs your yes first. Shown only while something is waiting.
-export function ApprovalsCard({ name, empty = null }: { name: string; empty?: ReactNode }) {
-  const { data, reload } = useAppData<ApprovalItem[]>('/approvals')
+// `showExpired` (the Approvals page) also lists requests that ran out of time, so they do not just disappear.
+export function ApprovalsCard({ name, empty = null, showExpired = false }: { name: string; empty?: ReactNode; showExpired?: boolean }) {
+  const { data, reload, waiting: pending, expired } = useApprovals()
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [reasons, setReasons] = useState<Record<string, string>>({})
-  useApprovalsChanged(reload)
-  const pending = (data ?? []).filter((a) => a.status === 'pending')
-  if (!pending.length) return data ? empty : null
+  const stale = showExpired ? expired : []
+  if (!pending.length && !stale.length) return data ? empty : null
 
   async function decide(id: string, verdict: 'approve' | 'reject') {
     setBusy(id)
     setError(null)
     try {
-      await call(`/approvals/${id}/${verdict}`, { method: 'POST', json: { reason: reasons[id] ?? null } })
+      const r = await call<{ status: string; result: string | null }>(`/approvals/${id}/${verdict}`, {
+        method: 'POST',
+        json: { reason: reasons[id] ?? null },
+      })
+      // A yes can come back refused (it ran out of time while the card was open): say so, do not just drop the card.
+      if (verdict === 'approve' && r.status === 'rejected' && r.result) setError(r.result)
     } catch (e) {
       setError(errorMessage(e))
     } finally {
@@ -82,10 +87,12 @@ export function ApprovalsCard({ name, empty = null }: { name: string; empty?: Re
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <ShieldQuestion className="size-5 text-violet-600" aria-hidden />
-          Waiting for your OK
-          <Badge variant="secondary">{pending.length}</Badge>
+          {pending.length ? 'Waiting for your OK' : 'Ran out of time'}
+          <Badge variant="secondary">{pending.length || stale.length}</Badge>
         </CardTitle>
-        <CardDescription>{name} won&apos;t do any of this until you say yes.</CardDescription>
+        <CardDescription>
+          {pending.length ? `${name} won't do any of this until you say yes.` : `${name} did not do any of this. Ask her again if you still want it.`}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         {error && (
@@ -130,6 +137,22 @@ export function ApprovalsCard({ name, empty = null }: { name: string; empty?: Re
             </li>
           ))}
         </ul>
+        {pending.length > 0 && stale.length > 0 && (
+          <h3 className="mt-4 mb-2 text-sm font-medium text-ink">Ran out of time. Ask {name} again if you still want these.</h3>
+        )}
+        {stale.length > 0 && (
+          <ul className="space-y-2" aria-label="Requests that ran out of time">
+            {stale.map((a) => (
+              <li key={a.id} className="rounded-xl border border-dashed border-line bg-white/60 p-3">
+                <p className="text-sm font-medium text-ink">
+                  {KIND_LABEL[a.kind] ?? a.kind} <Badge variant="secondary">Expired</Badge>
+                </p>
+                <p className="mt-0.5 break-words text-sm text-body">{a.summary}</p>
+                <p className="mt-1 text-xs text-muted">Asked {formatWhen(a.at)} · not done, it was not answered in time</p>
+              </li>
+            ))}
+          </ul>
+        )}
       </CardContent>
     </Card>
   )
