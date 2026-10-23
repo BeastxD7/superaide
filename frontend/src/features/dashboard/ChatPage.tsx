@@ -2,7 +2,7 @@
 
 import { ArrowUp, BookOpen, Lightbulb, PenLine, Wand2 } from 'lucide-react'
 import Link from 'next/link'
-import { motion } from 'motion/react'
+import { motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { Conversation, type LiveTurn } from '@/components/Conversation'
 import { useReveal } from '@/hooks/use-reveal'
@@ -25,6 +25,7 @@ const QUICK = [
 
 export function ChatPage() {
   const { me, refresh } = useSession()
+  const reduceMotion = useReducedMotion()
   const [messages, setMessages] = useState<Message[]>([])
   // Messages older than the newest page, fetched on request; `more` is false once the start has been reached.
   const [older, setOlder] = useState<Message[]>([])
@@ -203,31 +204,12 @@ export function ChatPage() {
   if (!me) return null
   const name = me.agent.name
   const first = me.person.name.split(' ')[0]
+  // Empty only once the saved history has loaded and nothing is on screen or on its way.
+  const empty = loaded && older.length === 0 && messages.length === 0 && !live && !pending
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="border-b border-line/70 px-4 pt-5 pb-4 sm:px-8">
-        <h1 className="text-2xl font-medium text-ink tight sm:text-3xl">Hello, {first}. What shall we work on?</h1>
-        <div className="scrollbar-none mt-4 flex gap-2 overflow-x-auto">
-          {QUICK.map(({ icon: Icon, label, prefill, send: direct }) => (
-            <button
-              key={label}
-              type="button"
-              onClick={() => {
-                if (direct) void send(direct)
-                else {
-                  setDraft(prefill ?? '')
-                  window.setTimeout(() => inputRef.current?.focus(), 0)
-                }
-              }}
-              className="flex shrink-0 items-center gap-2 rounded-xl border border-line bg-white px-3.5 py-2 text-sm text-ink hover:border-lilac-200 hover:bg-lilac-50"
-            >
-              <Icon className="size-4 text-violet-600" aria-hidden />
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <h1 className="sr-only">Your conversation with {name}</h1>
 
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-5 [scrollbar-gutter:stable] sm:px-8">
         <div className="mx-auto max-w-3xl">
@@ -256,7 +238,40 @@ export function ChatPage() {
             </div>
           )}
           {!loaded && <ChatSkeleton />}
-          <Conversation messages={[...older, ...visible]} typing={typing} hue="indigo" agentName={name} live={live} />
+          {empty ? (
+            // Nothing said yet: greet the owner and offer a few ways to start, centred in the transcript. Once there is any
+            // message this is gone and the transcript has the whole height.
+            <motion.div
+              initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="flex min-h-[50dvh] flex-col items-center justify-center text-center"
+              data-testid="chat-empty"
+            >
+              <p className="text-2xl font-medium text-ink tight sm:text-3xl">Hello, {first}. What shall we work on?</p>
+              <div className="mt-6 grid w-full max-w-xl grid-cols-1 gap-2 sm:grid-cols-2">
+                {QUICK.map(({ icon: Icon, label, prefill, send: direct }) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => {
+                      if (direct) void send(direct)
+                      else {
+                        setDraft(prefill ?? '')
+                        window.setTimeout(() => inputRef.current?.focus(), 0)
+                      }
+                    }}
+                    className="flex items-center gap-2 rounded-xl border border-line bg-white px-3.5 py-3 text-left text-sm text-ink hover:border-lilac-200 hover:bg-lilac-50"
+                  >
+                    <Icon className="size-4 shrink-0 text-violet-600" aria-hidden />
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          ) : (
+            <Conversation messages={[...older, ...visible]} typing={typing} hue="indigo" agentName={name} live={live} />
+          )}
         </div>
       </div>
 

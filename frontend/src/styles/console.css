@@ -848,12 +848,6 @@ input[type='checkbox'] {
 
 /* ---- Overview ---------------------------------------------------------- */
 
-.hint {
-  margin: -4px 0 12px;
-  font-size: 14px;
-  max-width: 80ch;
-}
-
 .link-to {
   display: inline-flex;
   gap: 8px;
@@ -899,52 +893,7 @@ input[type='checkbox'] {
   fill: var(--trust);
 }
 
-/* ---- People ------------------------------------------------------------- */
-
-.people {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 36px;
-}
-
-.person header {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  margin-bottom: 10px;
-}
-
-.relation {
-  color: var(--ink-quiet);
-}
-
-.person.stranger h2 {
-  color: var(--stranger);
-}
-
-table:not(.c-table) {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-
-.legacy-table th {
-  text-align: left;
-  font-weight: 600;
-  color: var(--ink-quiet);
-  padding: 8px 10px 8px 0;
-  border-bottom: 1px solid var(--rule-strong);
-}
-
-.legacy-table td {
-  padding: 10px 10px 10px 0;
-  border-bottom: 1px solid var(--rule);
-  vertical-align: middle;
-}
-
-.r {
-  text-align: right;
-}
+/* ---- Page parts that are not shared primitives -------------------------------- */
 
 .provider {
   font-weight: 600;
@@ -958,20 +907,36 @@ table:not(.c-table) {
   gap: 6px;
 }
 
-.badge {
-  display: inline-block;
-  margin-left: 8px;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 1px 8px;
-  border-radius: 999px;
+.c-badge-inline {
+  margin-left: var(--s-2);
 }
 
-.badge.refused {
-  color: var(--refused);
-  background: var(--refused-soft);
+.link-to {
+  display: inline-flex;
+  gap: var(--s-2);
+  align-items: center;
 }
 
+.link-to select {
+  padding: 4px 8px;
+  font-size: 13px;
+  max-width: 120px;
+}
+
+.c-btn.is-sm {
+  padding: 4px 12px;
+  font-size: 13px;
+}
+
+.c-table.is-fixed {
+  table-layout: fixed;
+}
+
+.c-table.is-fixed td {
+  overflow-wrap: anywhere;
+}
+
+/* Trust tier: five ticks, amber below "Linked", violet from "Linked" up */
 .tier {
   display: inline-flex;
   align-items: center;
@@ -1004,44 +969,33 @@ table:not(.c-table) {
   color: var(--ink-quiet);
 }
 
-details {
-  margin-top: 10px;
-}
 
-summary {
+.c-details summary {
   cursor: pointer;
-  color: var(--trust);
+  color: var(--accent-text);
   font-size: 14px;
+  font-weight: 500;
 }
 
 .history {
-  margin: 8px 0 0;
+  margin: var(--s-2) 0 0;
   padding-left: 20px;
-  color: var(--ink-quiet);
+  color: var(--muted);
   font-size: 14px;
 }
 
-.empty {
-  max-width: 60ch;
+/* Conversations: a list and a thread, one third and two thirds, equal height */
+.c-split {
   display: grid;
-  gap: 8px;
-  padding: var(--s-5);
-  border-radius: var(--r-panel);
-  background: var(--mist);
-}
-
-/* ---- Conversations -------------------------------------------------------- */
-
-.conversations {
-  display: grid;
-  grid-template-columns: 260px 1fr;
-  gap: 32px;
-  align-items: start;
+  grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+  gap: var(--s-5);
+  align-items: stretch;
 }
 
 .conv-list {
   display: grid;
-  gap: 6px;
+  gap: var(--s-2);
+  align-content: start;
 }
 
 .conv {
@@ -1050,34 +1004,35 @@ summary {
   text-align: left;
   border: 1px solid transparent;
   background: none;
-  padding: 10px 12px;
-  border-radius: 8px;
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-field);
   cursor: pointer;
+  transition: background-color 200ms var(--ease);
 }
 
 .conv:hover {
-  background: var(--surface);
+  background: var(--mist);
 }
 
 .conv.active {
-  background: var(--surface);
-  border-color: var(--rule);
+  background: var(--lilac);
 }
 
 .conv-title {
   font-weight: 600;
+  color: var(--ink);
   text-transform: capitalize;
 }
 
 .audience {
   font-size: 13px;
-  font-weight: 600;
-  color: var(--trust);
+  font-weight: 500;
+  color: var(--accent-text);
 }
 
 .audience-team,
 .audience-mixed_external {
-  color: var(--stranger);
+  color: var(--warn);
 }
 
 .conv .quiet {
@@ -1089,30 +1044,36 @@ summary {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 14px;
+  gap: var(--s-3);
+  align-content: start;
+  max-height: 640px;
+  overflow-y: auto;
 }
 
 .msg {
-  max-width: 70ch;
-  padding: 12px 14px;
-  border-radius: 10px;
-  background: var(--surface);
-  border: 1px solid var(--rule);
+  max-width: 72ch;
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-field);
+  background: var(--mist);
+  justify-self: start;
 }
 
 .msg.out {
-  margin-left: 48px;
-  background: var(--trust-soft);
-  border-color: transparent;
+  justify-self: end;
+  background: var(--lilac);
 }
 
 .msg-meta {
   display: flex;
-  gap: 10px;
+  gap: var(--s-3);
   align-items: center;
   flex-wrap: wrap;
   font-size: 13px;
-  margin-bottom: 4px;
+  margin-bottom: var(--s-1);
+}
+
+.msg-meta strong {
+  color: var(--ink);
 }
 
 .msg p {
@@ -1120,20 +1081,16 @@ summary {
 }
 
 .msg-audience {
-  margin-top: 6px !important;
+  margin-top: var(--s-2) !important;
   font-size: 13px;
-  color: var(--ink-quiet);
+  color: var(--muted);
 }
 
-/* ---- Safety log ----------------------------------------------------------- */
-
-.filters {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 20px;
+.msg-audience .c-badge {
+  white-space: normal;
 }
 
+/* Safety log: when, kind, what happened; scrolls inside its frame */
 .log-list {
   list-style: none;
   margin: 0;
@@ -1142,27 +1099,26 @@ summary {
 
 .log-row {
   display: grid;
-  grid-template-columns: 110px 1fr;
-  gap: 16px;
-  padding: 9px 0 9px 14px;
-  border-bottom: 1px solid var(--rule);
-  border-left: 3px solid transparent;
+  grid-template-columns: 96px 88px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-3) var(--s-4);
+  min-height: 52px;
+  border-bottom: 1px solid var(--line);
 }
 
-.log-refusal {
-  border-left-color: var(--refused);
+.log-row:last-child {
+  border-bottom: 0;
 }
 
-.log-identity {
-  border-left-color: var(--trust);
+.log-row > .c-badge {
+  justify-self: start;
 }
 
 .log-when {
-  color: var(--ink-quiet);
+  color: var(--muted);
   font-size: 13px;
 }
-
-/* ---- Spend ---------------------------------------------------------------- */
 
 /* ---- Simulator -------------------------------------------------------------- */
 
@@ -1269,7 +1225,6 @@ blockquote {
 /* ---- Small screens -------------------------------------------------------------- */
 
 @media (max-width: 760px) {
-  .conversations,
   .sim-grid,
   .sim-form .row {
     grid-template-columns: 1fr;
@@ -1284,15 +1239,6 @@ blockquote {
     min-width: 640px;
   }
 
-  .log-row {
-    grid-template-columns: 1fr;
-    gap: 2px;
-  }
-
-  .legacy-table {
-    display: block;
-    overflow-x: auto;
-  }
 }
 
 /* Break-glass (ADR 0009): an owner's content opens only with a reason, recorded in their log. */
@@ -1329,6 +1275,23 @@ blockquote {
 
   .c-card {
     padding: var(--s-4);
+  }
+
+  .c-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .log-row {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--s-1) var(--s-3);
+  }
+
+  .log-text {
+    grid-column: 1 / -1;
+  }
+
+  .msg {
+    max-width: 100%;
   }
 }
 

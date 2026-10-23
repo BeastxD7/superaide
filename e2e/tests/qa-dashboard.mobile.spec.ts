@@ -8,7 +8,7 @@ const QA = `${process.env.QA_SHOTS_DIR ?? 'test-results/qa-shots'}/dashboard`
 
 const PAGES: { path: string; heading: RegExp | string }[] = [
   { path: '/dashboard', heading: /^Good (morning|afternoon|evening), Shashank$/ },
-  { path: '/dashboard/chat', heading: 'Hello, Shashank. What shall we work on?' },
+  { path: '/dashboard/chat', heading: 'Your conversation with Ava' },
   { path: '/dashboard/notebook', heading: "Ava's notebook" },
   { path: '/dashboard/people', heading: 'People who matter' },
   { path: '/dashboard/capabilities', heading: 'Capabilities' },

@@ -8,6 +8,8 @@ export type Column<T> = {
   /** The accessible name when there is no visible heading, e.g. "Actions". */
   label?: string
   align?: 'left' | 'right'
+  /** A width (e.g. "20%") fixes the column, so several tables on one page line up. */
+  width?: string
   render: (row: T) => ReactNode
 }
 
@@ -23,18 +25,27 @@ type Props<T> = {
   loadingLabel?: string
   /** Cap the height and scroll inside, so the sticky header stays in view on long tables. */
   maxHeight?: number
+  /** Narrowest the table may get before it scrolls sideways (phones). */
+  minWidth?: number
 }
 
 // One table for the whole console: 40px header, 52px rows, hairlines, sticky header, scrolls sideways on phones.
-export function DataTable<T>({ caption, columns, rows, rowKey, rowClass, empty, loadingLabel = 'Loading', maxHeight }: Props<T>) {
+export function DataTable<T>({ caption, columns, rows, rowKey, rowClass, empty, loadingLabel = 'Loading', maxHeight, minWidth }: Props<T>) {
   if (rows === null) return <LoadingBlock label={loadingLabel} />
   if (rows.length === 0 && empty) return <>{empty}</>
   const style: CSSProperties | undefined = maxHeight ? { maxHeight } : undefined
   return (
     // A scrollable region must be reachable by keyboard (axe: scrollable-region-focusable).
     <div className="c-table-wrap" style={style} tabIndex={0} role="region" aria-label={caption}>
-      <table className="c-table">
+      <table className={columns.some((c) => c.width) ? 'c-table is-fixed' : 'c-table'} style={minWidth ? { minWidth } : undefined}>
         <caption className="sr-only">{caption}</caption>
+        {columns.some((c) => c.width) && (
+          <colgroup>
+            {columns.map((c) => (
+              <col key={c.key} style={c.width ? { width: c.width } : undefined} />
+            ))}
+          </colgroup>
+        )}
         <thead>
           <tr>
             {columns.map((c) => (
