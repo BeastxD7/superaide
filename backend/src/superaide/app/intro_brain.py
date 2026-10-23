@@ -24,6 +24,26 @@ def brain_ready_for_intro(settings: Settings) -> bool:
     return brain_ready(settings)
 
 
+def own_brain_saved(session: Session) -> bool:
+    """THIS instance has a model of its own saved: a Claude key in its vault, or an enabled provider it added
+    (with its key, or a local server that needs none). The operator's server key and Superaide AI credits do
+    not count, so "I connected my own key" can't be said on their strength."""
+    from sqlalchemy import select
+
+    from superaide.brain.providers.config import _secret, mine
+    from superaide.brain.providers.presets import PRESETS
+    from superaide.db.models import LlmProvider
+    from superaide.vault.store import find
+
+    if find(session, "anthropic", "api_key") is not None:
+        return True
+    for row in session.scalars(select(LlmProvider).where(mine(LlmProvider), LlmProvider.enabled.is_(True))):
+        preset = PRESETS.get(row.preset)
+        if _secret(session, row.key) is not None or (preset is not None and preset.local):
+            return True
+    return False
+
+
 def intro_needs_brain_step(settings: Settings) -> bool:
     return not settings.fake_llm and not brain_ready_for_intro(settings)
 

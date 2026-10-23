@@ -311,12 +311,14 @@ class Onboarder:
                 ]
                 answers["brain"] = "credits"
             elif choice == "own":
-                from superaide.app.intro_brain import brain_ready_for_intro
+                from superaide.app.intro_brain import brain_ready_for_intro, own_brain_saved
                 from superaide.vault.store import runtime_settings
 
-                if not brain_ready_for_intro(runtime_settings()):
+                if not own_brain_saved(session) or not brain_ready_for_intro(runtime_settings()):
                     return self.view(
-                        session, person, hint="I can't see your key yet. Add it first, then press continue."
+                        session,
+                        person,
+                        hint="I can't see your key yet. Add it on the AI model page, then press continue.",
                     )
                 self._hear(session, person, "I connected my own key")
                 extra = ["Thanks, I'll think with your key. Share anything you like and I'll read it right away."]
