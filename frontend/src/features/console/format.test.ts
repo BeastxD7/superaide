@@ -64,6 +64,10 @@ describe('describeAudit', () => {
     expect(describeAudit(row('operator_access', { path: '/api/memories', reason: 'support case' })).text).toBe(
       'You opened Memories — reason: support case',
     )
+    expect(describeAudit(row('operator_access', { path: '/api/memories/page', reason: 'support case' })).text).toBe(
+      'You opened Memories — reason: support case',
+    ) // the paged route is the same screen
+    expect(describeAudit(row('operator_access', { path: '/api/people/unlinked/page', reason: 'r' })).text).toContain('opened People')
     expect(describeAudit(row('operator_access', { path: '/api/identities/x/unlink', reason: 'r' })).text).toContain('unlinked an account')
     expect(describeAudit(row('operator_access', { path: '', reason: 'r' })).text).toContain('a private page')
   })

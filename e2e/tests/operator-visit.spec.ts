@@ -16,7 +16,9 @@ test('a long visit to People is one access-log entry, and the owner cannot be un
   await page.waitForTimeout(12_000) // two refreshes of the screen
   await page.screenshot({ path: shot('console-people') })
   const log = (await (await page.request.get('/api/app/access-log')).json()) as { what: string }[]
-  expect(log.filter((e) => e.what === '/api/people')).toHaveLength(1)
+  // People and unclaimed accounts are two paged routes (ADR 0014); each is one entry however often it refreshes.
+  expect(log.filter((e) => e.what === '/api/people/page')).toHaveLength(1)
+  expect(log.filter((e) => e.what === '/api/people/unlinked/page')).toHaveLength(1)
   await page.goto('/dashboard/settings')
   await expect(page.getByText('People and linked accounts').first()).toBeVisible()
   await page.screenshot({ path: shot('app-access-log') })
