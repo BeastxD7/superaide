@@ -177,6 +177,9 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     from superaide.voice.routes import make_router as make_voice_router
 
     app.include_router(make_voice_router(get_agent))  # 404 unless VOICE_INTRO_V2 (ADR 0012)
+    from superaide.imports.routes import make_router as make_import_router
+
+    app.include_router(make_import_router())  # 404 unless IMPORT_LEASE_ENABLED (#133)
 
     @app.get(
         "/",

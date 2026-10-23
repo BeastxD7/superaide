@@ -269,6 +269,18 @@ def _reset_db(args: argparse.Namespace) -> None:
     print("Database wiped.")
 
 
+def _import_cards(args: argparse.Namespace) -> None:
+    """Convert a third-party export into context cards, on this machine, and print them for review. Writes nothing."""
+    import json
+    from pathlib import Path
+
+    from superaide.imports import convert
+
+    text = Path(args.file).read_text(encoding="utf-8", errors="replace")
+    batch = convert.convert(args.kind, text, scope=args.scope)
+    print(json.dumps(batch, indent=2, ensure_ascii=False))
+
+
 def main() -> None:
     from superaide.security import logredact
 
@@ -316,6 +328,11 @@ def main() -> None:
     p.add_argument("--reason", default="")
     p.set_defaults(func=_unlink)
 
+    p = sub.add_parser("import-cards", help="convert an export file into context cards (local, prints JSON)")
+    p.add_argument("kind", choices=["chat-archive", "calendar-ics", "notes"])
+    p.add_argument("file")
+    p.add_argument("--scope", default="", help="chat | calendar | notes (default: the usual one for the kind)")
+    p.set_defaults(func=_import_cards)
     sub.add_parser("hello", help="one tiny real Claude call to test the key").set_defaults(func=_hello)
     sub.add_parser("seed-demo", help="add demo people if none exist").set_defaults(func=_seed_demo)
     p = sub.add_parser("reset-password", help="set a new password for an app account")

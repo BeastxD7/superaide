@@ -38,6 +38,7 @@ FLAG_GATED = {
     ("GET", "/app/ask-link/requests"),
     # The introduction's voice call, v2 (VOICE_INTRO_V2, ADR 0012); its POSTs are enumerated like every route.
     ("GET", "/app/intro/voice"),
+    ("GET", "/app/import-leases"),  # IMPORT_LEASE_ENABLED (#133)
 }
 SECRET_NOTE = "Project Bluebird is my secret side project"
 
