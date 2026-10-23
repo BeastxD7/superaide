@@ -1,7 +1,7 @@
 """document chunks: passages of each shared file or page, searchable end to end (issue #47)
 
-Revision ID: 0056
-Revises: 0055
+Revision ID: 0062
+Revises: 0061
 Create Date: 2026-10-23 12:00:00
 
 `document_chunk` is a per-instance table under Row-Level Security. `chunk_embedding` mirrors
@@ -17,8 +17,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision: str = "0056"
-down_revision: str | Sequence[str] | None = "0055"
+revision: str = "0062"
+down_revision: str | Sequence[str] | None = "0061"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
