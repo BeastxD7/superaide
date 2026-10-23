@@ -4,6 +4,7 @@ import { Check, Copy } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import type { Hue, Message, SourceRef, WorkStep } from '@/lib/api'
+import { SourceBody } from '@/components/Citations'
 import { Markdown } from '@/components/Markdown'
 import { Orb } from '@/components/Orb'
 import { WorkLog } from '@/components/WorkLog'
@@ -132,16 +133,6 @@ export function Conversation({
   )
 }
 
-// Source addresses come from the model or a web page, so only http(s) ones become links (no javascript: or data:).
-function isWebUrl(uri: string): boolean {
-  try {
-    const { protocol } = new URL(uri)
-    return protocol === 'https:' || protocol === 'http:'
-  } catch {
-    return false
-  }
-}
-
 function isLastOfRun(messages: Message[], i: number): boolean {
   return i === messages.length - 1 || messages[i + 1].from !== messages[i].from
 }
@@ -174,7 +165,7 @@ function AgentBubble({
   return (
     <div data-testid="agent-bubble" className="group max-w-[85%] rounded-3xl rounded-bl-md bg-white px-4 py-2.5 text-ink shadow-[0_8px_24px_-18px_rgba(15,42,35,0.6)]">
       <WorkLog steps={activity ?? []} reasoning={reasoning} />
-      <Markdown text={text} />
+      <Markdown text={text} sources={sources} />
       {sources && sources.length > 0 && <Sources sources={sources} />}
       {copyable && (
         <button
@@ -190,39 +181,20 @@ function AgentBubble({
   )
 }
 
-const SOURCE_KIND: Record<SourceRef['kind'], string> = {
-  memory: 'Note',
-  message: 'Message',
-  web: 'Web',
-  calendar: 'Calendar',
-  email: 'Email',
-  other: 'Source',
-}
-
-// Where the answer came from: numbered to match the [1] [2] marks in the text. Web
-// sources open the page; notes and messages show the exact words that were used.
+// Where the answer came from: numbered to match the [1] [2] marks in the text (each mark is a
+// button that opens the same details). Open by default for a few sources, closed for many.
 function Sources({ sources }: { sources: SourceRef[] }) {
   return (
-    <details className="group mt-2 border-t border-line/70 pt-2 text-xs">
+    <details open={sources.length <= 3} className="group mt-2 border-t border-line/70 pt-2 text-xs">
       <summary className="cursor-pointer list-none font-medium text-violet-700 select-none">
         Sources ({sources.length})
       </summary>
+      <p className="mt-1 text-muted">The numbers in brackets in the message are these sources.</p>
       <ol className="mt-1.5 space-y-1.5" aria-label="Sources">
         {sources.map((src) => (
           <li key={src.n} className="flex gap-2">
             <span className="w-5 shrink-0 text-muted">[{src.n}]</span>
-            <span className="min-w-0 [overflow-wrap:anywhere]">
-              <span className="font-medium text-ink">{SOURCE_KIND[src.kind]}</span>
-              {' · '}
-              {src.kind === 'web' && isWebUrl(src.uri) ? (
-                <a href={src.uri} target="_blank" rel="noopener noreferrer" className="text-violet-700 underline">
-                  {src.title || src.uri}
-                </a>
-              ) : (
-                <span className="text-body">{src.title || src.uri}</span>
-              )}
-              {src.cited_text && <span className="mt-0.5 block text-muted">&ldquo;{src.cited_text}&rdquo;</span>}
-            </span>
+            <SourceBody src={src} />
           </li>
         ))}
       </ol>

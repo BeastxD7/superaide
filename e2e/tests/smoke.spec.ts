@@ -51,6 +51,7 @@ test.describe('smoke', () => {
   test('an introduced owner lands in the dashboard chat from an old /workspace link @smoke', async ({ page, owner }) => {
     await page.goto('/workspace')
     await expect(page).toHaveURL(/\/dashboard\/chat$/)
-    await expect(page.getByRole('heading', { name: `Hello, ${owner.name.split(' ')[0]}. What shall we work on?` })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'Your conversation with Ava' })).toBeVisible()
+    void owner
   })
 })
