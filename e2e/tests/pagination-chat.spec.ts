@@ -38,10 +38,12 @@ test('the skeleton is drawn where the chat bubbles will be', async ({ page, owne
   release()
   const real = page.getByTestId('agent-bubble').first()
   await expect(real).toBeVisible()
-  // The saved bubble springs in at scale 0.98, which moves its box by a few pixels until it settles: wait for that,
-  // then compare (reading the box mid-animation made this fail by 2 to 6px).
-  // Ava's bubbles start at the same left edge (after the 32px avatar column), so nothing slides sideways.
-  await expect.poll(async () => Math.round((await real.boundingBox())!.x), { timeout: 5000 }).toBe(Math.round(placeholder!.x))
+  // Ava's bubbles start at the same left edge (after the 32px avatar column), so nothing slides sideways. A real bubble
+  // springs in from scale 0.98, which moves its box a few pixels inward until it settles, so the edge is read once it has
+  // (polling until it matches, not a one-off read of a moving box).
+  await expect
+    .poll(async () => Math.round((await real.boundingBox())!.x), { message: "the real bubble's left edge settles at the skeleton's" })
+    .toBe(Math.round(placeholder!.x))
   expect(placeholder!.height).toBeGreaterThanOrEqual(44) // at least one line of text plus padding, like a real bubble
 })
 
