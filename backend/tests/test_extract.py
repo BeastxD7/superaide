@@ -59,7 +59,7 @@ def make_pdf(lines: list[str]) -> bytes:
     return bytes(out)
 
 
-RESUME_LINES = ["Shashank K - Applied AI engineer", "Builds document intelligence at PebbleRoad"]
+RESUME_LINES = ["Jordan W - Applied AI engineer", "Builds document intelligence at PebbleRoad"]
 
 
 def encrypt_pdf(data: bytes, user_password: str) -> bytes:
@@ -87,8 +87,8 @@ NS = (
 def resume_docx() -> bytes:
     """A Word file with the awkward bits real resume templates use."""
     document = docx.Document()
-    document.sections[0].header.paragraphs[0].text = "shashank@example.com | Singapore"
-    document.add_heading("Shashank K", level=1)
+    document.sections[0].header.paragraphs[0].text = "jordan@example.com | Singapore"
+    document.add_heading("Jordan W", level=1)
     document.add_paragraph("Applied   AI engineer.")
 
     skills = document.add_table(rows=2, cols=2)
@@ -226,8 +226,8 @@ def test_docx_reads_paragraphs_tables_headers_text_boxes_and_content_controls() 
     result = extract_file("resume.docx", resume_docx())
     text = result.text
     assert result.kind == "docx" and result.warnings == ()
-    assert text.startswith("shashank@example.com | Singapore")
-    assert "Shashank K\nApplied AI engineer." in text
+    assert text.startswith("jordan@example.com | Singapore")
+    assert "Jordan W\nApplied AI engineer." in text
     assert "Skill | Level\nPython | Expert" in text
     assert text.count("Merged once") == 1 and text.count("Tall cell") == 1
     assert "Merged once | Tall cell\nBottom left" in text
@@ -616,10 +616,10 @@ def test_html_page_is_turned_into_text() -> None:
 
 
 def test_short_homepage_keeps_the_owners_name() -> None:
-    page = """<html><head><title>Shashank K</title></head><body><nav><a href="/">Home</a></nav>
-    <h1>Hi, I'm Shashank.</h1><p>I build applied AI systems at PebbleRoad.</p></body></html>"""
+    page = """<html><head><title>Jordan W</title></head><body><nav><a href="/">Home</a></nav>
+    <h1>Hi, I'm Jordan.</h1><p>I build applied AI systems at PebbleRoad.</p></body></html>"""
     result = extract_url("https://example.com/", client=mock_client(lambda r: html_response(page)))
-    assert "Hi, I'm Shashank." in result.text
+    assert "Hi, I'm Jordan." in result.text
     assert "I build applied AI systems at PebbleRoad." in result.text
 
 

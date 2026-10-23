@@ -141,7 +141,7 @@ def switch_on(c: TestClient, fake: FakeCalendar) -> dict[str, Any]:
 
 @pytest.fixture
 def owner(app, fake) -> TestClient:
-    c = _owner(app, "Shashank Rao", "s@example.com")
+    c = _owner(app, "Jordan Whitfield", "s@example.com")
     connect(c, fake)
     return c
 

@@ -45,7 +45,7 @@ def responder(independent: str = "disagree", verdict: str = "agree", judges: boo
 
 def owner_with_memory():
     with session_scope() as s:
-        o = Person(display_name="Shashank Rao", relation="manager")
+        o = Person(display_name="Jordan Whitfield", relation="manager")
         s.add(o)
         s.flush()
         remember_fact(s, owner=o, content=SECRET, category="work")
@@ -56,7 +56,7 @@ def test_the_memory_free_call_gets_nothing_but_the_message():
     owner_with_memory()
     system, messages = so.second_opinion_inputs("I think we should skip testing.")
     blob = "\n".join(b.text for b in system) + str(messages)
-    assert "Atlas" not in blob and "Shashank" not in blob and "Memories" not in blob
+    assert "Atlas" not in blob and "Jordan" not in blob and "Memories" not in blob
     assert len(messages) == 1 and "skip testing" in messages[0]["content"]
 
 

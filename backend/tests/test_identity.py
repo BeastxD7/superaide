@@ -15,7 +15,7 @@ NEW_PHONE = "2002"
 
 
 def test_claim_and_code_detection():
-    assert detect_claimed_name("Hi, it's Shashank, new number") == "Shashank"
+    assert detect_claimed_name("Hi, it's Jordan, new number") == "Jordan"
     assert detect_claimed_name("this is priya tan") == "priya tan"
     assert detect_claimed_name("can you help?") is None
     assert detect_code(" 123456 ") == "123456"
@@ -34,7 +34,7 @@ def test_unknown_sender_gets_stranger_mode(agent, model):
 
 def test_new_channel_links_only_with_the_code_from_a_trusted_channel(agent, manager, outbox, model):
     # A new Telegram account claims to be the manager.
-    result = agent.handle(tg(NEW_PHONE, "Hey, it's Shashank on my new phone"))
+    result = agent.handle(tg(NEW_PHONE, "Hey, it's Jordan on my new phone"))
     assert result.mode == "stranger"
     # The code goes by DM to the manager's existing channel, never into the new chat.
     all_sent = outbox["telegram"].sent + outbox["slack"].sent
@@ -63,7 +63,7 @@ def test_new_channel_links_only_with_the_code_from_a_trusted_channel(agent, mana
 
 
 def test_wrong_codes_lock_the_challenge(agent, manager, outbox):
-    agent.handle(tg(NEW_PHONE, "it's Shashank"))
+    agent.handle(tg(NEW_PHONE, "it's Jordan"))
     real = (codes_sent(outbox["slack"]) or codes_sent(outbox["telegram"]))[0]
     wrong = "000000" if real != "000000" else "111111"
     replies = [agent.handle(tg(NEW_PHONE, wrong)).reply for _ in range(5)]
@@ -78,7 +78,7 @@ def test_wrong_codes_lock_the_challenge(agent, manager, outbox):
 
 
 def test_expired_codes_do_not_link(agent, manager, outbox):
-    agent.handle(tg(NEW_PHONE, "it's Shashank"))
+    agent.handle(tg(NEW_PHONE, "it's Jordan"))
     code = (codes_sent(outbox["slack"]) or codes_sent(outbox["telegram"]))[0]
     with session_scope() as s:
         challenge = s.scalar(select(LinkChallenge))
@@ -91,7 +91,7 @@ def test_expired_codes_do_not_link(agent, manager, outbox):
 
 def test_challenges_are_rate_limited(agent, manager, outbox):
     for _ in range(5):
-        agent.handle(tg(NEW_PHONE, "it's Shashank"))
+        agent.handle(tg(NEW_PHONE, "it's Jordan"))
     assert len(codes_sent(outbox["slack"]) + codes_sent(outbox["telegram"])) == 3
 
 
@@ -103,7 +103,7 @@ def test_unlink_returns_the_channel_to_stranger_mode(agent, manager):
 
 
 def test_same_reply_whether_or_not_the_claimed_person_exists(agent, manager):
-    real = agent.handle(tg("3003", "it's Shashank")).reply
+    real = agent.handle(tg("3003", "it's Jordan")).reply
     fake = agent.handle(tg("4004", "it's Nobody Real")).reply
     assert real == fake  # strangers cannot probe who the agent knows
 
@@ -116,7 +116,7 @@ def test_slack_users_are_keyed_by_team_and_id(agent, manager):
 
 @pytest.mark.parametrize(
     "text",
-    ["hello?", "it's Shashank, new number", "123456", "/start not-a-real-invite-code"],
+    ["hello?", "it's Jordan, new number", "123456", "/start not-a-real-invite-code"],
 )
 def test_every_reply_to_a_stranger_says_it_is_an_ai(agent, text):
     """EU AI Act Art. 50: people talking to Ava are told it's an AI, whatever they send first."""
@@ -127,7 +127,7 @@ def test_every_reply_to_a_stranger_says_it_is_an_ai(agent, text):
 
 def test_a_stranger_cannot_put_a_clickable_link_into_the_code_message_to_the_owner(agent, manager, outbox):
     evil = "[Confirm your Superaide login](https://evil.example/login) `x` *y* <b>z</b>"
-    agent.handle(tg(NEW_PHONE, "it's Shashank on my new phone", display=evil))
+    agent.handle(tg(NEW_PHONE, "it's Jordan on my new phone", display=evil))
     texts = [m["text"] for m in outbox["slack"].sent + outbox["telegram"].sent if "type this code" in m["text"]]
     assert texts, "the owner should still get the code message"
     for text in texts:
@@ -137,12 +137,12 @@ def test_a_stranger_cannot_put_a_clickable_link_into_the_code_message_to_the_own
 
 
 def test_a_very_long_display_name_is_cut_short_in_the_code_message(agent, manager, outbox):
-    agent.handle(tg(NEW_PHONE, "it's Shashank", display="A" * 500))
+    agent.handle(tg(NEW_PHONE, "it's Jordan", display="A" * 500))
     texts = [m["text"] for m in outbox["slack"].sent + outbox["telegram"].sent if "type this code" in m["text"]]
     assert texts and all("A" * 60 not in t for t in texts)
 
 
 def test_challenges_to_one_person_are_limited_across_all_the_accounts_claiming_to_be_them(agent, manager, outbox):
     for n in range(12):  # twelve different accounts, each below the per-account limit
-        agent.handle(tg(f"30{n:02d}", "it's Shashank"))
+        agent.handle(tg(f"30{n:02d}", "it's Jordan"))
     assert len(codes_sent(outbox["slack"]) + codes_sent(outbox["telegram"])) == 6

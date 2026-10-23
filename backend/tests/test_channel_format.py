@@ -231,7 +231,7 @@ def owner_on_telegram(agent, monkeypatch):
     monkeypatch.setattr("superaide.factory.brain_ready", lambda settings: False)
     agent.settings.web_tools_enabled = False
     app = TestClient(create_app(agent), headers={"X-Requested-With": "superaide"})
-    app.post("/auth/signup", json={"name": "Shashank Rao", "email": "s@example.com", "password": "correct horse 1"})
+    app.post("/auth/signup", json={"name": "Jordan Whitfield", "email": "s@example.com", "password": "correct horse 1"})
     app.post("/app/hire", json={"agent": "ava", "accepted_notice": True})
     with session_scope() as s:
         me = hired_owner(s)

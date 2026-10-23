@@ -105,6 +105,25 @@ export function ApprovalsCard({ name, empty = null, showExpired = false }: { nam
             <li key={a.id} className="flex flex-col gap-3 rounded-xl border border-line bg-white p-3 sm:flex-row sm:items-center">
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-ink">{KIND_LABEL[a.kind] ?? a.kind}</p>
+                {a.fields && a.fields.length > 0 ? (
+                  <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-sm" data-testid="approval-fields">
+                    {a.fields.map((f) => (
+                      <div key={f.label} className="contents">
+                        <dt className="text-muted">{f.label}</dt>
+                        <dd className="min-w-0 break-words font-medium text-ink">{f.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                ) : null}
+                {a.warnings?.map((w) => (
+                  <span
+                    key={w}
+                    className="mt-1 mr-1 inline-block rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900"
+                    data-testid="approval-warning"
+                  >
+                    {w}
+                  </span>
+                ))}
                 <p className="mt-0.5 break-words text-sm text-body">{a.summary}</p>
                 {a.executes === false ? (
                   <p

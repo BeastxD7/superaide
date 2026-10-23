@@ -30,7 +30,7 @@ test.describe('glass brain share link', () => {
     await expect(v.getByText(/things, by topic/)).toBeVisible()
     await expect(v.getByRole('img', { name: /Shape of the memory/ })).toBeVisible()
     const body = await v.locator('body').innerText()
-    for (const private_ of ['Pune', 'Bluebird', 'Rao']) expect(body).not.toContain(private_)
+    for (const private_ of ['Pune', 'Bluebird', 'Menon']) expect(body).not.toContain(private_)
     expect(await v.locator('head meta[name=robots]').getAttribute('content')).toContain('noindex')
 
     await panel.getByRole('button', { name: 'Turn off' }).click()

@@ -81,7 +81,7 @@ function SkeletonList({
   className?: string
 }) {
   return (
-    <div role="status" aria-busy="true" aria-live="polite" className={cn(variant === "card" ? "space-y-3" : "divide-y", className)}>
+    <div role="status" aria-busy="true" className={cn(variant === "card" ? "space-y-3" : "divide-y", className)}>
       <span className="sr-only">{`Loading ${what}`}</span>
       {Array.from({ length: count }, (_, i) =>
         variant === "card" ? <SkeletonCard key={i} height={rowHeight} /> : <SkeletonRow key={i} height={rowHeight} />,

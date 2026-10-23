@@ -23,7 +23,8 @@ def browser(agent):
 def hired(browser, email: str) -> TestClient:
     c = browser()
     assert (
-        c.post("/auth/signup", json={"name": "Shashank Rao", "email": email, "password": PASSWORD}).status_code == 200
+        c.post("/auth/signup", json={"name": "Jordan Whitfield", "email": email, "password": PASSWORD}).status_code
+        == 200
     )
     assert c.post("/app/hire", json={"agent": "ava", "accepted_notice": True}).status_code == 200
     return c
@@ -125,8 +126,10 @@ def test_a_cursor_is_refused_for_another_owner_and_when_edited(browser, model):
     assert owner.get("/app/messages", params={"cursor": "garbage"}).status_code == 422
 
 
-def test_messages_page_query_uses_the_conversation_index():
-    """EXPLAIN on the real table: the page is an index scan on ix_event_context_created, never a sort of the table."""
+def test_messages_page_query_uses_the_conversation_index_on_skewed_data():
+    """EXPLAIN on the real table with many conversations and one huge one (the shape of a long-lived owner next to
+    thousands of small threads): a conversation's page is an ordered scan of ix_event_context_created, never a scan of
+    the whole instance (ix_event_agent_created) that filters by conversation, and never a sort."""
     import uuid
     from datetime import UTC, datetime, timedelta
 
@@ -135,48 +138,53 @@ def test_messages_page_query_uses_the_conversation_index():
 
     from superaide.db.models import Context, Event
     from superaide.db.session import session_scope
-    from superaide.pagination import SortKey, bind_for, page_query
+    from superaide.pagination import SortKey, bind_for, encode_cursor, page_query
 
+    t0 = datetime(2026, 1, 1, tzinfo=UTC)
     with session_scope() as s:
-        ctx = Context(provider="web", tenant_scope="", external_id="web:x", kind="dm", audience_class="private_1to1")
-        s.add(ctx)
+        big = Context(provider="web", tenant_scope="", external_id="web:big", kind="dm", audience_class="private_1to1")
+        small = [
+            Context(
+                provider="telegram", tenant_scope="", external_id=f"tg:{i}", kind="dm", audience_class="private_1to1"
+            )
+            for i in range(600)
+        ]
+        s.add_all([big, *small])
         s.flush()
-        ctx_id = ctx.id
-        t0 = datetime(2026, 1, 1, tzinfo=UTC)
-        s.bulk_insert_mappings(
-            Event,
-            [
-                {
-                    "id": uuid.uuid4(),
-                    "context_id": ctx_id,
-                    "direction": "in",
-                    "content": "x",
-                    "created_at": t0 + timedelta(seconds=i),
-                    "tenant_id": ctx.tenant_id,
-                    "agent_id": ctx.agent_id,
-                }
-                for i in range(20000)
-            ],
-        )
+        common = {"tenant_id": big.tenant_id, "agent_id": big.agent_id, "direction": "in", "content": "x"}
+        rows = [
+            {"id": uuid.uuid4(), "context_id": big.id, "created_at": t0 + timedelta(seconds=i), **common}
+            for i in range(3000)
+        ]
+        rows += [
+            {"id": uuid.uuid4(), "context_id": c.id, "created_at": t0 + timedelta(seconds=j * 100 + k % 100), **common}
+            for k, c in enumerate(small)
+            for j in range(200)
+        ]
+        s.bulk_insert_mappings(Event, rows)
+        big_id, small_id, agent_id = big.id, small[0].id, big.agent_id
+    keys = [SortKey(Event.created_at), SortKey(Event.id)]
     with session_scope() as s:
         s.execute(text("ANALYZE event"))
-        keys = [SortKey(Event.created_at), SortKey(Event.id)]
-        from superaide.pagination import encode_cursor
-
         mid = encode_cursor(
-            [t0 + timedelta(seconds=10000), uuid.UUID(int=0)], keys, endpoint="messages", bind=bind_for("p")
+            [t0 + timedelta(seconds=1500), uuid.UUID(int=2**127)], keys, endpoint="messages", bind=bind_for("p")
         )
-        for cursor in (None, mid):
-            q = page_query(
-                select(Event).where(Event.context_id == ctx_id, Event.agent_id == ctx.agent_id),
-                keys,
-                endpoint="messages",
-                bind=bind_for("p"),
-                limit=200,
-                cursor=cursor,
-            )
-            c = q.compile(dialect=postgresql.dialect())
-            plan = s.connection().exec_driver_sql("EXPLAIN (FORMAT JSON) " + str(c), c.params).scalar()
-            text_plan = str(plan)
-            assert "ix_event_context_created" in text_plan, text_plan
-            assert "'Sort'" not in text_plan and "Seq Scan" not in text_plan, text_plan
+        for ctx in (big_id, small_id):
+            for cursor in (None, mid):
+                q = page_query(
+                    select(Event).where(Event.context_id == ctx, Event.agent_id == agent_id),
+                    keys,
+                    endpoint="messages",
+                    bind=bind_for("p"),
+                    limit=200,
+                    cursor=cursor,
+                )
+                c = q.compile(dialect=postgresql.dialect())
+                plan = str(s.connection().exec_driver_sql("EXPLAIN (FORMAT JSON) " + str(c), c.params).scalar())
+                assert "ix_event_agent_created" not in plan, plan  # never the instance-wide scan + filter
+                assert "Seq Scan" not in plan and f"'{ctx}'" in plan, plan  # the conversation is the index condition
+                if ctx == big_id and cursor is None:  # the first page of a long conversation: index order, no sort
+                    assert "ix_event_context_created" in plan and "'Sort'" not in plan, plan
+                # a deep page may be a bitmap scan plus a sort of the few hundred rows left, and a 200-message thread
+                # may use the plain context_id index and sort: the planner picks those when they are cheaper, and
+                # they are bounded by the conversation, never by the instance

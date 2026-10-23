@@ -19,7 +19,7 @@ def chats(agent, manager, colleague, model):
     """The owner (manager) on Telegram, then in their Slack DM; Priya in hers; a group."""
     model.reply = "Noted."
     agent.handle(tg(MANAGER_TG, "btw i dont like black colour at all!"))
-    agent.handle(sl(COLLEAGUE_SLACK, "Shashank owes me the Q3 numbers"))
+    agent.handle(sl(COLLEAGUE_SLACK, "Jordan owes me the Q3 numbers"))
     agent.handle(tg(MANAGER_TG, "my secret group plan", chat_kind="group", chat_id="-100500"))
     agent.handle(sl(MANAGER_SLACK, "public channel chatter", chat_kind="group", channel="C_GENERAL"))
     return manager, colleague
@@ -62,7 +62,7 @@ def test_other_people_and_groups_get_no_timeline(agent, chats, model):
         return model(purpose, system, messages, output_model)
 
     agent.llm.responder = recording
-    agent.handle(sl(COLLEAGUE_SLACK, "what does Shashank dislike?"))
+    agent.handle(sl(COLLEAGUE_SLACK, "what does Jordan dislike?"))
     agent.handle(tg(MANAGER_TG, "what colour do I dislike?", chat_kind="group", chat_id="-100500"))
     assert len(seen) == 2
     for prompt in seen:

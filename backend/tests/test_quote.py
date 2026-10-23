@@ -27,7 +27,7 @@ def history(kind: str, ok: int, failed: int) -> None:
 
 def ask(kind="gmail_send") -> Approval:
     with session_scope() as s:
-        p = Person(display_name="Shashank", relation="manager")
+        p = Person(display_name="Jordan", relation="manager")
         s.add(p)
         s.flush()
         sender = Sender(identity=None, person=p, trust=int(Trust.STEPPED_UP))

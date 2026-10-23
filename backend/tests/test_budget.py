@@ -209,7 +209,7 @@ def test_extraction_leaves_room_for_thinking(agent, monkeypatch):
         return SimpleNamespace(parsed=facts.FactList(facts=[]))
 
     monkeypatch.setattr(agent.llm, "complete", complete)
-    assert facts.extract_facts(agent, owner_name="Shashank", text="a resume", source="cv.pdf") == []
+    assert facts.extract_facts(agent, owner_name="Jordan", text="a resume", source="cv.pdf") == []
     assert seen["max_tokens"] >= 4000 and seen["effort"] == "low"
 
 

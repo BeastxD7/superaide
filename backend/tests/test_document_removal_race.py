@@ -16,12 +16,12 @@ from superaide.knowledge.extract import Extracted
 from superaide.knowledge.facts import Fact
 from superaide.knowledge.ingest import ingest, read_documents
 
-FACTS = [Fact(content="Shashank leads applied AI at PebbleRoad.", category="work", confidence=1)]
+FACTS = [Fact(content="Jordan leads applied AI at PebbleRoad.", category="work", confidence=1)]
 
 
 @pytest.fixture
 def extracted() -> Extracted:
-    return Extracted(text="Shashank Rao, applied AI lead.", title="cv.txt", kind="text", source="cv.txt")
+    return Extracted(text="Jordan Whitfield, applied AI lead.", title="cv.txt", kind="text", source="cv.txt")
 
 
 def remove_documents() -> None:

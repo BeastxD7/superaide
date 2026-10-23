@@ -25,17 +25,17 @@ def test_changing_email_moves_both_columns_and_asks_to_verify_again(browser, out
     c = browser()
     signup(c)
     old_link = token_in(outbox[0], "/verify-email")
-    r = c.post("/auth/email", json={"email": "  Shashank.New@Example.COM ", "password": PASSWORD})
+    r = c.post("/auth/email", json={"email": "  Jordan.New@Example.COM ", "password": PASSWORD})
     assert r.status_code == 200 and r.json()["user"]["email_verified"] is False
-    moved = user("shashank.new@example.com")
-    assert moved is not None and moved.email == "Shashank.New@Example.COM" and user(OWNER["email"]) is None
-    assert outbox[-1].to.lower() == "shashank.new@example.com"  # the new address gets the verification link
+    moved = user("jordan.new@example.com")
+    assert moved is not None and moved.email == "Jordan.New@Example.COM" and user(OWNER["email"]) is None
+    assert outbox[-1].to.lower() == "jordan.new@example.com"  # the new address gets the verification link
     # The link sent to the old address no longer verifies anything; the new one does.
     assert browser().post("/auth/verify-email", json={"token": old_link}).status_code == 400
     assert (
         browser().post("/auth/verify-email", json={"token": token_in(outbox[-1], "/verify-email")}).status_code == 200
     )
-    assert login(browser(), "shashank.new@example.com").status_code == 200
+    assert login(browser(), "jordan.new@example.com").status_code == 200
     assert login(browser(), OWNER["email"]).status_code == 401
 
 
@@ -61,7 +61,7 @@ def test_setting_the_address_in_code_keeps_the_normalized_one_in_step():
 def test_the_database_refuses_a_hand_edit_that_splits_the_two_columns(browser):
     signup(browser())
     with pytest.raises(IntegrityError), session_scope() as s:
-        s.execute(text("UPDATE user_account SET email = 'shashank@example.cmo'"))
+        s.execute(text("UPDATE user_account SET email = 'jordan@example.cmo'"))
 
 
 def test_a_refused_change_at_the_hourly_email_limit_leaves_the_address_alone(browser, outbox):  # noqa: F811

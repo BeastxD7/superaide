@@ -106,7 +106,7 @@ def test_add_manager_links_telegram_and_slack_to_a_new_manager(monkeypatch, caps
         capsys,
         "add-manager",
         "--name",
-        "Shashank",
+        "Jordan",
         "--telegram-id",
         "4242",
         "--slack-user",
@@ -114,12 +114,12 @@ def test_add_manager_links_telegram_and_slack_to_a_new_manager(monkeypatch, caps
         "--slack-team",
         "T_OTHER",
     )
-    assert "Added Shashank (manager) with 2 channel(s)." in out
+    assert "Added Jordan (manager) with 2 channel(s)." in out
 
     with session_scope() as s:
         person = s.scalar(select(Person))
         assert person is not None
-        assert (person.display_name, person.relation) == ("Shashank", "manager")
+        assert (person.display_name, person.relation) == ("Jordan", "manager")
         assert f"id={person.id}" in out
         person_id = person.id
         events = s.scalars(select(IdentityLinkEvent).where(IdentityLinkEvent.person_id == person_id)).all()
@@ -158,7 +158,7 @@ def test_add_person_takes_over_an_existing_unlinked_identity_instead_of_duplicat
 
 def test_add_person_without_a_slack_team_anywhere_stops_and_adds_no_one(monkeypatch):
     use_settings(monkeypatch, slack_team_id="")
-    message = run_and_exit(monkeypatch, "add-manager", "--name", "Shashank", "--slack-user", "U_BOSS")
+    message = run_and_exit(monkeypatch, "add-manager", "--name", "Jordan", "--slack-user", "U_BOSS")
     assert message == "Give --slack-team or set SLACK_TEAM_ID in .env"
     assert count(Person) == 0
 
@@ -261,12 +261,12 @@ def test_spend_counts_settled_calls_and_open_reservations(monkeypatch, capsys):
 
 def test_seed_demo_adds_two_people_once_and_then_nothing(monkeypatch, capsys):
     out = run(monkeypatch, capsys, "seed-demo")
-    assert "Added demo people: Shashank (manager) and Priya Tan (colleague)." in out
+    assert "Added demo people: Jordan (manager) and Priya Tan (colleague)." in out
     with session_scope() as s:
         people = {p.display_name: p.relation for p in s.scalars(select(Person))}
-    assert people == {"Shashank": "manager", "Priya Tan": "colleague"}
+    assert people == {"Jordan": "manager", "Priya Tan": "colleague"}
     assert count(ChannelIdentity) == 3
-    manager_slack = identity("slack", OUR_TEAM, "U_DEMO_SHASHANK")
+    manager_slack = identity("slack", OUR_TEAM, "U_DEMO_JORDAN")
     assert manager_slack is not None and manager_slack.trust_level == Trust.LINKED
     assert identity("telegram", "", "demo-1001") is not None
 
@@ -294,7 +294,7 @@ def test_seed_demo_uses_a_demo_team_when_none_is_configured(monkeypatch, capsys)
 
 def make_account(email: str = "owner@example.com") -> str:
     with session_scope() as s:
-        _, token = signup(s, email=email, password=OLD_PASSWORD, name="Shashank Rao", client=Client())
+        _, token = signup(s, email=email, password=OLD_PASSWORD, name="Jordan Whitfield", client=Client())
     return token
 
 
@@ -312,12 +312,12 @@ def test_reset_password_sets_the_new_one_and_signs_out_everywhere(monkeypatch, c
 
     type_passwords(monkeypatch, NEW_PASSWORD, NEW_PASSWORD)
     out = run(monkeypatch, capsys, "reset-password", "--email", "Owner@Example.com")
-    assert "Password changed for Shashank Rao." in out
+    assert "Password changed for Jordan Whitfield." in out
 
     with session_scope() as s:
         assert user_for_token(s, old_token) is None
         user, new_token = login(s, email="owner@example.com", password=NEW_PASSWORD, client=Client())
-        assert user.display_name == "Shashank Rao"
+        assert user.display_name == "Jordan Whitfield"
     with session_scope() as s:
         assert user_for_token(s, new_token) is not None
     with pytest.raises(AuthError), session_scope() as s:

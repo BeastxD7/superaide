@@ -1,3 +1,4 @@
+# ruff: noqa: F811
 """Airlock (#128): other people's data is redacted before anything is uploaded to a model."""
 
 from __future__ import annotations
@@ -7,6 +8,7 @@ from pydantic import BaseModel
 
 from superaide.brain.llm import FakeLLM, RoutedLLM, SystemBlock
 from superaide.privacy import airlock
+from tests.test_loop import owner_client  # noqa: F401  (fixture)
 
 TEXT = (
     "Call Priya Tan on +65 8123 4567 or write to priya.tan@example.com. "
@@ -120,3 +122,44 @@ def test_on_the_upload_is_clean_and_the_reply_gets_the_originals_back(monkeypatc
 @pytest.mark.parametrize("bad", ["", " ", "\n"])
 def test_empty_text_is_fine(bad):
     assert airlock.redact(bad).text == bad
+
+
+def test_the_model_is_told_what_a_placeholder_is_only_when_something_was_replaced(settings, monkeypatch):
+    # #338: an unexplained "[email 1]" read as an unfilled template and Ava asked for "the real address".
+    llm = FakeLLM(lambda purpose, system, messages, out: "ok")
+    routed = RoutedLLM({"anthropic": llm})
+
+    def ask(text):
+        routed.complete(
+            model="m", purpose="t", system=[SystemBlock("s")], messages=[{"role": "user", "content": text}],
+            max_tokens=50,
+        )  # fmt: skip
+        return "\n".join(b.text for b in llm.calls[-1]["system"])
+
+    note = ask("email test@superaide.com that I am unwell")
+    assert "Privacy placeholders" in note and "[email 1]" in note and "test@superaide.com" not in note
+    assert "Never ask the owner to retype it" in note
+    assert ask("hello there") == "s"  # nothing redacted: byte-for-byte unchanged
+
+
+def test_a_proposal_carrying_a_placeholder_recipient_is_stored_with_the_real_address(owner_client):
+    from sqlalchemy import select
+
+    from superaide.db.models import Approval
+    from superaide.db.session import session_scope
+    from tests.test_loop import Script, tool_use, turn_for
+
+    text = "email test@superaide.com that I am unwell"
+    with session_scope() as s:
+        script = Script(
+            tool_use(
+                "propose_action", {"kind": "publish_post", "summary": "Email [email 1]: I am unwell", "rationale": "r"}
+            ),
+            "Queued.",
+        )
+        turn = turn_for(s, script, text)
+        turn.llm = RoutedLLM({"anthropic": turn.llm})
+        turn.run([{"role": "user", "content": text}])
+        [a] = s.scalars(select(Approval)).all()
+        assert "test@superaide.com" in a.payload["summary"] and "[email 1]" not in a.payload["summary"]
+        assert "test@superaide.com" not in str(script.seen)  # the model never saw it

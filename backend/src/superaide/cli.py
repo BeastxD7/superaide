@@ -269,15 +269,15 @@ def _seed_demo(_: argparse.Namespace) -> None:
             return
         bootstrap_person(
             s,
-            name="Shashank",
+            name="Jordan",
             relation="manager",
-            identities=[("telegram", "", "demo-1001"), ("slack", team, "U_DEMO_SHASHANK")],
+            identities=[("telegram", "", "demo-1001"), ("slack", team, "U_DEMO_JORDAN")],
             actor="demo_seed",
         )
         bootstrap_person(
             s, name="Priya Tan", relation="colleague", identities=[("slack", team, "U_DEMO_PRIYA")], actor="demo_seed"
         )
-    print("Added demo people: Shashank (manager) and Priya Tan (colleague).")
+    print("Added demo people: Jordan (manager) and Priya Tan (colleague).")
 
 
 def _reset_password(args: argparse.Namespace) -> None:

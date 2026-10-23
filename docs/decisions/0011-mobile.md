@@ -249,7 +249,7 @@ push_subscription  id, tenant_id, agent_id,
                    secret_enc bytea                        -- AES-256-GCM of {endpoint, p256dh, auth}
                                                            -- or the device token; AAD "{agent_id}/push/{id}"
                    push_host text                          -- e.g. web.push.apple.com, fcm.googleapis.com (not secret)
-                   device_label text                       -- "iPhone", editable ("Shashank's iPhone")
+                   device_label text                       -- "iPhone", editable ("Ananya's iPhone")
                    platform (ios | ipados | android | desktop | other)
                    preview_level (none | sender | reason)  -- default none (3.3)
                    muted_until timestamptz null            -- per-device mute
@@ -454,7 +454,7 @@ ADR 0003 says no JWTs, so native keeps **opaque tokens**, stored hashed, revocab
   - Native `push_subscription` rows bind to `user_device.id` (`device_id`), not to `session_id`, because
     the session rows rotate every 15 minutes. Revoking the device or a reused family removes its push
     rows.
-- **Settings → Devices** lists browsers and phones together: "Shashank's iPhone, last seen 2 min ago",
+- **Settings → Devices** lists browsers and phones together: "Ananya's iPhone, last seen 2 min ago",
   with a Sign out button per device.
 
 ### 6. Native push, later

@@ -29,9 +29,9 @@ from superaide.main import create_app
 from tests.conftest import COLLEAGUE_SLACK, OUR_TEAM, sl, tg
 
 load()
-PHONE, SLACK_ME = "777001", "U_SHASHANK"
-LEARNED = "Shashank does not like the colour black."
-CHANGED = "Shashank likes the colour black now."
+PHONE, SLACK_ME = "777001", "U_JORDAN"
+LEARNED = "Jordan does not like the colour black."
+CHANGED = "Jordan likes the colour black now."
 LEARNS = "learn from what your owner tells you"
 
 
@@ -73,7 +73,7 @@ def world(agent, colleague, monkeypatch):
     agent.settings.web_tools_enabled = False
     app = TestClient(create_app(agent), headers={"X-Requested-With": "superaide"})
     app.post(
-        "/auth/signup", json={"name": "Shashank Rao", "email": "s@example.com", "password": "correct horse battery"}
+        "/auth/signup", json={"name": "Jordan Whitfield", "email": "s@example.com", "password": "correct horse battery"}
     )
     app.post("/app/hire", json={"agent": "ava", "accepted_notice": True})
     with session_scope() as s:
@@ -111,9 +111,7 @@ def test_one_owner_three_channels(world, agent):
     m["hits"] += LEARNED in _last(ava) and LEARNED in found
 
     # 4. Slack DM, said again differently: still one fact, now with two sources.
-    ava.next_facts = [
-        Fact(content="Shashank dislikes the color black.", category="preference", confidence=1, same_as=-1)
-    ]
+    ava.next_facts = [Fact(content="Jordan dislikes the color black.", category="preference", confidence=1, same_as=-1)]
     agent.handle(sl(SLACK_ME, "I really can't stand black as a colour"))
     run_due()
     with session_scope() as s:
@@ -123,13 +121,13 @@ def test_one_owner_three_channels(world, agent):
         assert [(x.content, len(x.source_event_ids)) for x in live] == [(LEARNED, 2)]
 
     # 5. Groups: a colleague asks in a Slack channel, the owner asks in a Telegram group.
-    agent.handle(sl(COLLEAGUE_SLACK, "what colour does Shashank dislike?", chat_kind="group", channel="C_TEAM"))
+    agent.handle(sl(COLLEAGUE_SLACK, "what colour does Jordan dislike?", chat_kind="group", channel="C_TEAM"))
     m["leaks"] += "colour black" in _last(ava) or "black clour" in _last(ava)
     agent.handle(tg(PHONE, "what colour do I dislike?", chat_kind="group", chat_id="-100500"))
     m["leaks"] += "colour black" in _last(ava) or "black clour" in _last(ava) or "On Telegram" in _last(ava)
 
     # 6. The colleague's own DM.
-    agent.handle(sl(COLLEAGUE_SLACK, "does Shashank like black?"))
+    agent.handle(sl(COLLEAGUE_SLACK, "does Jordan like black?"))
     m["leaks"] += "colour black" in _last(ava) or "black clour" in _last(ava)
 
     # 7. The owner changes their mind; the next answer is built on the new fact only.

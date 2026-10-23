@@ -14,7 +14,7 @@ from superaide.db.session import session_scope
 from superaide.main import create_app
 
 PASSWORD = "correct horse battery"
-EMAIL = "Shashank@Example.com"
+EMAIL = "Jordan@Example.com"
 
 
 @pytest.fixture
@@ -28,7 +28,7 @@ def client(browser):
     return browser()
 
 
-def signup(client, email=EMAIL, password=PASSWORD, name="Shashank Rao"):
+def signup(client, email=EMAIL, password=PASSWORD, name="Jordan Whitfield"):
     return client.post("/auth/signup", json={"name": name, "email": email, "password": password})
 
 
@@ -44,14 +44,14 @@ def test_signup_sets_a_safe_cookie_and_stores_only_a_hash(client):
     assert "superaide_session=" in cookie and "httponly" in cookie and "samesite=lax" in cookie
     with session_scope() as s:
         user = s.scalar(select(UserAccount))
-        assert user.email_normalized == "shashank@example.com"
+        assert user.email_normalized == "jordan@example.com"
         assert user.password_hash.startswith("$argon2id$") and PASSWORD not in user.password_hash
         # An account belongs to no Ava until it hires, so there is no Person in the agents' world yet.
         assert user.person_id is None and s.scalar(select(Person)) is None
         token = client.cookies.get("superaide_session")
         stored = s.scalar(select(UserSession.token_hash))
         assert token not in stored and stored == service.token_hash(token)
-    assert client.get("/auth/me").json()["user"]["name"] == "Shashank Rao"
+    assert client.get("/auth/me").json()["user"]["name"] == "Jordan Whitfield"
 
 
 def test_signup_checks_email_password_and_duplicates(client, browser):
@@ -59,10 +59,10 @@ def test_signup_checks_email_password_and_duplicates(client, browser):
     assert bad_email.status_code == 422 and bad_email.json()["detail"]["field"] == "email"
     weak = signup(client, password="password1")
     assert weak.status_code == 422 and weak.json()["detail"]["field"] == "password"
-    named = signup(client, password="shashankrao2026!")
+    named = signup(client, password="jordanwhitfield2026!")
     assert named.status_code == 422  # contains the name
     assert signup(client).status_code == 200
-    again = signup(browser(), email="SHASHANK@example.com")  # same address, different case
+    again = signup(browser(), email="JORDAN@example.com")  # same address, different case
     assert again.status_code == 409
 
 

@@ -388,7 +388,7 @@ test.describe('workspace: notebook', () => {
     const about = notebookFact(page, 'says: I lead applied AI at PebbleRoad in Singapore.')
     await expect(about).toContainText('About you')
     await expect(about).toContainText('from your introduction')
-    const priya = notebookFact(page, "Priya is Shashank Rao's partner")
+    const priya = notebookFact(page, "Priya is Ananya Menon's partner")
     await expect(priya).toContainText('People')
     await expect(priya).toContainText('from your introduction')
     await expect(notebookFact(page, 'quiet hours are 22:00–07:00')).toContainText('Availability')
@@ -426,7 +426,7 @@ test.describe('workspace: notebook', () => {
   test('"Forget this" asks first, and Keep leaves the fact alone', async ({ page, owner }) => {
     void owner
     await openNotebookPage(page)
-    const fact = notebookFact(page, "Arjun is Shashank Rao's team")
+    const fact = notebookFact(page, "Arjun is Ananya Menon's team")
     await fact.getByRole('button', { name: 'Forget this' }).click()
     await expect(fact.getByText("Ava won't use this again.")).toBeVisible()
     await fact.getByRole('button', { name: 'Keep' }).click()
@@ -438,7 +438,7 @@ test.describe('workspace: notebook', () => {
   test('"Forget this" removes the fact from the notebook and from what Ava uses', async ({ page, api, owner }) => {
     void owner
     await openNotebookPage(page)
-    const fact = notebookFact(page, "Arjun is Shashank Rao's team")
+    const fact = notebookFact(page, "Arjun is Ananya Menon's team")
     await expect(fact).toBeVisible()
     const forgetButtons = page.getByRole('button', { name: 'Forget this' })
     const before = (await memories()).length
@@ -446,7 +446,7 @@ test.describe('workspace: notebook', () => {
     await fact.getByRole('button', { name: 'Forget this' }).click()
     await fact.getByRole('button', { name: 'Forget', exact: true }).click()
 
-    await expect(notebookFact(page, "Arjun is Shashank Rao's team")).toHaveCount(0)
+    await expect(notebookFact(page, "Arjun is Ananya Menon's team")).toHaveCount(0)
     await expect(forgetButtons).toHaveCount(before - 1)
     const arjun = (await memories()).find((m) => m.content.startsWith('Arjun is'))
     expect(arjun?.valid_to, 'retired in the database').not.toBeNull()
@@ -454,7 +454,7 @@ test.describe('workspace: notebook', () => {
 
     await page.reload()
     await expect(page.getByRole('heading', { name: "Ava's notebook" })).toBeVisible()
-    await expect(notebookFact(page, "Arjun is Shashank Rao's team")).toHaveCount(0)
+    await expect(notebookFact(page, "Arjun is Ananya Menon's team")).toHaveCount(0)
 
     // Forgetting it twice is refused plainly.
     const again = await api.post(`/app/notebook/${arjun!.id}/forget`)

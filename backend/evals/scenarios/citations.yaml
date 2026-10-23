@@ -6,7 +6,7 @@
   based_on: 'a fabricated "gym note from 21 Oct" (2026-10-21)'
   world:
     memories:
-      - content: "Shashank prefers morning meetings."
+      - content: "Jordan prefers morning meetings."
   turns:
     - say: "what did my gym note from 21 Oct say?"
       expect:
@@ -20,7 +20,7 @@
   title: A fact about the owner is cited to the right note
   world:
     memories:
-      - content: "Shashank's manager is Arjun Mehta."
+      - content: "Jordan's manager is Arjun Mehta."
         category: work
   turns:
     - say: "who's my manager?"
@@ -48,9 +48,9 @@
   title: Two facts, two real citations
   world:
     memories:
-      - content: "Shashank works at Pebble Road."
+      - content: "Jordan works at Pebble Road."
         category: work
-      - content: "Shashank is a product designer."
+      - content: "Jordan is a product designer."
         category: work
   turns:
     - say: "where do I work and what's my role?"

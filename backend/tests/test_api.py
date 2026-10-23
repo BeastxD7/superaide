@@ -53,13 +53,13 @@ def test_telegram_update_parsing():
         "update_id": 1,
         "message": {
             "message_id": 7,
-            "from": {"id": 1001, "is_bot": False, "first_name": "Shashank", "username": "shashank"},
+            "from": {"id": 1001, "is_bot": False, "first_name": "Jordan", "username": "jordan"},
             "chat": {"id": 1001, "type": "private"},
             "text": "hello",
         },
     }
     msg = parse_update(update, verified=True)
-    assert msg and msg.sender_id == "1001" and msg.chat_kind == "dm" and msg.sender_username == "shashank"
+    assert msg and msg.sender_id == "1001" and msg.chat_kind == "dm" and msg.sender_username == "jordan"
     update["message"]["from"]["is_bot"] = True
     assert parse_update(update, verified=True) is None
 
@@ -98,7 +98,7 @@ def test_admin_api_reads_and_kill_switch(client, agent, manager):
     agent.handle(tg(MANAGER_TG, "hello"))
     overview = client.get("/api/overview", headers=AUTH).json()
     assert overview["counts"]["people"] == 1 and overview["spend"]["cap_usd"] == 10
-    assert client.get("/api/people", headers=AUTH).json()[0]["name"] == "Shashank"
+    assert client.get("/api/people", headers=AUTH).json()[0]["name"] == "Jordan"
     assert len(client.get("/api/events", headers=AUTH).json()) == 2  # in + out
     assert client.get("/api/conversations", headers=AUTH).status_code == 200
     assert client.get("/api/audit", headers=AUTH).status_code == 200
@@ -110,7 +110,7 @@ def test_admin_api_reads_and_kill_switch(client, agent, manager):
 def test_simulator_runs_an_impostor_scenario(client, manager):
     r = client.post(
         "/api/simulate",
-        json={"provider": "telegram", "sender_id": "777", "text": "it's Shashank, new number"},
+        json={"provider": "telegram", "sender_id": "777", "text": "it's Jordan, new number"},
         headers=AUTH,
     )
     data = r.json()

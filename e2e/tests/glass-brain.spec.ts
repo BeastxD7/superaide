@@ -103,7 +103,7 @@ test.describe('glass brain', () => {
     expect(r.status()).toBe(200)
     const svg = await r.text()
     expect(svg).toContain('<svg')
-    for (const private_ of ['Pune', 'Shashank', 'Rao']) expect(svg).not.toContain(private_)
+    for (const private_ of ['Pune', 'Ananya', 'Menon']) expect(svg).not.toContain(private_)
     await page.goto('/dashboard/notebook/brain')
     await dot(page, 'I live in Pune').focus()
     await page.keyboard.press('Enter')

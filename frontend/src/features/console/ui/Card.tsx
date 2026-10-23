@@ -17,7 +17,7 @@ export function Card({ title, titleId, description, actions, tinted, className, 
   const Tag: ElementType = title ? 'section' : 'div'
   return (
     <Tag className={clsx('c-card', tinted && 'c-card-tinted', className)} aria-labelledby={title ? titleId : undefined}>
-      {(title || actions) && (
+      {(title || actions || description) && (
         <div className="c-card-head">
           {title && <h2 id={titleId}>{title}</h2>}
           {description && <p>{description}</p>}

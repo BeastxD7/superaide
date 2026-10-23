@@ -23,8 +23,8 @@ KEY = "sk-or-test-key-000000000000"
 PLATFORM_KEY = "sk-ant-platform-secret-key-000000000000"
 FACTS = FactList(
     facts=[
-        Fact(content="Shashank leads applied AI at PebbleRoad.", category="work", confidence=1),
-        Fact(content="Shashank is based in Singapore.", category="about", confidence=0.9),
+        Fact(content="Jordan leads applied AI at PebbleRoad.", category="work", confidence=1),
+        Fact(content="Jordan is based in Singapore.", category="about", confidence=0.9),
     ]
 )
 
@@ -54,7 +54,7 @@ def share(client, name: str = "resume.txt") -> None:
     """Share a file while no AI is connected: it is kept, not read."""
     r = client.post(
         "/app/intro/files",
-        files={"file": (name, b"Shashank Rao\nApplied AI lead, PebbleRoad, Singapore", "application/octet-stream")},
+        files={"file": (name, b"Jordan Whitfield\nApplied AI lead, PebbleRoad, Singapore", "application/octet-stream")},
     )
     assert r.status_code == 200 and r.json()["status"] == "stored", r.text
 

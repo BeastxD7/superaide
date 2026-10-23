@@ -125,7 +125,7 @@ def test_the_app_role_claims_every_instances_jobs_only_through_the_function():
 def test_recurring_work_is_scheduled_for_every_hired_instance(agent, monkeypatch):
     monkeypatch.setattr(get_settings(), "allow_many_owners", True)
     password = "correct horse battery"
-    for name, email in (("Shashank", "s@example.com"), ("Priya", "p@example.com")):
+    for name, email in (("Jordan", "s@example.com"), ("Priya", "p@example.com")):
         c = TestClient(create_app(agent), headers={"X-Requested-With": "superaide"})
         c.post("/auth/signup", json={"name": name, "email": email, "password": password, "timezone": "Asia/Kolkata"})
         assert c.post("/app/hire", json={"agent": "ava", "accepted_notice": True}).status_code == 200

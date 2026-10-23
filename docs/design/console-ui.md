@@ -95,7 +95,7 @@ utilities on shared components always beat it. The app is light only, so the con
 
 - `PageHeader`: the page's h1, a one-line description, optional actions. Exactly one per page.
 - `Card`: 28px panel with an optional h2, description and actions; `tinted` for a quiet panel. `Grid` lays cards out.
-- `Stat` and `Stats`: number above a small label, minimum height 112px, equal widths; `tone` warn or danger tints the tile.
+- `Stat` and `Stats`: number above a small label, minimum height 128px, and every row of one `Stats` is the same height, equal widths; `tone` warn or danger tints the tile.
 - `DataTable`: columns and rows as data; header 40px, rows 52px, sticky header, hairlines, no zebra; `maxHeight` scrolls
   inside; the scroll region is focusable and named. Loading shows a skeleton, no rows shows the `empty` slot.
 - `Badge`: neutral, ok, warn, danger, accent; `dot` for a leading mark.

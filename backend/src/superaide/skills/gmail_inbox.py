@@ -38,6 +38,7 @@ from superaide.connectors import google
 from superaide.db.models import ChannelIdentity, Context, Event, Job, Person
 from superaide.identity.trust import Trust
 from superaide.jobs.queue import enqueue, handler
+from superaide.memory.store import touch_context
 from superaide.policy.killswitch import get_state, set_state
 from superaide.skills import gmail
 from superaide.triage.models import TriageDecision
@@ -133,6 +134,7 @@ def ingest(session: Session, owner: Person, msg: dict[str, Any]) -> Event | None
     )  # fmt: skip
     session.add(event)
     session.flush()
+    touch_context(session, event)
     return event
 
 

@@ -14,7 +14,7 @@ test('the loader fits a 360px screen, even with a long file name', async ({ page
     await gate
     await route.continue()
   })
-  const long = 'Shashank-Rao-Curriculum-Vitae-2026-final-final-v3-for-the-assistant.txt'
+  const long = 'Ananya-Menon-Curriculum-Vitae-2026-final-final-v3-for-the-assistant.txt'
   await chooseFile(page, textFile(long, 'I lead applied AI at PebbleRoad in Singapore.'))
   const loader = page.getByTestId('doc-loader')
   await expect(loader).toBeVisible()

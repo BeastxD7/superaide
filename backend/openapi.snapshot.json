@@ -1197,6 +1197,53 @@
         "title": "OutcomeBody",
         "type": "object"
       },
+      "Page_dict_str__Any__": {
+        "properties": {
+          "has_more": {
+            "default": false,
+            "description": "True when `next_cursor` leads to at least one more row.",
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `cursor` to get the next page; null on the last page.",
+            "title": "Next Cursor"
+          },
+          "total_estimate": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Approximate row count, only where it is cheap to know. Never an exact COUNT(*).",
+            "title": "Total Estimate"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "Page[dict[str, Any]]",
+        "type": "object"
+      },
       "PasswordBody": {
         "properties": {
           "current": {
@@ -2970,6 +3017,78 @@
         ]
       }
     },
+    "/api/approvals/page": {
+      "get": {
+        "description": "The rows of `/api/approvals`, paged by cursor (limit 1 to 100, default 50). ADR 0014.",
+        "operationId": "approvals_page_api_approvals_page_get",
+        "parameters": [
+          {
+            "description": "Page size, 1 to 100. Default 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Page size, 1 to 100. Default 50.",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Opaque cursor from the previous page's `next_cursor`.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 1024,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from the previous page's `next_cursor`.",
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_dict_str__Any__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "Admin token": []
+          }
+        ],
+        "summary": "Approvals, newest first (paged)",
+        "tags": [
+          "Operator console"
+        ]
+      }
+    },
     "/api/audit": {
       "get": {
         "description": "The audit trail: identity checks, refusals, links, spend and sign-ins.",
@@ -3056,9 +3175,81 @@
         ]
       }
     },
+    "/api/conversations/page": {
+      "get": {
+        "description": "The same rows as `/api/conversations`, ordered by when each last moved (`last_event_at`) and paged by cursor. `messages` counts up to 1000 (`messages_more` is true beyond that): an exact count over a long conversation is the scan this route exists to avoid. ADR 0014.",
+        "operationId": "conversations_page_api_conversations_page_get",
+        "parameters": [
+          {
+            "description": "Page size, 1 to 100. Default 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Page size, 1 to 100. Default 50.",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Opaque cursor from the previous page's `next_cursor`.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 1024,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from the previous page's `next_cursor`.",
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_dict_str__Any__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "Admin token": []
+          }
+        ],
+        "summary": "Conversations, newest activity first (paged)",
+        "tags": [
+          "Operator console"
+        ]
+      }
+    },
     "/api/events": {
       "get": {
-        "description": "Recent messages, optionally for one conversation (`context_id`).",
+        "description": "Recent messages, newest first in pages, optionally for one conversation (`context_id`). `limit` is 1 to 200, clamped (default 100). When older ones exist the response has `X-Next-Cursor`, `Link: rel=next` and `X-Has-More: true`; send the cursor back as `cursor`. The body stays a bare array. ADR 0014.",
         "operationId": "events_api_events_get",
         "parameters": [
           {
@@ -3086,6 +3277,25 @@
               "default": 100,
               "title": "Limit",
               "type": "integer"
+            }
+          },
+          {
+            "description": "Opaque cursor from the previous page's `next_cursor`.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 1024,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from the previous page's `next_cursor`.",
+              "title": "Cursor"
             }
           }
         ],
@@ -3358,6 +3568,78 @@
         ]
       }
     },
+    "/api/memories/page": {
+      "get": {
+        "description": "The rows of `/api/memories`, paged by cursor (limit 1 to 100, default 50). ADR 0014.",
+        "operationId": "memories_page_api_memories_page_get",
+        "parameters": [
+          {
+            "description": "Page size, 1 to 100. Default 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Page size, 1 to 100. Default 50.",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Opaque cursor from the previous page's `next_cursor`.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 1024,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from the previous page's `next_cursor`.",
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_dict_str__Any__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "Admin token": []
+          }
+        ],
+        "summary": "Memories, newest first (paged)",
+        "tags": [
+          "Operator console"
+        ]
+      }
+    },
     "/api/overview": {
       "get": {
         "description": "Growth stage, what is live (brain, channels), spend against the cap and the kill switch.",
@@ -3414,6 +3696,150 @@
           }
         ],
         "summary": "People and trust",
+        "tags": [
+          "Operator console"
+        ]
+      }
+    },
+    "/api/people/page": {
+      "get": {
+        "description": "A page of people, each with its linked identities and its latest 20 link events. Unclaimed accounts are `/api/people/unlinked/page`. Limit 1 to 100, default 50. ADR 0014.",
+        "operationId": "people_page_api_people_page_get",
+        "parameters": [
+          {
+            "description": "Page size, 1 to 100. Default 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Page size, 1 to 100. Default 50.",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Opaque cursor from the previous page's `next_cursor`.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 1024,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from the previous page's `next_cursor`.",
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_dict_str__Any__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "Admin token": []
+          }
+        ],
+        "summary": "People and trust, oldest first (paged)",
+        "tags": [
+          "Operator console"
+        ]
+      }
+    },
+    "/api/people/unlinked/page": {
+      "get": {
+        "description": "Channel accounts no person has claimed (the old response's `Unlinked accounts` entry). ADR 0014.",
+        "operationId": "unlinked_page_api_people_unlinked_page_get",
+        "parameters": [
+          {
+            "description": "Page size, 1 to 100. Default 50.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Page size, 1 to 100. Default 50.",
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Opaque cursor from the previous page's `next_cursor`.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 1024,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from the previous page's `next_cursor`.",
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_dict_str__Any__"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "Admin token": []
+          }
+        ],
+        "summary": "Unlinked accounts, oldest first (paged)",
         "tags": [
           "Operator console"
         ]

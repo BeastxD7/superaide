@@ -149,6 +149,7 @@ class ScriptedModel:
                             "kind": self.next_action.kind,
                             "summary": self.next_action.summary,
                             "rationale": "asked",
+                            "reaches_a_person": "yes",
                         },
                     }
                 ]
@@ -175,7 +176,7 @@ def manager() -> Person:
     with session_scope() as s:
         return bootstrap_person(
             s,
-            name="Shashank",
+            name="Jordan",
             relation="manager",
             identities=[("telegram", "", MANAGER_TG), ("slack", OUR_TEAM, MANAGER_SLACK)],
         )

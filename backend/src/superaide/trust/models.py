@@ -100,7 +100,7 @@ MAX_ACTIVE_PLAYBOOKS = 50
 
 
 class Playbook(Scoped, Base):
-    """A reusable how-to ("how Shashank wants board updates") Ava drafts and only the owner can switch on (#120)."""
+    """A reusable how-to ("how Jordan wants board updates") Ava drafts and only the owner can switch on (#120)."""
 
     __tablename__ = "playbook"
     __table_args__ = (

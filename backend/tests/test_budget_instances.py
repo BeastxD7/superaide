@@ -92,7 +92,7 @@ def test_reservations_for_different_owners_run_side_by_side():
 
 def _hired_instance(limits: dict) -> InstanceScope:
     with session_scope() as s:
-        user, _ = signup(s, email="s@example.com", password="correct horse battery", name="Shashank", client=Client())
+        user, _ = signup(s, email="s@example.com", password="correct horse battery", name="Jordan", client=Client())
         accounts.hire(s, user)
         instance = s.get(AgentInstance, default_scope().agent_id)
         assert instance is not None

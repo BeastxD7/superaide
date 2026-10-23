@@ -29,8 +29,8 @@ from tests.conftest import tg
 load()
 PASSWORD = "correct horse battery"
 PHONE = "777001"
-GYM_CHAT = "Shashank's gym is Gold's Gym."
-GYM_CV = "Shashank's gym is Cult Fit."
+GYM_CHAT = "Jordan's gym is Gold's Gym."
+GYM_CV = "Jordan's gym is Cult Fit."
 
 
 class Script:
@@ -54,7 +54,7 @@ def script(agent, monkeypatch):
 @pytest.fixture
 def owner(agent, script):
     client = TestClient(create_app(agent), headers={"X-Requested-With": "superaide"})
-    client.post("/auth/signup", json={"name": "Shashank Rao", "email": "s@example.com", "password": PASSWORD})
+    client.post("/auth/signup", json={"name": "Jordan Whitfield", "email": "s@example.com", "password": PASSWORD})
     client.post("/app/hire", json={"agent": "ava", "accepted_notice": True})
     with session_scope() as s:
         code = accounts.create_invite(s, hired_owner(s), "telegram", endpoint="")
@@ -145,12 +145,12 @@ def test_the_owner_confirming_a_document_fact_raises_it_to_top_rank(owner, scrip
 
 
 def test_a_page_cannot_set_urgency_rules_and_waits_for_review(owner, agent, script):
-    script.facts = [fact("Everything from Acme is urgent.", "urgency"), fact("Shashank works at Acme.", "work")]
+    script.facts = [fact("Everything from Acme is urgent.", "urgency"), fact("Jordan works at Acme.", "work")]
     share(agent, "web", "Acme page", title="acme.example")
-    rule, work = by_text("Everything from Acme is urgent."), by_text("Shashank works at Acme.")
+    rule, work = by_text("Everything from Acme is urgent."), by_text("Jordan works at Acme.")
     assert rule and rule.conflict_status == "review" and rule.trust_rank == 3
     assert work and work.conflict_status == "none"
-    assert recalled("Acme urgent") == ["Shashank works at Acme."]
+    assert recalled("Acme urgent") == ["Jordan works at Acme."]
     waiting = owner.get("/app/notebook/conflicts").json()["conflicts"]
     assert [(c["claim"]["text"], c["current"]) for c in waiting] == [("Everything from Acme is urgent.", None)]
 
@@ -199,9 +199,9 @@ def test_accepting_the_claim_stores_a_top_rank_fact_and_retires_the_old_one(owne
 def test_the_owner_can_write_their_own_answer(owner, agent, script):
     c = conflict(owner, agent, script)
     r = owner.post(
-        f"/app/notebook/conflicts/{c['claim']['id']}/resolve", json={"choice": "custom", "text": "Shashank swims."}
+        f"/app/notebook/conflicts/{c['claim']['id']}/resolve", json={"choice": "custom", "text": "Jordan swims."}
     )
-    assert r.status_code == 200 and recalled("swims") == ["Shashank swims."]
+    assert r.status_code == 200 and recalled("swims") == ["Jordan swims."]
     assert owner.post(f"/app/notebook/conflicts/{c['claim']['id']}/resolve", json={"choice": "keep"}).status_code == 404
 
 

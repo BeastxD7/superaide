@@ -22,7 +22,7 @@ export async function plantSecret(provider: string, name: string, value: string)
 export async function linkOwner(provider: string, key: string): Promise<void> {
   await query(
     `INSERT INTO channel_identity (id, tenant_id, agent_id, created_at, person_id, provider, tenant_scope, stable_key, aux_handles, trust_level, verification, lifecycle, risk_flags, endpoint_key)
-     SELECT gen_random_uuid(), p.tenant_id, p.agent_id, now(), p.id, $1, '', $2, '{"display":"Shashank"}'::jsonb, 3, '{}'::jsonb, 'active', '{}', ''
+     SELECT gen_random_uuid(), p.tenant_id, p.agent_id, now(), p.id, $1, '', $2, '{"display":"Ananya"}'::jsonb, 3, '{}'::jsonb, 'active', '{}', ''
      FROM person p JOIN user_account u ON u.person_id = p.id LIMIT 1`,
     [provider, key],
   )

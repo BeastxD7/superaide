@@ -1,5 +1,5 @@
 """Embeddings: turning a fact or a question into a vector, so recall can match meaning, not
-just words ("do I eat meat?" finds "Shashank is vegetarian"; ADR 0008 WP2b).
+just words ("do I eat meat?" finds "Jordan is vegetarian"; ADR 0008 WP2b).
 
 One interface, four providers, chosen by `settings.embedder`:
 - `local` (default): fastembed (ONNX on CPU, no torch) with a small multilingual model. Private

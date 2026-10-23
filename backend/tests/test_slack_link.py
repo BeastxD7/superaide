@@ -42,7 +42,7 @@ def slack_agent(model, outbox, settings) -> Agent:
 @pytest.fixture
 def app(slack_agent) -> TestClient:
     c = TestClient(create_app(slack_agent), headers={"X-Requested-With": "superaide"}, raise_server_exceptions=False)
-    body = {"name": "Shashank Rao", "email": "s@example.com", "password": PASSWORD}
+    body = {"name": "Jordan Whitfield", "email": "s@example.com", "password": PASSWORD}
     assert c.post("/auth/signup", json=body).status_code == 200
     assert c.post("/app/hire", json={"agent": "ava", "accepted_notice": True}).status_code == 200
     return c
@@ -104,7 +104,7 @@ def test_the_app_makes_a_code_and_says_what_to_send(app):
 def test_no_slack_app_connected_is_a_404(model, outbox, settings):
     bare = Agent(llm=FakeLLM(model), messengers=outbox, settings=settings.model_copy(update={"slack_app_token": ""}))
     c = TestClient(create_app(bare), headers={"X-Requested-With": "superaide"}, raise_server_exceptions=False)
-    c.post("/auth/signup", json={"name": "Shashank Rao", "email": "s@example.com", "password": PASSWORD})
+    c.post("/auth/signup", json={"name": "Jordan Whitfield", "email": "s@example.com", "password": PASSWORD})
     c.post("/app/hire", json={"agent": "ava", "accepted_notice": True})
     assert c.post("/app/channels/slack/invite").status_code == 404
     assert c.get("/app/me").json()["channels"]["slack_available"] is False
@@ -114,7 +114,7 @@ def test_the_code_in_a_dm_links_the_owner(app, slack_agent):
     code = make_code(app)
     assert slack_agent.handle(slm(ME, "hello")).mode == "stranger"
     reply = slack_agent.handle(slm(ME, f"  LiNk {code}  ")).reply or ""
-    assert reply.startswith("Linked. Hi Shashank")
+    assert reply.startswith("Linked. Hi Jordan")
     me = identity()
     assert me and me.trust_level == int(Trust.LINKED) and me.person_id is not None
     assert me.endpoint_key == f"{OUR_TEAM}/{APP}"

@@ -27,12 +27,12 @@ from superaide.memory.store import get_or_create_context
 load()
 PASSWORD = "correct horse battery"
 PHONE = "777001"
-NEEDLE = "Shashank won the Lovelace Medal in 2019."
+NEEDLE = "Jordan won the Lovelace Medal in 2019."
 
 
 def long_text() -> str:
     pages = [f"Page {i}. " + ("Routine notes about the quarter. " * 150) for i in range(1, 11)]
-    pages[5] = "Page 6. Awards. The Lovelace Medal was awarded to Shashank in 2019 for applied AI work."
+    pages[5] = "Page 6. Awards. The Lovelace Medal was awarded to Jordan in 2019 for applied AI work."
     return "\n\n".join(pages)
 
 
@@ -63,7 +63,7 @@ def script(agent, monkeypatch):
 @pytest.fixture
 def owner(agent, script):
     client = TestClient(create_app(agent), headers={"X-Requested-With": "superaide"})
-    client.post("/auth/signup", json={"name": "Shashank Rao", "email": "s@example.com", "password": PASSWORD})
+    client.post("/auth/signup", json={"name": "Jordan Whitfield", "email": "s@example.com", "password": PASSWORD})
     client.post("/app/hire", json={"agent": "ava", "accepted_notice": True})
     return client
 

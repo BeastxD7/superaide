@@ -6,7 +6,7 @@
   world:
     second_owner: true
     memories:
-      - content: "Shashank's sister Anya lives in Pune."
+      - content: "Jordan's sister Anya lives in Pune."
     reminders:
       - text: "Call Anya"
         due: {day: 1, at: "18:00"}

@@ -86,7 +86,7 @@ def test_write_consent_export_and_the_file_carries_only_the_lesson(owner_c):
     assert doc["format"] == "superaide-lessons/1" and doc["lessons"] == [{"text": GOOD, "role": "personal assistant"}]
     assert set(doc) == {"format", "lessons", "sha256"}  # no owner, instance, id or time
     blob = json.dumps(doc)
-    for private in ("shashank", "example.com", lid):
+    for private in ("jordan", "example.com", lid):
         assert private not in blob.lower()
     assert owner_c.get("/app/school").json()["lessons"][0]["exported"] is True
     # Withdrawing consent keeps it out of the next file.
@@ -105,7 +105,7 @@ def test_write_consent_export_and_the_file_carries_only_the_lesson(owner_c):
         ("Ping @priya when the report is late, every single time", "handle"),
         ("Call 6512345678 when it is urgent and I do not answer", "number"),
         ("Never agree to more than 5000 dollars without asking me first", "number"),
-        ("Tell Shashank first when a supplier is late with an order", "name"),
+        ("Tell Jordan first when a supplier is late with an order", "name"),
     ],
 )
 def test_lessons_that_could_point_at_the_owner_are_refused(owner_c, text, code):
@@ -162,7 +162,7 @@ def test_a_lesson_that_stops_passing_is_left_out_of_the_file(owner_c):
 def test_import_checks_every_lesson_and_waits_for_the_owner(owner_c):
     doc = document.build([
         {"text": GOOD, "role": "personal assistant"},
-        {"text": "Tell Shashank about anything from the bank right away", "role": "personal assistant"},
+        {"text": "Tell Jordan about anything from the bank right away", "role": "personal assistant"},
         {"text": "Ask before you share my diary with a supplier who asks", "role": "scheduler"},
     ])  # fmt: skip
     r = owner_c.post("/app/school/import", json={"document": doc})

@@ -170,7 +170,7 @@ def test_a_live_draft_reply_still_ends_in_an_approval_card(on, monkeypatch):
     firings(rid, 20)
     with session_scope() as s:
         tt.promote(s, rid, after=20, min_agreement=0.9)
-        boss = Person(display_name="Shashank", relation="manager")
+        boss = Person(display_name="Jordan", relation="manager")
         s.add(boss)
         s.flush()
         s.expunge(boss)

@@ -43,7 +43,7 @@ def owner_client(agent):
     c = TestClient(create_app(agent), headers={"X-Requested-With": "superaide"})
     assert (
         c.post(
-            "/auth/signup", json={"name": "Shashank Rao", "email": "s@example.com", "password": PASSWORD}
+            "/auth/signup", json={"name": "Jordan Whitfield", "email": "s@example.com", "password": PASSWORD}
         ).status_code
         == 200
     )
@@ -211,7 +211,12 @@ def test_side_effects_become_approvals_with_the_reason_and_risky_ones_are_refuse
         script = Script(
             tool_use(
                 "propose_action",
-                {"kind": "message_someone_else", "summary": "Tell Priya I'm late", "rationale": "Owner asked"},
+                {
+                    "kind": "message_someone_else",
+                    "summary": "Tell Priya I'm late",
+                    "rationale": "Owner asked",
+                    "reaches_a_person": "yes",
+                },
                 "a",
             ),
             tool_use(
@@ -313,13 +318,13 @@ def test_a_cited_block_that_only_repeats_the_quote_is_folded_into_the_sentence_b
             {"type": "text", "text": "Your flight is Friday at 7:10am. "},
             {
                 "type": "text",
-                "text": "Shashank's flight to Bangalore is on Friday 23 Oct at 7:10am.",
+                "text": "Jordan's flight to Bangalore is on Friday 23 Oct at 7:10am.",
                 "citations": [
                     {
                         "type": "search_result_location",
                         "source": "ava://memory/aaa",
                         "title": "Note",
-                        "cited_text": "Shashank's flight to Bangalore is on Friday 23 Oct at 7:10am.",
+                        "cited_text": "Jordan's flight to Bangalore is on Friday 23 Oct at 7:10am.",
                     }
                 ],
             },
@@ -348,17 +353,17 @@ def test_a_quote_after_an_unpunctuated_introduction_is_kept_not_dropped():
         "type": "search_result_location",
         "source": "ava://memory/bbb",
         "title": "Note",
-        "cited_text": "Shashank's manager is Arjun Mehta.",
+        "cited_text": "Jordan's manager is Arjun Mehta.",
     }
     text, _ = render(
         [
             {"type": "text", "text": "Your notebook lists "},
-            {"type": "text", "text": "Shashank's manager is Arjun Mehta.", "citations": [cite]},
+            {"type": "text", "text": "Jordan's manager is Arjun Mehta.", "citations": [cite]},
             {"type": "text", "text": " The note has no date."},
         ]
     )
     assert "Arjun Mehta" in text
-    assert text.startswith("Your notebook lists “Shashank's manager is Arjun Mehta.” [1]")
+    assert text.startswith("Your notebook lists “Jordan's manager is Arjun Mehta.” [1]")
 
 
 def test_a_tools_used_line_the_model_copied_is_removed_from_the_reply():
@@ -384,7 +389,7 @@ def test_an_uncited_answer_from_a_found_note_gets_the_citation_in_code(owner_cli
     with session_scope() as s:
         person = hired_owner(s)
         assert person is not None
-        m = note(s, person.id, "Shashank's manager is Arjun Mehta.")
+        m = note(s, person.id, "Jordan's manager is Arjun Mehta.")
         script = Script("Your manager is Arjun Mehta. Anything else?")
         result = turn_for(s, script, text="who is my manager?").run([{"role": "user", "content": "who is my manager?"}])
     assert result.text == "Your manager is Arjun Mehta. [1] Anything else?"
@@ -395,13 +400,13 @@ def test_an_uncited_answer_from_a_found_note_gets_the_citation_in_code(owner_cli
 def test_chit_chat_next_to_a_found_note_is_not_cited():
     from superaide.brain.verify import uncited_restatements
 
-    notes = ["Shashank's manager is Arjun Mehta."]
+    notes = ["Jordan's manager is Arjun Mehta."]
     assert uncited_restatements("Thanks! Have a great day.", notes) == []
-    assert uncited_restatements("You're welcome, Shashank.", notes) == []
+    assert uncited_restatements("You're welcome, Jordan.", notes) == []
     assert uncited_restatements("Arjun Mehta is your manager.", notes) == [("Arjun Mehta is your manager.", 0)]
     assert uncited_restatements("Arjun Mehta is your manager. [1]", notes) == []
     # A short answer from a long learned note (live eval: "Anya's birthday is on 14 March.").
-    long_note = ["Shashank's sister Anya's birthday is on 14 March, and she turns 30 this year."]
+    long_note = ["Jordan's sister Anya's birthday is on 14 March, and she turns 30 this year."]
     answer = "Anya's birthday is on 14 March."
     assert uncited_restatements(answer, long_note) == [(answer, 0)]
     assert uncited_restatements("Happy to help with Anya's plans.", long_note) == []

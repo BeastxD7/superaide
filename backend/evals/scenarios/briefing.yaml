@@ -15,7 +15,7 @@
   turns:
     - digest: morning
       expect:
-        - reply_contains: ["Good morning, Shashank", "10:00 Standup", "15:00 Call Priya"]
+        - reply_contains: ["Good morning, Jordan", "10:00 Standup", "15:00 Call Priya"]
         - reply_not_contains: ["rent"]
 
 - id: brief-evening-lists-tomorrow
