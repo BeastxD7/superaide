@@ -10,6 +10,7 @@ stay). Responses never carry a token.
 
 from __future__ import annotations
 
+import logging
 import secrets
 import uuid
 from collections.abc import Callable
@@ -36,6 +37,8 @@ from superaide.vault import store
 from superaide.vault.store import runtime_settings
 
 BACK = "/dashboard/capabilities"
+
+log = logging.getLogger(__name__)
 
 
 class DraftsBody(BaseModel):
@@ -96,7 +99,10 @@ def finish(code: str, pending: dict[str, Any]) -> RedirectResponse:
         address = str(api.profile(client, access).get("emailAddress") or "").lower() if access else ""
     except api.ScopeMissing:
         return RedirectResponse(f"{back}?gmail=no_access", status_code=303)
-    except google.GoogleError:
+    except google.ApiDisabled:
+        return RedirectResponse(f"{back}?gmail=api_disabled", status_code=303)
+    except google.GoogleError as exc:
+        log.warning("gmail sign-in failed: %s", exc)  # the message names the status and Google's reason only
         return RedirectResponse(f"{back}?gmail=failed", status_code=303)
     with session_scope() as s:
         store.save(

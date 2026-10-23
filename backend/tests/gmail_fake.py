@@ -79,6 +79,7 @@ class FakeGoogle:
         self.requests: list[httpx.Request] = []
         self.grant = f"{api.READONLY}"
         self.fail = False
+        self.profile_error: httpx.Response | None = None  # what users/me/profile answers instead
 
     def add(self, msg: dict[str, Any]) -> dict[str, Any]:
         self.messages[msg["id"]] = msg
@@ -105,6 +106,8 @@ class FakeGoogle:
         assert r.headers["authorization"].startswith("Bearer at-")
         q = dict(r.url.params)
         if path.endswith("/profile"):
+            if self.profile_error is not None:
+                return self.profile_error
             return httpx.Response(200, json={"emailAddress": OWNER_ADDR, "historyId": str(self.history_id)})
         if path.endswith("/messages") and r.method == "GET":
             ids = [m for _, m in reversed(self.added)]

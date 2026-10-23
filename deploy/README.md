@@ -161,8 +161,9 @@ and the right to change events (`calendar.events`) only when they switch on cale
 Skills. Replace `ava.example.com` with your domain throughout.
 
 1. Open <https://console.cloud.google.com/> and create a project (e.g. "Superaide"), or pick one.
-2. **APIs & Services → Library:** search for **Google Calendar API** and press **Enable**.
-   Sign-in itself needs no API.
+2. **APIs & Services → Library:** enable BOTH **Google Calendar API** and **Gmail API** (search each and
+   press **Enable**). Sign-in itself needs no API. Without Gmail API, connecting Gmail ends with "The Gmail
+   API isn't switched on for your Google project".
 3. **Google Auth Platform → Branding** (the OAuth consent screen): app name (e.g. "Superaide"),
    user support email, developer contact email, and under **Authorised domains** your domain
    (`example.com`). Add the home page, privacy policy and terms of service links now if you have
@@ -171,8 +172,9 @@ Skills. Replace `ava.example.com` with your domain throughout.
    every Google account that will sign in or connect a calendar while you test (up to 100). Nobody
    else can use the app until it is published.
 5. **Data Access → Add or remove scopes:** add `openid`, `.../auth/userinfo.email`,
-   `.../auth/userinfo.profile`, `.../auth/calendar.readonly` and `.../auth/calendar.events`, then **Save**.
-   The two calendar scopes are *sensitive*.
+   `.../auth/userinfo.profile`, `.../auth/calendar.readonly`, `.../auth/calendar.events`,
+   `.../auth/gmail.readonly` and `.../auth/gmail.compose`, then **Save**. The calendar scopes are *sensitive*
+   and the Gmail scopes are *restricted* (verification asks for a security assessment when the app is public).
 6. **Clients → Create client:** application type **Web application**, name "Superaide web".
    - **Authorised JavaScript origins:** `https://ava.example.com`
    - **Authorised redirect URIs**, both, exactly (scheme, host, port and path must match):

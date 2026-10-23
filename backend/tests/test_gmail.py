@@ -7,6 +7,7 @@ from __future__ import annotations
 import uuid
 from urllib.parse import parse_qs, urlsplit
 
+import httpx
 import pytest
 from sqlalchemy import select
 
@@ -313,3 +314,63 @@ def test_one_owners_gmail_never_reaches_another_instance(gmail_fake):
         assert gmail.installed(s) is None
         with pytest.raises(gmail.NotReady):
             gmail.token(s)
+
+
+def _connect_url(owner_client, gmail_fake, monkeypatch) -> str:
+    from superaide.app import connections
+
+    monkeypatch.setattr(connections, "http_client", gmail_fake.client)
+    owner_client.post("/app/connections/google", json={"client_id": CLIENT_ID, "client_secret": CLIENT_SECRET})
+    accepted = [p["id"] for p in next(c for c in owner_client.get("/app/skills").json() if c["id"] == gmail.SKILL_ID)
+                ["permissions"]]  # fmt: skip
+    assert owner_client.post("/app/skills/superaide/gmail/install", json={"accepted": accepted}).status_code == 200
+    return owner_client.post("/app/gmail/connect").json()["url"]
+
+
+def test_gmail_api_not_enabled_in_the_google_project_is_its_own_outcome(owner_client, gmail_fake, monkeypatch, caplog):
+    import logging
+
+    url = _connect_url(owner_client, gmail_fake, monkeypatch)
+    gmail_fake.profile_error = httpx.Response(
+        403,
+        json={"error": {"code": 403, "message": "Gmail API has not been used in project 1 before.",
+                        "errors": [{"reason": "accessNotConfigured"}], "status": "PERMISSION_DENIED"}},
+    )  # fmt: skip
+    with caplog.at_level(logging.WARNING):
+        assert _callback(owner_client, url, api.READONLY, gmail_fake).endswith("?gmail=api_disabled")
+    assert "accessNotConfigured" in caplog.text and REFRESH not in caplog.text and CLIENT_SECRET not in caplog.text
+    assert owner_client.get("/app/gmail").json()["connected"] is False
+
+
+def test_service_disabled_in_error_details_counts_too(owner_client, gmail_fake, monkeypatch):
+    url = _connect_url(owner_client, gmail_fake, monkeypatch)
+    gmail_fake.profile_error = httpx.Response(
+        403, json={"error": {"code": 403, "status": "PERMISSION_DENIED", "details": [{"reason": "SERVICE_DISABLED"}]}}
+    )
+    assert _callback(owner_client, url, api.READONLY, gmail_fake).endswith("?gmail=api_disabled")
+
+
+def test_any_other_gmail_error_stays_failed_and_is_logged(owner_client, gmail_fake, monkeypatch, caplog):
+    import logging
+
+    url = _connect_url(owner_client, gmail_fake, monkeypatch)
+    gmail_fake.profile_error = httpx.Response(500, json={"error": {"status": "INTERNAL"}})
+    with caplog.at_level(logging.WARNING):
+        assert _callback(owner_client, url, api.READONLY, gmail_fake).endswith("?gmail=failed")
+    assert "HTTP 500" in caplog.text
+
+
+def test_calendar_api_not_enabled_is_told_apart_too():
+    from datetime import UTC, datetime
+
+    from superaide.connectors import google
+
+    disabled = httpx.Response(403, json={"error": {"errors": [{"reason": "accessNotConfigured"}]}})
+    client = httpx.Client(transport=httpx.MockTransport(lambda r: disabled))
+    now = datetime.now(UTC)
+    with pytest.raises(google.ApiDisabled):
+        google.list_events("t", start=now, end=now, client=client)
+    other = httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(403, json={"error": {}})))
+    with pytest.raises(google.GoogleError) as info:
+        google.list_events("t", start=now, end=now, client=other)
+    assert not isinstance(info.value, google.ApiDisabled)
