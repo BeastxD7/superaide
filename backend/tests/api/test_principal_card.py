@@ -59,11 +59,19 @@ def _user_id(s):
     return s.scalar(select(UserAccount.id).order_by(UserAccount.created_at))
 
 
+def _without_request_id(body: dict) -> dict:
+    """The error envelope carries a per-response request id; everything else must be identical."""
+    out = json.loads(json.dumps(body))
+    if isinstance(out.get("error"), dict):
+        out["error"].pop("request_id", None)
+    return out
+
+
 def test_off_by_default_every_route_is_404(browser, owner):
     assert owner.get("/app/principal-card").status_code == 404
     assert owner.put("/app/principal-card", json={"display_name": "x"}).status_code == 404
     r = browser().get("/p/card/abc.def")
-    assert r.status_code == 404 and r.json() == NOT_FOUND
+    assert r.status_code == 404 and r.json()["detail"] == NOT_FOUND["detail"]
     with session_scope() as s:
         assert card.footer(s) == ""
 
@@ -92,9 +100,12 @@ def test_a_forged_or_tampered_token_is_the_same_404(browser, owner, on):
     claims["n"] = "Someone Else"
     forged_body = base64.urlsafe_b64encode(json.dumps(claims).encode()).rstrip(b"=").decode()
     anon = browser()
+    seen = []
     for bad in [f"{forged_body}.{sig}", f"{body}.AAAA", "garbage", body, good + "x"]:
         r = anon.get(f"/p/card/{bad}")
-        assert r.status_code == 404 and r.json() == NOT_FOUND, bad
+        assert r.status_code == 404 and r.json()["detail"] == NOT_FOUND["detail"], bad
+        seen.append(_without_request_id(r.json()))
+    assert all(b == seen[0] for b in seen)  # no oracle: every bad token answers the same, bar the request id
 
 
 def test_an_expired_card_is_404(browser, owner, on):
