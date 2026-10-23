@@ -34,9 +34,11 @@ TABLES: tuple[str, ...] = (
     "calendar_watch",  # Google Calendar push channels
     "channel_identity",
     "channel_invite",
+    "consolidation_run",  # the sleep job's pre-images (#50)
     "contact",
     "context",
     "document",
+    "episode",  # conversation episodes (#50)
     "event",
     "identity_link_event",
     "installed_skill",
