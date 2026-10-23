@@ -65,6 +65,15 @@ def expired(approval: Approval, *, now: datetime | None = None) -> bool:
     return approval.expires_at is not None and (now or datetime.now(UTC)) >= approval.expires_at
 
 
+def waiting() -> Any:
+    """SQL condition for "still waiting for the owner's yes": pending and not past its expiry."""
+    from sqlalchemy import and_, func, or_
+
+    from superaide.db.models import Approval
+
+    return and_(Approval.status == "pending", or_(Approval.expires_at.is_(None), Approval.expires_at > func.now()))
+
+
 def check(approval: Approval) -> str:
     """`ok`, `mismatch` (the payload is not what was sealed) or `unsealed` (nothing was recorded)."""
     if not approval.bound_hash:
