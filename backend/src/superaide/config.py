@@ -81,6 +81,11 @@ class Settings(BaseSettings):
     audition_enabled: bool = False
     audition_max_tasks: int = Field(default=20, ge=1, le=50)  # most recent tasks one audition replays
 
+    # Model-swap drill (#110). Off: /app/model-drill answers 404. On: the owner can replay their last tasks on two
+    # models (effects stubbed, no network) and see where the call sequences differ, before changing Ava's model.
+    model_drill_enabled: bool = False
+    drill_max_tasks: int = Field(default=20, ge=1, le=50)  # most recent tasks one drill replays on each model
+
     # Hash-chained log of tool calls and executed approvals (issue #113). Off by default.
     action_log: bool = False
 

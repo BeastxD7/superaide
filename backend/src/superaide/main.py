@@ -171,6 +171,10 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     from superaide.tooltrace.audition_routes import make_router as make_audition_routes_router
 
     app.include_router(make_audition_routes_router(get_agent))  # 404 everywhere while its flag is off
+
+    from superaide.tooltrace.drill_routes import make_router as make_drill_routes_router
+
+    app.include_router(make_drill_routes_router(get_agent))  # 404 everywhere while its flag is off
     from superaide.rehearsal.routes import make_router as make_rehearsal_router
 
     app.include_router(make_rehearsal_router(get_agent))  # 404 everywhere while REHEARSAL_ENABLED is off
