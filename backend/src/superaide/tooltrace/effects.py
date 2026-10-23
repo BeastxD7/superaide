@@ -11,6 +11,7 @@ READ = frozenset({"read_public", "read_private"})
 EFFECTS: dict[str, str] = {
     "recall": "read_private",
     "list_reminders": "read_private",
+    "list_approvals": "read_private",
     "calendar_events": "read_private",
     "calendar_free_busy": "read_private",
     "gmail_search": "read_private",

@@ -37,7 +37,7 @@ from superaide.tooltrace.replay import CANNED, Diff, Replayer, diff
 PURPOSE = "replay_turn"
 # The only tools a rehearsal lets run for real: they read the owner's own data in this database. Anything that
 # could touch the network (web, mail, calendar) is answered with a canned result instead.
-LOCAL_READS = frozenset({"recall", "list_reminders"})
+LOCAL_READS = frozenset({"recall", "list_reminders", "list_approvals"})
 
 
 class RehearsalError(Exception):
