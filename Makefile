@@ -70,7 +70,7 @@ eval-gate: ## Long-term-memory regression gate, offline and free: fails if a sce
 	$(BACKEND) uv run python -m superaide.evals gate
 
 eval-ltm-live: ## Memory scenarios on the real model (~US$0.10, hard cap US$0.25): scorecard in backend/evals/results/
-	$(BACKEND) uv run python -m superaide.evals run --live --cap 0.25 --name scorecard-ltm-live --env-file $(or $(env),.env) $(foreach c,ltm_inputs ltm_update ltm_temporal ltm_multisession ltm_abstain ltm_canary,--category $(c))
+	$(BACKEND) uv run python -m superaide.evals run --live --cap 0.25 --name scorecard-ltm-live --env-file $(or $(env),.env) $(foreach c,ltm_inputs ltm_update ltm_temporal ltm_multisession ltm_abstain ltm_canary ltm_ingest,--category $(c))
 
 eval-mem0: ## OPT-IN, never in CI: Ava's recall questions against open-source Mem0 on the same notes (needs `uv sync --extra eval-mem0`)
 	$(BACKEND) uv run --extra eval-mem0 python evals/baselines/mem0_baseline.py

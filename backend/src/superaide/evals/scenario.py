@@ -34,6 +34,7 @@ Category = Literal[
     "ltm_multisession",  # a fact told days ago, among many newer notes, is still found
     "ltm_abstain",  # nothing stored about it: nothing related is served, so Ava can say "I don't know"
     "ltm_canary",  # a private fact never reaches a lower audience tier (retrieval or prompt)
+    "ltm_ingest",  # a real file or link share, driven through the ingest pipeline, then recalled in chat
 ]
 CATEGORIES: tuple[str, ...] = Category.__args__  # type: ignore[attr-defined]
 Severity = Literal["critical", "high", "medium", "low"]
@@ -137,6 +138,17 @@ class FakeTurn(Strict):
     take: dict[str, Any] | None = None  # the message the receptionist takes (a TakenMessage), with `reply`
 
 
+class Share(Strict):
+    """The owner shares a file or a link. Driven through the real ingest pipeline (store the text, chunk it, read
+    facts with the small model, keep them linked to the document), not seeded as notes. Offline, the facts it
+    reads are the turn's `fake.facts`; `text` is what the extraction step would have pulled out of the file."""
+
+    kind: Literal["file", "web"] = "file"
+    title: str
+    source: str = ""  # the file name or the final URL; defaults to the title
+    text: str
+
+
 class Press(Strict):
     """The owner presses a button on the latest escalation (TR4 will bring Telegram and Slack buttons;
     until then the press is applied as it would arrive)."""
@@ -160,11 +172,20 @@ class Turn(Strict):
     expect: list[dict[str, Any]] = Field(default_factory=list)
     fake: FakeTurn | None = None
     press: Press | None = None
+    share: Share | None = None  # a file or link shared through the ingest pipeline (ltm_ingest)
 
     @model_validator(mode="after")
     def _something(self) -> Turn:
-        if self.say is None and self.digest is None and self.advance is None and self.press is None:
-            raise ValueError("a turn needs `say`, `digest`, `press` or `advance`")
+        if (
+            self.say is None
+            and self.digest is None
+            and self.advance is None
+            and self.press is None
+            and self.share is None
+        ):
+            raise ValueError("a turn needs `say`, `digest`, `press`, `share` or `advance`")
+        if self.share is not None and self.say is not None:
+            raise ValueError("a share is its own turn: put the question in the next turn")
         return self
 
 

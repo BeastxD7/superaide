@@ -26,7 +26,9 @@ def test_the_suite_covers_every_category_with_about_fifty_scenarios():
 def test_every_scenario_runs_offline_without_a_harness_error(sc: Scenario):
     run = run_scenario(sc)
     assert not run.error, run.error
-    assert len(run.turns) == sum(1 for t in sc.turns if t.say or t.digest or t.press or (t.advance and t.expect))
+    assert len(run.turns) == sum(
+        1 for t in sc.turns if t.say or t.digest or t.press or t.share or (t.advance and t.expect)
+    )
     assert run.cost == 0
 
 
@@ -183,3 +185,49 @@ def test_compare_flags_new_missing_failing_and_improved_scenarios():
     regressions, improvements = compare({"a": True, "b": True, "c": False, "new": True}, base)
     assert len(regressions) == 3  # c fails, new is unrecorded, gone vanished
     assert improvements == ["b: a known gap that passes now (run with --update to record it)"]
+
+
+# --- end-to-end ingestion scenarios (#51) -------------------------------------------------------
+
+
+def _ingest_runs():
+    from superaide.evals.gate import ltm_scenarios
+
+    return {sc.id: run_scenario(sc) for sc in ltm_scenarios() if sc.category == "ltm_ingest"}
+
+
+def test_ingest_scenarios_drive_the_real_pipeline_and_pass():
+    runs = _ingest_runs()
+    assert len(runs) >= 5
+    for sid, run in runs.items():
+        assert not run.error, (sid, run.error)
+        assert run.passed and run.graded, (sid, [(o.status, o.reason) for o in run.outcomes])
+    shared = [t for r in runs.values() for t in r.turns if t.mode == "share"]
+    assert shared and any("picked up" in t.reply for t in shared)  # the real ingest messages
+
+
+def test_the_ingest_gate_fails_when_ingest_stops_linking_facts_to_the_file(monkeypatch: pytest.MonkeyPatch):
+    from superaide.knowledge import ingest
+
+    monkeypatch.setattr(ingest, "save_facts", lambda *a, **k: 0)  # the file is stored but nothing is kept
+    runs = _ingest_runs()
+    assert not runs["ltm-ingest-file-fact-found-in-chat"].passed
+    assert not runs["ltm-ingest-link-fact-found-in-chat"].passed
+
+
+def test_the_ingest_canary_fails_when_a_files_facts_leak_to_a_colleague(monkeypatch: pytest.MonkeyPatch):
+    from sqlalchemy import true
+
+    from superaide.context import recall
+
+    monkeypatch.setattr(recall, "memory_filter", lambda aud, now=None: true())
+    assert not _ingest_runs()["ltm-ingest-file-fact-never-reaches-a-colleague"].passed
+
+
+def test_a_share_turn_cannot_also_say_something():
+    from pydantic import ValidationError
+
+    from superaide.evals.scenario import Turn
+
+    with pytest.raises(ValidationError):
+        Turn.model_validate({"say": "hi", "share": {"title": "a.txt", "text": "x"}})
