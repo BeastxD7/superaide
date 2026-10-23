@@ -88,7 +88,7 @@ from superaide.db.models import Base, Person  # noqa: E402
 from superaide.db.session import ensure_extensions, get_engine, session_scope  # noqa: E402
 from superaide.identity.linking import bootstrap_person  # noqa: E402
 from superaide.pipeline import Agent  # noqa: E402
-from tests import sharding  # noqa: E402
+from tests import modules, sharding  # noqa: E402
 
 MANAGER_TG = "1001"
 MANAGER_SLACK = "U_MGR"
@@ -244,7 +244,12 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     )
 
 
+def pytest_configure(config: pytest.Config) -> None:
+    modules.register(config)
+
+
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    modules.tag(config, items)  # `pytest -m mod_memory` runs one module (ci/modules.toml)
     spec = config.getoption("--shard")
     if not spec:
         return

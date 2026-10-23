@@ -4,6 +4,10 @@
 //   node scripts/shard.mjs <shard> <of>          print the spec files of shard N (1-based), one per line
 //   node scripts/shard.mjs --update <report.json>  rewrite shard-timings.json from a Playwright JSON report
 //
+// E2E_ONLY (space or newline separated spec paths relative to e2e/, e.g. "tests/hire-path.spec.ts") limits the run
+// to those specs: scripts/select_tests.py sets it when a pull request only needs some of them. The selected specs
+// are still balanced over the shards, and a shard that gets none prints nothing (the workflow then skips it).
+//
 // Playwright's own --shard splits by test count; a few slow specs made one shard twice as long as
 // the others. Here every spec file under tests/ (minus the opt-in proxy and dev projects) is placed,
 // slowest first, on the shard with the least time so far. A file missing from shard-timings.json gets
@@ -48,7 +52,8 @@ if (a === '--update') {
     process.exit(2)
   }
   const timings = JSON.parse(readFileSync(timingsPath, 'utf8'))
-  const files = specFiles()
+  const only = process.env.E2E_ONLY?.split(/\s+/).filter(Boolean)
+  const files = only?.length ? specFiles().filter((f) => only.includes(f)) : specFiles()
   const known = files.filter((f) => f in timings)
   const avg = known.length ? known.reduce((s, f) => s + timings[f], 0) / known.length : 10
   const weight = (f) => timings[f] ?? avg

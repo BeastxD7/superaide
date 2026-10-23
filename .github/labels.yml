@@ -140,3 +140,6 @@
 - name: "dependencies"
   color: "0366d6"
   description: "Dependency updates (Dependabot)"
+- name: "full-suite"
+  color: "b60205"
+  description: "Run every test, not only those of the modules the pull request changes (re-run the Changed paths job after adding it)"
