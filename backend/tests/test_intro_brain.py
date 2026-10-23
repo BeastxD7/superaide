@@ -137,3 +137,19 @@ def test_an_owner_who_already_has_a_brain_never_sees_the_step(env, monkeypatch):
     monkeypatch.setattr(env, "anthropic_api_key", OWN_KEY)
     view = new_owner("has-key@example.com").get("/app/onboarding").json()
     assert view["step"] == "hello" and view["total"] == 8 and view["labels"][0] == "Hello"
+
+
+def test_own_key_is_refused_on_the_strength_of_the_operators_server_key(env, monkeypatch):
+    """An operator's own Ava has a ready brain from the server key, but "my own key" needs one it saved."""
+    monkeypatch.setattr(env, "platform_key_owner_emails", "operator@example.com")
+    monkeypatch.setattr(env, "anthropic_api_key", PLATFORM_KEY)
+    c = new_owner("operator@example.com")
+    with session_scope() as s:
+        assert brain_ready_for_intro(runtime_settings())  # ready, on the server's key
+    stuck = c.post("/app/onboarding", json={"step": "brain", "answer": {"choice": "own"}})
+    view = stuck.json()
+    assert view["step"] == "brain" and "AI model page" in view["hint"]
+    with session_scope() as s:
+        store.save(s, "anthropic", {"api_key": OWN_KEY}, user_id=None, meta={})
+    ok = c.post("/app/onboarding", json={"step": "brain", "answer": {"choice": "own"}}).json()
+    assert ok["step"] == "hello"
