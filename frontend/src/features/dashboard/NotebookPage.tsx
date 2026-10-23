@@ -1,6 +1,7 @@
 'use client'
 
-import { Search } from 'lucide-react'
+import { Network, Search } from 'lucide-react'
+import Link from 'next/link'
 import { AnimatePresence, motion } from 'motion/react'
 import { useMemo, useState } from 'react'
 import { ActionError, LoadError } from '@/components/load-state'
@@ -116,6 +117,14 @@ export function NotebookPage() {
             ))}
           </section>
         )}
+
+
+        <Link
+          href="/dashboard/notebook/brain"
+          className="mt-4 inline-flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-sm font-medium text-ink hover:bg-surface"
+        >
+          <Network className="size-4 text-violet-700" aria-hidden /> Glass brain: see it as a map
+        </Link>
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative sm:w-72">
