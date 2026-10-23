@@ -14,7 +14,7 @@ from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -51,6 +51,7 @@ from superaide.knowledge.erase import erase_document, erase_person
 from superaide.knowledge.erase import vacuum as erase_vacuum
 from superaide.knowledge.ingest import ingest
 from superaide.knowledge.store import conflicts_of, contacts_of, preferences_for, resolve_conflict, retire_document
+from superaide.pagination import SortKey, bind_for, cursor_param, encode_cursor, limit_param, paginate, set_next_headers
 from superaide.policy import brake
 from superaide.policy.actions import ApprovalError, resolve
 from superaide.policy.binding import expired
@@ -503,25 +504,41 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         tags=["Owner: chat & notebook"],
         summary="Conversation history",
         description="The owner's conversation with Ava, oldest first (introduction included). Returns the newest "
-        "`limit` messages; pass `before` (the id of the oldest message you have) to get the `limit` before it.",
+        "`limit` messages (default and maximum 200). More older messages exist when the response has an "
+        "`X-Next-Cursor` header (also `Link: rel=next`, and `X-Has-More: true`); send it back as `cursor` for "
+        "the page before. `before` (the id of the oldest message you have) still works and means the same thing "
+        "for a client that tracks its own anchor. ADR 0014.",
     )
     def messages(
-        person_id: uuid.UUID = Depends(owner_person_id), limit: int = 200, before: uuid.UUID | None = None
+        request: Request,
+        response: Response,
+        person_id: uuid.UUID = Depends(owner_person_id),
+        limit: int = limit_param(200, 200),
+        cursor: str | None = cursor_param(),
+        before: uuid.UUID | None = None,
     ) -> list[dict[str, Any]]:
-        limit = max(1, min(limit, 500))
+        response.headers["X-Has-More"] = "false"
         with session_scope() as s:
             ctx = s.scalar(select(Context).where(Context.provider == "web", Context.external_id == f"web:{person_id}"))
             if ctx is None:
                 return []
-            q = select(Event).where(Event.context_id == ctx.id)
-            if before is not None:
+            keys = [SortKey(Event.created_at), SortKey(Event.id)]
+            bind = bind_for(person_id)
+            if before is not None and cursor is None:
                 anchor = s.get(Event, before)
                 if anchor is None or anchor.context_id != ctx.id:  # someone else's, or gone: nothing older to give
                     return []
-                q = q.where(Event.created_at < anchor.created_at)
-            rows = s.scalars(q.order_by(Event.created_at.desc()).limit(limit)).all()
-            return [
-                {
+                cursor = encode_cursor([anchor.created_at, anchor.id], keys, endpoint="messages", bind=bind)
+            page = paginate(
+                s,
+                select(Event).where(Event.context_id == ctx.id),
+                keys,
+                endpoint="messages",
+                bind=bind,
+                limit=limit,
+                cursor=cursor,
+                maximum=200,
+                build=lambda e: {
                     "id": str(e.id),
                     "from": "you" if e.direction == "in" else "agent",
                     "text": e.content,
@@ -530,9 +547,11 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                     "sources": (e.meta or {}).get("sources", []),
                     "activity": (e.meta or {}).get("activity", []),
                     "reasoning": (e.meta or {}).get("reasoning", ""),
-                }
-                for e in reversed(rows)
-            ]
+                },
+            )
+            response.headers["X-Has-More"] = "true" if page.has_more else "false"
+            set_next_headers(response, str(request.url), page.next_cursor)
+            return list(reversed(page.items))
 
     @router.post(
         "/chat",

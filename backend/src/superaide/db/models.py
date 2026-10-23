@@ -169,6 +169,8 @@ class Event(Scoped, Base):
             postgresql_where=text("direction = 'in' AND external_id IS NOT NULL"),
         ),
         Index("ix_event_context_thread", "context_id", "thread_id"),
+        # Keyset paging of a conversation, newest first (ADR 0014): the order /app/messages and /api/events sort by.
+        Index("ix_event_context_created", "context_id", text("created_at DESC"), text("id DESC")),
         Index("ix_event_fts", text("to_tsvector('english', content)"), postgresql_using="gin"),  # recall
     )
 

@@ -8,7 +8,8 @@ import { Conversation, type LiveTurn } from '@/components/Conversation'
 import { useReveal } from '@/hooks/use-reveal'
 import { Notice } from '@/components/site'
 import { Button } from '@/components/ui/button'
-import { call, streamChat, type Message } from '@/lib/api'
+import { call, callPage, streamChat, type Message } from '@/lib/api'
+import { SkeletonList } from '@/components/ui/skeleton'
 import { apply } from '@/lib/chat-turn'
 import { droppedBy, joinOlder, oldestSaved, PAGE } from '@/lib/chat-history'
 import { isSendKey } from '@/lib/keys'
@@ -55,9 +56,9 @@ export function ChatPage() {
 
   useEffect(() => {
     // No query: the server's default page is PAGE messages, and the newest-page URL stays plain.
-    call<Message[]>('/messages')
-      .then((history) => {
-        setMore(history.length >= PAGE)
+    callPage<Message[]>('/messages')
+      .then(({ data: history, hasMore }) => {
+        setMore(hasMore ?? history.length >= PAGE)
         // Something sent before the history arrived stays, after it; a newer copy wins.
         if (!refreshed.current) setMessages((now) => [...history, ...now.filter((m) => m.id.startsWith('local-'))])
       })
@@ -82,9 +83,11 @@ export function ChatPage() {
     setLoadingOlder(true)
     setError(null)
     try {
-      const batch = await call<Message[]>(`/messages?limit=${PAGE}&before=${oldest.id}`)
+      // The anchor is the oldest message on screen (not a stored cursor): the visible window moves as messages are
+      // sent, so the server turns this id into the same signed keyset position its cursors use (ADR 0014).
+      const { data: batch, hasMore } = await callPage<Message[]>(`/messages?limit=${PAGE}&before=${oldest.id}`)
       setOlder((o) => joinOlder(batch, o))
-      setMore(batch.length >= PAGE)
+      setMore(hasMore ?? batch.length >= PAGE)
     } catch (e) {
       setError(errorMessage(e))
     } finally {
@@ -252,6 +255,7 @@ export function ChatPage() {
               </Button>
             </div>
           )}
+          {!loaded && <SkeletonList count={4} rowHeight={72} what="your conversation" />}
           <Conversation messages={[...older, ...visible]} typing={typing} hue="indigo" agentName={name} live={live} />
         </div>
       </div>
