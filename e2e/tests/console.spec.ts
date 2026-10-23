@@ -236,7 +236,6 @@ test.describe('console: tabs', () => {
   })
 
   test("the owner's own sign-in is not counted as an identity failure", async ({ page, owner }) => {
-    test.fail(true, 'BUG: the "No identity failures" gate counts the owner\'s own account_signed_in link as a link made without a verified step')
     void owner
     const overview = (await (await new Admin(page.request).get('/overview')).json()) as { gates: { label: string; status: string }[] }
     expect(overview.gates.find((g) => g.label === 'No identity failures')?.status).toBe('met')
