@@ -171,6 +171,9 @@ def create_app(agent: Agent | None = None) -> FastAPI:
 
     app.include_router(make_ask_public_router())  # 404 everywhere while ASK_LINK_ENABLED is off
     app.include_router(make_ask_owner_router())
+    from superaide.forknight.routes import make_router as make_fork_router
+
+    app.include_router(make_fork_router(get_agent))  # 404 unless FORK_NIGHT_ENABLED
     from superaide.push.routes import make_router as make_push_router
 
     app.include_router(make_push_router())  # 404 unless PUSH_ENABLED (ADR 0011)

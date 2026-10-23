@@ -64,6 +64,12 @@ class Settings(BaseSettings):
     # owner's approval and is logged, and an outbound message that names someone outside the owner's contacts
     # is flagged on its approval card.
     footprint_guard_enabled: bool = False
+    # Fork Night (#127). Off by default. The owner leaves a choice (a trip plan, a reply plan, a budget) and
+    # overnight three read-only drafts are written, each with its unknowns and confidence, for the owner to pick
+    # from in the morning. Drafts have no tools, read no outside content and are reserved against the "fork"
+    # daily bucket. FORK_NIGHT_HOUR is the local hour they run.
+    fork_night_enabled: bool = False
+    fork_night_hour: int = Field(default=2, ge=0, le=23)
 
     # Tenancy
     tenant_id: uuid.UUID = DEFAULT_TENANT_ID
@@ -84,6 +90,7 @@ class Settings(BaseSettings):
     budget_daily_by_bucket: dict[str, float] = Field(
         default_factory=lambda: {
             "chat": 0.40,
+            "fork": 0.15,
             "memory": 0.15,
             "research": 0.25,
             "triage": 0.05,

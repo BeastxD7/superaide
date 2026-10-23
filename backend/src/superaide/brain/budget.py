@@ -68,6 +68,7 @@ BUCKETS = {
     "playbook": "learning",
     # Learning and trust features (#142)
     "tuner": "learning",
+    "fork_night": "fork",  # #127: three read-only overnight drafts of one choice
 }
 
 
