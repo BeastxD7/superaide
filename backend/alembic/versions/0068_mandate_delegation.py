@@ -1,7 +1,7 @@
 """mandate delegation: a mandate can be handed on, narrower, and revoking the parent revokes the children (#112)
 
-Revision ID: 0067
-Revises: 0066
+Revision ID: 0068
+Revises: 0067
 Create Date: 2026-10-24 09:00:00.000000
 
 """
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "0067"
-down_revision: str | Sequence[str] | None = "0066"
+revision: str = "0068"
+down_revision: str | Sequence[str] | None = "0067"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
