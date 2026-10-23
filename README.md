@@ -182,7 +182,7 @@ Every setting is an environment variable. [`backend/.env.example`](backend/.env.
 | `RUN_CHANNELS_IN_API` | `true` | Telegram and Slack listeners inside the API | `false` when a separate worker runs them (production compose) | Safe |
 | `RUN_JOBS_IN_API` | `true` | Reminders, follow-ups, digests inside the API | `false` when a separate worker runs them | Safe |
 | `ALLOW_MANY_OWNERS` | `true` | Anyone who signs up can hire their own Ava | `false` = single-owner mode | Decision (sign-up policy) |
-| `ENABLE_SIMULATOR` | `false` (example: `true`) | Operator console impostor simulator | `ADMIN_TOKEN`; development only | Never on a public server |
+| `ENABLE_SIMULATOR` | `false` | Operator console impostor simulator (Simulator page) | `ADMIN_TOKEN`; for local testing see below; development only | Never on a public server |
 | `FAKE_LLM` | `false` | Offline echo replies, nothing spent | None | Safe (for demos) |
 | `TRIAGE_ENABLED` | `false` | A recorded handle/hold/interrupt/defer/verify decision for every non-owner message; interrupts escalate to the owner | None | Safe |
 | `TRIAGE_KNN_ENABLED` | `false` | Shadow urgency score from your own feedback beside each triage decision; never changes a decision | `TRIAGE_ENABLED=true` | Safe |
@@ -228,6 +228,8 @@ Every setting is an environment variable. [`backend/.env.example`](backend/.env.
 Not booleans but switches: `APPROVAL_BINDING` (`off` / `record` / `strict`, default `record`; `strict` blocks a send whose content changed after the owner saw it), `APPROVAL_TTL_HOURS` (0 = approvals never expire), `EMBEDDER` (`local` / `voyage` / `fake` / `none`; `voyage` sends private facts to Voyage AI), `DEPLOY_MODE` (`self_hosted` / `hosted`), `MAIL_BACKEND` (`log` / `smtp`), `VOICE_ASR` and `VOICE_TTS`, `THIRD_PARTY_MESSAGE_RETENTION_DAYS` (0 = keep forever).
 
 ### How to enable
+
+**Impostor simulator (local testing only).** Off by default. To try impostor scenarios from the operator console, put `ENABLE_SIMULATOR=true` in `backend/.env` (uncomment the line in the example), restart the API, then open `/console` with your `ADMIN_TOKEN` and use the Simulator page. Never turn it on on a public server.
 
 **Models and keys.** Set `ANTHROPIC_API_KEY` (or let each owner connect their own in Workspace, Connections) and Ava replies for real; without a key she runs offline and spends nothing. `MODEL_CHAT`, `MODEL_TRIAGE`, `MODEL_DEEP` choose models; a model missing from `brain/pricing.py` is refused. Spend is capped by `MAX_SPEND_USD` (lifetime), `BUDGET_DAILY_USD`, `BUDGET_MONTHLY_USD` and `BUDGET_DAILY_BY_BUCKET`, per Ava. Other providers (Ollama, OpenAI-compatible, and so on) are connected in the app, then used as `<preset>::<model>`; on `DEPLOY_MODE=hosted` owner-typed private addresses are refused.
 

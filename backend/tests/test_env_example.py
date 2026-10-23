@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "check_env_example.py"
 
 # Deliberate differences between the example and the code default.
-EXAMPLE_DIFFERS = {"ENABLE_SIMULATOR"}  # the example turns the simulator on for local development
+EXAMPLE_DIFFERS: set[str] = set()
 
 
 def _script():
