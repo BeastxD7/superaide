@@ -172,7 +172,7 @@ function AgentBubble({
     }
   }
   return (
-    <div className="group max-w-[85%] rounded-3xl rounded-bl-md bg-white px-4 py-2.5 text-ink shadow-[0_8px_24px_-18px_rgba(15,42,35,0.6)]">
+    <div data-testid="agent-bubble" className="group max-w-[85%] rounded-3xl rounded-bl-md bg-white px-4 py-2.5 text-ink shadow-[0_8px_24px_-18px_rgba(15,42,35,0.6)]">
       <WorkLog steps={activity ?? []} reasoning={reasoning} />
       <Markdown text={text} />
       {sources && sources.length > 0 && <Sources sources={sources} />}
