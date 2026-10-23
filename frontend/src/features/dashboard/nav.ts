@@ -17,9 +17,8 @@ import type { Me } from '@/lib/api'
 
 // `triage`: shown only while the backend has triage turned on (ADR 0010).
 // `rehearsal`: shown only while the backend has the rehearsal room turned on (#58).
-export type NavItem = { href: string; label: string; icon: typeof House; triage?: boolean; rehearsal?: boolean }
+export type NavItem = { href: string; label: string; icon: typeof House; triage?: boolean; rehearsal?: boolean; school?: boolean }
 // `school`: shown only while the backend has Ava School turned on (#57).
-export type NavItem = { href: string; label: string; icon: typeof House; triage?: boolean; school?: boolean }
 
 export const NAV: { group: string; items: NavItem[] }[] = [
   {
