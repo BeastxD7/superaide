@@ -348,7 +348,8 @@ The compose file requires option 1, so a server never silently falls through to 
 - **Rate limits (Caddy):**
   - 20 sign-up / log-in / password POSTs per minute per address, and 600 requests per minute per address overall. Over that, the response is a 429.
   - These sit on top of the app's per-account lockout (5 wrong passwords → 15 minutes) and per-address limits.
-  - The client address reaches the API intact: Caddy sets it, and the web app passes it on (`TRUST_PROXY_HEADERS=true`).
+  - The client address reaches the API intact: Caddy sets it, and the web app passes it on (`TRUST_PROXY_HEADERS=true`). This is safe only because the web container publishes no port, so Caddy is the only way in; if port 3000 were reachable directly, a client could send its own `X-Forwarded-For` and dodge the per-address limits. The web app logs a warning at startup when a public https origin is configured without it.
+- **Installable app:** `NEXT_PUBLIC_PWA=1` is the production default (build argument of the web image; set `NEXT_PUBLIC_PWA=0` in `.env` to turn it off, then rebuild). The service worker only handles notifications and caches no pages or data. Notifications also need `PUSH_ENABLED=true` on the API (off by default).
 - **Containers:**
   - All four containers run as non-root users.
   - API, web and Caddy have read-only filesystems, no Linux capabilities and `no-new-privileges`.
