@@ -110,6 +110,12 @@ class Settings(BaseSettings):
     # per consumer, rows filtered by the audience gate in SQL, a per-minute limit and a visible access log.
     memory_socket_enabled: bool = False
     memory_socket_per_minute: int = Field(default=30, ge=1)
+    # Glass brain share link (#55). Off by default. The owner can create an unlisted link (a long random token,
+    # stored hashed, shown once) to the counts-only picture of Ava's memory: fixed topic words and numbers, no
+    # names, no note text. It expires in at most 7 days, the owner can revoke it any time, and visitors are
+    # rate-limited per link. This makes a page reachable without an account, so it stays off until the owner says.
+    brain_share_enabled: bool = False
+    brain_share_per_minute: int = Field(default=30, ge=1)
     # Dissent Desk (#126). Off by default. For a high-stakes choice, three DIFFERENT models (DISSENT_MODELS, a
     # comma-separated list of model ids the provider layer can route) answer independently; plain code, not a
     # model, decides whether a minority view is worth showing. Only choices at or above DISSENT_MIN_STAKES run,

@@ -209,6 +209,22 @@ def build_map(session: Session, owner_id: uuid.UUID) -> dict[str, Any]:
     }
 
 
+def share_counts(session: Session, owner_id: uuid.UUID) -> dict[str, Any]:
+    """The shape of the memory in numbers: how many notes per fixed topic word and per origin. Nothing else."""
+    live = session.scalars(
+        select(MemoryItem).where(
+            MemoryItem.subject_person_ids.contains([owner_id]), memory_filter(owner_audience(owner_id))
+        )
+    ).all()
+    by_topic: Counter[str] = Counter(m.category for m in live)
+    by_origin: Counter[str] = Counter(ORIGIN.get(m.source, "you") for m in live)
+    return {
+        "things": len(live),
+        "topics": [{"topic": c, "count": by_topic[c]} for c in CATEGORIES if by_topic.get(c)],
+        "origins": {k: by_origin.get(k, 0) for k in ORIGIN_LABEL},
+    }
+
+
 def share_svg(session: Session, owner_id: uuid.UUID) -> str:
     """A shareable picture of the shape of the memory: a ring of topics sized by how much is in each, coloured
     by where it came from. Only fixed words and numbers; no names, no note text, no file names."""

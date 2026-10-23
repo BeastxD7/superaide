@@ -935,6 +935,7 @@ class CalendarWatch(Scoped, Base):
 # the tests' create_all) sees them.
 from superaide.asklink import models as _asklink_models  # noqa: E402, F401
 from superaide.auth import models as _auth_models  # noqa: E402, F401
+from superaide.brainshare import models as _brainshare_models  # noqa: E402, F401
 from superaide.imports import models as _imports_models  # noqa: E402, F401
 from superaide.jobs import claim as _job_claim  # noqa: E402, F401  (the claim function, made after the job table)
 from superaide.memsocket import models as _memsocket_models  # noqa: E402, F401

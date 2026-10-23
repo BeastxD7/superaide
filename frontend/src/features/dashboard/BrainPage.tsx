@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
+import { BrainShare } from '@/features/dashboard/BrainShare'
 import { CATEGORY_LABEL, useAppData } from '@/features/dashboard/data'
 import { call } from '@/lib/api'
 import { API_URL } from '@/lib/http'
@@ -473,6 +474,7 @@ export function BrainPage() {
                 </a>
               </Button>
               <p className="text-xs text-muted">Counts and shapes only. No names, notes or file names.</p>
+              <BrainShare />
             </aside>
           </div>
         )}
