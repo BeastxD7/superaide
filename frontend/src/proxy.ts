@@ -52,13 +52,6 @@ export function proxy(request: NextRequest) {
     }
   }
 
-  // The /api proxy forwards request headers to the backend: leave them alone, only mark the response.
-  if (pathname.startsWith('/api/')) {
-    const response = NextResponse.next()
-    response.headers.set('Content-Security-Policy', csp)
-    return response
-  }
-
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set('x-nonce', nonce)
   requestHeaders.set('Content-Security-Policy', csp)
@@ -68,10 +61,11 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Everything except Next's static files and the favicon; prefetches of pages carry no nonce of their own.
+  // Pages only. Not /api: the proxy would buffer upload bodies (Next caps that at 10 MB, which truncated the files the introduction
+  // refuses as too big), and API answers need no nonce; next.config.ts gives them a fixed policy. Page prefetches carry no nonce of their own.
   matcher: [
     {
-      source: '/((?!_next/static|_next/image|favicon.ico).*)',
+      source: '/((?!api/|_next/static|_next/image|favicon.ico).*)',
       missing: [
         { type: 'header', key: 'next-router-prefetch' },
         { type: 'header', key: 'purpose', value: 'prefetch' },

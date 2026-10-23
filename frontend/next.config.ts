@@ -2,7 +2,18 @@ import type { NextConfig } from 'next'
 
 const dev = process.env.NODE_ENV !== 'production'
 
-// The Content-Security-Policy is set per request, with a nonce, in src/proxy.ts.
+// Pages get a Content-Security-Policy per request, with a nonce, from src/proxy.ts. API answers (JSON, never rendered as pages)
+// get this fixed one from here, so large uploads still stream straight through the /api proxy route.
+const apiContentSecurityPolicy = [
+  "default-src 'none'",
+  "img-src 'self' data:",
+  "connect-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join('; ')
+
 const securityHeaders = [
   // Browsers ignore this over plain http (start.command on localhost); it matters behind https.
   ...(dev ? [] : [{ key: 'Strict-Transport-Security', value: 'max-age=31536000' }]),
@@ -29,6 +40,7 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: '/:path*', headers: securityHeaders },
+      { source: '/api/:path*', headers: [{ key: 'Content-Security-Policy', value: apiContentSecurityPolicy }] },
       // The service worker (ADR 0011): always fetched fresh, so a fix reaches every installed app.
       {
         source: '/sw.js',
