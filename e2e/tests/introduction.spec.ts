@@ -145,7 +145,7 @@ test.describe('hiring Ava', () => {
   })
 
   test('hire requests sent at the same moment by the same owner all succeed', async ({ page, api }) => {
-    test.fail(true, 'BUG: overlapping hires by the same owner: all but one get 409 "Ava was just hired by someone else."')
+    // Fixed in the tenancy insert (INSERT ... ON CONFLICT DO NOTHING); this used to be an expected failure.
     // The requests race, so try a few fresh installs; any refusal shows the bug.
     let refused: string[] = []
     for (let round = 0; round < 4 && refused.length === 0; round++) {
