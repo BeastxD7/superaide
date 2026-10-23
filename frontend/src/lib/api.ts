@@ -215,7 +215,7 @@ export { ApiError as AppError }
 // Axios client for the backend, sending the session cookie with each request.
 const client = createClient(API_URL, { withCredentials: true })
 
-type Init = { method?: 'GET' | 'POST' | 'PUT'; json?: unknown }
+type Init = { method?: 'GET' | 'POST' | 'PUT' | 'DELETE'; json?: unknown }
 
 // A 401 from /app/* means the session has ended (signed out elsewhere, expired, password changed).
 // The session provider registers one handler that clears the signed-in state and sends the person
@@ -609,3 +609,19 @@ export type TakenMessageView = {
   status: 'new' | 'done' | 'dismissed' | 'spam'
   created_at: string
 }
+// The rehearsal room (#58). Every /rehearsal route answers 404 while the backend's REHEARSAL_ENABLED is off.
+export type RehearsalTurn = { who: 'owner' | 'other'; text: string }
+export type RehearsalPoint = { heading: string; advice: string; quote: string }
+export type RehearsalSession = {
+  id: string
+  role: string
+  notes: string
+  turns: RehearsalTurn[]
+  debrief: { points: RehearsalPoint[]; dropped: number } | null
+  kept: boolean
+  ended: boolean
+  expires_at: string | null
+  created_at: string
+  notice: string
+}
+export type RehearsalReply = { paused: boolean; message?: string; reply?: string; session: RehearsalSession }

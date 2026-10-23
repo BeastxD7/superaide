@@ -271,6 +271,10 @@ class Settings(BaseSettings):
     # The on-device model and device attestation are not built.
     airlock_enabled: bool = False
     gmail_poll_minutes: int = 5
+    # Rehearsal room (#58): the owner practises a hard conversation with Ava playing the other side. Off:
+    # /app/rehearsal/* answer 404. On: text role-play, nothing is sent to anyone, and a session is
+    # deleted after a day unless the owner keeps it.
+    rehearsal_enabled: bool = False
     # The owner's Gmail sign-in (same OAuth client as Calendar); kept per instance in the vault.
     gmail_refresh_token: str = ""
 

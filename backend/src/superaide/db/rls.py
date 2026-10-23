@@ -63,6 +63,7 @@ TABLES: tuple[str, ...] = (
     "owner_model_price",
     "owner_preference",
     "person",
+    "rehearsal_session",  # the rehearsal room (#58)
     "push_send",  # web push (ADR 0011)
     "push_subscription",
     "spend_ledger",
