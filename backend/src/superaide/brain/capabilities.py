@@ -73,6 +73,47 @@ def approvals_line() -> str:
     )
 
 
+STANDING_ROWS = 10
+STANDING_CHARS = 800
+RECENT_HOURS = 48
+
+
+def standing(session: Session, tz: str) -> str:
+    """Pending and recently decided approvals, from the database every turn (issue #340), so the answer to
+    "did you send it?" never depends on what an old chat turn said or on which channel it was said on."""
+    from datetime import UTC, timedelta
+
+    from sqlalchemy import select
+
+    from superaide.db.models import Approval
+    from superaide.intentions.when import zone
+
+    now = datetime.now(UTC)
+    rows = list(session.scalars(select(Approval).order_by(Approval.created_at.desc()).limit(40)).all())
+    keep = [
+        a
+        for a in rows
+        if a.status == "pending" or (a.decided_at is not None and now - a.decided_at < timedelta(hours=RECENT_HOURS))
+    ][:STANDING_ROWS]
+    if not keep:
+        return ""
+    out = [
+        "Where things stand (from the app's records, authoritative; it overrides anything said earlier in any chat):"
+    ]
+    for a in keep:
+        p = a.payload or {}
+        what = str(p.get("summary") or a.kind)[:80].replace("\n", " ")
+        if a.status == "pending":
+            state = f"WAITING for the owner's OK since {a.created_at.astimezone(zone(tz)):%a %H:%M}, nothing done yet"
+        else:
+            when = f"{a.decided_at.astimezone(zone(tz)):%a %H:%M}" if a.decided_at else ""
+            result = str(p.get("result") or "").replace("\n", " ")[:90]
+            state = f"{a.status.upper()} {when}" + (f": {result}" if result else "")
+        out.append(f"- {a.kind}: {what} -> {state}")
+    text = "\n".join(out)
+    return text if len(text) <= STANDING_CHARS else text[: STANDING_CHARS - 1] + "…"
+
+
 def block(session: Session, *, tz: str, web: bool) -> str:
     lines = [
         "What you can do right now (from the app's own state, authoritative; answer 'what can you do?' from it):",
@@ -83,7 +124,8 @@ def block(session: Session, *, tz: str, web: bool) -> str:
         "- " + approvals_line() + ". Anything else cannot be queued; say so and offer text the owner can send.",
         CHANGED_RULE,
     ]
-    return "\n".join(lines)
+    stand = standing(session, tz)
+    return "\n".join(lines) + ("\n\n" + stand if stand else "")
 
 
 # --- action claims --------------------------------------------------------------------------------

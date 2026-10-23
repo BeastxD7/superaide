@@ -109,3 +109,36 @@ def test_a_claim_backed_by_the_tool_result_is_kept(owner_client, gmail_fake):
         )
         result = turn_for(s, script, "reply yes to Daniel").run([{"role": "user", "content": "x"}])
     assert result.text == "I've saved a draft in your Gmail."
+
+
+def test_where_things_stand_comes_from_the_approval_rows_not_the_transcript(owner_client):
+    # #340: she said "waiting for approval" in the app, the owner approved, then asked on Telegram.
+    from datetime import UTC, datetime
+
+    from superaide.db.models import Approval
+
+    with session_scope() as s:
+        s.add(
+            Approval(
+                kind="gmail_send",
+                status="approved",
+                decided_at=datetime.now(UTC),
+                payload={"summary": "To: Kaggle <team@kaggle.com> · Thanks", "result": "Sent from your Gmail."},
+            )
+        )
+        s.add(Approval(kind="gmail_send", status="pending", payload={"summary": "To: Dan <d@acme.com> · Hi"}))
+        text = system_text(s)
+    assert "Where things stand" in text
+    assert "APPROVED" in text and "Sent from your Gmail." in text and "WAITING for the owner's OK" in text
+
+
+def test_where_things_stand_is_capped_and_absent_when_there_is_nothing(owner_client):
+    from superaide.db.models import Approval
+
+    with session_scope() as s:
+        assert "Where things stand" not in system_text(s)
+        for i in range(40):
+            s.add(Approval(kind="gmail_send", status="pending", payload={"summary": "x" * 200 + str(i)}))
+        s.flush()
+        block = capabilities.standing(s, "UTC")
+    assert len(block) <= capabilities.STANDING_CHARS and block.count("\n- ") <= capabilities.STANDING_ROWS
