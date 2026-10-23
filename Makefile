@@ -2,7 +2,7 @@
 # Non-developers: double-click start.command (or `bash start.command`) instead.
 
 .DEFAULT_GOAL := help
-.PHONY: help setup db db-down migrate migration api web dev lint fmt typecheck test e2e e2e-ui eval eval-live eval-gate eval-ltm-live check build stack stack-down clean
+.PHONY: help setup db db-down migrate migration api web dev lint fmt typecheck test e2e e2e-ui eval eval-live eval-gate eval-ltm-live check check-env build stack stack-down clean
 
 BACKEND = cd backend &&
 FRONTEND = cd frontend &&
@@ -51,6 +51,9 @@ typecheck: ## Type-check backend (mypy) and frontend (tsc)
 	$(BACKEND) uv run mypy
 	$(FRONTEND) npm run typecheck
 
+check-env: ## Every environment variable the app reads is in the .env.example files
+	python3 scripts/check_env_example.py
+
 test: ## Backend tests (needs TEST_DATABASE_URL, see backend/.env.example)
 	$(BACKEND) uv run pytest
 
@@ -72,7 +75,7 @@ eval-ltm-live: ## Memory scenarios on the real model (~US$0.10, hard cap US$0.25
 eval-live: ## Scenario evals on the real model, 3 runs each (costs ~US$0.15; hard cap US$1): k=1 for one run
 	$(BACKEND) uv run python -m superaide.evals run --live --k $(or $(k),3)
 
-check: lint typecheck test build ## Lint, types, unit/API tests and the build (CI also runs e2e)
+check: lint typecheck check-env test build ## Lint, types, unit/API tests and the build (CI also runs e2e)
 
 build: ## Production build of the frontend (Next.js standalone server)
 	$(FRONTEND) npm run build
