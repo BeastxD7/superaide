@@ -195,6 +195,9 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     from superaide.rules.routes import make_router as make_rules_router
 
     app.include_router(make_rules_router(get_agent))  # 404 unless TIME_TRAVEL_RULES_ENABLED
+    from superaide.mandate.routes import make_router as make_mandate_router
+
+    app.include_router(make_mandate_router())  # 404 for the owner unless MANDATES_ENABLED
     from superaide.push.routes import make_router as make_push_router
 
     app.include_router(make_push_router())  # 404 unless PUSH_ENABLED (ADR 0011)

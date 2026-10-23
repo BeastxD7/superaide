@@ -463,6 +463,10 @@ class Mandate(Scoped, Base):
     status: Mapped[str] = mapped_column(String(12), default="active")  # active | revoked
     uses: Mapped[int] = mapped_column(Integer, default=0)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # Delegation (#112): a child is its parent's token with more restrictions added. Revoking a parent revokes
+    # its children, and a child runs only while every ancestor is active, unexpired and not used up.
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("mandate.id"), nullable=True, index=True)
+    label: Mapped[str] = mapped_column(String(120), default="", server_default="")
 
 
 class McpPin(Scoped, Base):

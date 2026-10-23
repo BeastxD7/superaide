@@ -42,6 +42,7 @@ FLAG_GATED = {
     # The "Ask my Ava" link (ASK_LINK_ENABLED); its public side is checked in test_public_ask_routes below.
     ("GET", "/app/ask-link"),
     ("GET", "/app/ask-link/requests"),
+    ("GET", "/app/mandates"),  # MANDATES_ENABLED (#112)
     ("GET", "/app/principal-card"),  # PRINCIPAL_CARD_ENABLED (#135); its public side is in test_principal_card.py
     ("GET", "/app/memory-socket"),  # MEMORY_SOCKET_ENABLED (#138); its MCP side is checked in test_memory_socket.py
     ("GET", "/app/fork-night"),  # FORK_NIGHT_ENABLED (#127)
