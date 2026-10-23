@@ -285,3 +285,66 @@ def test_operator_page_queries_use_their_indexes():
                 ),
             )
             assert "ix_context_activity" in plan and "'Sort'" not in plan and "Seq Scan" not in plan, plan
+
+
+def event_seq_scan(plan: str) -> bool:
+    """A sequential scan of the event table (the small person table in the join may be scanned freely)."""
+    return bool(re.search(r"'Node Type': 'Seq Scan'[^}]*'Relation Name': 'event'", plan))
+
+
+def test_operator_events_query_on_skewed_data_uses_the_right_index_per_filter():
+    """Many conversations and one long one: /api/events?context_id= must stay on the conversation indexes (never the
+    instance-wide scan that filters by conversation), and /api/events with no filter uses ix_event_agent_created."""
+    from superaide.db.models import Person
+
+    t0 = datetime(2026, 1, 1, tzinfo=UTC)
+    with session_scope() as s:
+        big = make_context(s, "web:big")
+        small = [make_context(s, f"tg:{i}") for i in range(600)]
+        common = {"tenant_id": big.tenant_id, "agent_id": big.agent_id, "direction": "in", "content": "x"}
+        rows = [
+            {"id": uuid.uuid4(), "context_id": big.id, "created_at": t0 + timedelta(seconds=i), **common}
+            for i in range(3000)
+        ]
+        rows += [
+            {"id": uuid.uuid4(), "context_id": c.id, "created_at": t0 + timedelta(seconds=j * 100 + k % 100), **common}
+            for k, c in enumerate(small)
+            for j in range(200)
+        ]
+        s.bulk_insert_mappings(Event, rows)
+        big_id, agent_id = big.id, big.agent_id
+    keys = [SortKey(Event.created_at), SortKey(Event.id)]
+    base = select(Event, Person.display_name).join(Person, Person.id == Event.resolved_person_id, isouter=True)
+    with session_scope() as s:
+        s.execute(text("ANALYZE event"))
+        mid = encode_cursor(
+            [t0 + timedelta(seconds=1500), uuid.UUID(int=2**127)], keys, endpoint="z", bind=bind_for("o")
+        )
+        for cursor in (None, mid):
+            plan = explain(
+                s,
+                page_query(
+                    base.where(Event.context_id == big_id, Event.agent_id == agent_id),
+                    keys,
+                    endpoint="z",
+                    bind=bind_for("o"),
+                    limit=200,
+                    cursor=cursor,
+                ),
+            )
+            assert "ix_event_agent_created" not in plan and not event_seq_scan(plan), plan
+            if cursor is None:
+                assert "ix_event_context_created" in plan and "'Sort'" not in plan, plan
+        for cursor in (None, mid):
+            plan = explain(
+                s,
+                page_query(
+                    base.where(Event.agent_id == agent_id),
+                    keys,
+                    endpoint="z",
+                    bind=bind_for("o"),
+                    limit=200,
+                    cursor=cursor,
+                ),
+            )
+            assert "ix_event_agent_created" in plan and "'Sort'" not in plan and not event_seq_scan(plan), plan
