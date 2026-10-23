@@ -166,8 +166,9 @@ export async function logOut(page: Page): Promise<void> {
   const direct = page.getByRole('button', { name: 'Log out' })
   const menu = page.getByRole('button', { name: /^Account: signed in as/ })
   await expect(direct.or(menu).first()).toBeVisible()
-  if (!(await direct.isVisible())) await menu.click()
-  await direct.click()
+  if (await direct.isVisible()) return void (await direct.click())
+  await menu.click()
+  await page.getByRole('menuitem', { name: 'Log out' }).click()
 }
 
 // Count the API calls a page makes to one endpoint, so a test can wait until every

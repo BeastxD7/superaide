@@ -4,10 +4,11 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowUpRight, LogOut } from 'lucide-react'
 import { motion } from 'motion/react'
-import { useEffect, useId, useRef, useState, type ComponentProps, type ReactNode } from 'react'
+import { useId, type ComponentProps, type ReactNode } from 'react'
 import type { Session } from '@/lib/session-context'
 import { homeFor } from '@/lib/session'
 import { initialOf } from '@/lib/initial'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 
 export const PRODUCT = 'Superaide'
 
@@ -141,71 +142,34 @@ export function NavBar({ session, links = true, cta = true }: { session: Session
 // small menu with the name, email and Log out.
 export function AccountMenu({ session }: { session: Session }) {
   const account = session.account
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  const trigger = useRef<HTMLButtonElement>(null)
-  const menuId = useId()
-
-  useEffect(() => {
-    if (!open) return
-    const onPointer = (e: PointerEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false)
-    }
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setOpen(false)
-        trigger.current?.focus() // keyboard users land back on the button that opened it
-      }
-    }
-    document.addEventListener('pointerdown', onPointer)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('pointerdown', onPointer)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [open])
-
   if (!account) return null
   const initial = initialOf(account.user.name)
+  // Radix gives the keyboard and screen-reader behaviour for free: arrows, Escape returning focus to the button,
+  // focus moving into the menu on open, and a real menu role.
   return (
-    <div ref={ref} className="relative">
-      <button
-        ref={trigger}
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        aria-controls={menuId}
-        aria-label={`Account: signed in as ${account.user.name}`}
-        title={`${account.user.name} (${account.user.email})`}
-        className="grid size-10 place-items-center rounded-full bg-lilac-100 text-sm font-semibold text-violet-700 hover:bg-lilac-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500"
-      >
-        {initial}
-      </button>
-      {open && (
-        <div
-          id={menuId}
-          className="absolute right-0 z-40 mt-2 w-64 rounded-2xl border border-line bg-white p-2 text-left shadow-[0_18px_50px_-20px_rgba(27,22,56,0.45)]"
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label={`Account: signed in as ${account.user.name}`}
+          title={`${account.user.name} (${account.user.email})`}
+          className="grid size-10 place-items-center rounded-full bg-lilac-100 text-sm font-semibold text-violet-700 hover:bg-lilac-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500"
         >
-          <div className="px-3 py-2">
-            <p className="text-xs text-muted">Signed in as</p>
-            <p className="truncate font-medium text-ink">{account.user.name}</p>
-            <p className="truncate text-sm text-muted">{account.user.email}</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              setOpen(false)
-              void session.logOut()
-            }}
-            autoFocus
-            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-ink hover:bg-mist focus-visible:outline-2 focus-visible:outline-violet-500"
-          >
-            <LogOut className="size-4" />
-            Log out
-          </button>
+          {initial}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" collisionPadding={8} className="w-64 rounded-2xl border-line bg-white p-2">
+        <div className="px-3 py-2">
+          <p className="text-xs text-muted">Signed in as</p>
+          <p className="truncate font-medium text-ink">{account.user.name}</p>
+          <p className="truncate text-sm text-muted">{account.user.email}</p>
         </div>
-      )}
-    </div>
+        <DropdownMenuItem onSelect={() => void session.logOut()} className="gap-2 rounded-xl px-3 py-2 text-sm text-ink">
+          <LogOut className="size-4" />
+          Log out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 

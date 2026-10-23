@@ -308,10 +308,13 @@ test.describe('the account menu', () => {
     const button = page.getByRole('navigation').getByRole('button', { name: /^Account: signed in as / })
     await button.focus()
     await page.keyboard.press('Enter')
-    await expect(button).toHaveAttribute('aria-expanded', 'true')
-    await expect(page.getByRole('navigation').getByRole('button', { name: 'Log out' })).toBeVisible()
+    // While a Radix menu is open the rest of the page is aria-hidden, so the button is found by its attributes.
+    const opened = page.locator('button[aria-label^="Account: signed in as"]')
+    await expect(opened).toHaveAttribute('aria-expanded', 'true')
+    await expect(page.getByRole('menuitem', { name: 'Log out' })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: 'Log out' })).toBeFocused() // focus moves into the menu
     await page.keyboard.press('Escape')
-    await expect(button).toHaveAttribute('aria-expanded', 'false')
+    await expect(opened).toHaveAttribute('aria-expanded', 'false')
     await expect(button).toBeFocused()
   })
 
