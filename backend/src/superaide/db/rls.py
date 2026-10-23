@@ -82,6 +82,7 @@ TABLES: tuple[str, ...] = (
     "mandate",  # signed narrowing tokens (#112)
     "mcp_pin",  # approved MCP tool hashes (#116)
     "tool_trace",  # hashes of tool calls (#110)
+    "identity_claim",  # unknown accounts matching a known name, awaiting the owner (#93)
     "triage_decision",
     "triage_label_vector",
     "triage_rule",

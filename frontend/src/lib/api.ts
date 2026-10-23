@@ -571,6 +571,28 @@ export type NeedsYouItem = {
   } | null
 }
 
+// Someone unknown named like a contact (IDENTITY_CLAIM_REVIEW, issue #93). Facts come from the platform.
+export type IdentityClaimChoice = 'contact' | 'new' | 'stranger' | 'block'
+export type IdentityClaimCard = {
+  id: string
+  status: string
+  claimed_name: string
+  contact: { id: string; name: string; relation: string } | null
+  facts: {
+    display_name: string
+    provider: string
+    platform_user_id: string
+    handle: string
+    phone: string
+    first_message_at: string
+    excerpt: string
+  }
+  asks: number
+  created_at: string
+  question: string
+  choices: { id: IdentityClaimChoice; label: string }[]
+}
+
 export type NeedsYou = {
   needs_you: NeedsYouItem[]
   handled: NeedsYouItem[]

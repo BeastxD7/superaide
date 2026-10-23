@@ -162,6 +162,9 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     from superaide.triage.routes import make_router as make_triage_router
 
     app.include_router(make_triage_router(get_agent))  # 404 everywhere while TRIAGE_ENABLED is off
+    from superaide.identity.claims_routes import make_router as make_claims_router
+
+    app.include_router(make_claims_router())  # 404 everywhere while IDENTITY_CLAIM_REVIEW is off
     from superaide.school.routes import make_router as make_school_router
 
     app.include_router(make_school_router(get_agent))  # 404 everywhere while SCHOOL_ENABLED is off
