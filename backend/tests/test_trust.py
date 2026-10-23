@@ -202,3 +202,12 @@ def test_resolve_refuses_bad_input_and_strangers_ids(owner, agent, script):
     # A live fact is not a conflict.
     live = by_text(GYM_CHAT)
     assert owner.post(f"/app/notebook/conflicts/{live.id}/resolve", json={"choice": "keep"}).status_code == 404
+
+
+def test_link_hearsay_outside_the_rule_categories_stays_visible_to_the_echo_filter(owner, agent, script):
+    """The Echo Filter's own facts (a rumour from a link, category "other") are not parked for review."""
+    script.facts = [fact("The Acme merger closes in March.", "other")]
+    share(agent, "web", "Acme page", title="acme.example")
+    item = by_text("The Acme merger closes in March.")
+    assert item and item.conflict_status == "none" and item.source == "link"
+    assert recalled("Acme merger") == ["The Acme merger closes in March."]

@@ -24,9 +24,11 @@ SOURCE_RANK = {
     "link": OWNER_LINK,
 }
 
-# What a web page may teach Ava. Anything else (urgency, sharing, availability, preferences) comes from
-# the owner: a page anyone can edit must not change what Ava does (untrusted data never steers control).
-LINK_CATEGORIES = {"about", "work"}
+# What a web page must not set: the owner's rules (urgency, sharing, availability, preferences). A page
+# anyone can edit must not change what Ava does (untrusted data never steers control), so such a fact waits
+# for the owner's review. Other categories from a link (about, work, person, other) are ordinary facts: under
+# the Echo Filter they are hearsay until two independent origins or the owner confirm them.
+REVIEW_CATEGORIES = {"preference", "urgency", "availability", "sharing"}
 
 # conflict_status: none (live) | pending (a weaker claim against a stronger fact) | review (a link fact
 # outside LINK_CATEGORIES) | resolved (the owner decided)
@@ -38,4 +40,4 @@ def rank_for(source: str) -> int:
 
 
 def needs_review(source: str, category: str) -> bool:
-    return source == "link" and category not in LINK_CATEGORIES
+    return source == "link" and category in REVIEW_CATEGORIES
