@@ -321,6 +321,7 @@ class OwnerTurn:
             web,
         )
         self.replay: Any = None  # a tooltrace.replay.Replayer: rehearse instead of acting (#110)
+        self.purpose = "chat_turn"  # the spend purpose of this turn's model calls (a rehearsal uses replay_turn)
         self._seq = 0
         self.learns = learns  # facts are learned from this turn after the reply (a real model is connected)
         self.notes: list[str] = []
@@ -752,7 +753,7 @@ class OwnerTurn:
             self._said = ""
             self.emit("status", {"text": "Thinking" if step == 0 else "Working it out"})
             last = self.llm.step(
-                purpose="chat_turn",
+                purpose=self.purpose,
                 model=self.model,
                 system=system,
                 messages=msgs,
@@ -815,7 +816,7 @@ class OwnerTurn:
         self.emit("status", {"text": "Taking a little longer"})
         try:
             return self.llm.step(
-                purpose="chat_turn",
+                purpose=self.purpose,
                 model=self.model,
                 system=system,
                 messages=msgs,
