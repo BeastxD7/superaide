@@ -57,6 +57,7 @@ TABLES: tuple[str, ...] = (
     "memory_embedding",  # outside the ORM metadata (context/vectors.py); only where pgvector exists
     "memory_import",  # memory passport imports
     "memory_item",
+    "update_preview",  # replay before update (#110)
     "never_ask_topic",  # One Good Question (#121)
     "owner_question",
     "memory_origin",  # independent origins of a belief (#137)

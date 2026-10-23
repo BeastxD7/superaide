@@ -30,6 +30,7 @@ FLAG_GATED = {
     ("GET", "/app/triage/settings"),
     ("GET", "/app/audition/candidates"),  # AUDITION_ENABLED (#110)
     ("GET", "/app/model-drill"),  # MODEL_DRILL_ENABLED (#110)
+    ("GET", "/app/updates"),  # REPLAY_BEFORE_UPDATE_ENABLED (#110)
     ("GET", "/app/relationship-safety"),  # RELATIONSHIP_SAFETY_ENABLED (#124)
     ("GET", "/app/playbooks"),  # SKILL_RATCHET_ENABLED (#120)
     ("GET", "/app/tuner"),  # OVERNIGHT_TUNER_ENABLED (#118)

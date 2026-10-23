@@ -204,6 +204,9 @@ Every setting is an environment variable. [`backend/.env.example`](backend/.env.
 
 
 | `MODEL_DRILL_ENABLED` | `false` | Replay your last tasks on two models (effects stubbed, no network) and see where the call sequences differ before you switch | Model key for both models; `DRILL_MAX_TASKS` | Safe (cost: calls on both models, capped) |
+
+
+| `REPLAY_BEFORE_UPDATE_ENABLED` | `false` | Before a skill, prompt or model change goes live, replay your last tasks with and without it (effects stubbed, local reads only) and see how the calls differ; you approve or reject | Model key; `REPLAY_MAX_TASKS` | Safe (small cost) |
 | `OVERNIGHT_TUNER_ENABLED` | `false` | Proposes a better triage prompt; the owner approves or rolls back | `TRIAGE_ENABLED=true`, model key | Safe |
 | `REHEARSAL_ENABLED` | `false` | Practise a hard conversation with Ava as the other side; nothing is sent | Model key | Safe |
 | `SCHOOL_ENABLED` | `false` | Write, consent to and export generic lessons, or import a file; local only | None | Safe |
