@@ -3,6 +3,9 @@
 #
 #   bash share.sh                     quick tunnel: a random https://<words>.trycloudflare.com address, free, no account
 #   bash share.sh --no-update         do not pull the latest code first
+#   bash share.sh --auto-update       keep it current: every 5 minutes (--auto-update=10 for 10), if main has new commits
+#                                     it pulls them, backs up the database, runs migrations and installs changed
+#                                     dependencies. The API and site reload by themselves; it never touches local changes.
 #   bash share.sh --reset             wipe the data first (passed to start.command)
 #   bash share.sh --no-docker         embedded Postgres instead of Docker (passed to start.command)
 #   bash share.sh --hostname app.example.com --tunnel superaide
@@ -52,10 +55,12 @@ export WEB_PORT="${WEB_PORT:-3000}"
 export API_PORT="${API_PORT:-8010}"
 bold() { printf "\n\033[1m%s\033[0m\n" "$*"; }
 
-UPDATE=1; HOSTNAME_ARG=""; TOKEN_ARG=""; TUNNEL_NAME=""; NGROK_DOMAIN=""; PASS=()
+UPDATE=1; AUTO_MIN=0; HOSTNAME_ARG=""; TOKEN_ARG=""; TUNNEL_NAME=""; NGROK_DOMAIN=""; PASS=()
 while [ $# -gt 0 ]; do
   case "$1" in
     --no-update) UPDATE=0 ;;
+    --auto-update) AUTO_MIN=5 ;;
+    --auto-update=*) AUTO_MIN="${1#*=}"; case "$AUTO_MIN" in ''|*[!0-9]*|0) echo "--auto-update=MINUTES needs a whole number above 0."; exit 2 ;; esac ;;
     --hostname) HOSTNAME_ARG="${2:?--hostname needs a value}"; shift ;;
     --tunnel) TUNNEL_NAME="${2:?--tunnel needs a tunnel name}"; shift ;;
     --tunnel-token) TOKEN_ARG="${2:?--tunnel-token needs a value}"; shift ;;
@@ -99,7 +104,8 @@ fi
 
 TUNNEL_LOG="$(mktemp -t superaide-tunnel.XXXXXX)"
 TUNNEL_PID=""
-cleanup() { [ -n "$TUNNEL_PID" ] && kill "$TUNNEL_PID" 2>/dev/null || true; rm -f "$TUNNEL_LOG"; }
+UPDATER_PID=""
+cleanup() { [ -n "$TUNNEL_PID" ] && kill "$TUNNEL_PID" 2>/dev/null || true; [ -n "$UPDATER_PID" ] && kill "$UPDATER_PID" 2>/dev/null || true; rm -f "$TUNNEL_LOG"; }
 trap cleanup EXIT INT TERM
 
 if [ -n "$NGROK_DOMAIN" ]; then
@@ -157,6 +163,35 @@ echo "  (APIs & Services > Credentials), unless you already use a stable --hostn
 echo "    $PUBLIC_URL/api/auth/google/callback"
 echo "    $PUBLIC_URL/api/app/connections/google/callback"
 echo "  Or skip that: use Google sign-in yourself at http://localhost:$WEB_PORT (already registered)."
+
+
+# 4. Keep it current (--auto-update): check origin/main now and then; only a clean fast-forward is applied.
+update_if_behind() {
+  git fetch --quiet origin main 2>/dev/null || return 0
+  local here there
+  here="$(git rev-parse HEAD)"; there="$(git rev-parse origin/main)"
+  [ "$here" = "$there" ] && return 0
+  git merge-base --is-ancestor "$here" "$there" || { echo "[auto-update] this checkout has commits main does not: not updating"; return 0; }
+  [ -z "$(git status --porcelain --untracked-files=no)" ] || { echo "[auto-update] local changes: not updating"; return 0; }
+  echo "[auto-update] $(date '+%H:%M') updating $(git rev-parse --short HEAD) -> $(git rev-parse --short origin/main)"
+  local lock_before; lock_before="$(git rev-parse HEAD:frontend/package-lock.json 2>/dev/null || true)"
+  if docker info >/dev/null 2>&1; then  # a copy of the data first, in case a migration goes wrong
+    mkdir -p "$HOME/superaide-backups"
+    docker compose exec -T db pg_dump -U agent -Fc agent > "$HOME/superaide-backups/auto-$(date +%Y%m%d-%H%M).dump" 2>/dev/null \
+      && echo "[auto-update] database backed up to ~/superaide-backups" || echo "[auto-update] (no database backup: db container not found)"
+  fi
+  git merge --ff-only --quiet origin/main || { echo "[auto-update] could not fast-forward"; return 0; }
+  (cd backend && uv sync --quiet && uv run --quiet alembic upgrade head) || echo "[auto-update] migration failed: fix it, then restart"
+  if [ "$lock_before" != "$(git rev-parse HEAD:frontend/package-lock.json 2>/dev/null || true)" ]; then
+    (cd frontend && npm ci --no-audit --no-fund --loglevel=error) || echo "[auto-update] npm ci failed"
+  fi
+  echo "[auto-update] now at $(git log -1 --format='%h %s' | cut -c1-70); the API and site reload on their own"
+}
+if [ "$AUTO_MIN" != 0 ]; then
+  ( while true; do sleep $((AUTO_MIN * 60)); update_if_behind; done ) &
+  UPDATER_PID=$!
+  echo "  Auto-update: checking main every $AUTO_MIN min (log lines start with [auto-update])."
+fi
 
 # Hand over to start.command (database, API, website). The tunnel stops when this window closes.
 bash "$ROOT/start.command" ${PASS[@]+"${PASS[@]}"}
