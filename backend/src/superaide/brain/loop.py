@@ -575,7 +575,7 @@ class OwnerTurn:
                 self.tainted = self.mail_read = True
             return gmail.run(
                 self.s, self.sender.person, name, args, tainted=self.tainted,
-                typed_by_owner=self._typed_by_owner(), mail_read=self.mail_read,
+                typed_by_owner=self._typed_by_owner(), mail_read=self.mail_read, channel=self._origin_channel(),
             )  # fmt: skip
         if name == "calendar_events":
             from superaide.skills.calendar import calendar_events
@@ -789,7 +789,11 @@ class OwnerTurn:
             kind=kind,
             summary=summary,
             requester=self.sender,
-            payload={"rationale": str(args.get("rationale", ""))[:500], "tainted": self.tainted},
+            payload={
+                "rationale": str(args.get("rationale", ""))[:500],
+                "tainted": self.tainted,
+                "channel": self._origin_channel(),
+            },
             require_executor=True,
         )
         self.notes.append(f"action:{kind}:{'unsupported' if decision.unsupported else decision.outcome}")
@@ -1062,6 +1066,13 @@ class OwnerTurn:
             "Tell me where you want it to go (a contact page or phone you will use, or a human address) and I will "
             "write the text for you."
         )
+
+    def _origin_channel(self) -> str:
+        """Where the owner asked: an approval's outcome is sent back there (telegram or slack), else by preference."""
+        from superaide.db.models import Context
+
+        provider = self.s.scalar(select(Context.provider).where(Context.id == self.inbound.context_id))
+        return provider if provider in {"telegram", "slack"} else ""
 
     def _typed_by_owner(self) -> str:
         """What the owner typed in this conversation (this message and the recent ones): the only place a

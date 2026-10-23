@@ -88,6 +88,7 @@ def announce(session: Session, approval: Approval) -> None:
             owner,
             text,
             {"kind": "approval_outcome", "approval_id": str(approval.id), "status": approval.status},
+            channel=str(p.get("channel") or "") or "default",
         )
     except Exception:  # an outcome note must never undo a decision
         log.warning("couldn't announce an approval outcome", exc_info=True)
