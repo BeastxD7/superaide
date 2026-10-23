@@ -78,6 +78,12 @@ Rule (owner): whenever a feature is built, test cases are added for it. It is in
 - `CI result` requires it on `pull_request` events (fail closed: skipped or failed fails the gate) and ignores it elsewhere, since it never runs on main pushes, merge groups, workflow_call or manual runs.
 - Limits: it proves a test file changed, not that it is good. Review still judges the test.
 
+## Backend split (PR C)
+
+The single backend job ran about 40 seconds of lint, types and migration checks and then about 8 minutes of pytest (xdist, one worker per core). It is now `backend-static` (one migration head, ruff, format, mypy, migrations apply and roll back; the checks that fail fastest) and `backend-tests`, two runners that each run `pytest -n auto --shard i/2`. `--shard` (tests/conftest.py, tests/sharding.py) assigns whole test modules, biggest first, to the shard with the fewest tests; it depends only on the collected test ids, so each xdist worker and each runner agrees and every test runs on exactly one shard (the unit test checks the partition; collecting both shards locally yields all 2920 tests). Coverage on main and Full is reported per shard (informational; nothing gates on a coverage figure).
+
+The `CI result` gate needs `backend-static` and `backend-tests` (a matrix, so any failed shard fails it) and requires both to succeed whenever the backend filter asked for them.
+
 ## Plan
 
 1. Change detection and the gate (this PR).
