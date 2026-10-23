@@ -71,6 +71,8 @@ test.describe('glass brain', () => {
     await expect(page.getByRole('button', { name: 'Free-floating' })).toHaveAttribute('aria-pressed', 'true')
     await page.getByRole('button', { name: 'Tidy' }).click()
     expect(await pos()).toBe(tidy)
+  })
+
   test('a fact can be locked and unlocked from the map', async ({ page }) => {
     await page.goto('/dashboard/notebook/brain')
     await dot(page, 'I live in Pune').click()

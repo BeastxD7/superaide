@@ -217,6 +217,7 @@ def test_a_retired_fact_the_owner_may_not_see_is_never_on_the_shelf_or_struck_th
     assert "Visible but replaced elsewhere." in text  # forgotten shelf (owner may see it) but never struck through
     assert not [n for n in a.get("/app/brain").json()["nodes"] if n.get("superseded")]
 
+
 def test_locking_a_fact_pins_it_and_unlocking_puts_it_back(browser):
     a, b = owners(browser)
     ids = seed()
