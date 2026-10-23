@@ -4,6 +4,19 @@
 /* Superaide: white canvas, deep violet ink, lilac and pastel panels, and each
    agent's own iridescent colour. Layout patterns from the landing-page and
    assistant-onboarding references the user shared. */
+/* Touch layouts: any phone-width screen, and any device whose main pointer is a finger (tablets too).
+   Use `touch:min-h-11` on controls: 44px is the smallest comfortable tap target. */
+@custom-variant touch {
+  @media (max-width: 767.98px) {
+    @slot;
+  }
+  @media (pointer: coarse) {
+    @slot;
+  }
+}
+
+@custom-variant desktop (@media (min-width: 768px) and (pointer: fine));
+
 @theme {
   --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
 
@@ -35,6 +48,13 @@
   --color-ok: #3a5bc7;
   --color-warn: #9a5a0c;
   --color-danger: #b3304e;
+
+  /* One type scale for the person-facing app. Controls and the navbar are 14px on phones, 16px from sm up;
+     headings scale smoothly between a phone and a desktop with clamp(). */
+  --text-control: 0.875rem;
+  --text-display: clamp(2.25rem, 1.4rem + 3.6vw, 3.625rem);
+  --text-title: clamp(1.75rem, 1.2rem + 2.4vw, 2.75rem);
+  --text-heading: clamp(1.375rem, 1.1rem + 1.2vw, 1.875rem);
 
   --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
 
@@ -91,6 +111,28 @@
   h3 {
     @apply text-ink;
     text-wrap: balance;
+    overflow-wrap: anywhere;
+  }
+  p,
+  li,
+  dd {
+    overflow-wrap: anywhere;
+  }
+  img,
+  svg,
+  video,
+  canvas {
+    max-width: 100%;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: 0.01ms !important;
+    }
   }
   :focus-visible {
     outline: 2px solid var(--color-violet-500);
@@ -98,6 +140,15 @@
   }
   ::selection {
     background: var(--color-lilac-200);
+  }
+}
+
+/* The single page container: 16px gutters on phones, 24px from sm up, centred, max width of the site.
+   Add `max-w-*` on the element when a page is narrower than the site. */
+@utility page-x {
+  padding-inline: 1rem;
+  @media (min-width: 40rem) {
+    padding-inline: 1.5rem;
   }
 }
 
