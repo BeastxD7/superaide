@@ -21,7 +21,18 @@ from superaide.knowledge import trust
 from superaide.memory import importance as weigh
 
 CATEGORIES = ("about", "work", "person", "preference", "urgency", "availability", "sharing", "other")
-SOURCES = ("chat", "intro_chat", "intro_call", "document", "link", "telegram", "slack", "owner_edit")
+SOURCES = (
+    "chat",
+    "intro_chat",
+    "intro_call",
+    "document",
+    "link",
+    "telegram",
+    "slack",
+    "owner_edit",
+    "gmail",
+    "calendar",
+)
 
 
 def channel_source(provider: str | None) -> str:
@@ -82,6 +93,7 @@ def remember_fact(
     time_bound: bool | None = None,
     trust_rank: int | None = None,
     author_person_id: Any = None,
+    source_ref: str | None = None,
 ) -> MemoryItem | None:
     """Store one fact about the owner. Returns None if the same fact is already known (with the Echo Filter
     on, a repeat from a *different* root origin is still noted on the known fact). Its trust rank comes from its
@@ -120,6 +132,7 @@ def remember_fact(
         trust_rank=trust_rank if trust_rank is not None else trust.rank_for(source),
         author_person_id=author_person_id if author_person_id is not None else owner.id,
         conflict_status="review" if trust.needs_review(source, category) else "none",
+        source_ref=source_ref,
     )
     session.add(item)
     session.flush()

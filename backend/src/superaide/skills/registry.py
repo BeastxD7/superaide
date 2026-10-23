@@ -87,6 +87,11 @@ def remove(session: Session, skill_id: str) -> None:
         raise SkillUnavailable(409, f"{skill.manifest.title} is part of how Ava works and can't be removed")
     row.enabled, row.removed_at = False, datetime.now(UTC)
     audit(session, "skills", "skill_removed", skill_id=skill_id)
+    for source, owned in (("gmail", "superaide/gmail"), ("calendar", "superaide/google-calendar")):
+        if skill_id == owned:  # taking the source away takes what was read from it
+            from superaide.knowledge.connector_facts import erase_source
+
+            erase_source(session, source)
 
 
 def option_on(session: Session, skill_id: str, setting: str) -> bool:

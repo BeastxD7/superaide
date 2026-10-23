@@ -647,6 +647,20 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             resolve_conflict(s, require(s, Person, person_id), claim, body.choice, body.text)
             return {"status": "resolved"}
 
+    @router.post(
+        "/notebook/sources/{source}/erase",
+        tags=["Owner: chat & notebook"],
+        summary="Erase what was learned from Gmail or the calendar",
+        description="Deletes every short fact read from `gmail` or `calendar`, with its vectors. Cannot be undone.",
+    )
+    def erase_connector_facts_route(source: str, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        if source not in ("gmail", "calendar"):
+            raise HTTPException(404, "Not found")
+        from superaide.knowledge.connector_facts import erase_source
+
+        with session_scope() as s:
+            return {"status": "erased", "facts_deleted": erase_source(s, source)}
+
     @router.get(
         "/passages/{chunk_id}",
         tags=["Owner: chat & notebook"],

@@ -22,6 +22,8 @@ SOURCE_RANK = {
     "owner_edit": OWNER_VERIFIED,
     "document": OWNER_DOCUMENT,
     "link": OWNER_LINK,
+    "calendar": OWNER_LINK,  # the owner's own calendar: a system of record
+    "gmail": THIRD_PARTY,  # mail from other people: their claim, not the owner's
 }
 
 # What a web page must not set: the owner's rules (urgency, sharing, availability, preferences). A page
@@ -40,4 +42,4 @@ def rank_for(source: str) -> int:
 
 
 def needs_review(source: str, category: str) -> bool:
-    return source == "link" and category in REVIEW_CATEGORIES
+    return source in ("link", "gmail", "calendar") and category in REVIEW_CATEGORIES

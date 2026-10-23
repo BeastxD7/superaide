@@ -187,6 +187,7 @@ Every setting is an environment variable. [`backend/.env.example`](backend/.env.
 | `TRIAGE_ENABLED` | `false` | A recorded handle/hold/interrupt/defer/verify decision for every non-owner message; interrupts escalate to the owner | None | Safe |
 | `TRIAGE_KNN_ENABLED` | `false` | Shadow urgency score from your own feedback beside each triage decision; never changes a decision | `TRIAGE_ENABLED=true` | Safe |
 | `GMAIL_TRIAGE_ENABLED` | `false` | Polls each owner's Gmail inbox and triages new mail | `TRIAGE_ENABLED=true`, Google client, owner signs in to Gmail; `GMAIL_POLL_MINUTES` | Decision (reads mail) |
+| `CONNECTOR_FACTS_ENABLED` | `false` | Up to 3 short facts per calendar event or verified email kept as notes (never the raw text); disconnecting deletes them | Gmail and/or Calendar connected; `CONNECTOR_FACTS_PER_DAY` (20) | Decision (what is remembered from mail) |
 | `GOOGLE_SIGNIN_ENABLED` | `false` | "Continue with Google" on log-in and sign-up | `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`, redirect URI registered | Safe |
 | `GOOGLE_CALENDAR_PUSH` | `false` | Google tells the server when the calendar changes | `PUBLIC_BASE_URL` on https with `/webhooks/*` reachable | Safe |
 | `PUSH_ENABLED` | `false` | Web push to the owner's phone (makes a VAPID key pair on first use) | Real `VAPID_SUBJECT`; https | Safe |
