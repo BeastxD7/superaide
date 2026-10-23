@@ -10,8 +10,10 @@ Per instance (through the jobs queue), once a night in the owner's time zone, be
    inside the spend cap; if the money runs out the extractive summary stays and the run records
    `degraded=true` (the cheap steps always finish).
 2. **Tidy.** Exact duplicate owner-only notes are merged into one (the better-sourced one is kept and
-   keeps both sources). A run retires at most 25% of the owner's current notes, and before it retires
-   anything it saves the pre-image in `consolidation_run.snapshot`, so `restore()` can put them back.
+   keeps both sources). With a model connected, memory/merge.py also asks the small model about near-duplicate
+   and contradicting pairs; it only says "same", "newer replaces" or "different", and code decides who stays.
+   A run retires at most 25% of the owner's current notes, and before it retires anything
+   it it saves the pre-image in `consolidation_run.snapshot`, so `restore()` can put them back.
 
 Guardrails: only this job writes episodes and consolidation rows. A note never loses to a copy from a
 less trusted source (documents, links) and the job creates no notes at all, so nothing untrusted is
@@ -199,25 +201,67 @@ def duplicates(notes: list[MemoryItem]) -> list[tuple[MemoryItem, MemoryItem]]:
     return out
 
 
-def tidy(session: Session, owner: Person, now: datetime, run: ConsolidationRun) -> int:
+def _merge_pairs(
+    notes: list[MemoryItem], exact: list[tuple[MemoryItem, MemoryItem]], room: int, run: ConsolidationRun,
+    llm: Any, settings: Any,
+) -> list[tuple[MemoryItem, MemoryItem, str]]:  # fmt: skip
+    """(keeper, retired, kind) from the model's verdicts on near-duplicate and contradicting pairs (merge.py).
+    Code decides who stays; the model only says whether two notes are the same or one replaces the other."""
+    from superaide.memory import merge
+
+    pairs = merge.candidates(notes, {d.id for _, d in exact} | {k.id for k, _ in exact})
+    if not pairs or room <= 0:
+        return []
+    try:
+        verdicts, cost = merge.judge(llm, settings, pairs)
+    except BudgetExceeded as exc:
+        run.degraded = True  # money ran out: the exact-duplicate tidy still ran
+        run.notes = [*run.notes, f"merging stopped: {exc}"]
+        return []
+    except Exception as exc:
+        run.notes = [*run.notes, f"merging failed: {type(exc).__name__}"]
+        return []
+    run.cost_usd = run.cost_usd + cost
+    out: list[tuple[MemoryItem, MemoryItem, str]] = []
+    for i, (older, newer) in enumerate(pairs):
+        verdict = verdicts.get(i)
+        if verdict == "same":
+            keeper, gone = sorted((older, newer), key=_rank)
+            out.append((keeper, gone, "near_duplicate"))
+        elif verdict == "newer_replaces":
+            if newer.trust_rank <= older.trust_rank:
+                out.append((newer, older, "contradiction"))
+            else:
+                run.notes = [*run.notes, "a contradiction was left for the owner: the newer note is less trusted"]
+    return out[:room]
+
+
+def tidy(
+    session: Session, owner: Person, now: datetime, run: ConsolidationRun, llm: Any = None, settings: Any = None
+) -> int:
     notes = _owner_notes(session, owner)
     run.entries_before = len(notes)
-    pairs = duplicates(notes)
+    exact = duplicates(notes)
     allowed = int(len(notes) * MAX_RETIRE_FRACTION)
-    if len(pairs) > allowed:
-        run.notes = [*run.notes, f"{len(pairs)} duplicates found; retiring {allowed} (the 25% cap)"]
-    pairs = pairs[:allowed]
+    if len(exact) > allowed:
+        run.notes = [*run.notes, f"{len(exact)} duplicates found; retiring {allowed} (the 25% cap)"]
+    pairs: list[tuple[MemoryItem, MemoryItem, str]] = [(k, d, "duplicate") for k, d in exact[:allowed]]
+    if llm is not None:
+        pairs += _merge_pairs(notes, exact, allowed - len(pairs), run, llm, settings)
     if not pairs:
         return 0
     # The pre-image first, in its own flush: if anything below fails, the snapshot is still there.
-    run.snapshot = [{"id": str(d.id), "content": d.content, "kept_as": str(k.id)} for k, d in pairs]
-    run.retired_ids = [d.id for _, d in pairs]
+    run.snapshot = [{"id": str(d.id), "content": d.content, "kept_as": str(k.id), "kind": kind} for k, d, kind in pairs]
+    run.retired_ids = [d.id for _, d, _ in pairs]
     session.flush()
-    for keeper, dup in pairs:
+    for keeper, dup, kind in pairs:
         keeper.source_event_ids = sorted({*(keeper.source_event_ids or []), *(dup.source_event_ids or [])})
-        keeper.confidence = max(keeper.confidence, dup.confidence)
+        if kind != "contradiction":
+            keeper.confidence = max(keeper.confidence, dup.confidence)
+        else:
+            dup.superseded_by = keeper.id
         dup.valid_to = now
-        audit(session, "memory", "consolidated", memory_id=dup.id, kept=keeper.id, run_id=run.id)
+        audit(session, "memory", "consolidated", memory_id=dup.id, kept=keeper.id, run_id=run.id, kind=kind)
     return len(pairs)
 
 
@@ -231,6 +275,8 @@ def restore(session: Session, run_id: uuid.UUID) -> int:
         m = session.get(MemoryItem, item_id)
         if m is not None and m.valid_to is not None and m.valid_to == run.finished_at:
             m.valid_to = None
+            if any(e.get("id") == str(item_id) and e.get("kind") == "contradiction" for e in run.snapshot):
+                m.superseded_by = None
             n += 1
     run.restored_at = datetime.now(UTC)
     audit(session, "memory", "consolidation_restored", run_id=run.id, restored=n)
@@ -247,7 +293,7 @@ def run_for_owner(
     session.add(run)
     session.flush()
     run.episodes_made = make_episodes(session, owner, now, run, llm, settings)
-    retired = tidy(session, owner, now, run)
+    retired = tidy(session, owner, now, run, llm, settings)
     run.status, run.finished_at = "done", now
     for item_id in run.retired_ids:  # stamp exactly the retirement time so restore() can recognise it
         m = session.get(MemoryItem, item_id)

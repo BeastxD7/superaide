@@ -219,3 +219,106 @@ def test_nothing_is_scheduled_while_the_flag_is_off(settings, monkeypatch):
         from superaide.db.models import Job
 
         assert s.scalar(select(Job.id).where(Job.kind == sleep.JOB_KIND)) is None
+
+
+# --- near-duplicate and contradiction merging (memory/merge.py) ---------------------------------
+
+
+class Judge:
+    """A scripted small model that answers the pair questions with fixed verdicts."""
+
+    def __init__(self, verdicts, fail=None):
+        self.verdicts, self.fail, self.prompts = verdicts, fail, []
+
+    def complete(self, **kw):
+        from superaide.memory.merge import PairVerdict, Verdicts
+
+        self.prompts.append(kw["messages"][0]["content"])
+        if self.fail:
+            raise self.fail
+        v = Verdicts(verdicts=[PairVerdict(pair=i, verdict=x) for i, x in enumerate(self.verdicts)])
+        return SimpleNamespace(parsed=v, text="", cost_usd=0.0002)
+
+
+FILLER = ["Zebra stripes", "Cobalt harbour", "Tangerine lanterns", "Velvet thunder", "Quartz meadows", "Saffron orbit"]
+
+
+def pair_world(s, older, newer, newer_source="chat"):
+    o, _ = world(s)
+    a = notes(s, o, [older])[0]
+    b = notes(s, o, [newer], source=newer_source)[0]
+    a.created_at, b.created_at = NOW - timedelta(days=30), NOW - timedelta(days=2)
+    b.trust_rank = 1 if newer_source == "chat" else 4
+    notes(s, o, FILLER)
+    return o, a, b
+
+
+SET = SimpleNamespace(model_triage="m")
+
+
+def test_near_duplicates_are_merged_by_the_model_and_code_keeps_the_better_sourced_note():
+    with session_scope() as s:
+        o, a, b = pair_world(s, "My office is in Pune near the river.", "My office is located in Pune by the river.")
+        a.source = "document"  # read from a file; the owner's own words are kept
+        run = sleep.run_for_owner(s, o, NOW, Judge(["same"]), SET)
+        assert run.retired_ids == [a.id] and a.valid_to is not None and b.valid_to is None
+        assert run.snapshot[0]["kind"] == "near_duplicate" and run.cost_usd == Decimal("0.0002")
+        assert a.content == "My office is in Pune near the river."  # retired, never rewritten or deleted
+
+
+def test_a_contradiction_retires_the_older_note_and_points_at_its_successor_then_restores():
+    with session_scope() as s:
+        o, a, b = pair_world(s, "My office is in Pune near the river.", "My office is in Mumbai near the river.")
+        run = sleep.run_for_owner(s, o, NOW, Judge(["newer_replaces"]), SET)
+        assert a.valid_to is not None and a.superseded_by == b.id and b.valid_to is None
+        assert sleep.restore(s, run.id) == 1 and a.valid_to is None and a.superseded_by is None
+
+
+def test_a_newer_note_from_a_less_trusted_source_never_replaces_the_owners_words():
+    with session_scope() as s:
+        o, a, b = pair_world(
+            s, "My office is in Pune near the river.", "My office is in Mumbai near the river.", newer_source="document"
+        )
+        run = sleep.run_for_owner(s, o, NOW, Judge(["newer_replaces"]), SET)
+        assert a.valid_to is None and b.valid_to is None and not run.retired_ids
+        assert any("left for the owner" in n for n in run.notes)
+
+
+def test_different_or_unsure_verdicts_and_unrelated_notes_change_nothing_and_the_model_creates_no_notes():
+    with session_scope() as s:
+        o, a, b = pair_world(s, "My office is in Pune near the river.", "My office in Pune has a river view.")
+        count = len(s.scalars(select(MemoryItem)).all())
+        judge = Judge(["different"])
+        run = sleep.run_for_owner(s, o, NOW, judge, SET)
+        assert not run.retired_ids and len(s.scalars(select(MemoryItem)).all()) == count
+        assert len(judge.prompts) == 1 and "Zebra" not in judge.prompts[0]  # unrelated fillers are never asked about
+
+
+def test_merging_respects_the_quarter_cap_and_a_pair_is_only_asked_when_it_shares_words():
+    with session_scope() as s:
+        o, _ = world(s)
+        for i in range(3):  # three near-duplicate pairs among 8 notes: the cap of 2 applies
+            x, y = (
+                notes(s, o, [f"Pair {i} alpha{i} beta{i} gamma{i} delta{i}."])[0],
+                notes(s, o, [f"Pair {i} alpha{i} beta{i} gamma{i} epsilon{i}."])[0],
+            )
+            x.created_at, y.created_at = NOW - timedelta(days=9 - i), NOW - timedelta(days=5 - i)
+        notes(s, o, ["Standalone lonely quirk."] * 1 + ["Another solitary item here."])
+        run = sleep.run_for_owner(s, o, NOW, Judge(["same", "same", "same"]), SET)
+        assert run.entries_before == 8 and len(run.retired_ids) == 2
+
+
+def test_when_the_money_runs_out_merging_stops_and_exact_duplicates_are_still_tidied():
+    with session_scope() as s:
+        o, a, b = pair_world(s, "My office is in Pune near the river.", "My office is in Mumbai near the river.")
+        notes(s, o, ["Same fact here.", "same fact here"])
+        judge = Judge([], fail=BudgetExceeded("today's limit would be passed", "day"))
+        run = sleep.run_for_owner(s, o, NOW, judge, SET)
+        assert run.degraded and len(run.retired_ids) == 1 and a.valid_to is None  # only the exact duplicate went
+
+
+def test_without_a_model_no_pair_is_merged():
+    with session_scope() as s:
+        o, a, b = pair_world(s, "My office is in Pune near the river.", "My office is in Mumbai near the river.")
+        run = sleep.run_for_owner(s, o, NOW)
+        assert not run.retired_ids and a.valid_to is None
