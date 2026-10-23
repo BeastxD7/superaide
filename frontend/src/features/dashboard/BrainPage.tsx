@@ -31,6 +31,7 @@ type BrainNode = {
   superseded?: boolean
   replaced_by?: string
   replaced_at?: string
+  locked?: boolean
 }
 type BrainMap = {
   nodes: BrainNode[]
@@ -160,7 +161,12 @@ function Dot({ n, selected, onPick }: { n: Placed; selected: boolean; onPick: ()
     n.type === 'owner' ? '#2b2250' : n.type === 'topic' ? '#ede9fe' : n.type === 'person' ? '#fce7f3' : n.type === 'source' ? '#e0f2fe' : COLOUR[n.origin ?? 'you']
   const stroke = n.type === 'topic' ? '#7c5cff' : n.type === 'person' ? '#db2777' : n.type === 'source' ? '#0ea5e9' : 'transparent'
   const text = n.type === 'topic' ? (CATEGORY_LABEL[n.label] ?? n.label) : n.type === 'fact' ? '' : n.label
-  const name = n.type === 'fact' ? (n.superseded ? `Replaced note: ${n.label}` : `Note: ${n.label}`) : `${n.type}: ${text}`
+  const name =
+    n.type === 'fact'
+      ? n.superseded
+        ? `Replaced note: ${n.label}`
+        : `${n.locked ? 'Locked note' : 'Note'}: ${n.label}`
+      : `${n.type}: ${text}`
   return (
     <g
       role="button"
@@ -182,11 +188,12 @@ function Dot({ n, selected, onPick }: { n: Placed; selected: boolean; onPick: ()
         cy={n.y}
         r={selected ? r + 4 : r}
         fill={n.superseded ? '#ffffff' : fill}
-        stroke={selected ? '#2b2250' : n.superseded ? '#9a93c4' : stroke}
-        strokeWidth={selected ? 3 : 1.5}
+        stroke={selected || n.locked ? '#2b2250' : n.superseded ? '#9a93c4' : stroke}
+        strokeWidth={selected ? 3 : n.locked ? 2.5 : 1.5}
         strokeDasharray={n.superseded ? '3 2' : undefined}
       />
       {n.superseded && <line x1={n.x - r - 2} y1={n.y + r + 2} x2={n.x + r + 2} y2={n.y - r - 2} stroke="#b4235a" strokeWidth="2" />}
+      {n.locked && <circle cx={n.x} cy={n.y} r={r + 5} fill="none" stroke="#2b2250" strokeWidth="1" strokeDasharray="2 2" />}
       {text && (
         <text x={n.x} y={n.type === 'owner' ? n.y + 4 : n.y + r + 13} textAnchor="middle" fontSize={n.type === 'owner' ? 10 : 11} fill={n.type === 'owner' ? '#fff' : '#3b3566'}>
           {n.type === 'owner' ? 'You' : text.length > 22 ? `${text.slice(0, 21)}…` : text}
@@ -239,11 +246,11 @@ export function BrainPage() {
     setActionError(null)
   }
 
-  async function act(path: string, body?: unknown) {
+  async function act(path: string, body?: unknown, keep?: string) {
     setActionError(null)
     try {
       await call(path, { method: 'POST', json: body })
-      setPicked(null)
+      setPicked(keep ?? null)
       setEditing(false)
       setConfirmForget(false)
       await reload()
@@ -320,6 +327,7 @@ export function BrainPage() {
                   <span className="mr-1 inline-block h-0.5 w-3 -rotate-45 bg-[#b4235a] align-middle" aria-hidden />
                   Struck through means replaced.
                 </li>
+                <li>A dashed ring means locked: {name} will not change it.</li>
               </ul>
             </div>
 
@@ -353,6 +361,7 @@ export function BrainPage() {
                         {CATEGORY_LABEL[selected.category ?? 'other'] ?? 'Note'}
                       </Badge>
                       <span>{source}</span>
+                      {selected.locked && <Badge variant="outline">Locked</Badge>}
                     </div>
                     {editing ? (
                       <div className="mt-2">
@@ -363,6 +372,11 @@ export function BrainPage() {
                       </div>
                     ) : (
                       <p className="mt-2 whitespace-pre-wrap text-ink [overflow-wrap:anywhere]">{selected.label}</p>
+                    )}
+                    {selected.locked && !editing && (
+                      <p className="mt-1 text-xs text-muted">
+                        Locked: {name} won&apos;t merge, retire or fade this. A newer claim waits for you. You can still correct or forget it.
+                      </p>
                     )}
                     <dl className="mt-2 text-xs text-muted">
                       <div>Learned {selected.learned ? new Date(selected.learned).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : ''}</div>
@@ -400,6 +414,9 @@ export function BrainPage() {
                             }}
                           >
                             Correct this
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => void act(`/brain/facts/${factId}/${selected.locked ? 'unlock' : 'lock'}`, undefined, selected.id)}>
+                            {selected.locked ? 'Unlock' : 'Lock this'}
                           </Button>
                           <Button size="sm" variant="ghost" onClick={() => setConfirmForget(true)}>
                             Forget this

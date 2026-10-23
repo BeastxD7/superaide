@@ -340,6 +340,8 @@ BRAIN_ROUTES = {
     ("GET", "/app/brain"),
     ("GET", "/app/brain/share.svg"),
     ("POST", "/app/brain/facts/{memory_id}/correct"),
+    ("POST", "/app/brain/facts/{memory_id}/lock"),
+    ("POST", "/app/brain/facts/{memory_id}/unlock"),
 }
 
 

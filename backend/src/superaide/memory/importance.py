@@ -53,4 +53,5 @@ def weight(row: Any, now: datetime | None = None) -> float:
     if importance is None:
         return 1.0
     since = getattr(row, "last_verified_at", None) or row.created_at
-    return (0.5 + float(importance)) * decay(bool(getattr(row, "time_bound", False)), since, now)
+    fades = bool(getattr(row, "time_bound", False)) and not getattr(row, "locked", False)  # locked: never decays
+    return (0.5 + float(importance)) * decay(fades, since, now)

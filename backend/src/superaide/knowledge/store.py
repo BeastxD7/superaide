@@ -148,10 +148,10 @@ def remember_fact(
 def supersede(session: Session, old: MemoryItem, new: MemoryItem) -> bool:
     """`new` says `old` is no longer true. True when `old` retires (new is as trusted or better, and it
     stays queryable by valid time, with `superseded_by` pointing at its successor); False when `new` is
-    weaker, so `old` stays and `new` waits as a conflict for the owner to resolve."""
+    weaker or `old` is locked by the owner, so `old` stays and `new` waits as a conflict for the owner to resolve."""
     if old.valid_to is not None:
         return True
-    if new.trust_rank <= old.trust_rank:
+    if new.trust_rank <= old.trust_rank and not old.locked:  # a locked fact only the owner may replace
         old.valid_to = datetime.now(UTC)
         old.superseded_by = new.id
         audit(session, "memory", "superseded", memory_id=old.id, by=new.id)
