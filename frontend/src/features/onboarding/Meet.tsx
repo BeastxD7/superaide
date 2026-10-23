@@ -81,7 +81,7 @@ export function Meet({ session }: { session: Session }) {
   const focusNewStep = () => {
     if (!answered.current) return
     answered.current = false
-    panelRef.current?.querySelector<HTMLElement>('input:not([type=hidden]):not([type=file]), textarea, select, button:not([disabled])')?.focus()
+    panelRef.current?.querySelector<HTMLElement>('input:not([type=hidden]):not([type=file]), textarea, select, button:not([disabled])')?.focus({ preventScroll: true })
   }
 
   const answer = useCallback(
