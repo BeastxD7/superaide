@@ -363,3 +363,24 @@ def test_the_passport_routes_are_owner_routes(app, browser, owner_data):
         r = stranger.request(method, path.replace("{import_id}", str(uuid.uuid4())))
         assert r.status_code == 403
         _assert_no_owner_data(r, owner_data)
+
+
+# --- the decision journal (/app/journal) -------------------------------------------------------
+
+JOURNAL_ROUTES = {
+    ("GET", "/app/journal"),
+    ("POST", "/app/journal/settings"),
+    ("POST", "/app/journal/predictions"),
+    ("POST", "/app/journal/predictions/{prediction_id}/resolve"),
+    ("POST", "/app/journal/predictions/{prediction_id}/erase"),
+}
+
+
+def test_the_journal_routes_are_owner_routes_and_leak_nothing(app, browser, owner_data):
+    assert JOURNAL_ROUTES <= set(owner_routes(app))  # so the 401, 403 and 200 sweeps above cover them too
+    stranger = browser()
+    signup(stranger, name="Mallory Tan", email="mallory@example.com")
+    for method, path in JOURNAL_ROUTES:
+        r = stranger.request(method, fill_path(path), json={} if method == "POST" else None)
+        assert r.status_code == 403
+        _assert_no_owner_data(r, owner_data)
