@@ -23,14 +23,14 @@ export function Overview({ data }: { data: OverviewData }) {
       brand: 'claude',
       ok: real,
       on: 'Real Claude replies, inside the spend cap.',
-      off: 'Offline: replies are echoes. Put your key in ANTHROPIC_API_KEY in .env and restart.',
+      off: "Offline: replies are echoes. Connect a model in the app under AI model, or put a key in ANTHROPIC_API_KEY in .env and restart.",
     },
     {
       name: 'Telegram',
       brand: 'telegram',
       ok: data.channels.telegram,
       on: 'Connected. Message your bot from your phone.',
-      off: 'Not connected. Create a bot with @BotFather, put its token in TELEGRAM_BOT_TOKEN in .env, restart.',
+      off: 'Not connected. Connect Telegram in the app under Connections (or put a bot token in TELEGRAM_BOT_TOKEN in .env and restart).',
     },
     {
       name: 'Slack',
