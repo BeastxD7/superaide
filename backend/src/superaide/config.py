@@ -108,6 +108,23 @@ class Settings(BaseSettings):
     # Memory Socket (#138). Off by default. A read-only MCP endpoint (POST /mcp/memory) lets the owner's other
     # assistants ask Ava's memory one question at a time, with one token per consumer, a scope the owner picks
     # per consumer, rows filtered by the audience gate in SQL, a per-minute limit and a visible access log.
+    # Blast-radius cooldown for skill versions (#129). Off by default. A recorded release reaches installs only after
+    # a wait set by its effect class (read 0 h, write_own 24 h, write_external/send/spend 72 h); a deleted skill name
+    # is reserved forever. SKILL_REVIEWER_KEY signs the one bypass, a reviewed security patch; blank means no bypass.
+    skill_cooldown_enabled: bool = False
+    skill_reviewer_key: str = ""
+    # Measured trust signals for skills (#130). Off by default. Several independent scanners per skill version, routed
+    # by the pattern of their disagreement (none alone can promote); a behaviour card built from allowlisted counters,
+    # shown only above a minimum number of installs; a skill whose behaviour leaves its manifest is demoted.
+    skill_signals_enabled: bool = False
+    skill_card_min_cohort: int = Field(default=5, ge=2)
+    # Receipt log and computed tiers (#131). Off by default. Each approval decision on a skill action writes a
+    # content-free receipt into an append-only hash chain; a skill's tier is computed from the receipts by a stdlib
+    # script anyone can run. An owner counts only after SKILL_RECEIPT_MIN_DAYS of decisions on that skill, and at
+    # most SKILL_RECEIPT_OWNER_CAP of their receipts count per skill version.
+    skill_receipts_enabled: bool = False
+    skill_receipt_min_days: int = Field(default=3, ge=0)
+    skill_receipt_owner_cap: int = Field(default=20, ge=1)
     memory_socket_enabled: bool = False
     memory_socket_per_minute: int = Field(default=30, ge=1)
     # Glass brain share link (#55). Off by default. The owner can create an unlisted link (a long random token,
