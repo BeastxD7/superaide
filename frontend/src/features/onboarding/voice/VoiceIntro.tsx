@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useId, useRef, useState, type FormEvent, type JSX, type ReactNode } from 'react'
 import { Orb, type Mood } from '@/components/Orb'
 import { AppError, call, streamApp } from '@/lib/api'
+import { SpeechLanguage } from '@/features/onboarding/SpeechLanguage'
 import { createRecognizer, recognitionLang, speechSupport, stopSpeaking, type Recognizer, type VoiceStyle } from '@/features/onboarding/speech'
 import { Speaker } from '@/features/onboarding/voice/speaker'
 import { startVad, type Vad } from '@/features/onboarding/voice/vad'
@@ -194,7 +195,7 @@ export function VoiceIntro({
     const form = new FormData()
     if (fields.audio) form.append('audio', fields.audio, 'answer.wav')
     if (fields.text) form.append('text', fields.text)
-    form.append('lang', lang)
+    form.append('lang', recognitionLang())
     if (st.pendingHeard !== null) {
       form.append('interrupted', 'true')
       form.append('heard', st.pendingHeard)
@@ -249,7 +250,7 @@ export function VoiceIntro({
     const st = r.current
     if (st.rec || !st.alive) return
     const rec = createRecognizer({
-      lang,
+      lang: recognitionLang(),
       onFinal: (text) => {
         st.heardBuf = `${st.heardBuf} ${text}`.trim()
         if (st.phase === 'hearing') setYouLine(st.heardBuf)
@@ -544,6 +545,7 @@ export function VoiceIntro({
 
       {inCall && (
         <footer className="shrink-0 px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          {ear !== 'none' && <SpeechLanguage dark className="mx-auto mb-2 max-w-md justify-center" />}
           <div className="mx-auto flex max-w-md items-center justify-center gap-3">
             <Round label={muted ? 'Unmute microphone' : 'Mute microphone'} off={muted} disabled={ear === 'none' || typing} onClick={toggleMute}>
               {muted ? <MicOff className="size-5" aria-hidden /> : <Mic className="size-5" aria-hidden />}

@@ -31,6 +31,7 @@ import {
   type ReactNode,
 } from 'react'
 import { Orb, type Mood } from '@/components/Orb'
+import { SpeechLanguage } from '@/features/onboarding/SpeechLanguage'
 import { createRecognizer, prepareVoices, recognitionLang, speak, speechSupport, stopSpeaking, unlockSpeech, type Recognizer, type SpeechSupport } from '@/features/onboarding/speech'
 import { Button, Notice } from '@/components/site'
 
@@ -962,6 +963,7 @@ export function VideoCall({ agentName, firstQuestion, onAnswer, onFinish, onCanc
       </main>
 
       <footer className="shrink-0 px-4 pt-2 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        {support.recognition && !ended && <SpeechLanguage dark className="mx-auto mb-2 max-w-md justify-center" />}
         <div className="mx-auto flex max-w-md items-center justify-center gap-2.5 sm:gap-3">
           <RoundButton label={micLabel} off={micOff} disabled={!support.recognition || ended} onClick={onMic}>
             {micOff ? <MicOff className="size-5" aria-hidden /> : <Mic className="size-5" aria-hidden />}
