@@ -9,7 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAsk } from '@/features/ask/useAsk'
-import { AppError, call, type AskLinkView } from '@/lib/api'
+import { call, type AskLinkView } from '@/lib/api'
+import { errorMessage } from '@/lib/action'
 
 // Settings → "Ask my Ava link": pick a handle, publish it, copy it, revoke it, and choose what the page
 // shows. Renders nothing while the backend has the feature off.
@@ -33,7 +34,7 @@ export function AskLinkCard() {
       setHandle(null)
       setResult({ tone: 'info', text: done })
     } catch (e) {
-      setResult({ tone: 'error', text: e instanceof AppError ? e.message : String(e) })
+      setResult({ tone: 'error', text: errorMessage(e) })
     } finally {
       setBusy(false)
     }
@@ -46,7 +47,7 @@ export function AskLinkCard() {
       setData(await call<AskLinkView>('/ask-link/revoke', { method: 'POST' }))
       setResult({ tone: 'info', text: 'Revoked. The link now looks like any link that doesn’t exist.' })
     } catch (e) {
-      setResult({ tone: 'error', text: e instanceof AppError ? e.message : String(e) })
+      setResult({ tone: 'error', text: errorMessage(e) })
     } finally {
       setBusy(false)
     }

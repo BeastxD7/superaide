@@ -10,10 +10,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { AskRequests } from '@/features/ask/AskRequests'
 import { CHANNEL_LABEL } from '@/features/dashboard/data'
 import { useNeedsYou } from '@/features/needs-you/useNeedsYou'
-import { AppError, call, type NeedsYouItem, type TriageFeedback, type TriageSettings, type TriageVerb } from '@/lib/api'
+import { call, type NeedsYouItem, type TriageFeedback, type TriageSettings, type TriageVerb } from '@/lib/api'
 import { formatWhen } from '@/lib/dates'
 import { wholeNumber } from '@/lib/numbers'
 import { useSession } from '@/lib/session-context'
+import { errorMessage } from '@/lib/action'
 
 type Tab = 'needs_you' | 'handled' | 'held'
 
@@ -48,7 +49,7 @@ export function NeedsYouPage() {
       await fn()
       await reload()
     } catch (e) {
-      setProblem(e instanceof AppError ? e.message : String(e))
+      setProblem(errorMessage(e))
     } finally {
       setBusy(false)
     }
@@ -251,7 +252,7 @@ function SettingsPanel({ name }: { name: string }) {
         setLoadedAt(Date.now())
         setTopics(s.silenced_topics.join(', '))
       })
-      .catch((e) => setProblem(e instanceof AppError ? e.message : String(e)))
+      .catch((e) => setProblem(errorMessage(e)))
   }, [])
 
   async function save(path: string, json: unknown, method: 'POST' | 'PUT' = 'POST') {
@@ -264,7 +265,7 @@ function SettingsPanel({ name }: { name: string }) {
       setLoadedAt(Date.now())
       setSaved(true)
     } catch (e) {
-      setProblem(e instanceof AppError ? e.message : String(e))
+      setProblem(errorMessage(e))
     } finally {
       setSaving(false)
     }

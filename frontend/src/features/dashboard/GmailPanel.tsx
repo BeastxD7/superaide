@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import { Notice } from '@/components/site'
 import { Button } from '@/components/ui/button'
-import { AppError, call, type GmailStatus } from '@/lib/api'
+import { call, type GmailStatus } from '@/lib/api'
+import { errorMessage } from '@/lib/action'
 
 // What came back from Google's sign-in (?gmail=… on the Capabilities page).
 const RESULT: Record<string, { tone: 'info' | 'error'; text: string }> = {
@@ -27,7 +28,7 @@ export function GmailPanel({ name }: { name: string }) {
         setStatus(s)
         setResult(new URLSearchParams(window.location.search).get('gmail'))
       })
-      .catch((e) => live && setProblem(e instanceof AppError ? e.message : String(e)))
+      .catch((e) => live && setProblem(errorMessage(e)))
     return () => {
       live = false
     }
@@ -44,7 +45,7 @@ export function GmailPanel({ name }: { name: string }) {
       }
       setStatus(await call<GmailStatus>('/gmail'))
     } catch (e) {
-      setProblem(e instanceof AppError ? e.message : String(e))
+      setProblem(errorMessage(e))
     } finally {
       setBusy(false)
     }

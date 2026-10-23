@@ -16,6 +16,7 @@ import { VideoCall, type CallQuestion, type CallTurnResult } from '@/features/on
 import { VoiceIntro, type VoiceConfig } from '@/features/onboarding/voice/VoiceIntro'
 import { AccountMenu, Button, Notice } from '@/components/site'
 import { SessionProblem } from '@/components/SessionProblem'
+import { errorMessage } from '@/lib/action'
 
 export function Meet({ session }: { session: Session }) {
   const router = useRouter()
@@ -99,7 +100,7 @@ export function Meet({ session }: { session: Session }) {
         // is offered: its guard reads that state and would send the owner back here.
         if (v.done) await session.refresh()
       } catch (e) {
-        setError(e instanceof AppError ? e.message : String(e))
+        setError(errorMessage(e))
         setMessages((m) => m.filter((x) => !x.id.startsWith('local-')))
       } finally {
         setPending(false)
@@ -134,7 +135,7 @@ export function Meet({ session }: { session: Session }) {
       }
     } catch (e) {
       if (!(e instanceof AppError) || e.status !== 404) {
-        setError(e instanceof AppError ? e.message : String(e))
+        setError(errorMessage(e))
         return
       }
     }
@@ -144,7 +145,7 @@ export function Meet({ session }: { session: Session }) {
       setCallCount((n) => n + 1)
       setCalling(true)
     } catch (e) {
-      setError(e instanceof AppError ? e.message : String(e))
+      setError(errorMessage(e))
     }
   }, [])
 
@@ -157,7 +158,7 @@ export function Meet({ session }: { session: Session }) {
       try {
         await reload()
       } catch (e) {
-        setError(e instanceof AppError ? e.message : String(e))
+        setError(errorMessage(e))
       }
     },
     [reload],

@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { AppError, call } from '@/lib/api'
+import { call } from '@/lib/api'
+import { errorMessage } from '@/lib/action'
 
 // Load one /app endpoint for a dashboard page, with a way to reload it.
 export function useAppData<T>(path: string) {
@@ -17,7 +18,7 @@ export function useAppData<T>(path: string) {
           setError(null)
         },
         (e: unknown) => {
-          setError(e instanceof AppError ? e.message : String(e))
+          setError(errorMessage(e))
         },
       ),
     [path],

@@ -9,8 +9,9 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAppData } from '@/features/dashboard/data'
 import { GmailPanel } from '@/features/dashboard/GmailPanel'
-import { AppError, call, type SkillCard, type SkillOption } from '@/lib/api'
+import { call, type SkillCard, type SkillOption } from '@/lib/api'
 import { useSession } from '@/lib/session-context'
+import { errorMessage } from '@/lib/action'
 
 // Capabilities that wrap a branded service show that service's logo; the rest keep the generic piece.
 const SKILL_BRAND: Record<string, Brand> = {
@@ -56,7 +57,7 @@ export function SkillsPage({ google = null }: { google?: string | null }) {
       if (on && card.google_url === null) setProblem('Connect Google Calendar under Connections first, then come back to finish.')
       await reload()
     } catch (e) {
-      setProblem(e instanceof AppError ? e.message : String(e))
+      setProblem(errorMessage(e))
     } finally {
       setBusy(false)
     }
@@ -70,7 +71,7 @@ export function SkillsPage({ google = null }: { google?: string | null }) {
       setConsent(null)
       await reload()
     } catch (e) {
-      setProblem(e instanceof AppError ? e.message : String(e))
+      setProblem(errorMessage(e))
     } finally {
       setBusy(false)
     }

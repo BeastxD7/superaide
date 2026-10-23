@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { AppError, call } from '@/lib/api'
+import { errorMessage } from '@/lib/action'
 
 // One owner endpoint of the "Ask my Ava" link. `enabled` is false while the backend has the feature
 // off (it answers 404), so callers render nothing and the dashboard looks as it did before.
@@ -24,7 +25,7 @@ export function useAsk<T>(path: string) {
             setData(null)
             return
           }
-          setError(e instanceof AppError ? e.message : String(e))
+          setError(errorMessage(e))
         },
       ),
     [path],
