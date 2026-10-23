@@ -242,10 +242,6 @@ def resolve(session: Session, approval: Approval, *, approve: bool, decided_by: 
             payload["result"] = "Held: too many sends or deletes in a short time. Ava is paused; review and resume."
             approval.payload = payload
             return approval
-        _load_executors()
-        _log_executed(session, approval)
-        executor = EXECUTORS.get(approval.kind)
-        payload["result"] = executor(session, approval) if executor else "Approved. Nothing can carry this out yet."
         from superaide.policy import quote
 
         if quote.enabled() and quote.prepare_only(approval):
@@ -254,6 +250,7 @@ def resolve(session: Session, approval: Approval, *, approve: bool, decided_by: 
             )
         else:
             _load_executors()
+            _log_executed(session, approval)
             executor = EXECUTORS.get(approval.kind)
             payload["result"] = executor(session, approval) if executor else "Approved. Nothing can carry this out yet."
             if executor:
