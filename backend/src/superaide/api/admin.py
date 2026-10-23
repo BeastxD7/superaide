@@ -28,6 +28,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 from sqlalchemy import func, select
 
+from superaide.app.accounts import owner as hired_owner
 from superaide.audit import audit
 from superaide.brain.budget import BudgetGuard
 from superaide.config import get_settings
@@ -76,6 +77,21 @@ def _reason(request: Request) -> str:
     return " ".join(raw.split())
 
 
+ACCESS_LOG_WINDOW = timedelta(minutes=10)
+
+
+def _recently_logged(session: Any, path: str, reason: str) -> bool:
+    """The same screen was already opened with the same reason a moment ago: one visit is one entry in the owner's
+    log, not one per poll (the console refreshes every few seconds; issue #286). Changes (POST) are always logged."""
+    since = datetime.now(UTC) - ACCESS_LOG_WINDOW
+    rows = session.scalars(
+        select(AuditLog).where(
+            AuditLog.actor == "operator", AuditLog.action == "operator_access", AuditLog.created_at > since
+        )
+    )
+    return any((r.detail or {}).get("path") == path and (r.detail or {}).get("reason") == reason for r in rows)
+
+
 def _grant(request: Request) -> InstanceScope:
     reason = _reason(request)
     if len(reason) < MIN_REASON:
@@ -100,10 +116,11 @@ def _grant(request: Request) -> InstanceScope:
         else:
             scope = default_scope()
     with use_instance(scope), session_scope() as s:
-        audit(
-            s, "operator", "operator_access", path=request.url.path, method=request.method,
-            reason=reason[:500], query=str(request.url.query)[:300],
-        )  # fmt: skip
+        if request.method != "GET" or not _recently_logged(s, request.url.path, reason[:500]):
+            audit(
+                s, "operator", "operator_access", path=request.url.path, method=request.method,
+                reason=reason[:500], query=str(request.url.query)[:300],
+            )  # fmt: skip
     return scope
 
 
@@ -535,6 +552,13 @@ def unlink_identity(identity_id: uuid.UUID) -> dict[str, str]:
             raise HTTPException(404, "No such identity")
         if identity.person_id is None:
             raise HTTPException(409, "Already unlinked")
+        boss = hired_owner(s)
+        if identity.provider == "web" and boss is not None and identity.person_id == boss.id:
+            # The owner's own sign-in identity: without it chat treats the owner as a stranger while the rest of the
+            # app (which goes by the session) looks normal (issue #285).
+            raise HTTPException(
+                409, "This is the owner's own sign-in on the app. Unlinking it would lock them out of chat."
+            )
         unlink(s, identity, actor="dashboard", reason="unlinked from dashboard")
     return {"status": "unlinked"}
 
