@@ -447,6 +447,7 @@ textarea {
 .c-stats {
   display: grid;
   grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
+  grid-auto-rows: 1fr; /* every tile in every row the same height */
   gap: var(--s-4);
 }
 
@@ -454,7 +455,7 @@ textarea {
   display: grid;
   gap: var(--s-1);
   align-content: space-between;
-  min-height: 112px;
+  min-height: 128px;
   padding: var(--s-4) var(--s-5);
   border-radius: var(--r-tile);
   background: var(--mist);
@@ -838,6 +839,62 @@ input[type='checkbox'] {
   outline-offset: -2px;
 }
 
+/* Tile: the quiet inner block of a card. Stat tiles build on it. */
+.c-tile {
+  display: grid;
+  gap: var(--s-2);
+  align-content: start;
+  padding: var(--s-4) var(--s-5);
+  border-radius: var(--r-tile);
+  background: var(--mist);
+  min-width: 0;
+}
+
+.c-tile > .c-badge {
+  justify-self: start;
+}
+
+.c-tile-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.c-tile-name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.c-tile-text {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.c-subtitle {
+  margin: 0;
+  font-size: 15px;
+}
+
+/* Meter */
+.c-meter {
+  height: 12px;
+  border-radius: 6px;
+  background: var(--lilac);
+  overflow: hidden;
+}
+
+.c-meter-fill {
+  height: 100%;
+  border-radius: 6px;
+  background: var(--accent);
+  transition: width 400ms var(--ease);
+}
+
 /* ---- Connect and error screens ------------------------------------------- */
 
 .connect {
@@ -878,48 +935,6 @@ input[type='checkbox'] {
 
 /* ---- Overview ---------------------------------------------------------- */
 
-.live {
-  margin-bottom: 40px;
-  padding: 16px 20px;
-  border: 1px solid var(--rule);
-  border-radius: 12px;
-  background: var(--surface);
-}
-
-.live ul {
-  list-style: none;
-  margin: 10px 0 0;
-  padding: 0;
-  display: grid;
-  gap: 6px;
-}
-
-.live-row {
-  display: grid;
-  grid-template-columns: 12px 110px 1fr;
-  gap: 10px;
-  align-items: baseline;
-}
-
-.live-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--stranger);
-}
-
-.live-row.ok .live-dot {
-  background: var(--ok);
-}
-
-.live-name {
-  font-weight: 600;
-}
-
-.live-row.off .live-text {
-  color: var(--ink-quiet);
-}
-
 .hint {
   margin: -4px 0 12px;
   font-size: 14px;
@@ -937,27 +952,10 @@ input[type='checkbox'] {
   font-size: 13px;
 }
 
-.hero h1 {
-  font-size: clamp(30px, 4.4vw, 44px);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  max-width: 22ch;
-}
-
-.stage-word {
-  color: var(--trust);
-}
-
-.hero .lede {
-  margin-top: 10px;
-}
-
 .growth-frame {
-  margin-top: 28px;
-  border: 1px solid var(--rule);
-  border-radius: 12px;
+  border-radius: var(--r-tile);
   overflow: hidden;
-  background: var(--surface);
+  background: var(--mist);
 }
 
 .growth {
@@ -986,116 +984,6 @@ input[type='checkbox'] {
   font-size: 14px;
   font-weight: 600;
   fill: var(--trust);
-}
-
-.gates {
-  margin-top: 24px;
-}
-
-.gates ul {
-  list-style: none;
-  padding: 0;
-  margin: 12px 0 0;
-  display: grid;
-  gap: 2px;
-}
-
-.gate {
-  display: grid;
-  grid-template-columns: 18px minmax(180px, 280px) 1fr;
-  gap: 12px;
-  align-items: baseline;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--rule);
-}
-
-.gate-mark {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 2px solid var(--rule-strong);
-  transform: translateY(1px);
-}
-
-.gate-met .gate-mark {
-  background: var(--ok);
-  border-color: var(--ok);
-}
-
-.gate-unmet .gate-mark {
-  border-color: var(--refused);
-}
-
-.gate-label {
-  font-weight: 600;
-}
-
-.gate-later .gate-label {
-  color: var(--ink-quiet);
-}
-
-.gate-detail {
-  color: var(--ink-quiet);
-  font-size: 14px;
-}
-
-.spend-block {
-  margin-top: 48px;
-}
-
-.spend-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.meter {
-  margin: 14px 0 8px;
-  height: 14px;
-  border-radius: 7px;
-  background: var(--grid-strong);
-  overflow: hidden;
-}
-
-.meter-fill {
-  height: 100%;
-  background: var(--trust);
-  border-radius: 7px;
-  transition: width 400ms ease;
-}
-
-.facts {
-  margin-top: 48px;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 48px;
-}
-
-.facts dl {
-  margin: 12px 0 0;
-}
-
-.facts dl > div {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 9px 0;
-  border-bottom: 1px solid var(--rule);
-}
-
-.facts dt {
-  color: var(--ink-quiet);
-}
-
-.facts dd {
-  margin: 0;
-  font-weight: 700;
-}
-
-.facts .flag dd {
-  color: var(--refused);
 }
 
 /* ---- People ------------------------------------------------------------- */
@@ -1363,16 +1251,6 @@ summary {
 
 /* ---- Spend ---------------------------------------------------------------- */
 
-.spend-page {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 24px;
-}
-
-.spend-table tr.muted td {
-  color: var(--ink-quiet);
-}
-
 /* ---- Simulator -------------------------------------------------------------- */
 
 .sim {
@@ -1493,14 +1371,6 @@ blockquote {
     min-width: 640px;
   }
 
-  .gate {
-    grid-template-columns: 18px 1fr;
-  }
-
-  .gate-detail {
-    grid-column: 2;
-  }
-
   .log-row {
     grid-template-columns: 1fr;
     gap: 2px;
@@ -1509,12 +1379,6 @@ blockquote {
   .legacy-table {
     display: block;
     overflow-x: auto;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .meter-fill {
-    transition: none;
   }
 }
 
@@ -1604,7 +1468,8 @@ blockquote {
 
   .c-tab,
   .c-btn,
-  .c-chip {
+  .c-chip,
+  .c-meter-fill {
     transition: none;
   }
 }

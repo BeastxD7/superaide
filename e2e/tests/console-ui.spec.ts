@@ -87,6 +87,79 @@ test.describe('console design: one grid, every width', () => {
     })
   }
 
+  test('stat tiles and cards in a row have equal width and height, at both widths', async ({ page, api, owner }) => {
+    void owner
+    await api.ok(api.post('/app/chat', { text: 'Console design check' }))
+    for (const [width, height] of [[1440, 900], [390, 844]]) {
+      await page.setViewportSize({ width, height })
+      await openConsole(page)
+      for (const tab of ['Overview', 'Spend']) {
+        await goTo(page, tab)
+        // Tiles inside one stat row: same width and same height (within a pixel), whatever the screen.
+        for (const group of await page.locator('.c-stats').all()) {
+          const boxes = await group.locator('.c-stat').evaluateAll((els) => els.map((e) => ({ w: e.getBoundingClientRect().width, h: e.getBoundingClientRect().height })))
+          expect(boxes.length, `${tab}: stat tiles exist`).toBeGreaterThan(1)
+          for (const b of boxes) {
+            expect(Math.abs(b.w - boxes[0].w), `${tab} @${width}: equal tile widths`).toBeLessThanOrEqual(1)
+            expect(Math.abs(b.h - boxes[0].h), `${tab} @${width}: equal tile heights`).toBeLessThanOrEqual(1)
+          }
+        }
+        // Cards and tiles laid out by Grid: equal widths in each row, and no row holds one tile alone unless it is the only one.
+        for (const grid of await page.locator('.c-grid').all()) {
+          const kids = await grid.evaluateAll((els) => {
+            const items = Array.from(els[0].children).map((c) => c.getBoundingClientRect())
+            return items.map((r) => ({ w: r.width, top: Math.round(r.top) }))
+          })
+          for (const k of kids) expect(Math.abs(k.w - kids[0].w), `${tab} @${width}: equal widths in a grid`).toBeLessThanOrEqual(1)
+          const rows = new Map<number, number>()
+          for (const k of kids) rows.set(k.top, (rows.get(k.top) ?? 0) + 1)
+          if (kids.length > 1) expect(new Set(rows.values()).size, `${tab} @${width}: every grid row is full`).toBe(1)
+        }
+      }
+    }
+  })
+
+  test('Overview and Spend have no axe violations on a phone, and the growth chart scrolls by keyboard', async ({ page, api, owner }) => {
+    void owner
+    void api
+    await page.setViewportSize({ width: 390, height: 844 })
+    await openConsole(page)
+    await page.waitForTimeout(700) // entrance animation
+    expect(await violations(page), 'Overview @390').toEqual([])
+    await expect(page.getByRole('group', { name: /Growth track/ })).toHaveAttribute('tabindex', '0')
+    await goTo(page, 'Spend')
+    expect(await violations(page), 'Spend @390').toEqual([])
+  })
+
+  test('the spend table has uniform rows, a sticky header inside its own scroll area, and no axe violations', async ({ page, api }) => {
+    void api
+    const entries = Array.from({ length: 40 }, (_, i) => ({
+      id: `e${i}`,
+      purpose: i % 3 ? 'chat_reply' : 'extract_facts',
+      model: 'claude-haiku-4-5',
+      status: i === 3 ? 'reserved' : 'settled',
+      cost_usd: 0.0012 + i / 1e5,
+      reserved_usd: 0.002,
+      input_tokens: 1200 + i,
+      output_tokens: 80,
+      cache_read_tokens: 900,
+      at: new Date(Date.now() - i * 60_000).toISOString(),
+    }))
+    await page.route('**/api/api/spend', (r) =>
+      r.fulfill({ json: { summary: { cap_usd: 10, settled_usd: 0.05, reserved_usd: 0.002, remaining_usd: 9.95, calls: 40 }, entries } }),
+    )
+    await openConsole(page)
+    await goTo(page, 'Spend')
+    const table = page.getByRole('region', { name: 'Model calls, newest first' })
+    await expect(table.getByRole('row')).toHaveCount(41)
+    const heights = await table.locator('tbody tr').evaluateAll((rows) => rows.map((r) => Math.round(r.getBoundingClientRect().height)))
+    expect(new Set(heights).size, 'every row is the same height').toBe(1)
+    expect(await table.locator('th').first().evaluate((el) => getComputedStyle(el).position)).toBe('sticky')
+    expect(await table.evaluate((el) => el.scrollHeight > el.clientHeight), 'long tables scroll inside their own frame').toBe(true)
+    await expect(table.getByRole('row', { name: /reserved/ })).toHaveClass(/is-muted/)
+    expect(await violations(page)).toEqual([])
+  })
+
   test('the section tabs are reachable from the keyboard, in reading order, and show a focus ring', async ({ page, api }) => {
     void api
     await openConsole(page)

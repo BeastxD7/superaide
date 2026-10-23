@@ -4,6 +4,7 @@ import type { Overview as OverviewData } from '@/features/console/api'
 import { BrandIcon } from '@/components/BrandIcon'
 import { GrowthTrack } from '@/features/console/components/GrowthTrack'
 import { usd } from '@/features/console/format'
+import { Badge, Card, evenCols, Grid, Meter, PageHeader, Stat, Stats, Tile } from '@/features/console/ui'
 
 const STAGE_LINE: Record<string, string> = {
   Infant: 'It watches, asks and drafts. Everything it does still needs your approval.',
@@ -12,9 +13,10 @@ const STAGE_LINE: Record<string, string> = {
   Adult: 'It works inside its charter and helps train the next agent.',
 }
 
+const GATE_BADGE = { met: { tone: 'ok', text: 'Met' }, unmet: { tone: 'danger', text: 'Not met' }, later: { tone: 'neutral', text: 'Later' } } as const
+
 export function Overview({ data }: { data: OverviewData }) {
   const { spend, safety, counts } = data
-  const usedShare = Math.min(1, (spend.settled_usd + spend.reserved_usd) / spend.cap_usd)
 
   const real = data.model_mode.startsWith('Claude')
   const status = [
@@ -42,119 +44,90 @@ export function Overview({ data }: { data: OverviewData }) {
   ] as const
 
   return (
-    <div className="overview">
-      <section className="live" aria-labelledby="live-title">
-        <h2 id="live-title">What is live right now</h2>
-        <ul>
-          {status.map((s) => (
-            <li key={s.name} className={s.ok ? 'live-row ok' : 'live-row off'}>
-              <span className="live-dot" aria-hidden="true" />
-              <span className="live-name brand-label">
-                <BrandIcon brand={s.brand} size={14} decorative />
-                {s.name}
-              </span>
-              <span className="live-text">{s.ok ? s.on : s.off}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
+    <>
+      <PageHeader
+        title={
+          <>
+            {data.agent_name} is at the <em>{data.stage}</em> stage
+          </>
+        }
+        description={STAGE_LINE[data.stage]}
+      />
 
-      <section className="hero" aria-labelledby="stage-title">
-        <h1 id="stage-title">
-          {data.agent_name} is at the <span className="stage-word">{data.stage}</span> stage
-        </h1>
-        <p className="lede">{STAGE_LINE[data.stage] ?? ''}</p>
-        <div className="growth-frame">
+      <Card title="What is live right now" titleId="live-title">
+        <Grid cols={3}>
+          {status.map((s) => (
+            <Tile key={s.name}>
+              <div className="c-tile-head">
+                <span className="c-tile-name">
+                  <BrandIcon brand={s.brand} size={16} decorative />
+                  {s.name}
+                </span>
+                <Badge tone={s.ok ? 'ok' : 'warn'} dot>
+                  {s.ok ? 'On' : 'Off'}
+                </Badge>
+              </div>
+              <p className="c-tile-text">{s.ok ? s.on : s.off}</p>
+            </Tile>
+          ))}
+        </Grid>
+      </Card>
+
+      <Card title="Growth" titleId="growth-title">
+        <div className="growth-frame" tabIndex={0} role="group" aria-label="Growth track, scrolls sideways on a small screen">
           <GrowthTrack stage={data.stage} gates={data.gates} />
         </div>
-        <div className="gates">
-          <h2>Gates to {data.next_stage}</h2>
-          <ul>
-            {data.gates.map((g) => (
-              <li key={g.label} className={`gate gate-${g.status}`}>
-                <span className="gate-mark" aria-hidden="true" />
-                <span className="gate-label">{g.label}</span>
-                <span className="gate-detail">{g.detail}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
+        <h3 className="c-subtitle">Gates to {data.next_stage}</h3>
+        <Grid cols={evenCols(data.gates.length)}>
+          {data.gates.map((g) => (
+            <Tile key={g.label}>
+              <Badge tone={GATE_BADGE[g.status].tone} dot>
+                {GATE_BADGE[g.status].text}
+              </Badge>
+              <p className="c-tile-name">{g.label}</p>
+              <p className="c-tile-text">{g.detail}</p>
+            </Tile>
+          ))}
+        </Grid>
+      </Card>
 
-      <section className="spend-block" aria-labelledby="spend-title">
-        <div className="spend-head">
-          <h2 id="spend-title">Claude API spend</h2>
-          <p>
-            <strong className="num">{usd(spend.settled_usd)}</strong> of {usd(spend.cap_usd, 2)} cap, {spend.calls}{' '}
-            {spend.calls === 1 ? 'call' : 'calls'}. The cap is enforced before every call.
-          </p>
-        </div>
-        <div className="meter" role="meter" aria-label="Claude API spend against the cap" aria-valuemin={0} aria-valuemax={spend.cap_usd} aria-valuenow={spend.settled_usd}>
-          <div className="meter-fill" style={{ width: `${Math.max(usedShare * 100, usedShare > 0 ? 0.6 : 0)}%` }} />
-        </div>
+      <Card
+        title="Claude API spend"
+        titleId="spend-title"
+        description={
+          <>
+            {usd(spend.settled_usd)} of {usd(spend.cap_usd, 2)} cap, {spend.calls} {spend.calls === 1 ? 'call' : 'calls'}. The cap is enforced before every call.
+          </>
+        }
+      >
+        <Meter label="Claude API spend against the cap" value={spend.settled_usd} max={spend.cap_usd} />
         <p className="quiet">
           {usd(spend.remaining_usd)} left. Model: {data.model_mode}.
         </p>
-      </section>
+      </Card>
 
-      <div className="facts">
-        <section aria-labelledby="checks-title">
-          <h2 id="checks-title">Identity checks</h2>
-          <dl>
-            <div>
-              <dt>Messages from unlinked accounts</dt>
-              <dd className="num">{safety.stranger_messages}</dd>
-            </div>
-            <div>
-              <dt>Codes sent to a trusted channel</dt>
-              <dd className="num">{safety.link_codes_sent}</dd>
-            </div>
-            <div>
-              <dt>Channels linked with a code</dt>
-              <dd className="num">{safety.links_made}</dd>
-            </div>
-            <div className={safety.refused_actions ? 'flag' : ''}>
-              <dt>Requests refused</dt>
-              <dd className="num">{safety.refused_actions}</dd>
-            </div>
-            <div className={safety.rejected_webhooks ? 'flag' : ''}>
-              <dt>Unverified messages dropped</dt>
-              <dd className="num">{safety.rejected_webhooks}</dd>
-            </div>
-          </dl>
-        </section>
-        <section aria-labelledby="knows-title">
-          <h2 id="knows-title">What {data.agent_name} knows</h2>
-          <dl>
-            <div>
-              <dt>People</dt>
-              <dd className="num">{counts.people}</dd>
-            </div>
-            <div>
-              <dt>Linked channels</dt>
-              <dd className="num">
-                {counts.linked_identities} of {counts.identities}
-              </dd>
-            </div>
-            <div>
-              <dt>Conversations</dt>
-              <dd className="num">{counts.conversations}</dd>
-            </div>
-            <div>
-              <dt>Messages in the last 24 hours</dt>
-              <dd className="num">{counts.messages_24h}</dd>
-            </div>
-            <div>
-              <dt>Private memories</dt>
-              <dd className="num">{counts.memories}</dd>
-            </div>
-            <div className={counts.pending_approvals ? 'flag' : ''}>
-              <dt>Waiting for your approval</dt>
-              <dd className="num">{counts.pending_approvals}</dd>
-            </div>
-          </dl>
-        </section>
-      </div>
-    </div>
+      <Grid cols={2}>
+        <Card title="Identity checks" titleId="checks-title">
+          <Stats cols={3} label="Identity checks">
+            <Stat label="Messages from unlinked accounts" value={safety.stranger_messages} />
+            <Stat label="Codes sent to a trusted channel" value={safety.link_codes_sent} />
+            <Stat label="Channels linked with a code" value={safety.links_made} />
+            <Stat label="Requests refused" value={safety.refused_actions} tone={safety.refused_actions ? 'danger' : 'neutral'} />
+            <Stat label="Unverified messages dropped" value={safety.rejected_webhooks} tone={safety.rejected_webhooks ? 'danger' : 'neutral'} />
+            <Stat label="Model calls blocked" value={safety.refused_model_calls} tone={safety.refused_model_calls ? 'warn' : 'neutral'} />
+          </Stats>
+        </Card>
+        <Card title={`What ${data.agent_name} knows`} titleId="knows-title">
+          <Stats cols={3} label={`What ${data.agent_name} knows`}>
+            <Stat label="People" value={counts.people} />
+            <Stat label="Linked channels" value={`${counts.linked_identities} of ${counts.identities}`} />
+            <Stat label="Conversations" value={counts.conversations} />
+            <Stat label="Messages in the last 24 hours" value={counts.messages_24h} />
+            <Stat label="Private memories" value={counts.memories} />
+            <Stat label="Waiting for your approval" value={counts.pending_approvals} tone={counts.pending_approvals ? 'warn' : 'neutral'} />
+          </Stats>
+        </Card>
+      </Grid>
+    </>
   )
 }
