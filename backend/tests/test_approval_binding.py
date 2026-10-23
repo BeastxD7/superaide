@@ -22,7 +22,13 @@ def request_send(gmail_fake, text: str = "See you Friday.") -> str:
     gmail_fake.add(mail("m1", thread="t1"))
     connect(scopes=(api.READONLY, api.COMPOSE), drafts=True)
     with session_scope() as s:
-        content, err = gmail.run(s, hired_owner(s), "gmail_send", {"thread_id": "t1", "text": text}, tainted=False)
+        content, err = gmail.run(
+            s,
+            hired_owner(s),
+            "gmail_send",
+            {"thread_id": "t1", "text": text, "reaches_a_person": "yes", "evidence": "x"},
+            tainted=False,
+        )
         assert not err, content
         return str(s.scalar(select(Approval.id)))
 

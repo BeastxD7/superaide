@@ -20,8 +20,9 @@ Everything is per instance: the sign-in is in the instance's vault slot ("google
 from __future__ import annotations
 
 import logging
+import re
 from datetime import UTC, datetime
-from email.utils import parsedate_to_datetime
+from email.utils import parseaddr, parsedate_to_datetime
 from typing import Any
 
 from sqlalchemy import select
@@ -32,6 +33,7 @@ from superaide.config import get_settings
 from superaide.connectors import gmail as api
 from superaide.connectors import google
 from superaide.db.models import Approval, InstalledSkill, Person
+from superaide.policy import recipients
 from superaide.policy.binding import content_hash, seal
 
 SKILL_ID = "superaide/gmail"
@@ -214,10 +216,95 @@ def read_thread(session: Session, owner: Person, args: dict[str, Any]) -> tuple[
     return out or "That thread is empty.", not out
 
 
+# --- pre-flight (issue #327) ------------------------------------------------------------------
+
+_EMAIL_IN_TEXT = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+REACHES = {"yes", "no", "unknown"}
+
+
+def preflight(
+    session: Session, found: dict[str, Any], original: dict[str, Any], to: str
+) -> tuple[list[str], list[str], list[str]]:
+    """(signals that the mail would not reach a person, human addresses the thread offers, notes for the card).
+
+    Read in code from the whole thread (the model never sees addresses). It never changes the recipient:
+    alternatives are only named so the owner and Ava can choose."""
+    mine = address(session)
+    signals: list[str] = []
+    alternatives: list[str] = []
+    notes: list[str] = []
+
+    def add(signal: str) -> None:
+        if signal not in signals:
+            signals.append(signal)
+
+    messages = [m for m in found.get("messages") or [] if api.sender(m)[1] != mine]
+    if recipients.automated_address(to):
+        add(f"the address {to} looks automated (no person reads it)")
+    for m in messages:
+        if api.sender(m)[1] != to:
+            continue
+        text = api.body_text(m)
+        if recipients.says_not_monitored(text):
+            add("the thread says this sender address is not monitored")
+        if recipients.names_another_route(text):
+            add("the thread names a contact page, phone or portal as the way to reach them")
+    reply_to = parseaddr(api.headers(original).get("reply-to", ""))[1].lower()
+    if reply_to and reply_to != to:
+        if recipients.automated_address(reply_to):
+            add(f"its Reply-To ({reply_to}) is automated too")
+        else:
+            notes.append(f"Its Reply-To is a different address: {reply_to}")
+            alternatives.append(reply_to)
+    for m in messages:  # a human address written in the mail's own text (a signature, "write to us at")
+        for addr in _EMAIL_IN_TEXT.findall(api.body_text(m))[:5]:
+            addr = addr.lower()
+            if addr not in {to, mine} and not recipients.automated_address(addr) and addr not in alternatives:
+                alternatives.append(addr)
+    return signals, alternatives[:3], notes
+
+
+def seen_before(session: Session, found: dict[str, Any], to: str) -> bool:
+    """Whether the owner's mail has anything else with this address: mail in another thread, or mail they sent."""
+    thread_id = str(found.get("id") or "")
+    try:
+        client, tok = api.http_client(), token(session)
+        for mid in api.search(client, tok, f"from:{to} OR to:{to}", 5):
+            msg = api.message(client, tok, mid, fmt="metadata")
+            if msg is None:
+                continue
+            h = api.headers(msg)
+            touches = to in (api.sender(msg)[1], *api.recipients(msg)) or to in h.get("from", "").lower()
+            if touches and (str(msg.get("threadId")) != thread_id or "SENT" in (msg.get("labelIds") or [])):
+                return True
+    except NotReady, google.GoogleError:
+        return True  # can't tell: no warning chip rather than a wrong one
+    return False
+
+
+def refusal(signals: list[str], alternatives: list[str], reaches: str, evidence: str) -> str:
+    alt = (
+        "Addresses found in that thread that a person may read (the owner must choose; do NOT switch yourself): "
+        + ", ".join(alternatives)
+        + ". "
+        if alternatives
+        else ""
+    )
+    found = "; ".join(signals) if signals else f"you said reaches_a_person={reaches}"
+    return (
+        f"Refused, NO approval was created: this would not reach a person ({found}). {alt}"
+        "Tell the owner plainly what you found, with no hedging and without asking them to approve anything. "
+        "Offer: a contact page or phone for the owner to use, a draft in Gmail, or a self-contained email to a "
+        "human address (give the text). Do not call gmail_send again for this address."
+    )
+
+
 # --- replying -------------------------------------------------------------------------------
 
 
-def _draft(session: Session, args: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any], str]:
+def _draft(
+    session: Session, args: dict[str, Any], ctx: dict[str, Any] | None = None
+) -> tuple[dict[str, Any], dict[str, Any], str]:
     """Save a reply draft in the thread. (draft, the message replied to, recipient). Raises NotReady."""
     if not can_read(session):
         raise NotReady("Gmail isn't connected yet. Ask the owner to connect it under Capabilities → Gmail.")
@@ -239,6 +326,13 @@ def _draft(session: Session, args: dict[str, Any]) -> tuple[dict[str, Any], dict
         raise NotReady("There's no one to reply to in that thread.")
     original = theirs[-1]
     to = api.sender(original)[1]  # chosen here, from the thread: never an address the model wrote
+    if ctx is not None:  # gmail_send: read the history first; nothing is saved or asked unless a person is reached
+        reaches = str(args.get("reaches_a_person") or "unknown").lower()
+        signals, alternatives, notes = preflight(session, found, original, to)
+        ctx.update(found=found, notes=notes, reaches=reaches, evidence=str(args.get("evidence") or "")[:300])
+        if signals or reaches != "yes":
+            audit(session, "policy", "action_refused", kind="gmail_send", reason="would not reach a person")
+            raise NotReady(refusal(signals, alternatives, reaches, str(args.get("evidence") or "")))
     from superaide.principal import card
 
     raw = api.reply_raw(original=original, to=[to], from_addr=mine, text=text[:5000] + card.footer(session))
@@ -265,8 +359,9 @@ def send(session: Session, owner: Person, args: dict[str, Any], *, tainted: bool
     """Never sends: saves the draft and asks the owner to approve sending exactly that draft."""
     from superaide.triage.store import current_stage
 
+    ctx: dict[str, Any] = {}
     try:
-        draft, original, to = _draft(session, args)
+        draft, original, to = _draft(session, args, ctx)
     except NotReady as exc:
         return google.tool_text(exc), True
     except google.GoogleError as exc:
@@ -282,7 +377,14 @@ def send(session: Session, owner: Person, args: dict[str, Any], *, tainted: bool
     approval = Approval(
         kind="gmail_send",
         payload={
-            "summary": f"Email {name + ' ' if name else ''}<{to}>, “{api.subject(original)}”: {text}",
+            "summary": f"To: {name + ' ' if name else ''}<{to}> · Subject: {_reply_subject(original)} · {text}",
+            "subject": _reply_subject(original),
+            "warnings": (
+                ["New recipient: not seen before in your mail."] if not seen_before(session, ctx["found"], to) else []
+            )
+            + list(ctx["notes"]),
+            "reaches_a_person": ctx["reaches"],
+            "evidence": ctx["evidence"],
             "content_hash": bound,
             "draft_id": str(draft.get("id", "")),
             "thread_id": str(original.get("threadId", "")),
@@ -300,6 +402,11 @@ def send(session: Session, owner: Person, args: dict[str, Any], *, tainted: bool
         "Saved as a draft and waiting for the owner's approval on their dashboard; it is sent only when they "
         "approve. Tell them it's waiting."
     ), False
+
+
+def _reply_subject(original: dict[str, Any]) -> str:
+    subj = api.subject(original).strip()
+    return subj if subj.lower().startswith("re:") else f"Re: {subj}".strip()
 
 
 def _draft_hash(msg: dict[str, Any] | None) -> str:

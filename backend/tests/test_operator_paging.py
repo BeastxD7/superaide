@@ -348,3 +348,217 @@ def test_operator_events_query_on_skewed_data_uses_the_right_index_per_filter():
                 ),
             )
             assert "ix_event_agent_created" in plan and "'Sort'" not in plan and not event_seq_scan(plan), plan
+
+
+# --- memories, approvals, people (ADR 0014, 0079) ----------------------------------------------------------------
+
+
+def walk_page(api, path: str, limit: int = 10) -> list[dict]:
+    seen: list[dict] = []
+    cursor = None
+    while True:
+        r = api.get(path, params={"limit": limit, **({"cursor": cursor} if cursor else {})}, headers=ADMIN)
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert set(body) == {"items", "next_cursor", "has_more", "total_estimate"}
+        seen += body["items"]
+        cursor = body["next_cursor"]
+        assert body["has_more"] == (cursor is not None)
+        if not cursor:
+            return seen
+
+
+def seed_people(n: int, identities_each: int = 1, unlinked: int = 0) -> None:
+    from superaide.db.models import ChannelIdentity, IdentityLinkEvent, Person
+
+    base = datetime(2026, 1, 1, tzinfo=UTC)
+    with session_scope() as s:
+        for i in range(n):
+            p = Person(display_name=f"Person {i}", relation="external", created_at=base + timedelta(minutes=i))
+            s.add(p)
+            s.flush()
+            for j in range(identities_each):
+                ident = ChannelIdentity(person_id=p.id, provider="telegram", stable_key=f"tg-{i}-{j}")
+                s.add(ident)
+                s.flush()
+                s.add(IdentityLinkEvent(identity_id=ident.id, person_id=p.id, action="link", method="x", actor="op"))
+        for k in range(unlinked):
+            s.add(
+                ChannelIdentity(
+                    person_id=None, provider="slack", stable_key=f"stranger-{k}", created_at=base + timedelta(minutes=k)
+                )
+            )
+
+
+def test_memories_and_approvals_pages_walk_every_row_once_newest_first(api):
+    from superaide.db.models import Approval, MemoryItem
+
+    base = datetime(2026, 1, 1, tzinfo=UTC)
+    with session_scope() as s:
+        for i in range(23):
+            s.add(MemoryItem(content=f"fact {i}", created_at=base + timedelta(minutes=i)))
+            s.add(Approval(kind="send_email", payload={"summary": f"s{i}"}, created_at=base + timedelta(minutes=i)))
+    for path in ("/api/memories/page", "/api/approvals/page"):
+        rows = walk_page(api, path)
+        assert len(rows) == 23 == len({r["id"] for r in rows})
+        ats = [r["at"] for r in rows]
+        assert ats == sorted(ats, reverse=True)
+    mem = walk_page(api, "/api/memories/page")
+    assert set(mem[0]) == {"id", "content", "allowed_kind", "allowed_people", "min_trust", "at"}
+    # same rows as the unpaged route (additive: it still answers)
+    assert len(api.get("/api/memories", headers=ADMIN).json()) == 23
+
+
+def test_people_page_nests_identities_and_bounds_link_events(api, monkeypatch):
+    from superaide.api import admin
+
+    monkeypatch.setattr(admin, "LINK_EVENTS_PER_PERSON", 2)
+    seed_people(12, identities_each=3, unlinked=7)
+    rows = walk_page(api, "/api/people/page", limit=5)
+    assert len(rows) == 12 == len({r["id"] for r in rows})
+    assert all(len(r["identities"]) == 3 for r in rows)
+    assert all(len(r["link_events"]) == 2 for r in rows)  # 3 happened, the newest 2 are shown
+    assert rows[0]["name"] == "Person 0"  # oldest first, like the old route
+    stray = walk_page(api, "/api/people/unlinked/page", limit=3)
+    assert len(stray) == 7 == len({r["id"] for r in stray})
+    assert all(r["stable_key"].startswith("stranger-") for r in stray)
+
+
+@pytest.mark.parametrize(
+    "path", ["/api/memories/page", "/api/approvals/page", "/api/people/page", "/api/people/unlinked/page"]
+)
+def test_operator_list_pages_are_gated_and_validated(api, path):
+    assert api.get(path).status_code == 401
+    assert api.get(path, headers={"Authorization": ADMIN["Authorization"]}).status_code == 403  # no reason
+    for bad in ({"limit": 0}, {"limit": 101}, {"cursor": "junk"}):
+        r = api.get(path, params=bad, headers=ADMIN)
+        assert r.status_code == 422 and r.json()["status"] == "error"
+
+
+def test_a_cursor_does_not_move_between_operator_lists(api):
+    seed_people(6)
+    cursor = api.get("/api/people/page", params={"limit": 2}, headers=ADMIN).json()["next_cursor"]
+    assert cursor
+    for other in ("/api/memories/page", "/api/approvals/page", "/api/conversations/page"):
+        r = api.get(other, params={"cursor": cursor}, headers=ADMIN)
+        assert r.status_code == 422 and r.json()["error"]["code"] == "invalid_cursor"
+
+
+def test_operator_list_queries_use_their_indexes():
+    from superaide.db.models import Approval, ChannelIdentity, MemoryItem, Person
+
+    base = datetime(2026, 1, 1, tzinfo=UTC)
+    with session_scope() as s:
+        agent_id = s.scalar(select(text("current_setting('server_version')")))  # warm the connection
+        s.add(Context(provider="web", tenant_scope="", external_id="probe", kind="dm", audience_class="private_1to1"))
+        s.flush()
+        agent_id = s.scalar(select(Context.agent_id))
+        tenant_id = s.scalar(select(Context.tenant_id))
+        common = {"tenant_id": tenant_id, "agent_id": agent_id}
+        s.bulk_insert_mappings(
+            MemoryItem,
+            [
+                {"id": uuid.uuid4(), "content": "x", "created_at": base + timedelta(seconds=i), **common}
+                for i in range(20000)
+            ],
+        )
+        s.bulk_insert_mappings(
+            Approval,
+            [
+                {"id": uuid.uuid4(), "kind": "k", "created_at": base + timedelta(seconds=i), **common}
+                for i in range(20000)
+            ],
+        )
+        s.bulk_insert_mappings(
+            Person,
+            [
+                {"id": uuid.uuid4(), "display_name": "p", "created_at": base + timedelta(seconds=i), **common}
+                for i in range(20000)
+            ],
+        )
+        s.bulk_insert_mappings(
+            ChannelIdentity,
+            [
+                {
+                    "id": uuid.uuid4(),
+                    "provider": "slack",
+                    "stable_key": f"k{i}",
+                    "created_at": base + timedelta(seconds=i),
+                    **common,
+                }
+                for i in range(20000)
+            ],
+        )
+    # Skew: three other instances hold three times as many rows as ours, over the same time range, so the
+    # instance filter is what makes the index worth using (the planner must not scan everyone's rows).
+    with session_scope() as s:
+        for _ in range(3):
+            other = {"tenant_id": tenant_id, "agent_id": uuid.uuid4()}
+            s.bulk_insert_mappings(
+                MemoryItem,
+                [
+                    {"id": uuid.uuid4(), "content": "x", "created_at": base + timedelta(seconds=i), **other}
+                    for i in range(20000)
+                ],
+            )
+            s.bulk_insert_mappings(
+                Approval,
+                [
+                    {"id": uuid.uuid4(), "kind": "k", "created_at": base + timedelta(seconds=i), **other}
+                    for i in range(20000)
+                ],
+            )
+            s.bulk_insert_mappings(
+                Person,
+                [
+                    {"id": uuid.uuid4(), "display_name": "p", "created_at": base + timedelta(seconds=i), **other}
+                    for i in range(20000)
+                ],
+            )
+            s.bulk_insert_mappings(
+                ChannelIdentity,
+                [
+                    {
+                        "id": uuid.uuid4(),
+                        "provider": "slack",
+                        "stable_key": f"o{i}",
+                        "created_at": base + timedelta(seconds=i),
+                        **other,
+                    }
+                    for i in range(20000)
+                ],
+            )
+    cases = [
+        (MemoryItem, True, "ix_memory_item_agent_created", select(MemoryItem)),
+        (Approval, True, "ix_approval_agent_created", select(Approval)),
+        (Person, False, "ix_person_agent_created", select(Person)),
+        (
+            ChannelIdentity,
+            False,
+            "ix_identity_unlinked",
+            select(ChannelIdentity).where(ChannelIdentity.person_id.is_(None)),
+        ),
+    ]
+    with session_scope() as s:
+        for model, desc, index, base_q in cases:
+            s.execute(text(f"ANALYZE {model.__tablename__}"))
+            keys = [SortKey(model.created_at, desc=desc), SortKey(model.id, desc=desc)]
+            mid = encode_cursor(
+                [base + timedelta(seconds=10000), uuid.UUID(int=0 if not desc else 2**127)],
+                keys,
+                endpoint="z",
+                bind=bind_for("o"),
+            )
+            for cursor in (None, mid):
+                plan = explain(
+                    s,
+                    page_query(
+                        base_q.where(model.agent_id == agent_id),
+                        keys,
+                        endpoint="z",
+                        bind=bind_for("o"),
+                        limit=50,
+                        cursor=cursor,
+                    ),
+                )
+                assert index in plan and "'Sort'" not in plan and "Seq Scan" not in plan, (model.__name__, plan)

@@ -8,7 +8,7 @@
       fake:
         tools:
           - name: propose_action
-            input: {kind: message_someone_else, summary: "Tell Priya: I'll be 10 minutes late to the 3pm.", rationale: "owner asked"}
+            input: {kind: message_someone_else, summary: "Tell Priya: I'll be 10 minutes late to the 3pm.", rationale: "owner asked", reaches_a_person: "yes"}
         reply: "I've queued that message to Priya for your approval on the dashboard."
       expect:
         - tool_called: propose_action

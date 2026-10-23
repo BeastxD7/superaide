@@ -449,6 +449,9 @@ export type ApprovalItem = {
   summary: string
   // One line: what really happens when the owner says yes. executes=false: nothing can carry it out (#326).
   on_approval?: string
+  // The facts to decide on, first (an email: To, Subject), and warning chips (a recipient not seen before).
+  fields?: { label: string; value: string }[]
+  warnings?: string[]
   executes?: boolean
   requested_by: string | null
   // `expired`: still unanswered but past its time limit, so it can no longer be approved.

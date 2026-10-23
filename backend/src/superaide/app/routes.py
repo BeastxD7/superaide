@@ -208,6 +208,17 @@ class CallAnswerBody(BaseModel):
     transcript: str = Field(default="", max_length=8000)
 
 
+def _card_fields(a: Approval) -> list[dict[str, str]]:
+    """The facts the owner decides on, first: who gets it and what it is called."""
+    p = a.payload or {}
+    if a.kind != "gmail_send" or not p.get("to"):
+        return []
+    return [
+        {"label": "To", "value": ", ".join(str(x) for x in p.get("to") or [])},
+        {"label": "Subject", "value": str(p.get("subject") or "")},
+    ]
+
+
 def make_router(get_agent: Callable[[], Any]) -> APIRouter:
     router = APIRouter(prefix="/app", dependencies=[Depends(require_csrf_header), Depends(reject_nul_text)])
 
@@ -1353,6 +1364,8 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                     "id": str(a.id),
                     "kind": a.kind,
                     "summary": (a.payload or {}).get("summary", ""),
+                    "fields": _card_fields(a),  # To and Subject first, for an email
+                    "warnings": list((a.payload or {}).get("warnings") or []),
                     "on_approval": kinds.on_approval(a.kind),  # what yes does, one line
                     "executes": kinds.has_executor(a.kind),  # False: approving will not do anything (#326)
                     "requested_by": names.get(a.requested_by_person_id) if a.requested_by_person_id else None,
