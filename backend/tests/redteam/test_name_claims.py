@@ -33,7 +33,8 @@ def world(agent):
     c = TestClient(create_app(agent), headers={"X-Requested-With": "superaide"})
     assert (
         c.post(
-            "/auth/signup", json={"name": "Jordan Whitfield", "email": "s@example.com", "password": "correct horse battery"}
+            "/auth/signup",
+            json={"name": "Jordan Whitfield", "email": "s@example.com", "password": "correct horse battery"},
         ).status_code
         == 200
     )

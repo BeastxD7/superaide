@@ -163,9 +163,7 @@ def test_the_brain_routes_need_the_owner(browser):
 def test_a_corrected_fact_stays_on_the_map_struck_through_and_points_at_its_replacement(browser):
     a, _ = owners(browser)
     ids = seed()
-    new_id = a.post(f"/app/brain/facts/{ids['old']}/correct", json={"text": "Jordan lives in Singapore."}).json()[
-        "id"
-    ]
+    new_id = a.post(f"/app/brain/facts/{ids['old']}/correct", json={"text": "Jordan lives in Singapore."}).json()["id"]
     m = a.get("/app/brain").json()
     by_id = {n["id"]: n for n in m["nodes"]}
     old, new = by_id[f"fact:{ids['old']}"], by_id[f"fact:{new_id}"]

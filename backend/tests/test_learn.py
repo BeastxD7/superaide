@@ -52,9 +52,7 @@ def real_brain(agent, monkeypatch):
         if purpose == "intro_facts":
             return FactList(
                 facts=[
-                    Fact(
-                        content="Jordan is moving to the Bangalore office in January.", category="work", confidence=1
-                    ),
+                    Fact(content="Jordan is moving to the Bangalore office in January.", category="work", confidence=1),
                     Fact(content="Arjun will run the Singapore team.", category="person", confidence=0.9),
                 ]
             )

@@ -67,9 +67,7 @@ def test_old_time_bound_note_stops_outranking_a_fresher_one_but_an_old_about_fac
             remember_fact(s, owner=o, content="Jordan's offsite plan: Lisbon is the venue.", category="availability"),
             1,
         )
-        old_role = aged(
-            remember_fact(s, owner=o, content="Jordan's role: founder of Orchard.", category="about"), 400
-        )
+        old_role = aged(remember_fact(s, owner=o, content="Jordan's role: founder of Orchard.", category="about"), 400)
         new_role = aged(remember_fact(s, owner=o, content="Jordan's role: advisor to Orchard.", category="other"), 1)
         s.flush()
         plans = [r.text for r in recall_memories(s, aud, "offsite plan venue")]

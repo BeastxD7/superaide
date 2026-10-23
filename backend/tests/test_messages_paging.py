@@ -23,7 +23,8 @@ def browser(agent):
 def hired(browser, email: str) -> TestClient:
     c = browser()
     assert (
-        c.post("/auth/signup", json={"name": "Jordan Whitfield", "email": email, "password": PASSWORD}).status_code == 200
+        c.post("/auth/signup", json={"name": "Jordan Whitfield", "email": email, "password": PASSWORD}).status_code
+        == 200
     )
     assert c.post("/app/hire", json={"agent": "ava", "accepted_notice": True}).status_code == 200
     return c

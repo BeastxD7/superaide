@@ -57,7 +57,12 @@ def test_a_private_chat_is_a_dm_with_the_numeric_ids_as_strings():
     )
     assert msg is not None
     assert (msg.provider, msg.tenant_scope, msg.sender_id, msg.chat_id) == ("telegram", "", "1001", "1001")
-    assert (msg.chat_kind, msg.message_id, msg.sender_display, msg.sender_username) == ("dm", "7", "Jordan Whitfield", "jw")
+    assert (msg.chat_kind, msg.message_id, msg.sender_display, msg.sender_username) == (
+        "dm",
+        "7",
+        "Jordan Whitfield",
+        "jw",
+    )
     assert msg.verified is True and msg.raw["update_id"] == 1
 
 

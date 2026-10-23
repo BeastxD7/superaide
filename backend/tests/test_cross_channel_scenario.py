@@ -111,9 +111,7 @@ def test_one_owner_three_channels(world, agent):
     m["hits"] += LEARNED in _last(ava) and LEARNED in found
 
     # 4. Slack DM, said again differently: still one fact, now with two sources.
-    ava.next_facts = [
-        Fact(content="Jordan dislikes the color black.", category="preference", confidence=1, same_as=-1)
-    ]
+    ava.next_facts = [Fact(content="Jordan dislikes the color black.", category="preference", confidence=1, same_as=-1)]
     agent.handle(sl(SLACK_ME, "I really can't stand black as a colour"))
     run_due()
     with session_scope() as s:

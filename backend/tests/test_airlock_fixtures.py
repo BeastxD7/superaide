@@ -221,7 +221,9 @@ def test_known_people_come_from_the_database_and_the_owner_stays(monkeypatch, ag
 
     monkeypatch.setattr(get_settings(), "airlock_enabled", True)
     c = TestClient(create_app(agent), headers={"X-Requested-With": "superaide"})
-    c.post("/auth/signup", json={"name": "Jordan Whitfield", "email": "s@example.com", "password": "correct horse battery"})
+    c.post(
+        "/auth/signup", json={"name": "Jordan Whitfield", "email": "s@example.com", "password": "correct horse battery"}
+    )
     c.post("/app/hire", json={"agent": "ava", "accepted_notice": True})
     with session_scope() as s:
         add_contact(s, owner=owner(s), name="Priya Tan", relationship="colleague")

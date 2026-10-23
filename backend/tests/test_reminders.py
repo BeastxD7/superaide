@@ -66,7 +66,12 @@ def owner(browser):
     assert (
         c.post(
             "/auth/signup",
-            json={"name": "Jordan Whitfield", "email": "s@example.com", "password": PASSWORD, "timezone": "Asia/Singapore"},
+            json={
+                "name": "Jordan Whitfield",
+                "email": "s@example.com",
+                "password": PASSWORD,
+                "timezone": "Asia/Singapore",
+            },
         ).status_code
         == 200
     )

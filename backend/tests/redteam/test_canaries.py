@@ -29,7 +29,9 @@ CANARIES = {
 
 def _plant(agent) -> None:
     c = TestClient(create_app(agent), headers={"X-Requested-With": "superaide-test"})
-    c.post("/auth/signup", json={"name": "Jordan Whitfield", "email": "s@example.com", "password": "correct horse battery"})
+    c.post(
+        "/auth/signup", json={"name": "Jordan Whitfield", "email": "s@example.com", "password": "correct horse battery"}
+    )
     c.post("/app/hire", json={"agent": "ava", "accepted_notice": True})
     with session_scope() as s:
         me = owner(s)

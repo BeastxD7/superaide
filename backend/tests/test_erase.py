@@ -148,9 +148,7 @@ def test_erasing_what_was_retired_or_superseded_clears_pointers(owner, agent):
         older.superseded_by = fact.id
     assert owner.post(f"/app/intro/documents/{r.document_id}/erase").status_code == 200
     with session_scope() as s:
-        assert (
-            s.scalar(select(MemoryItem.superseded_by).where(MemoryItem.content == "Jordan collects coins.")) is None
-        )
+        assert s.scalar(select(MemoryItem.superseded_by).where(MemoryItem.content == "Jordan collects coins.")) is None
 
 
 def test_erase_route_is_the_owners_alone(owner, agent):
