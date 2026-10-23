@@ -4,16 +4,17 @@ import { AlarmClock, Bell, Menu, MessageCircle, ShieldQuestion } from 'lucide-re
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSidebar } from '@/components/ui/sidebar'
+import { useApprovals } from '@/features/dashboard/useApprovals'
 import { useNeedsYou } from '@/features/needs-you/useNeedsYou'
 
-type Tab = { href: string; label: string; icon: typeof Bell; triage?: boolean }
+type Tab = { href: string; label: string; icon: typeof Bell; triage?: boolean; approvals?: boolean }
 
 // The phone's main places (ADR 0011 section 2). "Needs you" is ADR 0010 TR9's page: a link with
 // the count while triage is on; while it's off, the tab shows disabled so the bar doesn't shift.
 const TABS: Tab[] = [
   { href: '/dashboard/needs-you', label: 'Needs you', icon: Bell, triage: true },
   { href: '/dashboard/chat', label: 'Chat', icon: MessageCircle },
-  { href: '/dashboard/approvals', label: 'Approvals', icon: ShieldQuestion },
+  { href: '/dashboard/approvals', label: 'Approvals', icon: ShieldQuestion, approvals: true },
   { href: '/dashboard/reminders', label: 'Reminders', icon: AlarmClock },
 ]
 
@@ -25,13 +26,14 @@ export function MobileTabBar() {
   const pathname = usePathname() ?? ''
   const { setOpenMobile } = useSidebar()
   const triage = useNeedsYou(60_000)
-  const waiting = triage.data?.counts.needs_you ?? 0
+  const needsYou = triage.data?.counts.needs_you ?? 0
+  const approvalsWaiting = useApprovals().waiting.length
   return (
     <nav
       aria-label="Main"
       className="flex shrink-0 border-t border-line/70 bg-white/95 pb-[env(safe-area-inset-bottom)] md:hidden"
     >
-      {TABS.map(({ href, label, icon: Icon, triage: needsTriage }) => {
+      {TABS.map(({ href, label, icon: Icon, triage: needsTriage, approvals: needsApprovals }) => {
         if (needsTriage && !triage.enabled) {
           return (
             <span key={href} className={`${ITEM} text-muted/60`} aria-disabled="true" title="Coming soon">
@@ -42,6 +44,7 @@ export function MobileTabBar() {
           )
         }
         const active = pathname.startsWith(href)
+        const waiting = needsTriage ? needsYou : needsApprovals ? approvalsWaiting : 0
         return (
           <Link
             key={href}
@@ -51,7 +54,7 @@ export function MobileTabBar() {
           >
             <span className="relative">
               <Icon className="size-5" aria-hidden />
-              {needsTriage && waiting > 0 && (
+              {waiting > 0 && (
                 <span className="absolute -top-1.5 -right-2.5 min-w-4 rounded-full bg-violet-600 px-1 text-center text-[10px] leading-4 font-medium text-white">
                   {waiting}
                   <span className="sr-only"> waiting</span>

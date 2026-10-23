@@ -47,6 +47,7 @@ from superaide.db.models import (
 from superaide.db.session import session_scope
 from superaide.factory import brain_ready
 from superaide.identity.linking import operator_link, unlink
+from superaide.policy import binding
 from superaide.policy.killswitch import instance_frozen, is_frozen, set_platform_frozen
 from superaide.tenancy.context import InstanceScope, default_scope, use_instance
 from superaide.tenancy.models import AgentInstance, ChannelEndpoint, Tenant
@@ -314,9 +315,7 @@ def overview() -> dict[str, Any]:
                 "conversations": s.scalar(select(func.count()).select_from(Context)),
                 "messages_24h": s.scalar(select(func.count()).select_from(Event).where(Event.created_at > day_ago)),
                 "memories": s.scalar(_live_memories()),
-                "pending_approvals": s.scalar(
-                    select(func.count()).select_from(Approval).where(Approval.status == "pending")
-                ),
+                "pending_approvals": s.scalar(select(func.count()).select_from(Approval).where(binding.waiting())),
                 "refused_actions": s.scalar(
                     select(func.count())
                     .select_from(AuditLog)

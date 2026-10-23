@@ -431,7 +431,8 @@ export type ApprovalItem = {
   kind: string
   summary: string
   requested_by: string | null
-  status: 'pending' | 'approved' | 'rejected'
+  // `expired`: still unanswered but past its time limit, so it can no longer be approved.
+  status: 'pending' | 'approved' | 'rejected' | 'expired'
   result: string | null
   notes?: string[]
   at: string
