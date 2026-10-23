@@ -36,7 +36,8 @@ test.describe('Ava School, switched on', () => {
     await page.getByRole('button', { name: 'Add lesson' }).click()
     await expect(page.getByText('When I say urgent I mean money problems, not deadlines.')).toBeVisible()
 
-    await page.getByLabel('I agree to share this lesson').check()
+    await page.getByLabel('I agree to share this lesson').click()
+    await expect(page.getByLabel('I agree to share this lesson')).toBeChecked()
     const download = page.waitForEvent('download')
     await page.getByRole('button', { name: /Save the 1 lesson I agreed to share/ }).click()
     const file = await (await download).path()
