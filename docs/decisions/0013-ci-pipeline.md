@@ -63,6 +63,7 @@ Any backend change used to run all four e2e shards. The browser suite only notic
 - Pushes to `main`, merge groups, manual runs and the scheduled Full run always run the full matrix, unchanged.
 - The `CI result` gate fails closed: if backend or frontend changed it needs the full matrix or the smoke job to have succeeded (neither selected is an error, both selected is an error, a non-PR event that did not select the full matrix is an error), and the selected job must be `success`, not `skipped`.
 - The two e2e jobs share their setup in `.github/actions/e2e-setup`.
+- When two branches both change the API, the snapshot conflicts on merge: take either side and run `make openapi` again.
 - Tag a new test `@smoke` in its title only if a backend-only change could break it and it needs a browser; keep the subset under about 4 minutes.
 
 What this accepts: a backend change that alters behaviour without altering the schema (say, how a reply is worded) is checked by the backend tests and the smoke subset, not the full browser suite, until it reaches `main`, where the full suite runs on every push.

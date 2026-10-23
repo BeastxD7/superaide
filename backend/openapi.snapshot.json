@@ -97,6 +97,37 @@
         "title": "AnswerQuestionBody",
         "type": "object"
       },
+      "AuditionBody": {
+        "properties": {
+          "skills": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 3,
+            "minItems": 2,
+            "title": "Skills",
+            "type": "array"
+          },
+          "tasks": {
+            "anyOf": [
+              {
+                "maximum": 50.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tasks"
+          }
+        },
+        "required": [
+          "skills"
+        ],
+        "title": "AuditionBody",
+        "type": "object"
+      },
       "AwayBody": {
         "properties": {
           "until": {
@@ -447,31 +478,6 @@
         "title": "CounterBody",
         "type": "object"
       },
-      "CreateBody": {
-        "properties": {
-          "spec": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/RuleSpec"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "text": {
-            "maxLength": 1500,
-            "minLength": 3,
-            "title": "Text",
-            "type": "string"
-          }
-        },
-        "required": [
-          "text"
-        ],
-        "title": "CreateBody",
-        "type": "object"
-      },
       "CreditsBody": {
         "properties": {
           "on": {
@@ -501,6 +507,104 @@
           }
         },
         "title": "DecideBody",
+        "type": "object"
+      },
+      "DelegateBody": {
+        "additionalProperties": false,
+        "properties": {
+          "expires": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires"
+          },
+          "label": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "max_amount": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Amount"
+          },
+          "max_uses": {
+            "anyOf": [
+              {
+                "maximum": 100000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Uses"
+          },
+          "recipient_domains": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipient Domains"
+          },
+          "tools": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tools"
+          },
+          "topics": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topics"
+          }
+        },
+        "required": [
+          "label"
+        ],
+        "title": "DelegateBody",
         "type": "object"
       },
       "DeviceBody": {
@@ -2000,6 +2104,93 @@
         "title": "AskBody",
         "type": "object"
       },
+      "superaide__mandate__routes__CreateBody": {
+        "additionalProperties": false,
+        "properties": {
+          "expires": {
+            "format": "date-time",
+            "title": "Expires",
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "max_amount": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Amount"
+          },
+          "max_uses": {
+            "anyOf": [
+              {
+                "maximum": 100000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Uses"
+          },
+          "recipient_domains": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipient Domains"
+          },
+          "tools": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Tools",
+            "type": "array"
+          },
+          "topics": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topics"
+          }
+        },
+        "required": [
+          "tools",
+          "expires",
+          "label"
+        ],
+        "title": "CreateBody",
+        "type": "object"
+      },
       "superaide__reception__routes__SettingsBody": {
         "properties": {
           "enabled": {
@@ -2085,6 +2276,31 @@
           "role"
         ],
         "title": "StartBody",
+        "type": "object"
+      },
+      "superaide__rules__routes__CreateBody": {
+        "properties": {
+          "spec": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RuleSpec"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "text": {
+            "maxLength": 1500,
+            "minLength": 3,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "CreateBody",
         "type": "object"
       },
       "superaide__triage__routes__FeedbackBody": {
@@ -3433,6 +3649,89 @@
         "summary": "Revoke your Ask link",
         "tags": [
           "Owner: Ask my Ava link"
+        ]
+      }
+    },
+    "/app/audition": {
+      "post": {
+        "description": "Runs your last tasks (at most AUDITION_MAX_TASKS) with each candidate skill added, effects stubbed and no network, and shows side by side which tools each would have called (names and short hashes only).",
+        "operationId": "audition_run_app_audition_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuditionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Audition Run App Audition Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Audition 2 or 3 skills",
+        "tags": [
+          "Owner: skills",
+          "Owner: skills"
+        ]
+      }
+    },
+    "/app/audition/candidates": {
+      "get": {
+        "description": "Audition (AUDITION_ENABLED, off by default; 404 while off): the skills that can be compared.",
+        "operationId": "audition_candidates_app_audition_candidates_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Audition Candidates App Audition Candidates Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Skills you can audition",
+        "tags": [
+          "Owner: skills",
+          "Owner: skills"
         ]
       }
     },
@@ -5630,6 +5929,191 @@
         ]
       }
     },
+    "/app/mandates": {
+      "get": {
+        "operationId": "listing_app_mandates_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Listing App Mandates Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "My mandates, each with the chain it was handed down through",
+        "tags": [
+          "Owner: mandates"
+        ]
+      },
+      "post": {
+        "description": "A named, limited thing Ava may do without asking.",
+        "operationId": "create_app_mandates_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/superaide__mandate__routes__CreateBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Create App Mandates Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Sign a mandate card",
+        "tags": [
+          "Owner: mandates"
+        ]
+      }
+    },
+    "/app/mandates/{mandate_id}/delegate": {
+      "post": {
+        "operationId": "delegate_app_mandates__mandate_id__delegate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mandate_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Mandate Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DelegateBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Delegate App Mandates  Mandate Id  Delegate Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Hand a mandate on, narrower",
+        "tags": [
+          "Owner: mandates"
+        ]
+      }
+    },
+    "/app/mandates/{mandate_id}/revoke": {
+      "post": {
+        "operationId": "revoke_app_mandates__mandate_id__revoke_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mandate_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Mandate Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Revoke App Mandates  Mandate Id  Revoke Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Revoke a mandate and everything handed on from it",
+        "tags": [
+          "Owner: mandates"
+        ]
+      }
+    },
     "/app/me": {
       "get": {
         "description": "The owner's agent, growth stage, connected channels and introduction progress.",
@@ -6305,6 +6789,56 @@
           }
         ],
         "summary": "Decide which is current",
+        "tags": [
+          "Owner: chat & notebook"
+        ]
+      }
+    },
+    "/app/notebook/sources/{source}/erase": {
+      "post": {
+        "description": "Deletes every short fact read from `gmail` or `calendar`, with its vectors. Cannot be undone.",
+        "operationId": "erase_connector_facts_route_app_notebook_sources__source__erase_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source",
+            "required": true,
+            "schema": {
+              "title": "Source",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Erase Connector Facts Route App Notebook Sources  Source  Erase Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Erase what was learned from Gmail or the calendar",
         "tags": [
           "Owner: chat & notebook"
         ]
@@ -7233,6 +7767,85 @@
           }
         ],
         "summary": "Revoke every card I have sent",
+        "tags": [
+          "Owner: principal card"
+        ]
+      }
+    },
+    "/app/principal-card/sent": {
+      "get": {
+        "description": "Newest first: channel, who it went to, when, and whether it is still valid.",
+        "operationId": "sent_app_principal_card_sent_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Sent App Principal Card Sent Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Cards I have sent",
+        "tags": [
+          "Owner: principal card"
+        ]
+      }
+    },
+    "/app/principal-card/sent/{card_id}/revoke": {
+      "post": {
+        "operationId": "revoke_one_app_principal_card_sent__card_id__revoke_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "card_id",
+            "required": true,
+            "schema": {
+              "maxLength": 40,
+              "title": "Card Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Revoke One App Principal Card Sent  Card Id  Revoke Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Revoke one card I have sent",
         "tags": [
           "Owner: principal card"
         ]
@@ -9556,7 +10169,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateBody"
+                "$ref": "#/components/schemas/superaide__rules__routes__CreateBody"
               }
             }
           },
