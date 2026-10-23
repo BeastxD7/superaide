@@ -39,7 +39,7 @@ async function hires(): Promise<{ owner_user_id: string; status: string; kind: s
 test.describe('hiring Ava', () => {
   test.use({ ownerState: 'account' })
 
-  test('the notice must be accepted before Hire works; hiring lands on "Ava is on your team"', async ({ page, owner }) => {
+  test('the notice must be accepted before Hire works; hiring lands on "Ava is on your team" @smoke', async ({ page, owner }) => {
     const hire = new HirePage(page)
     await hire.open()
     await expect(hire.agree()).not.toBeChecked()
@@ -94,7 +94,7 @@ test.describe('hiring Ava', () => {
     await expect(page).toHaveURL(/\/meet$/)
   })
 
-  test('the API refuses a hire without the notice, for an unknown agent, signed out, or without the CSRF header', async ({ page, api, owner }) => {
+  test('the API refuses a hire without the notice, for an unknown agent, signed out, or without the CSRF header @smoke', async ({ page, api, owner }) => {
     void owner
     const noNotice = await api.post('/app/hire', { agent: 'ava', accepted_notice: false })
     expect(noNotice.status()).toBe(400)
@@ -159,7 +159,7 @@ test.describe('hiring Ava', () => {
     expect(refused).toEqual([])
   })
 
-  test('a second account hires its own Ava and never sees the first owner (UI and API)', async ({ page, api }) => {
+  test('a second account hires its own Ava and never sees the first owner (UI and API) @smoke', async ({ page, api }) => {
     // Many owners is the default (ADR 0009): Ava is never "taken".
     const meera = newPerson('Meera Iyer')
     await api.signup(meera)
@@ -221,7 +221,7 @@ test.describe('hiring again', () => {
 })
 
 // ----------------------------------------------------------------------------------
-test.describe('the whole introduction, as a person sees it', () => {
+test.describe('the whole introduction, as a person sees it @smoke', () => {
   // Ava types each line, with the animation on.
   test.use({ ownerState: 'hired', contextOptions: { reducedMotion: 'no-preference' } })
 

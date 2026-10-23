@@ -54,6 +54,20 @@ Playwright's `--shard` splits by test count, and shard 2 held the slow specs (`i
 
 `frontend/.next/cache` is cached (frontend and e2e jobs, keyed on lockfile plus sources, with a lockfile-only fallback). The e2e `npm ci` stays on the setup-node npm cache (23 packages, seconds). Two Playwright slots per shard were not added: the 4-shard split already brings the longest shard near 5 minutes, and sharing 4 vCPUs between two API, two Next and two browser stacks risks timing flakes for little gain; revisit if shards grow.
 
+## Smoke e2e for backend-only changes (PR B)
+
+Any backend change used to run all four e2e shards. The browser suite only notices a backend change that alters what the frontend sees, and that is the API schema. So:
+
+- `backend/openapi.snapshot.json` is the dumped FastAPI OpenAPI schema (`make openapi` regenerates it; `backend/scripts/openapi_snapshot.py --check` compares). `tests/test_openapi_snapshot.py` fails the backend job when the live schema differs from the file, so a schema change cannot land without touching the snapshot.
+- The `changes` job picks one of two e2e paths on a pull request: the **full matrix** when `frontend/**`, `e2e/**` or the snapshot changed (or a pipeline file or an unclassified file, as before); the **`e2e-smoke` job** when the only code that changed is under `backend/` (docs and tests aside). Smoke runs the tests with `@smoke` in their title (about 27: sign-up and log-in, hire, the whole introduction, chat and streaming, memory, approvals, one settings page, one dashboard page, the console, two-owner isolation), about 2 minutes of tests.
+- Pushes to `main`, merge groups, manual runs and the scheduled Full run always run the full matrix, unchanged.
+- The `CI result` gate fails closed: if backend or frontend changed it needs the full matrix or the smoke job to have succeeded (neither selected is an error, both selected is an error, a non-PR event that did not select the full matrix is an error), and the selected job must be `success`, not `skipped`.
+- The two e2e jobs share their setup in `.github/actions/e2e-setup`.
+- When two branches both change the API, the snapshot conflicts on merge: take either side and run `make openapi` again.
+- Tag a new test `@smoke` in its title only if a backend-only change could break it and it needs a browser; keep the subset under about 4 minutes.
+
+What this accepts: a backend change that alters behaviour without altering the schema (say, how a reply is worded) is checked by the backend tests and the smoke subset, not the full browser suite, until it reaches `main`, where the full suite runs on every push.
+
 ## Plan
 
 1. Change detection and the gate (this PR).

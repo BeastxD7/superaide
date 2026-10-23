@@ -6,7 +6,7 @@ function sse(events: [string, unknown][]): string {
   return ': open\n\n' + events.map(([event, data]) => `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`).join('')
 }
 
-test('while Ava works you see her reasoning, each tool call and the answer as it comes', async ({ page, owner }) => {
+test('while Ava works you see her reasoning, each tool call and the answer as it comes @smoke', async ({ page, owner }) => {
   void owner
   await page.goto('/dashboard/chat')
   const box = page.getByRole('textbox', { name: 'Message Ava' })
@@ -57,7 +57,7 @@ test('while Ava works you see her reasoning, each tool call and the answer as it
   await expect(live).toHaveCount(0)
 })
 
-test('a real turn streams through the app and the reply keeps a record of the work', async ({ page, owner }) => {
+test('a real turn streams through the app and the reply keeps a record of the work @smoke', async ({ page, owner }) => {
   void owner
   await page.goto('/dashboard/chat')
   const box = page.getByRole('textbox', { name: 'Message Ava' })

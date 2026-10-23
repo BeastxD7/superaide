@@ -78,7 +78,7 @@ test.describe('two owners', () => {
     expect(listing.find((x) => x.slug === 'ava')?.hired).toBeFalsy()
   })
 
-  test('each owner’s notebook holds only what they told their own Ava', async ({ browser }) => {
+  test('each owner’s notebook holds only what they told their own Ava @smoke', async ({ browser }) => {
     const a = await hired(browser, 'Shashank Rao')
     const b = await hired(browser, 'Priya Tan')
     await tell(a, SECRET_A)
@@ -102,7 +102,7 @@ test.describe('two owners', () => {
     }
   })
 
-  test('one owner cannot act on the other’s memories by id', async ({ browser }) => {
+  test('one owner cannot act on the other’s memories by id @smoke', async ({ browser }) => {
     const a = await hired(browser, 'Shashank Rao')
     const b = await hired(browser, 'Priya Tan')
     await tell(a, SECRET_A)
