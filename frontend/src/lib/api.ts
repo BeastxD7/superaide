@@ -220,7 +220,7 @@ export { ApiError as AppError }
 // Axios client for the backend, sending the session cookie with each request.
 const client = createClient(API_URL, { withCredentials: true })
 
-type Init = { method?: 'GET' | 'POST' | 'PUT' | 'DELETE'; json?: unknown }
+type Init = { method?: 'GET' | 'POST' | 'PUT' | 'DELETE'; json?: unknown; signal?: AbortSignal }
 
 // A 401 from /app/* means the session has ended (signed out elsewhere, expired, password changed).
 // The session provider registers one handler that clears the signed-in state and sends the person
@@ -245,7 +245,7 @@ function sessionEnded(e: unknown, url: string): void {
 
 async function request<T>(url: string, init?: Init): Promise<T> {
   try {
-    const res = await client.request<T>({ url, method: init?.method ?? 'GET', data: init?.json })
+    const res = await client.request<T>({ url, method: init?.method ?? 'GET', data: init?.json, signal: init?.signal })
     return res.data
   } catch (e) {
     sessionEnded(e, url)
