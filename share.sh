@@ -7,6 +7,8 @@
 #   bash share.sh --no-docker         embedded Postgres instead of Docker (passed to start.command)
 #   bash share.sh --hostname app.example.com --tunnel-token <token>
 #                                     a STABLE address: a named Cloudflare tunnel you created once (see below)
+#   bash share.sh --ngrok-domain your-name.ngrok-free.app
+#                                     a STABLE free address from ngrok (one free static domain per account, see below)
 #
 # What it does:
 #   1. fast-forwards this checkout to the latest main (git pull --ff-only; skipped with local changes or --no-update)
@@ -31,6 +33,15 @@
 #        Register https://app.example.com/api/auth/google/callback and
 #        https://app.example.com/api/app/connections/google/callback in Google Cloud once; it never changes.
 #     3. Keep the quick tunnel and add the two addresses this script prints to Google Cloud each run (about a minute).
+#     4. A free fixed address from ngrok, no domain needed: sign up at ngrok.com, `brew install ngrok`,
+#        `ngrok config add-authtoken <your token>`, claim your free static domain in the ngrok dashboard
+#        (Universal Gateway > Domains), then: bash share.sh --ngrok-domain your-name.ngrok-free.app
+#        Register https://your-name.ngrok-free.app/api/auth/google/callback and
+#        https://your-name.ngrok-free.app/api/app/connections/google/callback in Google Cloud once.
+#   FRIENDS CONNECTING THEIR OWN GOOGLE: while your Google app is in "Testing", add each friend's Google address under
+#   OAuth consent screen > Test users (up to 100). They will see "Google hasn't verified this app": Advanced > continue.
+#   In Testing mode Google also expires their connection after 7 days (they reconnect). Publishing the app removes the
+#   test-user list; Gmail and Calendar scopes then need Google's verification review.
 set -euo pipefail
 cd "$(dirname "$0")"
 ROOT="$(pwd)"
@@ -38,14 +49,15 @@ export WEB_PORT="${WEB_PORT:-3000}"
 export API_PORT="${API_PORT:-8010}"
 bold() { printf "\n\033[1m%s\033[0m\n" "$*"; }
 
-UPDATE=1; HOSTNAME_ARG=""; TOKEN_ARG=""; PASS=()
+UPDATE=1; HOSTNAME_ARG=""; TOKEN_ARG=""; NGROK_DOMAIN=""; PASS=()
 while [ $# -gt 0 ]; do
   case "$1" in
     --no-update) UPDATE=0 ;;
     --hostname) HOSTNAME_ARG="${2:?--hostname needs a value}"; shift ;;
     --tunnel-token) TOKEN_ARG="${2:?--tunnel-token needs a value}"; shift ;;
+    --ngrok-domain) NGROK_DOMAIN="${2:?--ngrok-domain needs a value}"; shift ;;
     --reset|--no-docker) PASS+=("$1") ;;
-    -h|--help) sed -n '2,37p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) awk 'NR>1 && /^#/ {sub(/^# ?/, ""); print; next} NR>1 {exit}' "$0"; exit 0 ;;
     *) echo "Unknown option: $1 (try --help)"; exit 2 ;;
   esac
   shift
@@ -65,8 +77,10 @@ if [ "$UPDATE" = 1 ] && git rev-parse --git-dir >/dev/null 2>&1; then
   fi
 fi
 
-# 2. cloudflared
-if ! command -v cloudflared >/dev/null 2>&1; then
+if [ -n "$NGROK_DOMAIN" ] && [ -n "$HOSTNAME_ARG" ]; then echo "Use either --ngrok-domain or --hostname, not both."; exit 2; fi
+
+# 2. cloudflared (or ngrok)
+if [ -z "$NGROK_DOMAIN" ] && ! command -v cloudflared >/dev/null 2>&1; then
   if command -v brew >/dev/null 2>&1; then
     bold "Installing cloudflared with Homebrew (one time)…"
     brew install cloudflared
@@ -81,7 +95,18 @@ TUNNEL_PID=""
 cleanup() { [ -n "$TUNNEL_PID" ] && kill "$TUNNEL_PID" 2>/dev/null || true; rm -f "$TUNNEL_LOG"; }
 trap cleanup EXIT INT TERM
 
-if [ -n "$HOSTNAME_ARG" ]; then
+if [ -n "$NGROK_DOMAIN" ]; then
+  command -v ngrok >/dev/null 2>&1 || { echo "Install ngrok first: brew install ngrok, then: ngrok config add-authtoken <token>"; exit 1; }
+  PUBLIC_URL="https://$NGROK_DOMAIN"
+  bold "Starting the ngrok tunnel for $PUBLIC_URL …"
+  ngrok http "http://localhost:$WEB_PORT" --url "$NGROK_DOMAIN" --log stdout >"$TUNNEL_LOG" 2>&1 &
+  TUNNEL_PID=$!
+  for _ in $(seq 1 20); do
+    grep -qi 'started tunnel\|url=https' "$TUNNEL_LOG" && break
+    kill -0 "$TUNNEL_PID" 2>/dev/null || { echo "ngrok stopped:"; tail -6 "$TUNNEL_LOG"; exit 1; }
+    sleep 1
+  done
+elif [ -n "$HOSTNAME_ARG" ]; then
   # A named tunnel: the public hostname and its route to http://localhost:$WEB_PORT are set up in Cloudflare
   # (Zero Trust > Networks > Tunnels > your tunnel > Public hostname), or by `cloudflared tunnel route dns`.
   PUBLIC_URL="https://$HOSTNAME_ARG"
