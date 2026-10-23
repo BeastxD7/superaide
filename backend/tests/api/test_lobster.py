@@ -124,3 +124,71 @@ def test_the_cli_audits_and_prints_cards(workspace):
     cards = run("lobster-cards", str(workspace))
     assert json.loads(cards.stdout)["cards"]
     assert run("lobster-audit", str(workspace / "missing")).returncode != 0
+
+
+def test_the_kit_result_is_anonymous_and_saved_only_on_yes(workspace, tmp_path):
+    from superaide.imports import lobster_kit
+
+    said: list[str] = []
+    out = tmp_path / "r.json"
+    assert lobster_kit.run(workspace, out, ask=lambda _q: "n", say=said.append) is None
+    assert not out.exists()
+    assert lobster_kit.run(workspace, out, ask=lambda _q: "y", say=said.append) == out
+    text = out.read_text(encoding="utf-8")
+    data = json.loads(text)
+    for private in (
+        FAKE_KEY,
+        FAKE_BOT,
+        "claw",
+        "MEMORY.md",
+        ".env",
+        "deploy",
+        "Singapore",
+        "evil.example",
+        str(tmp_path),
+    ):
+        assert private not in text
+        assert private not in "\n".join(said[:-1])  # the last line names the file the volunteer chose
+    assert data["exposed_secret"] and data["gateway_reachable"] and data["shell_skill"] and data["memory_orders"]
+    assert data["skills"] == 2 and data["skills_asking_for_shell"] == 1
+    assert data["secret_types"]["Private key"] if "Private key" in data["secret_types"] else True
+
+
+def test_the_kit_summary_counts_volunteers(workspace, tmp_path):
+    from superaide.imports import lobster_kit
+
+    clean_ws = tmp_path / "clean"
+    clean_ws.mkdir()
+    (clean_ws / "MEMORY.md").write_text("- Likes tea\n", encoding="utf-8")
+    files = []
+    for i, ws in enumerate((workspace, clean_ws)):
+        f = tmp_path / f"v{i}.json"
+        lobster_kit.run(ws, f, assume_yes=True, say=lambda _m: None)
+        files.append(f)
+    s = lobster_kit.summarise(files)
+    assert s["workspaces"] == 2 and s["exposed_secret"] == 1 and s["shell_skill"] == 1 and s["any_high_risk"] == 1
+    assert "1 of 2 had a secret" in lobster_kit.render_summary(s)
+    bad = tmp_path / "bad.json"
+    bad.write_text("{}", encoding="utf-8")
+    with pytest.raises(ValueError):
+        lobster_kit.summarise([bad])
+
+
+def test_the_kit_cli_saves_a_result_file(workspace, tmp_path):
+    out = tmp_path / "cli.json"
+    r = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "from superaide.cli import main; main()",
+            "lobster-kit",
+            str(workspace),
+            "--out",
+            str(out),
+            "--yes",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert r.returncode == 0, r.stderr
+    assert json.loads(out.read_text())["schema"] == "lobster-kit/1"

@@ -336,6 +336,17 @@ def _lobster(args: argparse.Namespace) -> None:
     from superaide.imports import lobster
 
     try:
+        if args.cmd == "lobster-kit":
+            from superaide.imports import lobster_kit
+
+            lobster_kit.run(args.folder, args.out, assume_yes=args.yes)
+            return
+        if args.cmd == "lobster-kit-summary":
+            from superaide.imports import lobster_kit
+
+            summary = lobster_kit.summarise(args.files)
+            print(json.dumps(summary, indent=2) if args.json else lobster_kit.render_summary(summary))
+            return
         if args.cmd == "lobster-audit":
             report = lobster.audit(args.folder)
             print(json.dumps(report.as_dict(), indent=2) if args.json else report.render())
@@ -405,6 +416,17 @@ def main() -> None:
     p.set_defaults(func=_import_cards)
     p = sub.add_parser("lobster-audit", help="audit an OpenClaw or Hermes workspace folder (reads, writes nothing)")
     p.add_argument("folder")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=_lobster)
+    p = sub.add_parser(
+        "lobster-kit", help="guided leak audit that saves an anonymous result file you can review and send"
+    )
+    p.add_argument("folder")
+    p.add_argument("--out", help="where to save the result (default: the current folder)")
+    p.add_argument("--yes", action="store_true", help="save without asking")
+    p.set_defaults(func=_lobster)
+    p = sub.add_parser("lobster-kit-summary", help="combine the result files volunteers sent back")
+    p.add_argument("files", nargs="+")
     p.add_argument("--json", action="store_true")
     p.set_defaults(func=_lobster)
     p = sub.add_parser("lobster-cards", help="turn a workspace's memory files into context cards (prints JSON)")
