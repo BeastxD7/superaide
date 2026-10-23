@@ -17,8 +17,8 @@ from sqlalchemy.orm import Session
 from superaide.audit import audit
 from superaide.db.models import Contact, Document, MemoryItem, OwnerPreference, Person, UserAccount
 from superaide.db.session import rows_affected
-from superaide.memory import importance as weigh
 from superaide.knowledge import trust
+from superaide.memory import importance as weigh
 
 CATEGORIES = ("about", "work", "person", "preference", "urgency", "availability", "sharing", "other")
 SOURCES = ("chat", "intro_chat", "intro_call", "document", "link", "telegram", "slack", "owner_edit")
