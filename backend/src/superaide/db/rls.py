@@ -86,6 +86,7 @@ TABLES: tuple[str, ...] = (
     "skill_tombstone",  # retired skill names, reserved for good (#129)
     "skill_scan",  # scanner verdicts per skill version (#130)
     "skill_counter",  # allowlisted telemetry counters (#130)
+    "skill_receipt",  # hash-chained outcome receipts (#131)
     "skill_demotion",  # skill versions whose behaviour did not match the manifest (#130)
     "tool_trace",  # hashes of tool calls (#110)
     "identity_claim",  # unknown accounts matching a known name, awaiting the owner (#93)

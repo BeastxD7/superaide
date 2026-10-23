@@ -53,3 +53,24 @@ class SkillDemotion(Scoped, Base):
     gaps: Mapped[list[Any]] = mapped_column(JSONB, default=list)  # e.g. "effect:send", "host:evil.example"
     demoted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     cleared_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class SkillReceipt(Scoped, Base):
+    """One signed-off outcome of one skill action, in an append-only hash chain (skills/receipts.py, issue #131).
+    No content, no names: a salted per-skill owner reference, the skill version, the effect class and the outcome."""
+
+    __tablename__ = "skill_receipt"
+    __table_args__ = (UniqueConstraint("agent_id", "seq", name="uq_skill_receipt_seq"),)
+
+    seq: Mapped[int] = mapped_column(Integer)
+    prev_hash: Mapped[str] = mapped_column(String(64))
+    entry_hash: Mapped[str] = mapped_column(String(64))
+    skill_id: Mapped[str] = mapped_column(String(120), index=True)
+    version: Mapped[str] = mapped_column(String(40))
+    effect_class: Mapped[str] = mapped_column(String(20))
+    outcome: Mapped[str] = mapped_column(String(20))  # approved_unedited | edited | rejected | reverted
+    owner_ref: Mapped[str] = mapped_column(String(32))
+    ref_seq: Mapped[int | None] = mapped_column(Integer, nullable=True)  # a revert points at the receipt it undoes
+    latency_s: Mapped[int] = mapped_column(Integer, default=0)  # seconds between the request and the decision
+    batch: Mapped[bool] = mapped_column(Boolean, default=False)  # decided together with others
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
