@@ -1,7 +1,7 @@
 """tool_trace: every tool call as hashes only (issue 110)
 
-Revision ID: 0043
-Revises: 0042
+Revision ID: 0051
+Revises: 0050
 Create Date: 2026-10-23 12:00:00.000000
 
 """
@@ -14,8 +14,8 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 from superaide.db.rls import disable, enable
 
-revision: str = "0043"
-down_revision: str | Sequence[str] | None = "0042"
+revision: str = "0051"
+down_revision: str | Sequence[str] | None = "0050"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
