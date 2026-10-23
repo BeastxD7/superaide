@@ -33,6 +33,8 @@ from superaide.knowledge.store import CATEGORIES, remember_fact
 
 MAX_FACTS = 200
 MAX_FORGOTTEN = 50
+MAX_SUPERSEDED = 50
+EPOCH = datetime(1970, 1, 1, tzinfo=UTC)  # asks the audience gate about a note whatever its validity dates
 ORIGIN = {
     "chat": "you",
     "intro_chat": "you",
@@ -147,9 +149,45 @@ def build_map(session: Session, owner_id: uuid.UUID) -> dict[str, Any]:
                 edges.append({"from": f"fact:{m.id}", "to": f"person:{contact.id}", "kind": "mentions"})
     for cat in {m.category for m, _ in live}:
         edges.append({"from": "owner", "to": f"topic:{cat}", "kind": "has"})
+    # A retired note is still gated by who may see it (validity aside), so the shelf and the strike-throughs can
+    # never show something the owner may not see.
+    gate = memory_filter(owner_audience(owner_id), EPOCH)
+    live_ids = {m.id for m, _ in live}
+    replaced = session.scalars(
+        select(MemoryItem)
+        .where(
+            MemoryItem.subject_person_ids.contains([owner_id]),
+            MemoryItem.valid_to.is_not(None),
+            MemoryItem.valid_to <= now,
+            MemoryItem.superseded_by.in_(live_ids) if live_ids else MemoryItem.id.is_(None),
+            gate,
+        )
+        .order_by(MemoryItem.valid_to.desc())
+        .limit(MAX_SUPERSEDED)
+    ).all()
+    for old in replaced:
+        nodes.append(
+            {
+                "id": f"fact:{old.id}",
+                "type": "fact",
+                "label": old.content,
+                "category": old.category,
+                "origin": ORIGIN.get(old.source, "you"),
+                "source": old.source,
+                "document": None,
+                "confidence": old.confidence,
+                "freshness": 0.5,
+                "learned": old.created_at.isoformat(),
+                "shareable": False,
+                "superseded": True,
+                "replaced_by": f"fact:{old.superseded_by}",
+                "replaced_at": old.valid_to.isoformat() if old.valid_to else None,
+            }
+        )
+        edges.append({"from": f"fact:{old.id}", "to": f"fact:{old.superseded_by}", "kind": "replaced_by"})
     forgotten = session.scalars(
         select(MemoryItem)
-        .where(MemoryItem.subject_person_ids.contains([owner_id]), MemoryItem.valid_to.is_not(None))
+        .where(MemoryItem.subject_person_ids.contains([owner_id]), MemoryItem.valid_to.is_not(None), gate)
         .where(MemoryItem.valid_to <= now)
         .order_by(MemoryItem.valid_to.desc())
         .limit(MAX_FORGOTTEN)
@@ -242,6 +280,7 @@ def make_brain_router(get_agent: Callable[[], Any]) -> APIRouter:
             new = remember_fact(s, owner=owner, content=text, category=old.category, source="owner_edit")
             if new is None:
                 raise HTTPException(409, "Ava already knows that.")
+            old.superseded_by = new.id  # the map shows the old wording struck through, pointing at the new one
             audit(s, "app", "memory_corrected", memory_id=old.id, new_memory_id=new.id, person_id=person_id)
             return {"id": str(new.id)}
 
