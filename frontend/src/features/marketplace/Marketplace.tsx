@@ -45,6 +45,7 @@ export function Marketplace({ session, initialAgents = null }: { session: Sessio
     <div className="min-h-dvh bg-canvas">
       <NavBar session={session} />
 
+      <main>
       {/* Hero: the agent itself is the first thing you meet */}
       <section className="px-4 pt-10 sm:px-6 sm:pt-14">
         <div className="mx-auto grid max-w-6xl items-start gap-8 lg:grid-cols-[1fr_300px_1fr] lg:gap-10">
@@ -54,7 +55,7 @@ export function Marketplace({ session, initialAgents = null }: { session: Sessio
               variants={rise}
               initial="hidden"
               animate="show"
-              className="text-[44px] leading-[1.02] font-medium tight sm:text-[58px]"
+              className="text-[length:var(--text-display)] leading-[1.02] font-medium tight"
             >
               Hire an AI that grows up on the job
             </motion.h1>
@@ -185,7 +186,7 @@ export function Marketplace({ session, initialAgents = null }: { session: Sessio
       <section id="safety" className="scroll-mt-24 px-4 pt-24 sm:px-6">
         <div className="mx-auto max-w-6xl">
           <h2 className="max-w-2xl text-4xl leading-tight font-medium tight sm:text-5xl">Works like a colleague, minds your trust like one</h2>
-          <div className="relative mt-10 grid gap-4 md:grid-cols-[1.5fr_1fr]">
+          <div className="relative mt-10 grid gap-4 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
             <span
               aria-hidden
               className="absolute top-1/2 left-[60%] z-10 hidden size-12 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-white text-violet-600 md:grid"
@@ -277,6 +278,7 @@ export function Marketplace({ session, initialAgents = null }: { session: Sessio
           </div>
         </div>
       </section>
+      </main>
 
       <Footer />
     </div>
@@ -328,9 +330,9 @@ function FeaturedAgent({ agent, mine }: { agent: AgentCard; mine: boolean }) {
 
 function Bento({ tone, title, text, children }: { tone: string; title: string; text: string; children: React.ReactNode }) {
   return (
-    <div className={`flex flex-col justify-between gap-8 rounded-[24px] p-7 ${tone}`}>
+    <div className={`flex min-w-0 flex-col justify-between gap-8 rounded-[24px] p-5 sm:p-7 ${tone}`}>
       <div>
-        <h3 className="text-3xl leading-tight font-medium tight">{title}</h3>
+        <h3 className="text-2xl leading-tight font-medium tight sm:text-3xl">{title}</h3>
         <p className="mt-3 max-w-md text-sm leading-relaxed text-body">{text}</p>
       </div>
       {children}

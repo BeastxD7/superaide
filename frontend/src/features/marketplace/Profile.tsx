@@ -52,8 +52,9 @@ export function Profile({ slug, session, initialAgents = null }: ProfileProps) {
   return (
     <div className="min-h-dvh bg-canvas pb-16">
       <NavBar session={session} links={false} cta={false} />
+      <main>
       <div className="mx-auto max-w-6xl px-4 pt-6 sm:px-6">
-        <Link href="/" className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-sm text-muted hover:text-ink">
+        <Link href="/" className="inline-flex min-h-11 items-center gap-1 rounded-full px-2 py-1 text-sm text-muted hover:text-ink">
           <ChevronLeft className="size-4" /> All agents
         </Link>
       </div>
@@ -67,7 +68,7 @@ export function Profile({ slug, session, initialAgents = null }: ProfileProps) {
           className="mesh relative flex flex-col items-center overflow-hidden rounded-[28px] border border-lilac-200/60 px-6 pt-12 pb-8 text-center lg:sticky lg:top-24 lg:self-start"
         >
           <Orb hue={agent.hue} size={190} track={available} mood={available ? 'idle' : 'asleep'} label={agent.name} />
-          <h1 className="mt-8 text-5xl font-medium tight">{agent.name}</h1>
+          <h1 className="mt-8 text-4xl font-medium tight sm:text-5xl">{agent.name}</h1>
           <p className="mt-1 text-lg text-violet-700">{agent.role}</p>
           <div className="mt-5 flex flex-wrap justify-center gap-2 text-xs font-medium">
             <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-ink">
@@ -82,7 +83,7 @@ export function Profile({ slug, session, initialAgents = null }: ProfileProps) {
             {!available ? (
               <p className="rounded-2xl bg-white/70 px-4 py-3 text-sm text-muted">{agent.name} is still in training. Ava is ready now.</p>
             ) : mine ? (
-              <Button tone="dark" icon className="w-full justify-between" onClick={() => router.push(homeFor(session.account))}>
+              <Button tone="dark" icon className="w-full justify-center sm:justify-between" onClick={() => router.push(homeFor(session.account))}>
                 Open {agent.name}
               </Button>
             ) : taken ? (
@@ -101,7 +102,7 @@ export function Profile({ slug, session, initialAgents = null }: ProfileProps) {
                 )}
               </p>
             ) : (
-              <Button tone="violet" icon className="w-full justify-between" onClick={() =>
+              <Button tone="violet" icon className="w-full justify-center sm:justify-between" onClick={() =>
                   router.push(session.account
                     ? `/agents/${agent.slug}/hire`
                     : `/signup?next=${encodeURIComponent(`/agents/${agent.slug}/hire`)}`)
@@ -200,6 +201,7 @@ export function Profile({ slug, session, initialAgents = null }: ProfileProps) {
           )}
         </div>
       </div>
+      </main>
     </div>
   )
 }
