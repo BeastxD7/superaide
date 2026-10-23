@@ -66,7 +66,7 @@ def _schema() -> Iterator[None]:
     engine = get_engine()
     ensure_extensions(engine)
     with engine.begin() as conn:
-        conn.execute(text("DROP TABLE IF EXISTS memory_embedding"))  # outside the ORM metadata
+        conn.execute(text("DROP TABLE IF EXISTS memory_embedding, chunk_embedding"))  # outside the ORM metadata
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
     ensure_vector_store(engine)

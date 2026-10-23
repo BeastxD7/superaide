@@ -265,7 +265,7 @@ def test_forged_or_garbage_session_cookies_are_refused(browser, cookie):
     signup(browser())
     c = browser()
     c.cookies.set("superaide_session", cookie)
-    for path in ("/auth/me", "/app/me", "/app/notebook"):
+    for path in ("/auth/me", "/app/me", "/app/notebook", "/app/passages/6f1f5b8e-0000-4000-8000-000000000009"):
         r = c.get(path)
         assert r.status_code == 401, (path, r.text)
         assert r.json()["detail"] == "Please log in."

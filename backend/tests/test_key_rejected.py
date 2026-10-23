@@ -97,7 +97,7 @@ def test_a_rejected_key_stops_the_reading_job_and_tells_the_owner_once(owner_cli
     share(owner_client)
     going_live(monkeypatch)
     connect(owner_client, monkeypatch)
-    assert run_due() == 1
+    assert run_due() >= 1  # the reading job (and the passages' embedding job)
     [job] = read_jobs()
     assert job.status == "done" and job.attempts == 1  # not queued for a retry with back-off
     assert statuses() == ["stored"]

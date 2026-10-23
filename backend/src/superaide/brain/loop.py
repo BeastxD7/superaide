@@ -197,7 +197,7 @@ def _cited_from(citation: dict[str, Any]) -> Cited | None:
         uri = str(citation.get("source", ""))
         src_kind = (
             "memory"
-            if uri.startswith("ava://memory/")
+            if uri.startswith(("ava://memory/", "ava://chunk/"))
             else "message"
             if uri.startswith("ava://msg/")
             else "calendar"
@@ -912,7 +912,7 @@ class OwnerTurn:
             src = found[i]
             n = next((k + 1 for k, c in enumerate(sources) if c.uri == src.uri), 0)
             if not n:
-                kind = "memory" if src.uri.startswith("ava://memory/") else "message"
+                kind = "memory" if src.uri.startswith(("ava://memory/", "ava://chunk/")) else "message"
                 sources = [*sources, Cited(src.uri, kind, src.title, src.text[:300])]
                 n = len(sources)
             text = text.replace(sentence, f"{sentence} [{n}]", 1)

@@ -39,6 +39,8 @@ TABLES: tuple[str, ...] = (
     "context",
     "document",
     "episode",  # conversation episodes (#50)
+    "document_chunk",
+    "chunk_embedding",  # outside the ORM like memory_embedding; only where pgvector exists
     "event",
     "identity_link_event",
     "installed_skill",

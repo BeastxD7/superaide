@@ -310,7 +310,7 @@ def _reset_db(args: argparse.Namespace) -> None:
         sys.exit("This deletes all data. Run again with --yes to confirm.")
     engine = get_engine(get_settings().owner_database_url)
     with engine.begin() as conn:
-        conn.execute(text("DROP TABLE IF EXISTS memory_embedding"))  # outside the ORM metadata
+        conn.execute(text("DROP TABLE IF EXISTS memory_embedding, chunk_embedding"))  # outside the ORM metadata
     Base.metadata.drop_all(engine)
     with engine.begin() as conn:
         conn.execute(text("DROP TABLE IF EXISTS alembic_version"))

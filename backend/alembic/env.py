@@ -21,7 +21,7 @@ def include_object(obj, name, type_, reflected, compare_to):  # type: ignore[no-
     """memory_embedding lives outside the ORM (it exists only where pgvector does; see
     context/vectors.py), so autogenerate must neither create nor drop it."""
     table = name if type_ == "table" else getattr(getattr(obj, "table", None), "name", "")
-    return table != "memory_embedding"
+    return table not in ("memory_embedding", "chunk_embedding")
 
 
 def run_migrations_offline() -> None:

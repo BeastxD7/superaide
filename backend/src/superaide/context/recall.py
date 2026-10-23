@@ -21,12 +21,12 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import ColumnElement, Select, case, desc, func, literal, select, text
+from sqlalchemy import ColumnElement, Select, and_, case, desc, false, func, literal, select, text
 from sqlalchemy.orm import Session, aliased
 
 from superaide.context import lexicon
 from superaide.context.audience import Audience, memory_filter
-from superaide.db.models import Context, Event, MemoryItem
+from superaide.db.models import Context, Document, DocumentChunk, Event, MemoryItem
 from superaide.memory import importance
 from superaide.memory.echo import label as echo_label
 
@@ -41,7 +41,7 @@ _trgm_ready: dict[str, bool] = {}
 @dataclass
 class Source:
     uri: str  # ava://memory/<id> | ava://msg/<provider>/<event id>
-    kind: str  # memory | message
+    kind: str  # memory | message | chunk
     title: str
     text: str
     at: datetime
@@ -164,6 +164,57 @@ def _memory_sources(session: Session, found: list[MemoryItem], channel: str | No
     return out
 
 
+def chunk_filter(aud: Audience) -> ColumnElement[bool]:
+    """A passage of a document is visible to exactly the document's owner, alone, with nobody unknown present
+    and trust at least 2, and only while the document is shared. Joined through `document`, so a passage can't
+    outlive or widen its document's visibility."""
+    if aud.has_unknown or len(aud.person_ids) != 1 or aud.min_trust < 2:
+        return false()
+    (owner,) = aud.person_ids
+    return and_(Document.owner_person_id == owner, Document.removed_at.is_(None))
+
+
+def _excerpt(text: str, words: list[str], size: int = 1000) -> str:
+    """About `size` characters of the passage around the first query word in it, so the part that matched is
+    what gets cited (a passage can be longer than a citation)."""
+    if len(text) <= size:
+        return text
+    low = text.lower()
+    hits = [i for i in (low.find(w) for w in words) if i >= 0]
+    start = max(0, min(hits) - size // 4) if hits else 0
+    return ("… " if start else "") + text[start : start + size].strip()
+
+
+def recall_chunks(session: Session, aud: Audience, query: str, limit: int = 4) -> list[Source]:
+    """Passages of the owner's shared files and pages that match the question, cited as `ava://chunk/<id>`."""
+    gate = chunk_filter(aud)
+
+    def base() -> Select[Any]:
+        return select(DocumentChunk).join(Document, Document.id == DocumentChunk.document_id).where(gate)
+
+    if not lexicon.words(query):
+        return []
+    arms = _arms(session, query, DocumentChunk.text, base, limit * 2, strict=False)
+    from superaide.context.vectors import chunk_meaning_arm
+
+    arms.append(chunk_meaning_arm(session, base, query, limit * 2))
+    found = _fuse(arms)[:limit]
+    titles = {
+        d.id: d.title or d.source
+        for d in session.scalars(select(Document).where(Document.id.in_({c.document_id for c in found})))
+    }
+    return [
+        Source(
+            uri=f"ava://chunk/{c.id}",
+            kind="chunk",
+            title=f"Passage {c.ordinal + 1} · {titles.get(c.document_id, 'a shared file')}",
+            text=_excerpt(c.text, lexicon.words(query)),
+            at=c.created_at,
+        )
+        for c in found
+    ]
+
+
 def _message_gate(aud: Audience) -> ColumnElement[bool]:
     return Event.audience_person_ids.contains(sorted(aud.person_ids))
 
@@ -240,9 +291,11 @@ def recall(
         for m in recall_messages(session, aud, query, limit=limit, channel=picked)
         if not m.uri.endswith(str(exclude_event))
     ]
-    # Notes are distilled, so they lead; messages always keep a couple of seats when they match.
-    seats = max(limit - min(len(msgs), 2), limit // 2)
-    return (notes[:seats] + msgs + notes[seats:])[:limit]
+    passages = recall_chunks(session, aud, query, limit=limit) if lexicon.words(query) and not picked else []
+    # Notes are distilled, so they lead; messages and passages always keep a couple of seats when they match.
+    m, c = min(len(msgs), 2), min(len(passages), 2)
+    seats = max(limit - m - c, limit // 4)
+    return (notes[:seats] + msgs[:m] + passages[:c] + notes[seats:] + msgs[m:] + passages[c:])[:limit]
 
 
 FUZZY_WORD_MIN = 0.45  # "favrite" in "… favourite …" 0.5, "cusine" in "… cuisine …" 0.5

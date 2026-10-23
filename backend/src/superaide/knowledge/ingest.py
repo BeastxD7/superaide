@@ -17,10 +17,11 @@ from sqlalchemy import delete, select
 
 from superaide.audit import audit
 from superaide.brain import keyhealth
-from superaide.db.models import Document, MemoryItem, Person
+from superaide.db.models import Document, DocumentChunk, MemoryItem, Person
 from superaide.db.session import require, session_scope
+from superaide.knowledge import chunking
 from superaide.knowledge.extract import Extracted
-from superaide.knowledge.facts import extract_facts
+from superaide.knowledge.facts import extract_from_chunks
 from superaide.knowledge.learn import neighbours
 from superaide.knowledge.store import lock_document, remember_fact, supersede
 from superaide.proactive.notify import notify_owner
@@ -39,6 +40,7 @@ class IngestResult:
 
 
 def ingest(agent: Any, owner_id: uuid.UUID, extracted: Extracted, *, size_bytes: int = 0) -> IngestResult:
+    from superaide.factory import brain_ready
 
     source_kind = "link" if extracted.kind in {"web", "github"} else "document"
     digest = hashlib.sha256((extracted.source + "\n" + extracted.text).encode()).hexdigest()
@@ -72,17 +74,25 @@ def ingest(agent: Any, owner_id: uuid.UUID, extracted: Extracted, *, size_bytes:
         )
         s.add(doc)
         s.flush()
+        chunks = store_chunks(s, doc)
         doc_id, title, owner_name = doc.id, doc.title or doc.source, owner.display_name
         known = [(m.id, m.content) for m in neighbours(s, owner, f"{title} {extracted.text[:300]}")]
         audit(s, "knowledge", "document_added", document_id=doc.id, kind=doc.kind, chars=len(doc.text))
 
     # 2. Read it (no transaction open while the model works).
-    facts = extract_facts(agent, owner_name=owner_name, text=extracted.text, source=title, known=[k for _, k in known])
+    facts: list[Any] | None
+    if not extracted.text.strip() or not brain_ready(agent.settings):
+        facts, complete = [], True  # nothing to read, or no model yet: saved as is
+    else:
+        read = extract_from_chunks(
+            agent, owner_name=owner_name, chunks=chunks, source=title, known=[k for _, k in known]
+        )
+        facts, complete = read if read is not None else (None, False)
 
     # 3. Keep the facts, linked to the document.
     try:
         return _keep_facts(
-            agent, owner_id, doc_id, title, source_kind, facts, dict(enumerate((i for i, _ in known), 1))
+            agent, owner_id, doc_id, title, source_kind, facts, dict(enumerate((i for i, _ in known), 1)), complete
         )
     except Exception as exc:  # not `read`: say it failed, keep the text, offer a retry
         mark_failed(doc_id, title, exc)
@@ -97,6 +107,7 @@ def _keep_facts(
     source_kind: str,
     facts: list[Any] | None,
     known_ids: dict[int, uuid.UUID],
+    complete: bool = True,
 ) -> IngestResult:
     from superaide.factory import brain_ready
 
@@ -114,7 +125,7 @@ def _keep_facts(
             )
         doc = locked
         n = save_facts(s, owner, doc, facts or [], source_kind, known_ids)
-        if facts is None:  # reading failed: keep it as saved so it is tried again
+        if facts is None or not complete:  # reading failed (or part of it): keep it as saved, tried again
             message = f"I've saved {title}, but couldn't read it just now. I'll try again shortly."
         elif brain_ready(agent.settings):
             doc.status = "read"
@@ -128,6 +139,25 @@ def _keep_facts(
         return IngestResult(doc_id, title, n, False, doc.status, message)
 
 
+def store_chunks(session: Any, doc: Document) -> list[tuple[uuid.UUID, str]]:
+    """Split the document's text into passages and keep them (once). Returns (id, text) in order."""
+    existing = session.scalars(
+        select(DocumentChunk).where(DocumentChunk.document_id == doc.id).order_by(DocumentChunk.ordinal)
+    ).all()
+    if not existing:
+        for i, piece in enumerate(chunking.split(doc.text)):
+            session.add(DocumentChunk(document_id=doc.id, ordinal=i, text=piece))
+        session.flush()
+        existing = session.scalars(
+            select(DocumentChunk).where(DocumentChunk.document_id == doc.id).order_by(DocumentChunk.ordinal)
+        ).all()
+        if existing:
+            from superaide.context import vectors
+
+            vectors.schedule_chunks(session, doc.id)
+    return [(c.id, c.text) for c in existing]
+
+
 def save_facts(
     session: Any, owner: Person, doc: Document, facts: list[Any], source: str, known_ids: dict[int, uuid.UUID]
 ) -> int:
@@ -137,6 +167,7 @@ def save_facts(
     not tell Ava what is urgent or shareable)."""
     n = 0
     for f in facts:
+        f, chunk_id = f if isinstance(f, tuple) else (f, None)
         if f.same_as:
             continue  # already known: saying it again adds nothing
         item = remember_fact(
@@ -146,6 +177,7 @@ def save_facts(
         if item is None:
             continue
         n += 1
+        item.chunk_id = chunk_id
         old_id = known_ids.get(f.replaces or 0)
         old = session.get(MemoryItem, old_id) if old_id else None
         if old is not None and item.conflict_status == "none":
@@ -211,7 +243,7 @@ def read_documents(agent: Any, owner_id: uuid.UUID) -> list[ReadResult]:
         return []
     with session_scope() as s:
         pending = [
-            (d.id, d.title or d.source, d.text, d.kind)
+            (d.id, d.title or d.source, store_chunks(s, d), d.kind)
             for d in s.scalars(
                 select(Document).where(
                     Document.owner_person_id == owner_id, Document.status == "stored", Document.removed_at.is_(None)
@@ -220,8 +252,9 @@ def read_documents(agent: Any, owner_id: uuid.UUID) -> list[ReadResult]:
         ]
         owner_name = require(s, Person, owner_id).display_name
     results: list[ReadResult] = []
-    for doc_id, title, text, kind in pending:
-        facts = extract_facts(agent, owner_name=owner_name, text=text, source=title)
+    for doc_id, title, chunks, kind in pending:
+        read = extract_from_chunks(agent, owner_name=owner_name, chunks=chunks, source=title) if chunks else ([], True)
+        facts, complete = read if read is not None else (None, False)
         if facts is None:
             results.append(ReadResult(doc_id, title, 0, False))  # still saved, tried again later
             if keyhealth.any_rejected():
@@ -229,7 +262,7 @@ def read_documents(agent: Any, owner_id: uuid.UUID) -> list[ReadResult]:
             continue
         source = "link" if kind in {"web", "github"} else "document"
         try:
-            saved = _save_read(owner_id, doc_id, title, source, facts)
+            saved = _save_read(owner_id, doc_id, title, source, facts, complete)
         except Exception as exc:
             mark_failed(doc_id, title, exc)
             results.append(ReadResult(doc_id, title, 0, False))
@@ -239,12 +272,16 @@ def read_documents(agent: Any, owner_id: uuid.UUID) -> list[ReadResult]:
     return results
 
 
-def _save_read(owner_id: uuid.UUID, doc_id: uuid.UUID, title: str, source: str, facts: list[Any]) -> ReadResult | None:
+def _save_read(
+    owner_id: uuid.UUID, doc_id: uuid.UUID, title: str, source: str, facts: list[Any], complete: bool = True
+) -> ReadResult | None:
     with session_scope() as s:
         owner, doc = require(s, Person, owner_id), lock_document(s, doc_id)
         if doc is None or doc.status != "stored" or doc.removed_at is not None:
             return None  # read or removed while the model worked
         n = save_facts(s, owner, doc, facts, source, {})
+        if not complete:
+            return ReadResult(doc_id, title, n, False)  # part is read and kept; the rest is retried
         doc.status = "read"
         note = (
             f"I've read {title}: {n} {'fact' if n == 1 else 'facts'} saved."

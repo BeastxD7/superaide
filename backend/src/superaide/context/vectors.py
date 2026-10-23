@@ -37,7 +37,7 @@ from sqlalchemy.types import UserDefinedType
 
 from superaide.brain.embed import Embedder, LocalEmbedder, get_embedder
 from superaide.config import get_settings
-from superaide.db.models import Job, MemoryItem
+from superaide.db.models import DocumentChunk, Job, MemoryItem
 from superaide.jobs.queue import enqueue, handler
 from superaide.tenancy.context import scope_or_default
 
@@ -89,6 +89,32 @@ CREATE INDEX IF NOT EXISTS ix_{TABLE}_agent_model ON {TABLE} (agent_id, model);
 """
 
 
+CHUNK_TABLE = "chunk_embedding"
+chunk_embedding = Table(
+    CHUNK_TABLE,
+    _meta,
+    Column("chunk_id", UUID(as_uuid=True), primary_key=True),
+    Column("model", String(160), primary_key=True),
+    Column("tenant_id", UUID(as_uuid=True), nullable=False),
+    Column("agent_id", UUID(as_uuid=True), nullable=False),
+    Column("embedding", Vector(), nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+)
+
+CHUNK_CREATE_SQL = f"""
+CREATE TABLE IF NOT EXISTS {CHUNK_TABLE} (
+    chunk_id uuid NOT NULL REFERENCES document_chunk(id) ON DELETE CASCADE,
+    model varchar(160) NOT NULL,
+    tenant_id uuid NOT NULL,
+    agent_id uuid NOT NULL,
+    embedding vector NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (chunk_id, model)
+);
+CREATE INDEX IF NOT EXISTS ix_{CHUNK_TABLE}_agent_model ON {CHUNK_TABLE} (agent_id, model);
+"""
+
+
 def ensure_vector_store(engine: Engine) -> bool:
     """Install pgvector and the embeddings table if the server has pgvector. False if not."""
     with engine.begin() as conn:
@@ -96,6 +122,7 @@ def ensure_vector_store(engine: Engine) -> bool:
             return False
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         conn.execute(text(CREATE_SQL))
+        conn.execute(text(CHUNK_CREATE_SQL))
     return True
 
 
@@ -135,6 +162,33 @@ def meaning_arm(session: Session, base: Callable[[], Select[Any]], query: str, l
     return list(session.scalars(stmt))
 
 
+def chunk_meaning_arm(session: Session, base: Callable[[], Select[Any]], query: str, limit: int) -> list[DocumentChunk]:
+    """Passages closest in meaning to the query, from the gated `base()` query over DocumentChunk."""
+    emb = embedder()
+    if (
+        not query.strip()
+        or not emb.ready()
+        or not session.scalar(text(f"SELECT to_regclass('{CHUNK_TABLE}') IS NOT NULL"))
+    ):
+        return []
+    vectors = emb.embed([query], kind="query")
+    if not vectors:
+        return []
+    ce = chunk_embedding.c
+    distance = ce.embedding.op("<=>", return_type=Float())(cast(vectors[0], Vector()))
+    stmt = (
+        base()
+        .join(
+            chunk_embedding,
+            and_(ce.chunk_id == DocumentChunk.id, ce.model == emb.name, ce.agent_id == scope_or_default().agent_id),
+        )
+        .where(distance <= 1 - emb.min_similarity)
+        .order_by(distance)
+        .limit(limit)
+    )
+    return list(session.scalars(stmt))
+
+
 # --- writing -----------------------------------------------------------------------
 
 
@@ -142,6 +196,12 @@ def schedule(session: Session, item: MemoryItem) -> None:
     """Embed a new fact soon, in the background."""
     if embedder().name != "none":
         enqueue(session, JOB_KIND, {}, dedupe_key=f"embed:{item.id}", max_attempts=3)
+
+
+def schedule_chunks(session: Session, document_id: Any) -> None:
+    """Embed a new document's passages soon, in the background."""
+    if embedder().name != "none":
+        enqueue(session, JOB_KIND, {}, dedupe_key=f"embed_chunks:{document_id}", max_attempts=3)
 
 
 def start(session: Session) -> None:
@@ -187,6 +247,47 @@ def embed_missing(session: Session, max_rounds: int = 20) -> int:
         session.execute(
             stmt.on_conflict_do_update(
                 index_elements=["memory_id", "model"], set_={"embedding": stmt.excluded.embedding}
+            )
+        )
+        done += len(rows)
+    return done + _embed_missing_chunks(session, emb)
+
+
+def _embed_missing_chunks(session: Session, emb: Embedder) -> int:
+    from superaide.db.models import Document
+
+    if not session.scalar(text(f"SELECT to_regclass('{CHUNK_TABLE}') IS NOT NULL")):
+        return 0
+    ce = chunk_embedding.c
+    done = 0
+    for _ in range(20):
+        rows = session.scalars(
+            select(DocumentChunk)
+            .join(Document, Document.id == DocumentChunk.document_id)
+            .where(
+                Document.removed_at.is_(None),
+                DocumentChunk.agent_id == scope_or_default().agent_id,
+                ~exists().where(ce.chunk_id == DocumentChunk.id, ce.model == emb.name),
+            )
+            .order_by(DocumentChunk.created_at, DocumentChunk.ordinal)
+            .limit(BATCH)
+        ).all()
+        if not rows:
+            break
+        vectors = emb.embed([c.text for c in rows], kind="document")
+        if not vectors:
+            break
+        now = datetime.now(UTC)
+        stmt = insert(chunk_embedding).values(
+            [
+                {"chunk_id": c.id, "model": emb.name, "tenant_id": c.tenant_id, "agent_id": c.agent_id,
+                 "embedding": v, "created_at": now}
+                for c, v in zip(rows, vectors, strict=True)
+            ]
+        )  # fmt: skip
+        session.execute(
+            stmt.on_conflict_do_update(
+                index_elements=["chunk_id", "model"], set_={"embedding": stmt.excluded.embedding}
             )
         )
         done += len(rows)

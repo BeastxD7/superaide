@@ -40,9 +40,10 @@ def live_facts() -> list[MemoryItem]:
 def test_removing_a_document_while_the_model_reads_it_keeps_no_facts(agent, manager, extracted, monkeypatch):
     def reads_then_owner_removes_it(*a, **k):
         remove_documents()  # the owner clicks remove during the model call
-        return FACTS
+        return [(f, None) for f in FACTS], True
 
-    monkeypatch.setattr(ingest_module, "extract_facts", reads_then_owner_removes_it)
+    monkeypatch.setattr("superaide.factory.brain_ready", lambda settings: True)  # a model is connected
+    monkeypatch.setattr(ingest_module, "extract_from_chunks", reads_then_owner_removes_it)
     result = ingest(agent, manager.id, extracted)
     assert result.facts == 0
     assert live_facts() == []
@@ -57,9 +58,9 @@ def test_removing_a_waiting_document_while_the_model_reads_it_keeps_no_facts(age
 
     def reads_then_owner_removes_it(*a, **k):
         remove_documents()
-        return FACTS
+        return [(f, None) for f in FACTS], True
 
-    monkeypatch.setattr(ingest_module, "extract_facts", reads_then_owner_removes_it)
+    monkeypatch.setattr(ingest_module, "extract_from_chunks", reads_then_owner_removes_it)
     read_documents(agent, manager.id)
     assert live_facts() == []
 
@@ -67,7 +68,8 @@ def test_removing_a_waiting_document_while_the_model_reads_it_keeps_no_facts(age
 def test_a_removal_that_lands_while_facts_are_being_saved_waits_and_retires_them(
     agent, manager, extracted, monkeypatch
 ):
-    monkeypatch.setattr(ingest_module, "extract_facts", lambda *a, **k: FACTS)
+    monkeypatch.setattr("superaide.factory.brain_ready", lambda settings: True)  # a model is connected
+    monkeypatch.setattr(ingest_module, "extract_from_chunks", lambda *a, **k: ([(f, None) for f in FACTS], True))
     saving = threading.Event()
     real = ingest_module.remember_fact
 

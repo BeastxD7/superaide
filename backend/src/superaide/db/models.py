@@ -234,6 +234,10 @@ class MemoryItem(Scoped, Base):
     # none | pending (a weaker claim against a stronger fact) | review (a link fact outside about/work) | resolved
     conflict_status: Mapped[str] = mapped_column(String(10), default="none", server_default="none")
     conflicts_with_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("memory_item.id"), nullable=True)
+    # The passage of the document this fact was read from (the owner can click through to it).
+    chunk_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("document_chunk.id", ondelete="SET NULL"), nullable=True
+    )
 
 
 class MemoryOrigin(Scoped, Base):
@@ -308,6 +312,21 @@ class Document(Scoped, Base):
     status: Mapped[str] = mapped_column(String(20), default="stored")
     warnings: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
     removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class DocumentChunk(Scoped, Base):
+    """One passage of a Document's text. Visible only to whoever may see the document (its owner):
+    the gate joins through `document`, so a chunk can't drift from its document's visibility."""
+
+    __tablename__ = "document_chunk"
+    __table_args__ = (
+        UniqueConstraint("document_id", "ordinal", name="uq_document_chunk_ordinal"),
+        Index("ix_document_chunk_fts", text("to_tsvector('english', text)"), postgresql_using="gin"),
+    )
+
+    document_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("document.id", ondelete="CASCADE"), index=True)
+    ordinal: Mapped[int] = mapped_column(Integer)
+    text: Mapped[str] = mapped_column(Text)
 
 
 # --- The owner's people and preferences ----------------------------------------------
