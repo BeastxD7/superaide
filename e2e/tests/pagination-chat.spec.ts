@@ -38,9 +38,12 @@ test('the skeleton is drawn where the chat bubbles will be', async ({ page, owne
   release()
   const real = page.getByTestId('agent-bubble').first()
   await expect(real).toBeVisible()
-  const bubble = await real.boundingBox()
-  // Ava's bubbles start at the same left edge (after the 32px avatar column), so nothing slides sideways.
-  expect(Math.round(placeholder!.x)).toBe(Math.round(bubble!.x))
+  // Ava's bubbles start at the same left edge (after the 32px avatar column), so nothing slides sideways. A real bubble
+  // springs in from scale 0.98, which moves its box a few pixels inward until it settles, so the edge is read once it has
+  // (polling until it matches, not a one-off read of a moving box).
+  await expect
+    .poll(async () => Math.round((await real.boundingBox())!.x), { message: "the real bubble's left edge settles at the skeleton's" })
+    .toBe(Math.round(placeholder!.x))
   expect(placeholder!.height).toBeGreaterThanOrEqual(44) // at least one line of text plus padding, like a real bubble
 })
 
