@@ -306,6 +306,7 @@ e2e = []
 
 [modules.evals]
 src = [
+  "backend/evals/**",
   "backend/src/superaide/evals/**",
 ]
 tests = [
