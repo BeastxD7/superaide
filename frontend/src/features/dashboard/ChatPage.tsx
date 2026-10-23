@@ -229,7 +229,7 @@ export function ChatPage() {
         </div>
       </div>
 
-      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-8">
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-5 [scrollbar-gutter:stable] sm:px-8">
         <div className="mx-auto max-w-3xl">
           {me.brain === 'offline' && (
             <div className="mb-4">
