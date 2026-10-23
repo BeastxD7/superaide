@@ -153,7 +153,13 @@ def test_send_is_an_approval_and_only_the_owners_yes_sends_that_draft(owner_clie
     gmail_fake.add(mail("m1", thread="t1"))
     connect(scopes=(api.READONLY, api.COMPOSE), drafts=True)
     with session_scope() as s:
-        script = Script(tool_use("gmail_send", {"thread_id": "t1", "text": "See you Friday."}), "It's waiting for you.")
+        script = Script(
+            tool_use(
+                "gmail_send",
+                {"thread_id": "t1", "text": "See you Friday.", "reaches_a_person": "yes", "evidence": "human"},
+            ),
+            "It's waiting for you.",
+        )
         turn_for(s, script, "tell Daniel yes and send it").run([{"role": "user", "content": "send it"}])
         [a] = s.scalars(select(Approval)).all()
         assert a.kind == "gmail_send" and a.status == "pending" and a.payload["to"] == ["daniel@acme.com"]
@@ -172,7 +178,13 @@ def test_a_rejected_send_sends_nothing(owner_client, gmail_fake):
     gmail_fake.add(mail("m1", thread="t1"))
     connect(scopes=(api.READONLY, api.COMPOSE), drafts=True)
     with session_scope() as s:
-        gmail.run(s, hired_owner(s), "gmail_send", {"thread_id": "t1", "text": "No."}, tainted=False)
+        gmail.run(
+            s,
+            hired_owner(s),
+            "gmail_send",
+            {"thread_id": "t1", "text": "No.", "reaches_a_person": "yes", "evidence": "x"},
+            tainted=False,
+        )
         approval_id = s.scalar(select(Approval.id))
     assert owner_client.post(f"/app/approvals/{approval_id}/reject").json()["status"] == "rejected"
     assert not gmail_fake.sent
@@ -213,7 +225,9 @@ def test_a_send_asked_for_in_a_turn_that_read_email_is_marked_tainted(owner_clie
     with session_scope() as s:
         script = Script(
             tool_use("gmail_read_thread", {"thread_id": "t1"}, "a"),
-            tool_use("gmail_send", {"thread_id": "t1", "text": "Yes."}, "b"),
+            tool_use(
+                "gmail_send", {"thread_id": "t1", "text": "Yes.", "reaches_a_person": "yes", "evidence": "x"}, "b"
+            ),
             "Waiting for your OK.",
         )
         turn_for(s, script, "reply yes to Daniel").run([{"role": "user", "content": "reply yes to Daniel"}])

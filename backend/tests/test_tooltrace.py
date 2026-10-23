@@ -15,7 +15,15 @@ from tests.test_loop import Script, owner_client, tool_use, turn_for  # noqa: F4
 
 STEPS = (
     ("create_reminder", {"task": "Call Priya", "when": "tomorrow at 5pm"}),
-    ("propose_action", {"kind": "message_someone_else", "summary": "Tell Priya I'm late", "rationale": "asked"}),
+    (
+        "propose_action",
+        {
+            "kind": "message_someone_else",
+            "summary": "Tell Priya I'm late",
+            "rationale": "asked",
+            "reaches_a_person": "yes",
+        },
+    ),
     ("recall", {"query": "flight"}),
 )
 
