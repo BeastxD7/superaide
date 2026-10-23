@@ -65,24 +65,6 @@
         "title": "AddressBody",
         "type": "object"
       },
-      "AnswerBody": {
-        "properties": {
-          "answer": {
-            "additionalProperties": true,
-            "title": "Answer",
-            "type": "object"
-          },
-          "step": {
-            "title": "Step",
-            "type": "string"
-          }
-        },
-        "required": [
-          "step"
-        ],
-        "title": "AnswerBody",
-        "type": "object"
-      },
       "AnswerQuestionBody": {
         "properties": {
           "answer": {
@@ -680,6 +662,39 @@
           "enabled"
         ],
         "title": "DraftsBody",
+        "type": "object"
+      },
+      "DrillBody": {
+        "properties": {
+          "model_a": {
+            "default": "",
+            "maxLength": 120,
+            "title": "Model A",
+            "type": "string"
+          },
+          "model_b": {
+            "maxLength": 120,
+            "title": "Model B",
+            "type": "string"
+          },
+          "tasks": {
+            "anyOf": [
+              {
+                "maximum": 50.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tasks"
+          }
+        },
+        "required": [
+          "model_b"
+        ],
+        "title": "DrillBody",
         "type": "object"
       },
       "EmailBody": {
@@ -1550,6 +1565,38 @@
         "title": "SearchKeyBody",
         "type": "object"
       },
+      "SharingBody": {
+        "properties": {
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Categories",
+            "type": "array"
+          },
+          "trusted_keys": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 50,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trusted Keys"
+          }
+        },
+        "required": [
+          "categories"
+        ],
+        "title": "SharingBody",
+        "type": "object"
+      },
       "SignupBody": {
         "properties": {
           "email": {
@@ -1959,6 +2006,24 @@
         "title": "SettingsBody",
         "type": "object"
       },
+      "superaide__app__routes__AnswerBody": {
+        "properties": {
+          "answer": {
+            "additionalProperties": true,
+            "title": "Answer",
+            "type": "object"
+          },
+          "step": {
+            "title": "Step",
+            "type": "string"
+          }
+        },
+        "required": [
+          "step"
+        ],
+        "title": "AnswerBody",
+        "type": "object"
+      },
       "superaide__app__routes__LinkBody": {
         "properties": {
           "url": {
@@ -2102,6 +2167,31 @@
           "options"
         ],
         "title": "AskBody",
+        "type": "object"
+      },
+      "superaide__identity__claims_routes__AnswerBody": {
+        "additionalProperties": false,
+        "properties": {
+          "choice": {
+            "enum": [
+              "contact",
+              "new",
+              "stranger",
+              "block"
+            ],
+            "title": "Choice",
+            "type": "string"
+          },
+          "relation": {
+            "default": "contact",
+            "title": "Relation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "choice"
+        ],
+        "title": "AnswerBody",
         "type": "object"
       },
       "superaide__mandate__routes__CreateBody": {
@@ -4500,6 +4590,88 @@
         ]
       }
     },
+    "/app/episodes": {
+      "get": {
+        "description": "The owner's own episodes, newest first. 404 while SLEEP_JOB_ENABLED is off.",
+        "operationId": "episodes_app_episodes_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Episodes App Episodes Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Conversation summaries from the nightly job",
+        "tags": [
+          "Owner: episodes"
+        ]
+      }
+    },
+    "/app/episodes/{episode_id}/erase": {
+      "post": {
+        "description": "Deletes the summary only. The messages themselves are not touched.",
+        "operationId": "erase_app_episodes__episode_id__erase_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "episode_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Episode Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Erase App Episodes  Episode Id  Erase Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Erase one summary",
+        "tags": [
+          "Owner: episodes"
+        ]
+      }
+    },
     "/app/fork-night": {
       "get": {
         "operationId": "runs_app_fork_night_get",
@@ -4836,6 +5008,96 @@
         "summary": "Hire Ava",
         "tags": [
           "Marketplace & hiring"
+        ]
+      }
+    },
+    "/app/identity-claims": {
+      "get": {
+        "description": "Open questions with everything the platform told us. Nothing is linked until you answer.",
+        "operationId": "list_claims_app_identity_claims_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Claims App Identity Claims Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Who is this? Accounts named like someone you know",
+        "tags": [
+          "Owner: identity claims"
+        ]
+      }
+    },
+    "/app/identity-claims/{claim_id}/answer": {
+      "post": {
+        "description": "Only this links the account. Each question is answered once.",
+        "operationId": "answer_claim_app_identity_claims__claim_id__answer_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "claim_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Claim Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/superaide__identity__claims_routes__AnswerBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Answer Claim App Identity Claims  Claim Id  Answer Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Answer: link, add as a person, keep as a stranger, or block",
+        "tags": [
+          "Owner: identity claims"
         ]
       }
     },
@@ -6473,6 +6735,84 @@
         ]
       }
     },
+    "/app/model-drill": {
+      "get": {
+        "description": "MODEL_DRILL_ENABLED (off by default; 404 while off): the model Ava uses now and how many recent tasks a drill can replay.",
+        "operationId": "drill_info_app_model_drill_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Drill Info App Model Drill Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Model-swap drill",
+        "tags": [
+          "Owner: skills",
+          "Owner: skills"
+        ]
+      },
+      "post": {
+        "description": "Replays your last tasks (at most DRILL_MAX_TASKS) on each model with effects stubbed and no network, and reports where the call sequences differ (tool names and short argument hashes only).",
+        "operationId": "drill_run_app_model_drill_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DrillBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Drill Run App Model Drill Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Replay on two models",
+        "tags": [
+          "Owner: skills",
+          "Owner: skills"
+        ]
+      }
+    },
     "/app/needs-you": {
       "get": {
         "description": "Interrupts and unverified requests that need you, what Ava handled, and what she held.",
@@ -7046,7 +7386,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AnswerBody"
+                "$ref": "#/components/schemas/superaide__app__routes__AnswerBody"
               }
             }
           },
@@ -9901,6 +10241,81 @@
           }
         ],
         "summary": "Agree (or stop agreeing) to share a lesson",
+        "tags": [
+          "Owner: Ava School"
+        ]
+      }
+    },
+    "/app/school/sharing": {
+      "get": {
+        "description": "Default none. Only lessons whose category (role) you allow here go into a signed file.",
+        "operationId": "sharing_app_school_sharing_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Sharing App School Sharing Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Which lesson categories may be shared",
+        "tags": [
+          "Owner: Ava School"
+        ]
+      },
+      "put": {
+        "operationId": "set_sharing_app_school_sharing_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SharingBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Set Sharing App School Sharing Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Choose which lesson categories may be shared",
         "tags": [
           "Owner: Ava School"
         ]

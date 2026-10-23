@@ -56,7 +56,6 @@ FLAG_GATED = {
     ("GET", "/app/import-leases"),  # IMPORT_LEASE_ENABLED (#133)
     ("GET", "/app/mirror"),  # "The Mirror" (MIRROR_ENABLED)
     ("GET", "/app/episodes"),  # conversation summaries of the sleep job (SLEEP_JOB_ENABLED)
-
     ("GET", "/app/identity-claims"),  # IDENTITY_CLAIM_REVIEW (#93)
 }
 SECRET_NOTE = "Project Bluebird is my secret side project"
