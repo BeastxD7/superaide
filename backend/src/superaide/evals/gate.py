@@ -45,6 +45,7 @@ def compare(results: dict[str, bool], baseline: dict[str, str]) -> tuple[list[st
 def run_gate(update: bool = False) -> int:
     from superaide.evals.harness import reset_db, run_scenario
 
+    by_id = {sc.id: sc for sc in ltm_scenarios()}
     reset_db()
     results: dict[str, bool] = {}
     errors: list[str] = []
@@ -52,7 +53,8 @@ def run_gate(update: bool = False) -> int:
         run = run_scenario(sc)
         if run.error:
             errors.append(f"{sc.id}: harness error: {run.error.strip().splitlines()[-1]}")
-        results[sc.id] = run.passed
+        if run.graded:  # a scenario that is only graded live (no offline check) cannot gate CI
+            results[sc.id] = run.passed
     if errors:
         print("\n".join(errors))
         return 2
@@ -63,10 +65,9 @@ def run_gate(update: bool = False) -> int:
               f"{sum(v == 'known_gap' for v in new.values())} known gaps")  # fmt: skip
         return 0
     regressions, improvements = compare(results, load_baseline())
-    by_cat = {c: [s for s in ltm_scenarios() if s.category == c] for c in LTM}
-    for c, scs in by_cat.items():
-        ok = sum(results[s.id] for s in scs)
-        print(f"{c:18} {ok}/{len(scs)} pass")
+    for c in LTM:
+        mine = [sid for sid, sc in by_id.items() if sc.category == c and sid in results]
+        print(f"{c:18} {sum(results[i] for i in mine)}/{len(mine)} pass")
     for line in improvements:
         print("improved:", line)
     for line in regressions:

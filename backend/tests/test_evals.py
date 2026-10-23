@@ -139,7 +139,8 @@ def test_the_two_owner_isolation_check_would_catch_a_leak():
 def _ltm_results() -> dict[str, bool]:
     from superaide.evals.gate import ltm_scenarios
 
-    return {sc.id: run_scenario(sc).passed for sc in ltm_scenarios()}
+    runs = {sc.id: run_scenario(sc) for sc in ltm_scenarios()}
+    return {sid: r.passed for sid, r in runs.items() if r.graded}  # live-only scenarios can't gate
 
 
 def test_ltm_scenarios_match_the_recorded_baseline():
