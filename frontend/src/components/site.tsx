@@ -220,13 +220,13 @@ export function Footer() {
         <div className="flex flex-col gap-6 px-5 pt-8 sm:flex-row sm:px-8 sm:pt-10 sm:items-start sm:justify-between">
           <p className="max-w-sm text-lg text-white/80">AI teammates that start as beginners and grow up by working with you.</p>
           <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-white/60 sm:gap-x-8">
-            <Link href="/agents/ava" className="inline-flex min-h-11 items-center hover:text-white">
+            <Link href="/agents/ava" className="inline-flex min-h-11 min-w-11 items-center hover:text-white">
               Meet Ava
             </Link>
-            <a href="/#safety" className="inline-flex min-h-11 items-center hover:text-white">
+            <a href="/#safety" className="inline-flex min-h-11 min-w-11 items-center hover:text-white">
               Safety
             </a>
-            <a href="/console" className="inline-flex min-h-11 items-center hover:text-white">
+            <a href="/console" className="inline-flex min-h-11 min-w-11 items-center hover:text-white">
               Operator console
             </a>
           </div>

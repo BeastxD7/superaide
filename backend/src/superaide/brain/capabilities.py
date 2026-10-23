@@ -1,0 +1,177 @@
+"""What Ava can do right now, built from code on every owner turn (issue #328), and a check on action claims.
+
+The model used to guess: "I can't open your Gmail" with no word on how to connect it, "What capabilities do
+you have?" with no connection state, and a later "I was wrong earlier" after the owner had simply connected
+Gmail in between. Now the state, the exact place to change it and when it last changed come from the database,
+and the charter rule below tells her to say "X is connected now", not "I was wrong".
+
+`unsupported_claims` is the other half: a sentence saying she saved a draft, sent, queued or set something
+must be backed by a successful tool result in the same turn, or it is removed.
+"""
+
+from __future__ import annotations
+
+import re
+from datetime import datetime
+
+from sqlalchemy.orm import Session
+
+CHANGED_RULE = (
+    "When a capability below changed since earlier in this conversation (its 'since' time is after something "
+    "you said), say plainly that it is connected or enabled now. Say 'I was wrong' only if you actually stated "
+    "something false when you said it."
+)
+
+
+def _since(at: datetime | None, tz: str) -> str:
+    if at is None:
+        return ""
+    from superaide.intentions.when import zone
+
+    return f", since {at.astimezone(zone(tz)):%a %d %b %H:%M}"
+
+
+def gmail_line(session: Session, tz: str) -> str:
+    from superaide.skills import gmail
+    from superaide.vault.store import stored
+
+    st = gmail.status(session)
+    if not st["installed"]:
+        return "Gmail: not added. The owner can add it under Capabilities → Gmail."
+    if not st["connected"]:
+        why = "" if st["client_ready"] else " (a Google sign-in client must be saved first)"
+        return f"Gmail: not connected{why}. To connect: Capabilities → Gmail → Connect, then approve on Google."
+    row = stored(session).get(gmail.SLOT)
+    since = _since(getattr(row, "updated_at", None), tz)
+    can = "search and read email, and open a thread"
+    if not st["drafts"] or not st["drafts_allowed"]:
+        return (
+            f"Gmail: connected{since}, read-only: you can {can}. You cannot save drafts or ask to send yet. "
+            "To enable: Capabilities → Gmail → turn on drafts (Google will ask permission)."
+        )
+    return (
+        f"Gmail: connected{since}, drafts on: you can {can}, save a reply draft in a thread, and ask the owner to "
+        "approve sending a reply. You cannot start a brand-new email or forward."
+    )
+
+
+def calendar_line(session: Session) -> str:
+    from superaide.skills import calendar
+
+    if not calendar.enabled(session):
+        return "Calendar: not added. The owner can add Google Calendar under Capabilities."
+    if not calendar.connected():
+        return "Calendar: added but not connected. To connect: Capabilities → Google Calendar → Connect."
+    return "Calendar: connected: you can read events and free time, and ask the owner to approve changes."
+
+
+def approvals_line() -> str:
+    from superaide.policy.kinds import KINDS
+
+    return "Things the owner can approve: " + "; ".join(
+        f"{k.label.lower()} ({k.on_approval.rstrip('.').lower()})" for k in KINDS.values() if k.executes
+    )
+
+
+STANDING_ROWS = 10
+STANDING_CHARS = 800
+RECENT_HOURS = 48
+
+
+def standing(session: Session, tz: str) -> str:
+    """Pending and recently decided approvals, from the database every turn (issue #340), so the answer to
+    "did you send it?" never depends on what an old chat turn said or on which channel it was said on."""
+    from datetime import UTC, timedelta
+
+    from sqlalchemy import select
+
+    from superaide.db.models import Approval
+    from superaide.intentions.when import zone
+
+    now = datetime.now(UTC)
+    rows = list(session.scalars(select(Approval).order_by(Approval.created_at.desc()).limit(40)).all())
+    keep = [
+        a
+        for a in rows
+        if a.status == "pending" or (a.decided_at is not None and now - a.decided_at < timedelta(hours=RECENT_HOURS))
+    ][:STANDING_ROWS]
+    if not keep:
+        return ""
+    out = [
+        "Where things stand (from the app's records, authoritative; it overrides anything said earlier in any chat):"
+    ]
+    for a in keep:
+        p = a.payload or {}
+        what = str(p.get("summary") or a.kind)[:80].replace("\n", " ")
+        if a.status == "pending":
+            state = f"WAITING for the owner's OK since {a.created_at.astimezone(zone(tz)):%a %H:%M}, nothing done yet"
+        else:
+            when = f"{a.decided_at.astimezone(zone(tz)):%a %H:%M}" if a.decided_at else ""
+            result = str(p.get("result") or "").replace("\n", " ")[:90]
+            state = f"{a.status.upper()} {when}" + (f": {result}" if result else "")
+        out.append(f"- {a.kind}: {what} -> {state}")
+    text = "\n".join(out)
+    return text if len(text) <= STANDING_CHARS else text[: STANDING_CHARS - 1] + "…"
+
+
+def block(session: Session, *, tz: str, web: bool) -> str:
+    lines = [
+        "What you can do right now (from the app's own state, authoritative; answer 'what can you do?' from it):",
+        "- " + gmail_line(session, tz),
+        "- " + calendar_line(session),
+        "- Web search: " + ("on." if web else "off (the Web skill is not added)."),
+        "- Reminders: always available (create, list, move, cancel).",
+        "- " + approvals_line() + ". Anything else cannot be queued; say so and offer text the owner can send.",
+        CHANGED_RULE,
+    ]
+    stand = standing(session, tz)
+    return "\n".join(lines) + ("\n\n" + stand if stand else "")
+
+
+# --- action claims --------------------------------------------------------------------------------
+
+_CLAIMS: list[tuple[re.Pattern[str], set[str], str]] = [
+    (
+        re.compile(r"\b(i(?:'ve| have)?\s+(?:just\s+)?(?:saved|created|written)\b[^.\n]{0,30}\bdraft)", re.I),
+        {"gmail_draft_reply", "gmail_send"},
+        "a saved draft",
+    ),
+    (
+        re.compile(
+            r"\b(i(?:'ve| have)?\s+(?:just\s+)?sent\b|i sent\b|(?:email|message|it)\s+(?:has been|was) sent)", re.I
+        ),
+        {"gmail_search", "gmail_read_thread"},  # she may report a send only after looking in Gmail
+        "a sent message",
+    ),
+    (
+        re.compile(r"\b(i(?:'ve| have)?\s+(?:just\s+)?(?:set|created|added)\b[^.\n]{0,20}\breminder)", re.I),
+        {"create_reminder", "update_reminder"},
+        "a reminder",
+    ),
+    (
+        re.compile(r"\b(i(?:'ve| have)?\s+(?:just\s+)?queued\b|queued (?:it |that )?for your approval)", re.I),
+        {"propose_action", "gmail_send", "create_event", "move_event", "decline_event"},
+        "an approval",
+    ),
+]
+
+
+def unsupported_claims(text: str, ok_tools: set[str]) -> list[str]:
+    """Names of the kinds of action the text claims that no successful tool call this turn backs."""
+    return [what for pattern, tools, what in _CLAIMS if pattern.search(text or "") and not (tools & ok_tools)]
+
+
+def strip_claims(text: str, ok_tools: set[str]) -> tuple[str, list[str]]:
+    """Remove the sentences that claim an action nothing did. (text, what was removed)."""
+    removed: list[str] = []
+    kept: list[str] = []
+    for sentence in re.split(r"(?<=[.!?])\s+|\n+", text or ""):
+        bad = unsupported_claims(sentence, ok_tools)
+        if bad:
+            removed += bad
+        elif sentence.strip():
+            kept.append(sentence.strip())
+    if not removed:
+        return text, []
+    note = "Correction: I haven't actually done that, no tool ran for " + " or ".join(dict.fromkeys(removed)) + "."
+    return "\n".join([*kept, note]), removed

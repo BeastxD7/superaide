@@ -26,6 +26,8 @@ export type Me = {
   onboarding: { step: string; done: boolean }
   brain: 'claude' | 'offline'
   paused: boolean
+  // The pause is the owner's own (halt word, breaker, witness) and she can lift it herself; absent: ask the operator.
+  can_resume?: boolean
   // Which optional parts of the product this server has switched on. Optional: an older API doesn't send it.
   features?: { triage?: boolean }
   channels: {

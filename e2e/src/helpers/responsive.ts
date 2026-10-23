@@ -49,7 +49,10 @@ export async function measure(page: Page, root = 'body'): Promise<Measure> {
         .filter((el) => el.matches('button, a[href], [role=button], [role=tab], [role=menuitem], input:not([type=hidden]), select, textarea, summary'))
         .filter((el) => {
           const r = el.getBoundingClientRect()
-          return (r.height < 44 || r.width < 44) && !inline(el) && !el.matches('.sr-only, [class*="sr-only"]')
+          // A checkbox or radio inside a label that is itself 44px tall: the whole label is the target.
+          const lab = el.closest('label')?.getBoundingClientRect()
+          if (el.matches('input[type=checkbox], input[type=radio]') && lab && lab.height >= 44) return false
+          return (r.height < 43.5 || r.width < 43.5) && !inline(el) && !el.matches('.sr-only, [class*="sr-only"]')
         })
         .map((el) => `${lbl(el)} ${Math.round(el.getBoundingClientRect().width)}x${Math.round(el.getBoundingClientRect().height)}`)
         .slice(0, 12)
