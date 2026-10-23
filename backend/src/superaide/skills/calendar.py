@@ -87,7 +87,7 @@ def calendar_events(session: Session, owner: Person, args: dict[str, Any]) -> tu
     try:
         events = fetch(session, owner, start, end, str(args.get("query") or ""))
     except google.GoogleError as exc:
-        return str(exc), True
+        return google.tool_text(exc), True
     if not events:
         return f"No events between {start:%a %d %b} and {end - timedelta(seconds=1):%a %d %b}.", False
     out = []
@@ -138,7 +138,7 @@ def calendar_free_busy(session: Session, owner: Person, args: dict[str, Any]) ->
     try:
         busy = google.free_busy(_token(), start=start, end=end)
     except google.GoogleError as exc:
-        return str(exc), True
+        return google.tool_text(exc), True
     lines = []
     day = start
     while day < end:
@@ -260,7 +260,7 @@ def create_event(session: Session, sender: Any, args: dict[str, Any], *, tainted
     try:
         made = google.insert_event(_token(), body, notify=False)
     except google.GoogleError as exc:
-        return str(exc), True
+        return google.tool_text(exc), True
     audit(session, "skills", "calendar_event_created", event_id=made.get("id"), by="tool")
     return f"Added “{title}”, {when_text} (event id {made.get('id', '')}).", False
 
@@ -271,7 +271,7 @@ def _existing(event_id: str) -> dict[str, Any] | str:
     try:
         found = google.get_event(_token(), event_id)
     except google.GoogleError as exc:
-        return str(exc)
+        return google.tool_text(exc)
     if found is None or found.get("status") == "cancelled":
         return "That event isn't in the calendar any more."
     return found
@@ -310,7 +310,7 @@ def move_event(session: Session, sender: Any, args: dict[str, Any], *, tainted: 
     try:
         google.patch_event(_token(), str(event["id"]), body, notify=False)
     except google.GoogleError as exc:
-        return str(exc), True
+        return google.tool_text(exc), True
     audit(session, "skills", "calendar_event_moved", event_id=event["id"], by="tool")
     return f"Moved “{title}” to {start:%a %d %b, %H:%M}.", False
 
@@ -352,7 +352,7 @@ def _carry_out(session: Session, approval: Any, fn: Any, done: str) -> str:
             return "Approved, but Google Calendar isn't connected with calendar actions any more. Nothing changed."
         result = fn(_token(), dict(approval.payload or {}))
     except google.GoogleError as exc:
-        return f"Approved, but Google said: {exc} Nothing changed."
+        return f"Approved, but Google said: {google.tool_text(exc)} Nothing changed."
     audit(session, "skills", f"calendar_{approval.kind.removeprefix('calendar_')}", approval_id=approval.id,
           event_id=(result or {}).get("id"))  # fmt: skip
     return done
