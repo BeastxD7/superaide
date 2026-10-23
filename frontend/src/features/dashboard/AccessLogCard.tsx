@@ -17,7 +17,11 @@ const WHAT: Record<string, string> = {
   '/api/audit': 'Safety log',
 }
 
-function what(path: string): string {
+// The paged routes (ADR 0014) show the same screens as their unpaged ones: /api/people/page, /api/conversations/page.
+const unpaged = (path: string) => path.replace(/\/unlinked\/page$/, '').replace(/\/page$/, '')
+
+function what(raw: string): string {
+  const path = unpaged(raw)
   if (WHAT[path]) return WHAT[path]
   if (path.startsWith('/api/identities/')) return path.endsWith('/unlink') ? 'Unlinked an account' : 'Linked an account'
   return path

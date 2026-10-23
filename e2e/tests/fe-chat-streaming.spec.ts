@@ -158,7 +158,9 @@ test('console: a slow answer for the previous conversation never lands on the se
   })
   let aAnswered: () => void = () => {}
   const aDone = new Promise<void>((resolve) => (aAnswered = resolve))
-  await page.route('**/api/conversations', (route) => route.fulfill({ json: [conv('A', 'a'), conv('B', 'b')] }))
+  await page.route('**/api/conversations/page*', (route) =>
+    route.fulfill({ json: { items: [conv('A', 'a'), conv('B', 'b')], next_cursor: null, has_more: false } }),
+  )
   await page.route('**/api/events?*', async (route) => {
     const ctx = new URL(route.request().url()).searchParams.get('context_id')
     if (ctx === 'A') {

@@ -69,6 +69,7 @@ export type Conversation = {
   audience_class: string
   title: string
   messages: number
+  messages_more?: boolean
   last_at: string | null
 }
 
@@ -160,7 +161,15 @@ export function saveConnection(c: Connection | null): void {
 export { ApiError }
 
 // Same Axios client as the app, authorised with the operator's ADMIN_TOKEN.
-export async function api<T>(conn: Connection, path: string, init?: { method?: 'GET' | 'POST'; body?: string }): Promise<T> {
+export async function api<T>(
+  conn: Connection,
+  path: string,
+  init?: { method?: 'GET' | 'POST'; body?: string; signal?: AbortSignal },
+): Promise<T> {
+  return (await apiFull<T>(conn, path, init)).data
+}
+
+async function apiFull<T>(conn: Connection, path: string, init?: { method?: 'GET' | 'POST'; body?: string; signal?: AbortSignal }) {
   const client = createClient(conn.base.replace(/\/$/, ''), { token: () => conn.token })
   const headers: Record<string, string> = {}
   if (conn.access) {
@@ -170,6 +179,26 @@ export async function api<T>(conn: Connection, path: string, init?: { method?: '
     headers['X-Operator-Reason-Encoding'] = 'uri'
     if (conn.access.instance) headers['X-Operator-Instance'] = conn.access.instance
   }
-  const res = await client.request<T>({ url: path, method: init?.method ?? 'GET', data: init?.body, headers })
-  return res.data
+  return client.request<T>({ url: path, method: init?.method ?? 'GET', data: init?.body, headers, signal: init?.signal })
 }
+
+// Fetchers for usePaginated (ADR 0014), carrying the operator's token and break-glass reason like every console call.
+// A paged route answers the standard `{items, next_cursor, has_more}`.
+export type PageBody<T> = { items: T[]; next_cursor: string | null; has_more: boolean; total_estimate?: number | null }
+
+export const pageFetcher =
+  <T,>(conn: Connection) =>
+  (path: string, signal: AbortSignal): Promise<PageBody<T>> =>
+    api<PageBody<T>>(conn, path, { signal })
+
+// `/api/events` keeps its bare array and pages by header (`X-Next-Cursor`, `X-Has-More`): wrap it as a page.
+export const arrayPageFetcher =
+  <T,>(conn: Connection) =>
+  async (path: string, signal: AbortSignal): Promise<PageBody<T>> => {
+    const res = await apiFull<T[]>(conn, path, { signal })
+    return {
+      items: res.data,
+      next_cursor: (res.headers['x-next-cursor'] as string | undefined) ?? null,
+      has_more: res.headers['x-has-more'] === 'true',
+    }
+  }
