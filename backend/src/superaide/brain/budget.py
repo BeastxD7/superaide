@@ -69,6 +69,7 @@ BUCKETS = {
     "playbook": "learning",
     # Learning and trust features (#142)
     "tuner": "learning",
+    "dissent": "dissent",  # #126: three models on one high-stakes choice
 }
 
 

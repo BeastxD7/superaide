@@ -94,6 +94,13 @@ class Settings(BaseSettings):
     # per consumer, rows filtered by the audience gate in SQL, a per-minute limit and a visible access log.
     memory_socket_enabled: bool = False
     memory_socket_per_minute: int = Field(default=30, ge=1)
+    # Dissent Desk (#126). Off by default. For a high-stakes choice, three DIFFERENT models (DISSENT_MODELS, a
+    # comma-separated list of model ids the provider layer can route) answer independently; plain code, not a
+    # model, decides whether a minority view is worth showing. Only choices at or above DISSENT_MIN_STAKES run,
+    # and every call is reserved against the "dissent" daily bucket.
+    dissent_desk_enabled: bool = False
+    dissent_models: str = ""
+    dissent_min_stakes: int = Field(default=3, ge=1, le=5)
 
     # Tenancy
     tenant_id: uuid.UUID = DEFAULT_TENANT_ID
@@ -114,6 +121,7 @@ class Settings(BaseSettings):
     budget_daily_by_bucket: dict[str, float] = Field(
         default_factory=lambda: {
             "chat": 0.40,
+            "dissent": 0.10,
             "memory": 0.15,
             "research": 0.25,
             "triage": 0.05,
