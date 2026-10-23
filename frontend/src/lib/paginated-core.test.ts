@@ -5,7 +5,7 @@ type Row = { id: string }
 const rows = (...ids: string[]): Row[] => ids.map((id) => ({ id }))
 const page = (items: Row[], next: string | null): PageResponse<Row> => ({ items, next_cursor: next, has_more: next !== null })
 
-function make(fetcher: (url: string, signal: AbortSignal) => Promise<PageResponse<Row>>, extra: object = {}) {
+function make(fetcher: (url: string, signal: AbortSignal) => Promise<PageResponse<Row> | Record<string, unknown>>, extra: object = {}) {
   return new PaginatedController<Row>({
     path: '/things',
     limit: 2,
@@ -163,5 +163,17 @@ describe('PaginatedController', () => {
     const c = make(() => Promise.resolve(page([], null)))
     await c.start()
     expect(c.getSnapshot()).toMatchObject({ status: 'ready', items: [], hasMore: false })
+  })
+
+  it('reads rows from a route-specific key such as /notebook\'s `memories`', async () => {
+    const f = vi
+      .fn<(u: string, s: AbortSignal) => Promise<Record<string, unknown>>>()
+      .mockResolvedValueOnce({ memories: rows('a', 'b'), next_cursor: 'c1', has_more: true })
+      .mockResolvedValueOnce({ memories: rows('c'), next_cursor: null, has_more: false })
+    const c = make(f, { itemsKey: 'memories' })
+    await c.start()
+    await c.loadMore()
+    expect(c.getSnapshot().items.map((r) => r.id)).toEqual(['a', 'b', 'c'])
+    expect(c.getSnapshot().hasMore).toBe(false)
   })
 })

@@ -63,7 +63,7 @@ test('the Needs-you list switcher is a group of toggle buttons that work from th
 
 test('Forget moves focus to Keep, and Escape on the account menu returns focus to its button', async ({ page, owner }) => {
   void owner
-  await page.route('**/api/app/notebook', (r) =>
+  await page.route('**/api/app/notebook*', (r) =>
     r.fulfill({ json: { memories: [{ id: 'n1', text: 'Likes tea', category: 'preference', source: 'chat', document: null, shareable: false, private: false, at }] } }),
   )
   await page.goto('/dashboard/notebook')

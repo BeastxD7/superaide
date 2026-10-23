@@ -14,7 +14,7 @@ from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -635,39 +635,58 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         "/notebook",
         tags=["Owner: chat & notebook"],
         summary="Notebook",
-        description="Everything Ava currently knows about the owner, newest first, with its category and source.",
+        description="Everything Ava currently knows about the owner, newest first, with its category and source. "
+        "Paged: `limit` (1 to 200, default 200) and `cursor` (the previous page's `next_cursor`); `has_more` says "
+        "whether older notes exist, so a long notebook is never cut silently. `q` finds notes containing a word "
+        "and `category` keeps one kind. ADR 0014.",
     )
-    def notebook(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+    def notebook(
+        person_id: uuid.UUID = Depends(owner_person_id),
+        limit: int = limit_param(200, 200),
+        cursor: str | None = cursor_param(),
+        q: str = Query("", max_length=200),
+        category: str = Query("", max_length=40),
+    ) -> dict[str, Any]:
         """Everything the agent currently knows about the owner, newest first, with where it came from."""
+        stmt: Any = (
+            select(MemoryItem, Document.title)
+            .outerjoin(Document, Document.id == MemoryItem.document_id)
+            .where(
+                MemoryItem.subject_person_ids.contains([person_id]),
+                MemoryItem.valid_to.is_(None),
+                MemoryItem.conflict_status == "none",  # claims waiting for a decision are under /notebook/conflicts
+            )
+        )
+        if q.strip():
+            word = q.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            stmt = stmt.where(MemoryItem.content.ilike(f"%{word}%", escape="\\"))
+        if category:
+            stmt = stmt.where(MemoryItem.category == category)
         with session_scope() as s:
-            rows = s.execute(
-                select(MemoryItem, Document.title)
-                .outerjoin(Document, Document.id == MemoryItem.document_id)
-                .where(
-                    MemoryItem.subject_person_ids.contains([person_id]),
-                    MemoryItem.valid_to.is_(None),
-                    MemoryItem.conflict_status == "none",  # claims waiting for a decision are under /notebook/conflicts
-                )
-                .order_by(MemoryItem.created_at.desc())
-                .limit(300)
-            ).all()
-            return {
-                "memories": [
-                    {
-                        "id": str(m.id),
-                        "text": m.content,
-                        "category": m.category,
-                        "source": m.source,
-                        "document": title,
-                        "passage": str(m.chunk_id) if m.chunk_id else None,
-                        "shareable": m.allowed_kind == "public",
-                        "private": m.allowed_kind == "persons",
-                        "hearsay": m.belief_state == "hearsay",
-                        "at": m.created_at.isoformat(),
-                    }
-                    for m, title in rows
-                ]
-            }
+            page = paginate(
+                s,
+                stmt,
+                [SortKey(MemoryItem.created_at), SortKey(MemoryItem.id)],
+                endpoint="notebook",
+                bind=bind_for(person_id),
+                limit=limit,
+                cursor=cursor,
+                maximum=200,
+                entity_of=lambda row: row[0],
+                build=lambda row: {
+                    "id": str(row[0].id),
+                    "text": row[0].content,
+                    "category": row[0].category,
+                    "source": row[0].source,
+                    "document": row[1],
+                    "passage": str(row[0].chunk_id) if row[0].chunk_id else None,
+                    "shareable": row[0].allowed_kind == "public",
+                    "private": row[0].allowed_kind == "persons",
+                    "hearsay": row[0].belief_state == "hearsay",
+                    "at": row[0].created_at.isoformat(),
+                },
+            )
+            return {"memories": page.items, "next_cursor": page.next_cursor, "has_more": page.has_more}
 
     @router.get(
         "/notebook/conflicts",

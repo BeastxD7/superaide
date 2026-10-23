@@ -8,17 +8,18 @@ import { ActionError, LoadError } from '@/components/load-state'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Skeleton } from '@/components/ui/skeleton'
+import { ListFooter } from '@/components/ui/list-footer'
+import { SkeletonList } from '@/components/ui/skeleton'
 import { PassportPanel } from '@/features/dashboard/PassportPanel'
 import { CATEGORY_LABEL, SOURCE_LABEL, useAppData } from '@/features/dashboard/data'
 import { call, retryDocument, type Conflict, type ConflictCard, type Memory, type SharedDoc } from '@/lib/api'
 import { errorMessage } from '@/lib/action'
 import { formatDay } from '@/lib/dates'
+import { usePaginated } from '@/lib/paginated'
 import { useSession } from '@/lib/session-context'
 
 export function NotebookPage() {
   const { me } = useSession()
-  const { data, error, reload } = useAppData<{ memories: Memory[] }>('/notebook')
   const conflicts = useAppData<{ conflicts: Conflict[] }>('/notebook/conflicts')
   const files = useAppData<SharedDoc[]>('/intro/documents')
   // Files and links shared in the introduction that Ava has not turned into notes: saved but not read yet, or
@@ -36,13 +37,22 @@ export function NotebookPage() {
   const [filter, setFilter] = useState<string>('all')
   const [where, setWhere] = useState<string>('all')
   const [query, setQuery] = useState('')
+  // The search runs on the server over every note (not only the ones loaded), a moment after typing stops.
+  const [term, setTerm] = useState('')
+  useEffect(() => {
+    const t = window.setTimeout(() => setTerm(query.trim()), 300)
+    return () => window.clearTimeout(t)
+  }, [query])
+  const list = usePaginated<Memory>('/notebook', { limit: 50, params: { q: term }, itemsKey: 'memories' })
+  const error = list.failed === 'first' ? list.error : list.status === 'error' && list.failed !== 'more' ? list.error : null
+  const reload = () => list.refresh()
   const [confirm, setConfirm] = useState<string | null>(null)
   const [forgetting, setForgetting] = useState(false)
   const [passages, setPassages] = useState<Record<string, string>>({})
   const [actionError, setActionError] = useState<string | null>(null)
   const name = me?.agent.name ?? 'Ava'
 
-  const memories = data?.memories
+  const memories = list.status === 'loading' || (list.status === 'error' && list.failed === 'first') ? undefined : list.items
   // A link from a [n] mark in the chat lands on #note-<id>: show every note, scroll to it and mark it. A note
   // that was forgotten since says so, instead of leaving a dead link.
   const [focusNote, setFocusNote] = useState<{ id: string; found: boolean } | null>(null)
@@ -51,6 +61,11 @@ export function NotebookPage() {
     const m = /^#note-([0-9a-f-]{8,64})$/i.exec(window.location.hash)
     if (!m) return
     const found = memories.some((x) => x.id === m[1])
+    // The note may be on a later page: keep loading until it turns up or the notebook ends.
+    if (!found && list.hasMore) {
+      void list.loadMore()
+      return
+    }
     setFocusNote({ id: m[1], found })
     if (found) {
       setFilter('all')
@@ -60,7 +75,7 @@ export function NotebookPage() {
         document.getElementById(`note-${m[1]}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }),
       )
     }
-  }, [memories])
+  }, [memories, list.hasMore, list.status]) // eslint-disable-line react-hooks/exhaustive-deps
   const categories = useMemo(() => [...new Set((memories ?? []).map((m) => m.category))], [memories])
   // The kind filter can outlive its last note (forgotten, or gone after a reload): fall back to Everything.
   const active = categories.includes(filter) ? filter : 'all'
@@ -71,8 +86,7 @@ export function NotebookPage() {
   const shown = (memories ?? []).filter(
     (m) =>
       (active === 'all' || m.category === active) &&
-      (activeWhere === 'all' || whereOf(m) === activeWhere) &&
-      m.text.toLowerCase().includes(query.trim().toLowerCase()),
+      (activeWhere === 'all' || whereOf(m) === activeWhere),
   )
 
   async function showPassage(id: string) {
@@ -321,15 +335,8 @@ export function NotebookPage() {
             This source was deleted. {name} no longer has that note.
           </p>
         )}
+        {!memories && !error && <SkeletonList variant="card" count={3} rowHeight={120} what="your notebook" className="mt-6" />}
         <ul className="mt-6 space-y-2">
-          {!memories &&
-            !error &&
-            [0, 1, 2].map((i) => (
-              <li key={i} className="rounded-xl border border-line p-4">
-                <Skeleton className="h-4 w-1/3" />
-                <Skeleton className="mt-3 h-4 w-3/4" />
-              </li>
-            ))}
           <AnimatePresence initial={false}>
             {shown.map((m) => (
               <motion.li
@@ -383,12 +390,12 @@ export function NotebookPage() {
           </AnimatePresence>
           {memories && shown.length === 0 && (
             <li className="rounded-xl border border-dashed border-line p-6 text-center text-sm text-muted">
-              {memories.length === 0
+              {memories.length === 0 && !term
                 ? `Nothing yet. Tell ${name} "remember that…" in chat and it will appear here.`
-                : query.trim()
+                : term
                   ? 'Nothing matches that search.'
                   : 'No notes of that kind.'}
-              {memories.length > 0 && (
+              {(memories.length > 0 || term) && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -405,6 +412,10 @@ export function NotebookPage() {
             </li>
           )}
         </ul>
+        {memories && (active !== 'all' || activeWhere !== 'all') && list.hasMore && (
+          <p className="mt-3 text-xs text-muted">Showing matches among the notes loaded so far. Load more to look further back.</p>
+        )}
+        {memories && <ListFooter {...list.footer} endLabel="That is every note" />}
       </div>
     </div>
   )

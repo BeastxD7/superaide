@@ -221,6 +221,14 @@ class MemoryItem(Scoped, Base):
         Index("ix_memory_item_fts", text("to_tsvector('english', content)"), postgresql_using="gin"),
         # Operator paging of every memory, newest first (ADR 0014).
         Index("ix_memory_item_agent_created", "agent_id", text("created_at DESC"), text("id DESC")),
+        # The owner's notebook: only live, undisputed notes, so forgotten and superseded history does not bloat it.
+        Index(
+            "ix_memory_item_live_created",
+            "agent_id",
+            text("created_at DESC"),
+            text("id DESC"),
+            postgresql_where=text("valid_to IS NULL AND conflict_status = 'none'"),
+        ),
     )
 
     content: Mapped[str] = mapped_column(Text)
