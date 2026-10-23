@@ -97,6 +97,22 @@ def create_app(agent: Agent | None = None) -> FastAPI:
         process runs them (a server's separate worker follows the changes by itself)."""
         return runtime.apply_connections(listen=settings.run_channels_in_api)
 
+    from superaide.security import dbcheck
+
+    db_gate = dbcheck.Gate()
+    app.state.db_gate = db_gate
+
+    @app.middleware("http")
+    async def database_ready(request, call_next):
+        # While the database is behind the code, every route but /health says so plainly instead of failing
+        # halfway with a 500 (security/dbcheck.py).
+        message = db_gate.current()
+        if message and request.url.path not in {"/health", "/docs", "/redoc", "/openapi.json"}:
+            from fastapi.responses import JSONResponse
+
+            return JSONResponse({"detail": message}, status_code=503)
+        return await call_next(request)
+
     worker = JobWorker()
 
     @asynccontextmanager
@@ -105,9 +121,10 @@ def create_app(agent: Agent | None = None) -> FastAPI:
 
         platform_ai.warn_if_unusable()
         if fixed is None:
-            from superaide.security import deploy
+            from superaide.security import dbcheck, deploy
 
             deploy.check(settings)
+            db_gate.message = dbcheck.check(settings)  # refuses to start when hosted and behind
         if fixed is None and settings.run_channels_in_api:
             try:
                 started = apply_connections()
@@ -178,9 +195,15 @@ def create_app(agent: Agent | None = None) -> FastAPI:
         "/health",
         tags=["Health"],
         summary="Health check",
-        description='Returns `{"status": "ok"}` while the API is up.',
+        description=(
+            'Returns `{"status": "ok"}` while the API is up. `{"status": "degraded", "database": "behind"}` means '
+            "the database has not been migrated to what the code expects."
+        ),
     )
     def health() -> dict[str, str]:
+        message = db_gate.current()
+        if message:  # still answers 200 (a container check should not kill a server waiting for a migration)
+            return {"status": "degraded", "database": "behind", "detail": message}
         return {"status": "ok"}
 
     @app.post(
