@@ -43,6 +43,20 @@ class ApiDisabled(GoogleError):
     """Google answered 403 because the API (Gmail, Calendar) isn't switched on in the owner's Google Cloud project."""
 
 
+class AccessDenied(GoogleError):
+    """Google answered 403 because the stored sign-in lacks the permission (scope) the call needs."""
+
+
+SCOPE_REASONS = {"insufficientPermissions", "ACCESS_TOKEN_SCOPE_INSUFFICIENT", "insufficient_scope"}
+RETRY_NOT = " This won't fix itself, so don't call this tool again until the owner has dealt with it; tell them."
+
+
+def tool_text(exc: Exception) -> str:
+    """What a chat tool tells the model about a Google failure. A 403 that needs the owner to act (API off,
+    permission missing) says not to try again: the model used to repeat the same refused call."""
+    return str(exc) + (RETRY_NOT if isinstance(exc, ApiDisabled | AccessDenied) else "")
+
+
 DISABLED_REASONS = {"accessNotConfigured", "SERVICE_DISABLED", "API_KEY_SERVICE_BLOCKED"}
 
 
@@ -70,12 +84,23 @@ def log_failure(what: str, response: Any) -> None:
     log.warning("%s failed: HTTP %s %s", what, getattr(response, "status_code", "?"), error_reason(response))
 
 
-def raise_for_error(response: Any, service: str) -> None:
+def raise_for_error(response: Any, service: str, fallback: str = "") -> None:
     """GoogleError for a non-200 answer from `service`; ApiDisabled when the API isn't enabled in the project."""
     reason = error_reason(response)
     log_failure(f"{service} API call", response)
     if response.status_code == 403 and reason in DISABLED_REASONS:
-        raise ApiDisabled(f"The {service} API isn't switched on for your Google project.")
+        api = service if service.endswith("API") else f"{service} API"
+        raise ApiDisabled(
+            f"The {api} isn't switched on for your Google project. Enable it under APIs & Services, Library, "
+            f"{api}, then ask me again."
+        )
+    if response.status_code == 403 and reason in SCOPE_REASONS:
+        raise AccessDenied(
+            f"Google didn't allow that: the {service} permission is missing or was removed. "
+            "Reconnect it under Connections, then ask me again."
+        )
+    if fallback:
+        raise GoogleError(fallback)
     suffix = f", {reason}" if reason else ""
     raise GoogleError(f"{service} answered with an error ({response.status_code}{suffix}).")
 
@@ -179,6 +204,7 @@ def access_token(client_id: str, client_secret: str, refresh_token: str, client:
     except (httpx.HTTPError, ValueError) as exc:
         raise GoogleError("Couldn't reach Google Calendar just now.") from exc
     if r.status_code != 200 or not isinstance(data, dict) or "access_token" not in data:
+        log_failure("google token refresh", r)
         raise GoogleError("Google Calendar access has expired or was removed. Reconnect it under Connections.")
     with _lock:
         _cache[key] = _Token(str(data["access_token"]), time.time() + int(data.get("expires_in", 3600)))
@@ -257,7 +283,11 @@ def _call(method: str, url: str, token: str, *, client: httpx.Client | None = No
     if r.status_code in (404, 410):
         raise GoogleError("That event isn't in the calendar any more.")
     if r.status_code == 403:
-        raise GoogleError("Google didn't allow that change. Reconnect Google Calendar with calendar actions on.")
+        raise_for_error(
+            r,
+            "Google Calendar",
+            fallback="Google didn't allow that change. Reconnect Google Calendar with calendar actions on.",
+        )
     if r.status_code == 204:
         return {}
     try:
@@ -265,7 +295,7 @@ def _call(method: str, url: str, token: str, *, client: httpx.Client | None = No
     except ValueError as exc:
         raise GoogleError("Google Calendar sent something unreadable.") from exc
     if r.status_code not in (200, 201) or not isinstance(data, dict):
-        raise GoogleError(f"Google Calendar answered with an error ({r.status_code}).")
+        raise_for_error(r, "Google Calendar")
     return data
 
 

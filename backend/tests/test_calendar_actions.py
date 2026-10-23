@@ -43,6 +43,7 @@ class FakeCalendar:
         self.calls: list[tuple[str, str, dict[str, Any], dict[str, Any]]] = []
         self.events: dict[str, dict[str, Any]] = {}
         self.busy: list[dict[str, str]] = []
+        self.fail_with: httpx.Response | None = None  # every Calendar API call answers this
 
     def writes(self) -> list[tuple[str, str, dict[str, Any], dict[str, Any]]]:
         return [c for c in self.calls if c[0] in {"POST", "PATCH"} and "/events" in c[1] and "watch" not in c[1]]
@@ -62,6 +63,8 @@ class FakeCalendar:
                 )
             return httpx.Response(200, json={"access_token": "ya29.x", "expires_in": 3600})
         assert request.headers["authorization"] == "Bearer ya29.x"
+        if self.fail_with is not None:
+            return self.fail_with
         path = url.path
         if path.endswith("/freeBusy"):
             return httpx.Response(200, json={"calendars": {"primary": {"busy": self.busy}}})
@@ -148,6 +151,11 @@ def run(email: str, name: str, args: dict[str, Any], *, tainted: bool = False, r
         person = hired_owner(s)
         sender = SimpleNamespace(person=person, relation=relation, trust=3, name=person.display_name)
         return calendar.run_tool(s, sender, name, args, tainted=tainted)
+
+
+def events_tool(email: str, args: dict[str, Any]):
+    with use_instance(scope_of(email)), session_scope() as s:
+        return calendar.calendar_events(s, hired_owner(s), args)
 
 
 def pending(email: str) -> list[Approval]:
@@ -442,3 +450,51 @@ def test_connections_shows_which_scopes_google_granted(owner, fake):
     assert owner.get("/app/connections").json()["services"]["google"]["meta"]["scopes"] == [READ]
     switch_on(owner, fake)
     assert set(owner.get("/app/connections").json()["services"]["google"]["meta"]["scopes"]) == {READ, EVENTS}
+
+
+NOT_ENABLED = {"error": {"code": 403, "message": "Google Calendar API has not been used in project 1 before.",
+                         "errors": [{"reason": "accessNotConfigured"}], "status": "PERMISSION_DENIED"}}  # fmt: skip
+
+
+def test_calendar_api_off_in_the_google_project_is_said_plainly_and_not_retried(owner, fake, caplog):
+    import logging
+
+    switch_on(owner, fake)
+    fake.fail_with = httpx.Response(403, json=NOT_ENABLED)
+    with caplog.at_level(logging.WARNING):
+        out, err = events_tool("s@example.com", {"from": "today"})
+    assert err
+    assert "The Google Calendar API isn't switched on for your Google project." in out
+    assert "Enable it under APIs & Services, Library, Google Calendar API, then ask me again." in out
+    assert "don't call this tool again" in out
+    assert "accessNotConfigured" in caplog.text and "ya29" not in caplog.text
+    asked = [c for c in fake.calls if c[0] == "GET" and "/events" in c[1]]
+    assert len(asked) == 1  # one call: a 403 like this is not transient
+
+
+def test_free_busy_and_actions_say_it_too(owner, fake):
+    switch_on(owner, fake)
+    fake.fail_with = httpx.Response(403, json=NOT_ENABLED)
+    for tool, args in [
+        ("calendar_free_busy", {"from": "tomorrow"}),
+        ("create_event", {"title": "Gym", "when": "tomorrow at 7am"}),
+    ]:
+        out, err = run("s@example.com", tool, args)
+        assert err and "isn't switched on for your Google project" in out, tool
+
+
+def test_a_missing_permission_is_told_apart_from_the_api_being_off(owner, fake):
+    switch_on(owner, fake)
+    fake.fail_with = httpx.Response(
+        403, json={"error": {"code": 403, "errors": [{"reason": "insufficientPermissions"}]}}
+    )
+    out, err = events_tool("s@example.com", {"from": "today"})
+    assert err and "permission is missing" in out and "Reconnect it under Connections" in out
+    assert "isn't switched on" not in out
+
+
+def test_any_other_error_keeps_the_plain_status_text_and_may_be_retried(owner, fake):
+    switch_on(owner, fake)
+    fake.fail_with = httpx.Response(500, json={"error": {"status": "INTERNAL"}})
+    out, err = events_tool("s@example.com", {"from": "today"})
+    assert err and "answered with an error (500" in out and "don't call this tool again" not in out

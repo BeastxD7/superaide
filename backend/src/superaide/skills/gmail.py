@@ -183,9 +183,9 @@ def search(session: Session, owner: Person, args: dict[str, Any]) -> tuple[Any, 
                 )
             )
     except NotReady as exc:
-        return str(exc), True
+        return google.tool_text(exc), True
     except google.GoogleError as exc:
-        return str(exc), True
+        return google.tool_text(exc), True
     audit(session, "skills", "gmail_searched", results=len(out))  # never the query or the mail
     if not out:
         return "No emails match that search.", False
@@ -198,9 +198,9 @@ def read_thread(session: Session, owner: Person, args: dict[str, Any]) -> tuple[
             raise NotReady("Gmail isn't connected yet. Ask the owner to connect it under Capabilities → Gmail.")
         found = api.thread(api.http_client(), token(session), str(args.get("thread_id") or ""))
     except NotReady as exc:
-        return str(exc), True
+        return google.tool_text(exc), True
     except google.GoogleError as exc:
-        return str(exc), True
+        return google.tool_text(exc), True
     if found is None:
         return "No such thread. Use a thread id from gmail_search.", True
     out = []
@@ -250,9 +250,9 @@ def draft_reply(session: Session, owner: Person, args: dict[str, Any]) -> tuple[
     try:
         draft, original, to = _draft(session, args)
     except NotReady as exc:
-        return str(exc), True
+        return google.tool_text(exc), True
     except google.GoogleError as exc:
-        return str(exc), True
+        return google.tool_text(exc), True
     audit(session, "skills", "gmail_draft_saved", draft_id=str(draft.get("id", "")))
     name = api.sender(original)[0] or api.domain(to)
     return (
@@ -268,9 +268,9 @@ def send(session: Session, owner: Person, args: dict[str, Any], *, tainted: bool
     try:
         draft, original, to = _draft(session, args)
     except NotReady as exc:
-        return str(exc), True
+        return google.tool_text(exc), True
     except google.GoogleError as exc:
-        return str(exc), True
+        return google.tool_text(exc), True
     text = str(args.get("text") or "").strip()[:5000]  # what _draft saved, so the card shows all of it
     name = api.sender(original)[0]
     bound = ""
@@ -278,7 +278,7 @@ def send(session: Session, owner: Person, args: dict[str, Any], *, tainted: bool
         try:
             bound = _draft_hash(api.get_draft(api.http_client(), token(session), str(draft.get("id", ""))))
         except google.GoogleError as exc:
-            return str(exc), True
+            return google.tool_text(exc), True
     approval = Approval(
         kind="gmail_send",
         payload={
