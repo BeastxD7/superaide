@@ -86,7 +86,7 @@ test.describe('dashboard: home', () => {
   })
 
   test('a card whose data cannot be loaded says so instead of loading forever', async ({ page, owner }) => {
-    await page.route('**/api/app/notebook', serverError)
+    await page.route('**/api/app/notebook*', serverError)
     await page.route('**/api/app/preferences', (r) => r.abort('connectionrefused'))
     await page.goto('/dashboard')
     await expect(homeHeading(page, owner)).toBeVisible()
@@ -185,7 +185,7 @@ test.describe('dashboard: notebook', () => {
 
   test('if the notebook cannot be loaded, the page says so and stops showing placeholders', async ({ page, owner }) => {
     void owner
-    await page.route('**/api/app/notebook', serverError)
+    await page.route('**/api/app/notebook*', serverError)
     await page.goto('/dashboard/notebook')
     await expect(page.getByText('Something went wrong on our side.')).toBeVisible()
   })

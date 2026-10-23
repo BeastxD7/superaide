@@ -26,7 +26,7 @@ async function open(page: Page, memories = [{ id: NOTE, text: 'Wants a reply sen
       ],
     }),
   )
-  await page.route('**/api/app/notebook', (r) => r.fulfill({ json: { memories } }))
+  await page.route('**/api/app/notebook*', (r) => r.fulfill({ json: { memories } }))
   await page.goto('/dashboard/chat')
   await expect(page.getByTestId('citation-mark').first()).toBeVisible()
 }
