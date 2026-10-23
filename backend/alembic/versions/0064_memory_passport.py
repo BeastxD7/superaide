@@ -3,8 +3,8 @@
 Additive only: a new per-instance table (memory_import, under Row-Level Security) and a nullable
 import_id on memory_item, document and contact, so erasing an import deletes exactly what it brought.
 
-Revision ID: 0058
-Revises: 0055
+Revision ID: 0064
+Revises: 0063
 Create Date: 2026-10-23 01:10:41.360175
 
 """
@@ -16,8 +16,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0058"
-down_revision: str | Sequence[str] | None = "0055"
+revision: str = "0064"
+down_revision: str | Sequence[str] | None = "0063"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
