@@ -51,7 +51,7 @@ const workspaceHeading = (page: Page, person: Person) => chatHeading(page, perso
 
 // ---------------------------------------------------------------------------------
 test.describe('sign-up', () => {
-  test('a new visitor creates an account and is signed in', async ({ page, api }) => {
+  test('a new visitor creates an account and is signed in @smoke', async ({ page, api }) => {
     const person = newPerson()
     await gotoSignup(page)
     await expect(page).toHaveTitle(/Create your account/)
@@ -333,7 +333,7 @@ test.describe('log-in', () => {
   test.describe('with an account that has not hired yet', () => {
     test.use({ ownerState: 'account' })
 
-    test('logs in and goes to the marketplace', async ({ page, owner }) => {
+    test('logs in and goes to the marketplace @smoke', async ({ page, owner }) => {
       await page.context().clearCookies()
       await gotoLogin(page)
       await expect(page).toHaveTitle(/Log in/)

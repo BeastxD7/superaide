@@ -39,7 +39,7 @@ function card(page: Page, name: string) {
 }
 
 test.describe('AI model page', () => {
-  test('lists every provider, and says Ava is offline until one is connected', async ({ page, owner }) => {
+  test('lists every provider, and says Ava is offline until one is connected @smoke', async ({ page, owner }) => {
     void owner
     await openModels(page)
     for (const name of ['Claude (Anthropic)', 'OpenAI', 'Azure OpenAI / AI Foundry', 'OpenRouter', 'xAI Grok', 'Google Gemini', 'Ollama (on this computer)']) {
@@ -50,7 +50,7 @@ test.describe('AI model page', () => {
     await expect(page.getByRole('region', { name: 'Models' })).toHaveCount(0)
   })
 
-  test('connect a local server: test, save, pick a model; the key is never shown again', async ({ page, owner }) => {
+  test('connect a local server: test, save, pick a model; the key is never shown again @smoke', async ({ page, owner }) => {
     void owner
     const { server, url, seen } = await fakeModelServer()
     try {

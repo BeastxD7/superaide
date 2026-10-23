@@ -76,7 +76,7 @@ async function telegramRejected(page: Page, opts: { ownerLinked: boolean }) {
 }
 
 test.describe('dashboard: home', () => {
-  test('home shows every card filled in when the API answers', async ({ page, owner }) => {
+  test('home shows every card filled in when the API answers @smoke', async ({ page, owner }) => {
     await page.goto('/dashboard')
     await expect(homeHeading(page, owner)).toBeVisible()
     await expect(page.getByText('Priya', { exact: true })).toBeVisible()

@@ -61,7 +61,7 @@ function hasCss(page: Page, needle: string): Promise<boolean> {
 }
 
 test.describe('console: connecting', () => {
-  test('the token in the link connects, and is removed from the address bar', async ({ page, api }) => {
+  test('the token in the link connects, and is removed from the address bar @smoke', async ({ page, api }) => {
     void api
     await page.goto(`/console?token=${ADMIN_TOKEN}`)
     await expect(page.getByRole('heading', { level: 1, name: STAGE_HEADING })).toBeVisible()
@@ -134,7 +134,7 @@ test.describe('console: connecting', () => {
     await expect(page.getByRole('heading', { name: 'Connect to your agent' })).toBeVisible()
   })
 
-  test('the admin API refuses anyone without the token, even a signed-in owner', async ({ page, owner }) => {
+  test('the admin API refuses anyone without the token, even a signed-in owner @smoke', async ({ page, owner }) => {
     void owner
     for (const admin of [new Admin(page.request, null), new Admin(page.request, 'wrong-token')]) {
       for (const path of ['/overview', '/people', '/conversations', '/events', '/audit', '/spend', '/memories']) {
@@ -160,7 +160,7 @@ test.describe('console: connecting', () => {
 })
 
 test.describe('console: tabs', () => {
-  test("every tab renders with the owner's data", async ({ page, api, owner }) => {
+  test("every tab renders with the owner's data @smoke", async ({ page, api, owner }) => {
     await api.ok(api.post('/app/chat', { text: 'Console visibility check' }))
     await openConsole(page)
 
@@ -254,7 +254,7 @@ test.describe('console: tabs', () => {
 })
 
 test.describe('console: pause switch', () => {
-  test('pausing stops replies to the owner, and resuming brings them back', async ({ page, browser, owner }) => {
+  test('pausing stops replies to the owner, and resuming brings them back @smoke', async ({ page, browser, owner }) => {
     void owner
     const operator = await newVisitor(browser)
     try {

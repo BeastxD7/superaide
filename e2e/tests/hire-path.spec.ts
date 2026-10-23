@@ -4,7 +4,7 @@ import { expect, newPerson, test } from '../src/fixtures'
 import { fillSignup, signupForm } from '../src/helpers/accounts'
 import { HirePage } from '../src/helpers/introduction'
 
-test('sign up, see "Hire your own Ava" at once, hire, and start the introduction', async ({ page, api }) => {
+test('sign up, see "Hire your own Ava" at once, hire, and start the introduction @smoke', async ({ page, api }) => {
   void api // a fresh database
   const person = newPerson('Priya Tan')
   await page.goto('/signup')

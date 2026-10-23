@@ -1,0 +1,58 @@
+name: e2e-setup
+description: Backend, frontend build, Playwright and browser, with caches, for the end-to-end jobs.
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@v7
+      with:
+        version: "0.11.32"
+        enable-cache: true
+        cache-dependency-glob: backend/uv.lock
+
+    - uses: actions/setup-node@v7
+      with:
+        node-version: 24
+        cache: npm
+        cache-dependency-path: |
+          frontend/package-lock.json
+          e2e/package-lock.json
+
+    # Next's build cache: unchanged modules are not recompiled. Keyed on the lockfile and the sources;
+    # an older entry for the same lockfile is a valid starting point.
+    - uses: actions/cache@v6
+      with:
+        path: frontend/.next/cache
+        key: nextjs-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}-${{ hashFiles('frontend/**/*.ts', 'frontend/**/*.tsx', 'frontend/**/*.css') }}
+        restore-keys: |
+          nextjs-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}-
+
+    - name: Install
+      shell: bash
+      run: |
+        (cd backend && uv python install && uv sync --locked --no-dev)
+        (cd frontend && npm ci --no-audit --no-fund && npm run build)
+        (cd e2e && npm ci --no-audit --no-fund)
+
+    # The browser download is the slow part; it is keyed on the Playwright version. System
+    # libraries are not cached, so install-deps still runs.
+    - name: Playwright version
+      id: pw
+      working-directory: e2e
+      shell: bash
+      run: echo "version=$(node -p "require('./node_modules/@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+    - uses: actions/cache@v6
+      id: pw-cache
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+
+    - name: Install the browser
+      working-directory: e2e
+      shell: bash
+      run: |
+        if [ "${{ steps.pw-cache.outputs.cache-hit }}" = true ]; then
+          npx playwright install-deps chromium
+        else
+          npx playwright install --with-deps chromium
+        fi

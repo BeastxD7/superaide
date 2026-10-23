@@ -32,6 +32,10 @@ Postgres comes from `E2E_PG_ADMIN_URL`. The default, `postgresql://agent:agent@l
 - Unit tests of the pure frontend logic (`safeNext`, `errorFromDetail`, the SSE parser in `streamChat`, the chat reducer): the frontend has no unit runner. Adding Vitest is the next step; until then these are exercised through the browser tests.
 - axe-core runs on the signed-out pages, the chat and the dashboard pages. It does not yet cover `/meet` (owned by the voice introduction work) or the public `/a/<handle>` page.
 
+## Smoke subset
+
+Tests with `@smoke` in the title run alone (`npx playwright test --grep @smoke`, about 2 minutes) on pull requests that change only the backend; everything else runs the full shards. Add the tag to a test that a backend-only change could break and that needs a browser, and keep the subset short.
+
 ## Writing tests
 
 - Import `test`, `expect` and `query` from `src/fixtures.ts`.

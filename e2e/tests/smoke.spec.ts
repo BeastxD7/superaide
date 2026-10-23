@@ -2,7 +2,7 @@
 import { expect, newPerson, test } from '../src/fixtures'
 
 test.describe('smoke', () => {
-  test('a visitor sees Ava on the marketplace and opens her profile', async ({ page, api }) => {
+  test('a visitor sees Ava on the marketplace and opens her profile @smoke', async ({ page, api }) => {
     void api // fresh database
     await page.goto('/')
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
@@ -11,7 +11,7 @@ test.describe('smoke', () => {
     await expect(page).toHaveTitle(/Ava/)
   })
 
-  test('sign up, hire Ava and arrive at the introduction (the session sticks)', async ({ page, api }) => {
+  test('sign up, hire Ava and arrive at the introduction (the session sticks) @smoke', async ({ page, api }) => {
     void api
     const person = newPerson()
     await page.goto('/agents/ava')
@@ -30,7 +30,7 @@ test.describe('smoke', () => {
     await expect(page).toHaveURL(/\/meet$/)
   })
 
-  test('a wrong password is refused with a clear message', async ({ page, api }) => {
+  test('a wrong password is refused with a clear message @smoke', async ({ page, api }) => {
     const person = newPerson()
     await api.signup(person)
     await page.context().clearCookies()
@@ -42,13 +42,13 @@ test.describe('smoke', () => {
     await expect(page).toHaveURL(/\/login/)
   })
 
-  test('private pages send signed-out visitors to log in', async ({ page, api }) => {
+  test('private pages send signed-out visitors to log in @smoke', async ({ page, api }) => {
     void api
     await page.goto('/workspace')
     await expect(page).toHaveURL(/\/login\?next=%2Fworkspace$/)
   })
 
-  test('an introduced owner lands in the dashboard chat from an old /workspace link', async ({ page, owner }) => {
+  test('an introduced owner lands in the dashboard chat from an old /workspace link @smoke', async ({ page, owner }) => {
     await page.goto('/workspace')
     await expect(page).toHaveURL(/\/dashboard\/chat$/)
     await expect(page.getByRole('heading', { name: `Hello, ${owner.name.split(' ')[0]}. What shall we work on?` })).toBeVisible()

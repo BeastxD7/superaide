@@ -68,7 +68,11 @@ A pull request merges when CI is green. Run the same checks locally first:
 | End to end | `make e2e` |
 | Secrets | gitleaks (pre-commit and CI) |
 
-`make check` runs everything except end to end. CI also builds the Docker images and validates the production compose file and Caddyfile.
+`make check` runs everything except end to end.
+
+CI runs the full browser suite when `frontend/`, `e2e/` or the API contract changes, and a short `@smoke` subset when only `backend/` changed. If you change an endpoint, request or response model, run `make openapi` and commit `backend/openapi.snapshot.json`; the backend tests fail until you do, and committing it selects the full browser suite. See [ADR 0013](docs/decisions/0013-ci-pipeline.md).
+
+ CI also builds the Docker images and validates the production compose file and Caddyfile.
 
 ## Pull requests
 
