@@ -63,6 +63,12 @@ def install(session: Session, skill_id: str, accepted: list[str]) -> InstalledSk
     skill = catalog().get(skill_id)
     if skill is None:
         raise SkillUnavailable(404, "No such capability")
+    from superaide.skills import cooldown
+
+    try:
+        cooldown.guard_install(session, skill_id, skill.manifest.version)  # SKILL_COOLDOWN_ENABLED (#129)
+    except cooldown.CooldownError as exc:
+        raise SkillUnavailable(exc.status, str(exc)) from exc
     needed = skill.manifest.permissions
     if sorted(set(accepted)) != sorted(needed):
         raise SkillUnavailable(

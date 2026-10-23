@@ -108,6 +108,11 @@ class Settings(BaseSettings):
     # Memory Socket (#138). Off by default. A read-only MCP endpoint (POST /mcp/memory) lets the owner's other
     # assistants ask Ava's memory one question at a time, with one token per consumer, a scope the owner picks
     # per consumer, rows filtered by the audience gate in SQL, a per-minute limit and a visible access log.
+    # Blast-radius cooldown for skill versions (#129). Off by default. A recorded release reaches installs only after
+    # a wait set by its effect class (read 0 h, write_own 24 h, write_external/send/spend 72 h); a deleted skill name
+    # is reserved forever. SKILL_REVIEWER_KEY signs the one bypass, a reviewed security patch; blank means no bypass.
+    skill_cooldown_enabled: bool = False
+    skill_reviewer_key: str = ""
     memory_socket_enabled: bool = False
     memory_socket_per_minute: int = Field(default=30, ge=1)
     # Glass brain share link (#55). Off by default. The owner can create an unlisted link (a long random token,

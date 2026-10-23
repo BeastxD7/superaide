@@ -917,6 +917,34 @@ class InstalledSkill(Scoped, Base):
     removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class SkillRelease(Scoped, Base):
+    """When one version of a skill was released and how risky it is (issue #129). The cooldown counts from
+    `released_at`, which is set once and never moves; `effect_class` is the highest effect the version can have."""
+
+    __tablename__ = "skill_release"
+    __table_args__ = (UniqueConstraint("agent_id", "skill_id", "version", name="uq_skill_release"),)
+
+    skill_id: Mapped[str] = mapped_column(String(120), index=True)
+    version: Mapped[str] = mapped_column(String(40))
+    effect_class: Mapped[str] = mapped_column(String(20))
+    earned_tier: Mapped[str] = mapped_column(String(12), default="none")  # none | reviewed: shortens the wait
+    released_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    patch_signature: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )  # reviewer HMAC; see skills/cooldown.py
+
+
+class SkillTombstone(Scoped, Base):
+    """A retired skill name. It is never issued again, to anyone (issue #129)."""
+
+    __tablename__ = "skill_tombstone"
+    __table_args__ = (UniqueConstraint("agent_id", "skill_id", name="uq_skill_tombstone"),)
+
+    skill_id: Mapped[str] = mapped_column(String(120))
+    reason: Mapped[str] = mapped_column(String(200), default="")
+    retired_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class CalendarWatch(Scoped, Base):
     """One Google Calendar push channel (events.watch) on an owner's primary calendar. Google calls
     the webhook with the channel's token when events change; see proactive/calendar_watch.py."""
