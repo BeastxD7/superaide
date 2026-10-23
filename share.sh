@@ -7,6 +7,8 @@
 #                                     it pulls them, backs up the database, runs migrations and installs changed
 #                                     dependencies. The API and site reload by themselves; it never touches local changes.
 #   bash share.sh --reset             wipe the data first (passed to start.command)
+#   bash share.sh --dev               auto-reloading dev servers instead of the default production build. The dev site only
+#                                     works for host names listed in DEV_ORIGINS (set here), and is slower: use it to work on code.
 #   bash share.sh --no-docker         embedded Postgres instead of Docker (passed to start.command)
 #   bash share.sh --hostname app.example.com --tunnel superaide
 #                                     a STABLE address: a named Cloudflare tunnel you created once with
@@ -55,7 +57,7 @@ export WEB_PORT="${WEB_PORT:-3000}"
 export API_PORT="${API_PORT:-8010}"
 bold() { printf "\n\033[1m%s\033[0m\n" "$*"; }
 
-UPDATE=1; AUTO_MIN=0; HOSTNAME_ARG=""; TOKEN_ARG=""; TUNNEL_NAME=""; NGROK_DOMAIN=""; PASS=()
+UPDATE=1; MODE=prod; AUTO_MIN=0; HOSTNAME_ARG=""; TOKEN_ARG=""; TUNNEL_NAME=""; NGROK_DOMAIN=""; PASS=()
 while [ $# -gt 0 ]; do
   case "$1" in
     --no-update) UPDATE=0 ;;
@@ -66,6 +68,8 @@ while [ $# -gt 0 ]; do
     --tunnel-token) TOKEN_ARG="${2:?--tunnel-token needs a value}"; shift ;;
     --ngrok-domain) NGROK_DOMAIN="${2:?--ngrok-domain needs a value}"; shift ;;
     --reset|--no-docker) PASS+=("$1") ;;
+    --dev) MODE=dev ;;
+    --prod) MODE=prod ;;
     -h|--help) awk 'NR>1 && /^#/ {sub(/^# ?/, ""); print; next} NR>1 {exit}' "$0"; exit 0 ;;
     *) echo "Unknown option: $1 (try --help)"; exit 2 ;;
   esac
@@ -185,7 +189,15 @@ update_if_behind() {
   if [ "$lock_before" != "$(git rev-parse HEAD:frontend/package-lock.json 2>/dev/null || true)" ]; then
     (cd frontend && npm ci --no-audit --no-fund --loglevel=error) || echo "[auto-update] npm ci failed"
   fi
-  echo "[auto-update] now at $(git log -1 --format='%h %s' | cut -c1-70); the API and site reload on their own"
+  if [ "$MODE" = prod ]; then
+    # The production servers do not reload: build the new site, then stop both; start.command starts them again.
+    (cd frontend && ./node_modules/.bin/next build >/dev/null 2>&1) && echo "[auto-update] new frontend built" || echo "[auto-update] frontend build failed: still serving the old one"
+    git rev-parse HEAD > /dev/null 2>&1 && echo "$(git rev-parse HEAD)-$(git status --porcelain -- frontend | shasum | cut -c1-12)" > frontend/.next/.superaide-rev 2>/dev/null || true
+    for n in api web; do [ -f "$ROOT/.run/$n.pid" ] && kill "$(cat "$ROOT/.run/$n.pid")" 2>/dev/null || true; done
+    echo "[auto-update] now at $(git log -1 --format='%h %s' | cut -c1-70); the API and site restart in a few seconds"
+  else
+    echo "[auto-update] now at $(git log -1 --format='%h %s' | cut -c1-70); the API and site reload on their own"
+  fi
 }
 if [ "$AUTO_MIN" != 0 ]; then
   ( while true; do sleep $((AUTO_MIN * 60)); update_if_behind; done ) &
@@ -194,4 +206,5 @@ if [ "$AUTO_MIN" != 0 ]; then
 fi
 
 # Hand over to start.command (database, API, website). The tunnel stops when this window closes.
-bash "$ROOT/start.command" ${PASS[@]+"${PASS[@]}"}
+echo "  Mode: $MODE$([ "$MODE" = prod ] && echo ' (production build: first start builds the site, about a minute)')"
+bash "$ROOT/start.command" "--$MODE" ${PASS[@]+"${PASS[@]}"}

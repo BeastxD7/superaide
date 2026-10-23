@@ -4,6 +4,10 @@
 #   bash ~/Desktop/superaide/start.command               start (Ctrl+C stops everything)
 #   bash ~/Desktop/superaide/start.command --reset       wipe the data first
 #   bash ~/Desktop/superaide/start.command --no-docker   embedded Postgres instead of Docker
+#   bash ~/Desktop/superaide/start.command --dev         (default) auto-reloading dev servers: for changing code
+#   bash ~/Desktop/superaide/start.command --prod        a production build: faster, stable, no dev-origin checks;
+#                                                        the right one when other people use the app. Builds once
+#                                                        (again only when the code changed); no auto-reload.
 #
 # Three parts, the usual way:
 #   database  Postgres 17 + pgvector in Docker (or an embedded Postgres without Docker)
@@ -19,10 +23,13 @@ bold() { printf "\n\033[1m%s\033[0m\n" "$*"; }
 
 RESET=0
 USE_DOCKER=1
+MODE="${START_MODE:-dev}"
 for arg in "$@"; do
   case "$arg" in
     --reset) RESET=1 ;;
     --no-docker) USE_DOCKER=0 ;;
+    --dev) MODE=dev ;;
+    --prod) MODE=prod ;;
     *) echo "Unknown option: $arg"; exit 2 ;;
   esac
 done
@@ -145,8 +152,26 @@ uv run --quiet alembic upgrade head
 cd "$ROOT"
 
 PIDS=()
-cleanup() { for p in "${PIDS[@]:-}"; do [ -n "$p" ] && kill "$p" 2>/dev/null || true; done; }
+RUN_DIR="$ROOT/.run"; mkdir -p "$RUN_DIR"; rm -f "$RUN_DIR/stop"
+cleanup() {
+  touch "$RUN_DIR/stop"  # tells the --prod supervisors not to restart what is about to be stopped
+  for p in "${PIDS[@]:-}"; do [ -n "$p" ] && { pkill -P "$p" 2>/dev/null || true; kill "$p" 2>/dev/null || true; }; done
+  for f in "$RUN_DIR"/*.pid; do [ -f "$f" ] && kill "$(cat "$f")" 2>/dev/null || true; done
+}
 trap cleanup EXIT INT TERM
+# --prod: run a server again if it stops (share.sh --auto-update stops them on purpose to load new code).
+# supervise <name> <command…>; the child's pid is in .run/<name>.pid
+supervise() {
+  local name="$1"; shift
+  (
+    while [ ! -f "$RUN_DIR/stop" ]; do
+      "$@" &
+      echo $! > "$RUN_DIR/$name.pid"
+      wait $! || true
+      [ -f "$RUN_DIR/stop" ] || { echo "[$name] stopped, restarting in 2s"; sleep 2; }
+    done
+  ) &
+}
 
 # 5. Backend API on :8000 (it also runs the Telegram and Slack listeners)
 if grep -Eq '^ANTHROPIC_API_KEY=.+' "$ENV_FILE" && ! grep -Eq '^FAKE_LLM=true' "$ENV_FILE"; then
@@ -155,7 +180,11 @@ else
   bold "Brain: offline until you connect Claude in the app (Connections)."
 fi
 bold "Starting the backend API on http://127.0.0.1:$API_PORT …"
-(cd "$ROOT/backend" && exec uv run --quiet superaide serve --port "$API_PORT" --reload) &
+if [ "$MODE" = prod ]; then
+  (cd "$ROOT/backend" && supervise api uv run --quiet superaide serve --port "$API_PORT" && wait) &
+else
+  (cd "$ROOT/backend" && exec uv run --quiet superaide serve --port "$API_PORT" --reload) &
+fi
 PIDS+=($!)
 # Telegram and Slack listeners run inside the API, for tokens in .env or connected in the app.
 if grep -Eq '^TELEGRAM_BOT_TOKEN=.+' "$ENV_FILE"; then bold "Telegram: connected from backend/.env"; fi
@@ -199,7 +228,20 @@ if [ -n "$LAN_IP" ]; then
   echo "On your phone (same Wi-Fi): http://$LAN_IP:$WEB_PORT"
 fi
 (cd frontend && node scripts/copy-vad-assets.mjs >/dev/null 2>&1 || true)  # the voice call's detector files
-(cd frontend && API_INTERNAL_URL="http://127.0.0.1:$API_PORT" exec ./node_modules/.bin/next dev --port "$WEB_PORT") &
+if [ "$MODE" = prod ]; then
+  # Build once; again only when the code changed (the commit, or uncommitted changes under frontend/).
+  WANT="$(git rev-parse HEAD 2>/dev/null || echo none)-$(git status --porcelain -- frontend 2>/dev/null | shasum | cut -c1-12)"
+  if [ ! -f frontend/.next/BUILD_ID ] || [ "$(cat frontend/.next/.superaide-rev 2>/dev/null)" != "$WANT" ]; then
+    bold "Building the frontend for production (about a minute)…"
+    (cd frontend && API_INTERNAL_URL="http://127.0.0.1:$API_PORT" ./node_modules/.bin/next build) || { echo "The frontend build failed."; exit 1; }
+    echo "$WANT" > frontend/.next/.superaide-rev
+  else
+    echo "Frontend build is current: not rebuilding."
+  fi
+  (cd frontend && API_INTERNAL_URL="http://127.0.0.1:$API_PORT" supervise web ./node_modules/.bin/next start --port "$WEB_PORT" && wait) &
+else
+  (cd frontend && API_INTERNAL_URL="http://127.0.0.1:$API_PORT" exec ./node_modules/.bin/next dev --port "$WEB_PORT") &
+fi
 PIDS+=($!)
 
 # Wait for both, then open the app.
@@ -208,7 +250,7 @@ for _ in $(seq 1 120); do
   sleep 1
 done
 APP_URL="http://localhost:$WEB_PORT/"
-bold "Ready."
+bold "Ready ($MODE mode)."
 echo "  App (frontend):    $APP_URL"
 echo "  API (backend):     http://127.0.0.1:$API_PORT   (interactive docs: http://127.0.0.1:$API_PORT/docs)"
 echo "  Operator console:  http://localhost:$WEB_PORT/console?token=$TOKEN"

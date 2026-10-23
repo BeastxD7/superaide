@@ -50,3 +50,4 @@ backend/evals/results/*
 # Triage reports (python -m superaide.evals triage): the committed record of each measured run
 !backend/evals/results/triage-*.md
 !backend/evals/results/triage-*.json
+.run/
