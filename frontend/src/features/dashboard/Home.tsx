@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Loadable, type LoadState } from '@/components/load-state'
 import { CATEGORY_LABEL, DIGEST_LABEL, CHANNEL_LABEL, capitalise, useAppData } from '@/features/dashboard/data'
+import { comingUp } from '@/features/dashboard/home-lists'
 import type { Me, Memory, Message, PersonCard, Preferences, Reminder } from '@/lib/api'
 import { initialOf } from '@/lib/initial'
 import { useSession } from '@/lib/session-context'
@@ -257,28 +258,45 @@ function PeopleCard({ state }: { state: LoadState<{ people: PersonCard[] }> }) {
             people.length === 0 ? (
               <p className="text-sm text-muted">No one yet.</p>
             ) : (
-              <ul className="space-y-2">
-                {people.slice(0, 5).map((p) => (
-                  <li key={p.id} className="flex items-center gap-2 text-sm">
-                    <span className="grid size-7 place-items-center rounded-full bg-mist text-xs font-semibold text-violet-700">
-                      {initialOf(p.name)}
-                    </span>
-                    <span className="min-w-0 font-medium text-ink [overflow-wrap:anywhere]">{p.name}</span>
-                    <span className="text-muted">{capitalise(p.relationship)}</span>
-                    {p.vip && (
-                      <Badge className="ml-auto gap-1">
-                        <Star className="size-3" aria-hidden />
-                        VIP
-                      </Badge>
-                    )}
-                  </li>
-                ))}
-              </ul>
+              <PeopleList people={people} />
             )
           }
         </Loadable>
       </CardContent>
     </Card>
+  )
+}
+
+function PeopleList({ people: all }: { people: PersonCard[] }) {
+  const people = all.slice(0, 5)
+  const more = all.length - people.length // the card shows five; say so when there are others (#301)
+  return (
+    <>
+      <ul className="space-y-2">
+        {people.map((p) => (
+          <li key={p.id} className="flex items-center gap-2 text-sm">
+            <span className="grid size-7 place-items-center rounded-full bg-mist text-xs font-semibold text-violet-700">
+              {initialOf(p.name)}
+            </span>
+            <span className="min-w-0 font-medium text-ink [overflow-wrap:anywhere]">{p.name}</span>
+            <span className="text-muted">{capitalise(p.relationship)}</span>
+            {p.vip && (
+              <Badge className="ml-auto gap-1">
+                <Star className="size-3" aria-hidden />
+                VIP
+              </Badge>
+            )}
+          </li>
+        ))}
+      </ul>
+      {more > 0 && (
+        <p className="mt-2.5 text-xs text-muted">
+          <Link href="/dashboard/people" className="font-medium text-violet-700 hover:underline">
+            +{more} more on the People page
+          </Link>
+        </p>
+      )}
+    </>
   )
 }
 
@@ -341,19 +359,37 @@ function ComingUpCard({ name, state }: { name: string; state: LoadState<{ remind
                 Nothing yet. Tell {name} &ldquo;remind me to…&rdquo; and she&apos;ll bring it back on time.
               </p>
             ) : (
-              <ul className="space-y-2.5">
-                {reminders.slice(0, 3).map((r) => (
-                  <li key={r.id} className="text-sm">
-                    <p className="line-clamp-1 font-medium text-ink">{r.text}</p>
-                    <p className="text-xs text-muted">{r.due_text}</p>
-                  </li>
-                ))}
-              </ul>
+              <ComingUpList reminders={reminders} />
             )
           }
         </Loadable>
       </CardContent>
     </Card>
+  )
+}
+
+function ComingUpList({ reminders }: { reminders: Reminder[] }) {
+  const { shown, more, sent } = comingUp(reminders, 3)
+  return (
+    <>
+      {shown.length === 0 ? (
+        <p className="text-sm text-muted">Nothing coming up.</p>
+      ) : (
+        <ul className="space-y-2.5">
+          {shown.map((r) => (
+            <li key={r.id} className="text-sm">
+              <p className="line-clamp-1 font-medium text-ink">{r.text}</p>
+              <p className="text-xs text-muted">{r.due_text}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+      {(more > 0 || sent > 0) && (
+        <p className="mt-2.5 text-xs text-muted">
+          {[more > 0 && `+${more} more coming up`, sent > 0 && `${sent} already sent, not marked done`].filter(Boolean).join(' · ')}
+        </p>
+      )}
+    </>
   )
 }
 

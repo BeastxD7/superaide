@@ -374,3 +374,45 @@ def test_calendar_api_not_enabled_is_told_apart_too():
     with pytest.raises(google.GoogleError) as info:
         google.list_events("t", start=now, end=now, client=other)
     assert not isinstance(info.value, google.ApiDisabled)
+
+
+def test_gmail_connects_on_the_address_the_owner_is_using_and_refuses_an_unregistered_one(
+    owner_client, gmail_fake, monkeypatch
+):
+    from superaide.app import connections
+    from superaide.config import get_settings
+
+    public = "https://superaide.webgraph.fun"
+    monkeypatch.setattr(connections, "http_client", gmail_fake.client)
+    monkeypatch.setattr(get_settings(), "link_origins", public)
+    owner_client.post("/app/connections/google", json={"client_id": CLIENT_ID, "client_secret": CLIENT_SECRET})
+    accepted = [p["id"] for p in next(c for c in owner_client.get("/app/skills").json() if c["id"] == gmail.SKILL_ID)
+                ["permissions"]]  # fmt: skip
+    owner_client.post("/app/skills/superaide/gmail/install", json={"accepted": accepted})
+
+    r = owner_client.post("/app/gmail/connect", headers={"Origin": public})  # allowed, but not registered
+    assert r.status_code == 409 and "registered in Google Cloud" in r.json()["detail"]
+    assert f"{public}/api/app/connections/google/callback" in r.json()["detail"]
+    on = owner_client.post("/app/gmail/drafts", json={"enabled": True}, headers={"Origin": public})
+    assert on.status_code == 409
+
+    monkeypatch.setattr(get_settings(), "google_redirect_origins", public)
+    url = owner_client.post("/app/gmail/connect", headers={"Origin": public}).json()["url"]
+    q = parse_qs(urlsplit(url).query)
+    assert q["redirect_uri"] == [f"{public}/api/app/connections/google/callback"]
+    done = owner_client.get(
+        "/app/connections/google/callback", params={"code": "c", "state": q["state"][0]}, follow_redirects=False
+    )
+    assert done.headers["location"] == f"{public}/dashboard/capabilities?gmail=connected"
+    # Un-registered before the callback: back to the normal address.
+    url = owner_client.post("/app/gmail/connect", headers={"Origin": public}).json()["url"]
+    monkeypatch.setattr(get_settings(), "google_redirect_origins", "")
+    done = owner_client.get(
+        "/app/connections/google/callback",
+        params={"code": "c", "state": parse_qs(urlsplit(url).query)["state"][0]},
+        follow_redirects=False,
+    )
+    assert (
+        done.headers["location"].startswith(f"{get_settings().frontend_origin}/")
+        and public not in done.headers["location"]
+    )

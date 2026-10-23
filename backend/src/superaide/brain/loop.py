@@ -484,11 +484,22 @@ class OwnerTurn:
         from superaide.tooltrace.effects import effect_of
         from superaide.tooltrace.recorder import digest
 
+        if self.replay is None:
+            self._observe(name, args, is_error)  # SKILL_SIGNALS_ENABLED (#130): counters only
         if self.replay is None:  # a rehearsal did nothing, so it is not part of what Ava did
             chain.append(
                 self.s, kind="call", tool=name, effect=effect_of(name), args_hash=digest(args),
                 result_hash=digest(content), turn_id=self.inbound.id,
             )  # fmt: skip
+
+    def _observe(self, name: str, args: dict[str, Any], is_error: bool) -> None:
+        from superaide.skills import signals
+
+        if not signals.enabled():
+            return
+        owner = next((s for s in self.skills() if any(t.name == name for t in s.manifest.tools)), None)
+        if owner is not None:
+            signals.observe(self.s, owner, name, is_error=is_error, url=str(args.get("url") or "") or None)
 
     def _dispatch(self, name: str, args: dict[str, Any]) -> tuple[Any, bool]:
         if name == "recall":

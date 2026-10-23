@@ -74,19 +74,32 @@ def registered_origins() -> list[str]:
     return [settings.frontend_origin.rstrip("/"), *(o.rstrip("/") for o in extra)]
 
 
+def is_registered(origin: str) -> bool:
+    """Whether Google knows this origin's callback addresses (FRONTEND_ORIGIN or GOOGLE_REDIRECT_ORIGINS)."""
+    return any(same_origin(origin, o) for o in registered_origins())
+
+
+def origin_in_use(request: Request) -> tuple[str, bool]:
+    """Where the person is using the app (an allowed origin, else the server's own address) and whether
+    Google has that origin's callback addresses registered. Never a header or query value that is not allowed."""
+    used = allowed_request_origin(request, get_settings())
+    if used is None:
+        return get_settings().frontend_origin.rstrip("/"), True
+    return used, is_registered(used)
+
+
 def origin_for(request: Request) -> str:
     """The origin to sign in on: where the person is using the app, so the one-time browser cookie
     set now is still there when Google sends them back. Google only accepts redirect addresses
     registered in its console, so that origin must be allowed (superaide/links.py) and registered
     (FRONTEND_ORIGIN or GOOGLE_REDIRECT_ORIGINS). Any other address gets a message, not a failed sign-in."""
-    settings = get_settings()
-    home = settings.frontend_origin.rstrip("/")
-    used = allowed_request_origin(request, settings)
-    if used is None or any(same_origin(used, o) for o in registered_origins()):
-        return used or home
+    used, ok = origin_in_use(request)
+    if ok:
+        return used
     raise AuthError(
         409,
-        f"Google sign-in works only at {home}. Open the app there and try again, or use your email and password.",
+        f"Google sign-in works only at {get_settings().frontend_origin.rstrip('/')}. "
+        "Open the app there and try again, or use your email and password.",
     )
 
 

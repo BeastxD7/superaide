@@ -101,6 +101,7 @@ def fill_path(path: str) -> str:
         .replace("{provider}", "telegram")
         .replace("{device_id}", "6f1f5b8e-0000-4000-8000-000000000004")
         .replace("{episode_id}", "6f1f5b8e-0000-4000-8000-00000000000a")
+        .replace("{share_id}", "6f1f5b8e-0000-4000-8000-00000000000b")
         .replace("{event_id}", "6f1f5b8e-0000-4000-8000-000000000006")
         .replace("{playbook_id}", "6f1f5b8e-0000-4000-8000-000000000007")
         .replace("{version_id}", "6f1f5b8e-0000-4000-8000-000000000008")

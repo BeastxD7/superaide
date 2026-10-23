@@ -398,6 +398,43 @@
         "title": "ChatBody",
         "type": "object"
       },
+      "ClaimBody": {
+        "properties": {
+          "counterparty": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Counterparty",
+            "type": "string"
+          }
+        },
+        "required": [
+          "counterparty"
+        ],
+        "title": "ClaimBody",
+        "type": "object"
+      },
+      "ClearBody": {
+        "properties": {
+          "skill_id": {
+            "maxLength": 120,
+            "pattern": "^[a-z0-9-]+/[a-z0-9-]+$",
+            "title": "Skill Id",
+            "type": "string"
+          },
+          "version": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "skill_id",
+          "version"
+        ],
+        "title": "ClearBody",
+        "type": "object"
+      },
       "ClientBody": {
         "properties": {
           "name": {
@@ -958,6 +995,40 @@
         "title": "KillBody",
         "type": "object"
       },
+      "LabelBody": {
+        "properties": {
+          "concern": {
+            "title": "Concern",
+            "type": "boolean"
+          },
+          "scanner": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Scanner",
+            "type": "string"
+          },
+          "skill_id": {
+            "maxLength": 120,
+            "pattern": "^[a-z0-9-]+/[a-z0-9-]+$",
+            "title": "Skill Id",
+            "type": "string"
+          },
+          "version": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "skill_id",
+          "version",
+          "scanner",
+          "concern"
+        ],
+        "title": "LabelBody",
+        "type": "object"
+      },
       "LeaseRequest": {
         "additionalProperties": false,
         "properties": {
@@ -1357,6 +1428,53 @@
         "title": "RecheckBody",
         "type": "object"
       },
+      "ReleaseBody": {
+        "properties": {
+          "earned_tier": {
+            "default": "none",
+            "title": "Earned Tier",
+            "type": "string"
+          },
+          "effects": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 6,
+            "title": "Effects",
+            "type": "array"
+          },
+          "patch_signature": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Patch Signature"
+          },
+          "skill_id": {
+            "maxLength": 120,
+            "pattern": "^[a-z0-9-]+/[a-z0-9-]+$",
+            "title": "Skill Id",
+            "type": "string"
+          },
+          "version": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "skill_id",
+          "version"
+        ],
+        "title": "ReleaseBody",
+        "type": "object"
+      },
       "ReminderBody": {
         "properties": {
           "due_at": {
@@ -1477,6 +1595,41 @@
           "choice"
         ],
         "title": "ResolveConflict",
+        "type": "object"
+      },
+      "RetireBody": {
+        "properties": {
+          "reason": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Reason",
+            "type": "string"
+          },
+          "skill_id": {
+            "maxLength": 120,
+            "pattern": "^[a-z0-9-]+/[a-z0-9-]+$",
+            "title": "Skill Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "skill_id"
+        ],
+        "title": "RetireBody",
+        "type": "object"
+      },
+      "RevertBody": {
+        "properties": {
+          "seq": {
+            "minimum": 1.0,
+            "title": "Seq",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "seq"
+        ],
+        "title": "RevertBody",
         "type": "object"
       },
       "RoleChoice": {
@@ -1609,6 +1762,21 @@
         "title": "Rung",
         "type": "object"
       },
+      "ScanBody": {
+        "properties": {
+          "skill_id": {
+            "maxLength": 120,
+            "pattern": "^[a-z0-9-]+/[a-z0-9-]+$",
+            "title": "Skill Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "skill_id"
+        ],
+        "title": "ScanBody",
+        "type": "object"
+      },
       "SearchKeyBody": {
         "properties": {
           "api_key": {
@@ -1622,6 +1790,19 @@
           "api_key"
         ],
         "title": "SearchKeyBody",
+        "type": "object"
+      },
+      "ShareBody": {
+        "properties": {
+          "days": {
+            "default": 1,
+            "maximum": 7.0,
+            "minimum": 1.0,
+            "title": "Days",
+            "type": "integer"
+          }
+        },
+        "title": "ShareBody",
         "type": "object"
       },
       "SharingBody": {
@@ -4075,6 +4256,135 @@
         "summary": "Unlock a fact",
         "tags": [
           "Owner: glass brain"
+        ]
+      }
+    },
+    "/app/brain/share-links": {
+      "get": {
+        "description": "404 while BRAIN_SHARE_ENABLED is off.",
+        "operationId": "overview_app_brain_share_links_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Overview App Brain Share Links Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "My share links",
+        "tags": [
+          "Owner: glass brain share"
+        ]
+      },
+      "post": {
+        "description": "The token is shown once and only its hash is kept. Expires in 1 to 7 days.",
+        "operationId": "create_app_brain_share_links_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShareBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Create App Brain Share Links Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Create an unlisted link to the counts-only picture",
+        "tags": [
+          "Owner: glass brain share"
+        ]
+      }
+    },
+    "/app/brain/share-links/{share_id}/revoke": {
+      "post": {
+        "description": "Takes effect at once.",
+        "operationId": "revoke_app_brain_share_links__share_id__revoke_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "share_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Share Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Revoke App Brain Share Links  Share Id  Revoke Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Stop a link working",
+        "tags": [
+          "Owner: glass brain share"
         ]
       }
     },
@@ -10511,6 +10821,457 @@
         ]
       }
     },
+    "/app/skill-receipts": {
+      "get": {
+        "description": "404 while SKILL_RECEIPTS_ENABLED is off.",
+        "operationId": "overview_app_skill_receipts_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Overview App Skill Receipts Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Chain status and computed tiers",
+        "tags": [
+          "Owner: skills"
+        ]
+      }
+    },
+    "/app/skill-receipts/claim": {
+      "post": {
+        "operationId": "make_claim_app_skill_receipts_claim_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClaimBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Make Claim App Skill Receipts Claim Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "A signed, bucketed, 24-hour trust claim for one counterparty",
+        "tags": [
+          "Owner: skills"
+        ]
+      }
+    },
+    "/app/skill-receipts/export": {
+      "get": {
+        "operationId": "export_app_skill_receipts_export_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Export App Skill Receipts Export Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "The receipts, the rules and a Merkle root per day",
+        "tags": [
+          "Owner: skills"
+        ]
+      }
+    },
+    "/app/skill-receipts/revert": {
+      "post": {
+        "operationId": "revert_app_skill_receipts_revert_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevertBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Revert App Skill Receipts Revert Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Record that an approved action was undone",
+        "tags": [
+          "Owner: skills"
+        ]
+      }
+    },
+    "/app/skill-releases": {
+      "get": {
+        "description": "404 while SKILL_COOLDOWN_ENABLED is off.",
+        "operationId": "releases_app_skill_releases_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Releases App Skill Releases Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Skill releases and reserved names",
+        "tags": [
+          "Owner: skills"
+        ]
+      },
+      "post": {
+        "description": "Starts the cooldown clock; repeating it keeps the first.",
+        "operationId": "record_app_skill_releases_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReleaseBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Record App Skill Releases Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Record a skill release",
+        "tags": [
+          "Owner: skills"
+        ]
+      }
+    },
+    "/app/skill-releases/retire": {
+      "post": {
+        "description": "The name is reserved for good.",
+        "operationId": "retire_app_skill_releases_retire_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetireBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Retire App Skill Releases Retire Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Retire a skill name",
+        "tags": [
+          "Owner: skills"
+        ]
+      }
+    },
+    "/app/skill-signals": {
+      "get": {
+        "description": "404 while off.",
+        "operationId": "overview_app_skill_signals_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Overview App Skill Signals Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Scanner ledger, behaviour cards and demotions",
+        "tags": [
+          "Owner: skills"
+        ]
+      }
+    },
+    "/app/skill-signals/clear-demotion": {
+      "post": {
+        "operationId": "clear_app_skill_signals_clear_demotion_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClearBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Clear App Skill Signals Clear Demotion Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Put a demoted skill version back after reviewing it",
+        "tags": [
+          "Owner: skills"
+        ]
+      }
+    },
+    "/app/skill-signals/label": {
+      "post": {
+        "operationId": "label_app_skill_signals_label_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LabelBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Label App Skill Signals Label Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Label a scanner verdict as a real concern or not",
+        "tags": [
+          "Owner: skills"
+        ]
+      }
+    },
+    "/app/skill-signals/scan": {
+      "post": {
+        "operationId": "scan_app_skill_signals_scan_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScanBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Scan App Skill Signals Scan Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Run every scanner on an installed catalog skill",
+        "tags": [
+          "Owner: skills"
+        ]
+      }
+    },
     "/app/skills": {
       "get": {
         "description": "Every skill Ava can have, whether it's installed, and the permissions each one needs.",
@@ -12573,6 +13334,87 @@
         "summary": "Count a 'Get your own' click",
         "tags": [
           "Public: Ask my Ava"
+        ]
+      }
+    },
+    "/p/brain/{token}": {
+      "get": {
+        "description": "Counts per topic and per origin. No names, no note text. 404 for anything but a live link.",
+        "operationId": "counts_p_brain__token__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Counts P Brain  Token  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "The shape of an assistant's memory, in numbers",
+        "tags": [
+          "Public: Glass brain share"
+        ]
+      }
+    },
+    "/p/brain/{token}/picture.svg": {
+      "get": {
+        "description": "The same picture the owner can download: counts and colours only.",
+        "operationId": "picture_p_brain__token__picture_svg_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "The picture of the shape of the memory",
+        "tags": [
+          "Public: Glass brain share"
         ]
       }
     },
