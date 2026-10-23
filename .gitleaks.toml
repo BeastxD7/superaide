@@ -4,6 +4,12 @@
 useDefault = true
 
 [[allowlists]]
+description = "Made-up Google credentials planted by the capability e2e spec"
+condition = "AND"
+paths = ['''(^|/)tests/capability-google\.spec\.ts$''']
+regexes = ['''^rt-1234567890abcdef$''', '''^GOCSPX-secretsecret$''', '''^abc\.apps\.googleusercontent\.com$''']
+
+[[allowlists]]
 description = "Obviously fake tokens in the connection tests"
 condition = "AND"
 paths = ['''(^|/)tests/test_connections\.py$''']
