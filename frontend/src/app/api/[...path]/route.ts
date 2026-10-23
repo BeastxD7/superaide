@@ -49,6 +49,10 @@ async function forward(req: NextRequest, { params }: Context): Promise<Response>
   // The API rate-limits sign-ups and log-ins per client address. A browser can
   // send any X-Forwarded-For it likes, so drop it unless a trusted load balancer
   // in front of this server overwrites it (TRUST_PROXY_HEADERS=true).
+  // Why not fall back to the socket address when untrusted (FE-26)? A route handler cannot see the socket, and `next start` only
+  // fills X-Forwarded-For from it when the header is absent (`??=` in next/dist/server/base-server.js), so a forged header and a
+  // real one look the same here. Without a trusted front proxy every visitor shares one bucket; see deploy/README.md. The server
+  // logs a warning at start-up when a public https origin is configured without the setting (src/instrumentation.ts).
   if (process.env.TRUST_PROXY_HEADERS !== 'true') {
     for (const h of ['x-forwarded-for', 'x-real-ip', 'forwarded']) headers.delete(h)
   }
