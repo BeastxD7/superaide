@@ -1,7 +1,7 @@
 """memory trust rank, author, supersession and conflict status (issue #46)
 
 Revision ID: 0045
-Revises: 0036
+Revises: 0037
 Create Date: 2026-10-23 09:00:00
 
 A newer fact replaces an older one only when its trust rank is equal or better; a weaker claim waits
@@ -15,7 +15,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "0045"
-down_revision: str | Sequence[str] | None = "0036"
+down_revision: str | Sequence[str] | None = "0037"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
