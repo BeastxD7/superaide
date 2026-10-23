@@ -38,7 +38,8 @@ async function attemptLogin(page: Page, email: string, password: string): Promis
   const response = page.waitForResponse((r) => r.url().endsWith('/api/auth/login') && r.request().method() === 'POST')
   await loginForm(page).submit.click()
   const r = await response
-  return { status: r.status(), body: await r.text() }
+  // Every error body carries its own request id; the rest must match byte for byte.
+  return { status: r.status(), body: (await r.text()).replace(/"request_id":"[^"]*"/g, '"request_id":"-"') }
 }
 
 async function countAccounts(): Promise<number> {
