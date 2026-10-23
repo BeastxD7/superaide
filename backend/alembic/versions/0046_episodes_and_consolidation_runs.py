@@ -2,8 +2,8 @@
 
 Two new per-instance tables under Row-Level Security. Nothing writes them unless SLEEP_JOB_ENABLED.
 
-Revision ID: 0041
-Revises: 0040
+Revision ID: 0046
+Revises: 0045
 Create Date: 2026-10-23 10:00:00.000000
 
 """
@@ -15,8 +15,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision: str = "0041"
-down_revision: str | Sequence[str] | None = "0040"
+revision: str = "0046"
+down_revision: str | Sequence[str] | None = "0045"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
