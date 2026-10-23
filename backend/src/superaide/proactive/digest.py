@@ -204,6 +204,9 @@ def compose(
     from superaide.asklink.service import digest_lines as ask_lines  # [] while ASK_LINK_ENABLED is off
 
     lines += ask_lines(session, owner, now)
+    from superaide.memory.recheck import digest_lines as recheck_lines  # [] while MEMORY_RECHECK_ENABLED is off
+
+    lines += recheck_lines(session, owner, now)
     if not lines:
         return None
     first = owner.display_name.split()[0]
