@@ -107,6 +107,14 @@ def decide(
             audit(session, "triage", "triage_budget_fallback", event_id=event.id)
 
     features = f.snapshot()
+    from superaide.vault.store import runtime_settings
+
+    if runtime_settings().triage_knn_enabled:  # #117: a shadow score; nothing below reads it
+        from superaide.triage import knn
+
+        shadow = knn.shadow_score(session, f.text)
+        if shadow is not None:
+            features["knn"] = shadow
     features.update(
         shadow_decision=str(o.shadow or o.decision), maybe_urgent=o.maybe_urgent, score=o.score,
         needs_approval=o.needs_approval, from_rule=o.from_rule, urgency=o.urgency, escalate=o.escalate,

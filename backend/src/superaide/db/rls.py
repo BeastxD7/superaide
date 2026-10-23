@@ -75,6 +75,7 @@ TABLES: tuple[str, ...] = (
     "mcp_pin",  # approved MCP tool hashes (#116)
     "tool_trace",  # hashes of tool calls (#110)
     "triage_decision",
+    "triage_label_vector",
     "triage_rule",
     "triage_settings",
     "reception_message",  # receptionist (ADR 0010 TR5)

@@ -275,6 +275,10 @@ class Settings(BaseSettings):
     # /app/rehearsal/* answer 404. On: text role-play, nothing is sent to anyone, and a session is
     # deleted after a day unless the owner keeps it.
     rehearsal_enabled: bool = False
+    # Deletable kNN triage head (#117). Off: nothing changes. On (needs TRIAGE_ENABLED): each triage decision
+    # also records, in `features["knn"]`, how urgent the owner's own past feedback says similar messages
+    # were. It never changes the decision; it is a shadow score to compare against the model's.
+    triage_knn_enabled: bool = False
     # The owner's Gmail sign-in (same OAuth client as Calendar); kept per instance in the vault.
     gmail_refresh_token: str = ""
 

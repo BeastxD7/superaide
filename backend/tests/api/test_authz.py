@@ -31,6 +31,7 @@ FLAG_GATED = {
     ("GET", "/app/tuner"),  # OVERNIGHT_TUNER_ENABLED (#118)
     ("GET", "/app/rehearsal"),  # REHEARSAL_ENABLED (#58)
     ("GET", "/app/rehearsal/{session_id}"),
+    ("GET", "/app/triage/promotion"),  # the Wilson-bound gate view (#117)
     ("GET", "/app/approvals/brake"),  # RUBBER_STAMP_BRAKE_ENABLED (#134)
     ("GET", "/app/question"),  # ONE_GOOD_QUESTION_ENABLED (#121)
     ("GET", "/app/why/{event_id}"),  # WHY_REPLAY_ENABLED (#122)
