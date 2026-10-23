@@ -1,33 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { call } from '@/lib/api'
-import { errorMessage } from '@/lib/action'
+import { useResource } from '@/lib/use-resource'
 
 // Load one /app endpoint for a dashboard page, with a way to reload it.
 export function useAppData<T>(path: string) {
-  const [data, setData] = useState<T | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  // State is set only once the request settles (written with .then so the effect lint can see that).
-  const reload = useCallback(
-    () =>
-      call<T>(path).then(
-        (d) => {
-          setData(d)
-          setError(null)
-        },
-        (e: unknown) => {
-          setError(errorMessage(e))
-        },
-      ),
-    [path],
-  )
-
-  useEffect(() => {
-    void reload()
-  }, [reload])
-
+  const { data, error, reload } = useResource<T>(path)
   return { data, error, reload }
 }
 

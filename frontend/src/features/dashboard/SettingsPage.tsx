@@ -14,6 +14,8 @@ import { CHANNEL_LABEL, DIGEST_LABEL, useAppData } from '@/features/dashboard/da
 import { ReceptionistCard } from '@/features/reception/ReceptionistCard'
 import { AppError, auth, type Preferences } from '@/lib/api'
 import { useSession } from '@/lib/session-context'
+import { PWA_ENABLED } from '@/lib/flags'
+import { pushSupported, turnOnNotifications } from '@/features/pwa/push'
 
 export function SettingsPage() {
   const { account, me } = useSession()
@@ -50,6 +52,8 @@ export function SettingsPage() {
         <EmailCard current={account.user.email} />
 
         <PasswordCard />
+
+        {PWA_ENABLED && <NotificationsCard name={name} />}
 
         <Card>
           <CardHeader>
@@ -244,6 +248,40 @@ function PasswordCard() {
           </div>
           {result && <Notice tone={result.tone}>{result.text}</Notice>}
         </form>
+      </CardContent>
+    </Card>
+  )
+}
+
+// Browser notifications (ADR 0011), only when the installable-app flag is on. The permission prompt needs a tap.
+function NotificationsCard({ name }: { name: string }) {
+  const [state, setState] = useState<'idle' | 'busy' | 'on' | 'denied' | 'unavailable'>('idle')
+  const supported = typeof window !== 'undefined' && pushSupported()
+  const granted = typeof Notification !== 'undefined' && Notification.permission === 'granted'
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Notifications</CardTitle>
+        <CardDescription>Get a notification on this device when {name} needs you.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {!supported ? (
+          <p className="text-sm text-muted">This browser can&apos;t show notifications. On an iPhone, add Superaide to your Home Screen first.</p>
+        ) : state === 'on' || (state === 'idle' && granted) ? (
+          <p className="text-sm text-ink" role="status">Notifications are on for this device.</p>
+        ) : (
+          <Button
+            disabled={state === 'busy'}
+            onClick={async () => {
+              setState('busy')
+              setState(await turnOnNotifications())
+            }}
+          >
+            {state === 'busy' ? 'Turning on…' : 'Turn on notifications'}
+          </Button>
+        )}
+        {state === 'denied' && <Notice tone="warn">Notifications are blocked for this site. Allow them in your browser settings, then try again.</Notice>}
+        {state === 'unavailable' && <Notice tone="error">Notifications could not be turned on right now. Try again later.</Notice>}
       </CardContent>
     </Card>
   )
