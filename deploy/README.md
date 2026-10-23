@@ -344,6 +344,7 @@ The compose file requires option 1, so a server never silently falls through to 
 
 - **HTTPS:**
   - Let's Encrypt certificates, renewed automatically. HTTP redirects to HTTPS.
+  - A per-request Content-Security-Policy with a nonce (set in `frontend/src/proxy.ts`): scripts and style elements without that request's nonce do not run, so injected markup or inline handlers are inert. The one exception is `style-src-attr 'unsafe-inline'` (React and Motion write `style=""` attributes, which can style but not run script).
   - HSTS for a year, plus `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy` and `Cross-Origin-Opener-Policy`.
 - **Rate limits (Caddy):**
   - 20 sign-up / log-in / password POSTs per minute per address, and 600 requests per minute per address overall. Over that, the response is a 429.
