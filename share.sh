@@ -157,6 +157,9 @@ PUBLIC_HOST="${PUBLIC_URL#https://}"
 export PUBLIC_BASE_URL="$PUBLIC_URL"
 export LINK_ORIGINS="${LINK_ORIGINS:+$LINK_ORIGINS,}$PUBLIC_URL"
 export DEV_ORIGINS="${DEV_ORIGINS:+$DEV_ORIGINS,}$PUBLIC_HOST"
+# Google sign-in is only offered on addresses registered in Google Cloud: tell the app this one will be (you still add
+# the two redirect URIs printed below in Google Cloud).
+export GOOGLE_REDIRECT_ORIGINS="${GOOGLE_REDIRECT_ORIGINS:+$GOOGLE_REDIRECT_ORIGINS,}$PUBLIC_URL"
 export NO_OPEN=1
 
 bold "Public address: $PUBLIC_URL"
