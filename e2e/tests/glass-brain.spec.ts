@@ -71,6 +71,20 @@ test.describe('glass brain', () => {
     await expect(page.getByRole('button', { name: 'Free-floating' })).toHaveAttribute('aria-pressed', 'true')
     await page.getByRole('button', { name: 'Tidy' }).click()
     expect(await pos()).toBe(tidy)
+  test('a fact can be locked and unlocked from the map', async ({ page }) => {
+    await page.goto('/dashboard/notebook/brain')
+    await dot(page, 'I live in Pune').click()
+    const details = page.getByRole('complementary', { name: 'Details' })
+    await details.getByRole('button', { name: 'Lock this' }).click()
+    const locked = page.getByRole('button', { name: 'Locked note: I live in Pune', exact: true })
+    await expect(locked).toBeVisible()
+    await expect(details.getByText('Locked', { exact: true })).toBeVisible()
+    await expect(details.getByText(/won.t merge, retire or fade this/)).toBeVisible()
+    await page.reload()
+    await expect(page.getByRole('button', { name: 'Locked note: I live in Pune', exact: true })).toBeVisible()
+    await page.getByRole('button', { name: 'Locked note: I live in Pune', exact: true }).click()
+    await details.getByRole('button', { name: 'Unlock' }).click()
+    await expect(dot(page, 'I live in Pune')).toBeVisible()
   })
 
   test('forgetting from the map removes the dot', async ({ page }) => {

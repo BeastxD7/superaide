@@ -103,7 +103,9 @@ def _keep(session: Session, owner: Person, *, source: str, ref: str, facts: list
     (the event moved, the mail was followed up) and stay queryable by valid time."""
     now = datetime.now(UTC)
     session.execute(
-        update(MemoryItem).where(MemoryItem.source_ref == ref, MemoryItem.valid_to.is_(None)).values(valid_to=now)
+        update(MemoryItem)
+        .where(MemoryItem.source_ref == ref, MemoryItem.valid_to.is_(None), MemoryItem.locked.is_(False))
+        .values(valid_to=now)
     )
     kept = 0
     for f in facts[:FACTS_PER_ITEM]:

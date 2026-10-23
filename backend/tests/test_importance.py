@@ -85,6 +85,13 @@ def test_default_notes_weigh_one_so_ranking_is_unchanged_for_them():
     assert importance.weight(object(), NOW) == 1.0  # a message row has no importance
 
 
+def test_a_locked_time_bound_note_never_decays():
+    old = MemoryItem(content="x", importance=0.5, time_bound=True, created_at=NOW - timedelta(days=300))
+    assert importance.weight(old, NOW) < 0.1  # an ordinary time-bound note has faded away
+    old.locked = True
+    assert importance.weight(old, NOW) == 1.0  # locked by the owner: it counts as on the day it was said
+
+
 # --- spaced re-verification ---------------------------------------------------------------
 
 

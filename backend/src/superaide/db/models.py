@@ -240,6 +240,9 @@ class MemoryItem(Scoped, Base):
     trust_rank: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     author_person_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("person.id"), nullable=True)
     superseded_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("memory_item.id"), nullable=True)
+    # The owner locked this fact (Glass brain, #55): nothing automatic retires, merges or fades it. Only the owner can
+    # change it (correct, forget, unlock); a newer claim against it waits as a conflict for the owner to decide.
+    locked: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     # none | pending (a weaker claim against a stronger fact) | review (a link fact outside about/work) | resolved
     conflict_status: Mapped[str] = mapped_column(String(10), default="none", server_default="none")
     conflicts_with_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("memory_item.id"), nullable=True)
