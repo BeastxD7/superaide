@@ -108,3 +108,25 @@ def test_the_voice_shell_holds_no_tools(settings, agent, monkeypatch):
     monkeypatch.setattr("superaide.factory.brain_ready", lambda s: True)
     VoiceCall(agent)._reply([{"role": "owner", "text": "hello"}], "Jordan", 0, 0, "en-US", lambda s: None)
     assert agent.llm.calls and all(c["tools"] == [] for c in agent.llm.calls)
+
+
+def test_a_spoken_request_nothing_can_carry_out_creates_no_card_and_does_not_pretend(
+    on, owner_sender, monkeypatch, settings
+):
+    # #326 for voice: "tell Priya..." has no executor, so no approval card is made and the call is told so.
+    monkeypatch.setattr(settings, "approval_require_executor", True)
+    out = propose(owner_sender)
+    assert out["status"] == "refused" and "can't do that myself" in out["spoken"]
+    assert "waiting" not in out["spoken"].lower() and "screen" not in out["spoken"].lower()
+    with session_scope() as s:
+        assert s.scalars(select(Approval)).all() == []
+        reasons = [
+            a.details.get("reason") for a in s.scalars(select(AuditLog).where(AuditLog.action == "action_refused"))
+        ]
+        assert "no executor" in reasons
+
+
+def test_a_spoken_request_something_can_carry_out_still_waits_for_a_tap(on, owner_sender, monkeypatch, settings):
+    monkeypatch.setattr(settings, "approval_require_executor", True)
+    out = propose(owner_sender, kind="ask_reply", summary="Reply to Kaggle: thanks")
+    assert out["status"] == "waiting" and approval(out).payload["origin"] == "voice"
