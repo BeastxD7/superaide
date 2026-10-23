@@ -243,13 +243,28 @@ function sessionEnded(e: unknown, url: string): void {
   if (url.startsWith('/app/') && isUnauthorized(e)) onSignedOut?.()
 }
 
-async function request<T>(url: string, init?: Init): Promise<T> {
+async function requestFull<T>(url: string, init?: Init) {
   try {
-    const res = await client.request<T>({ url, method: init?.method ?? 'GET', data: init?.json, signal: init?.signal })
-    return res.data
+    return await client.request<T>({ url, method: init?.method ?? 'GET', data: init?.json, signal: init?.signal })
   } catch (e) {
     sessionEnded(e, url)
     throw e
+  }
+}
+
+async function request<T>(url: string, init?: Init): Promise<T> {
+  return (await requestFull<T>(url, init)).data
+}
+
+// A bare-array list that pages by header (ADR 0014): the rows, whether older ones exist (`X-Has-More`; null when the
+// server did not say, e.g. a stub) and the cursor for them (`X-Next-Cursor`).
+export async function callPage<T>(path: string, init?: Init): Promise<{ data: T; hasMore: boolean | null; nextCursor: string | null }> {
+  const res = await requestFull<T>(`/app${path}`, init)
+  const more = res.headers['x-has-more']
+  return {
+    data: res.data,
+    hasMore: more === 'true' ? true : more === 'false' ? false : null,
+    nextCursor: (res.headers['x-next-cursor'] as string | undefined) ?? null,
   }
 }
 
