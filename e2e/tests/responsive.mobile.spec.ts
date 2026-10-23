@@ -7,7 +7,9 @@ import { expect, test } from '../src/fixtures'
 import { measure } from '../src/helpers/responsive'
 
 const WIDTHS = [320, 360, 390, 768]
-const SIGNED_OUT = ['/', '/agents/ava']
+const SIGNED_OUT = ['/', '/agents/ava', '/login', '/signup', '/forgot-password', '/reset-password?token=abc', '/verify-email', '/nonexistent-page', '/a/nobody']
+// Pages with their own header instead of the site navbar.
+const OWN_HEADER = /^\/(login|signup|forgot-password|reset-password|verify-email|nonexistent-page|a\/)/
 
 // Entrance animations fade things in; axe would read a half-faded colour as low contrast.
 async function settled(page: Page) {
@@ -19,6 +21,7 @@ async function expectFits(page: Page, where: string) {
   expect(m.scrollWidth, `${where}: page scrolls sideways`).toBeLessThanOrEqual(m.vw)
   expect(m.wide, `${where}: elements wider than the screen`).toEqual([])
   expect(m.smallInputs, `${where}: inputs under 16px (iOS zooms in)`).toEqual([])
+  expect(m.small, `${where}: tap targets under 44px`).toEqual([])
 }
 
 // The navbar: one 56px row, every control at least 44px tall, text 14px or more, no wrapped labels, all inside the screen.
@@ -57,14 +60,29 @@ for (const width of WIDTHS) {
       test(`${path}: fits, navbar is tidy, no axe violations`, async ({ page, api }) => {
         void api
         await page.goto(path)
-        await expect(page.getByRole('navigation', { name: 'Site' })).toBeVisible()
-        await expectNavbarFits(page, path)
+        if (OWN_HEADER.test(path)) await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+        else {
+          await expect(page.getByRole('navigation', { name: 'Site' })).toBeVisible()
+          await expectNavbarFits(page, path)
+        }
         await expectFits(page, path)
         await settled(page)
         const axe = await new AxeBuilder({ page }).analyze()
         expect(axe.violations.map((v) => `${v.id}: ${v.nodes.length}`), path).toEqual([])
       })
     }
+
+    test('the sign-up form: fields are 16px, the submit button is reachable and inside the screen', async ({ page, api }) => {
+      void api
+      await page.goto('/signup')
+      const submit = page.getByRole('button', { name: 'Create account' })
+      await submit.scrollIntoViewIfNeeded()
+      const b = (await submit.boundingBox())!
+      expect(b.x).toBeGreaterThanOrEqual(0)
+      expect(b.x + b.width).toBeLessThanOrEqual(width)
+      expect(b.height).toBeGreaterThanOrEqual(44)
+      await expect(submit).toBeInViewport()
+    })
 
     test('the primary navbar button is fully inside the screen', async ({ page, api }) => {
       void api
@@ -90,6 +108,30 @@ for (const width of WIDTHS) {
       expect(b.height).toBeLessThanOrEqual(page.viewportSize()!.height + 1)
       await page.keyboard.press('Escape')
       await expect(sheet).toBeHidden()
+    })
+  })
+
+  test.describe(`hire flow at ${width}px`, () => {
+    test.use({ viewport: { width, height: 780 }, ownerState: 'account' })
+    test('the hire page fits and passes axe', async ({ page, owner }) => {
+      void owner
+      await page.goto('/agents/ava/hire')
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+      await settled(page) // the page slides in
+      await expectFits(page, 'hire')
+      const axe = await new AxeBuilder({ page }).analyze()
+      expect(axe.violations.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([])
+    })
+  })
+
+  test.describe(`introduction at ${width}px`, () => {
+    test.use({ viewport: { width, height: 780 }, ownerState: 'hired' })
+    test('the introduction fits', async ({ page, owner }) => {
+      void owner
+      await page.goto('/meet')
+      await expect(page.getByRole('main', { name: 'Conversation' })).toBeVisible()
+      await settled(page)
+      await expectFits(page, 'meet') // axe for this page lives in fe-a11y-intro.spec.ts
     })
   })
 

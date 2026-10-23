@@ -78,17 +78,17 @@ export function Hire({ slug, session }: { slug: string; session: Session }) {
 
   return (
     <div className="mesh flex min-h-dvh flex-col">
-      <header className="mx-auto flex w-full max-w-xl items-center gap-4 px-5 pt-6">
+      <header className="mx-auto flex w-full max-w-xl items-center gap-4 page-x pt-4 sm:pt-6">
         {stage === 'agree' ? (
           <Link
             href={`/agents/${slug}`}
-            className="grid size-10 shrink-0 place-items-center rounded-full bg-white text-ink shadow-sm hover:bg-mist"
+            className="grid size-11 shrink-0 place-items-center rounded-full bg-white text-ink shadow-sm hover:bg-mist"
             aria-label="Back"
           >
             <ChevronLeft className="size-5" />
           </Link>
         ) : (
-          <span className="grid size-10 shrink-0 place-items-center">
+          <span className="grid size-11 shrink-0 place-items-center">
             <BrandMark className="size-7" />
           </span>
         )}
@@ -110,11 +110,11 @@ export function Hire({ slug, session }: { slug: string; session: Session }) {
         <AccountMenu session={session} />
       </header>
 
-      <main className="mx-auto flex w-full max-w-xl flex-1 flex-col px-5 pt-10 pb-8">
+      <main className="mx-auto flex w-full max-w-xl flex-1 flex-col page-x pt-6 pb-8 sm:pt-10">
         <AnimatePresence mode="wait">
           {stage === 'agree' && (
             <motion.form key="agree" {...slide} onSubmit={hire} className="flex flex-1 flex-col">
-              <h1 className="text-4xl font-medium tight">One thing before you start, {first}</h1>
+              <h1 className="text-3xl font-medium tight sm:text-4xl">One thing before you start, {first}</h1>
               <p className="mt-2 text-body">Here's how {agentName} handles what you tell it.</p>
               <div className="glass mt-8 rounded-[24px] border border-white/70 p-6">
                 {loadError && !agent ? (
@@ -147,7 +147,7 @@ export function Hire({ slug, session }: { slug: string; session: Session }) {
                 </div>
               )}
               <div className="mt-auto pt-10">
-                <Button tone="violet" type="submit" disabled={!agreed || busy || !agent} className="w-full py-4 text-base">
+                <Button tone="violet" type="submit" disabled={!agreed || busy || !agent} className="w-full py-4">
                   {busy ? `Hiring ${agentName}…` : `Hire ${agentName}`}
                 </Button>
                 <p className="mt-3 text-center text-xs text-muted">Signed in as {account.user.email}</p>
@@ -169,7 +169,7 @@ export function Hire({ slug, session }: { slug: string; session: Session }) {
                 {agentName} would like to introduce itself and get to know you. It takes about five minutes.
               </p>
               <div className="mt-auto w-full pt-10">
-                <Button tone="violet" className="w-full py-4 text-base" onClick={() => router.push('/meet')}>
+                <Button tone="violet" className="w-full py-4" onClick={() => router.push('/meet')}>
                   Say hello to {agentName}
                 </Button>
               </div>
