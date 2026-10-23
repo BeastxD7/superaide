@@ -17,6 +17,7 @@ export function ApprovalsPage() {
         <p className="mt-1 text-body">Things {name} was asked to do that need your yes first.</p>
         <ApprovalsCard
           name={name}
+          showExpired
           empty={
             <p className="mt-6 rounded-xl border border-dashed border-line p-6 text-center text-sm text-muted">
               Nothing is waiting for your OK.

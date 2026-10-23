@@ -417,12 +417,12 @@ test.describe('console: impostor simulator', () => {
 })
 
 test.describe('console: separate from the site', () => {
-  test("the footer link opens the console with a full page load, and the styles don't mix", async ({ page, api }) => {
+  test("the footer link opens the console with a full page load; console styles stay out of the site", async ({ page, api }) => {
     void api
     await page.goto('/')
     const footerLink = page.getByRole('contentinfo').getByRole('link', { name: 'Operator console' })
     await expect(footerLink).toBeVisible()
-    expect(await hasCss(page, '.topbar'), 'the site has no console styles').toBe(false)
+    expect(await hasCss(page, '.c-topbar'), 'the site has no console styles').toBe(false)
     const siteFont = await page.evaluate(() => getComputedStyle(document.body).fontFamily)
     expect(siteFont).toContain('Geist')
     await page.evaluate(() => ((window as unknown as { __sameDocument?: boolean }).__sameDocument = true))
@@ -434,11 +434,13 @@ test.describe('console: separate from the site', () => {
     const consoleFont = await page.evaluate(() => getComputedStyle(document.body).fontFamily)
     // The console shares the site's typeface (docs/design/console-ui.md) but keeps its own stylesheet.
     expect(consoleFont).toContain('Geist')
-    expect(await hasCss(page, '--font-sans'), 'the console has no site styles').toBe(false)
+    // The console shares the site's tokens and sidebar components (app.css), so it reads as one product.
+    expect(await hasCss(page, '--font-sans'), 'the console uses the site tokens').toBe(true)
+    expect(await hasCss(page, '.c-topbar'), 'and has its own console styles').toBe(true)
 
     await page.goBack()
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
     expect(await page.evaluate(() => getComputedStyle(document.body).fontFamily)).toContain('Geist')
-    expect(await hasCss(page, '.topbar')).toBe(false)
+    expect(await hasCss(page, '.c-topbar')).toBe(false)
   })
 })

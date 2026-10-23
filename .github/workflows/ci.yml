@@ -17,7 +17,9 @@ permissions:
 # (each push gets its verdict), and when full.yml calls this, github.workflow is the caller's
 # name, so its runs land in their own group and are never cancelled either.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  # On main every push has its own group: GitHub keeps only ONE queued run per group and cancels older queued
+  # ones, so merging several PRs in a row left main with cancelled runs and no verdict.
+  group: ci-${{ github.workflow }}-${{ github.ref }}${{ github.ref == 'refs/heads/main' && format('-{0}', github.sha) || '' }}
   cancel-in-progress: ${{ github.workflow == 'CI' && github.ref != 'refs/heads/main' }}
 
 jobs:
@@ -111,12 +113,12 @@ jobs:
             out backend $b; out frontend $fe; out e2e $e; out e2e_smoke $sm; out docker $d
           fi
 
-  backend:
-    name: Backend (lint, types, migrations, tests)
+  backend-static:
+    name: Backend (lint, types, migrations)
     needs: [changes]
     if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: backend
@@ -136,7 +138,6 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: postgresql+psycopg://agent:agent@localhost:5432/agent
-      TEST_DATABASE_URL: postgresql+psycopg://agent:agent@localhost:5432/agent_test
       PGPASSWORD: agent
     steps:
       - uses: actions/checkout@v7
@@ -175,18 +176,66 @@ jobs:
           uv run alembic downgrade base
           uv run alembic upgrade head
 
-      # -n auto runs one worker per core, each on its own database (tests/conftest.py). To debug
-      # a failure that might be order or parallelism related, run `uv run pytest -p no:xdist`.
+  backend-tests:
+    name: Backend tests (shard ${{ matrix.shard }}/2)
+    needs: [changes]
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: agent
+          POSTGRES_PASSWORD: agent
+          POSTGRES_DB: agent
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U agent -d agent"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://agent:agent@localhost:5432/agent
+      TEST_DATABASE_URL: postgresql+psycopg://agent:agent@localhost:5432/agent_test
+      PGPASSWORD: agent
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.11.32"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: Install Python and dependencies
+        run: |
+          uv python install
+          uv sync --locked
+
+      # The suite is split by test module (--shard, tests/sharding.py) over two runners, each running
+      # pytest-xdist with one worker per core on its own database (tests/conftest.py). To debug a
+      # failure that might be order or parallelism related, run `uv run pytest -p no:xdist`.
       # Coverage slows the suite down and nobody reads it on a pull request, so it is measured on
-      # main and in the Full run only. --durations lists the slowest tests either way.
+      # main and in the Full run only (each shard reports its own half). --durations lists the
+      # slowest tests either way.
       - name: Tests
         env:
           EVENT: ${{ github.event_name }}
+          SHARD: ${{ matrix.shard }}/2
         run: |
           psql -h localhost -U agent -d agent -c "CREATE DATABASE agent_test"
           case "$EVENT" in
-            pull_request|merge_group) uv run pytest -n auto --durations=25 ;;
-            *) uv run pytest -n auto --durations=25 --cov --cov-report=term-missing:skip-covered ;;
+            pull_request|merge_group) uv run pytest -n auto --shard "$SHARD" --durations=25 ;;
+            *) uv run pytest -n auto --shard "$SHARD" --durations=25 --cov --cov-report=term-missing:skip-covered ;;
           esac
 
   frontend:
@@ -441,7 +490,7 @@ jobs:
   result:
     name: CI result
     if: always()
-    needs: [changes, backend, frontend, e2e, e2e-smoke, images, secrets, tests-required]
+    needs: [changes, backend-static, backend-tests, frontend, e2e, e2e-smoke, images, secrets, tests-required]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
@@ -461,9 +510,10 @@ jobs:
           # A job skipped although its filter asked for it ran into an upstream problem: fail.
           out() { echo "$NEEDS" | jq -r --arg k "$1" '.changes.outputs[$k]'; }
           res() { echo "$NEEDS" | jq -r --arg j "$1" '.[$j].result'; }
-          for j in backend frontend; do
-            [ "$(out $j)" != true ] || [ "$(res $j)" = success ] || { echo "::error::$j was required but is $(res $j)"; exit 1; }
+          for j in backend-static backend-tests; do
+            [ "$(out backend)" != true ] || [ "$(res $j)" = success ] || { echo "::error::$j was required but is $(res $j)"; exit 1; }
           done
+          [ "$(out frontend)" != true ] || [ "$(res frontend)" = success ] || { echo "::error::frontend was required but is $(res frontend)"; exit 1; }
           # End-to-end: either the full matrix or the smoke subset must have succeeded, never neither.
           full=$(out e2e); smoke=$(out e2e_smoke)
           [ "$full" != true ] || [ "$smoke" != true ] || { echo "::error::both the full and the smoke e2e were selected"; exit 1; }

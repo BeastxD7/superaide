@@ -18,8 +18,9 @@ import type { Me } from '@/lib/api'
 
 // `triage`: shown only while the backend has triage turned on (ADR 0010).
 // `rehearsal`: shown only while the backend has the rehearsal room turned on (#58).
-export type NavItem = { href: string; label: string; icon: typeof House; triage?: boolean; rehearsal?: boolean; school?: boolean; card?: boolean }
+export type NavItem = { href: string; label: string; icon: typeof House; triage?: boolean; rehearsal?: boolean; school?: boolean; card?: boolean; approvals?: boolean }
 // `card`: shown only while the backend has the Principal Card turned on (#135).
+// `approvals`: carries the count of requests waiting for the owner's yes (#294).
 // `school`: shown only while the backend has Ava School turned on (#57).
 
 export const NAV: { group: string; items: NavItem[] }[] = [
@@ -29,6 +30,7 @@ export const NAV: { group: string; items: NavItem[] }[] = [
       { href: '/dashboard', label: 'Home', icon: House },
       { href: '/dashboard/chat', label: 'Chat', icon: MessageCircle },
       { href: '/dashboard/needs-you', label: 'Needs you', icon: Inbox, triage: true },
+      { href: '/dashboard/approvals', label: 'Approvals', icon: ShieldQuestion, approvals: true },
       { href: '/dashboard/rehearsal', label: 'Rehearsal room', icon: Drama, rehearsal: true },
       { href: '/dashboard/reminders', label: 'Reminders', icon: AlarmClock },
       { href: '/dashboard/notebook', label: 'Notebook', icon: BookOpen },
@@ -48,11 +50,8 @@ export const NAV: { group: string; items: NavItem[] }[] = [
   },
 ]
 
-// Pages reached from the phone's tab bar but not listed in the sidebar (the header still names them).
-const EXTRA: NavItem[] = [{ href: '/dashboard/approvals', label: 'Approvals', icon: ShieldQuestion }]
-
 export function navItemFor(pathname: string): NavItem | undefined {
-  return [...NAV.flatMap((g) => g.items), ...EXTRA].find((i) =>
+  return NAV.flatMap((g) => g.items).find((i) =>
     i.href === '/dashboard' ? pathname === i.href : pathname.startsWith(i.href),
   )
 }
