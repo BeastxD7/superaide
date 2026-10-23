@@ -67,7 +67,7 @@ def merkle_root(hashes: list[str]) -> str:
     while len(level) > 1:
         if len(level) % 2:
             level.append(level[-1])
-        level = [hashlib.sha256((a + b).encode()).hexdigest() for a, b in zip(level[::2], level[1::2], strict=True)]
+        level = [hashlib.sha256((a + b).encode()).hexdigest() for a, b in zip(level[::2], level[1::2])]  # noqa: B905 (3.9-safe)
     return level[0]
 
 
