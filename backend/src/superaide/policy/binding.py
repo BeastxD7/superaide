@@ -38,7 +38,7 @@ def content_hash(*, to: Iterable[str], thread_id: str, subject: str, text: str) 
 # `result`, which `resolve` itself writes after the run, is left out; any other key is bound by default,
 # so a field an executor starts to read later is covered without anyone remembering to list it.
 
-_NOT_BOUND = frozenset({"result"})
+_NOT_BOUND = frozenset({"result", "outcome"})
 
 
 def payload_hash(kind: str, payload: dict[str, Any]) -> str:

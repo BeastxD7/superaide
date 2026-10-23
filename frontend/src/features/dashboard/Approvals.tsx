@@ -69,6 +69,11 @@ export function ApprovalsCard({ name, empty = null }: { name: string; empty?: Re
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-ink">{KIND_LABEL[a.kind] ?? a.kind}</p>
                 <p className="mt-0.5 break-words text-sm text-body">{a.summary}</p>
+                {a.notes?.map((n) => (
+                  <p key={n} className="mt-1 break-words text-xs text-violet-700">
+                    {n}
+                  </p>
+                ))}
                 <p className="mt-1 text-xs text-muted">
                   {a.requested_by ? `Asked by ${a.requested_by}` : 'Asked in a chat'} ·{' '}
                   {formatWhen(a.at)}

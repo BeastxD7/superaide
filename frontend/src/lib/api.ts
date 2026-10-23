@@ -387,6 +387,7 @@ export type ApprovalItem = {
   requested_by: string | null
   status: 'pending' | 'approved' | 'rejected'
   result: string | null
+  notes?: string[]
   at: string
   decided_at: string | null
   needs_reason?: boolean
