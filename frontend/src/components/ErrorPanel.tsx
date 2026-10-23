@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react'
 import { auth } from '@/lib/api'
 
-const PRIMARY = 'inline-flex rounded-full bg-ink px-5 py-3 text-sm font-medium text-white hover:bg-night-800'
-const SECONDARY = 'inline-flex rounded-full border border-line bg-white px-5 py-3 text-sm font-medium text-ink hover:bg-mist'
+const PRIMARY = 'inline-flex min-h-11 items-center rounded-full bg-ink px-5 py-3 text-sm font-medium text-white hover:bg-night-800'
+const SECONDARY = 'inline-flex min-h-11 items-center rounded-full border border-line bg-white px-5 py-3 text-sm font-medium text-ink hover:bg-mist'
 
 // What a signed-in or signed-out visitor sees when a screen crashes: plain words, a way to try
 // again, and a way out that does not depend on the broken screen (plain links, a fresh page load).

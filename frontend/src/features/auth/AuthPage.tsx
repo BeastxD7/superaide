@@ -110,10 +110,10 @@ export function AuthPage({
 
   return (
     <div className="mesh flex min-h-dvh flex-col">
-      <header className="mx-auto flex w-full max-w-xl items-center gap-4 px-5 pt-6">
+      <header className="mx-auto flex w-full max-w-xl items-center gap-4 page-x pt-4 sm:pt-6">
         <Link
           href={hiring && target ? target.replace(/\/hire$/, '') : '/'}
-          className="grid size-10 shrink-0 place-items-center rounded-full bg-white text-ink shadow-sm hover:bg-mist"
+          className="grid size-11 shrink-0 place-items-center rounded-full bg-white text-ink shadow-sm hover:bg-mist"
           aria-label="Back"
         >
           <ChevronLeft className="size-5" />
@@ -125,12 +125,12 @@ export function AuthPage({
         ) : (
           <span className="flex-1" />
         )}
-        <Link href="/" className="text-sm font-medium text-muted hover:text-ink">
+        <Link href="/" className="inline-flex min-h-11 items-center text-sm font-medium text-muted hover:text-ink">
           {PRODUCT}
         </Link>
       </header>
 
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col px-5 pt-10 pb-10">
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col page-x pt-6 pb-10 sm:pt-10">
         <motion.form
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -141,7 +141,7 @@ export function AuthPage({
         >
           <div className="flex flex-col items-center text-center">
             <Orb hue="indigo" size={96} track />
-            <h1 className="mt-6 text-4xl font-medium tight">{mode === 'signup' ? (hiring ? 'Create your account' : 'Create an account') : 'Welcome back'}</h1>
+            <h1 className="mt-6 text-3xl font-medium tight sm:text-4xl">{mode === 'signup' ? (hiring ? 'Create your account' : 'Create an account') : 'Welcome back'}</h1>
             <p className="mt-2 text-body">
               {mode === 'signup'
                 ? hiring
@@ -215,12 +215,12 @@ export function AuthPage({
                   minLength={mode === 'signup' ? 10 : undefined}
                   aria-invalid={error?.field === 'password'}
                   aria-describedby={mode === 'signup' ? 'auth-password-hint' : undefined}
-                  className="w-full rounded-2xl border border-white bg-white py-3.5 pr-12 pl-4 text-ink outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/60"
+                  className="w-full rounded-2xl border border-white bg-white py-3.5 pr-14 pl-4 text-ink outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/60"
                 />
                 <button
                   type="button"
                   onClick={() => setShow((v) => !v)}
-                  className="absolute top-1/2 right-2 grid size-9 -translate-y-1/2 place-items-center rounded-full text-muted hover:bg-mist hover:text-ink"
+                  className="absolute top-1/2 right-1 grid size-11 -translate-y-1/2 place-items-center rounded-full text-muted hover:bg-mist hover:text-ink"
                   aria-label={show ? 'Hide password' : 'Show password'}
                 >
                   {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
@@ -233,7 +233,7 @@ export function AuthPage({
               )}
               {fieldError('password')}
               {mode === 'login' && (
-                <Link href="/forgot-password" className="mt-2 inline-block text-sm font-medium text-violet-700 hover:underline">
+                <Link href="/forgot-password" className="mt-1 inline-flex min-h-11 items-center text-sm font-medium text-violet-700 hover:underline">
                   Forgot your password?
                 </Link>
               )}
@@ -246,7 +246,7 @@ export function AuthPage({
               tone="violet"
               type="submit"
               disabled={busy || !email || !password || (mode === 'signup' && !name.trim())}
-              className="w-full py-4 text-base"
+              className="w-full py-4"
             >
               {busy ? (mode === 'signup' ? 'Creating your account…' : 'Logging in…') : mode === 'signup' ? 'Create account' : 'Log in'}
             </Button>

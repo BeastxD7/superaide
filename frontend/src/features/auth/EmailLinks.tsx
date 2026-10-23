@@ -51,14 +51,14 @@ function message(err: unknown): string {
 function Frame({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="mesh flex min-h-dvh flex-col">
-      <header className="mx-auto flex w-full max-w-xl items-center justify-end px-5 pt-6">
-        <Link href="/" className="text-sm font-medium text-muted hover:text-ink">
+      <header className="mx-auto flex w-full max-w-xl items-center justify-end page-x pt-4 sm:pt-6">
+        <Link href="/" className="inline-flex min-h-11 items-center text-sm font-medium text-muted hover:text-ink">
           {PRODUCT}
         </Link>
       </header>
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center px-5 pt-10 pb-10 text-center">
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center page-x pt-6 pb-10 text-center sm:pt-10">
         <Orb hue="indigo" size={96} />
-        <h1 className="mt-6 text-4xl font-medium tight">{title}</h1>
+        <h1 className="mt-6 text-3xl font-medium tight sm:text-4xl">{title}</h1>
         <div className="mt-6 w-full space-y-4" aria-live="polite">
           {children}
         </div>
@@ -137,12 +137,12 @@ export function ForgotPassword() {
             />
           </label>
           {error && <Notice tone="error">{error}</Notice>}
-          <Button tone="violet" type="submit" disabled={busy || !email} className="w-full py-4 text-base">
+          <Button tone="violet" type="submit" disabled={busy || !email} className="w-full py-4">
             {busy ? 'Sending…' : 'Email me a link'}
           </Button>
         </form>
       )}
-      <Link href="/login" className="inline-block text-sm font-medium text-violet-700 hover:underline">
+      <Link href="/login" className="inline-flex min-h-11 items-center text-sm font-medium text-violet-700 hover:underline">
         Back to log in
       </Link>
     </Frame>
@@ -179,7 +179,7 @@ export function ResetPassword() {
     <Frame title="Choose a new password">
       {token === null && (
         <Notice tone="error">
-          This link is missing its code. <Link href="/forgot-password" className="underline">Ask for a new link</Link>.
+          This link is missing its code. <Link href="/forgot-password" className="inline-flex min-h-11 items-center underline">Ask for a new link</Link>.
         </Notice>
       )}
       {done && (
@@ -211,7 +211,7 @@ export function ResetPassword() {
             </span>
           </label>
           {error && <Notice tone="error">{error}</Notice>}
-          <Button tone="violet" type="submit" disabled={busy || !password} className="w-full py-4 text-base">
+          <Button tone="violet" type="submit" disabled={busy || !password} className="w-full py-4">
             {busy ? 'Saving…' : 'Save new password'}
           </Button>
         </form>
