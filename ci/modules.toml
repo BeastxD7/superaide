@@ -209,6 +209,7 @@ src = [
   "backend/src/superaide/channels/**",
 ]
 tests = [
+  "backend/tests/test_typing_indicators.py",
   "backend/tests/test_channel_endpoints.py",
   "backend/tests/test_channel_format.py",
   "backend/tests/test_channel_health.py",
