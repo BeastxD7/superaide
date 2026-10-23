@@ -40,6 +40,39 @@ test.describe('glass brain', () => {
     await expect(dot(page, 'I live in Singapore')).toBeVisible()
   })
 
+  test('a corrected fact stays on the map struck through, pointing at what replaced it', async ({ page }) => {
+    await page.goto('/dashboard/notebook/brain')
+    await dot(page, 'I live in Pune').click()
+    const details = page.getByRole('complementary', { name: 'Details' })
+    await details.getByRole('button', { name: 'Correct this' }).click()
+    await details.getByLabel('What is true').fill('I live in Singapore')
+    await details.getByRole('button', { name: 'Save correction' }).click()
+    const old = page.getByRole('button', { name: 'Replaced note: I live in Pune', exact: true })
+    await expect(old).toBeVisible()
+    await expect(page.getByRole('list', { name: 'Colour key' })).toContainText('Struck through means replaced')
+    await old.click()
+    await expect(details.getByText('Replaced', { exact: true })).toBeVisible()
+    await expect(details.locator('p.line-through', { hasText: 'I live in Pune' })).toBeVisible()
+    await expect(details.locator('p', { hasText: 'I live in Singapore' })).toBeVisible()
+    await expect(details.getByRole('button', { name: 'Correct this' })).toHaveCount(0) // history, not editable
+    await details.getByRole('button', { name: 'Show the current note' }).click()
+    await expect(details.locator('p', { hasText: 'I live in Singapore' })).toBeVisible()
+    await expect(details.getByRole('button', { name: 'Correct this' })).toBeVisible()
+  })
+
+  test('the layout can be switched to free-floating and is remembered', async ({ page }) => {
+    await page.goto('/dashboard/notebook/brain')
+    const pos = async () => (await page.getByRole('button', { name: 'Note: I live in Pune', exact: true }).locator('circle').getAttribute('cx'))
+    const tidy = await pos()
+    await page.getByRole('button', { name: 'Free-floating' }).click()
+    await expect(page.getByRole('button', { name: 'Free-floating' })).toHaveAttribute('aria-pressed', 'true')
+    expect(await pos()).not.toBe(tidy)
+    await page.reload()
+    await expect(page.getByRole('button', { name: 'Free-floating' })).toHaveAttribute('aria-pressed', 'true')
+    await page.getByRole('button', { name: 'Tidy' }).click()
+    expect(await pos()).toBe(tidy)
+  })
+
   test('forgetting from the map removes the dot', async ({ page }) => {
     await page.goto('/dashboard/notebook/brain')
     await dot(page, 'I live in Pune').click()

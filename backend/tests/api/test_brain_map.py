@@ -63,7 +63,7 @@ def seed() -> dict[str, str]:
 
 
 def labels(map_: dict, kind: str) -> list[str]:
-    return [n["label"] for n in map_["nodes"] if n["type"] == kind]
+    return [n["label"] for n in map_["nodes"] if n["type"] == kind and not n.get("superseded")]
 
 
 def test_the_map_has_people_topics_facts_and_where_they_came_from(browser):
@@ -156,3 +156,61 @@ def test_the_brain_routes_need_the_owner(browser):
     ):
         assert anonymous.request(method, path, json={"text": "x"} if method == "POST" else None).status_code == 401
         assert unhired.request(method, path, json={"text": "x"} if method == "POST" else None).status_code == 403
+
+
+def test_a_corrected_fact_stays_on_the_map_struck_through_and_points_at_its_replacement(browser):
+    a, _ = owners(browser)
+    ids = seed()
+    new_id = a.post(f"/app/brain/facts/{ids['old']}/correct", json={"text": "Shashank lives in Singapore."}).json()[
+        "id"
+    ]
+    m = a.get("/app/brain").json()
+    by_id = {n["id"]: n for n in m["nodes"]}
+    old, new = by_id[f"fact:{ids['old']}"], by_id[f"fact:{new_id}"]
+    assert old["superseded"] is True and old["label"] == "Shashank lives in Pune."
+    assert old["replaced_by"] == f"fact:{new_id}" and "superseded" not in new
+    assert {"from": f"fact:{ids['old']}", "to": f"fact:{new_id}", "kind": "replaced_by"} in m["edges"]
+    # The live facts are unchanged: the struck-through one is not counted as something Ava believes.
+    assert m["origins"]["you"]["count"] == 2 and "Shashank lives in Pune." in [f["text"] for f in m["forgotten"]]
+
+
+def test_forgetting_a_fact_is_not_a_replacement_and_adds_no_strike_through(browser):
+    a, _ = owners(browser)
+    ids = seed()
+    a.post(f"/app/notebook/{ids['chat']}/forget")
+    assert not [n for n in a.get("/app/brain").json()["nodes"] if n.get("superseded")]
+
+
+def test_a_retired_fact_the_owner_may_not_see_is_never_on_the_shelf_or_struck_through(browser):
+    """Canary: retired notes pass the audience gate too. A note about the owner that only Priya may see, once
+    replaced, appears nowhere in the response; neither does a note replaced by something the owner may not see."""
+    a, _ = owners(browser)
+    seed()
+    owner_id = account(OWNER["email"]).person_id
+    with session_scope() as s:
+        priya = Person(display_name="Priya Tan", relation="contact")
+        s.add(priya)
+        s.flush()
+        for text in ("Board seat, the old plan.", "Board seat, the new plan."):
+            s.add(
+                MemoryItem(
+                    content=text, subject_person_ids=[owner_id], allowed_kind="persons", allowed_person_ids=[priya.id]
+                )
+            )
+        s.flush()
+        old, new = (
+            s.scalar(select(MemoryItem).where(MemoryItem.content == t))
+            for t in ("Board seat, the old plan.", "Board seat, the new plan.")
+        )
+        assert old and new
+        old.valid_to, old.superseded_by = datetime.now(UTC) - timedelta(days=1), new.id
+        # And an owner-visible note replaced by a successor nobody but Priya may see:
+        mine = remember_fact(
+            s, owner=s.get(Person, owner_id), content="Visible but replaced elsewhere.", category="about"
+        )  # type: ignore[arg-type]
+        assert mine is not None
+        mine.valid_to, mine.superseded_by = datetime.now(UTC) - timedelta(days=1), new.id
+    text = a.get("/app/brain").text
+    assert "Board seat" not in text
+    assert "Visible but replaced elsewhere." in text  # forgotten shelf (owner may see it) but never struck through
+    assert not [n for n in a.get("/app/brain").json()["nodes"] if n.get("superseded")]
