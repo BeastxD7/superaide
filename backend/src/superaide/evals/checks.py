@@ -59,7 +59,8 @@ KNOWN: dict[str, Check] = {}
 CODE_ONLY = {
     "prompt_excludes", "no_model_call", "outbound_excludes", "mode",
     "triage_decision", "escalation_state", "escalation_pushed", "escalation_acks", "interrupt_count",
-    "audit_logged", "triage_feedback", "message_taken",
+    "audit_logged", "triage_feedback", "message_taken", "prompt_includes", "recall_top", "recall_none",
+    "memory_count", "memory_retired",
 }  # fmt: skip
 
 
@@ -178,6 +179,66 @@ def prompt_excludes(ctx: Ctx, value: Any) -> tuple[bool, str]:
     t = _turn(ctx)
     hit = [p for p in _list(value) for c in t.calls if p.lower() in c.prompt.lower()]
     return not hit, f"private text reached the model's prompt: {sorted(set(hit))}"
+
+
+@check("prompt_includes")
+def prompt_includes(ctx: Ctx, value: Any) -> tuple[bool, str]:
+    """Every one of these strings reached this turn's model prompt (the always-on notes)."""
+    t = _turn(ctx)
+    text_ = "\n".join(c.prompt for c in t.calls).lower()
+    missing = [p for p in _list(value) if p.lower() not in text_]
+    return not missing, f"missing from the prompt: {missing}"
+
+
+# --- long-term memory retrieval, graded on the search itself (no model) -------------------
+
+
+def _audience(who: str) -> Any:
+    """The audience of a private DM with the owner, the colleague (Priya Tan), or of a group."""
+    from superaide.context.audience import Audience
+    from superaide.db.models import Person
+    from superaide.identity.trust import Trust
+
+    with session_scope() as s:
+        if who == "owner":
+            p = s.scalar(select(Person).where(Person.display_name != "Priya Tan").order_by(Person.created_at))
+            return Audience({p.id}, False, int(Trust.LINKED), True)  # type: ignore[union-attr]
+        if who == "colleague":
+            p = s.scalar(select(Person).where(Person.display_name == "Priya Tan"))
+            return Audience({p.id}, False, int(Trust.LINKED), True)  # type: ignore[union-attr]
+        return Audience(set(), True, 0, False)  # "group" / "stranger": unknown people may be present
+
+
+def _recalled(value: dict[str, Any]) -> list[str]:
+    from superaide.context.recall import recall_memories
+
+    aud = _audience(str(value.get("as", "owner")))
+    with session_scope() as s:
+        found = recall_memories(s, aud, str(value["query"]), limit=int(value.get("k", 5)))
+    return [f.text for f in found]
+
+
+@check("recall_top")
+def recall_top(ctx: Ctx, value: Any) -> tuple[bool, str]:
+    """{query, contains: [patterns], k: 5, as: owner|colleague|group, absent: [patterns]}: the search for
+    `query`, as that audience would run it, returns notes matching every pattern in `contains` within
+    its top k and none matching `absent`."""
+    got = _recalled(value)
+    missing = [p for p in _list(value.get("contains") or []) if not any(_found(p, g) for g in got)]
+    leaked = [p for p in _list(value.get("absent") or []) if any(_found(p, g) for g in got)]
+    return (
+        not missing and not leaked,
+        f"missing {missing}, leaked {leaked}; top {int(value.get('k', 5))}: {[_clip(g, 70) for g in got]}",
+    )
+
+
+@check("recall_none")
+def recall_none(ctx: Ctx, value: Any) -> tuple[bool, str]:
+    """{query, as, matching: [patterns]}: the search returns nothing that matches these patterns, so
+    there is nothing for a reply to be wrongly based on."""
+    got = _recalled(value)
+    bad = [g for g in got if any(_found(p, g) for p in _list(value.get("matching")))] if value.get("matching") else got
+    return not bad, f"expected nothing, got {[_clip(g, 70) for g in bad]}"
 
 
 # --- citations ---------------------------------------------------------------------------
@@ -352,6 +413,22 @@ def memory(ctx: Ctx, value: Any) -> tuple[bool, str]:
     notes = _memories()
     ok = any(all(_found(p, n) for p in g) for g in groups for n in notes)
     return ok, f"no note matches {groups}; notes: {[_clip(n, 80) for n in notes] or 'none'}"
+
+
+@check("memory_count")
+def memory_count(ctx: Ctx, value: Any) -> tuple[bool, str]:
+    """{matching: pattern, exactly: n}: that many current notes match."""
+    n = sum(_found(str(value["matching"]), m) for m in _memories())
+    return n == int(value["exactly"]), f"{n} current notes match {value['matching']!r}, expected {value['exactly']}"
+
+
+@check("memory_retired")
+def memory_retired(ctx: Ctx, value: Any) -> tuple[bool, str]:
+    """A note matching every pattern still exists but is retired (valid_to set): history is kept."""
+    with session_scope() as s:
+        old = list(s.scalars(select(MemoryItem.content).where(MemoryItem.valid_to.is_not(None))))
+    ok = any(all(_found(p, n) for p in _list(value)) for n in old)
+    return ok, f"no retired note matches {_list(value)}; retired: {[_clip(n, 80) for n in old] or 'none'}"
 
 
 @check("no_memory")

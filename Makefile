@@ -2,7 +2,7 @@
 # Non-developers: double-click start.command (or `bash start.command`) instead.
 
 .DEFAULT_GOAL := help
-.PHONY: help setup db db-down migrate migration api web dev lint fmt typecheck test e2e e2e-ui eval eval-live check build stack stack-down clean
+.PHONY: help setup db db-down migrate migration api web dev lint fmt typecheck test e2e e2e-ui eval eval-live eval-gate eval-ltm-live check build stack stack-down clean
 
 BACKEND = cd backend &&
 FRONTEND = cd frontend &&
@@ -62,6 +62,12 @@ e2e-ui: build ## The same, in Playwright's interactive UI
 
 eval: ## Scenario evals, offline (fake model, free): scorecard in backend/evals/results/
 	$(BACKEND) uv run python -m superaide.evals run
+
+eval-gate: ## Long-term-memory regression gate, offline and free: fails if a scenario regresses (CI runs it via pytest)
+	$(BACKEND) uv run python -m superaide.evals gate
+
+eval-ltm-live: ## Memory scenarios on the real model (~US$0.10, hard cap US$0.25): scorecard in backend/evals/results/
+	$(BACKEND) uv run python -m superaide.evals run --live --cap 0.25 --name scorecard-ltm-live --env-file $(or $(env),.env) $(foreach c,ltm_inputs ltm_update ltm_temporal ltm_multisession ltm_abstain ltm_canary,--category $(c))
 
 eval-live: ## Scenario evals on the real model, 3 runs each (costs ~US$0.15; hard cap US$1): k=1 for one run
 	$(BACKEND) uv run python -m superaide.evals run --live --k $(or $(k),3)

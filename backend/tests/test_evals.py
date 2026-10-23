@@ -131,3 +131,55 @@ def test_the_two_owner_isolation_check_would_catch_a_leak():
     run = run_scenario(_with(sc, turns=turns, checks=[]))
     assert [o.status for o in run.outcomes] == ["fail"]
     assert "Pune" in run.outcomes[0].reason and "Call Anya" in run.outcomes[0].reason
+
+
+# --- the long-term-memory gate (#51) ------------------------------------------------------------
+
+
+def _ltm_results() -> dict[str, bool]:
+    from superaide.evals.gate import ltm_scenarios
+
+    runs = {sc.id: run_scenario(sc) for sc in ltm_scenarios()}
+    return {sid: r.passed for sid, r in runs.items() if r.graded}  # live-only scenarios can't gate
+
+
+def test_ltm_scenarios_match_the_recorded_baseline():
+    from superaide.evals.gate import compare, load_baseline
+
+    regressions, improvements = compare(_ltm_results(), load_baseline())
+    assert not regressions, regressions
+    assert not improvements, improvements  # a gap that now passes: record it with `gate --update`
+
+
+def test_ltm_gate_fails_when_the_audience_gate_is_loosened(monkeypatch: pytest.MonkeyPatch):
+    """The canary scenarios exist to catch exactly this: a search that stops filtering by audience."""
+    from sqlalchemy import true
+
+    from superaide.context import recall
+    from superaide.evals.gate import compare, load_baseline
+
+    monkeypatch.setattr(recall, "memory_filter", lambda aud, now=None: true())
+    regressions, _ = compare(_ltm_results(), load_baseline())
+    assert any("ltm-canary-tiers-retrieval" in r for r in regressions), regressions
+
+
+def test_ltm_gate_fails_when_a_correction_no_longer_retires_the_old_fact(monkeypatch: pytest.MonkeyPatch):
+    from superaide.evals.gate import compare, load_baseline
+    from superaide.knowledge import learn
+
+    # Learning ignores `replaces`: the old fact stays current and is served next to the new one.
+    real = learn.extract_facts
+    monkeypatch.setattr(
+        learn, "extract_facts", lambda *a, **k: [f.model_copy(update={"replaces": None}) for f in real(*a, **k) or []]
+    )
+    regressions, _ = compare(_ltm_results(), load_baseline())
+    assert any("ltm-update-city" in r for r in regressions), regressions
+
+
+def test_compare_flags_new_missing_failing_and_improved_scenarios():
+    from superaide.evals.gate import compare
+
+    base = {"a": "pass", "b": "known_gap", "c": "pass", "gone": "pass"}
+    regressions, improvements = compare({"a": True, "b": True, "c": False, "new": True}, base)
+    assert len(regressions) == 3  # c fails, new is unrecorded, gone vanished
+    assert improvements == ["b: a known gap that passes now (run with --update to record it)"]

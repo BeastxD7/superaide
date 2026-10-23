@@ -27,7 +27,13 @@ Category = Literal[
     "chitchat",
     "triage",
     "receptionist",
-    "ltm_inputs",
+    # Long-term memory (#51). Retrieval, learning and the audience gate are graded in code, offline.
+    "ltm_inputs",  # a fact arriving by each path (chat, Telegram, Slack, intro, file, link, correction) is kept
+    "ltm_update",  # a changed fact replaces the old one; the old one is not served
+    "ltm_temporal",  # questions about when: the dated fact, not the newest note
+    "ltm_multisession",  # a fact told days ago, among many newer notes, is still found
+    "ltm_abstain",  # nothing stored about it: nothing related is served, so Ava can say "I don't know"
+    "ltm_canary",  # a private fact never reaches a lower audience tier (retrieval or prompt)
 ]
 CATEGORIES: tuple[str, ...] = Category.__args__  # type: ignore[attr-defined]
 Severity = Literal["critical", "high", "medium", "low"]
@@ -58,6 +64,7 @@ class SeedMemory(Strict):
     audience: Literal["owner", "org", "public"] = "owner"
     category: str = "other"
     source: str = "chat"
+    age_days: float = 0  # told this long before the scenario starts (default: the day before)
 
 
 class SeedReminder(Strict):
@@ -85,6 +92,12 @@ class World(Strict):
     shareable: list[str] = Field(default_factory=list)
     never_share: str = ""
     memories: list[SeedMemory] = Field(default_factory=list)
+    # Unrelated notes about this many other topics, spread over the weeks before `memories` and newer
+    # than them (so "the newest N notes" is not the answer). Deterministic: the same every run.
+    filler: int = 0
+    # Offline, learning from a chat message reads no facts. True: the small model is connected and
+    # answers with each turn's `fake.facts`.
+    learn_model: bool = False
     reminders: list[SeedReminder] = Field(default_factory=list)
     messages: list[SeedMessage] = Field(default_factory=list)
     contacts: list[dict[str, Any]] = Field(default_factory=list)  # {name, relationship, vip}
@@ -119,6 +132,7 @@ class FakeTurn(Strict):
 
     tools: list[FakeTool] = Field(default_factory=list)
     reply: str = "OK."
+    facts: list[dict[str, Any]] = Field(default_factory=list)  # what the fact extractor reads (world.learn_model)
     triage: dict[str, Any] | Literal["budget"] | None = None  # the triage classifier's answer (world.triage_model)
     take: dict[str, Any] | None = None  # the message the receptionist takes (a TakenMessage), with `reply`
 

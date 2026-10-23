@@ -152,7 +152,7 @@ class OfflineModel:
                 take_message=TakenMessage.model_validate(fake.take) if fake.take else None,
             )
         if output_model is FactList:
-            return FactList(facts=[])
+            return FactList.model_validate({"facts": [{"confidence": 1.0, **f} for f in fake.facts]})
         if output_model is not None:
             return TurnOutput(
                 reply=fake.reply,
@@ -319,10 +319,13 @@ def build_world(sc: Scenario, start: datetime, run: Run | None = None) -> uuid.U
         for m in w.memories:
             content = dated(m.content, start, w.timezone)
             item = remember_fact(s, owner=person, content=content, category=m.category, source=m.source)
+            if item is not None and m.age_days:
+                item.created_at = item.valid_from = start - timedelta(days=m.age_days)
             if item is not None and m.audience == "org":
                 item.allowed_kind, item.allowed_person_ids, item.min_trust = "org", [], 2
             elif item is not None and m.audience == "public":
                 item.allowed_kind, item.allowed_person_ids, item.min_trust = "public", [], 0
+        _filler(s, person, start, w.filler)
         if w.web_pages:
             from superaide.skills import registry
 
@@ -352,6 +355,35 @@ def _reception_world(s: Any, sc: Scenario, owner: Person) -> None:
     )  # fmt: skip
     for k, v in sc.world.reception_limits.items():
         setattr(rs, k, v)
+
+
+FILLER_TOPICS = [
+    "the dentist is Dr. Mehta on Linden Road", "prefers window seats on flights", "the gym is closed on Sundays",
+    "the car is a grey Honda City", "likes filter coffee with no sugar", "the book club meets on the second Thursday",
+    "the accountant is Mr. Iyer", "the office wifi is called Orchard", "uses a green notebook for meetings",
+    "the barber is on Park Street", "the cat is called Biscuit", "the broadband provider is ActFibernet",
+    "prefers aisle seats on trains", "the tailor is closed on Mondays", "likes jazz on Fridays",
+    "the plumber is called Raju", "the old laptop is a ThinkPad", "the pharmacy is near the metro station",
+    "water the plants on Wednesdays", "the garage code is in the red book", "the library card expires in June",
+    "the favourite bakery is Theobroma", "the printer is on the second floor", "the locker number is 214",
+    "the umbrella lives by the door", "likes oat milk in tea", "the yoga class is at 6 am", "the dry cleaner is Kumar",
+    "the bike has a blue basket", "the neighbour is called Mrs. Das", "the tea brand is Wagh Bakri",
+    "the stationery shop is near the school", "the monthly newsletter is read on Saturdays",
+    "the spare key is with the neighbour", "the favourite pen is a Lamy", "the flat's gas bill is due on the 5th",
+    "the thermostat is set to 24 degrees", "the podcast is listened to on walks", "the shoes are size 9",
+    "the guitar is tuned half a step down",
+]  # fmt: skip
+
+
+def _filler(s: Any, owner: Person, start: datetime, n: int) -> None:
+    """`n` unrelated, owner-only notes, all newer than the world's own notes."""
+    from superaide.knowledge.store import remember_fact
+
+    for i in range(n):
+        topic = FILLER_TOPICS[i % len(FILLER_TOPICS)] + ("" if i < len(FILLER_TOPICS) else f" (note {i})")
+        item = remember_fact(s, owner=owner, content=f"Shashank's {topic}.", category="other")
+        if item is not None:
+            item.created_at = item.valid_from = start - timedelta(minutes=30 + i)
 
 
 def _triage_world(s: Any, sc: Scenario, owner: Person, start: datetime) -> None:
@@ -494,7 +526,12 @@ def _out_sources(reply: str) -> list[dict[str, Any]]:
 
 @contextmanager
 def patched(
-    llm: LLM, outbox: dict[str, FakeMessenger], live: bool, triage: bool = False, triage_model: bool = False
+    llm: LLM,
+    outbox: dict[str, FakeMessenger],
+    live: bool,
+    triage: bool = False,
+    triage_model: bool = False,
+    learn_model: bool = False,
 ) -> Iterator[None]:
     """Background jobs build their own model client and Telegram sender: point both at ours.
     Live, Ava has a model connected (`brain_ready`), so she handles reminders herself; offline she
@@ -511,7 +548,7 @@ def patched(
     if live:
         factory.brain_ready = lambda settings: True
     notify.send_telegram = send_telegram  # type: ignore[assignment]
-    if triage_model and not live:  # the scripted triage classifier counts as a connected model
+    if (triage_model or learn_model) and not live:  # the scripted triage classifier counts as a connected model
         factory.brain_ready = lambda settings: True
     if triage:  # escalations push to the owner on Slack too: catch those in the outbox
         notify.messenger_for = lambda provider: outbox.get(provider)
@@ -549,7 +586,7 @@ def run_scenario(sc: Scenario, *, inner: LLM | None = None, judge: Judge | None 
     clock = traveller.start()
     try:
         with (
-            patched(rec, outbox, live, sc.world.triage_enabled, sc.world.triage_model),
+            patched(rec, outbox, live, sc.world.triage_enabled, sc.world.triage_model, sc.world.learn_model),
             _many_owners(sc.world.second_owner),
         ):
             clock.shift(timedelta(days=-1))
