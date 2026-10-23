@@ -265,7 +265,7 @@ test.describe('console: pause switch', () => {
 
       // The owner, in their own browser, is told and gets no reply.
       await openChat(page)
-      await expect(page.getByText("Ava is paused from the operator console. She won't reply until she's resumed.")).toBeVisible()
+      await expect(page.getByText("Ava is paused by the operator of this server. She won't reply until they resume her.")).toBeVisible()
       await expect(page.getByRole('main').getByText('Ava: paused', { exact: true })).toBeVisible()
       const reply = page.waitForResponse((r) => r.url().endsWith('/api/app/chat/stream'))
       await composer(page).fill('Are you there?')
@@ -290,7 +290,7 @@ test.describe('console: pause switch', () => {
       expect(await isPaused()).toBe(false)
 
       await openChat(page)
-      await expect(page.getByText('Ava is paused from the operator console.')).toHaveCount(0)
+      await expect(page.getByText('Ava is paused by the operator of this server.')).toHaveCount(0)
       await composer(page).fill('Back now?')
       await composer(page).press('Enter')
       await expect(page.getByText('You said: "Back now?"')).toBeVisible()
