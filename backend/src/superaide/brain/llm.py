@@ -270,6 +270,21 @@ class RoutedLLM:
         return result
 
 
+def placeholder_note(mapping: dict[str, str]) -> str:
+    """What `[email 1]` means (issue #338). Without it the model reads a bare bracketed token as an unfilled
+    template and asks for "the real address". Names the kinds present, never a value. Only added when
+    something was replaced, so a conversation with nothing redacted is unchanged."""
+    kinds = sorted({k.strip("[]").rsplit(" ", 1)[0] for k in mapping})
+    return (
+        "Privacy placeholders: some details in this conversation are shown as tokens like "
+        + ", ".join(f"[{k} 1]" for k in kinds[:6])
+        + ". Each is a real value hidden from you for privacy, not a template field. Use the token exactly as "
+        "written, in your answer and in tool arguments (for example as a recipient); Superaide replaces it with "
+        "the real value before anything is shown or sent. Never ask the owner to retype it, say it looks like a "
+        "placeholder, or refuse because of it."
+    )
+
+
 def _through_airlock(kwargs: dict[str, Any]) -> tuple[dict[str, Any], dict[str, str]]:
     """With AIRLOCK_ENABLED on (the default), other people's contact details, ids, addresses and names in the
     conversation are replaced by placeholders before anything is uploaded (privacy/airlock.py); the map stays
@@ -284,7 +299,10 @@ def _through_airlock(kwargs: dict[str, Any]) -> tuple[dict[str, Any], dict[str, 
 
     names, keep = known_people()
     messages, r = redact_messages(kwargs["messages"], names=names, keep=keep)
-    return {**kwargs, "messages": messages}, r.mapping
+    out = {**kwargs, "messages": messages}
+    if r.mapping and kwargs.get("system") is not None:
+        out["system"] = [*kwargs["system"], SystemBlock(placeholder_note(r.mapping))]
+    return out, r.mapping
 
 
 Responder = Callable[[str, list[SystemBlock], list[dict[str, Any]], type[BaseModel] | None], Any]
