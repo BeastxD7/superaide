@@ -566,15 +566,7 @@ input[type='checkbox'] {
   gap: var(--s-4);
 }
 
-/* Toolbar and filter chips */
-.c-toolbar {
-  display: flex;
-  align-items: center;
-  gap: var(--s-2);
-  flex-wrap: wrap;
-}
-
-.c-chip,
+/* Filter chips (the Safety log's) */
 .chip {
   border: 1px solid var(--line-strong);
   background: var(--canvas);
@@ -587,12 +579,10 @@ input[type='checkbox'] {
   transition: background-color 200ms var(--ease), color 200ms var(--ease);
 }
 
-.c-chip:hover,
 .chip:hover {
   background: var(--mist);
 }
 
-.c-chip[aria-pressed='true'],
 .chip.on {
   background: var(--ink);
   border-color: var(--ink);
@@ -1339,7 +1329,6 @@ blockquote {
   }
 
   .c-btn,
-  .c-chip,
   .c-meter-fill {
     transition: none;
   }
