@@ -160,8 +160,12 @@ def test_nothing_is_learned_from_a_channel_turn(agent, owner_linked, rec):
     assert "learn from what your owner tells you" not in rec.calls[-1]["system"]
 
 
-def test_owner_approvals_from_a_channel_still_queue_for_the_app(agent, owner_linked, rec):
-    rec.propose = {"kind": "message_someone_else", "summary": "Tell Priya the meeting moved"}
+def test_owner_approvals_from_a_channel_still_queue_for_the_app(agent, owner_linked, rec, monkeypatch):
+    from superaide.config import get_settings
+
+    # Whether a kind has an executor is a separate rule (issue #326); here only the channel is under test.
+    monkeypatch.setattr(get_settings(), "approval_require_executor", False)
+    rec.propose = {"kind": "message_someone_else", "summary": "Tell Priya the meeting moved", "reaches_a_person": "yes"}
     agent.handle(_mention(OWNER_SLACK, "<@UAVA> tell Priya the meeting moved"))
     assert [a.kind for a in _approvals()] == ["message_someone_else"]
 
