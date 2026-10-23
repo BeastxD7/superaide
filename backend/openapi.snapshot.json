@@ -3976,6 +3976,108 @@
         ]
       }
     },
+    "/app/brain/facts/{memory_id}/lock": {
+      "post": {
+        "description": "Ava keeps this fact as it is: the nightly job never merges or retires it, it does not fade, and a newer claim against it waits for the owner. The owner can still correct, forget or unlock it.",
+        "operationId": "lock_app_brain_facts__memory_id__lock_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memory_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Memory Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Lock App Brain Facts  Memory Id  Lock Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Lock a fact",
+        "tags": [
+          "Owner: glass brain"
+        ]
+      }
+    },
+    "/app/brain/facts/{memory_id}/unlock": {
+      "post": {
+        "description": "Back to the normal rules.",
+        "operationId": "unlock_app_brain_facts__memory_id__unlock_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "memory_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Memory Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Unlock App Brain Facts  Memory Id  Unlock Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Unlock a fact",
+        "tags": [
+          "Owner: glass brain"
+        ]
+      }
+    },
     "/app/brain/share.svg": {
       "get": {
         "description": "A picture of the shape of the memory: counts and colours only, no names, notes or file names.",
