@@ -1,6 +1,7 @@
 'use client'
 
 import { BadgeCheck, Puzzle, ShieldCheck } from 'lucide-react'
+import Link from 'next/link'
 import { useState } from 'react'
 import { BrandIcon, type Brand } from '@/components/BrandIcon'
 import { Notice } from '@/components/site'
@@ -187,9 +188,21 @@ export function SkillsPage({ google = null }: { google?: string | null }) {
                     {s.installed && !s.removable && <span className="text-xs text-muted">Always on</span>}
                   </div>
                 )}
-                {s.installed && s.id === 'superaide/gmail' && !asking && <GmailPanel name={name} />}
+                {s.installed && s.google_connected === false && (
+                  <div className="mt-3">
+                    <Notice tone="warn">
+                      Google isn&apos;t connected, so this can&apos;t work yet.{' '}
+                      <Link href="/dashboard/connections" className="font-medium underline">
+                        Connect Google under Connections
+                      </Link>
+                      .
+                    </Notice>
+                  </div>
+                )}
+                {s.installed && s.id === 'superaide/gmail' && s.google_connected !== false && !asking && <GmailPanel name={name} />}
 
                 {s.installed &&
+                  s.google_connected !== false &&
                   (s.options ?? []).map((o) => {
                     const key = `${s.id}:${o.setting}`
                     return (

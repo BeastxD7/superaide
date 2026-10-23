@@ -201,6 +201,17 @@ def test_actions_are_off_until_the_owner_agrees_and_google_grants_calendar_event
     assert EVENTS in q["scope"][0]
 
 
+def test_the_capabilities_list_says_whether_google_is_connected(owner, fake):
+    """#292: "installed" means nothing once Google is disconnected, so the card says so."""
+    card = next(x for x in owner.get("/app/skills").json() if x["id"] == calendar.SKILL_ID)
+    assert card["installed"] is True and card["google_connected"] is True
+    assert owner.post("/app/connections/google/disconnect").status_code == 200
+    card = next(x for x in owner.get("/app/skills").json() if x["id"] == calendar.SKILL_ID)
+    assert card["installed"] is True and card["google_connected"] is False
+    others = [x for x in owner.get("/app/skills").json() if x["id"] != calendar.SKILL_ID and "google_connected" in x]
+    assert [x["id"] for x in others] == ["superaide/gmail"]  # only the Google-based capabilities carry it
+
+
 def test_declining_the_calendar_events_box_leaves_actions_unusable(owner, fake):
     card = owner.post(
         f"{SKILL}/options", json={"setting": "actions", "on": True, "accepted": ["write_external", "send"]}
