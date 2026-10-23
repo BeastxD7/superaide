@@ -213,8 +213,10 @@ jobs:
     name: End-to-end (shard ${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    needs: [changes, backend, frontend]
-    # backend and frontend may be skipped (nothing in them changed); a failure still blocks.
+    # Runs beside backend, not after it: it builds its own API and web. A frontend failure still stops it,
+    # and the CI result gate still requires backend, so main loses no protection (docs/0013).
+    needs: [changes, frontend]
+    # frontend may be skipped (nothing in it changed); a failure still blocks.
     if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.changes.outputs.e2e == 'true' }}
     strategy:
       fail-fast: false
@@ -305,7 +307,9 @@ jobs:
     name: Docker images build
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [changes, backend, frontend]
+    # Runs beside backend, not after it: it builds its own API and web. A frontend failure still stops it,
+    # and the CI result gate still requires backend, so main loses no protection (docs/0013).
+    needs: [changes, frontend]
     if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.changes.outputs.docker == 'true' }}
     steps:
       - uses: actions/checkout@v7

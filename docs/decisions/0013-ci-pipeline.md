@@ -44,6 +44,10 @@ Pushes to `main`, `workflow_dispatch`, `merge_group` and the scheduled Full run 
 
 CI runs `pytest -n auto` (pytest-xdist). The suite truncates every table before each test, so each worker gets its own database, `<TEST_DATABASE_URL name>_gw0`, `_gw1`, and so on, created on demand from the server's `postgres` database by `tests/conftest.py` and never dropped. Locally nothing changes: plain `uv run pytest` is serial on `TEST_DATABASE_URL`; add `-n 4` to parallelise. The escape hatch for a failure that looks order- or parallelism-related is `uv run pytest -p no:xdist` (also in CI by editing the step). A test that cannot run in parallel is marked and fixed rather than skipping the parallel run.
 
+## Run beside backend, not after it (PR A0)
+
+`e2e` and `images` used to `need` backend, so a pull request's wall-clock was backend plus the slowest e2e shard (last green main run: backend 10:34 to 10:53, e2e 10:53 to 11:06). Neither job uses the backend job's output: e2e builds and starts its own API and web. They now need only `changes` and `frontend` (cheap, so a lint or type error still stops them early) and start in parallel with backend. The `CI result` gate still needs and requires backend, so nothing that protects main is weaker: a backend failure still fails the gate; it just no longer saves the runner minutes of e2e that would have been skipped.
+
 ## Plan
 
 1. Change detection and the gate (this PR).
