@@ -76,6 +76,9 @@ class Settings(BaseSettings):
     # link to a signed public page saying Ava is an AI acting for the owner, what she may and may not agree
     # to, and until when. Only if the owner has set a display name. The page shows nothing else.
     principal_card_enabled: bool = False
+    # "Typing..." on Telegram and a status or "Working on it..." placeholder on Slack while Ava prepares a
+    # reply. Cosmetic only: it changes neither what is said nor who may see it. On by default; false = silent.
+    typing_indicators: bool = True
     principal_card_days: int = Field(default=30, ge=1, le=365)
 
     # Every tool call is recorded as hashes only (tool, effect class, argument and result hashes; issue #110).

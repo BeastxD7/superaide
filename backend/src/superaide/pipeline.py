@@ -10,6 +10,8 @@ from __future__ import annotations
 import logging
 import re
 import threading
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from functools import lru_cache
@@ -292,13 +294,14 @@ class Agent:
                     return HandleResult("known", steady, ["steady_voice"])
 
             if ctx.kind == "dm" and self._is_owner(s, sender):
-                try:
-                    with s.begin_nested():  # a failed turn undoes its own half-done work, not the inbound record
-                        reply, notes, meta = self._owner_turn(s, sender, ctx, aud, msg, inbound, emit)
-                except Exception as exc:
-                    reply, notes, meta = self._turn_failed(s, exc, msg), ["failed"], {"failed": type(exc).__name__}
-                reply = self._steady(s, reply)
-                self._reply(s, ctx, aud, reply, thread, meta=meta)
+                with self._working(ctx, thread):  # typing / "Working on it…" until the reply is posted
+                    try:
+                        with s.begin_nested():  # a failed turn undoes its own half-done work, not the inbound record
+                            reply, notes, meta = self._owner_turn(s, sender, ctx, aud, msg, inbound, emit)
+                    except Exception as exc:
+                        reply, notes, meta = self._turn_failed(s, exc, msg), ["failed"], {"failed": type(exc).__name__}
+                    reply = self._steady(s, reply)
+                    self._reply(s, ctx, aud, reply, thread, meta=meta)
                 from superaide.knowledge import learn
 
                 learn.schedule(s, inbound)  # after the reply: learn anything worth keeping
@@ -309,14 +312,15 @@ class Agent:
 
             if self.settings.triage_enabled:  # ADR 0010, shadow until TR5: the reply below is unchanged
                 self._shadow_triage(s, sender, inbound)
-            try:
-                with s.begin_nested():
-                    reply, notes = self._think(s, sender, ctx, aud, msg)
-            except Exception as exc:
-                reply, notes = self._turn_failed(s, exc, msg), ["failed"]
-            reply = self._steady(s, reply)
-            outsider = sender.relation != "manager" and not self._is_owner(s, sender)  # the owner never gets the card
-            self._reply(s, ctx, aud, reply, thread, to=(sender.name if sender.known else "") if outsider else None)
+            with self._working(ctx, thread):
+                try:
+                    with s.begin_nested():
+                        reply, notes = self._think(s, sender, ctx, aud, msg)
+                except Exception as exc:
+                    reply, notes = self._turn_failed(s, exc, msg), ["failed"]
+                reply = self._steady(s, reply)
+                outsider = sender.relation != "manager" and not self._is_owner(s, sender)  # the owner gets no card
+                self._reply(s, ctx, aud, reply, thread, to=(sender.name if sender.known else "") if outsider else None)
             return HandleResult("known", reply, notes)
 
     def _slack_link_code(self, s, sender: Sender, ctx: Context, msg: InboundMessage, inbound) -> str | None:
@@ -729,6 +733,28 @@ class Agent:
         return reply, notes
 
     # --- output ------------------------------------------------------------------
+
+    @contextmanager
+    def _working(self, ctx: Context, thread: str) -> Iterator[None]:
+        """Cosmetic "Ava is working" signal around a model turn (TYPING_INDICATORS): typing on Telegram, a status
+        or "Working on it…" placeholder on Slack. It is only for people who already passed identity and the
+        audience gate and are getting a model turn, it says nothing about content, and whatever goes wrong
+        with it (refused, raising) never changes the reply. It is always ended, on success, error or cancel."""
+        handle = None
+        start = getattr(self.messengers.get(ctx.provider), "working", None)
+        if self.settings.typing_indicators and start is not None:
+            try:
+                handle = start(ctx.external_id, thread)
+            except Exception as exc:
+                log.warning("working indicator not started on %s: %s", ctx.provider, type(exc).__name__)
+        try:
+            yield
+        finally:
+            if handle is not None:
+                try:
+                    handle.close()
+                except Exception as exc:
+                    log.warning("working indicator not ended on %s: %s", ctx.provider, type(exc).__name__)
 
     def _reply(
         self,
