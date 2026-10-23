@@ -17,7 +17,7 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 
-from superaide.db.models import Approval, DocumentChunk, Event, Intention, MemoryItem
+from superaide.db.models import Approval, Document, DocumentChunk, Event, Intention, MemoryItem
 from superaide.db.session import session_scope
 
 if TYPE_CHECKING:
@@ -60,7 +60,7 @@ CODE_ONLY = {
     "prompt_excludes", "no_model_call", "outbound_excludes", "mode",
     "triage_decision", "escalation_state", "escalation_pushed", "escalation_acks", "interrupt_count",
     "audit_logged", "triage_feedback", "message_taken", "prompt_includes", "recall_top", "recall_none",
-    "memory_count", "memory_retired",
+    "memory_count", "memory_from_document", "documents", "memory_retired",
 }  # fmt: skip
 
 
@@ -422,6 +422,32 @@ def memory_count(ctx: Ctx, value: Any) -> tuple[bool, str]:
     """{matching: pattern, exactly: n}: that many current notes match."""
     n = sum(_found(str(value["matching"]), m) for m in _memories())
     return n == int(value["exactly"]), f"{n} current notes match {value['matching']!r}, expected {value['exactly']}"
+
+
+@check("memory_from_document")
+def memory_from_document(ctx: Ctx, value: Any) -> tuple[bool, str]:
+    """A current note matching every pattern was read out of a shared file or link (it carries the document and
+    its source), which proves the real ingest path kept it, not a seed."""
+    with session_scope() as s:
+        rows = list(
+            s.execute(
+                select(MemoryItem.content, MemoryItem.source, Document.status)
+                .join(Document, Document.id == MemoryItem.document_id)
+                .where(MemoryItem.valid_to.is_(None), Document.removed_at.is_(None))
+            )
+        )
+    ok = any(all(_found(p, c) for p in _list(value)) for c, src, _ in rows if src in {"document", "link"})
+    return ok, f"no document-linked note matches {_list(value)}; found: {[(_clip(c, 60), src) for c, src, _ in rows]}"
+
+
+@check("documents")
+def documents(ctx: Ctx, value: Any) -> tuple[bool, str]:
+    """{count: n, status: read|stored}: this many shared files or links are kept, in that status."""
+    with session_scope() as s:
+        rows = list(s.scalars(select(Document.status).where(Document.removed_at.is_(None))))
+    want = value.get("status")
+    n = sum(1 for r in rows if want is None or r == want)
+    return n == int(value["count"]), f"{n} documents{' ' + want if want else ''}, expected {value['count']}: {rows}"
 
 
 @check("memory_retired")

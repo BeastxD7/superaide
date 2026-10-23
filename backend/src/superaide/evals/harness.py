@@ -35,7 +35,7 @@ from superaide.config import Settings, get_settings
 from superaide.db.models import Base, ChannelIdentity, Event, Intention, Person, SpendEntry, UserAccount
 from superaide.db.session import ensure_extensions, get_engine, session_scope
 from superaide.evals import checks
-from superaide.evals.scenario import FakeTurn, Scenario, Turn
+from superaide.evals.scenario import FakeTurn, Scenario, Share, Turn
 from superaide.identity.trust import Trust
 
 OWNER_TG, OWNER_SLACK = "7001", "U_OWNER"
@@ -602,6 +602,17 @@ def run_scenario(sc: Scenario, *, inner: LLM | None = None, judge: Judge | None 
                     _press(run, turn)
                     if turn.run_jobs:
                         _drain_jobs()
+                if turn.share is not None:
+                    offline.turn = turn.fake
+                    rec_turn = TurnRecord(i, "owner", "web", "dm", f"(shared {turn.share.kind}: {turn.share.title})",
+                                          datetime.now(UTC), scripted=turn.fake is not None, mode="share")  # fmt: skip
+                    rec_turn.reply = _share(agent, run.owner_id, turn.share)
+                    run.turns.append(rec_turn)
+                    if turn.run_jobs:
+                        _drain_jobs()
+                    for item in turn.expect:
+                        run.outcomes.append(_grade(item, run, rec_turn, live, judge, f"turn {i}"))
+                    continue
                 if turn.say is None and turn.digest is None:
                     if turn.press is not None:
                         rec_turn = TurnRecord(i, "owner", turn.press.via, "dm", f"(pressed {turn.press.verb})",
@@ -654,6 +665,19 @@ def run_scenario(sc: Scenario, *, inner: LLM | None = None, judge: Judge | None 
     run.cost = ledger_total() - spent_before
     run.seconds = time.monotonic() - began
     return run
+
+
+def _share(agent: Any, owner_id: uuid.UUID, share: Share) -> str:
+    """The owner shares a file or link: the real ingest pipeline runs (document saved, chunked, facts read and
+    kept); returns the message the owner is shown."""
+    from superaide.knowledge.extract import Extracted
+    from superaide.knowledge.ingest import ingest
+
+    extracted = Extracted(
+        text=share.text, title=share.title, kind="text" if share.kind == "file" else "web",
+        source=share.source or share.title,
+    )  # fmt: skip
+    return ingest(agent, owner_id, extracted, size_bytes=len(share.text)).message
 
 
 def _press(run: Run, turn: Turn) -> None:

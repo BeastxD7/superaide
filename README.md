@@ -303,7 +303,7 @@ docs/                architecture, decisions (ADRs), research
 make check      # lint, types, backend tests, frontend build (what CI runs, minus e2e)
 make e2e        # browser tests on an isolated stack; E2E_SLOT=n for another slot
 make eval       # scenario evals, offline with a fake model, free
-make eval-gate  # long-term-memory regression gate, offline and free
+make eval-gate  # long-term-memory regression gate, offline and free (includes end-to-end file and link ingestion)
 make eval-mem0  # opt-in, never in CI: compare recall with open-source Mem0 on the same notes (uv sync --extra eval-mem0)
 ```
 
