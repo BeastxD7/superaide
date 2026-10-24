@@ -128,8 +128,8 @@ def _owner_sender(s: Any, person_id: Any) -> Sender:
 def run(person_id: Any) -> dict[str, Any]:
     """Run the 30 tasks for this owner (a manager in the database) and return the report."""
     settings = get_settings()
-    was = settings.voice_two_channel
-    settings.voice_two_channel = True
+    was = settings.voice_provider
+    settings.voice_provider = "fake"  # voice is on when a provider can run; the fake one is offline
     understand = make_understand()
     rows: list[dict[str, Any]] = []
     try:
@@ -199,7 +199,7 @@ def run(person_id: Any) -> dict[str, Any]:
                 }
             )
     finally:
-        settings.voice_two_channel = was
+        settings.voice_provider = was
     return summarise(rows)
 
 

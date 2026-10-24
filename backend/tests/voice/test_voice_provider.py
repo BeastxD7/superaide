@@ -18,7 +18,7 @@ from superaide.policy.actions import ApprovalError, resolve
 
 @pytest.fixture
 def on(monkeypatch, settings):
-    monkeypatch.setattr(settings, "voice_two_channel", True)
+    monkeypatch.setattr(settings, "voice_provider", "fake")
 
 
 def requester_for(manager):
@@ -30,8 +30,10 @@ def requester_for(manager):
     return make
 
 
-def test_default_provider_is_none_and_refuses_to_open(settings):
-    assert settings.voice_provider == "none" and settings.voice_provider_api_key == ""
+def test_default_provider_without_a_key_is_none_and_refuses_to_open(settings):
+    assert (
+        settings.voice_provider == "auto" and settings.voice_provider_api_key == "" and settings.deepgram_api_key == ""
+    )
     p = provider.choose(settings)
     assert p.name == "none"
     with pytest.raises(VoiceError):
@@ -125,3 +127,63 @@ def test_the_thirty_task_experiment_runs_offline_and_reports_divergence(manager)
     with session_scope() as s:
         assert all(a.status != "approved" for a in s.scalars(select(Approval)).all())
     assert "Capability parity" in voice_vs_text.render(report)
+
+
+# --- voice by key (#448): no flag; a key turns it on, no key leaves it off with a hint ------------------------------
+
+
+def test_without_a_key_voice_is_off_and_says_what_to_add(settings):
+    assert provider.resolved_kind(settings) == "none" and not provider.voice_available(settings)
+    assert "Deepgram key" in (provider.voice_hint(settings) or "")
+
+
+def test_a_deepgram_key_turns_voice_on_and_the_hint_goes_away(monkeypatch, settings):
+    monkeypatch.setattr(settings, "deepgram_api_key", "k" * 20)
+    assert provider.resolved_kind(settings) == "deepgram" and provider.voice_available(settings)
+    assert provider.voice_hint(settings) is None and provider.choose(settings).name == "deepgram"
+
+
+def test_the_voice_provider_key_also_turns_it_on(monkeypatch, settings):
+    monkeypatch.setattr(settings, "voice_provider_api_key", "k" * 20)
+    assert provider.voice_available(settings)
+
+
+def test_none_forces_voice_off_even_with_a_key(monkeypatch, settings):
+    monkeypatch.setattr(settings, "deepgram_api_key", "k" * 20)
+    monkeypatch.setattr(settings, "voice_provider", "none")
+    assert not provider.voice_available(settings)
+
+
+def test_a_vendor_name_without_a_key_is_off_and_never_builds_a_vendor_client(monkeypatch, settings):
+    for kind in ("deepgram", "realtime"):
+        monkeypatch.setattr(settings, "voice_provider", kind)
+        assert not provider.voice_available(settings)
+    assert provider.choose(settings).name == "realtime"  # the offline stub: it refuses to open without a key
+    monkeypatch.setattr(settings, "voice_provider", "deepgram")
+    assert provider.choose(settings).name == "none"
+
+
+def test_a_whitespace_key_is_no_key(monkeypatch, settings):
+    monkeypatch.setattr(settings, "deepgram_api_key", "   ")
+    assert not provider.voice_available(settings)
+
+
+def test_the_fake_provider_is_on_offline_and_needs_no_key(monkeypatch, settings):
+    monkeypatch.setattr(settings, "voice_provider", "fake")
+    assert provider.voice_available(settings) and provider.voice_hint(settings) is None
+
+
+def test_without_a_key_a_voice_action_is_refused_with_the_hint_and_makes_no_approval(settings):
+    with session_scope() as s:
+        out = gateway.propose(
+            s, requester=Sender(identity=None, person=None, trust=3), kind="message_someone_else", summary="x"
+        )  # type: ignore[arg-type]
+        assert out["status"] == "off" and "Deepgram key" in out["hint"]
+        assert s.scalars(select(Approval)).all() == []
+
+
+def test_the_example_env_has_no_voice_flag():
+    from pathlib import Path
+
+    text = (Path(__file__).resolve().parents[2] / ".env.example").read_text()
+    assert "VOICE_TWO_CHANNEL" not in text
