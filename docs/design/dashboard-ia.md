@@ -108,7 +108,7 @@ Rules:
 - **390 px**: single column, the control moves under the text, 44 px minimum targets (`touch:min-h-11`), no horizontal scroll; breadcrumbs wrap, the sub-nav becomes horizontally scrollable tabs.
 - **Saving**: a change saves at once with an inline "Saved" and "Undo" for 5 s; errors use the existing `ActionError`. Loading uses the ADR 0014 skeleton, empty states say what to do next.
 - **Tokens**: existing colors, radii, type scale; icons from the brand set. No new colors.
-- **Layout**: a capability layout (`capabilities/[capability]/layout.tsx`) draws breadcrumbs, the title and the sub-nav (left on desktop, tabs on a phone) once, so every sub-page only renders its sections. Sub-nav items come from the capability's manifest, not hard-coded.
+- **Layout**: a capability layout (`capabilities/[capability]/layout.tsx`) draws breadcrumbs, the title and the sub-nav once (tabs on every screen size, as in the mock-ups: scrollable on a phone with 44 px targets), so every sub-page only renders its sections. Sub-nav items come from the capability's manifest, not hard-coded.
 
 ## 5. Mock-ups
 
