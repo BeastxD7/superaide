@@ -191,3 +191,49 @@ def test_no_link_building_code_reads_frontend_origin():
     assert not unexpected, (
         f"build outward links with superaide.links.public_url, not frontend_origin: {sorted(unexpected)}"
     )
+
+
+def test_guessing_codes_is_slowed_down_per_address_then_429(owner, browser, public, monkeypatch):
+    monkeypatch.setattr(get_settings(), "card_misses_per_minute", 5)
+    guesser = browser(ip="10.0.0.9")
+    for i in range(5):
+        r = guesser.get(f"/p/card/Zz{i}aaaaa")
+        assert r.status_code == 404 and r.json()["detail"] == NOT_FOUND["detail"]  # a miss looks like every other miss
+    r = guesser.get("/p/card/Zz9aaaaa")
+    assert r.status_code == 429 and r.headers["retry-after"] == "60"
+    good = new_link(owner)
+    assert (
+        guesser.get(f"/p/card/{good['code']}").status_code == 429
+    )  # blocked until the minute is up, even for a real link
+    assert browser(ip="10.0.0.10").get(f"/p/card/{good['code']}").status_code == 200  # another address is untouched
+
+
+def test_valid_opens_never_count_toward_the_limit(owner, browser, public, monkeypatch):
+    monkeypatch.setattr(get_settings(), "card_misses_per_minute", 3)
+    link = new_link(owner)
+    reader = browser(ip="10.0.0.11")
+    assert all(reader.get(f"/p/card/{link['code']}").status_code == 200 for _ in range(10))
+
+
+def test_the_window_is_a_minute(owner, public):
+    from datetime import timedelta
+
+    ip = "10.0.0.12"
+    t0 = datetime(2026, 10, 24, 12, 0, 5, tzinfo=UTC)
+    with session_scope() as s:
+        for _ in range(30):
+            card.record_miss(s, ip, now=t0)
+        assert card.blocked(s, ip, now=t0 + timedelta(seconds=10))
+        assert not card.blocked(s, ip, now=t0 + timedelta(seconds=70))  # the next minute starts clean
+
+
+def test_a_limit_of_zero_means_no_limit(owner, browser, public, monkeypatch):
+    monkeypatch.setattr(get_settings(), "card_misses_per_minute", 0)
+    g = browser(ip="10.0.0.13")
+    assert all(g.get(f"/p/card/Qq{i}aaaaa").status_code == 404 for i in range(40))
+
+
+def test_the_flag_off_answers_404_before_any_counting(owner, browser, public, monkeypatch):
+    monkeypatch.setattr(get_settings(), "principal_card_enabled", False)
+    g = browser(ip="10.0.0.14")
+    assert all(g.get(f"/p/card/Ww{i}aaaaa").status_code == 404 for i in range(40))

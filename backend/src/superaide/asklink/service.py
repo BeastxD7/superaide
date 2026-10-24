@@ -129,12 +129,22 @@ def address_key(ip: str) -> str:
     return hmac.new(_secret(), f"ip:{ip}".encode(), hashlib.sha256).hexdigest()[:24]
 
 
+def _window_key(bucket: str, window: timedelta, now: datetime) -> tuple[str, datetime]:
+    seconds = int(window.total_seconds())
+    start = datetime.fromtimestamp(int(now.timestamp()) // seconds * seconds, UTC)
+    return f"{bucket}:{seconds}:{int(start.timestamp())}"[:120], start
+
+
+def peek(session: Session, bucket: str, window: timedelta, now: datetime) -> int:
+    """The hits counted so far in this fixed window, without counting one."""
+    key, _ = _window_key(bucket, window, now)
+    return int(session.scalar(select(AskRate.hits).where(AskRate.bucket == key)) or 0)
+
+
 def hit(session: Session, bucket: str, window: timedelta, now: datetime) -> int:
     """Count one hit in this fixed window and return the window's total (counted in the database, so
     parallel requests can't race past a limit)."""
-    seconds = int(window.total_seconds())
-    start = datetime.fromtimestamp(int(now.timestamp()) // seconds * seconds, UTC)
-    key = f"{bucket}:{seconds}:{int(start.timestamp())}"[:120]
+    key, start = _window_key(bucket, window, now)
     stmt = (
         insert(AskRate)
         .values(bucket=key, window_start=start, hits=1)
