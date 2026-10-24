@@ -15,6 +15,8 @@ Thanks for helping. This guide covers setting up, the conventions we follow, and
 - [Issues and labels](#issues-and-labels)
 - [Secrets and personal data](#secrets-and-personal-data)
 
+> **Using an AI agent?** Read [AGENTS.md](AGENTS.md) first: the rules every agent (Claude Code, Codex, Gemini CLI, Cursor, Copilot and others) follows when contributing here.
+
 ## Set up
 
 You need [uv](https://docs.astral.sh/uv/), Node 24 (Active LTS) and Docker.
