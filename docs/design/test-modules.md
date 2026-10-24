@@ -80,7 +80,7 @@ Outputs: backend test files, e2e specs, vitest files, with the reason, printed i
 make test MODULE=memory      # the memory tests and those of the modules that import it
 make test-changed            # what CI would pick for your branch (git diff origin/main...HEAD)
 cd backend && uv run pytest -m mod_memory    # only the memory module's own tests (marker from the map)
-uv run --project backend python scripts/select_tests.py --changed backend/src/superaide/mirror/service.py
+uv run --project backend python scripts/select_tests.py --changed backend/src/superaide/features/mirror/service.py
 uv run --project backend python scripts/select_tests.py --module mirror --format summary
 ```
 

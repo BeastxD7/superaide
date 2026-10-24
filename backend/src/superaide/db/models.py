@@ -1019,14 +1019,14 @@ class CalendarWatch(Scoped, Base):
 # the tests' create_all) sees them.
 from superaide.asklink import models as _asklink_models  # noqa: E402, F401
 from superaide.auth import models as _auth_models  # noqa: E402, F401
-from superaide.brainshare import models as _brainshare_models  # noqa: E402, F401
-from superaide.imports import models as _imports_models  # noqa: E402, F401
+from superaide.features.brainshare import models as _brainshare_models  # noqa: E402, F401
+from superaide.features.imports import models as _imports_models  # noqa: E402, F401
+from superaide.features.memsocket import models as _memsocket_models  # noqa: E402, F401
+from superaide.features.push import models as _push_models  # noqa: E402, F401
+from superaide.features.rehearsal import models as _rehearsal_models  # noqa: E402, F401
+from superaide.features.school import models as _school_models  # noqa: E402, F401
 from superaide.jobs import claim as _job_claim  # noqa: E402, F401  (the claim function, made after the job table)
-from superaide.memsocket import models as _memsocket_models  # noqa: E402, F401
-from superaide.push import models as _push_models  # noqa: E402, F401
 from superaide.reception import models as _reception_models  # noqa: E402, F401
-from superaide.rehearsal import models as _rehearsal_models  # noqa: E402, F401
-from superaide.school import models as _school_models  # noqa: E402, F401
 from superaide.skills import models as _skills_models  # noqa: E402, F401
 from superaide.tenancy import models as _tenancy_models  # noqa: E402, F401
 from superaide.tooltrace import models as _tooltrace_models  # noqa: E402, F401

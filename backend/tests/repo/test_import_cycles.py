@@ -34,7 +34,13 @@ FORBIDDEN: dict[str, set[str]] = {
     # technique 1: model wiring is not the factory, so nothing but the composition roots needs the pipeline for it
     "factory": set(),
     # technique 2: policy knows action kinds through registries, never the modules that carry them out
-    "policy.actions": {"skills.calendar", "skills.gmail", "skills.receipts", "asklink.service", "voice.gateway"},
+    "policy.actions": {
+        "skills.calendar",
+        "skills.gmail",
+        "skills.receipts",
+        "asklink.service",
+        "features.voice.gateway",
+    },
     "policy.kinds": {"policy.actions"},
     "policy.footprint": {"policy.actions"},
     "evals.checks": {"evals.harness"},
@@ -82,7 +88,7 @@ def test_policy_does_not_depend_on_what_it_gates(graph):
         for src, targets in graph.imports.items()
         if src.startswith("policy.")
         for dst in targets
-        if dst.split(".")[0] in {"skills", "asklink", "voice", "app", "brain", "triage", "jobs"}
+        if dst.split(".")[0] in {"skills", "asklink", "features", "app", "brain", "triage", "jobs"}
     )
     assert not leaked, leaked
 

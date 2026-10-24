@@ -12,7 +12,7 @@ from sqlalchemy import select
 from superaide.config import get_settings
 from superaide.db.models import Context, Event, Intention, MirrorNote, SpendEntry
 from superaide.db.session import session_scope
-from superaide.mirror import patterns, service
+from superaide.features.mirror import patterns, service
 from tests.api_support import OTHER, OWNER, hire, signup
 from tests.tenancy.api.test_many_owners import account
 

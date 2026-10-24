@@ -44,9 +44,6 @@
   "backend/src/superaide/brain/pricing.py": "b578c0f4669183292a8ce597b92f1e81e57696c41cd6cb450ed3b50c8da789d5",
   "backend/src/superaide/context/audience.py": "df08696ff0a15dae968c82a93455283d3982b2e258f04c197fc71f3bd3d7439a",
   "backend/src/superaide/db/rls.py": "ffebdc0c4b6e6f5ce3eaf371a71657c7abc1f136ba5023fc88416fb84edee590",
-  "backend/src/superaide/drills/__init__.py": "818175c4f7d8e1d8412da5f976d723c7f00be6dca0d5bb822a21a2f7451d16d5",
-  "backend/src/superaide/drills/poison.py": "287a87eed7357fe035a6b01531f6640f9a0028288476ba1de9c470a298fbac8c",
-  "backend/src/superaide/drills/sparring.py": "fcf74d51c4acfcaea7adb080b3a001943e7d68d6fd8010c1ab15fbf0ffe4e5cc",
   "backend/src/superaide/evals/__init__.py": "9332d0c3a029ddf902dc6fc2453172e95f073b80eb0dfde704ff081050ce0d9a",
   "backend/src/superaide/evals/__main__.py": "ff79f25da61c9b82a84554ac9cda06bc765a49e7787ea617182660617ef1a055",
   "backend/src/superaide/evals/baseline.py": "0e5aef050b27a6f0a3d5b95b5cfa247e5bca3d2d228b3df1ab55a2404fb54841",
@@ -56,7 +53,10 @@
   "backend/src/superaide/evals/report.py": "25fba3475564a3bb1fa74b422658eadc5ec7e8bb8df67d9505990df06952816b",
   "backend/src/superaide/evals/scenario.py": "ba7d7ae80c938a027926edea054144040a91452b5b3ce1c0c704abaecad1f459",
   "backend/src/superaide/evals/triage_report.py": "eb96f1617d0e8b1991adddcfa569942c0cf19d49b9b04146f752010f3652d8eb",
-  "backend/src/superaide/evals/voice_vs_text.py": "f3470970a4df06ff34adc44ab47f24affa38abfd7338f1872290859fb07f3038",
+  "backend/src/superaide/evals/voice_vs_text.py": "0d69d1d0c683f139e7d73a7f423387b4fff9f4b8b887b0815febb6b8f3316822",
+  "backend/src/superaide/features/drills/__init__.py": "818175c4f7d8e1d8412da5f976d723c7f00be6dca0d5bb822a21a2f7451d16d5",
+  "backend/src/superaide/features/drills/poison.py": "287a87eed7357fe035a6b01531f6640f9a0028288476ba1de9c470a298fbac8c",
+  "backend/src/superaide/features/drills/sparring.py": "13a86982f4ab31149f0ef62b1ee9bc60deef736a0f1683fb6ca44be6af603c3f",
   "backend/src/superaide/policy/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "backend/src/superaide/policy/actions.py": "37b8842440bf4f0cf313415abb8371dc601317fa0545818df907b6b87ca9972e",
   "backend/src/superaide/policy/binding.py": "9508fa91600c112fe4f44fb3617c40bd9e954404c90bdad1747929a1d51e0425",
@@ -75,7 +75,7 @@
   "backend/src/superaide/security/deploy.py": "c905d4fb3c63f584cddf3e9f7a5e4bb4e008b8ffbc97afa38675f197563f4757",
   "backend/src/superaide/security/logredact.py": "06fe3e1a63e9744cd4bbbf042ae8ca378e86b5a48ef9376fa1e82453c90552cf",
   "backend/src/superaide/security/surface.py": "7a795624b6a66863abf608b347b4a606f1e84b0d69d3ee4c89567884a7ae9062",
-  "backend/src/superaide/security/surface.toml": "55f500ee0b589ba32a5299e4050890f3964969ed4fac1b2c250b5e8bd6fc30b6",
+  "backend/src/superaide/security/surface.toml": "d0805d3fb8f1be0b8015a63ef3ba7c428e6b420b2559624972887893ac05727f",
   "backend/src/superaide/security/urls.py": "239a8c26a225779dbbe107e6110324974715058c756075332fcf22dd76f0c347",
   "backend/src/superaide/skills/manifest.py": "f79d664ad105614e0de764b96d2bdcc64bcb24b1a0689e6b5c75d94ff5e06dec",
   "backend/src/superaide/skills/manifest.schema.json": "cac30e73c40598fcf879528499cf1545280586ee95734b77b5d46f6a2fa3739b",
@@ -87,5 +87,5 @@
   "backend/tests/redteam/test_canaries.py": "aec68c9eea5ec08c0178baf7c32d182e770c27efa01f9d27fa0315a1065f9375",
   "backend/tests/redteam/test_impostors.py": "eb70a421a8d9dd58c4af7526da4ec285dfb9c75da61bad2e60dcd0b1547e49f6",
   "backend/tests/redteam/test_name_claims.py": "20fe85dba21def6ef1af2c5d55f811bd15bf79fcc00e8b5b53743247c6c1b4f9",
-  "backend/tests/redteam/test_poison_drills.py": "385c0c083bb68cc6774f29435ad1f560b6ea838253bb2f3e483c3e30e252ee86"
+  "backend/tests/redteam/test_poison_drills.py": "a9fc4e513bb74a99ca6fe417a10a375899be2f87aaf9f082493d713ecfd8f2ec"
 }

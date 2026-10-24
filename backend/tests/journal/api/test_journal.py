@@ -12,9 +12,9 @@ from superaide.brain.llm import FakeLLM
 from superaide.config import get_settings
 from superaide.db.models import Job, Prediction
 from superaide.db.session import session_scope
+from superaide.features.journal import extract
 from superaide.jobs.handlers import load
 from superaide.jobs.queue import run_due
-from superaide.journal import extract
 from tests.api_support import OTHER, hire, signup
 
 load()
@@ -179,7 +179,7 @@ def test_a_third_partys_message_is_never_read(owner, scripted, agent):
         )  # fmt: skip
         s.add(ev)
         s.flush()
-        from superaide.journal import service
+        from superaide.features.journal import service
 
         service.schedule(s, ev)  # Priya is not a journal owner: nothing queued
         assert s.scalar(select(Job).where(Job.kind == "journal_from_turn")) is None

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from superaide.brain.llm import FakeLLM
-from superaide.dissent import desk
+from superaide.features.dissent import desk
 from tests.api_support import OTHER, signup
 from tests.dissent.test_dissent import CAUTION, MAJORITY, OPTIONS, scripted
 

@@ -16,11 +16,11 @@ from superaide.brain.budget import BudgetExceeded, BudgetGuard, Limits
 from superaide.brain.turn import Prediction, RequestedAction, TurnOutput
 from superaide.db.models import Approval, ChannelIdentity, Person, SpendEntry
 from superaide.db.session import session_scope
+from superaide.features.voice import gateway, provider
+from superaide.features.voice.providers import VoiceError
+from superaide.features.voice.shell import VoiceShell
 from superaide.identity.resolver import Sender
 from superaide.policy.actions import ApprovalError, resolve
-from superaide.voice import gateway, provider
-from superaide.voice.providers import VoiceError
-from superaide.voice.shell import VoiceShell
 
 KEY = "dg-" + "k" * 24
 

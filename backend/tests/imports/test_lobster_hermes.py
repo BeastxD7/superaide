@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from superaide.cli import main
-from superaide.imports import lobster
+from superaide.features.imports import lobster
 
 FAKE_KEY = "sk-" + "z9y8x7w6" * 4
 SECTION = "§"

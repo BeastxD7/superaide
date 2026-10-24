@@ -18,10 +18,10 @@ from superaide.brain.budget import BudgetExceeded
 from superaide.brain.llm import FakeLLM
 from superaide.db.models import AuditLog, Event, MemoryItem
 from superaide.db.session import session_scope
+from superaide.features.rehearsal.models import RehearsalSession
+from superaide.features.rehearsal.service import DebriefOutput, DebriefPoint
 from superaide.main import create_app
 from superaide.pipeline import Agent
-from superaide.rehearsal.models import RehearsalSession
-from superaide.rehearsal.service import DebriefOutput, DebriefPoint
 from tests.api_support import CSRF, OTHER, hire, signup
 
 SAID = "I need a 10 percent raise before the end of the year"
@@ -211,7 +211,7 @@ def test_another_owners_session_is_not_reachable(browser, agent, settings, scrip
 
 
 def test_a_long_rehearsal_is_capped(owner_c, monkeypatch):
-    from superaide.rehearsal import service
+    from superaide.features.rehearsal import service
 
     monkeypatch.setattr(service, "MAX_TURNS", 2)
     sid = start(owner_c)["id"]

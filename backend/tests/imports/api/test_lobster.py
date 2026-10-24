@@ -13,7 +13,7 @@ from sqlalchemy import select
 
 from superaide.db.models import MemoryItem
 from superaide.db.session import session_scope
-from superaide.imports import lobster
+from superaide.features.imports import lobster
 
 LEASES = "/app/import-leases"
 # Built at run time so no secret-shaped string sits in the repository.
@@ -127,7 +127,7 @@ def test_the_cli_audits_and_prints_cards(workspace):
 
 
 def test_the_kit_result_is_anonymous_and_saved_only_on_yes(workspace, tmp_path):
-    from superaide.imports import lobster_kit
+    from superaide.features.imports import lobster_kit
 
     said: list[str] = []
     out = tmp_path / "r.json"
@@ -155,7 +155,7 @@ def test_the_kit_result_is_anonymous_and_saved_only_on_yes(workspace, tmp_path):
 
 
 def test_the_kit_summary_counts_volunteers(workspace, tmp_path):
-    from superaide.imports import lobster_kit
+    from superaide.features.imports import lobster_kit
 
     clean_ws = tmp_path / "clean"
     clean_ws.mkdir()

@@ -17,7 +17,7 @@ paths = [
   "backend/src/superaide/evals/**",
   "backend/evals/**",
   "backend/tests/redteam/**",
-  "backend/src/superaide/drills/**",
+  "backend/src/superaide/features/drills/**",
   # the audience gate and row-level security
   "backend/src/superaide/context/audience.py",
   "backend/src/superaide/db/rls.py",

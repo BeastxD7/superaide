@@ -33,9 +33,10 @@ EXEMPT_SOURCES = {"db.models", "plugins"}
 
 
 def is_public(target: str) -> bool:
-    parts = target.split(".")
+    pkg = lr.package_of(target)
+    rest = target[len(pkg) :].lstrip(".")
     # `contracts/` is the shared place for ports and events: everything in it is public by definition
-    return len(parts) == 1 or parts[0] == "contracts" or parts[1] in PUBLIC_NAMES and len(parts) == 2
+    return rest == "" or pkg == "contracts" or rest in PUBLIC_NAMES
 
 
 def violations(graph) -> list[tuple[str, str]]:

@@ -44,6 +44,7 @@ from superaide.db.models import (
     UserAccount,
 )
 from superaide.db.session import require, rescope, session_scope
+from superaide.features.voice import gateway
 from superaide.intentions import service as intentions
 from superaide.intentions.when import clean_task, find_moment, zone
 from superaide.knowledge import extract
@@ -59,7 +60,6 @@ from superaide.policy.killswitch import instance_frozen, is_frozen, platform_fro
 from superaide.skills import registry as skill_registry
 from superaide.tenancy.context import use_instance
 from superaide.tenancy.endpoints import slack_key
-from superaide.voice import gateway
 
 
 def _require_text(extracted: extract.Extracted) -> None:

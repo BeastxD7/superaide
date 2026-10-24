@@ -24,7 +24,7 @@
 /backend/src/superaide/triage/store.py     @BeastxD7
 /backend/src/superaide/tooltrace/effects.py @BeastxD7
 /backend/src/superaide/actionlog/          @BeastxD7
-/backend/src/superaide/drills/             @BeastxD7
+/backend/src/superaide/features/drills/             @BeastxD7
 
 # Database migrations
 /backend/alembic/versions/                 @BeastxD7

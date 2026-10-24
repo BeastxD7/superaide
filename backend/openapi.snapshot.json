@@ -2604,7 +2604,7 @@
         "title": "LinkBody",
         "type": "object"
       },
-      "superaide__dissent__routes__AskBody": {
+      "superaide__features__dissent__routes__AskBody": {
         "properties": {
           "kind": {
             "default": "",
@@ -2633,6 +2633,39 @@
           "options"
         ],
         "title": "AskBody",
+        "type": "object"
+      },
+      "superaide__features__rehearsal__routes__StartBody": {
+        "properties": {
+          "notes": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Notes",
+            "type": "string"
+          },
+          "role": {
+            "maxLength": 120,
+            "minLength": 2,
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role"
+        ],
+        "title": "StartBody",
+        "type": "object"
+      },
+      "superaide__features__voice__routes__StartBody": {
+        "properties": {
+          "lang": {
+            "default": "en-US",
+            "maxLength": 20,
+            "title": "Lang",
+            "type": "string"
+          }
+        },
+        "title": "StartBody",
         "type": "object"
       },
       "superaide__identity__claims_routes__AnswerBody": {
@@ -2811,27 +2844,6 @@
           }
         },
         "title": "SettingsBody",
-        "type": "object"
-      },
-      "superaide__rehearsal__routes__StartBody": {
-        "properties": {
-          "notes": {
-            "default": "",
-            "maxLength": 4000,
-            "title": "Notes",
-            "type": "string"
-          },
-          "role": {
-            "maxLength": 120,
-            "minLength": 2,
-            "title": "Role",
-            "type": "string"
-          }
-        },
-        "required": [
-          "role"
-        ],
-        "title": "StartBody",
         "type": "object"
       },
       "superaide__rules__routes__CreateBody": {
@@ -3045,18 +3057,6 @@
           }
         },
         "title": "SettingsBody",
-        "type": "object"
-      },
-      "superaide__voice__routes__StartBody": {
-        "properties": {
-          "lang": {
-            "default": "en-US",
-            "maxLength": 20,
-            "title": "Lang",
-            "type": "string"
-          }
-        },
-        "title": "StartBody",
         "type": "object"
       }
     },
@@ -5753,7 +5753,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/superaide__dissent__routes__AskBody"
+                "$ref": "#/components/schemas/superaide__features__dissent__routes__AskBody"
               }
             }
           },
@@ -7080,7 +7080,7 @@
               "schema": {
                 "anyOf": [
                   {
-                    "$ref": "#/components/schemas/superaide__voice__routes__StartBody"
+                    "$ref": "#/components/schemas/superaide__features__voice__routes__StartBody"
                   },
                   {
                     "type": "null"
@@ -10765,7 +10765,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/superaide__rehearsal__routes__StartBody"
+                "$ref": "#/components/schemas/superaide__features__rehearsal__routes__StartBody"
               }
             }
           },

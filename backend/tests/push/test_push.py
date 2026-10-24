@@ -25,9 +25,9 @@ from superaide.config import get_settings
 from superaide.db import rls
 from superaide.db.models import AuditLog, Base, IntegrationSecret, Person
 from superaide.db.session import session_scope
+from superaide.features.push import payload, send, subscriptions, vapid
+from superaide.features.push.models import PushSend, PushSubscription
 from superaide.main import create_app
-from superaide.push import payload, send, subscriptions, vapid
-from superaide.push.models import PushSend, PushSubscription
 from superaide.tenancy.context import InstanceScope, use_instance
 from superaide.tenancy.models import PlatformState
 from superaide.vault import crypto

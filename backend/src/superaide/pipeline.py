@@ -316,7 +316,7 @@ class Agent:
                 from superaide.knowledge import learn
 
                 learn.schedule(s, inbound)  # after the reply: learn anything worth keeping
-                from superaide.journal import service as journal
+                from superaide.features.journal import service as journal
 
                 journal.schedule(s, inbound)  # only if the owner turned the decision journal on
                 return HandleResult("known", reply, notes)
@@ -653,7 +653,7 @@ class Agent:
                 if use:
                     brief = brief + "\n\n" + text
         if self.settings.school_enabled and self.settings.school_playbook_enabled and not shared:
-            from superaide.school import playbook as school_playbook
+            from superaide.features.school import playbook as school_playbook
 
             if lessons := school_playbook.live_text(s, sender.person.id):  # passed their eval, switched on by the owner
                 brief = brief + "\n\n" + lessons
@@ -758,7 +758,7 @@ class Agent:
         memories = visible_memories(s, aud, limit=30 if is_owner else 5)
         brief = owner_brief(s, sender, aud)
         if is_owner and sender.person and self.settings.school_enabled and self.settings.school_playbook_enabled:
-            from superaide.school import playbook as school_playbook
+            from superaide.features.school import playbook as school_playbook
 
             if lessons := school_playbook.live_text(s, sender.person.id):  # owner's own chat only
                 brief = brief + "\n\n" + lessons if brief else lessons
