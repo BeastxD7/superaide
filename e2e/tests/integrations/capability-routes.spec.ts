@@ -66,3 +66,14 @@ test.describe('old addresses redirect', () => {
     await expect(page).toHaveURL(/\/dashboard\/capabilities\/gmail\/reading$/)
   })
 })
+
+test('the old Principal card address redirects permanently to Gmail > Signature, and the signature page opens without Gmail installed', async ({ page, owner }) => {
+  void owner
+  const res = await page.request.get('/dashboard/principal-card', { maxRedirects: 0 })
+  expect(res.status()).toBe(308)
+  expect(res.headers()['location']).toContain('/dashboard/capabilities/gmail/signature')
+  await page.goto('/dashboard/principal-card')
+  await expect(page.getByRole('heading', { level: 1, name: 'Signature' })).toBeVisible()
+  await expect(page.getByLabel('Your first name (optional)')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Principal card' })).toHaveCount(0) // no menu item
+})

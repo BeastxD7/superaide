@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react'
 import { useAppData } from '@/features/dashboard/data'
 import { CapabilityShell } from '@/features/dashboard/capabilities/CapabilityShell'
 import { capabilityBySlug, capabilityHref } from '@/features/dashboard/capabilities/registry'
+import { PrincipalCardPage } from '@/features/principal-card/PrincipalCardPage'
 import { GmailPanel } from '@/features/dashboard/GmailPanel'
 import { GmailReadSettings } from '@/features/dashboard/GmailReadSettings'
 import { SettingRow } from '@/features/dashboard/settings/SettingRow'
@@ -25,6 +26,7 @@ export function CapabilityPage({ slug, page }: { slug: string; page?: string }) 
   const { data } = useAppData<SkillCard[]>('/skills')
   if (!cap || (page && !cap.pages.some((p) => p.slug === page))) notFound()
   const card = data?.find((c) => c.id === cap.skillId)
+  const needsInstall = cap.pages.find((p) => p.slug === page)?.requiresInstall !== false
 
   return (
     <CapabilityShell cap={cap} page={page}>
@@ -33,7 +35,7 @@ export function CapabilityPage({ slug, page }: { slug: string; page?: string }) 
           <Skeleton className="h-4 w-1/2" />
           <Skeleton className="h-24 w-full" />
         </div>
-      ) : !card?.installed ? (
+      ) : needsInstall && !card?.installed ? (
         <Notice tone="warn">
           {cap.title} isn&apos;t installed yet.{' '}
           <Link href="/dashboard/capabilities" className="font-medium underline">
@@ -63,6 +65,8 @@ export function CapabilityPage({ slug, page }: { slug: string; page?: string }) 
         </>
       ) : page === 'reading' ? (
         <GmailReading name={name} />
+      ) : page === 'signature' ? (
+        <PrincipalCardPage embedded />
       ) : null}
     </CapabilityShell>
   )
