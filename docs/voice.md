@@ -9,8 +9,10 @@ Everything is off by default. Nothing is bought.
 | Setting | Default | What it does |
 | --- | --- | --- |
 | `VOICE_TWO_CHANNEL` | `false` | A voice-call action becomes an approval that only an app tap can approve |
-| `VOICE_PROVIDER` | `none` | `none`, `fake` (scripted, offline) or `realtime` (adapter stub, no vendor wired) |
-| `VOICE_PROVIDER_API_KEY` | empty | The vendor's key. Normally saved in the vault under the `voice_provider` connection |
+| `VOICE_PROVIDER` | `none` | `none`, `fake` (scripted, offline), `deepgram` (the hosted adapter below) or `realtime` (adapter stub, no vendor wired) |
+| `VOICE_PROVIDER_API_KEY` | empty | The vendor's key (falls back to `DEEPGRAM_API_KEY`). Normally saved in the vault under the `voice_provider` connection |
+| `BUDGET_MONTHLY_BY_BUCKET` | `{"voice_call": 5.00}` | A live call's own monthly cap in US dollars, inside `MAX_SPEND_USD` and the daily and monthly limits (the tightest wins) |
+| `VOICE_CALL_MAX_SECONDS` | `600` | The call ends at this much caller audio |
 
 ## The pieces
 
@@ -32,6 +34,18 @@ It runs 30 tasks (18 plain, 12 with a mishearing scripted into the transcript) o
 
 To see the card: with `VOICE_TWO_CHANNEL=true`, call `voice.shell.VoiceShell(...).handle("tell Priya the meeting moved")` from a shell or a test, then open Approvals in the app.
 
-## Adding a real vendor
+## The hosted adapter: Deepgram
+
+`VOICE_PROVIDER=deepgram` uses `DeepgramVoiceProvider` (`voice/provider.py`). Deepgram transcribes each utterance the caller makes (`/v1/listen`, Nova-3) and speaks the text the shell hands back (`/v1/speak`, Aura-2). It is the same vendor and the same two endpoints the introduction call already uses (ADR 0012), so it adds no new holder of call audio. It is turn by turn: one request per utterance, no barge-in and no full-duplex streaming yet. The audio transport (a browser or a phone line) belongs to the caller: it passes `audio_in` (an iterable of utterances, for example cut by voice activity detection) and `audio_out(bytes)`.
+
+- Transcripts only come out; `speak` sends exactly the text given; the session has no tools and no instructions to act; the key is used only in requests to `api.deepgram.com` and is never logged.
+- Every request is reserved and settled through `BudgetGuard` (purposes `voice_call_asr` and `voice_call_tts`, prices in `voice/prices.py`). Those purposes form the bucket `voice_call`, capped per 30 days by `BUDGET_MONTHLY_BY_BUCKET` (US$5 by default). That cap sits inside `MAX_SPEND_USD`: the lifetime cap, the daily and monthly limits and the voice cap are all checked and the tightest refuses. When any of them (or the kill switch) refuses, the call ends cleanly (`ended_by == "budget"`); a call also ends at `VOICE_CALL_MAX_SECONDS`.
+- An instance can tighten its own cap through `spend_limits.monthly_by_bucket`.
+- The app is still the only second channel: a call through this adapter proposes into the same gateway, and a spoken yes, Telegram tap or Slack tap confirms nothing (`tests/test_voice_deepgram.py`).
+- Tests use a mock HTTP transport; nothing in the suite touches the network.
+
+Not done: a live run against the real API (the key and the owner's go-ahead are needed) and the 30-task experiment on real speech.
+
+## Adding another vendor
 
 Copy `RealtimeVendorStub` in `voice/provider.py`, implement the four methods with the vendor's streaming API over `httpx` or a websocket (no SDK), and keep its rules: transcripts only (no audio, no vendor function calls, the session is created without tools), `speak` sends exactly the text it is given, the key goes only to the vendor and is never logged, and the vendor's price goes in `voice/prices.py` so the spend cap covers the call. Which vendor, and the cost, is the owner's decision.

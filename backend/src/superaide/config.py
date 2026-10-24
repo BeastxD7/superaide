@@ -220,6 +220,12 @@ class Settings(BaseSettings):
             "learning": 0.10,  # replay, second opinions, playbook drafts, tuner (#142)
         }
     )
+    # Per purpose bucket, any 30 days. A live voice call (#125) has its own bucket, `voice_call`, capped at US$5 a
+    # month by default. The cap sits INSIDE MAX_SPEND_USD and the other limits: all of them are checked, the
+    # tightest wins. Empty dict (BUDGET_MONTHLY_BY_BUCKET={}) removes the voice cap, not the others.
+    budget_monthly_by_bucket: dict[str, float] = Field(default_factory=lambda: {"voice_call": 5.00})
+    # Longest a single live call may run, in seconds of caller audio heard. The call ends cleanly at this length.
+    voice_call_max_seconds: int = Field(default=600, ge=10, le=3600)
     # These limits apply to each hired Ava on its own; an instance may set its own (agent_instance.spend_limits).
     # Platform-wide, per UTC day, for calls paid with Superaide's own model key (ADR 0009). Owners'
     # own keys never draw on it. 0 refuses every platform-paid call (no platform key is offered yet).
@@ -382,7 +388,7 @@ class Settings(BaseSettings):
     voice_two_channel: bool = False
     # Live voice (#125): which realtime voice provider carries the call. none | fake (scripted, offline) | realtime
     # (the adapter stub for a real vendor; no vendor is wired yet). Default none: nothing is bought or locked in.
-    voice_provider: str = "none"
+    voice_provider: str = "none"  # none | fake | realtime (stub) | deepgram (the documented hosted adapter)
     voice_provider_api_key: str = ""  # saved under the voice_provider connection; never logged
     # Import lease (#133). Off: /app/import-leases/* answer 404. On: the owner can bring in context cards
     # converted on their own machine from a third-party export, under a time-limited lease that erases them.
@@ -412,6 +418,11 @@ class Settings(BaseSettings):
     # hands over; nothing is sent. Needs SCHOOL_ENABLED. School signer provider: "local" (Ed25519, no service).
     school_sharing_enabled: bool = False
     school_signer: str = "local"
+    # Ava School playbook (#57): the owner may write playbook text for a lesson, attach a scenario-shaped eval, run it
+    # (two model calls, inside the spend cap) and, only after it passed, switch the lesson into the owner's own
+    # prompt. Imported lesson text itself never goes in. Needs SCHOOL_ENABLED. Off: those routes answer 404 and no
+    # lesson is ever read into a prompt.
+    school_playbook_enabled: bool = False
     # The owner's Gmail sign-in (same OAuth client as Calendar); kept per instance in the vault.
     gmail_refresh_token: str = ""
 
