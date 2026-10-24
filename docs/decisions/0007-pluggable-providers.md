@@ -213,7 +213,7 @@ Capabilities (server tools may be unavailable on a platform; the adapter then re
 `server_web_search=False` and section 6 applies).
 
 **Acceptance gate:** a golden test records the exact kwargs today's `ClaudeLLM.step` / `complete` pass to
-`messages.create` / `messages.stream` for every scenario in `tests/test_loop.py` and `tests/test_stream.py`.
+`messages.create` / `messages.stream` for every scenario in `tests/pipeline/test_loop.py` and `tests/app/test_stream.py`.
 The new adapter must produce identical kwargs, and identical rendered text and sources from the same
 responses.
 

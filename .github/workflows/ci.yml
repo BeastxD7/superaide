@@ -579,7 +579,7 @@ jobs:
   # End-to-end is ADVISORY on pull requests (owner decision 2026-10-24): the shards still run and show red or green, but a
   # failed or cancelled one does not fail this gate, unless the PR has the `e2e-blocking` label (read live, like
   # tests-required) or the label cannot be read. On main, merge_group, Full and manual runs it blocks. scripts/ci_gate.py
-  # holds the decision; backend/tests/test_ci_gate.py proves the table.
+  # holds the decision; backend/tests/repo/test_ci_gate.py proves the table.
   result:
     name: CI result
     if: always()

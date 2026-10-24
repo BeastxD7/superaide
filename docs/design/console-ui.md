@@ -5,7 +5,7 @@ Status: accepted (2026-10-23). Applies to `frontend/src/features/console/**` and
 The console is a tool for one operator, so it favours scanning over decoration, but it shares the landing page's
 visual language: white canvas, deep violet ink, one violet accent, lilac panels, Geist, pill controls, 28px panels,
 glass bar and the `cubic-bezier(0.22, 1, 0.36, 1)` easing. It keeps its own root layout and stylesheet (no Tailwind,
-no site CSS), so a console change never touches the site and the reverse (`e2e/tests/console.spec.ts`, "separate
+no site CSS), so a console change never touches the site and the reverse (`e2e/tests/console/console.spec.ts`, "separate
 from the site").
 
 ## Audit of the old console (what we fixed)
@@ -66,7 +66,7 @@ Status colours always sit on their own soft background, and carry words or a dot
 | info and accent | #5232d4 on #f3edff | 6.6:1 |
 
 axe runs on every tab, collapsed and expanded and in the phone drawer
-(`e2e/tests/console-ui.spec.ts`); it is the check of record.
+(`e2e/tests/web-console/console-ui.spec.ts`); it is the check of record.
 
 ## Shell
 

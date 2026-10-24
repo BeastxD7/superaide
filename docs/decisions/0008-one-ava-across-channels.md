@@ -68,7 +68,7 @@ it. Ava failed to find it.
   inside the API process.
 - **Recall was called:** it was, and with a plausible query. The search failed.
 
-`backend/tests/test_cross_channel.py` reproduces all of this with `FakeLLM`. Three tests pass and
+`backend/tests/context/test_cross_channel.py` reproduces all of this with `FakeLLM`. Three tests pass and
 pin what works: learning from Telegram, the web audience seeing the fact, and a group seeing
 nothing from the DM. Eleven tests are strict `xfail`, one or more per gap, and flip when their work
 package lands.
@@ -260,18 +260,18 @@ the Letta core block and the research's "core profile". Non-owner briefs are unc
 
 ## Work packages
 
-Each work package owns its files, flips named xfails in `tests/test_cross_channel.py`, and keeps
+Each work package owns its files, flips named xfails in `tests/context/test_cross_channel.py`, and keeps
 the full suite green.
 
 | WP | What | Owns | Flips / adds tests |
 |---|---|---|---|
-| **WP1** Unified timeline | `memory/store.py` `owner_timeline(s, owner, ctx, thread)` with the SQL predicate and budget; `pipeline._owner_turn` uses it; `brain/turn.build_messages` adds labels; label strip in `brain/loop.render`; OWNER_RULES line | `memory/store.py`, `pipeline.py`, `brain/turn.py`, `brain/loop.py` (rules + strip only) | flips `test_the_app_chat_prompt_includes_…`; adds `tests/test_timeline.py`: web→Telegram and Telegram→web; merge order; budget truncation; 48 h window; negatives: colleague DM gets none, owner in a TG/Slack group gets none, a group event with `{owner}` audience is excluded, another person's DM is excluded; the group guard test keeps passing |
+| **WP1** Unified timeline | `memory/store.py` `owner_timeline(s, owner, ctx, thread)` with the SQL predicate and budget; `pipeline._owner_turn` uses it; `brain/turn.build_messages` adds labels; label strip in `brain/loop.render`; OWNER_RULES line | `memory/store.py`, `pipeline.py`, `brain/turn.py`, `brain/loop.py` (rules + strip only) | flips `test_the_app_chat_prompt_includes_…`; adds `tests/memory/test_timeline.py`: web→Telegram and Telegram→web; merge order; budget truncation; 48 h window; negatives: colleague DM gets none, owner in a TG/Slack group gets none, a group event with `{owner}` audience is excluded, another person's DM is excluded; the group guard test keeps passing |
 | **WP2a** Lexical recall | AND→OR fallback, `context/lexicon.py` (spelling + preference synonyms), trigram arm, `unaccent`, RRF, `channel` filter on the recall tool; migration `0010_trgm_and_tsv` (`pg_trgm`, `unaccent`, generated `tsv` columns + GIN on `memory_item` and `event`) | `context/recall.py`, `context/lexicon.py`, `skills/builtin/memory/superaide.json` (recall tool schema), `alembic/versions/0010_*` | flips all 4 `test_recall_finds_the_fact_for_a_paraphrase`; adds gate tests: OR, trigram and channel arms never return out-of-audience rows (copy `test_recall_never_returns_what_this_audience_may_not_see` per arm) |
 | **WP2b** Embeddings (flagged) | `brain/embed.py` (`Embedder` protocol, `VoyageEmbedder`, deterministic `FakeEmbedder` for tests); migration `0011_vector` guarded on availability; `embedding halfvec(1024)`, `embed_model`; HNSW; embed job on fact insert + backfill job; `embed` ledger purpose + cap; vault toggle | `brain/embed.py`, `context/recall.py` (vector arm), `jobs/handlers.py`, `alembic/versions/0011_*`, `vault/` | adds: vector arm finds a paraphrase with no shared word (FakeEmbedder); missing extension → lexical only, no error; cap reached → no embed, recall still works; embeddings never sent while the toggle is off |
 | **WP3** Pinned core facts | `owner_brief` "What you know about them" section | `knowledge/profile.py` | flips `test_a_learned_preference_is_pinned…`; adds: never in a non-owner brief or a group; cap at 15 / about 400 tokens; retired facts drop out |
 | **WP4** Pre-recall, honesty, learning, cues | pre-recall `search_result` blocks in `OwnerTurn.run`; learning-on line in `OwnerTurn.system`; continuity rule; `worth_reading` stance heuristic; note titles with channel | `brain/loop.py`, `knowledge/learn.py`, `context/recall.py` (titles only; land after WP2a) | flips `test_the_owner_turn_tells_ava…` and 3× `test_a_short_statement…`; adds: pre-recall hit is cited; offline mode has no learning claim; "ok"/"thanks"/short questions still skipped |
 | **WP5** Dedupe and reconcile | shared normaliser; trigram backstop in `remember_fact` and `remember`; extractor gets neighbours and returns the relation; `contradicts` supersedes; audience intersection | `knowledge/store.py`, `knowledge/facts.py`, `knowledge/learn.py` (after WP4), `memory/store.py` (`remember` only; after WP1) | flips `test_the_same_preference_said_again…`; adds: contradiction supersedes; intersection of audiences; source_event_ids appended |
-| **WP6** Evaluation | Scripted multi-channel scenario (below) as an offline test and an opt-in live eval in `tests/live/` against real Haiku (a few cents, inside the cap) | `tests/test_cross_channel.py`, `tests/live/test_cross_channel_live.py` | the whole scenario passes offline; the live one reports a score |
+| **WP6** Evaluation | Scripted multi-channel scenario (below) as an offline test and an opt-in live eval in `tests/live/` against real Haiku (a few cents, inside the cap) | `tests/context/test_cross_channel.py`, `tests/live/test_cross_channel_live.py` | the whole scenario passes offline; the live one reports a score |
 
 Order: **WP2a and WP4 first** (the free fixes for causes 1, 3 and 5), then WP1, WP3, WP5, and
 WP2b last. Migrations `0010`/`0011` may collide with other branches (the latest on main is
@@ -299,8 +299,8 @@ correct channel attribution at step 2; and the "I can't remember" false-claim ra
 
 ## As built (2026-10-22)
 
-All work packages are on main. Every xfail in `backend/tests/test_cross_channel.py` now passes.
-The scenario is `backend/tests/test_cross_channel_scenario.py`.
+All work packages are on main. Every xfail in `backend/tests/context/test_cross_channel.py` now passes.
+The scenario is `backend/tests/pipeline/test_cross_channel_scenario.py`.
 
 Changes from the design above:
 

@@ -8,7 +8,7 @@ Two interfaces share one request builder and one spend path:
 - `step` / `complete` take neutral `Message`s and return neutral parts. Each part keeps its
   original block in `provider_data["anthropic"]`, which is sent back unchanged, so a round trip
   through the neutral model produces the same request byte for byte
-  (tests/test_anthropic_wire.py).
+  (tests/brain/test_anthropic_wire.py).
 """
 
 from __future__ import annotations

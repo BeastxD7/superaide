@@ -26,7 +26,7 @@ python3 scripts/rename_example_names.py          # rewrite tracked files in plac
 python3 scripts/rename_example_names.py --check  # exit 1 and list any disallowed occurrence
 ```
 
-`backend/tests/test_example_names.py` runs the check, so CI fails when the old name comes back.
+`backend/tests/guards/test_example_names.py` runs the check, so CI fails when the old name comes back.
 
 ## Rebasing an open branch after the rename landed
 

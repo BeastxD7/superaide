@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Start slot 4's API with FAKE_LLM=false, its Claude calls going only to a local fake on :8404.
-# Used by e2e/tests/qa-models.spec.ts for the credits, no-limit and zero-cap passes (see that spec's header).
+# Used by e2e/tests/app/qa-models.spec.ts for the credits, no-limit and zero-cap passes (see that spec's header).
 # Extra env (PLATFORM_*, BUDGET_*) comes from the caller. Nothing leaves the machine.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

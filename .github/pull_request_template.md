@@ -87,7 +87,7 @@
 ## Security and privacy
 
 - [ ] New tables carry `tenant_id` and `agent_id` and are in `db/rls.py` with RLS enabled in the migration (ADR 0009)
-- [ ] New `/app` routes are classified in `tests/api/test_authz.py` (public, account-only, flag-gated or owner)
+- [ ] New `/app` routes are classified in `tests/guards/api/test_authz.py` (public, account-only, flag-gated or owner)
 - [ ] No secrets, tokens or real personal data in code, tests, fixtures or screenshots
 - [ ] Untrusted content (web pages, emails, files, community tools) marks the turn as tainted
 - [ ] Side effects (`write_external`, `send`, `spend`) go through an approval

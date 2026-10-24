@@ -57,9 +57,9 @@ Techniques 1 to 5 were applied in place (no file moved), one small PR per techni
 | skills: connector facts via events, mail digest to triage | 90 (5) | 104 (8) | 144 (15) | 111 (8) | 80 (3) | 7 | 794 |
 | selector: composition roots (`main`, `cli`, `plugins`) are not dependents | 30 (2) | 61 (6) | 120 (13) | 67 (6) | 21 (2) | 7 | 794 |
 
-What was done, per technique of the list above: (1) `factory` was split instead of hidden behind a Protocol: `brain/wiring.py` holds `brain_ready`/`build_llm`/..., `factory` keeps `build_agent` and only `runtime` and `cli` import it; (2) `policy/registry.py` holds the rule tables and the `EXECUTORS`/`DISCARDERS` registries, the owning skills register themselves, `policy/confirmation.py` keeps the voice-yes rule inside policy; (3) `channels/base.py` holds `MESSENGER_FACTORIES` and `PRESS_HANDLERS`, `plugins.py` is the startup list that imports every registering module; (4) `contracts/events.py` is the synchronous in-process bus (`ApprovalDecided`, `SkillRemoved`, `CalendarEventsRead`, `MailIngested`); (5) the 30 routers import `app/deps.py` instead of `app/routes.py`, which now has one importer, `main`. The pipeline, `brain.loop`, `policy.*`, `skills.*`, `knowledge.*`, `triage.digest/routes/service`, `asklink.*`, `proactive.*` and `app.routes` are in no cycle; `tests/test_import_cycles.py` is the ratchet.
+What was done, per technique of the list above: (1) `factory` was split instead of hidden behind a Protocol: `brain/wiring.py` holds `brain_ready`/`build_llm`/..., `factory` keeps `build_agent` and only `runtime` and `cli` import it; (2) `policy/registry.py` holds the rule tables and the `EXECUTORS`/`DISCARDERS` registries, the owning skills register themselves, `policy/confirmation.py` keeps the voice-yes rule inside policy; (3) `channels/base.py` holds `MESSENGER_FACTORIES` and `PRESS_HANDLERS`, `plugins.py` is the startup list that imports every registering module; (4) `contracts/events.py` is the synchronous in-process bus (`ApprovalDecided`, `SkillRemoved`, `CalendarEventsRead`, `MailIngested`); (5) the 30 routers import `app/deps.py` instead of `app/routes.py`, which now has one importer, `main`. The pipeline, `brain.loop`, `policy.*`, `skills.*`, `knowledge.*`, `triage.digest/routes/service`, `asklink.*`, `proactive.*` and `app.routes` are in no cycle; `tests/repo/test_import_cycles.py` is the ratchet.
 
-Left: the 7-file `audit`/`auth`/`db`/`jobs`/`tenancy` cycle (all `core`, a change there runs everything anyway; phase 3 and 7) and four pairs (`triage.buttons`/`escalate`, `app.connections`/`gmail`, `brain.pricing`/`price_tables`, `brain.providers.config`/`vault.store`). The leaf `mirror/service.py` stays at 80 tests: `main` (the composition root) imports it and every test that imports `main`, `cli` or `app` is selected with it. Excluding composition roots from the dependents closure in `select_tests.py` was the next lever and is done in the last row (`[settings] composition_roots` in `ci/modules.toml`; `composition_smoke` keeps `tests/test_main.py` in every backend selection that changes code; a change in `plugins.py` runs everything; a change in `main`/`cli` still selects the console module and the smoke specs). Not done: routers of the leaf features are still registered from `main` one by one rather than by an `api` composer; that belongs with the file moves of phase 5.
+Left: the 7-file `audit`/`auth`/`db`/`jobs`/`tenancy` cycle (all `core`, a change there runs everything anyway; phase 3 and 7) and four pairs (`triage.buttons`/`escalate`, `app.connections`/`gmail`, `brain.pricing`/`price_tables`, `brain.providers.config`/`vault.store`). The leaf `mirror/service.py` stays at 80 tests: `main` (the composition root) imports it and every test that imports `main`, `cli` or `app` is selected with it. Excluding composition roots from the dependents closure in `select_tests.py` was the next lever and is done in the last row (`[settings] composition_roots` in `ci/modules.toml`; `composition_smoke` keeps `tests/console/test_main.py` in every backend selection that changes code; a change in `plugins.py` runs everything; a change in `main`/`cli` still selects the console module and the smoke specs). Not done: routers of the leaf features are still registered from `main` one by one rather than by an `api` composer; that belongs with the file moves of phase 5.
 
 ## Decision
 
@@ -128,9 +128,9 @@ src/superaide/channels/format.py           322 lines, Slack and Telegram formatt
 src/superaide/identity/linking.py          link codes (all channels)
 src/superaide/app/connections.py           Slack connect/disconnect routes
 src/superaide/tenancy/endpoints.py         slack_key
-tests/test_slack.py  test_slack_link.py  test_slack_instances.py  test_slack_owner_channels.py
-tests/test_slack_thread_history.py  test_channel_runner.py ...      (1,314 lines among 151 flat files)
-e2e/tests/slack-link.spec.ts   frontend/src/features/dashboard/ConnectionsPage.tsx (35-file folder)
+tests/channels/test_slack.py  test_slack_link.py  test_slack_instances.py  test_slack_owner_channels.py
+tests/channels/test_slack_thread_history.py  test_channel_runner.py ...      (1,314 lines among 151 flat files)
+e2e/tests/channels/slack-link.spec.ts   frontend/src/features/dashboard/ConnectionsPage.tsx (35-file folder)
 ```
 
 After:
@@ -164,7 +164,7 @@ src/superaide/context/       audience, recall, vectors, lexicon                 
 src/superaide/knowledge/     ingest, extract, facts, learn, pending, profile, store,
                              chunking, connector_facts, erase, trust                 (12)
 src/superaide/db/models.py   the memory/knowledge tables, 48 classes shared with everything else
-tests/test_sleep.py test_recall.py test_importance.py test_audience.py test_learn.py test_profile.py test_erase.py test_chunks.py ...
+tests/memory/test_sleep.py test_recall.py test_importance.py test_audience.py test_learn.py test_profile.py test_erase.py test_chunks.py ...
 ```
 
 After:
@@ -227,7 +227,7 @@ Open PRs on 2026-10-24: none (`gh pr list --state open` is empty; the last merge
 1. **Announce** in the coordinator channel and in `AGENT-RULES.md`: before each phase, a freeze window opens: no new PR is opened that touches the paths of that phase (listed in the phase PR description, derived from `ci/layout-moves.json`).
 2. Windows: phase 1 about 1 hour (tests only), phases 3 and 7 about 2 hours each (everything imports them), others 1 hour. Agents with open PRs touching the moved paths finish and merge first, or wait.
 3. The move PR is merged by the coordinator on a green full suite; the codemod is re-run on the fresh `origin/main` immediately before merge (never apply a stale diff).
-4. After the merge, every agent runs `scripts/rebase_after_move.py`: it takes the branch's own changes since the pre-move merge-base, remaps old paths and module names, and 3-way merges them into the moved files on the new main (conflict markers only where the same lines were edited). Tested in `backend/tests/test_layout_tools.py` on a throwaway repo.
+4. After the merge, every agent runs `scripts/rebase_after_move.py`: it takes the branch's own changes since the pre-move merge-base, remaps old paths and module names, and 3-way merges them into the moved files on the new main (conflict markers only where the same lines were edited). Tested in `backend/tests/repo/test_layout_tools.py` on a throwaway repo.
 5. Phases touching only tests (1) or only leaves (4) can run without a freeze if no open PR touches those paths (check with `gh pr list --json files`).
 
 ## Risks

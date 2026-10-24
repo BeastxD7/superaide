@@ -24,7 +24,7 @@ export E2E_SLOT=<your slot>
 npx playwright test tests/<your-area>.spec.ts --project=desktop
 ```
 
-Playwright starts your slot's API and web server for you and stops them afterwards. Read `e2e/README.md`, `e2e/src/fixtures.ts` and `tests/smoke.spec.ts` before writing anything.
+Playwright starts your slot's API and web server for you and stops them afterwards. Read `e2e/README.md`, `e2e/src/fixtures.ts` and `tests/web-shell/smoke.spec.ts` before writing anything.
 
 ## What to cover
 

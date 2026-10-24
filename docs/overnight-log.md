@@ -14,7 +14,7 @@ backend tests, lint, types, the frontend checks and the full browser suite pass.
 | 7 | Keyword recall over the notebook (instead of newest 30) | done | f48acfc |
 | 9 | Learning from conversation (owner's messages → notebook facts, after the reply) | done | see git log |
 | 10 | Daily briefing: today's reminders, dates from notes (birthdays, anniversaries) with what Ava knows about the person, pending approvals; nothing sent when there's nothing to say | done | see git log |
-| 11 | Google Calendar skill (OAuth 2.1 + PKCE sign-in, encrypted refresh token, calendar_events tool with citations) | committed locally, NOT pushed: 1 failing test (tests/api/test_authz.py::test_the_owner_can_read_every_owner_page — likely the new /google/callback GET route, which redirects instead of 200); no frontend card yet | WIP |
+| 11 | Google Calendar skill (OAuth 2.1 + PKCE sign-in, encrypted refresh token, calendar_events tool with citations) | committed locally, NOT pushed: 1 failing test (tests/guards/api/test_authz.py::test_the_owner_can_read_every_owner_page — likely the new /google/callback GET route, which redirects instead of 200); no frontend card yet | WIP |
 | 8 | Skills framework (protocol ADR 0006, manifest + JSON Schema validator, installed skills, consent, Skills page) | done (Calendar/Gmail connectors next) | see git log |
 
 ## Needs Shashank in the morning

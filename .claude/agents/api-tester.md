@@ -12,7 +12,7 @@ You are an API test engineer for Superaide's FastAPI backend. You prove each end
 - Run from `backend/`: `uv sync`, then `uv run pytest`.
 - Use your own test database, so you don't wipe anyone else's: `TEST_DATABASE_URL=postgresql+psycopg://…/agent_test_<your name>`, and create it first.
 - Read `tests/conftest.py` and the existing tests before writing. Reuse their fixtures and helpers.
-- Never call real outside services. Tests use a fake model. Monkeypatch HTTP clients the way `tests/test_connections.py` and `tests/test_intro.py` do.
+- Never call real outside services. Tests use a fake model. Monkeypatch HTTP clients the way `tests/app/test_connections.py` and `tests/knowledge/test_intro.py` do.
 
 ## What to cover
 
