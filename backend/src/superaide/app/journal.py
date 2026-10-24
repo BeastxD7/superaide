@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import delete
 
-from superaide.app.routes import owner_person_id
+from superaide.app.deps import owner_person_id
 from superaide.audit import audit
 from superaide.auth.routes import reject_nul_text, require_csrf_header
 from superaide.db.models import Prediction

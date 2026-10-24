@@ -23,7 +23,7 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from superaide.app.routes import owner_person_id, telegram_username
+from superaide.app.deps import owner_person_id, telegram_username
 from superaide.auth import google as google_auth
 from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header
 from superaide.channels import health

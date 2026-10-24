@@ -41,7 +41,7 @@ def set_card(owner, first="Ananya", initial="T", opt_in=True, **extra):
 
 
 def token_for(owner) -> str:
-    from superaide.app.routes import _hired_instance  # the owner's instance
+    from superaide.app.deps import _hired_instance  # the owner's instance
 
     with session_scope() as s:
         scope, _ = _hired_instance(_user_id(s))
@@ -110,7 +110,7 @@ def test_a_forged_or_tampered_token_is_the_same_404(browser, owner, on):
 
 def test_an_expired_card_is_404(browser, owner, on):
     set_card(owner)
-    from superaide.app.routes import _hired_instance
+    from superaide.app.deps import _hired_instance
 
     with session_scope() as s:
         scope, _ = _hired_instance(_user_id(s))
@@ -130,7 +130,7 @@ def test_revoking_kills_every_card_sent_so_far_and_new_ones_work(browser, owner,
 
 def test_the_footer_names_the_owner_and_links_the_card(owner, on):
     set_card(owner)
-    from superaide.app.routes import _hired_instance
+    from superaide.app.deps import _hired_instance
 
     with session_scope() as s:
         scope, _ = _hired_instance(_user_id(s))
@@ -234,7 +234,7 @@ def test_stats_count_shown_opened_once_per_card_and_revoked(browser, owner, on):
         card.footer(s, channel="slack", to="Priya Tan")
         card.footer(s, channel="telegram", to="Jon Lee")
     first = owner.get("/app/principal-card/sent").json()["cards"][1]
-    from superaide.app.routes import _hired_instance
+    from superaide.app.deps import _hired_instance
 
     with session_scope() as s:
         scope, _ = _hired_instance(_user_id(s))

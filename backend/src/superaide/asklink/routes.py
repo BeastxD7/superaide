@@ -25,7 +25,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
-from superaide.app.routes import owner_person_id
+from superaide.app.deps import owner_person_id
 from superaide.asklink import handles, service
 from superaide.asklink.models import AskHandle, AskLink, AskRequest
 from superaide.audit import audit

@@ -15,7 +15,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from superaide.app.routes import owner_person_id
+from superaide.app.deps import owner_person_id
 from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header
 from superaide.brain import keyhealth
 from superaide.brain.pricing import PRICES, UnknownModelPrice, set_owner_price

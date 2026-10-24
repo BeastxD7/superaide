@@ -54,6 +54,19 @@ def test_only_the_composition_roots_import_the_factory(graph):
     assert importers <= {"runtime", "cli"}, importers
 
 
+def test_routers_share_deps_not_the_app_router_module(graph):
+    """technique 5: ~30 routers imported app.routes only for owner_person_id; they take it from app.deps."""
+    importers = {f for f, targets in graph.imports.items() if "app.routes" in targets}
+    assert importers <= {"main"}, importers
+
+
+def test_the_agent_core_is_out_of_every_cycle(graph):
+    cycles = _load("layout_report").sccs(sorted(graph.imports), graph.imports)
+    in_cycle = {f for c in cycles for f in c}
+    core = {"pipeline", "brain.loop", "brain.capabilities", "factory", "policy.actions", "policy.kinds", "app.routes"}
+    assert not core & in_cycle, sorted(core & in_cycle)
+
+
 def test_policy_does_not_depend_on_what_it_gates(graph):
     leaked = sorted(
         f"{src} -> {dst}"
@@ -69,4 +82,4 @@ def test_the_biggest_import_cycle_only_shrinks(graph):
     lr = _load("layout_report")
     cycles = lr.sccs(sorted(graph.imports), graph.imports)
     biggest = max((len(c) for c in cycles), default=0)
-    assert biggest <= 22, f"the largest file-level import cycle grew to {biggest} files (ADR 0015 phase 2)"
+    assert biggest <= 12, f"the largest file-level import cycle grew to {biggest} files (ADR 0015 phase 2)"
