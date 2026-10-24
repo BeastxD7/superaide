@@ -180,6 +180,25 @@ def _approval_report(_: argparse.Namespace) -> None:
     )
 
 
+def _mandate_shadow_report(args: argparse.Namespace) -> None:
+    """How many recent approvals would a mandate have covered? Read-only (issue #112)."""
+    from superaide.db.session import rescope, session_scope
+    from superaide.mandate.service import shadow_report
+    from superaide.tenancy.context import default_scope, use_instance
+    from superaide.tenancy.service import active_scopes
+
+    with session_scope() as s:
+        scopes = active_scopes(s) or [default_scope()]
+    for scope in scopes:
+        with use_instance(scope), session_scope() as s:
+            rescope(s)
+            r = shadow_report(s, days=args.days)
+        print(
+            f"Ava {scope.agent_id}: last {r['days']} days, {r['approvals']} approvals, {r['measured']} measured, "
+            f"a mandate would have covered {r['would_cover']}"
+        )
+
+
 def _witness(args: argparse.Namespace) -> None:
     """Verify each Ava's action log and freeze any Ava whose log looks wrong (issue #113)."""
     from datetime import UTC, datetime
@@ -396,6 +415,9 @@ def main() -> None:
     sub.add_parser("approval-report", help="would strict approval binding have refused a real approval?").set_defaults(
         func=_approval_report
     )
+    p = sub.add_parser("mandate-shadow-report", help="how many approvals would a mandate have covered? (read-only)")
+    p.add_argument("--days", type=int, default=30)
+    p.set_defaults(func=_mandate_shadow_report)
     p = sub.add_parser("witness", help="check every Ava's action log; freeze one whose log looks wrong")
     p.add_argument("--dry-run", action="store_true", help="report only, freeze nothing")
     p.set_defaults(func=_witness)
