@@ -63,7 +63,7 @@ test.describe('dashboard on a phone', () => {
     await page.goto('/dashboard')
     for (const name of ['Notebook', 'People', 'Capabilities', 'Connections', 'Settings', 'Home']) {
       await goToDashboardPage(page, name)
-      await expect(page.getByRole('main').locator('header')).toContainText(name)
+      await expect(page.getByRole('main').locator('header').first()).toContainText(name)
       await expect(page.getByRole('dialog')).toHaveCount(0)
     }
     await sidebarTrigger(page).click()
