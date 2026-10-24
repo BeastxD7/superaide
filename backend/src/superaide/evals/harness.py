@@ -33,6 +33,7 @@ from superaide.brain.turn import Prediction, RequestedAction, TurnOutput
 from superaide.channels.base import FakeMessenger, InboundMessage
 from superaide.config import Settings, get_settings
 from superaide.db.models import Base, ChannelIdentity, Event, Intention, Person, SpendEntry, UserAccount
+from superaide.db.safety import assert_disposable_database
 from superaide.db.session import ensure_extensions, get_engine, session_scope
 from superaide.evals import checks
 from superaide.evals.scenario import FakeTurn, Scenario, Share, Turn
@@ -252,6 +253,7 @@ _schema_ready: set[str] = set()
 def reset_db(*, wipe_ledger: bool = False) -> None:
     """Every table emptied, except the spend ledger (so the cap holds across a whole run)."""
     engine = get_engine()
+    assert_disposable_database(engine.url)  # before any statement: this truncates every table
     url = str(engine.url)
     if url not in _schema_ready:
         ensure_extensions(engine)
