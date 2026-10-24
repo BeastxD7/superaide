@@ -85,7 +85,7 @@ def start_url(user_id: uuid.UUID, scopes: list[str], origin: str) -> str:
     """A Google sign-in URL asking for `scopes` on top of what was granted before."""
     settings = runtime_settings()
     if not (settings.google_client_id and settings.google_client_secret):
-        raise HTTPException(409, "Save your Google OAuth client under Connections first.")
+        raise HTTPException(409, "Save your Google OAuth client under Capabilities first.")
     verifier, challenge = google.pkce_pair()
     state = secrets.token_urlsafe(24)
     scope = scope_or_default()

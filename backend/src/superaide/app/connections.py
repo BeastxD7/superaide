@@ -78,7 +78,8 @@ def pending_origin(pending: dict[str, Any]) -> str:
     return get_settings().frontend_origin.rstrip("/")
 
 
-BACK_PAGES = {"connections": "/dashboard/connections", "skills": "/dashboard/capabilities"}
+# The Google account card is on Capabilities now; a sign-in started before the move (back="connections") lands there.
+BACK_PAGES = {"connections": "/dashboard/capabilities", "skills": "/dashboard/capabilities"}
 
 
 def begin_google(user_id: uuid.UUID, *, events: bool, origin: str, back: str = "connections") -> str:
@@ -359,7 +360,9 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
         description="Returns the Google sign-in URL (OAuth 2.1 with PKCE). Open it in the browser.",
     )
     def google_start(
-        request: Request, _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
+        request: Request,
+        _: uuid.UUID = Depends(owner_person_id),
+        user_id: uuid.UUID = Depends(current_user_id),
     ) -> dict[str, str]:
         from superaide.integrations.calendar import skill as calendar
 
@@ -367,14 +370,14 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
 
         with session_scope() as s:
             events = calendar.actions_on(s)  # reconnecting keeps the right to change events, if it was given
-        return {"url": begin_google(user_id, events=events, origin=origin)}
+        return {"url": begin_google(user_id, events=events, origin=origin, back="skills")}
 
     @router.get(
         "/google/callback",
         summary="Google sign-in callback",
         description=(
             "Google sends the browser here. Checks the one-time state from Start (which is tied to the signed-in "
-            "owner), stores the refresh token, then sends the browser back to Connections with ?google=<result>."
+            "owner), stores the refresh token, then sends the browser back to Capabilities with ?google=<result>."
         ),
         include_in_schema=False,
     )
@@ -429,7 +432,11 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
                 s, "google", {"refresh_token": str(tokens["refresh_token"])}, user_id=uuid.UUID(pending["user_id"]),
                 meta={"scopes": sorted(set(str(tokens.get("scope", "")).split()))},
             )  # fmt: skip
-        return RedirectResponse(f"{back}?google=connected", status_code=303)
+        # A sign-in that asked for calendar.events (switching calendar actions on, or reconnecting while they are on)
+        # says so: the page tells "Google is connected" from "Ava can now change your calendar". `connected` stays for
+        # a plain connect.
+        wanted_events = google.EVENTS_SCOPE in (pending.get("scopes") or [])
+        return RedirectResponse(f"{back}?google={'actions-enabled' if wanted_events else 'connected'}", status_code=303)
 
     @router.post(
         "/{provider}/disconnect",
