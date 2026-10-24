@@ -9,6 +9,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from superaide.contracts.events import CalendarEventsRead, bus
+from superaide.integrations.calendar import settings as cal_settings
 from superaide.integrations.google import client as google
 from superaide.intentions.service import owner_zone
 from superaide.intentions.when import find_moment, zone
@@ -70,6 +71,7 @@ def fresh_event(session: Session, owner: Person, event_id: str) -> dict[str, Any
 
 
 def window(session: Session, owner: Person, start_words: str, days: int) -> tuple[datetime, datetime, Any]:
+    cap = int(cal_settings.load(session)["ahead_days"])
     tz = zone(owner_zone(session, owner))
     now = datetime.now(UTC).astimezone(tz)
     words = (start_words or "today").strip().lower()
@@ -79,19 +81,22 @@ def window(session: Session, owner: Person, start_words: str, days: int) -> tupl
         found = find_moment(words, now)
         day = found[0].astimezone(tz).date() if found else now.date()
     start = datetime.combine(day, time.min, tz)
-    return start, start + timedelta(days=max(1, min(days, 14))), tz
+    return start, start + timedelta(days=max(1, min(days, cap))), tz
 
 
 def calendar_events(session: Session, owner: Person, args: dict[str, Any]) -> tuple[Any, bool]:
     if not connected():
         return "Google Calendar isn't connected yet. Ask the owner to connect it under Connections.", True
-    start, end, tz = window(session, owner, str(args.get("from", "today")), int(args.get("days") or 1))
+    asked = int(args.get("days") or 1)
+    start, end, tz = window(session, owner, str(args.get("from", "today")), asked)
+    capped = asked > int(cal_settings.load(session)["ahead_days"])
     try:
         events = fetch(session, owner, start, end, str(args.get("query") or ""))
     except google.GoogleError as exc:
         return google.tool_text(exc), True
+    limit = f" {cal_settings.note('ahead_days')}" if capped else ""
     if not events:
-        return f"No events between {start:%a %d %b} and {end - timedelta(seconds=1):%a %d %b}.", False
+        return f"No events between {start:%a %d %b} and {end - timedelta(seconds=1):%a %d %b}.{limit}", False
     bus.publish(CalendarEventsRead(session, events))  # knowledge.connector_facts: a few short facts, if turned on
     out = []
     for e in events:
@@ -105,12 +110,13 @@ def calendar_events(session: Session, owner: Person, args: dict[str, Any]) -> tu
                 "citations": {"enabled": True},
             }
         )
+    if capped:
+        out.append({"type": "text", "text": f"Only {cal_settings.load(session)['ahead_days']} days were read.{limit}"})
     return out, False
 
 
 # --- free/busy and calendar actions -------------------------------------------------------------------
 
-DAY_START, DAY_END = time(8), time(20)  # the hours free_busy describes as free or busy
 OPTION = "actions"
 
 
@@ -144,8 +150,10 @@ def calendar_free_busy(session: Session, owner: Person, args: dict[str, Any]) ->
         return google.tool_text(exc), True
     lines = []
     day = start
+    cfg = cal_settings.load(session)
+    hours = (time(int(cfg["day_start"])), time(int(cfg["day_end"])))
     while day < end:
-        open_, close = datetime.combine(day.date(), DAY_START, tz), datetime.combine(day.date(), DAY_END, tz)
+        open_, close = datetime.combine(day.date(), hours[0], tz), datetime.combine(day.date(), hours[1], tz)
         blocks = [(max(b, open_), min(e, close)) for b, e in busy if e > open_ and b < close]
         free, cursor = [], open_
         for b, e in blocks:
@@ -160,7 +168,7 @@ def calendar_free_busy(session: Session, owner: Person, args: dict[str, Any]) ->
 
         lines.append(f"{day:%a %d %b}: busy {span(blocks)}; free {span(free)}")
         day += timedelta(days=1)
-    return f"Free and busy, {DAY_START:%H:%M}–{DAY_END:%H:%M} ({tz}):\n" + "\n".join(lines), False
+    return f"Free and busy, {hours[0]:%H:%M}–{hours[1]:%H:%M} ({tz}):\n" + "\n".join(lines), False
 
 
 def _others(event: dict[str, Any]) -> list[str]:

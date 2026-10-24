@@ -73,7 +73,9 @@ def schedule_calendar(session: Session, events: list[dict[str, Any]]) -> None:
     """After the calendar was read: one job per event (new, or changed since last time)."""
     if not enabled():
         return
-    for e in events[:MAX_PER_CALL]:
+    from superaide.integrations.calendar import settings as cal_settings
+
+    for e in events[: int(cal_settings.load(session)["events_per_read"])]:
         eid = str(e.get("id") or "")
         if eid:
             version = str(e.get("updated") or "")

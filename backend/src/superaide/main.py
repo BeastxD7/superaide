@@ -164,6 +164,19 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     from superaide.integrations.gmail.routes import make_router as make_gmail_router
 
     app.include_router(make_gmail_router(get_agent))
+    from superaide.integrations.calendar import settings as calendar_settings
+    from superaide.skills.connector_settings import make_router as make_connector_settings_router
+
+    app.include_router(
+        make_connector_settings_router(
+            prefix="calendar",
+            skill_id=calendar_settings.SKILL_ID,
+            choices=calendar_settings.CHOICES,
+            tag="Owner: Calendar",
+            what="Google Calendar reading",
+            event="calendar_read_settings",
+        )
+    )
     from superaide.triage.routes import make_router as make_triage_router
 
     app.include_router(make_triage_router(get_agent))  # 404 everywhere while TRIAGE_ENABLED is off
