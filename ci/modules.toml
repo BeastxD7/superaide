@@ -606,6 +606,8 @@ tests = [
 ]
 e2e = [
   "e2e/tests/reminders-sync.spec.ts",
+  "e2e/tests/reminders-pill.spec.ts",
+  "e2e/tests/reminders-pill.mobile.spec.ts",
   "e2e/tests/journeys/reminders.spec.ts",
 ]
 
@@ -847,6 +849,8 @@ e2e = [
   "e2e/tests/qa-dashboard.spec.ts",
   "e2e/tests/qa-dashboard.mobile.spec.ts",
   "e2e/tests/approvals-sync.spec.ts",
+  "e2e/tests/reminders-pill.spec.ts",
+  "e2e/tests/reminders-pill.mobile.spec.ts",
   "e2e/tests/journeys/workspace.spec.ts",
   "e2e/tests/journeys/approvals.spec.ts",
   "e2e/tests/journeys/reminders.spec.ts",

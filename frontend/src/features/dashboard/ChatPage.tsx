@@ -15,6 +15,7 @@ import { droppedBy, joinOlder, oldestSaved, PAGE } from '@/lib/chat-history'
 import { isSendKey } from '@/lib/keys'
 import { useSession } from '@/lib/session-context'
 import { errorMessage } from '@/lib/action'
+import { announceReminderSteps } from '@/lib/reminder-toast'
 import { ResumeButton } from '@/features/dashboard/ResumeButton'
 
 const QUICK = [
@@ -168,6 +169,7 @@ export function ChatPage() {
       const fresh = await call<Message[]>('/messages')
       refreshed.current = true
       showFresh(fresh)
+      announceReminderSteps(fresh)
       if (failure) setError(failure)
       // Paused: the message is kept, but say why nothing came back instead of leaving silence.
       else if (mode === 'frozen') {
