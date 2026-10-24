@@ -87,7 +87,7 @@ export function AppSidebar({ session, me }: { session: Session; me: Me }) {
             <SidebarGroupContent>
               <SidebarMenu>
                 {items
-                  .filter((i) => (!i.triage || triage.enabled) && (!i.rehearsal || rehearsal) && (!i.school || school))
+                  .filter((i) => (!i.triage || triage.enabled) && (!i.learning || rehearsal || school))
                   .map(({ href, label, icon: Icon, triage: counted, approvals: approvalsCounted, reminders: remindersCounted }) => (
                   <SidebarMenuItem key={href}>
                     <SidebarMenuButton asChild isActive={isActive(href)} tooltip={label}>
