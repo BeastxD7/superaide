@@ -59,6 +59,18 @@ CHOICES: dict[str, tuple[tuple[Any, ...], Any, str, str]] = {
     "search_limit": ((5, 10, 25), 10, "Search size", "Emails returned by one search."),
     "thread_depth": ((3, 5, 10), 5, "Thread depth", "Latest messages of a thread Ava reads."),
     "lookback_days": ((0, 30, 365), 0, "How far back Ava looks", "Days back; 0 means all of your mail."),
+    "triage_excerpt": (
+        (500, 1000, 2000),
+        1000,
+        "New mail: how much Ava reads to sort it",
+        "Characters of each new email's own text that the inbox sorter reads to decide whether it needs you.",
+    ),
+    "triage_batch": (
+        (25, 50, 100),
+        50,
+        "New mail: emails sorted per check",
+        "How many new emails are read and sorted each time Ava checks your inbox (the rest wait for the next check).",
+    ),
 }
 LISTS = ("blocked", "allowed")
 MAX_ENTRIES = 50
@@ -75,6 +87,8 @@ class ReadSettings:
     search_limit: int = 10
     thread_depth: int = 5
     lookback_days: int = 0
+    triage_excerpt: int = 1000
+    triage_batch: int = 50
     blocked: list[str] = field(default_factory=list)  # senders, domains and labels Ava never reads
     allowed: list[str] = field(default_factory=list)  # senders whose payment mail Ava may preview and quote
 

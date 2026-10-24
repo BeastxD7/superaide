@@ -180,6 +180,30 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     from superaide.auth.stepup_routes import make_router as make_stepup_router
 
     app.include_router(make_stepup_router())
+    from superaide.channels import settings as channel_settings
+
+    app.include_router(
+        make_connector_settings_router(
+            prefix="channels",
+            skill_id=channel_settings.SKILL_ID,
+            choices=channel_settings.CHOICES,
+            tag="Owner: Connections",
+            what="Reading and keeping messages",
+            event="channels_read_settings",
+        )
+    )
+    from superaide.skills import retention_settings
+
+    app.include_router(
+        make_connector_settings_router(
+            prefix="retention",
+            skill_id=retention_settings.SKILL_ID,
+            choices=retention_settings.CHOICES,
+            tag="Owner: Settings",
+            what="Reminders and approvals",
+            event="retention_read_settings",
+        )
+    )
     from superaide.triage.routes import make_router as make_triage_router
 
     app.include_router(make_triage_router(get_agent))  # 404 everywhere while TRIAGE_ENABLED is off

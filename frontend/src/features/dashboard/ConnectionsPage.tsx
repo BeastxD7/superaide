@@ -1,5 +1,6 @@
 'use client'
 
+import { ConnectorSettings } from '@/features/dashboard/ConnectorSettings'
 import { HowThisWorks } from '@/features/dashboard/settings/HowThisWorks'
 import { Connections } from '@/features/workspace/Connections'
 import { useSession } from '@/lib/session-context'
@@ -18,6 +19,9 @@ export function ConnectionsPage() {
         </p>
         <div className="mt-6">
           <Connections agentName={me.agent.name} me={me} refreshMe={session.refresh} />
+        </div>
+        <div className="mt-6">
+          <ConnectorSettings path="channels" title="Reading and keeping" anchor="channels" />
         </div>
         <div className="mt-6">
           <HowThisWorks

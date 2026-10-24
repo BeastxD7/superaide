@@ -53,6 +53,9 @@ def payload_hash(kind: str, payload: dict[str, Any]) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
 
 
+APPROVAL_TTL_CHOICES = (0, 1, 24, 72, 168)  # hours the owner may pick for how long a request waits (0 = never)
+
+
 def seal(approval: Approval) -> None:
     """Record what the owner is about to be shown: the hash of the payload and, when a lifetime is set, the
     moment the request stops being answerable. Call it once the payload is final, before the first flush."""
@@ -61,8 +64,14 @@ def seal(approval: Approval) -> None:
     settings = get_settings()
     if settings.approval_binding != "off":
         approval.bound_hash = payload_hash(approval.kind, approval.payload)
-    if settings.approval_ttl_hours > 0:
-        approval.expires_at = datetime.now(UTC) + timedelta(hours=settings.approval_ttl_hours)
+    from superaide.platform.db.session import session_scope
+    from superaide.policy.killswitch import get_state
+
+    with session_scope() as cfg:  # the owner's choice (Settings, #433), else the operator's
+        chosen = (get_state(cfg, "settings:retention").get("read") or {}).get("approval_ttl_hours")
+    hours = chosen if chosen in APPROVAL_TTL_CHOICES else settings.approval_ttl_hours
+    if hours > 0:
+        approval.expires_at = datetime.now(UTC) + timedelta(hours=hours)
 
 
 def expired(approval: Approval, *, now: datetime | None = None) -> bool:
