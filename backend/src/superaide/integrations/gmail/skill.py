@@ -36,6 +36,7 @@ from superaide.platform.db.models import Approval, InstalledSkill, Person
 from superaide.policy import recipients
 from superaide.policy.binding import content_hash, payload_hash, seal
 from superaide.policy.registry import DISCARDERS, EXECUTORS
+from superaide.principal import signature
 
 SKILL_ID = "superaide/gmail"
 SLOT = ("google", "gmail_refresh_token")
@@ -347,9 +348,11 @@ def _draft(
     thread = str(found.get("id") or original.get("threadId") or "")
 
     def make(with_sig: bool) -> dict[str, Any]:
+        spec = sig["spec"] if sig and with_sig else None
         body = text[:5000] + (sig["text"] if sig and with_sig else "")
+        html = signature.document_html(text[:5000], spec)  # every email is multipart: the text part and this
         return api.create_draft(
-            client, tok, api.reply_raw(original=original, to=[to], from_addr=mine, text=body), thread
+            client, tok, api.reply_raw(original=original, to=[to], from_addr=mine, text=body, html=html), thread
         )
 
     draft = make(signed)
@@ -516,7 +519,8 @@ def compose(
 
         def make(with_sig: bool) -> dict[str, Any]:
             body = text + (sig["text"] if sig and with_sig else "")
-            raw = api.new_raw(to=[to], from_addr=address(session), subject=subject, text=body)
+            html = signature.document_html(text, sig["spec"] if sig and with_sig else None)
+            raw = api.new_raw(to=[to], from_addr=address(session), subject=subject, text=body, html=html)
             return api.create_draft(client, tok, raw, "")
 
         draft = make(signed)
@@ -576,6 +580,7 @@ def _draft_hash(msg: dict[str, Any] | None) -> str:
         thread_id=str(msg.get("threadId") or ""),
         subject=api.headers(msg).get("subject", ""),
         text=api.body_text(msg),
+        html=api.body_html(msg),
     )
 
 

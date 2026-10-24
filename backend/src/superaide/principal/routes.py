@@ -15,11 +15,11 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from superaide.app.deps import owner_person_id
 from superaide.auth.routes import reject_nul_text, require_csrf_header
-from superaide.links import is_local, public_base
+from superaide.links import is_local, public_base, public_url
 from superaide.platform.audit import audit
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import use_instance
-from superaide.principal import card
+from superaide.principal import card, signature
 
 
 def _not_found() -> HTTPException:
@@ -39,8 +39,24 @@ class CardBody(BaseModel):
     sign_default: bool | None = None  # omitted keeps the owner's choice (the default is on)
     channels: bool | None = None  # also sign Telegram and Slack replies to other people (default off)
     wording: str | None = Field(default=None, max_length=card.MAX_WORDING)
+    avatar: bool | None = None  # the small picture in the email signature
+    mark: bool | None = None  # "Sent with Superaide"
+    title: str | None = Field(default=None, max_length=card.MAX_TITLE)
+    accent: str | None = Field(default=None, max_length=20)  # one of signature.ACCENTS
     can: list[str] | None = Field(default=None, max_length=card.MAX_LISTED)
     cannot: list[str] | None = Field(default=None, max_length=card.MAX_LISTED)
+
+
+class PreviewBody(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    first_name: str | None = Field(default=None, max_length=card.MAX_FIRST)
+    initial: str | None = Field(default=None, max_length=2)
+    wording: str | None = Field(default=None, max_length=card.MAX_WORDING)
+    avatar: bool | None = None
+    mark: bool | None = None
+    title: str | None = Field(default=None, max_length=card.MAX_TITLE)
+    accent: str | None = Field(default=None, max_length=20)
 
 
 class SignDefault(BaseModel):
@@ -79,11 +95,15 @@ def make_owner_router() -> APIRouter:
         return person_id
 
     def _view(s: Any, cur: dict[str, Any]) -> dict[str, Any]:
-        link = card.issue_link(s)
-        keys = ("first_name", "initial", "display_name", "can", "cannot", "sign_default", "channels", "wording")
+        link = card.preview_link(s)
+        keys = (
+            "first_name", "initial", "display_name", "can", "cannot", "sign_default", "channels", "wording",
+            "avatar", "mark", "title", "accent",
+        )  # fmt: skip
         return {k: cur[k] for k in keys} | {
             "name_shown": card.owner_name(s),
             "default_wording": card.DEFAULT_WORDING,
+            "accents": list(signature.ACCENTS),
             "active": cur["sign_default"] and bool(card.owner_name(s)),
             "preview": link["url"] if link else None,
             "address": public_base(),
@@ -113,9 +133,12 @@ def make_owner_router() -> APIRouter:
                 cur = card.configure(
                     s, first_name=body.first_name, initial=body.initial, can=body.can, cannot=body.cannot,
                     sign_default=body.sign_default, channels=body.channels, wording=body.wording,
+                    avatar=body.avatar, mark=body.mark, title=body.title, accent=body.accent,
                 )  # fmt: skip
-            except ValueError:
-                raise HTTPException(422, "first_name must be a single first name (letters only)") from None
+            except ValueError as exc:
+                raise HTTPException(
+                    422, str(exc) if "accent" in str(exc) else "first_name must be a single first name (letters only)"
+                ) from None
             audit(s, "owner", "principal_card_set", sign_default=cur["sign_default"])
             return _view(s, cur)
 
@@ -129,6 +152,33 @@ def make_owner_router() -> APIRouter:
             cur = card.set_sign_default(s, body.on)
             audit(s, "owner", "principal_card_sign_on" if body.on else "principal_card_sign_off")
             return _view(s, cur)
+
+    @router.post(
+        "/preview",
+        summary="Preview my email signature",
+        description=(
+            "The signature as an email would carry it, for the settings given (nothing is saved or sent): the HTML "
+            "block and the plain-text twin, on a sample message. The link is a placeholder."
+        ),
+    )
+    def preview(body: PreviewBody, person_id: uuid.UUID = Depends(owner_on)) -> dict[str, Any]:
+        with session_scope() as s:
+            cur = card.settings_of(s) | {
+                k: v for k, v in body.model_dump().items() if v is not None
+            }  # the unsaved edits win
+            if cur["accent"] not in signature.ACCENTS:
+                raise HTTPException(422, "accent must be one of the palette")
+            cur["title"] = card.clean_title(str(cur["title"]))
+            cur["wording"] = card.clean_wording(str(cur["wording"])) or card.DEFAULT_WORDING
+            name = card.display_of(card.clean_first_name(body.first_name or ""), card.clean_initial(body.initial or ""))
+            sample = "Hi Jane,\n\nFriday at 3 works for me. I will send the agenda tomorrow.\n\nBest,\nAva"
+            url = public_url("/c/Preview1")
+            spec = card.signature_spec(s, url, settings=cur, name=name or None)
+            return {
+                "html": signature.document_html(sample, spec),
+                "text": sample + "\n\n" + spec.text,
+                "verify_url": url,
+            }
 
     @router.get(
         "/stats",

@@ -362,6 +362,29 @@
       },
       "CardBody": {
         "properties": {
+          "accent": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accent"
+          },
+          "avatar": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar"
+          },
           "can": {
             "anyOf": [
               {
@@ -415,6 +438,17 @@
             "title": "Initial",
             "type": "string"
           },
+          "mark": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mark"
+          },
           "sign_default": {
             "anyOf": [
               {
@@ -425,6 +459,18 @@
               }
             ],
             "title": "Sign Default"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 60,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
           },
           "wording": {
             "anyOf": [
@@ -1407,51 +1453,6 @@
           "confidence_pct"
         ],
         "title": "PredictionBody",
-        "type": "object"
-      },
-      "PreviewBody": {
-        "properties": {
-          "kind": {
-            "maxLength": 10,
-            "title": "Kind",
-            "type": "string"
-          },
-          "model": {
-            "default": "",
-            "maxLength": 120,
-            "title": "Model",
-            "type": "string"
-          },
-          "prompt": {
-            "default": "",
-            "maxLength": 4000,
-            "title": "Prompt",
-            "type": "string"
-          },
-          "skill_id": {
-            "default": "",
-            "maxLength": 80,
-            "title": "Skill Id",
-            "type": "string"
-          },
-          "tasks": {
-            "anyOf": [
-              {
-                "maximum": 50.0,
-                "minimum": 1.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tasks"
-          }
-        },
-        "required": [
-          "kind"
-        ],
-        "title": "PreviewBody",
         "type": "object"
       },
       "PriceBody": {
@@ -2780,6 +2781,94 @@
         "title": "CreateBody",
         "type": "object"
       },
+      "superaide__principal__routes__PreviewBody": {
+        "properties": {
+          "accent": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accent"
+          },
+          "avatar": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar"
+          },
+          "first_name": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Name"
+          },
+          "initial": {
+            "anyOf": [
+              {
+                "maxLength": 2,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Initial"
+          },
+          "mark": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mark"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 60,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "wording": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wording"
+          }
+        },
+        "title": "PreviewBody",
+        "type": "object"
+      },
       "superaide__reception__routes__SettingsBody": {
         "properties": {
           "enabled": {
@@ -2869,6 +2958,51 @@
           "text"
         ],
         "title": "CreateBody",
+        "type": "object"
+      },
+      "superaide__tooltrace__preview_routes__PreviewBody": {
+        "properties": {
+          "kind": {
+            "maxLength": 10,
+            "title": "Kind",
+            "type": "string"
+          },
+          "model": {
+            "default": "",
+            "maxLength": 120,
+            "title": "Model",
+            "type": "string"
+          },
+          "prompt": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Prompt",
+            "type": "string"
+          },
+          "skill_id": {
+            "default": "",
+            "maxLength": 80,
+            "title": "Skill Id",
+            "type": "string"
+          },
+          "tasks": {
+            "anyOf": [
+              {
+                "maximum": 50.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tasks"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "PreviewBody",
         "type": "object"
       },
       "superaide__triage__routes__FeedbackBody": {
@@ -9440,6 +9574,55 @@
         ]
       }
     },
+    "/app/principal-card/preview": {
+      "post": {
+        "description": "The signature as an email would carry it, for the settings given (nothing is saved or sent): the HTML block and the plain-text twin, on a sample message. The link is a placeholder.",
+        "operationId": "preview_app_principal_card_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/superaide__principal__routes__PreviewBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Preview App Principal Card Preview Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Preview my email signature",
+        "tags": [
+          "Owner: principal card"
+        ]
+      }
+    },
     "/app/principal-card/revoke": {
       "post": {
         "operationId": "revoke_app_principal_card_revoke_post",
@@ -13741,7 +13924,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/PreviewBody"
+                "$ref": "#/components/schemas/superaide__tooltrace__preview_routes__PreviewBody"
               }
             }
           },

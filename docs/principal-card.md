@@ -35,3 +35,15 @@ A stored legacy `opted_in` value is ignored: the default is on unless the owner 
 - Every link that leaves the app (the card, verification and reset mail, channel footers, push) is built by `superaide.links.public_url()`: `PUBLIC_BASE_URL` when set, else `FRONTEND_ORIGIN`. A test fails on any new use of `frontend_origin` in link-building code (`tests/principal/api/test_card_link.py`). At startup a warning is logged when the address is still localhost on a deployment that looks reachable from outside. Settings, Principal card shows the address in use and warns if it is local.
 - The card link is short: `/c/` plus 8 URL-safe characters (about 30 characters in total). It names a row in `card_link` (instance, card id, generation, expiry; no personal data; a platform lookup table exempt from Row-Level Security like `ask_handle`, because a recipient has no account). The page shows the owner's current name and lists, so editing them changes every card still valid.
 - Revoking all cards (generation) or one card (its id) kills the link; so does expiry (`PRINCIPAL_CARD_DAYS`). Long signed tokens from emails sent earlier keep working until they expire.
+
+## The email signature block (#439)
+
+Every email Ava drafts is `multipart/alternative`: a plain-text part (the message, then the sign-off, the AI line and the short link) and an HTML part. The model writes only the message; `principal/signature.py` builds the block from the owner's settings, so it cannot change or remove it, and the model's text is escaped in the HTML.
+
+The block is a table layout with inline CSS (plus one small dark-mode media query), at most 600 px wide: a thin rule, the round avatar (48 px, served from the public address as `/brand/ava-96.png`, with alt text and fixed size), then **Ava**, "Personal assistant of <first name>", one line saying she is an AI assistant acting for that person, and a "Verify this assistant" button to the short card link. An optional "Sent with Superaide" line carries the mark. No scripts, remote fonts, forms or tracking pixels; the only hosts in it are the deployment's own.
+
+Settings, Principal card, "How the signature looks": picture on/off, "Sent with Superaide" on/off (off by default), an own title line (`{name}` allowed), the button colour from five safe accents (each keeps the white label above 4.5:1), and a live preview in a sandboxed frame (`POST /app/principal-card/preview`, nothing saved or sent).
+
+Approval binding: the signed draft and the plain draft both carry both parts; the draft hash covers the text and the HTML, so a change to either part after the yes is refused.
+
+Not done: the look in real mail apps (Gmail web and mobile, Outlook, Apple Mail) is checked by the owner or volunteers; rendered screenshots in the PR are from Chromium, in light mode, dark mode, with images blocked and at 390 px.
