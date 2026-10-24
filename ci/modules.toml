@@ -19,6 +19,12 @@
 # transitive: tests of every module that imports the changed code, directly or through others.
 # direct: only modules that import it themselves (faster, can miss an indirect break).
 expansion = "transitive"
+# Files that import everything to wire it together. A change in a module does not select the tests of "everything
+# main imports" through them (only through the real importers); a change IN a root still selects its own module.
+composition_roots = ["main", "cli", "plugins"]
+# Tests that boot the composed app; they run with every backend selection that changes code, in place of the
+# tests that merely import main or cli.
+composition_smoke = ["backend/tests/test_main.py"]
 
 # Paths that never need a test run (documentation and repository chrome).
 [ignore]
@@ -34,7 +40,7 @@ paths = [
   "backend/alembic/**", "backend/alembic.ini", "backend/pyproject.toml", "backend/uv.lock",
   "backend/openapi.snapshot.json", "backend/tests/conftest.py", "backend/tests/**/conftest.py",
   "backend/tests/__init__.py", "backend/tests/sharding.py", "backend/tests/fixtures/**",
-  "backend/src/superaide/**/models.py", "backend/scripts/**", "backend/Dockerfile",
+  "backend/src/superaide/**/models.py", "backend/src/superaide/plugins.py", "backend/scripts/**", "backend/Dockerfile",
   ".github/**", "ci/**", "scripts/**", "Makefile",
   "frontend/package.json", "frontend/package-lock.json", "frontend/*.ts", "frontend/*.mjs", "frontend/*.json",
   "frontend/public/**", "frontend/scripts/**", "frontend/Dockerfile",

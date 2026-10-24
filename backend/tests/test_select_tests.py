@@ -395,3 +395,74 @@ def test_the_guards_always_run_with_a_backend_selection(real) -> None:
     sel = st.select(["backend/src/superaide/mirror/service.py"], real)
     assert {"tests/api/test_authz.py", "tests/test_openapi_snapshot.py"} <= set(sel.backend_files)
     assert any(f.startswith("tests/redteam/") for f in sel.backend_files)
+
+
+# --- composition roots ----------------------------------------------------------------------------------
+
+ROOTS_MAP = (
+    MAP.replace(
+        'expansion = "transitive"',
+        'expansion = "transitive"\ncomposition_roots = ["main"]\ncomposition_smoke = ["backend/tests/test_boot.py"]',
+    )
+    + """
+[modules.wiring]
+src = ["backend/src/superaide/main.py"]
+tests = ["backend/tests/test_wiring.py", "backend/tests/test_boot.py"]
+e2e = ["e2e/tests/smoke.spec.ts"]
+"""
+)
+ROOTS_FILES = {
+    **FILES,
+    "ci/modules.toml": ROOTS_MAP,
+    # the composition root imports gamma and loner to wire them
+    "backend/src/superaide/main.py": "from superaide.gamma import api\nfrom superaide.loner import x\n",
+    "backend/tests/test_wiring.py": "from superaide import main\n",
+    "backend/tests/test_boot.py": "from superaide import main\n",
+}
+
+
+@pytest.fixture(scope="module")
+def roots_idx(tmp_path_factory: pytest.TempPathFactory):
+    root = tmp_path_factory.mktemp("repo_roots")
+    for rel, text in ROOTS_FILES.items():
+        p = root / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(text)
+    return st.build_index(root, files=sorted(ROOTS_FILES))
+
+
+def test_a_module_change_does_not_select_the_tests_of_the_composition_root(roots_idx) -> None:
+    sel = st.select(["backend/src/superaide/loner/x.py"], roots_idx)
+    assert "test_wiring.py" not in names_of(sel)
+    assert "wiring" not in sel.modules
+    # what boots the composed app still runs, plus the module and the guards
+    assert names_of(sel) >= {"test_loner.py", "test_guard.py", "test_boot.py"}
+
+
+def test_a_real_dependent_is_still_selected_through_a_chain_that_does_not_use_the_root(roots_idx) -> None:
+    sel = st.select(["backend/src/superaide/alpha/core.py"], roots_idx)
+    assert {"test_alpha.py", "test_beta.py", "test_gamma.py"} <= names_of(sel)  # alpha <- beta <- gamma
+    assert "test_wiring.py" not in names_of(sel)
+
+
+def test_changing_the_composition_root_runs_its_own_module_and_the_smoke_specs(roots_idx) -> None:
+    sel = st.select(["backend/src/superaide/main.py"], roots_idx)
+    assert "wiring" in sel.modules
+    assert {"test_wiring.py", "test_boot.py", "test_guard.py"} <= names_of(sel)
+    assert "e2e/tests/smoke.spec.ts" in {f"e2e/{s}" if not s.startswith("e2e/") else s for s in sel.e2e_specs}
+
+
+def test_without_composition_roots_configured_the_root_is_an_ordinary_dependent(idx) -> None:
+    assert st.ModuleMap.__dataclass_fields__["roots"].default == frozenset()
+
+
+def test_the_real_map_names_main_cli_and_plugins_as_roots(real) -> None:
+    assert real.mmap.roots == {"main", "cli", "plugins"}
+    assert real.mmap.root_smoke == ["backend/tests/test_main.py"]
+    sel = st.select(["backend/src/superaide/mirror/service.py"], real)
+    assert "tests/test_main.py" in sel.backend_files
+    assert "tests/test_cli.py" not in sel.backend_files  # cli is no longer a dependent of everything
+
+
+def test_the_real_map_runs_everything_when_the_plugin_list_changes(real) -> None:
+    assert st.select(["backend/src/superaide/plugins.py"], real).mode == "full"
