@@ -97,6 +97,7 @@ def parse_event(payload: dict[str, Any], *, our_team_id: str, verified: bool) ->
     )
 
 
+THREAD_MESSAGES = 25  # how much of a thread Ava reads when the owner @-mentions her in it
 WORKING_TEXT = "Working on it…"
 WORKING_STATUS = "is working on it…"
 # Slack errors that say the status API will never work for this app (so we stop asking and use the placeholder).
@@ -229,6 +230,24 @@ class SlackMessenger:
     def send_dm(self, identity: ChannelIdentity, text: str) -> bool:
         opened = self._call("conversations_open", users=identity.stable_key)
         return self._post(opened["channel"]["id"], text)
+
+    def thread_history(self, channel: str, thread_ts: str, limit: int = THREAD_MESSAGES) -> list[dict[str, Any]]:
+        """The messages of one thread, oldest first: [{"user", "text", "ts", "bot"}]. [] when Slack refuses
+        (missing channels:history / groups:history scope, an archived channel): Ava then answers without it."""
+        try:
+            reply = self._call("conversations_replies", channel=channel, ts=thread_ts, limit=limit)
+        except Exception as exc:
+            log.info("slack: thread history unavailable (%s)", _error_code(exc) or type(exc).__name__)
+            return []
+        out: list[dict[str, Any]] = []
+        for m in (reply.get("messages") if reply else None) or []:
+            if m.get("subtype") in {"channel_join", "channel_leave"} or not str(m.get("text") or "").strip():
+                continue
+            out.append(
+                {"user": str(m.get("user") or ""), "text": str(m["text"]), "ts": str(m.get("ts") or ""),
+                 "bot": bool(m.get("bot_id"))}
+            )  # fmt: skip
+        return out
 
     def send_to_context(self, context: Context, text: str, thread_id: str = "", sources: Sources | None = None) -> bool:
         return self._post(context.external_id, text, thread_id, sources)
