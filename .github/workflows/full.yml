@@ -11,6 +11,7 @@ on:
 permissions:
   contents: read
   pull-requests: read # ci.yml's secret scan asks for it; a called workflow can't exceed its caller
+  actions: read # ci.yml's CI result gate lists the failed e2e shards (added with the advisory e2e gate)
 
 # Never cancelled; a run that starts while one is going waits for it.
 concurrency:
