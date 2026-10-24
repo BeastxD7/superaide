@@ -194,7 +194,7 @@ update_if_behind() {
   fi
   if [ "$MODE" = prod ]; then
     # The production servers do not reload: build the new site, then stop both; start.command starts them again.
-    (cd frontend && ./node_modules/.bin/next build >/dev/null 2>&1) && echo "[auto-update] new frontend built" || echo "[auto-update] frontend build failed: still serving the old one"
+    (cd frontend && rm -rf .next/dev && ./node_modules/.bin/next build >/dev/null 2>&1) && echo "[auto-update] new frontend built" || echo "[auto-update] frontend build failed: still serving the old one"
     git rev-parse HEAD > /dev/null 2>&1 && echo "$(git rev-parse HEAD)-$(git status --porcelain -- frontend | shasum | cut -c1-12)" > frontend/.next/.superaide-rev 2>/dev/null || true
     for n in api web; do [ -f "$ROOT/.run/$n.pid" ] && kill "$(cat "$ROOT/.run/$n.pid")" 2>/dev/null || true; done
     echo "[auto-update] now at $(git log -1 --format='%h %s' | cut -c1-70); the API and site restart in a few seconds"
