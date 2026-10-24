@@ -231,6 +231,12 @@ jobs:
       - name: Type check
         run: uv run mypy
 
+      # ADR 0015: warn-only for now (never fails the job); the baseline ratchet is turned on by the owner.
+      - name: Import boundaries (warn-only)
+        continue-on-error: true
+        working-directory: .
+        run: uv run --python 3.14 --no-project python scripts/check_boundaries.py --baseline ci/boundary-baseline.json --annotations 20
+
       - name: Migrations apply, match the models, and roll back
         run: |
           uv run alembic upgrade head
