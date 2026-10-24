@@ -807,6 +807,8 @@ tests = [
   "frontend/src/instrumentation.test.ts",
   "frontend/src/lib/*.test.ts",
   "frontend/src/components/**/*.test.ts",
+  "frontend/src/components/**/*.test.tsx",
+  "frontend/src/hooks/*.test.ts",
 ]
 e2e = [
   "e2e/tests/responsive.mobile.spec.ts",
