@@ -581,6 +581,8 @@ export type GmailReadSettings = {
   search_limit: number
   thread_depth: number
   lookback_days: number
+  triage_excerpt: number
+  triage_batch: number
   blocked: string[]
   allowed: string[]
 }

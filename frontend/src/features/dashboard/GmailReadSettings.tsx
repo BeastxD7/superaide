@@ -22,7 +22,8 @@ const VALUE_LABEL: Record<string, string> = {
 const optionText = (name: string, v: string | number) => {
   if (VALUE_LABEL[String(v)] && name !== 'lookback_days') return VALUE_LABEL[String(v)]
   if (name === 'lookback_days') return v === 0 ? 'All of my mail' : `Last ${v} days`
-  if (name === 'body_chars') return `${v} characters`
+  if (name === 'body_chars' || name === 'triage_excerpt') return `${v} characters`
+  if (name === 'triage_batch') return `${v} emails`
   return String(v)
 }
 const EXAMPLES: Record<string, string> = {
@@ -178,7 +179,7 @@ export function GmailReadSettings({ name }: { name: string }) {
         {['payment_preview', 'bank_change_preview', 'numbers', 'codes'].map(choiceRow)}
       </SettingsSection>
       <SettingsSection title="How much she reads" description="Sizes and how far back she looks.">
-        {['body_chars', 'search_limit', 'thread_depth', 'lookback_days'].map(choiceRow)}
+        {['body_chars', 'search_limit', 'thread_depth', 'lookback_days', 'triage_excerpt', 'triage_batch'].map(choiceRow)}
       </SettingsSection>
       <SettingsSection title="Senders" description="People and labels that are always off limits or always allowed.">
         {(['blocked', 'allowed'] as const).map(listRow)}
