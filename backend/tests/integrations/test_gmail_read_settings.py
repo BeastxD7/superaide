@@ -211,3 +211,24 @@ def test_the_first_run_hint_is_part_of_the_card_view(owner_client, gmail_fake):
         ]
         == "show"
     )
+
+
+def test_each_setting_says_when_it_was_last_changed_from_the_audit_log(owner_client, gmail_fake):
+    """#441: "last changed by/when" under a setting. Only settings that were changed have an entry."""
+    _setup(gmail_fake)
+    assert owner_client.get("/app/gmail/read-settings").json()["last_changed"] == {}
+    assert owner_client.put("/app/gmail/read-settings", json={"numbers": "amounts"}).status_code == 200
+    out = owner_client.get("/app/gmail/read-settings").json()
+    assert set(out["last_changed"]) == {"numbers"}
+    assert out["last_changed"]["numbers"]["by"] == "you" and out["last_changed"]["numbers"]["at"].startswith("20")
+    # A later change to another setting leaves the first one's entry alone.
+    owner_client.put("/app/gmail/read-settings", json={"search_limit": 5})
+    later = owner_client.get("/app/gmail/read-settings").json()["last_changed"]
+    assert set(later) == {"numbers", "search_limit"} and later["numbers"] == out["last_changed"]["numbers"]
+
+
+def test_the_gmail_status_says_when_drafts_were_last_switched(owner_client, gmail_fake):
+    _setup(gmail_fake)
+    assert owner_client.get("/app/gmail").json()["last_changed"] == {}
+    owner_client.post("/app/gmail/drafts", json={"enabled": False})
+    assert set(owner_client.get("/app/gmail").json()["last_changed"]) == {"drafts"}

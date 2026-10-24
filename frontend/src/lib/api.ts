@@ -563,6 +563,7 @@ export type TriageVerb = 'ack' | 'reply' | 'call' | 'not_urgent' | 'snooze_30m' 
 export type TriageFeedback = 'useful' | 'not_urgent' | 'should_have_told' | 'wrong_handle' | 'good_handle'
 
 export type GmailStatus = {
+  last_changed?: Record<string, { by: 'you' | 'Ava' | 'operator'; at: string }>
   installed: boolean
   client_ready: boolean
   connected: boolean
@@ -584,6 +585,8 @@ export type GmailReadSettings = {
   allowed: string[]
 }
 export type GmailReadView = {
+  // Who last changed each setting that was ever changed, and when (from the audit log).
+  last_changed?: Record<string, { by: 'you' | 'Ava' | 'operator'; at: string }>
   settings: GmailReadSettings
   choices: Record<string, { values: (string | number)[]; default: string | number; label: string; help: string }>
 }
