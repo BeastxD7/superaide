@@ -284,6 +284,14 @@ def body_text(msg: dict[str, Any]) -> str:
     return ""
 
 
+def body_html(msg: dict[str, Any]) -> str:
+    """The message's text/html part as it is (empty when there is none)."""
+    for p in _parts(msg.get("payload") or {}):
+        if str(p.get("mimeType", "")).lower() == "text/html" and (p.get("body") or {}).get("data"):
+            return _decode(str(p["body"]["data"]))
+    return ""
+
+
 def clean_body(text: str, limit: int = MAX_BODY, amounts: bool = False, blank: bool = True) -> str:
     """Only what was written in this message: quoted earlier mail, '>' lines and the signature go."""
     m = QUOTE_START.search(text)
@@ -333,18 +341,21 @@ def subject(msg: dict[str, Any]) -> str:
 # --- writing a reply ----------------------------------------------------------------------
 
 
-def new_raw(*, to: list[str], from_addr: str, subject: str, text: str) -> str:
-    """A brand-new message (no thread), base64url-encoded for drafts.create."""
+def new_raw(*, to: list[str], from_addr: str, subject: str, text: str, html: str = "") -> str:
+    """A brand-new message (no thread), base64url-encoded for drafts.create. With `html` it is multipart/alternative:
+    the text part first, the HTML part after it."""
     m = EmailMessage()
     m["Subject"] = subject.strip()
     m["To"] = ", ".join(to)
     if from_addr:
         m["From"] = from_addr
     m.set_content(text)
+    if html:
+        m.add_alternative(html, subtype="html")
     return base64.urlsafe_b64encode(m.as_bytes()).decode().rstrip("=")
 
 
-def reply_raw(*, original: dict[str, Any], to: list[str], from_addr: str, text: str) -> str:
+def reply_raw(*, original: dict[str, Any], to: list[str], from_addr: str, text: str, html: str = "") -> str:
     """A reply in the original's thread, base64url-encoded for drafts.create."""
     h = headers(original)
     m = EmailMessage()
@@ -357,4 +368,6 @@ def reply_raw(*, original: dict[str, Any], to: list[str], from_addr: str, text: 
         m["In-Reply-To"] = h["message-id"]
         m["References"] = (h.get("references", "") + " " + h["message-id"]).strip()
     m.set_content(text)
+    if html:
+        m.add_alternative(html, subtype="html")
     return base64.urlsafe_b64encode(m.as_bytes()).decode().rstrip("=")

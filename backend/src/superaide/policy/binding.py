@@ -20,13 +20,17 @@ if TYPE_CHECKING:
     from superaide.platform.db.models import Approval
 
 
-def content_hash(*, to: Iterable[str], thread_id: str, subject: str, text: str) -> str:
+def content_hash(*, to: Iterable[str], thread_id: str, subject: str, text: str, html: str = "") -> str:
+    """The hash of a draft: recipients, thread, subject and the text part, and the HTML part when there is one (an
+    email with a signature block has both, and the owner's yes covers both)."""
     canonical = {
         "to": sorted({a.strip().lower() for a in to if a.strip()}),
         "thread": thread_id.strip(),
         "subject": " ".join(subject.split()).lower(),
         "text": " ".join(text.split()),
     }
+    if html:
+        canonical["html"] = " ".join(html.split())
     return hashlib.sha256(json.dumps(canonical, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
 

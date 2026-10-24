@@ -797,6 +797,11 @@ export type PrincipalCard = {
   channels: boolean
   wording: string
   default_wording: string
+  avatar: boolean
+  mark: boolean
+  title: string
+  accent: string
+  accents: string[]
   address: string // where links in emails and messages point
   address_is_local: boolean
   active: boolean

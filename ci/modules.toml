@@ -467,6 +467,7 @@ e2e = [
   "e2e/tests/principal/principal-card.spec.ts",
   "e2e/tests/principal/approval-sign.spec.ts",
   "e2e/tests/principal/approval-sign.mobile.spec.ts",
+  "e2e/tests/principal/signature-look.mobile.spec.ts",
 ]
 
 [modules.privacy]
@@ -760,6 +761,7 @@ e2e = [
   "e2e/tests/principal/principal-card.spec.ts",
   "e2e/tests/principal/approval-sign.spec.ts",
   "e2e/tests/principal/approval-sign.mobile.spec.ts",
+  "e2e/tests/principal/signature-look.mobile.spec.ts",
   "e2e/tests/rehearsal/rehearsal.spec.ts",
   "e2e/tests/reminders/reminders-sync.spec.ts",
   "e2e/tests/school/school.spec.ts",

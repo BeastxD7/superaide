@@ -163,24 +163,31 @@ class FakeGoogle:
         """drafts.get: the draft as Gmail holds it now (parsed from its raw MIME)."""
         em = message_from_string(self.drafts[did]["raw"], policy=email_policy.default)
         hdrs = [{"name": k, "value": str(v)} for k, v in em.items()]
-        body = em.get_body(preferencelist=("plain",))
-        text = body.get_content() if body else ""
-        return {
-            "id": did,
-            "message": {
-                "id": f"m-{did}",
-                "threadId": self.drafts[did]["thread"],
-                "payload": {"mimeType": "text/plain", "headers": hdrs, "body": {"data": b64(text)}},
-            },
-        }
+        plain = em.get_body(preferencelist=("plain",))
+        rich = em.get_body(preferencelist=("html",))
+        text = plain.get_content() if plain else ""
+        parts = [{"mimeType": "text/plain", "body": {"data": b64(text)}}]
+        if rich is not None and rich.get_content_type() == "text/html":
+            parts.append({"mimeType": "text/html", "body": {"data": b64(rich.get_content())}})
+        payload: dict[str, Any] = {"mimeType": "text/plain", "headers": hdrs, "body": {"data": b64(text)}}
+        if len(parts) > 1:  # multipart/alternative, as Gmail returns a draft with both parts
+            payload = {"mimeType": "multipart/alternative", "headers": hdrs, "parts": parts}
+        return {"id": did, "message": {"id": f"m-{did}", "threadId": self.drafts[did]["thread"], "payload": payload}}
 
     def edit_draft(self, did: str, *, text: str | None = None, add_header: tuple[str, str] | None = None) -> None:
         """Change a stored draft after it was made, as someone with access to the mailbox could."""
         em = message_from_string(self.drafts[did]["raw"], policy=email_policy.default)
         if text is not None:
+            em.clear_content()  # a multipart draft becomes a single text part
             em.set_content(text)
         if add_header:
             em[add_header[0]] = add_header[1]
+        self.drafts[did]["raw"] = em.as_string()
+
+    def edit_html(self, did: str, html: str) -> None:
+        """Change only the HTML part of a stored draft (the text part stays as it was)."""
+        em = message_from_string(self.drafts[did]["raw"], policy=email_policy.default)
+        em.get_body(preferencelist=("html",)).set_content(html, subtype="html")
         self.drafts[did]["raw"] = em.as_string()
 
     def draft_to(self, did: str) -> str:

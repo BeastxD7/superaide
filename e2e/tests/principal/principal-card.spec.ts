@@ -30,7 +30,22 @@ test.describe('Principal card, on by default', () => {
     await expect(page.getByRole('button', { name: 'Turn the default off' })).toBeVisible() // on without doing anything
     await page.getByLabel('Your first name (optional)').fill('Ananya')
     await page.getByLabel('Initial to show after it (optional)').fill('T')
-    await expect(page.getByText('People will see: Ananya T.')).toBeVisible()
+    await expect(page.getByText('People will see “Ananya T.”')).toBeVisible()
+    // The signature look: the live preview follows the controls before anything is saved.
+    const frame = page.frameLocator('[data-testid="signature-preview"]')
+    await expect(frame.getByText('Verify this assistant')).toBeVisible()
+    await expect(frame.getByText('Personal assistant of Ananya T.')).toBeVisible()
+    await expect(frame.getByText('Sent with')).toHaveCount(0)
+    await page.getByLabel('Add a small “Sent with Superaide” line (off by default)').check()
+    await expect(frame.getByText('Sent with')).toBeVisible()
+    await page.getByLabel('Your own title line (optional)').fill('Chief of staff to {name}')
+    await expect(frame.getByText('Chief of staff to Ananya T.')).toBeVisible()
+    await page.getByLabel('Teal').check()
+    await expect(frame.getByRole('link', { name: 'Verify this assistant' })).toHaveCSS('background-color', 'rgb(15, 118, 110)')
+    await page.getByLabel('Show the small picture').uncheck()
+    await expect(frame.locator('img[alt="Ava"]')).toHaveCount(0)
+    await page.getByLabel('Show the small picture').check()
+    await page.screenshot({ path: 'test-results/signature-settings.png', fullPage: true })
     await page.getByRole('button', { name: 'Save', exact: true }).click()
     await expect(page.getByText('Saved.', { exact: true })).toBeVisible()
     await expect(page.getByRole('link', { name: 'See how it looks' })).toBeVisible()
@@ -70,6 +85,8 @@ test.describe('Principal card, on by default', () => {
 
     await page.getByRole('button', { name: 'Revoke all cards' }).click()
     await expect(page.getByText('Every card sent so far no longer opens.')).toBeVisible()
+    await page.reload()
+    await expect(page.getByLabel('Teal')).toBeChecked() // saved, not just previewed
     await page.getByRole('button', { name: 'Turn the default off' }).click()
     await expect(page.getByText('Emails are no longer signed by default.')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Turn the default on' })).toBeVisible()

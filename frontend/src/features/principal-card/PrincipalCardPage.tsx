@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { SignatureLook, type Look } from '@/features/principal-card/SignatureLook'
 import { usePrincipalCard } from '@/features/principal-card/usePrincipalCard'
 import { AppError, call } from '@/lib/api'
 import { useSession } from '@/lib/session-context'
@@ -22,6 +23,7 @@ export function PrincipalCardPage() {
   const [editedFirst, setEditedFirst] = useState<string | null>(null)
   const [editedInitial, setEditedInitial] = useState<string | null>(null)
   const [editedWording, setEditedWording] = useState<string | null>(null)
+  const [editedLook, setEditedLook] = useState<Partial<Look>>({})
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [done, setDone] = useState<string | null>(null)
@@ -29,6 +31,12 @@ export function PrincipalCardPage() {
   const first = editedFirst ?? card?.first_name ?? ''
   const initial = editedInitial ?? card?.initial ?? ''
   const wording = editedWording ?? card?.wording ?? ''
+  const look: Look = {
+    avatar: editedLook.avatar ?? card?.avatar ?? true,
+    mark: editedLook.mark ?? card?.mark ?? false,
+    title: editedLook.title ?? card?.title ?? '',
+    accent: editedLook.accent ?? card?.accent ?? 'indigo',
+  }
   const shownAs = first.trim()
     ? initial.trim()
       ? `${first.trim()} ${initial.trim().slice(0, 1).toUpperCase()}.`
@@ -107,7 +115,7 @@ export function PrincipalCardPage() {
             onChange={(e) => setEditedInitial(e.target.value)}
           />
           <p className="text-xs text-muted">
-            {shownAs ? `People will see: ${shownAs}. ` : ''}Left empty, the first name on your account is used. Never a
+            {shownAs ? `People will see “${shownAs}”. ` : ''}Left empty, the first name on your account is used. Never a
             full name.
           </p>
           <label htmlFor="card-wording" className="text-sm font-medium text-ink">
@@ -125,12 +133,23 @@ export function PrincipalCardPage() {
             Use {'{agent}'} and {'{name}'}. Preview: <span className="whitespace-pre-line">{preview}</span>. The line saying she is an
             AI, and the link, are always added.
           </p>
+        </section>
+
+        <SignatureLook
+          look={look}
+          accents={card?.accents ?? ['indigo']}
+          onChange={(next) => setEditedLook(next)}
+          draft={{ first_name: first, initial, wording }}
+          disabled={busy}
+        />
+
+        <div className="mt-4">
           <div className="flex flex-wrap gap-2">
             <Button
               disabled={busy}
               onClick={() =>
                 void run(async () => {
-                  await call('/principal-card', { method: 'PUT', json: { first_name: first, initial, wording } })
+                  await call('/principal-card', { method: 'PUT', json: { first_name: first, initial, wording, ...look } })
                   setDone('Saved.')
                 })
               }
@@ -145,7 +164,7 @@ export function PrincipalCardPage() {
               </Button>
             )}
           </div>
-        </section>
+        </div>
 
         <section aria-labelledby="card-address" className="mt-6 space-y-1 rounded-xl border border-line bg-white p-4">
           <h2 id="card-address" className="text-lg font-medium text-ink">

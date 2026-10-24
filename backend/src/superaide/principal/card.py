@@ -33,6 +33,7 @@ from sqlalchemy.orm import Session
 from superaide.platform.config import get_settings
 from superaide.platform.tenancy.context import InstanceScope, scope_or_default
 from superaide.policy.killswitch import get_state, set_state
+from superaide.principal import signature
 from superaide.vault.crypto import master_key
 
 STATE_KEY = "principal_card"
@@ -116,11 +117,25 @@ def settings_of(session: Session) -> dict[str, Any]:
         "sign_default": s.get("sign_default") is not False,  # on unless the owner explicitly turned it off
         "channels": s.get("channels") is True,  # Telegram and Slack replies to others: off unless asked for
         "wording": clean_wording(str(s.get("wording") or "")) or DEFAULT_WORDING,
+        "avatar": s.get("avatar") is not False,  # the small picture in the email signature (default on)
+        "mark": s.get("mark") is True,  # "Sent with Superaide" under it (default off: the owner's mail, their call)
+        "title": clean_title(str(s.get("title") or "")),  # the owner's own line under "Ava"; empty = the default
+        "accent": str(s.get("accent")) if str(s.get("accent")) in signature.ACCENTS else signature.DEFAULT_ACCENT,
         "can": list(s.get("can") or DEFAULT_CAN),
         "cannot": list(s.get("cannot") or DEFAULT_CANNOT),
         "generation": int(s.get("generation") or 0),
         "revoked": [str(i) for i in (s.get("revoked") or [])][-MAX_SENT:],  # single cards the owner took back
     }
+
+
+MAX_TITLE = 60
+AVATAR_PATH = "/brand/ava-96.png"  # served by the web app from frontend/public
+MARK_PATH = "/brand/superaide-mark.png"
+
+
+def clean_title(text: str) -> str:
+    """One short line, plain text, with {agent} and {name} allowed."""
+    return " ".join(text.split())[:MAX_TITLE]
 
 
 def owner_name(session: Session) -> str:
@@ -148,6 +163,10 @@ def configure(
     sign_default: bool | None = None,
     channels: bool | None = None,
     wording: str | None = None,
+    avatar: bool | None = None,
+    mark: bool | None = None,
+    title: str | None = None,
+    accent: str | None = None,
 ) -> dict[str, Any]:
     """Raises ValueError for a first name that is not a single word of letters (blank clears it)."""
     cur = settings_of(session)
@@ -169,6 +188,16 @@ def configure(
         cur["channels"] = channels
     if wording is not None:
         cur["wording"] = clean_wording(wording) or DEFAULT_WORDING
+    if avatar is not None:
+        cur["avatar"] = avatar
+    if mark is not None:
+        cur["mark"] = mark
+    if title is not None:
+        cur["title"] = clean_title(title)
+    if accent is not None:
+        if accent not in signature.ACCENTS:
+            raise ValueError("accent must be one of the palette")
+        cur["accent"] = accent
     set_state(session, STATE_KEY, cur)
     return cur
 
@@ -348,12 +377,11 @@ def verify(session: Session, token: str, *, now: float | None = None, record: bo
     )
 
 
-def _block(session: Session, url: str) -> str:
-    cur = settings_of(session)
-    name = owner_name(session)
+def _block(session: Session, url: str, *, wording: str | None = None, name: str | None = None) -> str:
+    name = name or owner_name(session)
     agent = get_settings().agent_name
     return (
-        f"\n\n--\n{render_wording(cur['wording'], agent=agent, name=name)}\n\n"
+        f"\n\n--\n{render_wording(wording or settings_of(session)['wording'], agent=agent, name=name)}\n\n"
         f"{agent} is an AI assistant acting for {name}. "
         f"What she may and may not agree to, and how to report a problem: {url}"
     )
@@ -389,7 +417,59 @@ def issue_link(session: Session) -> dict[str, Any] | None:
     return {"code": code, "id": card_id, "url": public_url(f"/c/{code}"), "exp": int(exp.timestamp())}
 
 
-def email_signature(session: Session) -> dict[str, str] | None:
+def signature_spec(
+    session: Session, verify_url: str, *, settings: dict[str, Any] | None = None, name: str | None = None
+) -> signature.Signature:
+    """The signature block for this owner. `settings` lets the Settings preview try values before they are saved."""
+    from superaide.links import public_url
+
+    cur = settings or settings_of(session)
+    name = name or owner_name(session)
+    agent = get_settings().agent_name
+    title = render_wording(cur.get("title") or "Personal assistant of {name}", agent=agent, name=name)
+    return signature.Signature(
+        agent=agent,
+        owner=name,
+        title=title,
+        disclosure=f"{agent} is an AI assistant acting for {name}.",
+        verify_url=verify_url,
+        accent=signature.accent_hex(str(cur.get("accent"))),
+        avatar_url=public_url(AVATAR_PATH) if cur.get("avatar", True) else "",
+        mark_url=public_url(MARK_PATH) if cur.get("mark") else "",
+        text=_block(session, verify_url, wording=cur.get("wording"), name=name).strip("\n"),
+    )
+
+
+def preview_link(session: Session) -> dict[str, Any] | None:
+    """The link behind "See how it looks": one real, still valid link per owner, reused while it lasts, so opening
+    Settings does not fill `card_link` with a new row every time."""
+    cur = get_state(session, STATE_KEY)
+    keep = cur.get("preview_link") or {}
+    now = time.time()
+    if keep and float(keep.get("exp", 0)) > now + 3600 and int(keep.get("g", -1)) == settings_of(session)["generation"]:
+        from superaide.links import public_url
+
+        return {**keep, "url": public_url(f"/c/{keep['code']}")}
+    link = issue_link(session)
+    if link is None:
+        return None
+    set_state(
+        session,
+        STATE_KEY,
+        {
+            **cur,
+            "preview_link": {
+                "code": link["code"],
+                "id": link["id"],
+                "exp": link["exp"],
+                "g": settings_of(session)["generation"],
+            },
+        },
+    )
+    return link
+
+
+def email_signature(session: Session) -> dict[str, Any] | None:
     """The sign-off for an email: {"text", "id", "token", "label", "url"}, or None when the card is off globally or
     no name is known. Nothing is counted here: the card counts as shown when the email is actually sent."""
     link = issue_link(session)
@@ -402,6 +482,7 @@ def email_signature(session: Session) -> dict[str, str] | None:
         "token": str(link["code"]),
         "url": str(link["url"]),
         "label": f"Sign as {get_settings().agent_name}, personal assistant of {name}",
+        "spec": signature_spec(session, str(link["url"])),
     }
 
 
