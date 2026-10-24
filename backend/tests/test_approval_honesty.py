@@ -14,7 +14,7 @@ from superaide.config import get_settings
 from superaide.db.models import Approval
 from superaide.db.session import session_scope
 from superaide.policy import kinds
-from superaide.policy.actions import CREATION_RULES, EXECUTORS, RULES, TOOL_RULES, _load_executors, resolve
+from superaide.policy.actions import CREATION_RULES, EXECUTORS, RULES, TOOL_RULES, resolve
 from superaide.policy.binding import seal
 from tests.test_loop import Script, owner_client, tool_use, turn_for  # noqa: F401, F811  (fixtures)
 
@@ -25,7 +25,6 @@ def strict(monkeypatch):
 
 
 def test_every_approval_kind_has_a_description_and_an_executor_or_an_explicit_marker():
-    _load_executors()
     every = set(RULES) | set(CREATION_RULES) | set(TOOL_RULES) | {"gmail_send", "ask_reply"} | set(EXECUTORS)
     for kind in sorted(every):
         info = kinds.KINDS.get(kind)

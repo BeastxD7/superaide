@@ -20,6 +20,7 @@ from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from superaide.config import get_settings
+from superaide.contracts.events import ApprovalDecided, bus
 from superaide.db.models import Approval
 from superaide.skills import tier_rules
 from superaide.skills.models import SkillReceipt
@@ -121,6 +122,9 @@ def on_decision(session: Session, approval: Approval, approve: bool) -> None:
             )  # fmt: skip
     except Exception:
         log.warning("couldn't write a skill receipt", exc_info=True)
+
+
+bus.subscribe(ApprovalDecided, lambda event: on_decision(event.session, event.approval, event.approved))
 
 
 def record_revert(session: Session, seq: int) -> SkillReceipt:

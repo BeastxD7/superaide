@@ -24,11 +24,10 @@ from sqlalchemy.orm import Session
 from superaide.config import get_settings
 from superaide.db.models import Approval
 from superaide.identity.resolver import Sender
+from superaide.policy.actions import decide
+from superaide.policy.confirmation import from_voice
 
 VOICE_TOOLS: tuple[()] = ()  # the shell holds no tools
-# Owner decision (#125): only a tap inside the Superaide app is the second channel. A Telegram or Slack
-# tap is not enough, because a chat account is easier to take over than a signed-in session. Fail closed.
-TEXT_CHANNELS = ("app",)
 INTERNAL_KEYS = {"summary", "trust_at_request", "required_trust", "origin", "result"}
 MAX_FIELD = 120
 
@@ -41,19 +40,6 @@ DONE = re.compile(
 )
 
 
-def from_voice(approval: Approval) -> bool:
-    return (approval.payload or {}).get("origin") == "voice"
-
-
-def check_confirmation(approval: Approval, via: str) -> str:
-    """Why this yes is refused, or "" if it may stand. Called for every approval."""
-    if via == "voice":
-        return "A spoken yes isn't accepted. Confirm this in the app."
-    if from_voice(approval) and via not in TEXT_CHANNELS:
-        return "This was asked for on a call. Confirm it in the app."
-    return ""
-
-
 def propose(
     session: Session,
     *,
@@ -63,8 +49,6 @@ def propose(
     payload: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """An action heard on a call. Returns the read-back; the approval waits for a text-channel tap."""
-    from superaide.policy.actions import decide
-
     if not get_settings().voice_two_channel:
         return {"status": "off", "spoken": "I can't take actions by voice yet. Please type it in the app."}
     decision = decide(

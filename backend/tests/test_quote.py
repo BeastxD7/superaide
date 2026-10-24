@@ -61,6 +61,7 @@ def test_low_odds_prepare_instead_of_act(on):
     a = ask()
     assert a.payload["quote"]["prepare"] is True
     ran = []
+    previous = actions.EXECUTORS.get("gmail_send")
     actions.EXECUTORS["gmail_send"] = lambda s, ap: ran.append(1) or "Sent."
     try:
         with session_scope() as s:
@@ -68,7 +69,10 @@ def test_low_odds_prepare_instead_of_act(on):
             actions.resolve(s, ap, approve=True, decided_by="owner")
             assert ap.status == "approved" and ran == [] and ap.payload["result"].startswith("Prepared")
     finally:
-        del actions.EXECUTORS["gmail_send"]
+        if previous is None:
+            del actions.EXECUTORS["gmail_send"]
+        else:
+            actions.EXECUTORS["gmail_send"] = previous
 
 
 def test_odds_are_per_kind(on):

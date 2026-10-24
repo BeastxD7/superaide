@@ -16,6 +16,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from superaide.policy.registry import EXECUTORS
+
 
 @dataclass(frozen=True)
 class KindInfo:
@@ -75,9 +77,6 @@ def declared_executes(kind: str) -> bool:
 
 def has_executor(kind: str) -> bool:
     """Whether an executor is registered right now (the truth; `KINDS[...].executes` is its declaration)."""
-    from superaide.policy.actions import EXECUTORS, _load_executors
-
-    _load_executors()
     return kind in EXECUTORS
 
 

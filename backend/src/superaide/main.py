@@ -12,6 +12,7 @@ from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+import superaide.plugins  # noqa: F401  (registers the approval executors and event subscribers)
 from superaide import docs, envelope
 from superaide.api.admin import require_admin
 from superaide.api.admin import router as admin_router

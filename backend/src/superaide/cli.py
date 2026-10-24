@@ -7,6 +7,7 @@ import logging
 import sys
 import uuid
 
+import superaide.plugins  # noqa: F401  (registers the approval executors and event subscribers)
 from superaide.config import get_settings
 
 

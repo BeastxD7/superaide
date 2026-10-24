@@ -41,6 +41,17 @@ paths = [
   "e2e/package.json", "e2e/package-lock.json", "e2e/*.ts", "e2e/*.json", "e2e/src/**", "e2e/fixtures/**", "e2e/scripts/**",
 ]
 
+[modules.contracts]
+# the in-process event bus (ADR 0015): everything that publishes or subscribes depends on it
+core = true
+src = [
+  "backend/src/superaide/contracts/**",
+]
+tests = [
+  "backend/tests/test_events.py",
+]
+e2e = []
+
 [modules.config]
 # settings every module reads
 core = true
@@ -323,6 +334,7 @@ e2e = []
 [modules.factory]
 src = [
   "backend/src/superaide/factory.py",
+  "backend/src/superaide/plugins.py",
   "backend/src/superaide/runtime.py",
 ]
 tests = [

@@ -28,6 +28,7 @@ import time_machine
 from pydantic import BaseModel
 from sqlalchemy import func, select, text
 
+import superaide.plugins  # noqa: F401  (registers the approval executors and event subscribers)
 from superaide.brain.llm import LLM, FakeLLM, LLMResult, StepResult
 from superaide.brain.turn import Prediction, RequestedAction, TurnOutput
 from superaide.channels.base import FakeMessenger, InboundMessage
