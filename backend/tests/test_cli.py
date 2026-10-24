@@ -492,3 +492,33 @@ def test_hello_without_an_api_key_refuses_before_any_call(monkeypatch):
 
 def test_a_command_is_required(monkeypatch):
     assert run_and_exit(monkeypatch) == 2
+
+
+# --- reset-db refuses the live database --------------------------------------------------
+
+
+def _live_settings(monkeypatch, tmp_path, name: str = "agent") -> None:
+    from superaide.db import safety
+
+    env = tmp_path / ".env"
+    env.write_text(f"DATABASE_URL=postgresql+psycopg://agent:agent@localhost:5432/{name}\n")
+    monkeypatch.setattr(safety, "ENV_FILE", env)
+    use_settings(
+        monkeypatch, database_url=f"postgresql+psycopg://agent:agent@127.0.0.1:5432/{name}", migration_database_url=""
+    )
+    monkeypatch.setattr("superaide.db.session.get_engine", lambda *a, **k: pytest.fail("opened the live database"))
+
+
+def test_reset_db_refuses_the_live_database_even_with_yes(monkeypatch, tmp_path):
+    _live_settings(monkeypatch, tmp_path)
+    message = run_and_exit(monkeypatch, "reset-db", "--yes")
+    assert "live database" in message and "--i-know-this-is-live --confirm-db-name agent" in message
+
+
+def test_reset_db_on_the_live_database_needs_the_flag_and_the_name_typed_back(monkeypatch, tmp_path):
+    _live_settings(monkeypatch, tmp_path)
+    assert "live" in run_and_exit(monkeypatch, "reset-db", "--yes", "--i-know-this-is-live")
+    assert "live" in run_and_exit(monkeypatch, "reset-db", "--yes", "--confirm-db-name", "agent")
+    assert "live" in run_and_exit(
+        monkeypatch, "reset-db", "--yes", "--i-know-this-is-live", "--confirm-db-name", "agen"
+    )

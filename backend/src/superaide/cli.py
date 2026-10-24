@@ -348,11 +348,21 @@ def _reset_db(args: argparse.Namespace) -> None:
     from sqlalchemy import text
 
     from superaide.db.models import Base
+    from superaide.db.safety import UnsafeDatabase, assert_disposable_database, database_name
     from superaide.db.session import get_engine
 
     if not args.yes:
         sys.exit("This deletes all data. Run again with --yes to confirm.")
-    engine = get_engine(get_settings().owner_database_url)
+    url = get_settings().owner_database_url
+    try:
+        assert_disposable_database(url)
+    except UnsafeDatabase as refusal:
+        # The configured live database (or any database not marked disposable) needs both an explicit
+        # flag and its name typed back, so a pasted command or an agent cannot wipe it by accident.
+        name = database_name(url)
+        if not (args.i_know_this_is_live and args.confirm_db_name == name):
+            sys.exit(f"{refusal} To wipe it anyway: --i-know-this-is-live --confirm-db-name {name}")
+    engine = get_engine(url)
     with engine.begin() as conn:
         conn.execute(text("DROP TABLE IF EXISTS memory_embedding, chunk_embedding"))  # outside the ORM metadata
     Base.metadata.drop_all(engine)
@@ -492,6 +502,8 @@ def main() -> None:
     p.set_defaults(func=_reset_password)
     p = sub.add_parser("reset-db", help="delete all data")
     p.add_argument("--yes", action="store_true")
+    p.add_argument("--i-know-this-is-live", action="store_true", help="allow wiping a database not marked disposable")
+    p.add_argument("--confirm-db-name", default="", help="the database's name, typed back, with the flag above")
     p.set_defaults(func=_reset_db)
 
     args = parser.parse_args()
