@@ -1,4 +1,3 @@
-// ci-module: integrations
 // #441 at 390px: the capability pages fit, the sub-navigation scrolls inside its own row, targets are 44px.
 import { expect, test } from '../../src/fixtures'
 import { expectNoSidewaysScroll } from '../../src/helpers/workspace'
