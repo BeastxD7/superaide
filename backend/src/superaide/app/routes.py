@@ -1521,25 +1521,37 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         summary="Who at Superaide looked",
         description=(
             "Every time a Superaide operator opened your Ava's people, conversations, memories or log (ADR 0009): "
-            "when, what, and the reason they gave. Newest first."
+            "when, what, and the reason they gave. Newest first, in pages: `limit` 1 to 200 (default 100); when "
+            "older entries exist the response has `X-Next-Cursor`, `Link: rel=next` and `X-Has-More: true`."
         ),
     )
-    def access_log(person_id: uuid.UUID = Depends(owner_person_id), limit: int = 100) -> list[dict[str, Any]]:
-        limit = max(1, min(limit, 500))
+    def access_log(
+        request: Request,
+        response: Response,
+        person_id: uuid.UUID = Depends(owner_person_id),
+        limit: int = 100,
+        cursor: str | None = cursor_param(),
+    ) -> list[dict[str, Any]]:
+        limit = max(1, min(limit, 200))  # clamped, as before, now at 200 instead of 500
         with session_scope() as s:
-            rows = s.scalars(
-                select(AuditLog)
-                .where(AuditLog.actor == "operator", AuditLog.action == "operator_access")
-                .order_by(AuditLog.created_at.desc())
-                .limit(limit)
-            ).all()
-            return [
-                {
+            page = paginate(
+                s,
+                select(AuditLog).where(AuditLog.actor == "operator", AuditLog.action == "operator_access"),
+                [SortKey(AuditLog.created_at), SortKey(AuditLog.id)],
+                endpoint="access-log",
+                bind=bind_for(person_id),
+                limit=limit,
+                cursor=cursor,
+                maximum=200,
+                build=lambda r: {
+                    "id": str(r.id),
                     "at": r.created_at.isoformat(),
                     "what": (r.detail or {}).get("path", ""),
                     "reason": (r.detail or {}).get("reason", ""),
-                }
-                for r in rows
-            ]
+                },
+            )
+        response.headers["X-Has-More"] = "true" if page.has_more else "false"
+        set_next_headers(response, str(request.url), page.next_cursor)
+        return page.items
 
     return router

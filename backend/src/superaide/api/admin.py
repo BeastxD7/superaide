@@ -751,15 +751,38 @@ def approvals() -> list[dict[str, Any]]:
     "/audit",
     dependencies=content,
     summary="Safety log",
-    description="The audit trail: identity checks, refusals, links, spend and sign-ins.",
+    description="The audit trail: identity checks, refusals, links, spend and sign-ins, newest first. `limit` is 1 to "
+    "200, clamped (default 200). When older entries exist the response has `X-Next-Cursor`, `Link: rel=next` and "
+    "`X-Has-More: true`; send the cursor back as `cursor`. The body stays a bare array. ADR 0014.",
 )
-def audit_log(limit: int = 200) -> list[dict[str, Any]]:
-    limit = max(1, min(limit, 1000))
+def audit_log(
+    request: Request,
+    response: Response,
+    limit: int = 200,
+    cursor: str | None = cursor_param(),
+) -> list[dict[str, Any]]:
+    limit = max(1, min(limit, 200))  # clamped, as before (the console's contract), now at 200 instead of 1000
     with session_scope() as s:
-        return [
-            {"id": str(a.id), "actor": a.actor, "action": a.action, "detail": a.detail, "at": _iso(a.created_at)}
-            for a in s.scalars(select(AuditLog).order_by(AuditLog.created_at.desc()).limit(limit)).all()
-        ]
+        page = paginate(
+            s,
+            select(AuditLog),
+            [SortKey(AuditLog.created_at), SortKey(AuditLog.id)],
+            endpoint="op-audit",
+            bind=bind_for("operator"),
+            limit=limit,
+            cursor=cursor,
+            maximum=200,
+            build=lambda a: {
+                "id": str(a.id),
+                "actor": a.actor,
+                "action": a.action,
+                "detail": a.detail,
+                "at": _iso(a.created_at),
+            },
+        )
+    response.headers["X-Has-More"] = "true" if page.has_more else "false"
+    set_next_headers(response, str(request.url), page.next_cursor)
+    return page.items
 
 
 @router.get("/spend", summary="Spend", description="Claude API spend against `MAX_SPEND_USD`, by purpose and model.")

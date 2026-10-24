@@ -475,10 +475,12 @@ tests = [
   "backend/tests/test_pagination.py",
   "backend/tests/test_messages_paging.py",
   "backend/tests/test_notebook_paging.py",
+  "backend/tests/test_log_paging.py",
 ]
 e2e = [
   "e2e/tests/pagination-chat.spec.ts",
   "e2e/tests/pagination-console.spec.ts",
+  "e2e/tests/pagination-logs.spec.ts",
   "e2e/tests/pagination-notebook.spec.ts",
 ]
 
