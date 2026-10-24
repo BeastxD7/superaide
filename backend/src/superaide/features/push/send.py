@@ -33,6 +33,7 @@ from sqlalchemy.orm import Session
 from superaide.features.push import payload, vapid
 from superaide.features.push.models import PushSend, PushSubscription
 from superaide.features.push.subscriptions import open_secret
+from superaide.links import public_base
 from superaide.platform.audit import audit
 from superaide.platform.config import get_settings
 
@@ -129,7 +130,7 @@ def _send_one(
 ) -> Outcome:
     settings = get_settings()
     secret = open_secret(row)
-    body = payload.build(item, row.preview_level, base_url=settings.frontend_origin, instance=instance)
+    body = payload.build(item, row.preview_level, base_url=public_base(settings), instance=instance)
     plaintext = payload.encode(body, settings.push_pad_bytes)
     hdrs = {
         **payload.headers(item, settings.push_ttl_seconds),

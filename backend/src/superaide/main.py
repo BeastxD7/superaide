@@ -125,6 +125,9 @@ def create_app(agent: Agent | None = None) -> FastAPI:
             from superaide.platform.security import dbcheck, deploy
 
             deploy.check(settings)
+            from superaide.links import warn_if_local
+
+            warn_if_local(settings)  # links in mail point at localhost on a deployment others can reach (#438)
             db_gate.message = dbcheck.check(settings)  # refuses to start when hosted and behind
         if fixed is None and settings.run_channels_in_api:
             try:

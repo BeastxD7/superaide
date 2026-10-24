@@ -34,6 +34,18 @@ test.describe('Principal card, on by default', () => {
     await page.getByRole('button', { name: 'Save', exact: true }).click()
     await expect(page.getByText('Saved.', { exact: true })).toBeVisible()
     await expect(page.getByRole('link', { name: 'See how it looks' })).toBeVisible()
+    // The outward address is shown, and the card link is a short one that opens the public card page.
+    await expect(page.getByTestId('outward-address')).toContainText('http')
+    const href = (await page.getByRole('link', { name: 'See how it looks' }).getAttribute('href')) ?? ''
+    expect(href).toMatch(/\/c\/[A-Za-z0-9_-]{8}$/)
+    expect(href.length).toBeLessThanOrEqual(60)
+    await page.screenshot({ path: 'test-results/principal-settings.png', fullPage: true })
+    const card = await page.context().newPage()
+    await card.goto(href)
+    await expect(card.getByRole('heading', { name: /is an AI assistant/ })).toBeVisible()
+    await expect(card.getByText('Ananya T.')).toBeVisible()
+    await card.screenshot({ path: 'test-results/principal-card-page.png' })
+    await card.close()
     await expect(page.getByText('Cards shown')).toBeVisible()
 
     // Two cards as the channels would have noted them (a reply to a colleague on Slack and on Telegram).

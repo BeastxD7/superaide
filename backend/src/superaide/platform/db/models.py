@@ -1027,6 +1027,7 @@ from superaide.features.rehearsal import models as _rehearsal_models  # noqa: E4
 from superaide.features.school import models as _school_models  # noqa: E402, F401
 from superaide.jobs import claim as _job_claim  # noqa: E402, F401  (the claim function, made after the job table)
 from superaide.platform.tenancy import models as _tenancy_models  # noqa: E402, F401
+from superaide.principal import models as _principal_models  # noqa: E402, F401
 from superaide.reception import models as _reception_models  # noqa: E402, F401
 from superaide.skills import models as _skills_models  # noqa: E402, F401
 from superaide.tooltrace import models as _tooltrace_models  # noqa: E402, F401

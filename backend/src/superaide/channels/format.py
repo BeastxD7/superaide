@@ -170,10 +170,9 @@ SOURCE_NOTE = "[1] means a source: open its link to see where it came from."
 
 def app_base() -> str:
     """Where the signed-in owner's app lives, for links in a channel message (never from model text)."""
-    from superaide.platform.config import get_settings
+    from superaide.links import public_base
 
-    s = get_settings()
-    return (s.public_base_url or s.frontend_origin).rstrip("/")
+    return public_base()
 
 
 def deep_link(src: dict[str, Any]) -> str:
