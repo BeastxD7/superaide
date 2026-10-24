@@ -170,7 +170,7 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], Any]) -> APIRo
     )
 
     def view() -> dict[str, Any]:
-        from superaide.factory import brain_status, load_prices, with_credits
+        from superaide.brain.wiring import brain_status, load_prices, with_credits
 
         settings = runtime_settings()
         from superaide.brain import platform_ai
@@ -424,7 +424,7 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], Any]) -> APIRo
     def set_roles(
         body: RolesBody, _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
     ) -> dict[str, Any]:
-        from superaide.factory import load_prices, provider_usable
+        from superaide.brain.wiring import load_prices, provider_usable
 
         settings = runtime_settings()
         prices = load_prices(settings)

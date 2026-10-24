@@ -430,7 +430,7 @@ class Agent:
         return f"{SET_PREFIX}{service.describe_due(intention.due_at, tz)}: {intention.text}"
 
     def _brain_ready(self) -> bool:
-        from superaide.factory import brain_ready
+        from superaide.brain.wiring import brain_ready
 
         return brain_ready(self.settings)
 
@@ -630,7 +630,7 @@ class Agent:
         recall is the audience-gated public level, history is this conversation only, and the tool set is
         cut to what is safe to answer in public (brain/loop.py SHARED_TOOLS)."""
         from superaide.brain.loop import OwnerTurn
-        from superaide.factory import brain_ready
+        from superaide.brain.wiring import brain_ready
         from superaide.intentions.service import owner_zone
         from superaide.intentions.when import zone
 

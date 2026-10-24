@@ -54,8 +54,8 @@ class Script:
 @pytest.fixture
 def script(agent, monkeypatch):
     m = Script()
-    monkeypatch.setattr("superaide.factory.brain_ready", lambda settings: True)
-    monkeypatch.setattr("superaide.factory.build_llm", lambda settings: FakeLLM(m))
+    monkeypatch.setattr("superaide.brain.wiring.brain_ready", lambda settings: True)
+    monkeypatch.setattr("superaide.brain.wiring.build_llm", lambda settings: FakeLLM(m))
     agent.llm = FakeLLM(m)
     return m
 
@@ -121,7 +121,7 @@ def test_a_fact_found_only_in_a_late_passage_is_recalled_and_cited_with_it(owner
 
 
 def test_offline_the_text_is_still_searchable(owner, agent, monkeypatch):
-    monkeypatch.setattr("superaide.factory.brain_ready", lambda settings: False)
+    monkeypatch.setattr("superaide.brain.wiring.brain_ready", lambda settings: False)
     r = share(agent, long_text())
     assert r.status == "stored"
     assert any(s.kind == "chunk" and "Lovelace" in s.text for s in asked("Lovelace Medal"))

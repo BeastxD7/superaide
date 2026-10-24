@@ -76,7 +76,7 @@ def extract_facts(
     """Facts from `text`. [] when there is nothing to read or in offline mode; None when reading
     failed (budget cap, kill switch, API error, an answer cut off), so the caller can keep the
     text and try again instead of treating it as read."""
-    from superaide.factory import brain_ready
+    from superaide.brain.wiring import brain_ready
 
     if not text.strip() or not brain_ready(agent.settings):
         return []

@@ -40,7 +40,7 @@ class IngestResult:
 
 
 def ingest(agent: Any, owner_id: uuid.UUID, extracted: Extracted, *, size_bytes: int = 0) -> IngestResult:
-    from superaide.factory import brain_ready
+    from superaide.brain.wiring import brain_ready
 
     source_kind = "link" if extracted.kind in {"web", "github"} else "document"
     digest = hashlib.sha256((extracted.source + "\n" + extracted.text).encode()).hexdigest()
@@ -109,7 +109,7 @@ def _keep_facts(
     known_ids: dict[int, uuid.UUID],
     complete: bool = True,
 ) -> IngestResult:
-    from superaide.factory import brain_ready
+    from superaide.brain.wiring import brain_ready
 
     with session_scope() as s:
         owner = require(s, Person, owner_id)
@@ -247,7 +247,7 @@ def read_pending(agent: Any, owner_id: uuid.UUID) -> int:
 def read_documents(agent: Any, owner_id: uuid.UUID) -> list[ReadResult]:
     """Read facts out of documents saved while offline, and tell the owner in chat about each one read.
     Nothing is held open while the model works; a document that can't be read stays `stored`."""
-    from superaide.factory import brain_ready
+    from superaide.brain.wiring import brain_ready
 
     if not brain_ready(agent.settings):
         return []

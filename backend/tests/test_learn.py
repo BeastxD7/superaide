@@ -46,7 +46,7 @@ def real_brain(agent, monkeypatch):
     """A Claude key is 'set': the job's model reads facts (scripted)."""
     from superaide.brain.llm import FakeLLM
 
-    monkeypatch.setattr("superaide.factory.brain_ready", lambda settings: True)
+    monkeypatch.setattr("superaide.brain.wiring.brain_ready", lambda settings: True)
 
     def responder(purpose, system, messages, output_model):
         if purpose == "intro_facts":
@@ -64,7 +64,7 @@ def real_brain(agent, monkeypatch):
             )
         return "Noted."
 
-    monkeypatch.setattr("superaide.factory.build_llm", lambda settings: FakeLLM(responder))
+    monkeypatch.setattr("superaide.brain.wiring.build_llm", lambda settings: FakeLLM(responder))
     agent.llm = FakeLLM(responder)
 
 

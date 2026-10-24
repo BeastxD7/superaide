@@ -29,7 +29,7 @@ def many_owners_on(monkeypatch) -> None:
 @pytest.fixture
 def scripted(agent, monkeypatch):
     """A Claude key is 'set' and the model proposes two predictions: one quoted from the owner, one invented."""
-    monkeypatch.setattr("superaide.factory.brain_ready", lambda settings: True)
+    monkeypatch.setattr("superaide.brain.wiring.brain_ready", lambda settings: True)
 
     def responder(purpose, system, messages, output_model):
         if purpose == "journal_extract":
@@ -54,7 +54,7 @@ def scripted(agent, monkeypatch):
             )
         return "Noted."
 
-    monkeypatch.setattr("superaide.factory.build_llm", lambda settings: FakeLLM(responder))
+    monkeypatch.setattr("superaide.brain.wiring.build_llm", lambda settings: FakeLLM(responder))
     agent.llm = FakeLLM(responder)
 
 

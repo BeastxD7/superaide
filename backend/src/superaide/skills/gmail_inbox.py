@@ -211,7 +211,7 @@ def poll(session: Session, *, llm: Any = None, model: str = "", ready: bool = Fa
 
 @handler(JOB_KIND)
 def _job(session: Session, job: Job) -> None:
-    from superaide.factory import brain_ready, build_llm
+    from superaide.brain.wiring import brain_ready, build_llm
     from superaide.vault.store import runtime_settings
 
     try:

@@ -62,7 +62,7 @@ def schedule(session: Session, event: Event) -> None:
 
 @handler(JOB_KIND)
 def learn(session: Session, job: Job) -> None:
-    from superaide.factory import brain_ready, build_llm
+    from superaide.brain.wiring import brain_ready, build_llm
     from superaide.vault.store import runtime_settings
 
     event = session.get(Event, uuid.UUID(job.payload["event_id"]))

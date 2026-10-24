@@ -149,7 +149,7 @@ def listing(session: Session) -> list[dict[str, Any]]:
 def job(session: Session, job: Job) -> None:
     from types import SimpleNamespace
 
-    from superaide.factory import brain_ready, build_llm
+    from superaide.brain.wiring import brain_ready, build_llm
     from superaide.vault.store import runtime_settings
 
     settings = runtime_settings()

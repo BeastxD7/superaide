@@ -19,7 +19,7 @@ from superaide.config import Settings
 
 
 def brain_ready_for_intro(settings: Settings) -> bool:
-    from superaide.factory import brain_ready
+    from superaide.brain.wiring import brain_ready
 
     return brain_ready(settings)
 
@@ -51,7 +51,7 @@ def intro_needs_brain_step(settings: Settings) -> bool:
 def brain_choices(session: Session, settings: Settings) -> dict[str, Any]:
     """What the "Choose Ava's brain" step shows. Never a key."""
     from superaide.brain import platform_ai
-    from superaide.factory import brain_status
+    from superaide.brain.wiring import brain_status
 
     status = brain_status(settings)
     credits = platform_ai.view(session) if platform_ai.available() else None

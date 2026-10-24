@@ -59,7 +59,7 @@ def brain_became_ready(*, changed: bool = True) -> bool:
     Returns whether a reading job was queued. Never raises: enabling AI must not fail because of this,
     and the sweep catches anything missed."""
     from superaide.brain import keyhealth
-    from superaide.factory import brain_ready
+    from superaide.brain.wiring import brain_ready
     from superaide.vault.store import runtime_settings
 
     try:
@@ -102,7 +102,7 @@ def sweep() -> int:
 @handler(JOB_KIND)
 def read(session: Session, job: Job) -> None:
     from superaide.brain import keyhealth
-    from superaide.factory import brain_ready, build_llm
+    from superaide.brain.wiring import brain_ready, build_llm
     from superaide.knowledge.ingest import read_documents
     from superaide.vault.store import runtime_settings
 

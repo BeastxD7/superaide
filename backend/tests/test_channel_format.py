@@ -232,7 +232,7 @@ def owner_on_telegram(agent, monkeypatch):
     from superaide.identity.trust import Trust
     from superaide.main import create_app
 
-    monkeypatch.setattr("superaide.factory.brain_ready", lambda settings: False)
+    monkeypatch.setattr("superaide.brain.wiring.brain_ready", lambda settings: False)
     agent.settings.web_tools_enabled = False
     app = TestClient(create_app(agent), headers={"X-Requested-With": "superaide"})
     app.post("/auth/signup", json={"name": "Jordan Whitfield", "email": "s@example.com", "password": "correct horse 1"})

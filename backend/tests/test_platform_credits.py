@@ -11,10 +11,10 @@ from sqlalchemy import select
 
 from superaide.brain.budget import BudgetExceeded, BudgetGuard, Limits
 from superaide.brain.llm import ClaudeLLM, FakeLLM, RoutedLLM
+from superaide.brain.wiring import brain_status, build_llm, with_credits
 from superaide.config import get_settings
 from superaide.db.models import AuditLog, SpendEntry
 from superaide.db.session import session_scope
-from superaide.factory import brain_status, build_llm, with_credits
 from superaide.tenancy.context import InstanceScope
 from superaide.vault.store import runtime_settings
 from tests.test_loop import owner_client  # noqa: F401  (fixture)

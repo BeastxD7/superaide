@@ -163,7 +163,7 @@ def test_a_refused_model_call_pauses_cleanly_and_saves_nothing(owner_c, script):
 
 
 def test_the_offline_echo_cannot_play_a_role(agent, settings):
-    from superaide.factory import demo_responder
+    from superaide.brain.wiring import demo_responder
 
     a = Agent(llm=FakeLLM(demo_responder), messengers=agent.messengers,
               settings=settings.model_copy(update={"rehearsal_enabled": True}))  # fmt: skip

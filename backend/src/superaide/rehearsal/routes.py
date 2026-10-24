@@ -89,7 +89,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
 
     def _model_ready() -> bool:
         """A real model, or a scripted one in tests; the offline echo can't play a role."""
-        from superaide.factory import brain_ready, demo_responder
+        from superaide.brain.wiring import brain_ready, demo_responder
 
         agent = get_agent()
         return brain_ready(agent.settings) or getattr(agent.llm, "responder", None) is not demo_responder

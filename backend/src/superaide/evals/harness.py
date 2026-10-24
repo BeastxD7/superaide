@@ -538,27 +538,27 @@ def patched(
     """Background jobs build their own model client and Telegram sender: point both at ours.
     Live, Ava has a model connected (`brain_ready`), so she handles reminders herself; offline she
     doesn't, so the code-only paths run, as they do for an owner with no model connected."""
-    import superaide.factory as factory
+    import superaide.brain.wiring as wiring
     import superaide.proactive.notify as notify
 
     def send_telegram(identity: ChannelIdentity, text_: str) -> bool:
         outbox["telegram"].send_dm(identity, text_)
         return True
 
-    saved = (factory.build_llm, factory.brain_ready, notify.send_telegram, notify.messenger_for, notify.confirmed_here)
-    factory.build_llm = lambda settings: llm
+    saved = (wiring.build_llm, wiring.brain_ready, notify.send_telegram, notify.messenger_for, notify.confirmed_here)
+    wiring.build_llm = lambda settings: llm
     if live:
-        factory.brain_ready = lambda settings: True
+        wiring.brain_ready = lambda settings: True
     notify.send_telegram = send_telegram  # type: ignore[assignment]
     if (triage_model or learn_model) and not live:  # the scripted triage classifier counts as a connected model
-        factory.brain_ready = lambda settings: True
+        wiring.brain_ready = lambda settings: True
     if triage:  # escalations push to the owner on Slack too: catch those in the outbox
         notify.messenger_for = lambda provider: outbox.get(provider)
         notify.confirmed_here = lambda provider, identity: True
     try:
         yield
     finally:
-        (factory.build_llm, factory.brain_ready, notify.send_telegram, notify.messenger_for,
+        (wiring.build_llm, wiring.brain_ready, notify.send_telegram, notify.messenger_for,
          notify.confirmed_here) = saved  # fmt: skip
 
 

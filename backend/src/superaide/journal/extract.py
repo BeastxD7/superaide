@@ -70,7 +70,7 @@ def verify(candidates: list[Candidate], message: str) -> list[Candidate]:
 
 def extract(agent: Any, *, owner_name: str, message: str, today: str) -> list[Candidate] | None:
     """Verified candidates; [] for none; None when reading failed (the caller may retry)."""
-    from superaide.factory import brain_ready
+    from superaide.brain.wiring import brain_ready
 
     if not message.strip() or not brain_ready(agent.settings):
         return []

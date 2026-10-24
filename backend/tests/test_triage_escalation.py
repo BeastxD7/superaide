@@ -340,7 +340,7 @@ def test_vip_needs_a_verified_identity(world, on):
 @pytest.fixture
 def classifier(monkeypatch):
     """A connected model for the triage job, scripted."""
-    import superaide.factory as factory
+    import superaide.brain.wiring as wiring
 
     answers: list[Any] = []
 
@@ -352,8 +352,8 @@ def classifier(monkeypatch):
         return a
 
     llm = FakeLLM(respond)
-    monkeypatch.setattr(factory, "brain_ready", lambda settings: True)
-    monkeypatch.setattr(factory, "build_llm", lambda settings: llm)
+    monkeypatch.setattr(wiring, "brain_ready", lambda settings: True)
+    monkeypatch.setattr(wiring, "build_llm", lambda settings: llm)
     return answers
 
 
