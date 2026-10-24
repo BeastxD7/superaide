@@ -464,6 +464,8 @@ export type ApprovalItem = {
   // Set when the action was asked for on a voice call (#125). Only a tap here confirms it.
   origin?: 'voice'
   readback?: { kind: string; summary: string; fields: { label: string; value: string }[]; spoken: string }
+  // An email's sign-off (Principal Card): the tick is on by default and part of what the yes covers.
+  sign?: { label: string; checked: boolean; text: string; can_change: boolean }
 }
 
 export type Reminder = {
@@ -771,9 +773,13 @@ export type PrincipalCard = {
   first_name: string
   initial: string
   display_name: string
+  name_shown: string
   can: string[]
   cannot: string[]
-  opted_in: boolean
+  sign_default: boolean
+  channels: boolean
+  wording: string
+  default_wording: string
   active: boolean
   preview: string | null
 }

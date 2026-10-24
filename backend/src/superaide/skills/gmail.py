@@ -34,7 +34,7 @@ from superaide.connectors import gmail as api
 from superaide.connectors import google
 from superaide.db.models import Approval, InstalledSkill, Person
 from superaide.policy import recipients
-from superaide.policy.binding import content_hash, seal
+from superaide.policy.binding import content_hash, payload_hash, seal
 from superaide.policy.registry import DISCARDERS, EXECUTORS
 
 SKILL_ID = "superaide/gmail"
@@ -342,9 +342,45 @@ def _draft(
                 raise NotReady(refusal(signals, alternatives, reaches, str(args.get("evidence") or "")))
     from superaide.principal import card
 
-    raw = api.reply_raw(original=original, to=[to], from_addr=mine, text=text[:5000] + card.footer(session))
-    draft = api.create_draft(client, tok, raw, str(found.get("id") or original.get("threadId") or ""))
+    sig = card.email_signature(session)
+    signed = sig is not None and card.settings_of(session)["sign_default"]
+    thread = str(found.get("id") or original.get("threadId") or "")
+
+    def make(with_sig: bool) -> dict[str, Any]:
+        body = text[:5000] + (sig["text"] if sig and with_sig else "")
+        return api.create_draft(
+            client, tok, api.reply_raw(original=original, to=[to], from_addr=mine, text=body), thread
+        )
+
+    draft = make(signed)
+    if ctx is not None:
+        ctx["sign"] = _sign_state(sig, signed, make(not signed) if sig else None)
     return draft, original, to
+
+
+def _sign_state(sig: dict[str, str] | None, signed: bool, alt: dict[str, Any] | None) -> dict[str, Any]:
+    """What an email's approval carries about its sign-off. Both variants exist as drafts, so the owner's tick on
+    the card only swaps which one is bound; it never edits anything after the yes."""
+    if sig is None or alt is None:
+        return {}
+    return {
+        "signature_available": True, "sign_as_ava": signed, "signature_id": sig["id"], "alt": alt,
+        "signature_text": sig["text"].strip(), "signature_label": sig["label"],
+    }  # fmt: skip
+
+
+def _sign_payload(sign: dict[str, Any], alt_hash: str) -> dict[str, Any]:
+    if not sign:
+        return {}
+    return {
+        "signature_available": True,
+        "sign_as_ava": sign["sign_as_ava"],
+        "signature_id": sign["signature_id"],
+        "signature_text": sign["signature_text"],
+        "signature_label": sign["signature_label"],
+        "alt_draft_id": str(sign["alt"].get("id", "")),
+        "alt_content_hash": alt_hash,
+    }
 
 
 def draft_reply(session: Session, owner: Person, args: dict[str, Any]) -> tuple[str, bool]:
@@ -377,10 +413,13 @@ def send(
         return google.tool_text(exc), True
     text = str(args.get("text") or "").strip()[:5000]  # what _draft saved, so the card shows all of it
     name = api.sender(original)[0]
-    bound = ""
+    bound = alt_bound = ""
     if get_settings().approval_binding != "off":
         try:
-            bound = _draft_hash(api.get_draft(api.http_client(), token(session), str(draft.get("id", ""))))
+            client, tok = api.http_client(), token(session)
+            bound = _draft_hash(api.get_draft(client, tok, str(draft.get("id", ""))))
+            if ctx.get("sign"):
+                alt_bound = _draft_hash(api.get_draft(client, tok, str(ctx["sign"]["alt"].get("id", ""))))
         except google.GoogleError as exc:
             return google.tool_text(exc), True
     approval = Approval(
@@ -398,6 +437,7 @@ def send(
             "to": [to],
             "tainted": tainted,  # email (or the web) was read in the turn that asked for this
             "stage": str(current_stage(session)),
+            **_sign_payload(ctx.get("sign") or {}, alt_bound),
         },
         requested_by_person_id=owner.id,
     )
@@ -471,11 +511,22 @@ def compose(
         from superaide.triage.store import current_stage
 
         client, tok = api.http_client(), token(session)
-        raw = api.new_raw(to=[to], from_addr=address(session), subject=subject, text=text + card.footer(session))
-        draft = api.create_draft(client, tok, raw, "")
-        bound = ""
+        sig = card.email_signature(session)
+        signed = sig is not None and card.settings_of(session)["sign_default"]
+
+        def make(with_sig: bool) -> dict[str, Any]:
+            body = text + (sig["text"] if sig and with_sig else "")
+            raw = api.new_raw(to=[to], from_addr=address(session), subject=subject, text=body)
+            return api.create_draft(client, tok, raw, "")
+
+        draft = make(signed)
+        alt = make(not signed) if sig else None
+        sign = _sign_state(sig, signed, alt)
+        bound = alt_bound = ""
         if get_settings().approval_binding != "off":
             bound = _draft_hash(api.get_draft(client, tok, str(draft.get("id", ""))))
+            if alt is not None:
+                alt_bound = _draft_hash(api.get_draft(client, tok, str(alt.get("id", ""))))
         new = not seen_before(session, {"id": ""}, to)
         strong = (
             [recipients.AUTOMATED_CHIP]
@@ -502,6 +553,7 @@ def compose(
             "channel": channel,
             "tainted": tainted,
             "stage": str(current_stage(session)),
+            **_sign_payload(sign, alt_bound),
         },
         requested_by_person_id=owner.id,
     )
@@ -529,11 +581,15 @@ def _draft_hash(msg: dict[str, Any] | None) -> str:
 
 def discard_draft(session: Session, approval: Approval) -> None:
     """The owner rejected a send: delete the draft that was saved for it. Never raises."""
-    draft_id = str((approval.payload or {}).get("draft_id") or "")
+    p = approval.payload or {}
+    draft_id = str(p.get("draft_id") or "")
     if not draft_id:
         return
     try:
-        api.delete_draft(api.http_client(), token(session), draft_id)
+        client, tok = api.http_client(), token(session)
+        api.delete_draft(client, tok, draft_id)
+        if p.get("alt_draft_id"):
+            api.delete_draft(client, tok, str(p["alt_draft_id"]))
         audit(session, "skills", "gmail_draft_discarded", approval_id=approval.id)
     except (NotReady, google.GoogleError) as exc:
         log.warning("couldn't discard a rejected Gmail draft: %s", exc)
@@ -571,7 +627,39 @@ def send_approved(session: Session, approval: Approval) -> str:
         log.warning("couldn't send an approved Gmail draft: %s", exc)
         return f"Approved, but it couldn't be sent: {exc} The draft is still in Gmail."
     audit(session, "skills", "gmail_sent", approval_id=approval.id, message_id=str(sent.get("id", "")))
+    p = approval.payload or {}
+    if p.get("alt_draft_id"):  # the other variant of this email is no longer wanted
+        try:
+            api.delete_draft(api.http_client(), token(session), str(p["alt_draft_id"]))
+        except (NotReady, google.GoogleError) as exc:
+            log.warning("couldn't delete the unused variant of a sent email: %s", exc)
+    if p.get("sign_as_ava") and p.get("signature_id"):
+        from superaide.principal import card
+
+        card.record_sent(session, str(p["signature_id"]), channel="gmail", to=", ".join(p.get("to") or []))
     return "Sent from your Gmail."
+
+
+SIGNABLE = "gmail_send"
+
+
+def set_signing(session: Session, approval: Approval, sign: bool) -> bool:
+    """The owner's tick on the approval card. Swaps which of the two ready drafts is bound, and re-seals the
+    approval so the choice is part of what the yes covers. Only while the card is waiting; False if this card
+    has no sign-off to choose."""
+    p = dict(approval.payload or {})
+    if approval.kind != SIGNABLE or not p.get("signature_available") or not p.get("alt_draft_id"):
+        return False
+    if bool(p.get("sign_as_ava")) == sign:
+        return True
+    p["draft_id"], p["alt_draft_id"] = p["alt_draft_id"], p["draft_id"]
+    p["content_hash"], p["alt_content_hash"] = p.get("alt_content_hash", ""), p.get("content_hash", "")
+    p["sign_as_ava"] = sign
+    approval.payload = p
+    if approval.bound_hash:
+        approval.bound_hash = payload_hash(approval.kind, p)
+    audit(session, "skills", "email_signing_chosen", approval_id=approval.id, sign=sign)
+    return True
 
 
 def run(

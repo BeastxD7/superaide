@@ -34,8 +34,8 @@ def on(monkeypatch):
     monkeypatch.setattr(get_settings(), "principal_card_enabled", True)
 
 
-def set_card(owner, first="Ananya", initial="T", opt_in=True, **extra):
-    r = owner.put("/app/principal-card", json={"first_name": first, "initial": initial, "opt_in": opt_in, **extra})
+def set_card(owner, first="Ananya", initial="T", **extra):
+    r = owner.put("/app/principal-card", json={"first_name": first, "initial": initial, **extra})
     assert r.status_code == 200, r.text
     return r
 
@@ -67,13 +67,18 @@ def _without_request_id(body: dict) -> dict:
     return out
 
 
-def test_off_by_default_every_route_is_404(browser, owner):
+def test_the_global_flag_turns_every_route_into_a_404(browser, owner, monkeypatch):
+    monkeypatch.setattr(get_settings(), "principal_card_enabled", False)
     assert owner.get("/app/principal-card").status_code == 404
     assert owner.put("/app/principal-card", json={"first_name": "x"}).status_code == 404
     r = browser().get("/p/card/abc.def")
     assert r.status_code == 404 and r.json()["detail"] == NOT_FOUND["detail"]
     with session_scope() as s:
-        assert card.footer(s) == ""
+        assert card.email_signature(s) is None and card.footer(s, channel="slack") == ""
+
+
+def test_the_flag_is_on_by_default():
+    assert get_settings().model_fields["principal_card_enabled"].default is True
 
 
 def test_the_page_shows_the_card_and_nothing_private(browser, owner, on):
@@ -87,9 +92,14 @@ def test_the_page_shows_the_card_and_nothing_private(browser, owner, on):
     assert "Bluebird" not in r.text and "jordan" not in r.text.lower() and "@" not in r.text
 
 
-def test_no_card_until_the_owner_opts_in(owner, on):
+def test_the_card_is_on_by_default_using_the_first_name_on_the_account(owner, on):
     with session_scope() as s:
-        assert card.footer(s) == "" and card.issue(s) is None
+        sig = card.email_signature(s)
+    assert sig is not None
+    assert (
+        "Regards,\nAva, personal assistant of Jordan" in sig["text"] and "AI assistant acting for Jordan" in sig["text"]
+    )
+    assert sig["label"] == "Sign as Ava, personal assistant of Jordan"
 
 
 def test_a_forged_or_tampered_token_is_the_same_404(browser, owner, on):
@@ -128,15 +138,15 @@ def test_revoking_kills_every_card_sent_so_far_and_new_ones_work(browser, owner,
     assert browser().get(f"/p/card/{token_for(owner)}").status_code == 200
 
 
-def test_the_footer_names_the_owner_and_links_the_card(owner, on):
+def test_the_sign_off_names_the_owner_and_links_the_card(owner, on):
     set_card(owner)
     from superaide.app.deps import _hired_instance
 
     with session_scope() as s:
         scope, _ = _hired_instance(_user_id(s))
     with use_instance(scope), session_scope() as s:
-        f = card.footer(s)
-    assert "AI assistant acting for Ananya T." in f and "/c/" in f
+        f = card.email_signature(s)["text"]
+    assert "Ava, personal assistant of Ananya T." in f and "AI assistant acting for Ananya T." in f and "/c/" in f
 
 
 def test_a_card_from_one_owner_cannot_be_checked_against_another(browser, owner, other, on):
@@ -170,7 +180,7 @@ def test_the_owner_gets_a_preview_link_that_opens_the_public_page(browser, owner
 
 
 def test_the_owner_sees_the_cards_sent_and_can_take_one_back(owner, on):
-    set_card(owner)
+    set_card(owner, channels=True)
     with session_scope() as s:
         card.footer(s, channel="slack", to="Priya Tan")
         card.footer(s, channel="telegram", to="Jon Lee")
@@ -187,7 +197,8 @@ def test_the_owner_sees_the_cards_sent_and_can_take_one_back(owner, on):
     assert {c["status"] for c in owner.get("/app/principal-card/sent").json()["cards"]} == {"revoked"}
 
 
-def test_sent_routes_are_off_with_the_flag(owner):
+def test_sent_routes_are_off_with_the_flag(owner, monkeypatch):
+    monkeypatch.setattr(get_settings(), "principal_card_enabled", False)
     assert owner.get("/app/principal-card/sent").status_code == 404
     assert owner.post("/app/principal-card/sent/x/revoke", json={}).status_code == 404
 
@@ -195,27 +206,32 @@ def test_sent_routes_are_off_with_the_flag(owner):
 # Opt-in, first name plus owner-chosen initial, and the experiment counters (#135).
 
 
-def test_nothing_is_sent_until_the_owner_opts_in_even_with_a_name(owner, on):
-    set_card(owner, opt_in=False)
-    with session_scope() as s:
-        assert card.issue(s) is None and card.footer(s) == ""
-    assert owner.get("/app/principal-card").json()["opted_in"] is False
-    r = owner.post("/app/principal-card/opt-in", json={"opted_in": True})
-    assert r.status_code == 200, r.text
-    assert r.json()["opted_in"] is True and r.json()["preview"]
-    assert owner.post("/app/principal-card/opt-in", json={"opted_in": False}).json()["preview"] is None
+def test_the_owner_can_switch_the_default_off_and_on_and_keeps_the_settings(owner, on):
+    set_card(owner)
+    assert owner.get("/app/principal-card").json()["sign_default"] is True
+    r = owner.post("/app/principal-card/sign-default", json={"on": False})
+    assert r.status_code == 200 and r.json()["sign_default"] is False and r.json()["active"] is False
     assert owner.get("/app/principal-card").json()["first_name"] == "Ananya"  # off keeps the settings
+    assert owner.post("/app/principal-card/sign-default", json={"on": True}).json()["active"] is True
 
 
-def test_opt_in_needs_a_first_name(owner, on):
-    r = owner.post("/app/principal-card/opt-in", json={"opted_in": True})
-    assert r.status_code == 422
+def test_a_legacy_opt_out_flag_in_state_does_not_switch_it_off(owner, on):
+    from superaide.policy.killswitch import set_state
+
+    with session_scope() as s:
+        set_state(s, card.STATE_KEY, {"first_name": "Ananya", "opted_in": False})
+    assert owner.get("/app/principal-card").json()["sign_default"] is True
+
+
+def test_a_blank_first_name_falls_back_to_the_account_name(owner, on):
+    r = owner.put("/app/principal-card", json={"first_name": ""})
+    assert r.status_code == 200 and r.json()["name_shown"] == "Jordan"
 
 
 @pytest.mark.parametrize("bad", ["Ananya Menon", "Ananya T.", "A1", "<b>x</b>", "x" * 41, " ", "-A"])
 def test_a_full_name_or_junk_is_refused_as_first_name(owner, on, bad):
     r = owner.put("/app/principal-card", json={"first_name": bad})
-    assert r.status_code == 422, bad
+    assert r.status_code == (200 if not bad.strip() else 422), bad
 
 
 def test_the_name_shown_is_first_name_plus_the_chosen_initial_only(owner, on):
@@ -229,7 +245,7 @@ def test_stats_count_shown_opened_once_per_card_and_revoked(browser, owner, on):
     assert owner.get("/app/principal-card/stats").json() == {
         "shown": 0, "opened": 0, "revoked_one": 0, "revoked_all": 0, "open_rate": 0.0,
     }  # fmt: skip
-    set_card(owner)
+    set_card(owner, channels=True)
     with session_scope() as s:
         card.footer(s, channel="slack", to="Priya Tan")
         card.footer(s, channel="telegram", to="Jon Lee")
@@ -252,22 +268,45 @@ def test_stats_count_shown_opened_once_per_card_and_revoked(browser, owner, on):
 
 
 def test_stats_hold_no_recipients_or_text(owner, on):
-    set_card(owner)
+    set_card(owner, channels=True)
     with session_scope() as s:
         card.footer(s, channel="slack", to="Priya Tan")
     assert "Priya" not in owner.get("/app/principal-card/stats").text
 
 
-def test_stats_routes_are_owner_only_and_off_with_the_flag(browser, owner):
+def test_stats_routes_are_off_with_the_flag(browser, owner, monkeypatch):
+    monkeypatch.setattr(get_settings(), "principal_card_enabled", False)
     assert owner.get("/app/principal-card/stats").status_code == 404
-    assert owner.post("/app/principal-card/opt-in", json={"opted_in": True}).status_code == 404
+    assert owner.post("/app/principal-card/sign-default", json={"on": True}).status_code == 404
 
 
-def test_stats_and_opt_in_refuse_everyone_else(browser, owner, on):
+def test_stats_and_sign_default_refuse_everyone_else(browser, owner, on):
     anon = browser()
     assert anon.get("/app/principal-card/stats").status_code == 401
-    assert anon.post("/app/principal-card/opt-in", json={"opted_in": True}).status_code in (401, 403)
+    assert anon.post("/app/principal-card/sign-default", json={"on": True}).status_code in (401, 403)
     stranger = browser()
     signup(stranger, **OTHER)
     assert stranger.get("/app/principal-card/stats").status_code == 403
-    assert stranger.post("/app/principal-card/opt-in", json={"opted_in": True}).status_code == 403
+    assert stranger.post("/app/principal-card/sign-default", json={"on": True}).status_code == 403
+
+
+def test_wording_is_configurable_but_the_honest_line_and_link_are_fixed(owner, on):
+    r = owner.put("/app/principal-card", json={"first_name": "Ananya", "wording": "Best,\n{agent} for {name}"})
+    assert r.status_code == 200 and r.json()["wording"] == "Best,\n{agent} for {name}"
+    with session_scope() as s:
+        text = card.email_signature(s)["text"]
+    assert "Best,\nAva for Ananya" in text and "is an AI assistant acting for Ananya" in text and "/c/" in text
+    reset = owner.put("/app/principal-card", json={"first_name": "Ananya", "wording": "  "})
+    assert reset.json()["wording"] == card.DEFAULT_WORDING
+
+
+def test_telegram_and_slack_are_unaffected_unless_the_owner_turned_them_on(owner, on):
+    set_card(owner)
+    with session_scope() as s:
+        assert card.footer(s, channel="slack", to="Priya Tan") == "" and card.sent(s) == []
+    set_card(owner, channels=True)
+    with session_scope() as s:
+        assert "AI assistant acting for Ananya T." in card.footer(s, channel="slack", to="Priya Tan")
+    owner.post("/app/principal-card/sign-default", json={"on": False})
+    with session_scope() as s:
+        assert card.footer(s, channel="slack", to="Priya Tan") == ""
