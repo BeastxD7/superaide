@@ -110,7 +110,7 @@ export function SkillsPage({ google = null }: { google?: string | null }) {
             const [publisher, slug] = s.id.split('/')
             const asking = consent === s.id
             return (
-              <li key={s.id} className="flex flex-col rounded-xl border border-line bg-white p-4" aria-label={s.title}>
+              <li key={s.id} className="flex min-w-0 flex-col rounded-xl border border-line bg-white p-4" aria-label={s.title}>
                 <div className="flex items-start gap-3">
                   {SKILL_BRAND[s.id] ? (
                     <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-line bg-white">

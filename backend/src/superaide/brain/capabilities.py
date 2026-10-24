@@ -133,6 +133,11 @@ def block(session: Session, *, tz: str, web: bool) -> str:
         "- " + approvals_line() + ". Anything else cannot be queued; say so and offer text the owner can send.",
         CHANGED_RULE,
     ]
+    from superaide.integrations.gmail import settings as gmail_settings
+    from superaide.integrations.gmail import skill as gmail
+
+    if gmail.can_read(session):
+        lines.append(gmail_settings.rules_text(gmail_settings.load(session)))
     stand = standing(session, tz)
     return "\n".join(lines) + ("\n\n" + stand if stand else "")
 
