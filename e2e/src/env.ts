@@ -58,8 +58,8 @@ export const VOICE = process.env.E2E_VOICE === '1'
 export const REHEARSAL = process.env.E2E_REHEARSAL === '1'
 // Ava School (#57), the local half: E2E_SCHOOL=1 switches it on.
 export const SCHOOL = process.env.E2E_SCHOOL === '1'
-// The Principal Card (#135): E2E_CARD=1 switches it on.
-export const CARD = process.env.E2E_CARD === '1'
+// The Principal Card (#135) is on by default; E2E_CARD=0 runs the stack with the global kill flag off.
+export const CARD_OFF = process.env.E2E_CARD === '0'
 
 // The nightly sleep job (#50) and its conversation summaries: E2E_SLEEP=1 switches it on (tests/episodes.spec.ts).
 export const SLEEP = process.env.E2E_SLEEP === '1'
@@ -116,7 +116,7 @@ export function apiEnv(): Record<string, string> {
     ...(SLEEP ? { SLEEP_JOB_ENABLED: 'true' } : {}),
     ...(BRAIN_SHARE ? { BRAIN_SHARE_ENABLED: 'true' } : {}),
     ...(SCHOOL ? { SCHOOL_ENABLED: 'true' } : {}),
-    ...(CARD ? { PRINCIPAL_CARD_ENABLED: 'true' } : {}),
+    ...(CARD_OFF ? { PRINCIPAL_CARD_ENABLED: 'false' } : {}),
     ...(VOICE ? { VOICE_INTRO_V2: 'true', VOICE_ASR: 'fake', VOICE_TTS: 'fake' } : {}),
   }
 }

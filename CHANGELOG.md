@@ -12,20 +12,44 @@ GitHub Release with generated notes (`gh release create vYYYY.MM.DD --generate-n
 ### 2026-10-24
 
 **Maintenance**
+- ci: make end-to-end advisory on pull requests ([#397](https://github.com/BeastxD7/superaide/pull/397))
 - ci: define the tests-not-needed label and guard CI labels ([#376](https://github.com/BeastxD7/superaide/pull/376))
 - ci: map test_slack_owner_channels.py (main is red on the module map test) ([#373](https://github.com/BeastxD7/superaide/pull/373))
 - ci: map the tests added by #361 and #363 (main is red on the module map test) ([#371](https://github.com/BeastxD7/superaide/pull/371))
 
 **Added**
+- feat(mandate): a covering signed mandate skips the card for own-calendar writes (#112) ([#390](https://github.com/BeastxD7/superaide/pull/390))
+- feat(triage): owner-promoted, raise-only kNN head with a Promote control (#117) ([#395](https://github.com/BeastxD7/superaide/pull/395))
+- feat(voice): Deepgram realtime adapter and a separate monthly voice cap inside the spend cap (#125) ([#392](https://github.com/BeastxD7/superaide/pull/392))
+- feat(school): playbook text, per-lesson eval and an in-prompt switch that needs a passing eval (#57) ([#391](https://github.com/BeastxD7/superaide/pull/391))
+- feat(import): Hermes layout, dry run, list-only skills and a names-only layout listing (#141) ([#389](https://github.com/BeastxD7/superaide/pull/389))
+- feat(principal): opt-in per owner, first name plus chosen initial, and experiment counters (#135) ([#388](https://github.com/BeastxD7/superaide/pull/388))
+- feat(agent): human-like task protocol behind TASK_PROTOCOL_ENABLED ([#386](https://github.com/BeastxD7/superaide/pull/386))
+- feat(people): page /app/people by cursor, skeleton, one query per page, contact index (0082) ([#385](https://github.com/BeastxD7/superaide/pull/385))
+- feat(triage): superaide triage-knn-compare, replay the owner's labelled history through the kNN head (#117) ([#384](https://github.com/BeastxD7/superaide/pull/384))
+- feat(console): the Safety log pages by cursor with a skeleton and Load more ([#383](https://github.com/BeastxD7/superaide/pull/383))
+- feat(mandate): shadow check, record whether a mandate would have covered each approval (#112) ([#381](https://github.com/BeastxD7/superaide/pull/381))
+- feat(privacy): Private Lobe boundary, only a bool, a listed value or a whole number crosses (#128) ([#382](https://github.com/BeastxD7/superaide/pull/382))
+- feat(logs): page /api/audit and /app/access-log by cursor, audit_log indexes (0081) ([#377](https://github.com/BeastxD7/superaide/pull/377))
 - feat(reminders): count pill, live list and toasts for reminders (#345) ([#375](https://github.com/BeastxD7/superaide/pull/375))
 - feat(citations): drop marks a source does not back; deep links and a source note in channel footers (#341) ([#374](https://github.com/BeastxD7/superaide/pull/374))
 - feat(slack): read the thread when the owner @-mentions Ava in it ([#370](https://github.com/BeastxD7/superaide/pull/370))
 
+**Changed**
+- Explicit send requests: draft and approval in one step, warning for automated recipients (#394) ([#396](https://github.com/BeastxD7/superaide/pull/396))
+- test+fix(web): Needs-you keyboard run, axe on /a/<handle>, intro notices survive (#81) ([#387](https://github.com/BeastxD7/superaide/pull/387))
+
 **Fixed**
+- fix(evals): refuse to wipe any database that is not disposable ([#393](https://github.com/BeastxD7/superaide/pull/393))
 - fix(slack): recognise the linked owner in channels and threads ([#366](https://github.com/BeastxD7/superaide/pull/366))
 
 **Tests**
+- test(web): Markdown safety, useReveal and keyboard-only introduction (#81) ([#379](https://github.com/BeastxD7/superaide/pull/379))
+- test: make the deep-page latency and mobile doc-loader specs load-proof ([#378](https://github.com/BeastxD7/superaide/pull/378))
 - test: fix two tests that fail just after midnight UTC (main is red) ([#372](https://github.com/BeastxD7/superaide/pull/372))
+
+**Documentation**
+- docs: update the changelog for the pull requests merged since 2026-10-22 ([#380](https://github.com/BeastxD7/superaide/pull/380))
 
 ### 2026-10-23
 
