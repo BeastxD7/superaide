@@ -1,14 +1,14 @@
 'use client'
 
-import { AlertTriangle, AudioLines, Check, ChevronDown, Copy, ExternalLink, KeyRound, ShieldAlert } from 'lucide-react'
+import { AlertTriangle, AudioLines, Check, ChevronDown, ChevronRight, Copy, ExternalLink, KeyRound, ShieldAlert } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
+import Link from 'next/link'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { call, type Me } from '@/lib/api'
 import { ActionError, LoadError } from '@/components/load-state'
 import { errorMessage, useAction, UserError } from '@/lib/action'
 import { BrandIcon } from '@/components/BrandIcon'
 import { Button, Notice } from '@/components/site'
-import { GoogleCalendarRow, type GoogleGuide, type GoogleService } from '@/features/workspace/GoogleCalendar'
 import { LinkedAccounts, type LinkedAccount } from '@/features/workspace/LinkedAccounts'
 
 // Connect Telegram, Slack, Google Calendar and the voice call's speech services from the app. Keys are checked with the
@@ -32,8 +32,8 @@ const rejected = (s: Service) => s.connected && s.health?.status === 'auth_faile
 const missingScopes = (s: Service) => (s.connected && !rejected(s) ? (s.health?.missing_scopes ?? []) : [])
 
 type Status = {
-  services: Record<'telegram' | 'slack' | 'whatsapp' | 'deepgram' | 'elevenlabs', Service> & { google: GoogleService }
-  guides: Record<string, { url: string; steps: string[] }> & { google: GoogleGuide }
+  services: Record<'telegram' | 'slack' | 'whatsapp' | 'deepgram' | 'elevenlabs', Service>
+  guides: Record<string, { url: string; steps: string[] }>
   keys_kept_in: string
 }
 
@@ -66,7 +66,6 @@ export function Connections({ agentName, me, refreshMe }: { agentName: string; m
   const [open, setOpen] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const [googleOutcome, setGoogleOutcome] = useState<string | null>(null)
   const [linked, setLinked] = useState<LinkedAccount[]>([])
 
   const reloadLinked = useCallback(async () => {
@@ -87,19 +86,6 @@ export function Connections({ agentName, me, refreshMe }: { agentName: string; m
         .then((s) => {
           setStatus(s)
           void reloadLinked()
-          // Back from Google sign-in: /dashboard/connections?google=<outcome>. Show it once, then tidy the URL.
-          const params = new URLSearchParams(window.location.search)
-          const outcome = params.get('google')
-          if (outcome) {
-            // Only say "connected" if Google really is: anyone can send a link with ?google=connected.
-            if (outcome !== 'connected' || s.services.google.connected) {
-              setGoogleOutcome(outcome)
-              setOpen('google')
-            }
-            params.delete('google')
-            const rest = params.toString()
-            window.history.replaceState(window.history.state, '', `${window.location.pathname}${rest ? `?${rest}` : ''}${window.location.hash}`)
-          }
         })
         .catch((e: unknown) => {
           setError(errorMessage(e))
@@ -213,18 +199,16 @@ export function Connections({ agentName, me, refreshMe }: { agentName: string; m
           </div>
         )
       })}
-      <GoogleCalendarRow
-        service={status.services.google}
-        guide={status.guides.google}
-        where={where}
-        expanded={open === 'google'}
-        onToggle={() => setOpen(open === 'google' ? null : 'google')}
-        outcome={googleOutcome}
-        onChanged={(next) => {
-          setGoogleOutcome(null)
-          setStatus((prev) => (prev ? { ...prev, services: { ...prev.services, google: next.services.google } } : prev))
-        }}
-      />
+      <Link href="/dashboard/capabilities#google" className="flex items-center gap-3 rounded-2xl bg-white/60 px-4 py-3 hover:bg-lilac-50">
+        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-mist">
+          <BrandIcon brand="googlecalendar" size={18} decorative />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-medium text-ink">Google (Gmail and Calendar)</span>
+          <span className="block text-xs text-muted">Set up under Capabilities, with the tools that use it.</span>
+        </span>
+        <ChevronRight className="size-4 shrink-0 text-muted" aria-hidden />
+      </Link>
       <div className="flex items-center gap-3 rounded-2xl bg-white/60 px-4 py-3">
         <span className="grid size-9 shrink-0 place-items-center rounded-full bg-mist">
           <BrandIcon brand="whatsapp" size={18} decorative />

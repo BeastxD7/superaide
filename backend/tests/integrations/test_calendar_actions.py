@@ -136,7 +136,9 @@ def switch_on(c: TestClient, fake: FakeCalendar) -> dict[str, Any]:
     assert set(q["scope"][0].split()) == {READ, EVENTS} and q["include_granted_scopes"] == ["true"]
     fake.granted = f"{READ} {EVENTS}"
     r = c.get("/app/connections/google/callback", params={"code": "c", "state": q["state"][0]}, follow_redirects=False)
-    assert r.headers["location"] == "http://localhost:3000/dashboard/capabilities?google=connected"
+    assert (
+        r.headers["location"] == "http://localhost:3000/dashboard/capabilities?google=actions-enabled"
+    )  # not "connected" (#441)
     return card.json()
 
 
@@ -503,7 +505,7 @@ def test_a_missing_permission_is_told_apart_from_the_api_being_off(owner, fake):
         403, json={"error": {"code": 403, "errors": [{"reason": "insufficientPermissions"}]}}
     )
     out, err = events_tool("s@example.com", {"from": "today"})
-    assert err and "permission is missing" in out and "Reconnect it under Connections" in out
+    assert err and "permission is missing" in out and "Reconnect Google under Capabilities" in out
     assert "isn't switched on" not in out
 
 

@@ -86,7 +86,7 @@ def window(session: Session, owner: Person, start_words: str, days: int) -> tupl
 
 def calendar_events(session: Session, owner: Person, args: dict[str, Any]) -> tuple[Any, bool]:
     if not connected():
-        return "Google Calendar isn't connected yet. Ask the owner to connect it under Connections.", True
+        return "Google Calendar isn't connected yet. Ask the owner to connect Google under Capabilities.", True
     asked = int(args.get("days") or 1)
     start, end, tz = window(session, owner, str(args.get("from", "today")), asked)
     capped = asked > int(cal_settings.load(session)["ahead_days"])
@@ -142,7 +142,7 @@ def _token() -> str:
 
 def calendar_free_busy(session: Session, owner: Person, args: dict[str, Any]) -> tuple[Any, bool]:
     if not connected():
-        return "Google Calendar isn't connected yet. Ask the owner to connect it under Connections.", True
+        return "Google Calendar isn't connected yet. Ask the owner to connect Google under Capabilities.", True
     start, end, tz = window(session, owner, str(args.get("from", "today")), int(args.get("days") or 1))
     try:
         busy = google.free_busy(_token(), start=start, end=end)
@@ -248,7 +248,7 @@ def _guard(session: Session, sender: Any) -> str | None:
     if sender.relation != "manager":
         return "Only the owner can change their calendar."
     if not connected():
-        return "Google Calendar isn't connected yet. Ask the owner to connect it under Connections."
+        return "Google Calendar isn't connected yet. Ask the owner to connect Google under Capabilities."
     if not actions_on(session):
         return "Calendar actions are off. The owner can allow them under Capabilities → Google Calendar."
     if not can_write(session):
