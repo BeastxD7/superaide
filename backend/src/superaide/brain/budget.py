@@ -61,6 +61,9 @@ BUCKETS = {
     "voice_turn": "voice",
     "voice_asr": "voice",
     "voice_tts": "voice",
+    # #125: a live call is its own bucket so it has its own monthly cap (budget_monthly_by_bucket)
+    "voice_call_asr": "voice_call",
+    "voice_call_tts": "voice_call",
     "receptionist": "receptionist",  # ADR 0010 TR5: chats with people Ava doesn't know
     # Learning and trust features (#142): replay ablations and memory-free second opinions
     "replay": "learning",
@@ -86,6 +89,7 @@ class Limits:
     daily_usd: Decimal | None = None
     monthly_usd: Decimal | None = None
     daily_by_bucket: dict[str, Decimal] | None = None
+    monthly_by_bucket: dict[str, Decimal] | None = None
 
     @classmethod
     def from_settings(cls, settings: object) -> Limits:
@@ -93,10 +97,12 @@ class Limits:
             return None if v is None or v <= 0 else Decimal(str(v))
 
         by_bucket = getattr(settings, "budget_daily_by_bucket", {}) or {}
+        monthly = getattr(settings, "budget_monthly_by_bucket", {}) or {}
         return cls(
             daily_usd=dec(getattr(settings, "budget_daily_usd", None)),
             monthly_usd=dec(getattr(settings, "budget_monthly_usd", None)),
             daily_by_bucket={k: Decimal(str(v)) for k, v in by_bucket.items() if v and v > 0},
+            monthly_by_bucket={k: Decimal(str(v)) for k, v in monthly.items() if v and v > 0},
         )
 
 
@@ -115,12 +121,18 @@ def _override(cap: Decimal, limits: Limits, own: dict[str, Any]) -> tuple[Decima
         for bucket, value in own["daily_by_bucket"].items():
             if (d := positive(value)) is not None:
                 by_bucket[str(bucket)] = d
+    monthly_by_bucket = dict(limits.monthly_by_bucket or {})
+    if isinstance(own.get("monthly_by_bucket"), dict):
+        for bucket, value in own["monthly_by_bucket"].items():
+            if (d := positive(value)) is not None:
+                monthly_by_bucket[str(bucket)] = d
     return (
         positive(own.get("lifetime_usd")) or cap,
         Limits(
             daily_usd=positive(own.get("daily_usd")) or limits.daily_usd,
             monthly_usd=positive(own.get("monthly_usd")) or limits.monthly_usd,
             daily_by_bucket=by_bucket,
+            monthly_by_bucket=monthly_by_bucket,
         ),
     )
 
@@ -235,6 +247,10 @@ class BudgetGuard:
         if bucket_cap is not None:
             members = [p for p, b in BUCKETS.items() if b == bucket] or [purpose]
             checks.append(("bucket", bucket_cap, self._committed(s, day, members), f"today's {bucket}"))
+        month_cap = (self.limits.monthly_by_bucket or {}).get(bucket)
+        if month_cap is not None:
+            members = [p for p, b in BUCKETS.items() if b == bucket] or [purpose]
+            checks.append(("bucket_month", month_cap, self._committed(s, month, members), f"this month's {bucket}"))
         for period, cap, used, label in checks:
             if cap is not None and used + worst > cap:
                 audit(

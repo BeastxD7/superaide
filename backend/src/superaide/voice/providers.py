@@ -295,10 +295,12 @@ def voice_id(kind: str, style: str) -> str:
     return VOICES.get(kind, {}).get(style, style)
 
 
-def metered_transcribe(guard: Any, asr: ASR, audio: bytes, mime: str, lang: str, max_seconds: float) -> Transcript:
+def metered_transcribe(
+    guard: Any, asr: ASR, audio: bytes, mime: str, lang: str, max_seconds: float, *, purpose: str = "voice_asr"
+) -> Transcript:
     """Reserve the longest answer we accept, transcribe, settle at the seconds heard."""
     worst = asr_cost(asr.name, asr.model, max_seconds)
-    entry = guard.reserve(purpose="voice_asr", model=asr.model, worst_case_usd=worst, provider=asr.name)
+    entry = guard.reserve(purpose=purpose, model=asr.model, worst_case_usd=worst, provider=asr.name)
     try:
         heard = asr.transcribe(audio, mime, lang)
     except Exception as exc:
@@ -309,10 +311,10 @@ def metered_transcribe(guard: Any, asr: ASR, audio: bytes, mime: str, lang: str,
     return heard
 
 
-def metered_speak(guard: Any, tts: TTS, text: str, voice: str, lang: str) -> bytes:
+def metered_speak(guard: Any, tts: TTS, text: str, voice: str, lang: str, *, purpose: str = "voice_tts") -> bytes:
     """A voice is billed by the characters sent, which are known up front."""
     cost: Decimal = tts_cost(tts.name, tts.model, len(text))
-    entry = guard.reserve(purpose="voice_tts", model=tts.model, worst_case_usd=cost, provider=tts.name)
+    entry = guard.reserve(purpose=purpose, model=tts.model, worst_case_usd=cost, provider=tts.name)
     try:
         audio = tts.synthesize(text, voice, lang)
     except Exception as exc:
