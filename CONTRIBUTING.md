@@ -108,7 +108,7 @@ These come from the architecture and are checked in review:
 - **Side effects need approval.** `write_external`, `send` and `spend` end in an approval card at the Infant and Child stages. Untrusted content (web pages, emails, files) taints the turn.
 - **Spend cap.** Every model call reserves its worst-case cost against `MAX_SPEND_USD`. A model without a price in `brain/pricing.py` is refused.
 - Strangers get a fixed reply and no model call. People are recognised by immutable platform IDs, never names.
-- New behaviour ships behind a setting that is off by default (for example `TRIAGE_ENABLED`) until it has been tried.
+- **Decided and tested features ship on by default** (owner decision, #448). A flag is for risky, costly or experimental work only, and then it has a named owner and a remove-by date (the flag registry, #402); a flag that is not finished or not decided stays **off** until the owner decides. Anything that needs an external key (a voice vendor, a mail provider) turns on when the key is present and says in the app what to add when it is not, instead of hiding behind a second switch. A feature that needs a permission (a Slack scope, a Google API, a file or OS permission) checks it at startup or on connect and tells the owner what is missing. Turning a feature on by default ships with its safeguards unchanged and tested, flag off and on.
 
 ## Backend
 
