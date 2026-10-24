@@ -13,23 +13,24 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 import superaide.plugins  # noqa: F401  (registers the approval executors and event subscribers)
-from superaide import docs, envelope
+from superaide import docs
 from superaide.api.admin import require_admin
 from superaide.api.admin import router as admin_router
-from superaide.audit import audit
 from superaide.auth.routes import make_router as make_auth_router
 from superaide.channels import slack, telegram
 from superaide.channels.base import FakeMessenger, InboundMessage
-from superaide.config import get_settings
-from superaide.db.session import session_scope
-from superaide.envelope import error_response
 from superaide.jobs.worker import JobWorker
 from superaide.pipeline import Agent
+from superaide.platform import envelope
+from superaide.platform.audit import audit
+from superaide.platform.config import get_settings
+from superaide.platform.db.session import session_scope
+from superaide.platform.envelope import error_response
+from superaide.platform.tenancy.context import default_scope, use_instance
+from superaide.platform.tenancy.endpoints import scope_of as endpoint_scope
+from superaide.platform.tenancy.endpoints import secret_ok
+from superaide.platform.tenancy.models import ChannelEndpoint
 from superaide.runtime import Runtime
-from superaide.tenancy.context import default_scope, use_instance
-from superaide.tenancy.endpoints import scope_of as endpoint_scope
-from superaide.tenancy.endpoints import secret_ok
-from superaide.tenancy.models import ChannelEndpoint
 
 log = logging.getLogger(__name__)
 
@@ -47,10 +48,10 @@ class SimulatedMessage(BaseModel):
 
 def create_app(agent: Agent | None = None) -> FastAPI:
     settings = get_settings()
-    from superaide.security import logredact
+    from superaide.platform.security import logredact
 
     if settings.surface_check_on_boot:
-        from superaide.security import surface
+        from superaide.platform.security import surface
 
         surface.verify_boot()
 
@@ -95,7 +96,7 @@ def create_app(agent: Agent | None = None) -> FastAPI:
         process runs them (a server's separate worker follows the changes by itself)."""
         return runtime.apply_connections(listen=settings.run_channels_in_api)
 
-    from superaide.security import dbcheck
+    from superaide.platform.security import dbcheck
 
     db_gate = dbcheck.Gate()
     app.state.db_gate = db_gate
@@ -121,7 +122,7 @@ def create_app(agent: Agent | None = None) -> FastAPI:
 
         platform_ai.warn_if_unusable()
         if fixed is None:
-            from superaide.security import dbcheck, deploy
+            from superaide.platform.security import dbcheck, deploy
 
             deploy.check(settings)
             db_gate.message = dbcheck.check(settings)  # refuses to start when hosted and behind

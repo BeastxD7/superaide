@@ -16,7 +16,7 @@ from urllib.parse import urlsplit
 
 from fastapi import Request
 
-from superaide.config import Settings, get_settings
+from superaide.platform.config import Settings, get_settings
 
 
 def _parts(origin: str) -> tuple[str, str] | None:

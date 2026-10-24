@@ -16,13 +16,13 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from superaide.app.deps import owner_person_id
-from superaide.audit import audit
 from superaide.auth.routes import reject_nul_text, require_csrf_header
-from superaide.db.models import Person
-from superaide.db.session import require, session_scope
+from superaide.platform.audit import audit
+from superaide.platform.db.models import Person
+from superaide.platform.db.session import require, session_scope
+from superaide.platform.tenancy.context import scope_or_default
 from superaide.reception.models import ReceptionMessage, ReceptionSettings
 from superaide.reception.service import greeting, settings_for
-from superaide.tenancy.context import scope_or_default
 
 WINDOW = timedelta(days=30)
 

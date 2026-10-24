@@ -6,9 +6,9 @@ import copy
 import random
 from datetime import UTC, datetime
 
-from superaide.config import get_settings
-from superaide.db.session import session_scope
 from superaide.mcp import pin
+from superaide.platform.config import get_settings
+from superaide.platform.db.session import session_scope
 
 SKILL, SERVER = "acme/mailer", "https://mcp.acme.example/mcp"
 

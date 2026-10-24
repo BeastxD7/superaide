@@ -23,9 +23,9 @@ import uuid
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
-from superaide.tenancy.context import InstanceScope, scope_or_default, use_instance
-from superaide.tenancy.models import ChannelEndpoint
+from superaide.platform.audit import audit
+from superaide.platform.tenancy.context import InstanceScope, scope_or_default, use_instance
+from superaide.platform.tenancy.models import ChannelEndpoint
 
 log = logging.getLogger(__name__)
 TELEGRAM = "telegram"
@@ -127,9 +127,9 @@ def sync_telegram() -> dict[str, InstanceScope]:
     A bot saved in two instances (possible before endpoints existed) keeps the first; the
     other instance's copy is ignored and logged until its owner connects another bot.
     """
-    from superaide.db.session import session_scope
-    from superaide.tenancy.context import default_scope
-    from superaide.tenancy.service import active_scopes
+    from superaide.platform.db.session import session_scope
+    from superaide.platform.tenancy.context import default_scope
+    from superaide.platform.tenancy.service import active_scopes
     from superaide.vault.store import runtime_settings
 
     with session_scope() as s:
@@ -158,9 +158,9 @@ def sync_telegram() -> dict[str, InstanceScope]:
 def sync_slack() -> dict[str, tuple[InstanceScope, str, str]]:
     """Every active instance's own Slack app: app token -> (instance, bot token, team id),
     registering endpoints as needed. An app saved in two instances keeps the first."""
-    from superaide.db.session import session_scope
-    from superaide.tenancy.context import default_scope
-    from superaide.tenancy.service import active_scopes
+    from superaide.platform.db.session import session_scope
+    from superaide.platform.tenancy.context import default_scope
+    from superaide.platform.tenancy.service import active_scopes
     from superaide.vault.store import runtime_settings
 
     with session_scope() as s:

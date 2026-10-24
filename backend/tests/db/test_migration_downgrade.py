@@ -15,7 +15,7 @@ from urllib.parse import quote
 
 from sqlalchemy import text
 
-from superaide.db.session import get_engine
+from superaide.platform.db.session import get_engine
 
 BACKEND = Path(__file__).resolve().parents[2]
 

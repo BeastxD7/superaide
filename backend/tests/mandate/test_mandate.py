@@ -9,11 +9,11 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from superaide.config import get_settings
-from superaide.db.session import session_scope
 from superaide.mandate import service
 from superaide.mandate import token as tk
 from superaide.mandate.service import Caps
+from superaide.platform.config import get_settings
+from superaide.platform.db.session import session_scope
 
 KEY = b"k" * 32
 AGENT = str(uuid.uuid4())

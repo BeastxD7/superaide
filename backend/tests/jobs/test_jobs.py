@@ -8,11 +8,11 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy import delete, select
 
-from superaide.db.models import AuditLog, Job
-from superaide.db.session import session_scope
 from superaide.jobs import queue
 from superaide.jobs.queue import cancel, enqueue, handler, run_due
 from superaide.jobs.worker import JobWorker
+from superaide.platform.db.models import AuditLog, Job
+from superaide.platform.db.session import session_scope
 
 NOW = datetime(2026, 10, 22, 9, 0, tzinfo=UTC)
 

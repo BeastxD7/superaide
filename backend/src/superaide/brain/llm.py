@@ -290,7 +290,7 @@ def _through_airlock(kwargs: dict[str, Any]) -> tuple[dict[str, Any], dict[str, 
     conversation are replaced by placeholders before anything is uploaded (privacy/airlock.py); the map stays
     here and is used to put the originals back into the reply, including text streamed to the owner. Off
     (AIRLOCK_ENABLED=false): nothing changes."""
-    from superaide.config import get_settings
+    from superaide.platform.config import get_settings
 
     if not get_settings().airlock_enabled or "messages" not in kwargs:
         return kwargs, {}

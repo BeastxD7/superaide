@@ -29,12 +29,12 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
-from superaide.config import get_settings
 from superaide.connectors import google
-from superaide.db.models import CalendarWatch, Person
 from superaide.jobs.queue import enqueue, handler
-from superaide.tenancy.context import InstanceScope, scope_or_default
+from superaide.platform.audit import audit
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import CalendarWatch, Person
+from superaide.platform.tenancy.context import InstanceScope, scope_or_default
 
 log = logging.getLogger(__name__)
 
@@ -172,9 +172,9 @@ def renew(session: Session, job: object) -> None:
 def handle_notification(channel_id: str | None, token: str | None, resource_id: str | None, state: str | None) -> bool:
     """A call from Google. True when it is genuine (and acted on); False when it isn't, which the
     webhook answers with 401. Nothing is read or queued for an unverified call."""
-    from superaide.db.session import session_scope
-    from superaide.tenancy.context import use_instance
-    from superaide.tenancy.models import AgentInstance
+    from superaide.platform.db.session import session_scope
+    from superaide.platform.tenancy.context import use_instance
+    from superaide.platform.tenancy.models import AgentInstance
 
     agent = agent_of(channel_id or "")
     if agent is None or not channel_id or not token_ok(channel_id, token):

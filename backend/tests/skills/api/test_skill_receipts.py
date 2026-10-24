@@ -12,8 +12,8 @@ from pathlib import Path
 
 import pytest
 
-from superaide.config import get_settings
-from superaide.db.session import session_scope
+from superaide.platform.config import get_settings
+from superaide.platform.db.session import session_scope
 from superaide.skills import claim, receipts, tier_rules
 from tests.api_support import signup
 
@@ -116,7 +116,7 @@ def test_flag_off_writes_nothing(monkeypatch):
 
 
 def test_an_approval_decision_writes_a_receipt(owner):
-    from superaide.db.models import Approval
+    from superaide.platform.db.models import Approval
     from superaide.policy.actions import resolve
 
     with session_scope() as s:

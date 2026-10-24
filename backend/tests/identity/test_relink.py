@@ -22,11 +22,11 @@ from superaide.brain.turn import RequestedAction
 from superaide.channels.base import InboundMessage
 from superaide.channels.slack import parse_event
 from superaide.channels.telegram import parse_update
-from superaide.db.models import Approval, AuditLog, ChannelIdentity, ChannelInvite, Event, MemoryItem, Person
-from superaide.db.session import get_engine, session_scope
 from superaide.identity.binding import bind_unbound_telegram
 from superaide.main import create_app
 from superaide.pipeline import Agent
+from superaide.platform.db.models import Approval, AuditLog, ChannelIdentity, ChannelInvite, Event, MemoryItem, Person
+from superaide.platform.db.session import get_engine, session_scope
 
 PASSWORD = "correct horse battery"
 OLD_TOKEN = "111111111:fake-old-bot"

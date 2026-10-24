@@ -9,14 +9,14 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy import select, text
 
-from superaide.config import get_settings
-from superaide.db.models import Person
-from superaide.db.session import session_scope
 from superaide.features.brainshare import service
 from superaide.features.brainshare.models import BrainShare
 from superaide.knowledge.store import remember_fact
-from superaide.tenancy.context import InstanceScope, all_instances, use_instance
-from superaide.tenancy.models import AgentInstance, InstanceMember
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import Person
+from superaide.platform.db.session import session_scope
+from superaide.platform.tenancy.context import InstanceScope, all_instances, use_instance
+from superaide.platform.tenancy.models import AgentInstance, InstanceMember
 from tests.api_support import OTHER, OWNER, hire, signup
 from tests.tenancy.api.test_many_owners import account
 

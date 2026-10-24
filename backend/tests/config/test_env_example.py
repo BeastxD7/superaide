@@ -5,7 +5,7 @@ import json
 import re
 from pathlib import Path
 
-from superaide.config import Settings
+from superaide.platform.config import Settings
 
 ROOT = Path(__file__).resolve().parents[3]
 SCRIPT = ROOT / "scripts" / "check_env_example.py"

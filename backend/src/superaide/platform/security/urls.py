@@ -109,7 +109,7 @@ def safe_client(
 
 
 def hosted() -> bool:
-    from superaide.config import get_settings
+    from superaide.platform.config import get_settings
 
     return get_settings().deploy_mode == "hosted"
 

@@ -12,10 +12,10 @@ from sqlalchemy import select, text
 from sqlalchemy.dialects import postgresql
 
 from superaide.app.accounts import owner as hired_owner
-from superaide.db.models import MemoryItem
-from superaide.db.session import session_scope
 from superaide.main import create_app
-from superaide.pagination import SortKey, bind_for, encode_cursor, page_query
+from superaide.platform.db.models import MemoryItem
+from superaide.platform.db.session import session_scope
+from superaide.platform.pagination import SortKey, bind_for, encode_cursor, page_query
 
 PASSWORD = "correct horse battery"
 BASE = datetime(2026, 1, 1, tzinfo=UTC)

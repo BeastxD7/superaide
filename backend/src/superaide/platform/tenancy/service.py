@@ -13,10 +13,10 @@ from sqlalchemy import Connection, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
-from superaide.config import DEFAULT_AGENT_ID, DEFAULT_TENANT_ID, get_settings
-from superaide.db.models import Person, UserAccount
-from superaide.tenancy.context import InstanceScope, default_scope, scope_or_default
-from superaide.tenancy.models import AgentInstance, InstanceMember, Tenant
+from superaide.platform.config import DEFAULT_AGENT_ID, DEFAULT_TENANT_ID, get_settings
+from superaide.platform.db.models import Person, UserAccount
+from superaide.platform.tenancy.context import InstanceScope, default_scope, scope_or_default
+from superaide.platform.tenancy.models import AgentInstance, InstanceMember, Tenant
 
 # Tables whose rows carry tenant_id and agent_id. The backfill refuses to guess when
 # they hold more than one of either (that would mean a second tenant already exists).
@@ -113,7 +113,7 @@ def join_as_owner(session: Session, user: UserAccount, scope: InstanceScope) -> 
         person = session.get(Person, member.person_id)
         assert person is not None
         return person
-    from superaide.tenancy.context import all_instances
+    from superaide.platform.tenancy.context import all_instances
 
     with all_instances():  # an older sign-up Person may live in another instance (where sign-up happened)
         old = session.get(Person, user.person_id) if user.person_id else None
@@ -137,9 +137,9 @@ def join_as_owner(session: Session, user: UserAccount, scope: InstanceScope) -> 
 
 
 def _drop_if_unused(session: Session, person: Person) -> None:
-    from superaide.db.models import ChannelIdentity, Onboarding
-    from superaide.db.session import rescope
-    from superaide.tenancy.context import use_instance
+    from superaide.platform.db.models import ChannelIdentity, Onboarding
+    from superaide.platform.db.session import rescope
+    from superaide.platform.tenancy.context import use_instance
 
     with use_instance(InstanceScope(tenant_id=person.tenant_id, agent_id=person.agent_id)):
         rescope(session)

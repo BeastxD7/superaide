@@ -13,10 +13,10 @@ from sqlalchemy import select
 
 from superaide.app.accounts import owner as hired_owner
 from superaide.connectors import gmail as api
-from superaide.db.models import Approval, Person
-from superaide.db.session import session_scope
+from superaide.platform.db.models import Approval, Person
+from superaide.platform.db.session import session_scope
+from superaide.platform.tenancy.context import InstanceScope, use_instance
 from superaide.skills import gmail
-from superaide.tenancy.context import InstanceScope, use_instance
 from tests.connectors.gmail_fake import (  # noqa: F401  (fixtures)
     CLIENT_ID,
     CLIENT_SECRET,
@@ -295,7 +295,7 @@ def test_a_gmail_sign_in_with_a_stale_state_saves_nothing(owner_client, gmail_fa
 
 
 def test_addresses_attach_only_to_the_owners_own_contacts(owner_client):
-    from superaide.db.models import Contact
+    from superaide.platform.db.models import Contact
 
     with session_scope() as s:
         owner = hired_owner(s)
@@ -394,7 +394,7 @@ def test_gmail_connects_on_the_address_the_owner_is_using_and_refuses_an_unregis
     owner_client, gmail_fake, monkeypatch
 ):
     from superaide.app import connections
-    from superaide.config import get_settings
+    from superaide.platform.config import get_settings
 
     public = "https://superaide.webgraph.fun"
     monkeypatch.setattr(connections, "http_client", gmail_fake.client)

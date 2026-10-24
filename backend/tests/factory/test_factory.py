@@ -16,9 +16,9 @@ from superaide.brain.wiring import brain_ready, brain_status, build_llm, demo_re
 from superaide.channels.base import FakeMessenger, WebMessenger
 from superaide.channels.slack import SlackMessenger
 from superaide.channels.telegram import TelegramMessenger
-from superaide.config import Settings, get_settings
 from superaide.factory import build_agent, build_messengers
 from superaide.pipeline import Agent
+from superaide.platform.config import Settings, get_settings
 from tests.conftest import MANAGER_TG, tg
 
 

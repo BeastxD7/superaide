@@ -21,13 +21,13 @@ from sqlalchemy import select
 
 from superaide.brain.llm import FakeLLM
 from superaide.brain.turn import Prediction, RequestedAction, TurnOutput
-from superaide.config import get_settings
-from superaide.db.models import Approval, ChannelIdentity, Person
-from superaide.db.session import session_scope
 from superaide.features.voice import gateway
 from superaide.features.voice.provider import FakeVoiceProvider, run_call
 from superaide.features.voice.shell import VoiceShell
 from superaide.identity.resolver import Sender
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import Approval, ChannelIdentity, Person
+from superaide.platform.db.session import session_scope
 from superaide.policy.actions import ApprovalError, decide, resolve
 
 RESULTS = Path(__file__).resolve().parents[3] / "evals" / "results"
@@ -251,9 +251,9 @@ def render(report: dict[str, Any]) -> str:
 
 
 def main(out: str | None = None) -> int:
-    from superaide.db.models import Base  # noqa: F401
     from superaide.evals.harness import reset_db
     from superaide.identity.linking import bootstrap_person
+    from superaide.platform.db.models import Base  # noqa: F401
 
     reset_db()
     with session_scope() as s:

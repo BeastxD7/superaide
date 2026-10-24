@@ -11,8 +11,8 @@ from sqlalchemy import select, update
 from superaide.brain.budget import AgentFrozen, BudgetExceeded, BudgetGuard, Limits
 from superaide.brain.llm import ClaudeLLM, SystemBlock
 from superaide.brain.pricing import UnknownModelPrice, UsageCounts, cost_usd
-from superaide.db.models import AuditLog, SpendEntry
-from superaide.db.session import session_scope
+from superaide.platform.db.models import AuditLog, SpendEntry
+from superaide.platform.db.session import session_scope
 from superaide.policy.killswitch import set_frozen
 
 

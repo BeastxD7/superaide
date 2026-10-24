@@ -15,11 +15,11 @@ from superaide.auth.service import Client, signup
 from superaide.brain import platform_spend
 from superaide.brain.budget import BudgetExceeded, BudgetGuard, Limits
 from superaide.brain.pricing import UsageCounts
-from superaide.config import get_settings
-from superaide.db.models import SpendEntry
-from superaide.db.session import session_scope
-from superaide.tenancy.context import InstanceScope, default_scope, use_instance
-from superaide.tenancy.models import AgentInstance, PlatformSpend
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import SpendEntry
+from superaide.platform.db.session import session_scope
+from superaide.platform.tenancy.context import InstanceScope, default_scope, use_instance
+from superaide.platform.tenancy.models import AgentInstance, PlatformSpend
 
 A = InstanceScope(tenant_id=uuid.uuid4(), agent_id=uuid.uuid4())
 B = InstanceScope(tenant_id=uuid.uuid4(), agent_id=uuid.uuid4())

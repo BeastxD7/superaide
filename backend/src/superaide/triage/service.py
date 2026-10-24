@@ -17,9 +17,9 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
-from superaide.db.models import Event, Job, Person
 from superaide.jobs.queue import enqueue, handler
+from superaide.platform.audit import audit
+from superaide.platform.db.models import Event, Job, Person
 from superaide.triage import classify, policy, rules
 from superaide.triage.escalate import open_escalation
 from superaide.triage.features import gather
@@ -89,7 +89,7 @@ def decide(
     wants_model = r.decision is None or (r.vip_rule and f.budget_left <= 0)
     c = None
     if wants_model:
-        from superaide.config import get_settings
+        from superaide.platform.config import get_settings
 
         system = None  # the built-in prompt, unless the owner approved a tuned one (OVERNIGHT_TUNER_ENABLED)
         if get_settings().overnight_tuner_enabled:

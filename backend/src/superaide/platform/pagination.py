@@ -51,8 +51,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import Select, and_, literal, or_, text, tuple_
 from sqlalchemy.orm import InstrumentedAttribute, Session
 
-from superaide.config import get_settings
-from superaide.tenancy.context import scope_or_default
+from superaide.platform.config import get_settings
+from superaide.platform.tenancy.context import scope_or_default
 from superaide.vault.crypto import master_key
 
 DEFAULT_LIMIT = 25

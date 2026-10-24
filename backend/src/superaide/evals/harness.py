@@ -32,13 +32,13 @@ import superaide.plugins  # noqa: F401  (registers the approval executors and ev
 from superaide.brain.llm import LLM, FakeLLM, LLMResult, StepResult
 from superaide.brain.turn import Prediction, RequestedAction, TurnOutput
 from superaide.channels.base import FakeMessenger, InboundMessage
-from superaide.config import Settings, get_settings
-from superaide.db.models import Base, ChannelIdentity, Event, Intention, Person, SpendEntry, UserAccount
-from superaide.db.safety import assert_disposable_database
-from superaide.db.session import ensure_extensions, get_engine, session_scope
 from superaide.evals import checks
 from superaide.evals.scenario import FakeTurn, Scenario, Share, Turn
 from superaide.identity.trust import Trust
+from superaide.platform.config import Settings, get_settings
+from superaide.platform.db.models import Base, ChannelIdentity, Event, Intention, Person, SpendEntry, UserAccount
+from superaide.platform.db.safety import assert_disposable_database
+from superaide.platform.db.session import ensure_extensions, get_engine, session_scope
 
 OWNER_TG, OWNER_SLACK = "7001", "U_OWNER"
 COLLEAGUE_TG, COLLEAGUE_SLACK = "7002", "U_PRIYA"
@@ -391,9 +391,9 @@ def _filler(s: Any, owner: Person, start: datetime, n: int) -> None:
 
 def _triage_world(s: Any, sc: Scenario, owner: Person, start: datetime) -> None:
     """Two more linked people (a VIP contact and a plain contact) and the owner's triage settings."""
-    from superaide.db.models import Contact
     from superaide.identity.linking import bootstrap_person
     from superaide.knowledge.store import preferences_for
+    from superaide.platform.db.models import Contact
     from superaide.policy.killswitch import set_state
     from superaide.triage.store import settings_for
 
@@ -423,7 +423,7 @@ def _second_owner(s: Any, run: Run) -> None:
     """Another person signs up and hires their own Ava, in an instance of their own (the harness
     switches ALLOW_MANY_OWNERS on for this). Refused, and recorded, if many owners aren't supported."""
     from superaide.app.accounts import AlreadyHired, hire
-    from superaide.tenancy.service import membership, scope_of
+    from superaide.platform.tenancy.service import membership, scope_of
 
     other = Person(display_name="Maria Lopez", relation="unknown", channel_prefs={"routine": "web"})
     s.add(other)
@@ -721,7 +721,7 @@ def _scope_for(run: Run, who: str) -> Iterator[None]:
     if who != "second_owner" or run.second_scope is None:
         yield
         return
-    from superaide.tenancy.context import use_instance
+    from superaide.platform.tenancy.context import use_instance
 
     with use_instance(run.second_scope):
         yield

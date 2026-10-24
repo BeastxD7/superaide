@@ -9,11 +9,11 @@ from types import SimpleNamespace
 from sqlalchemy import select
 
 from superaide.brain.budget import BudgetExceeded
-from superaide.db.models import ConsolidationRun, Context, Episode, Event, MemoryItem, Person
-from superaide.db.session import session_scope
 from superaide.jobs.queue import run_due
 from superaide.knowledge.store import remember_fact
 from superaide.memory import sleep
+from superaide.platform.db.models import ConsolidationRun, Context, Episode, Event, MemoryItem, Person
+from superaide.platform.db.session import session_scope
 
 NOW = datetime(2026, 10, 24, 3, 0, tzinfo=UTC)
 
@@ -216,7 +216,7 @@ def test_nothing_is_scheduled_while_the_flag_is_off(settings, monkeypatch):
     monkeypatch.setattr(settings, "sleep_job_enabled", False)
     with session_scope() as s:
         sleep.ensure_scheduled(s)
-        from superaide.db.models import Job
+        from superaide.platform.db.models import Job
 
         assert s.scalar(select(Job.id).where(Job.kind == sleep.JOB_KIND)) is None
 

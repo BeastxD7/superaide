@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 
 from superaide.app.deps import owner_person_id
 from superaide.auth.routes import reject_nul_text, require_csrf_header
-from superaide.db.session import session_scope
+from superaide.platform.db.session import session_scope
 from superaide.skills import payouts
 
 

@@ -23,13 +23,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.app.deps import owner_person_id
-from superaide.audit import audit
 from superaide.auth.routes import reject_nul_text, require_csrf_header
 from superaide.context.audience import Audience, memory_filter
-from superaide.db.models import Contact, Document, MemoryItem, Person
-from superaide.db.session import require, session_scope
 from superaide.identity.trust import Trust
 from superaide.knowledge.store import CATEGORIES, remember_fact
+from superaide.platform.audit import audit
+from superaide.platform.db.models import Contact, Document, MemoryItem, Person
+from superaide.platform.db.session import require, session_scope
 
 MAX_FACTS = 200
 MAX_FORGOTTEN = 50

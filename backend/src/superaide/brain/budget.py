@@ -31,13 +31,13 @@ from typing import Any
 
 from sqlalchemy import case, func, select, text
 
-from superaide.audit import audit
 from superaide.brain import platform_spend as platform
 from superaide.brain.pricing import DEFAULT_PRICES, PriceRegistry, UsageCounts, cost_usd
-from superaide.db.models import SpendEntry
-from superaide.db.session import session_scope
+from superaide.platform.audit import audit
+from superaide.platform.db.models import SpendEntry
+from superaide.platform.db.session import session_scope
+from superaide.platform.tenancy.context import InstanceScope, scope_or_default, use_instance
 from superaide.policy.killswitch import is_frozen
-from superaide.tenancy.context import InstanceScope, scope_or_default, use_instance
 
 _LOCK_KEY = 784_221_001  # pg advisory lock namespace for the ledger; the second key is the instance
 KEY_SOURCES = ("owner", "platform")
@@ -200,7 +200,7 @@ class BudgetGuard:
         `key_source="platform"` is the guard for calls Superaide AI credits pay for (brain/platform_ai.py)."""
         scope = scope or scope_or_default()
         cap, limits = Decimal(str(settings.max_spend_usd)), Limits.from_settings(settings)
-        from superaide.tenancy.models import AgentInstance
+        from superaide.platform.tenancy.models import AgentInstance
 
         with use_instance(scope), session_scope() as s:
             instance = s.get(AgentInstance, scope.agent_id)

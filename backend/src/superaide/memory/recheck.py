@@ -15,10 +15,10 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
-from superaide.config import get_settings
-from superaide.db.models import MemoryItem, Person
 from superaide.memory import importance
+from superaide.platform.audit import audit
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import MemoryItem, Person
 
 WEEK = timedelta(days=7)
 ANSWERS = ("yes", "no", "changed")

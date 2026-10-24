@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from superaide.context.audience import Audience, visible_memories
-from superaide.db.models import MemoryItem
-from superaide.db.session import session_scope
+from superaide.platform.db.models import MemoryItem
+from superaide.platform.db.session import session_scope
 
 
 def _add(content: str, kind: str, people=(), min_trust: int = 2) -> None:

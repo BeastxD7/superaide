@@ -13,9 +13,9 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
 from superaide.contracts.events import SkillRemoved, bus
-from superaide.db.models import InstalledSkill
+from superaide.platform.audit import audit
+from superaide.platform.db.models import InstalledSkill
 from superaide.skills import signals
 from superaide.skills.manifest import Skill, load_skill
 

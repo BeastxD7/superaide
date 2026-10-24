@@ -13,9 +13,9 @@ from sqlalchemy import select
 
 from superaide.app.deps import owner_person_id
 from superaide.auth.routes import reject_nul_text, require_csrf_header
-from superaide.db.models import Person
-from superaide.db.session import session_scope
 from superaide.features.forknight import night
+from superaide.platform.db.models import Person
+from superaide.platform.db.session import session_scope
 
 
 class QueueBody(BaseModel):

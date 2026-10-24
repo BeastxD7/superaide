@@ -10,7 +10,7 @@ from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, String, T
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from superaide.db.models import Base, Scoped
+from superaide.platform.db.models import Base, Scoped
 
 
 class Lesson(Scoped, Base):

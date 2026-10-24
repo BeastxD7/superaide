@@ -18,7 +18,7 @@ from decimal import Decimal
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from superaide.config import get_settings
+from superaide.platform.config import get_settings
 
 
 def _day(at: datetime | None = None) -> date:

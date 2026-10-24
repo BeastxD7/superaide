@@ -15,8 +15,13 @@ from superaide.app.accounts import owner as hired_owner
 from superaide.brain.budget import BudgetExceeded
 from superaide.brain.llm import FakeLLM
 from superaide.channels.base import FakeMessenger, InboundMessage
-from superaide.config import get_settings
-from superaide.db.models import (
+from superaide.jobs.handlers import load
+from superaide.jobs.queue import run_due
+from superaide.knowledge.store import preferences_for
+from superaide.main import create_app
+from superaide.pipeline import Agent
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import (
     Approval,
     AuditLog,
     ChannelIdentity,
@@ -28,12 +33,7 @@ from superaide.db.models import (
     MemoryItem,
     Person,
 )
-from superaide.db.session import session_scope
-from superaide.jobs.handlers import load
-from superaide.jobs.queue import run_due
-from superaide.knowledge.store import preferences_for
-from superaide.main import create_app
-from superaide.pipeline import Agent
+from superaide.platform.db.session import session_scope
 from superaide.reception import service
 from superaide.reception.models import ReceptionMessage
 from superaide.reception.turn import ReceptionTurn, TakenMessage

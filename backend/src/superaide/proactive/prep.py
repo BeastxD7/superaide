@@ -21,16 +21,16 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
 from superaide.context.audience import Audience
 from superaide.context.recall import Source, recall
-from superaide.db.models import Contact, Job, Person
-from superaide.db.session import require, session_scope
 from superaide.intentions.service import owner_zone
 from superaide.intentions.when import zone
 from superaide.jobs.queue import enqueue, handler
 from superaide.knowledge.profile import in_quiet_hours
 from superaide.knowledge.store import preferences_for
+from superaide.platform.audit import audit
+from superaide.platform.db.models import Contact, Job, Person
+from superaide.platform.db.session import require, session_scope
 from superaide.proactive.notify import notify_owner
 from superaide.skills import calendar
 

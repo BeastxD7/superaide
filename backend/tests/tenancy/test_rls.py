@@ -20,11 +20,11 @@ from sqlalchemy import Connection, select, text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session
 
-from superaide.db import rls
-from superaide.db.models import AgentState, AuditLog, Base, Job, MemoryItem, Person, SpendEntry
-from superaide.db.roles import RoleError, ensure_app_role
-from superaide.db.session import get_engine
-from superaide.tenancy.context import InstanceScope, use_instance
+from superaide.platform.db import rls
+from superaide.platform.db.models import AgentState, AuditLog, Base, Job, MemoryItem, Person, SpendEntry
+from superaide.platform.db.roles import RoleError, ensure_app_role
+from superaide.platform.db.session import get_engine
+from superaide.platform.tenancy.context import InstanceScope, use_instance
 
 BACKEND = Path(__file__).resolve().parents[2]
 A = InstanceScope(tenant_id=uuid.uuid4(), agent_id=uuid.uuid4())

@@ -8,8 +8,8 @@ import re
 
 import pytest
 
-from superaide.config import get_settings
-from superaide.db.session import session_scope
+from superaide.platform.config import get_settings
+from superaide.platform.db.session import session_scope
 from superaide.principal import card
 from tests.conftest import COLLEAGUE_SLACK, MANAGER_TG, sl, tg
 

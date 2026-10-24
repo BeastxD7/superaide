@@ -6,9 +6,9 @@ from __future__ import annotations
 from sqlalchemy import select
 
 from superaide.app.accounts import owner as hired_owner
-from superaide.db.models import Approval, Event
-from superaide.db.session import session_scope
 from superaide.knowledge.store import preferences_for
+from superaide.platform.db.models import Approval, Event
+from superaide.platform.db.session import session_scope
 from superaide.policy.actions import resolve
 from superaide.policy.binding import seal
 from tests.channels.test_channel_health import FakeBot, bot, link_telegram  # noqa: F401

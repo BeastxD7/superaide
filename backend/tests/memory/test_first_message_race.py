@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from sqlalchemy import func, select
 
-from superaide.db.models import ChannelIdentity, Context
-from superaide.db.session import session_scope
 from superaide.identity import resolver
 from superaide.memory import store
+from superaide.platform.db.models import ChannelIdentity, Context
+from superaide.platform.db.session import session_scope
 from tests.conftest import tg
 
 

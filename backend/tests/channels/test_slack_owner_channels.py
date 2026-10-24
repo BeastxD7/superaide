@@ -17,11 +17,11 @@ from sqlalchemy import select
 from superaide.app.accounts import owner as hired_owner
 from superaide.brain.llm import FakeLLM
 from superaide.channels.slack import parse_event
-from superaide.db.models import Approval, AuditLog, ChannelIdentity, Event
-from superaide.db.session import session_scope
 from superaide.identity.resolver import resolve
 from superaide.identity.trust import Trust
 from superaide.main import create_app
+from superaide.platform.db.models import Approval, AuditLog, ChannelIdentity, Event
+from superaide.platform.db.session import session_scope
 from tests.conftest import COLLEAGUE_SLACK, OUR_TEAM, sl
 
 OWNER_NAME = "Jordan Whitfield"
@@ -171,7 +171,7 @@ def test_nothing_is_learned_from_a_channel_turn(agent, owner_linked, rec):
 
 
 def test_owner_approvals_from_a_channel_still_queue_for_the_app(agent, owner_linked, rec, monkeypatch):
-    from superaide.config import get_settings
+    from superaide.platform.config import get_settings
 
     # Whether a kind has an executor is a separate rule (issue #326); here only the channel is under test.
     monkeypatch.setattr(get_settings(), "approval_require_executor", False)

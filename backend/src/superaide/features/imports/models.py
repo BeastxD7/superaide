@@ -9,7 +9,7 @@ from sqlalchemy import DateTime, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 
-from superaide.db.models import Base, Scoped
+from superaide.platform.db.models import Base, Scoped
 
 
 class ImportLease(Scoped, Base):

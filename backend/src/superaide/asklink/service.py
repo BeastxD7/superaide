@@ -34,11 +34,11 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from superaide.asklink.models import AskHandle, AskLink, AskRate, AskRequest, AskStat
-from superaide.audit import audit
-from superaide.config import get_settings
-from superaide.db.models import Approval, Person
+from superaide.platform.audit import audit
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import Approval, Person
+from superaide.platform.tenancy.context import InstanceScope
 from superaide.policy.registry import EXECUTORS
-from superaide.tenancy.context import InstanceScope
 
 log = logging.getLogger(__name__)
 

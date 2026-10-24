@@ -55,7 +55,7 @@ class Endpoints:
 
 def endpoints() -> Endpoints:
     """Google's real URLs, or the E2E fake's when ENABLE_SIMULATOR is on and GOOGLE_FAKE_BASE_URL is set."""
-    from superaide.config import get_settings
+    from superaide.platform.config import get_settings
 
     settings = get_settings()
     base = settings.google_fake_base_url.rstrip("/")

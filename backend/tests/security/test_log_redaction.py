@@ -10,7 +10,7 @@ import httpx
 import pytest
 
 from superaide.channels import telegram
-from superaide.security import logredact
+from superaide.platform.security import logredact
 
 TOKEN = "123456789:AAH-secret_tokenvalue0123456789abcdefg"
 

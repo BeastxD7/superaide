@@ -7,8 +7,8 @@ import uuid
 import pytest
 from sqlalchemy import func, select
 
-from superaide.db.models import InstalledSkill, Intention, ToolTrace
-from superaide.db.session import session_scope
+from superaide.platform.db.models import InstalledSkill, Intention, ToolTrace
+from superaide.platform.db.session import session_scope
 from superaide.skills import registry
 from tests.rehearsal.rehearsal_support import live_history, results_seen, switch
 

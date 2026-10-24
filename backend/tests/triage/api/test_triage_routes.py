@@ -9,11 +9,11 @@ import pytest
 from fastapi import FastAPI
 from sqlalchemy import select
 
-from superaide.config import get_settings
-from superaide.db.models import Context, Event, Person, UserAccount
-from superaide.db.session import session_scope
 from superaide.main import create_app
 from superaide.pipeline import Agent
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import Context, Event, Person, UserAccount
+from superaide.platform.db.session import session_scope
 from superaide.triage.escalate import open_escalation
 from superaide.triage.models import TriageDecision
 from superaide.triage.types import POLICY_VERSION
@@ -116,7 +116,7 @@ def test_not_urgent_writes_feedback(owner_browser):
 
 
 def test_snooze_re_enqueues(owner_browser):
-    from superaide.db.models import Job
+    from superaide.platform.db.models import Job
 
     d = a_decision(owner_of(OWNER["email"]))
     r = owner_browser.post(f"/app/needs-you/{d}/action", json={"verb": "snooze_2h"})

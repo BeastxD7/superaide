@@ -30,9 +30,9 @@ from typing import Any, Protocol
 import httpx
 
 from superaide.brain.budget import BudgetExceeded
-from superaide.config import Settings, get_settings
 from superaide.features.voice import providers
 from superaide.features.voice.providers import VoiceError
+from superaide.platform.config import Settings, get_settings
 
 PROVIDER_KINDS = ("none", "fake", "realtime", "deepgram")
 CALL_LANG = "en"

@@ -14,12 +14,12 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from superaide.db.models import Person
-from superaide.db.session import session_scope
 from superaide.features.school import document, signing
 from superaide.features.school.models import Lesson
 from superaide.main import create_app
 from superaide.pipeline import Agent
+from superaide.platform.db.models import Person
+from superaide.platform.db.session import session_scope
 from tests.api_support import CSRF, hire, signup
 
 GOOD = "When I say urgent I mean money problems, not deadlines."

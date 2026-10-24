@@ -11,12 +11,12 @@ from sqlalchemy import select, text
 
 from superaide.brain.budget import BudgetExceeded
 from superaide.brain.llm import FakeLLM
-from superaide.db.models import Person
-from superaide.db.session import session_scope
 from superaide.features.school import playbook
 from superaide.features.school.models import Lesson
 from superaide.main import create_app
 from superaide.pipeline import Agent
+from superaide.platform.db.models import Person
+from superaide.platform.db.session import session_scope
 from tests.api_support import CSRF, OTHER, hire, signup
 
 LESSON = "When I ask for the status, lead with the decision needed, then the detail."

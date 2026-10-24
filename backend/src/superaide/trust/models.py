@@ -23,7 +23,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from superaide.db.models import Base, Scoped
+from superaide.platform.db.models import Base, Scoped
 
 
 class OwnerQuestion(Scoped, Base):

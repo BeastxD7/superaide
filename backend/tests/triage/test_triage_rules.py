@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from superaide.db.models import OwnerPreference
+from superaide.platform.db.models import OwnerPreference
 from superaide.triage import policy, rules
 from superaide.triage.features import Features, next_local
 from superaide.triage.types import Decision, Stage, TriageOutput

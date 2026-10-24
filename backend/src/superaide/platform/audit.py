@@ -7,7 +7,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from superaide.db.models import AccountAudit, AuditLog
+from superaide.platform.db.models import AccountAudit, AuditLog
 
 
 def _jsonable(value: Any) -> Any:
@@ -35,9 +35,9 @@ def account_audit(session: Session, user_id: uuid.UUID | None, action: str, **de
     - It has not hired yet (or the event is about nobody, like an unknown address): the line goes to the
       platform's account log, never into some other owner's Ava.
     """
-    from superaide.db.session import rescope
-    from superaide.tenancy.context import use_instance
-    from superaide.tenancy.service import instances_of, scope_of
+    from superaide.platform.db.session import rescope
+    from superaide.platform.tenancy.context import use_instance
+    from superaide.platform.tenancy.service import instances_of, scope_of
 
     if user_id is not None:
         detail = {"user_id": user_id, **detail}

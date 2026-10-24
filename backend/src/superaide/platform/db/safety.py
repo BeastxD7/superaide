@@ -26,7 +26,7 @@ from pathlib import Path
 from sqlalchemy.engine import URL, make_url
 
 DEFAULT_MARKERS = ("test", "eval", "scratch", "e2e")
-ENV_FILE = Path(__file__).resolve().parents[3] / ".env"
+ENV_FILE = Path(__file__).resolve().parents[4] / ".env"
 _LOCAL_HOSTS = {"", "localhost", "127.0.0.1", "::1", "0.0.0.0", "[::1]"}
 _WORKER_SUFFIX = re.compile(r"_gw\d+$")  # pytest-xdist: <name>_gw0
 

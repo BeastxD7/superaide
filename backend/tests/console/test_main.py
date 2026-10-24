@@ -18,8 +18,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 
 from superaide.channels.telegram import SECRET_HEADER
-from superaide.db.models import AuditLog, Event
-from superaide.db.session import session_scope
+from superaide.platform.db.models import AuditLog, Event
+from superaide.platform.db.session import session_scope
 from tests.conftest import COLLEAGUE_SLACK, MANAGER_SLACK, MANAGER_TG, OUR_TEAM
 
 # `superaide.main` the module; the package's own `main` attribute is the CLI entry point.

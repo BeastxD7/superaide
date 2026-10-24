@@ -6,9 +6,9 @@ from __future__ import annotations
 
 import pytest
 
-from superaide.db.session import session_scope
 from superaide.features.school import playbook
 from superaide.features.school.models import Lesson
+from superaide.platform.db.session import session_scope
 from tests.conftest import COLLEAGUE_SLACK, MANAGER_TG, sl, tg
 
 GUIDANCE = "Always open a status update with the decision I must make, in one line."

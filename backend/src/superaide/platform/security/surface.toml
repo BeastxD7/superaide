@@ -20,7 +20,7 @@ paths = [
   "backend/src/superaide/features/drills/**",
   # the audience gate and row-level security
   "backend/src/superaide/context/audience.py",
-  "backend/src/superaide/db/rls.py",
+  "backend/src/superaide/platform/db/rls.py",
   # stage promotion, tool effect classes, the approval ladder and the tool manifest
   "backend/src/superaide/triage/policy.py",
   "backend/src/superaide/triage/store.py",
@@ -32,7 +32,7 @@ paths = [
   "backend/src/superaide/actionlog/**",
   "backend/src/superaide/brain/budget.py",
   "backend/src/superaide/brain/pricing.py",
-  "backend/src/superaide/security/**",
+  "backend/src/superaide/platform/security/**",
 ]
 tables = ["approval", "audit_log", "action_log", "tool_trace", "spend_ledger", "person", "channel_identity",
           "agent_state", "installed_skill", "integration_secret"]  # fmt: skip

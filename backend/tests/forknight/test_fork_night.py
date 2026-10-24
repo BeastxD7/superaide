@@ -9,9 +9,9 @@ from sqlalchemy import select
 
 from superaide.brain.budget import BudgetExceeded, bucket_for
 from superaide.brain.llm import FakeLLM
-from superaide.db.models import Job, Person
-from superaide.db.session import session_scope
 from superaide.features.forknight import night
+from superaide.platform.db.models import Job, Person
+from superaide.platform.db.session import session_scope
 
 SECRET = "Atlas acquisition codename Bluebird"
 

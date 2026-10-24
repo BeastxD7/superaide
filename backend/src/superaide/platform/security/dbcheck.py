@@ -23,11 +23,11 @@ from pathlib import Path
 
 from sqlalchemy import inspect, text
 
-from superaide.config import Settings
+from superaide.platform.config import Settings
 
 log = logging.getLogger(__name__)
 
-ALEMBIC_INI = Path(__file__).resolve().parents[3] / "alembic.ini"
+ALEMBIC_INI = Path(__file__).resolve().parents[4] / "alembic.ini"
 RECHECK_EVERY_S = 5.0
 FIX = "Run `cd backend && uv run alembic upgrade head`, then reload."
 
@@ -68,7 +68,7 @@ def code_heads() -> tuple[str, ...] | None:
 
 def read_applied() -> tuple[str, ...] | None:
     """The revisions recorded in the database, or None when it has no alembic_version table."""
-    from superaide.db.session import session_scope
+    from superaide.platform.db.session import session_scope
 
     with session_scope() as s:
         if not inspect(s.connection()).has_table("alembic_version"):

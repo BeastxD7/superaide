@@ -13,11 +13,11 @@ from superaide.app.accounts import web_message
 from superaide.brain.llm import FakeLLM
 from superaide.brain.loop import MAX_STEPS, OwnerTurn, render
 from superaide.context.audience import audience_for
-from superaide.db.models import Approval, Context, Event, Intention, MemoryItem
-from superaide.db.session import session_scope
 from superaide.identity.resolver import resolve
 from superaide.main import create_app
 from superaide.memory.store import get_or_create_context, log_event
+from superaide.platform.db.models import Approval, Context, Event, Intention, MemoryItem
+from superaide.platform.db.session import session_scope
 
 PASSWORD = "correct horse battery"
 

@@ -21,15 +21,15 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from superaide.app.accounts import owner as hired_owner
-from superaide.audit import audit
 from superaide.connectors.google import event_text
 from superaide.context.audience import Audience, memory_filter
-from superaide.db.models import Approval, Intention, Job, MemoryItem, Person
-from superaide.db.session import require, session_scope
 from superaide.intentions.service import owner_zone
 from superaide.intentions.when import zone
 from superaide.jobs.queue import enqueue, handler
 from superaide.knowledge.store import preferences_for
+from superaide.platform.audit import audit
+from superaide.platform.db.models import Approval, Intention, Job, MemoryItem, Person
+from superaide.platform.db.session import require, session_scope
 from superaide.policy.binding import waiting as waiting_clause
 from superaide.proactive import prep
 from superaide.proactive.notify import notify_owner
@@ -161,7 +161,7 @@ def compose(
         lines.append(heading)
         lines += [f"- {i.due_at.astimezone(zone(tz)):%H:%M} {i.text}" for i in due]
 
-    from superaide.config import get_settings
+    from superaide.platform.config import get_settings
 
     if slot == "morning" and local.weekday() == 0 and get_settings().second_opinion_enabled:  # Mondays
         from superaide.trust.second_opinion import agreement_line
@@ -195,7 +195,7 @@ def compose(
     from superaide.triage.digest import digest_lines  # ADR 0010: [] while TRIAGE_ENABLED is off
 
     lines += digest_lines(session, owner, now)
-    from superaide.config import get_settings
+    from superaide.platform.config import get_settings
 
     if not get_settings().triage_enabled:  # with triage on, messages taken are in its sections
         from superaide.reception.service import digest_lines as reception_lines

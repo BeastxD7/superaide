@@ -13,9 +13,9 @@ import pytest
 from sqlalchemy import func, select
 
 from superaide.brain.embed import FakeEmbedder, NoEmbedder
-from superaide.config import get_settings
-from superaide.db.models import Context, Event, Person
-from superaide.db.session import session_scope
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import Context, Event, Person
+from superaide.platform.db.session import session_scope
 from superaide.triage import escalate, knn, promotion
 from superaide.triage.models import TriageDecision, TriageLabelVector
 from superaide.triage.types import POLICY_VERSION, Stage

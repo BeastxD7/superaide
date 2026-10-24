@@ -11,12 +11,12 @@ from typing import Any
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
 from superaide.context.lexicon import normalise
-from superaide.db.models import Event, Job, JournalSetting, Person, Prediction
-from superaide.db.session import rows_affected
 from superaide.features.journal import extract, score
 from superaide.jobs.queue import enqueue, handler
+from superaide.platform.audit import audit
+from superaide.platform.db.models import Event, Job, JournalSetting, Person, Prediction
+from superaide.platform.db.session import rows_affected
 
 log = logging.getLogger(__name__)
 

@@ -6,12 +6,12 @@ from sqlalchemy import select
 
 from superaide.brain.llm import FakeLLM
 from superaide.channels.base import FakeMessenger
-from superaide.config import get_settings
-from superaide.db.session import session_scope
 from superaide.pipeline import Agent
+from superaide.platform.config import get_settings
+from superaide.platform.db.session import session_scope
+from superaide.platform.tenancy.context import use_instance
 from superaide.reception.models import ReceptionMessage
 from superaide.reception.turn import ReceptionTurn, TakenMessage
-from superaide.tenancy.context import use_instance
 from tests.api_support import OTHER, OWNER, hire, signup
 from tests.conftest import sl
 from tests.reception.test_reception import Receptionist

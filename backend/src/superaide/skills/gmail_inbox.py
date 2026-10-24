@@ -31,14 +31,14 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
 from superaide.connectors import gmail as api
 from superaide.connectors import google
 from superaide.contracts.events import MailIngested, bus
-from superaide.db.models import ChannelIdentity, Context, Event, Job, Person
 from superaide.identity.trust import Trust
 from superaide.jobs.queue import enqueue, handler
 from superaide.memory.store import touch_context
+from superaide.platform.audit import audit
+from superaide.platform.db.models import ChannelIdentity, Context, Event, Job, Person
 from superaide.policy.killswitch import get_state, set_state
 from superaide.skills import gmail
 from superaide.triage.models import TriageDecision
@@ -51,14 +51,14 @@ log = logging.getLogger(__name__)
 
 
 def enabled() -> bool:
-    from superaide.config import get_settings
+    from superaide.platform.config import get_settings
 
     s = get_settings()
     return bool(s.gmail_triage_enabled and s.triage_enabled)
 
 
 def _next_slot(now: datetime) -> datetime:
-    from superaide.config import get_settings
+    from superaide.platform.config import get_settings
 
     every = max(1, get_settings().gmail_poll_minutes) * 60
     return datetime.fromtimestamp((int(now.timestamp()) // every + 1) * every, UTC)

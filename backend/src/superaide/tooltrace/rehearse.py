@@ -26,10 +26,10 @@ from sqlalchemy.orm import Session
 
 from superaide.brain.budget import AgentFrozen, BudgetExceeded
 from superaide.context.audience import Audience
-from superaide.db.models import Event, Person, ToolTrace
 from superaide.identity.resolver import Sender
 from superaide.identity.trust import Trust
 from superaide.knowledge.profile import owner_brief
+from superaide.platform.db.models import Event, Person, ToolTrace
 from superaide.skills import registry
 from superaide.tooltrace.recorder import Call, calls_of, digest
 from superaide.tooltrace.replay import CANNED, Diff, Replayer, diff

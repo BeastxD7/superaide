@@ -19,7 +19,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import Any
 
-from superaide.config import get_settings
+from superaide.platform.config import get_settings
 
 
 @dataclass(frozen=True)

@@ -98,7 +98,7 @@ def is_local_url(base_url: str | None) -> bool:
     """True only if every address the host resolves to is loopback or private (this machine or the LAN)."""
     if not base_url:
         return False
-    from superaide.security.urls import UnsafeURL, hosted, resolve
+    from superaide.platform.security.urls import UnsafeURL, hosted, resolve
 
     if hosted():
         return False  # nothing on our servers is the owner's own machine
@@ -249,8 +249,8 @@ def owner_prices(session: Any) -> PriceRegistry:
     """A registry with the prices the owner set in the app."""
     from sqlalchemy import select
 
-    from superaide.db.models import OwnerModelPrice
-    from superaide.tenancy.context import mine
+    from superaide.platform.db.models import OwnerModelPrice
+    from superaide.platform.tenancy.context import mine
 
     rows = session.scalars(select(OwnerModelPrice).where(mine(OwnerModelPrice))).all()
     return PriceRegistry(
@@ -276,9 +276,9 @@ def set_owner_price(
     """Record the owner's price for a model. Negative prices are refused; 0 means the owner says it's free."""
     from sqlalchemy import select
 
-    from superaide.audit import audit
-    from superaide.db.models import OwnerModelPrice
-    from superaide.tenancy.context import mine
+    from superaide.platform.audit import audit
+    from superaide.platform.db.models import OwnerModelPrice
+    from superaide.platform.tenancy.context import mine
 
     if min(input_usd_per_mtok, output_usd_per_mtok, cache_read_mult) < 0:
         raise ValueError("prices can't be negative")

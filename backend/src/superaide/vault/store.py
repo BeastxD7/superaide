@@ -20,11 +20,11 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
-from superaide.config import Settings, get_settings
-from superaide.db.models import IntegrationSecret
-from superaide.db.session import session_scope
-from superaide.tenancy.context import scope_or_default
+from superaide.platform.audit import audit
+from superaide.platform.config import Settings, get_settings
+from superaide.platform.db.models import IntegrationSecret
+from superaide.platform.db.session import session_scope
+from superaide.platform.tenancy.context import scope_or_default
 from superaide.vault.crypto import decrypt, encrypt, mask
 
 # Which stored credential fills which setting.
@@ -130,7 +130,7 @@ def stored(session: Session) -> dict[tuple[str, str], IntegrationSecret]:
 
 def version(session: Session) -> str:
     """Changes whenever a connection is added, changed or removed."""
-    from superaide.db.models import LlmProvider, ModelRole, OwnerModelPrice
+    from superaide.platform.db.models import LlmProvider, ModelRole, OwnerModelPrice
 
     parts = []
     agent = scope_or_default().agent_id

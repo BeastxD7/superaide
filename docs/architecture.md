@@ -49,7 +49,7 @@ Migrations live in `backend/alembic/versions/`. CI checks that they match the mo
 
 ## API responses
 
-Every error is one envelope (`status`, `status_code`, `message`, `data`, `error{code, detail, request_id}`) built in `backend/src/superaide/envelope.py`, with an `X-Request-ID` on every response. See ADR 0013.
+Every error is one envelope (`status`, `status_code`, `message`, `data`, `error{code, detail, request_id}`) built in `backend/src/superaide/platform/envelope.py`, with an `X-Request-ID` on every response. See ADR 0013.
 
 ## Decisions
 

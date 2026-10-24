@@ -19,12 +19,12 @@ from typing import Any
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
-from superaide.config import get_settings
 from superaide.contracts.events import ApprovalDecided, bus
-from superaide.db.models import Approval
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import Approval
+from superaide.platform.tenancy.context import scope_or_default
 from superaide.skills import tier_rules
 from superaide.skills.models import SkillReceipt
-from superaide.tenancy.context import scope_or_default
 
 log = logging.getLogger("superaide.skills.receipts")
 

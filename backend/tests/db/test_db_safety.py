@@ -5,9 +5,9 @@ from __future__ import annotations
 import pytest
 from sqlalchemy.engine import make_url
 
-from superaide.db import safety
-from superaide.db.safety import UnsafeDatabase, assert_disposable_database
 from superaide.evals import harness
+from superaide.platform.db import safety
+from superaide.platform.db.safety import UnsafeDatabase, assert_disposable_database
 
 LIVE = "postgresql+psycopg://agent:agent@localhost:5432/agent"
 

@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 from superaide.brain.llm import FakeLLM
-from superaide.db.session import session_scope
 from superaide.features.forknight import night
+from superaide.platform.db.session import session_scope
 from tests.api_support import OTHER, signup
 from tests.forknight.test_fork_night import drafts
 

@@ -10,9 +10,9 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
-from superaide.config import get_settings
-from superaide.db.models import Approval
-from superaide.db.session import session_scope
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import Approval
+from superaide.platform.db.session import session_scope
 from superaide.policy import kinds
 from superaide.policy.actions import CREATION_RULES, EXECUTORS, RULES, TOOL_RULES, resolve
 from superaide.policy.binding import seal

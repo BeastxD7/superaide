@@ -11,9 +11,9 @@ from pathlib import Path
 
 import pytest
 
-from superaide.config import get_settings
-from superaide.db.models import Base
-from superaide.security import surface
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import Base
+from superaide.platform.security import surface
 
 REPO = surface.REPO
 
@@ -21,7 +21,7 @@ REPO = surface.REPO
 def test_the_protected_files_match_the_lock():
     """Advisory by default (a warning), so parallel PRs are not blocked by each other's lock refresh. Set
     SURFACE_LOCK_STRICT=1 (CI for release branches) to make a difference a failure; fix it with
-    `python -m superaide.security.surface --update`, which CODEOWNERS makes a human review."""
+    `python -m superaide.platform.security.surface --update`, which CODEOWNERS makes a human review."""
     problems = surface.differences()
     if problems and os.environ.get("SURFACE_LOCK_STRICT") == "1":
         pytest.fail("; ".join(problems))
@@ -31,7 +31,7 @@ def test_the_protected_files_match_the_lock():
 
 def test_a_changed_protected_file_is_caught_and_a_new_one_too(tmp_path, monkeypatch):
     root = tmp_path
-    for rel in [*surface.protected_files(), "backend/src/superaide/security/surface.toml"]:
+    for rel in [*surface.protected_files(), "backend/src/superaide/platform/security/surface.toml"]:
         (root / rel).parent.mkdir(parents=True, exist_ok=True)
         (root / rel).write_bytes((REPO / rel).read_bytes())
     lock = tmp_path / "lock.json"  # a lock made for this copy, so the real lock's freshness doesn't matter here
@@ -40,15 +40,15 @@ def test_a_changed_protected_file_is_caught_and_a_new_one_too(tmp_path, monkeypa
     assert surface.differences(root) == []
     (root / "backend/src/superaide/policy/actions.py").write_text("# the optimiser was here\n")
     (root / "backend/src/superaide/policy/extra.py").write_text("x = 1\n")
-    (root / "backend/src/superaide/security/surface.toml").write_text("# widened\n")
+    (root / "backend/src/superaide/platform/security/surface.toml").write_text("# widened\n")
     got = surface.differences(root)
     assert "changed: backend/src/superaide/policy/actions.py" in got
     assert "new protected file: backend/src/superaide/policy/extra.py" in got
-    assert "changed: backend/src/superaide/security/surface.toml" in got
+    assert "changed: backend/src/superaide/platform/security/surface.toml" in got
 
 
 def test_the_manifest_itself_is_locked():
-    assert "backend/src/superaide/security/surface.toml" in surface.current()
+    assert "backend/src/superaide/platform/security/surface.toml" in surface.current()
 
 
 def test_writable_and_protected_never_overlap_and_tables_exist():
@@ -66,12 +66,12 @@ def test_prompts_and_skills_are_editable_and_graders_are_not():
     assert surface.check_edit(["backend/src/superaide/skills/builtin/memory/SKILL.md"]) == []
     for bad in [
         "backend/src/superaide/context/audience.py",
-        "backend/src/superaide/db/rls.py",
+        "backend/src/superaide/platform/db/rls.py",
         "backend/evals/scenarios/x.yaml",
         "backend/tests/redteam/test_canaries.py",
         "backend/src/superaide/policy/actions.py",
-        "backend/src/superaide/security/surface.toml",
-        "backend/src/superaide/security/surface.lock.json",
+        "backend/src/superaide/platform/security/surface.toml",
+        "backend/src/superaide/platform/security/surface.lock.json",
         "backend/src/superaide/brain/budget.py",
         "backend/src/superaide/evals/harness.py",
     ]:

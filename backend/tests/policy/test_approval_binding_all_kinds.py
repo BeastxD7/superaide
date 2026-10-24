@@ -10,9 +10,9 @@ from typing import Any
 import pytest
 from sqlalchemy import select
 
-from superaide.config import get_settings
-from superaide.db.models import Approval, AuditLog
-from superaide.db.session import session_scope
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import Approval, AuditLog
+from superaide.platform.db.session import session_scope
 from superaide.policy import actions
 from superaide.policy.actions import ApprovalError, resolve
 from superaide.policy.binding import check, payload_hash, report, seal
@@ -229,7 +229,7 @@ def test_report_says_when_strict_is_safe(monkeypatch, ran):
 
 
 def test_strict_is_the_default():
-    from superaide.config import Settings
+    from superaide.platform.config import Settings
 
     assert Settings.model_fields["approval_binding"].default == "strict"
 

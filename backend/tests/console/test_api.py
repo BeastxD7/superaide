@@ -142,7 +142,7 @@ def test_outside_accounts_cannot_be_linked_from_the_dashboard(client, agent, man
 
 def test_real_model_only_with_a_key():
     from superaide.brain.wiring import brain_status
-    from superaide.config import Settings
+    from superaide.platform.config import Settings
 
     assert brain_status(Settings(anthropic_api_key="", fake_llm=False)).reason == "no_provider"
     assert brain_status(Settings(anthropic_api_key="sk-test", fake_llm=False)).ready

@@ -14,8 +14,6 @@ from superaide.app.accounts import web_message
 from superaide.brain.llm import FakeLLM
 from superaide.context.audience import audience_for
 from superaide.context.recall import recall
-from superaide.db.models import MemoryItem
-from superaide.db.session import session_scope
 from superaide.identity.resolver import resolve
 from superaide.jobs.handlers import load
 from superaide.jobs.queue import run_due
@@ -24,6 +22,8 @@ from superaide.knowledge.facts import Fact, FactList
 from superaide.knowledge.ingest import ingest
 from superaide.main import create_app
 from superaide.memory.store import get_or_create_context
+from superaide.platform.db.models import MemoryItem
+from superaide.platform.db.session import session_scope
 from tests.conftest import tg
 
 load()

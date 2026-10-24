@@ -12,8 +12,8 @@ import time
 
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
-from superaide.config import get_settings
+from superaide.platform.audit import audit
+from superaide.platform.config import get_settings
 from superaide.policy.killswitch import get_state, set_frozen, set_state
 
 STATE_KEY = "breaker"

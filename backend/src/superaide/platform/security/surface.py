@@ -1,7 +1,7 @@
 """The editable-surface manifest and its enforcement (issue #114). See surface.toml for the lists.
 
-python -m superaide.security.surface --update   rewrite surface.lock.json after a reviewed change
-python -m superaide.security.surface            check; exit 1 on any difference
+python -m superaide.platform.security.surface --update   rewrite surface.lock.json after a reviewed change
+python -m superaide.platform.security.surface            check; exit 1 on any difference
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from pathlib import Path, PurePosixPath
 HERE = Path(__file__).parent
 MANIFEST = HERE / "surface.toml"
 LOCK = HERE / "surface.lock.json"
-REPO = HERE.parents[3]  # backend/src/superaide/security -> the repo root
+REPO = HERE.parents[4]  # backend/src/superaide/platform/security -> the repo root
 LOCK_REL = LOCK.relative_to(REPO).as_posix()
 MANIFEST_REL = MANIFEST.relative_to(REPO).as_posix()
 

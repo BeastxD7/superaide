@@ -10,9 +10,9 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
-from superaide.db.models import AgentState
-from superaide.tenancy.context import InstanceScope, scope_or_default
+from superaide.platform.audit import audit
+from superaide.platform.db.models import AgentState
+from superaide.platform.tenancy.context import InstanceScope, scope_or_default
 
 KEY = "frozen"
 PLATFORM_KEY = "frozen"
@@ -23,7 +23,7 @@ def _row(session: Session, scope: InstanceScope, key: str) -> AgentState | None:
 
 
 def platform_frozen(session: Session) -> bool:
-    from superaide.tenancy.models import PlatformState
+    from superaide.platform.tenancy.models import PlatformState
 
     row = session.get(PlatformState, PLATFORM_KEY)
     return bool(row and (row.value or {}).get("on"))
@@ -49,7 +49,7 @@ def set_platform_frozen(session: Session, on: bool, *, actor: str) -> None:
     """Freeze or unfreeze every instance on the server."""
     from sqlalchemy.dialects.postgresql import insert
 
-    from superaide.tenancy.models import PlatformState
+    from superaide.platform.tenancy.models import PlatformState
 
     # An upsert: two operators (or two clicks) switching it at once must not race on creating the row.
     session.flush()  # keep what the caller already changed before objects are expired below

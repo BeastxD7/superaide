@@ -5,9 +5,9 @@ from __future__ import annotations
 
 from sqlalchemy import select
 
-from superaide.config import get_settings
-from superaide.db.models import Approval, AuditLog
-from superaide.db.session import session_scope
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import Approval, AuditLog
+from superaide.platform.db.session import session_scope
 from superaide.policy import breaker
 from superaide.policy.actions import resolve
 from superaide.policy.binding import seal

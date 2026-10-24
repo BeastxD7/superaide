@@ -13,16 +13,16 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select, text
 
 from superaide.app.accounts import owner as hired_owner
-from superaide.config import get_settings
 from superaide.connectors import google
-from superaide.db.models import AuditLog, CalendarWatch, Job
-from superaide.db.session import session_scope
 from superaide.jobs.handlers import load
 from superaide.main import create_app
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import AuditLog, CalendarWatch, Job
+from superaide.platform.db.session import session_scope
+from superaide.platform.tenancy.context import InstanceScope, use_instance
 from superaide.proactive import calendar_watch as cw
 from superaide.proactive import prep
 from superaide.skills import calendar, registry
-from superaide.tenancy.context import InstanceScope, use_instance
 
 load()
 PASSWORD = "correct horse battery"

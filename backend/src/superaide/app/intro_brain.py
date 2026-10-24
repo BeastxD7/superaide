@@ -15,7 +15,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from superaide.config import Settings
+from superaide.platform.config import Settings
 
 
 def brain_ready_for_intro(settings: Settings) -> bool:
@@ -32,7 +32,7 @@ def own_brain_saved(session: Session) -> bool:
 
     from superaide.brain.providers.config import _secret, mine
     from superaide.brain.providers.presets import PRESETS
-    from superaide.db.models import LlmProvider
+    from superaide.platform.db.models import LlmProvider
     from superaide.vault.store import find
 
     if find(session, "anthropic", "api_key") is not None:

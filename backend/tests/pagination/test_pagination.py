@@ -27,10 +27,10 @@ from sqlalchemy import DateTime, Index, Integer, String, select, text
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 
-from superaide import envelope
-from superaide.config import get_settings
-from superaide.db.session import get_engine
-from superaide.pagination import (
+from superaide.platform import envelope
+from superaide.platform.config import get_settings
+from superaide.platform.db.session import get_engine
+from superaide.platform.pagination import (
     HARD_MAX_LIMIT,
     InvalidCursor,
     InvalidLimit,
@@ -46,7 +46,7 @@ from superaide.pagination import (
     page_query,
     paginate,
 )
-from superaide.tenancy.context import InstanceScope, use_instance
+from superaide.platform.tenancy.context import InstanceScope, use_instance
 
 
 class ProbeBase(DeclarativeBase):
@@ -129,7 +129,7 @@ def one_page(
 
 
 def walk(owner: str = "a", limit: int = 10, keys: list[SortKey] | None = None) -> list[str]:
-    from superaide.db.session import session_scope
+    from superaide.platform.db.session import session_scope
 
     ids: list[str] = []
     cursor = None
@@ -233,14 +233,14 @@ def test_expired_cursor_is_refused(monkeypatch):
 
 @pytest.mark.parametrize("limit", [0, -1, HARD_MAX_LIMIT + 1])
 def test_helper_refuses_out_of_range_limit(limit):
-    from superaide.db.session import session_scope
+    from superaide.platform.db.session import session_scope
 
     with session_scope() as s, pytest.raises(InvalidLimit):
         one_page(s, limit=limit)
 
 
 def test_endpoint_maximum_is_enforced_below_the_hard_max():
-    from superaide.db.session import session_scope
+    from superaide.platform.db.session import session_scope
 
     with session_scope() as s, pytest.raises(InvalidLimit):
         paginate(s, select(Probe), NEWEST_FIRST, endpoint=EP, bind="b", limit=51, cursor=None, build=out, maximum=50)
@@ -252,7 +252,7 @@ def make_app() -> FastAPI:
 
     @app.get("/things", response_model=Page[ProbeOut])
     def things(limit: int = limit_param(25, 100), cursor: str | None = cursor_param()) -> Page[ProbeOut]:
-        from superaide.db.session import session_scope
+        from superaide.platform.db.session import session_scope
 
         with session_scope() as s:
             return one_page(s, limit=limit, cursor=cursor, bind="b")
@@ -320,7 +320,7 @@ def test_ascending_and_mixed_directions():
 
 
 def test_rows_inserted_while_paging_do_not_skip_or_duplicate():
-    from superaide.db.session import session_scope
+    from superaide.platform.db.session import session_scope
 
     seed(100)
     with session_scope() as s:
@@ -342,7 +342,7 @@ def test_rows_inserted_while_paging_do_not_skip_or_duplicate():
 
 
 def test_rows_deleted_while_paging_do_not_shift_the_next_page():
-    from superaide.db.session import session_scope
+    from superaide.platform.db.session import session_scope
 
     seed(60)
     with session_scope() as s:
@@ -357,7 +357,7 @@ def test_rows_deleted_while_paging_do_not_shift_the_next_page():
 
 
 def test_filter_is_applied_before_the_cursor():
-    from superaide.db.session import session_scope
+    from superaide.platform.db.session import session_scope
 
     seed(30, owner="a")
     seed(30, owner="b")
@@ -373,7 +373,7 @@ def test_filter_is_applied_before_the_cursor():
 
 
 def test_empty_and_exact_fit_pages():
-    from superaide.db.session import session_scope
+    from superaide.platform.db.session import session_scope
 
     with session_scope() as s:
         empty = one_page(s, limit=5)
@@ -385,7 +385,7 @@ def test_empty_and_exact_fit_pages():
 
 
 def test_multi_column_rows_use_entity_of():
-    from superaide.db.session import session_scope
+    from superaide.platform.db.session import session_scope
 
     seed(12)
     with session_scope() as s:
@@ -404,7 +404,7 @@ def test_multi_column_rows_use_entity_of():
 
 
 def test_total_estimate_is_passed_through_and_approx_count_is_cheap():
-    from superaide.db.session import session_scope
+    from superaide.platform.db.session import session_scope
 
     seed(500)
     with get_engine().begin() as conn:
@@ -446,7 +446,7 @@ def plan_nodes(s: Session, stmt: Any) -> list[str]:
 
 
 def test_page_queries_use_the_index_and_do_not_sort_the_table():
-    from superaide.db.session import session_scope
+    from superaide.platform.db.session import session_scope
 
     seed(30_000)
     with get_engine().begin() as conn:
@@ -480,7 +480,7 @@ SLACK_SECONDS = 0.05  # floor so a ~1 ms baseline cannot make the factor absurdl
 def test_scale_deep_pages_are_fast_and_memory_stays_flat():
     """Page through SCALE_ROWS rows (default 100k; set PAGINATION_SCALE_ROWS=1000000 for the 1M run).
     Latency of a page must not grow with depth and the Python heap must not grow with pages read."""
-    from superaide.db.session import session_scope
+    from superaide.platform.db.session import session_scope
 
     seed(SCALE_ROWS)
     with get_engine().begin() as conn:

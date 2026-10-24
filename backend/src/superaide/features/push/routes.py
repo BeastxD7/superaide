@@ -26,13 +26,13 @@ from sqlalchemy import func, select
 from superaide.app.deps import owner_person_id
 from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header, session_token
 from superaide.auth.service import token_hash
-from superaide.config import get_settings
-from superaide.db.models import UserSession
-from superaide.db.session import session_scope
 from superaide.features.push import payload, send, vapid
 from superaide.features.push.models import PushSend, PushSubscription
 from superaide.features.push.subscriptions import BadSubscription, Secret, remove, upsert
-from superaide.tenancy.context import scope_or_default
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import UserSession
+from superaide.platform.db.session import session_scope
+from superaide.platform.tenancy.context import scope_or_default
 
 Platform = Literal["ios", "ipados", "android", "desktop", "other"]
 TESTS_PER_HOUR = 5

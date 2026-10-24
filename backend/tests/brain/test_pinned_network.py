@@ -13,7 +13,7 @@ import pytest
 
 from superaide.brain.providers.openai_compat import OpenAICompatProvider
 from superaide.brain.providers.presets import PRESETS
-from superaide.security import urls
+from superaide.platform.security import urls
 from superaide.tools import web
 
 

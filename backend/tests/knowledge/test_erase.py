@@ -10,8 +10,6 @@ from sqlalchemy import select, text
 
 from superaide.app.accounts import owner as hired_owner
 from superaide.brain.llm import FakeLLM
-from superaide.db.models import AuditLog, Contact, Document, DocumentChunk, Event, MemoryItem
-from superaide.db.session import session_scope
 from superaide.jobs.handlers import load
 from superaide.jobs.queue import run_due
 from superaide.knowledge.erase import erase_person, roll_off_third_party_messages, vacuum
@@ -20,6 +18,8 @@ from superaide.knowledge.facts import Fact, FactList
 from superaide.knowledge.ingest import ingest
 from superaide.knowledge.store import add_contact
 from superaide.main import create_app
+from superaide.platform.db.models import AuditLog, Contact, Document, DocumentChunk, Event, MemoryItem
+from superaide.platform.db.session import session_scope
 
 load()
 PASSWORD = "correct horse battery"
@@ -180,7 +180,7 @@ def test_a_third_partys_notes_and_messages_can_be_erased(owner, agent):
 
         s.flush()
     with session_scope() as s:
-        from superaide.db.models import Context
+        from superaide.platform.db.models import Context
 
         ctx = Context(provider="slack", tenant_scope="T", external_id="D1", kind="dm", audience_class="mixed_external")
         s.add(ctx)
@@ -213,7 +213,7 @@ def test_the_owner_cannot_be_erased_this_way(owner):
 def test_old_third_party_messages_roll_off_only_when_asked(owner):
     from datetime import UTC, datetime, timedelta
 
-    from superaide.db.models import Context
+    from superaide.platform.db.models import Context
 
     with session_scope() as s:
         me = hired_owner(s)

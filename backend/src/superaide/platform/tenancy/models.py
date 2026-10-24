@@ -16,7 +16,7 @@ from sqlalchemy import Date, DateTime, ForeignKey, Index, Numeric, String, Uniqu
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from superaide.db.models import Base
+from superaide.platform.db.models import Base
 
 
 def _now() -> datetime:

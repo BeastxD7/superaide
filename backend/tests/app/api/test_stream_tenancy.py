@@ -25,12 +25,12 @@ from superaide.brain.budget import BudgetGuard
 from superaide.brain.llm import FakeLLM
 from superaide.brain.pricing import UsageCounts
 from superaide.channels.base import FakeMessenger
-from superaide.config import get_settings
-from superaide.db.models import Base, Event, MemoryItem, Person, Scoped, SpendEntry
-from superaide.db.session import session_scope
 from superaide.main import create_app
 from superaide.pipeline import Agent
-from superaide.tenancy.context import all_instances, scope_or_default
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import Base, Event, MemoryItem, Person, Scoped, SpendEntry
+from superaide.platform.db.session import session_scope
+from superaide.platform.tenancy.context import all_instances, scope_or_default
 from tests.api_support import OTHER, OWNER, hire, signup
 from tests.app.test_stream import events_of
 from tests.tenancy.api.test_many_owners import instance_of

@@ -14,7 +14,7 @@ from email.message import EmailMessage
 from email.utils import formatdate, make_msgid
 from typing import Protocol
 
-from superaide.config import Settings, get_settings
+from superaide.platform.config import Settings, get_settings
 
 log = logging.getLogger(__name__)
 

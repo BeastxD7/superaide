@@ -16,12 +16,12 @@ from types import SimpleNamespace
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
 from superaide.brain import keyhealth
-from superaide.db.models import Context, Event, Job, MemoryItem, Person
 from superaide.jobs.queue import enqueue, handler
 from superaide.knowledge.facts import extract_facts
 from superaide.knowledge.store import channel_source, find_same_fact, remember_fact, supersede
+from superaide.platform.audit import audit
+from superaide.platform.db.models import Context, Event, Job, MemoryItem, Person
 
 log = logging.getLogger(__name__)
 

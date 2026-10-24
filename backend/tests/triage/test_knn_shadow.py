@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from sqlalchemy import select
 
-from superaide.db.models import Event
-from superaide.db.session import session_scope
+from superaide.platform.db.models import Event
+from superaide.platform.db.session import session_scope
 from superaide.triage import knn
 from superaide.triage.models import TriageDecision
 from superaide.triage.types import Feedback
@@ -26,7 +26,7 @@ def add(s, ctx, i, score, feedback):
 
 
 def world(s):
-    from superaide.db.models import Context
+    from superaide.platform.db.models import Context
 
     c = Context(provider="telegram", tenant_scope="", external_id="c", kind="dm", audience_class="private_1to1")
     s.add(c)

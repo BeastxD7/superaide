@@ -23,7 +23,7 @@ os.environ.setdefault(
 import importlib.util  # noqa: E402
 
 _spec = importlib.util.spec_from_file_location(
-    "_superaide_db_safety", Path(__file__).resolve().parents[1] / "src/superaide/db/safety.py"
+    "_superaide_db_safety", Path(__file__).resolve().parents[1] / "src/superaide/platform/db/safety.py"
 )
 assert _spec and _spec.loader
 safety = importlib.util.module_from_spec(_spec)
@@ -97,12 +97,12 @@ import superaide.plugins  # noqa: E402, F401  (registers the approval executors 
 from superaide.brain.llm import FakeLLM  # noqa: E402
 from superaide.brain.turn import Prediction, RequestedAction, TurnOutput  # noqa: E402
 from superaide.channels.base import FakeMessenger, InboundMessage  # noqa: E402
-from superaide.config import get_settings  # noqa: E402
 from superaide.context.vectors import ensure_vector_store  # noqa: E402
-from superaide.db.models import Base, Person  # noqa: E402
-from superaide.db.session import ensure_extensions, get_engine, session_scope  # noqa: E402
 from superaide.identity.linking import bootstrap_person  # noqa: E402
 from superaide.pipeline import Agent  # noqa: E402
+from superaide.platform.config import get_settings  # noqa: E402
+from superaide.platform.db.models import Base, Person  # noqa: E402
+from superaide.platform.db.session import ensure_extensions, get_engine, session_scope  # noqa: E402
 from tests import modules, sharding  # noqa: E402
 
 MANAGER_TG = "1001"

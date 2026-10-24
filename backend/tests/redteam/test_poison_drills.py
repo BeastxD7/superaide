@@ -9,10 +9,10 @@ import uuid
 import pytest
 from sqlalchemy import select
 
-from superaide.db.models import MemoryItem, Person
-from superaide.db.session import session_scope
 from superaide.features.drills import poison, sparring
-from superaide.tenancy.context import InstanceScope, use_instance
+from superaide.platform.db.models import MemoryItem, Person
+from superaide.platform.db.session import session_scope
+from superaide.platform.tenancy.context import InstanceScope, use_instance
 from tests.conftest import sl, tg
 from tests.redteam.test_canaries import CANARIES, _plant
 

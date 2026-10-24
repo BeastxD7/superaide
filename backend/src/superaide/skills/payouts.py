@@ -27,8 +27,8 @@ from typing import Any, Protocol
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
-from superaide.config import get_settings
+from superaide.platform.audit import audit
+from superaide.platform.config import get_settings
 from superaide.skills import receipts
 from superaide.skills.models import PayoutEntry
 

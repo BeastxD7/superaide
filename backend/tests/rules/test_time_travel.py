@@ -10,8 +10,8 @@ import pytest
 from sqlalchemy import select
 
 from superaide.brain.llm import FakeLLM
-from superaide.db.models import Approval, Context, Event, Person
-from superaide.db.session import session_scope
+from superaide.platform.db.models import Approval, Context, Event, Person
+from superaide.platform.db.session import session_scope
 from superaide.rules import timetravel as tt
 from tests.conftest import tg
 

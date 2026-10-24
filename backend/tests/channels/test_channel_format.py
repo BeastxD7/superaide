@@ -12,8 +12,8 @@ from sqlalchemy import select
 from superaide.channels import format as fmt
 from superaide.channels.slack import SlackMessenger
 from superaide.channels.telegram import TelegramMessenger
-from superaide.db.models import ChannelIdentity, Context, Event, MemoryItem
-from superaide.db.session import session_scope
+from superaide.platform.db.models import ChannelIdentity, Context, Event, MemoryItem
+from superaide.platform.db.session import session_scope
 
 TOKEN = "123456789:" + "A" * 35
 WEB = {"n": 2, "uri": "https://www.example.com/a?b=1", "kind": "web", "title": "Example", "cited_text": "SECRET"}
@@ -303,7 +303,7 @@ MEM_ID = "3f2b8c1e-aaaa-bbbb-cccc-0123456789ab"
 
 
 def test_a_note_and_an_email_get_deep_links_built_from_the_stored_id(monkeypatch):
-    from superaide.config import get_settings
+    from superaide.platform.config import get_settings
 
     monkeypatch.setattr(get_settings(), "public_base_url", "https://ava.example.org/")
     note = {"n": 1, "uri": f"ava://memory/{MEM_ID}", "kind": "memory", "title": "Note · about", "cited_text": "SECRET"}

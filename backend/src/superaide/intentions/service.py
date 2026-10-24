@@ -15,15 +15,15 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import and_, not_, select
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
 from superaide.channels import health
-from superaide.config import get_settings
-from superaide.db.models import Intention, Job, Person
 from superaide.intentions.when import zone
 from superaide.jobs.queue import cancel, enqueue, handler
 from superaide.knowledge.store import preferences_for
+from superaide.platform.audit import audit
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import Intention, Job, Person
+from superaide.platform.tenancy.context import scope_or_default
 from superaide.proactive.notify import CHANNEL_NAMES, CHANNELS, EXTERNAL, identity_for, notify_owner
-from superaide.tenancy.context import scope_or_default
 
 log = logging.getLogger(__name__)
 

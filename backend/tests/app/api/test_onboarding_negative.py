@@ -11,8 +11,8 @@ from typing import Any
 import pytest
 from sqlalchemy import func, select
 
-from superaide.db.models import Contact, Event, MemoryItem, OwnerPreference, Person
-from superaide.db.session import session_scope
+from superaide.platform.db.models import Contact, Event, MemoryItem, OwnerPreference, Person
+from superaide.platform.db.session import session_scope
 
 VALID: dict[str, dict[str, Any]] = {
     "hello": {"choice": "Nice to meet you"},

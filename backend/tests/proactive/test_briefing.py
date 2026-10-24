@@ -11,12 +11,12 @@ from sqlalchemy import select
 
 from superaide.app.accounts import owner as hired_owner
 from superaide.connectors import google
-from superaide.db.models import Approval, AuditLog, Event, Job, MemoryItem, Person
-from superaide.db.session import session_scope
 from superaide.jobs.handlers import load
 from superaide.jobs.queue import run_due
 from superaide.knowledge.store import add_contact, preferences_for
 from superaide.main import create_app
+from superaide.platform.db.models import Approval, AuditLog, Event, Job, MemoryItem, Person
+from superaide.platform.db.session import session_scope
 from superaide.proactive import digest, prep
 from superaide.proactive.notify import notify_owner
 from superaide.skills import calendar, registry

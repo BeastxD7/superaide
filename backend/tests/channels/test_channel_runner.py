@@ -16,7 +16,7 @@ from fastapi.testclient import TestClient
 
 from superaide.channels import health, slack, telegram
 from superaide.channels.runner import ChannelRunner
-from superaide.db.session import session_scope
+from superaide.platform.db.session import session_scope
 
 TG_A = "111:" + "A" * 35
 TG_B = "222:" + "B" * 35
@@ -288,7 +288,7 @@ def test_a_listener_that_crashes_on_startup_does_not_take_down_the_api(live_app,
 
 
 def test_the_api_leaves_listeners_alone_when_channels_run_elsewhere(live_app, monkeypatch):
-    from superaide import config
+    from superaide.platform import config
 
     monkeypatch.setenv("RUN_CHANNELS_IN_API", "false")
     config.get_settings.cache_clear()

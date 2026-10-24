@@ -27,8 +27,8 @@ from typing import Any
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from superaide.db.models import Event
-from superaide.tenancy.context import scope_or_default
+from superaide.platform.db.models import Event
+from superaide.platform.tenancy.context import scope_or_default
 from superaide.triage.models import TriageDecision, TriageLabelVector
 from superaide.triage.types import Feedback
 
@@ -140,7 +140,7 @@ def shadow_score(session: Session, text: str, *, exclude: Any = None) -> dict[st
 
     try:
         from superaide.brain.embed import get_embedder
-        from superaide.config import get_settings
+        from superaide.platform.config import get_settings
 
         with session.begin_nested():
             return knn_urgency(session, get_embedder(get_settings()), text, exclude=exclude)

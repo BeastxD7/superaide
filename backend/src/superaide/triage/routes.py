@@ -20,9 +20,9 @@ from sqlalchemy import select
 
 from superaide.app.deps import owner_person_id
 from superaide.auth.routes import reject_nul_text, require_csrf_header
-from superaide.db.models import Person
-from superaide.db.session import require, session_scope
-from superaide.tenancy.context import scope_or_default
+from superaide.platform.db.models import Person
+from superaide.platform.db.session import require, session_scope
+from superaide.platform.tenancy.context import scope_or_default
 from superaide.triage import escalate, knn, knn_promotion, promotion
 from superaide.triage.buckets import bucket
 from superaide.triage.models import Escalation, EscalationDelivery, TriageDecision, TriageSettings
@@ -118,7 +118,7 @@ def item_view(s: Any, d: TriageDecision, esc: Escalation | None) -> dict[str, An
     email = (d.features or {}).get("provider") == "email"
     meta: dict[str, Any] = {}
     if email:
-        from superaide.db.models import Event
+        from superaide.platform.db.models import Event
         from superaide.triage.mail_digest import quotable
 
         event = s.get(Event, d.inbound_event_id)

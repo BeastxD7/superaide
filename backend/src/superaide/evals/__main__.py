@@ -127,10 +127,10 @@ def run(args: argparse.Namespace, key: str) -> int:
 
     from superaide.brain.budget import BudgetGuard
     from superaide.brain.llm import LLM, ClaudeLLM
-    from superaide.config import get_settings
     from superaide.evals import report
     from superaide.evals.harness import Judge, Run, ledger_total, make_judge, reset_db, run_scenario
     from superaide.evals.scenario import load_all
+    from superaide.platform.config import get_settings
 
     everything = load_all()  # once: the files may change while a long run is going
     scenarios = list(everything)

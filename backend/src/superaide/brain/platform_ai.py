@@ -23,11 +23,11 @@ from typing import Any
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
 from superaide.brain import platform_spend
-from superaide.config import Settings, get_settings
-from superaide.db.models import SpendEntry
-from superaide.tenancy.context import scope_or_default
+from superaide.platform.audit import audit
+from superaide.platform.config import Settings, get_settings
+from superaide.platform.db.models import SpendEntry
+from superaide.platform.tenancy.context import scope_or_default
 
 log = logging.getLogger(__name__)
 
@@ -59,14 +59,14 @@ def warn_if_unusable() -> None:
 
 
 def opted_in(session: Session) -> bool:
-    from superaide.tenancy.models import AgentInstance
+    from superaide.platform.tenancy.models import AgentInstance
 
     instance = session.get(AgentInstance, scope_or_default().agent_id)
     return bool(instance and instance.key_source == "platform")
 
 
 def set_opt_in(session: Session, on: bool, *, user_id: uuid.UUID | None) -> None:
-    from superaide.tenancy.models import AgentInstance
+    from superaide.platform.tenancy.models import AgentInstance
 
     instance = session.get(AgentInstance, scope_or_default().agent_id)
     if instance is None:
@@ -143,8 +143,8 @@ def listed_owner_emails(raw: str) -> frozenset[str]:
 def server_key_is_own(session: Session) -> bool:
     """The instance in scope belongs to an account listed in PLATFORM_KEY_OWNER_EMAILS (the operator's
     own Ava): it uses the server's ANTHROPIC_API_KEY as its own key."""
-    from superaide.db.models import UserAccount
-    from superaide.tenancy.models import AgentInstance, InstanceMember
+    from superaide.platform.db.models import UserAccount
+    from superaide.platform.tenancy.models import AgentInstance, InstanceMember
 
     listed = listed_owner_emails(get_settings().platform_key_owner_emails)
     if not listed:

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import logging
 
-from superaide.config import get_settings
 from superaide.mail import LogMailer, Mail
+from superaide.platform.config import get_settings
 
 LINK = "http://localhost:3000/verify-email#token=SECRET-TOKEN"
 

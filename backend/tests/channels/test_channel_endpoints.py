@@ -19,13 +19,13 @@ from sqlalchemy import select, text
 from superaide.app import connections
 from superaide.channels import runner as runner_mod
 from superaide.channels import telegram
-from superaide.config import get_settings
-from superaide.db.models import Event
-from superaide.db.session import session_scope
 from superaide.main import create_app
-from superaide.tenancy import endpoints
-from superaide.tenancy.context import InstanceScope, current_scope, use_instance
-from superaide.tenancy.models import ChannelEndpoint
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import Event
+from superaide.platform.db.session import session_scope
+from superaide.platform.tenancy import endpoints
+from superaide.platform.tenancy.context import InstanceScope, current_scope, use_instance
+from superaide.platform.tenancy.models import ChannelEndpoint
 from superaide.vault import crypto, store
 
 A = InstanceScope(tenant_id=uuid.uuid4(), agent_id=uuid.uuid4())
@@ -47,7 +47,7 @@ def master_key(monkeypatch):
 def instances() -> None:
     """Tenant and instance rows for A and B (endpoints point at them)."""
     from superaide.auth.service import Client, signup
-    from superaide.tenancy.models import AgentInstance, Tenant
+    from superaide.platform.tenancy.models import AgentInstance, Tenant
 
     with session_scope() as s:
         for scope, email in ((A, "a@example.com"), (B, "b@example.com")):

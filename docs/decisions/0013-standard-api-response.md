@@ -46,7 +46,7 @@ Every JSON response uses one envelope:
 
 ### One place
 
-`backend/src/superaide/envelope.py` builds every envelope. It registers handlers for `HTTPException` (which also covers Starlette's 404 and 405), `RequestValidationError` and `Exception`, plus the request-id middleware. The "database behind the code" 503 in `main.py` calls the same builder. No route builds an error body by hand.
+`backend/src/superaide/platform/envelope.py` builds every envelope. It registers handlers for `HTTPException` (which also covers Starlette's 404 and 405), `RequestValidationError` and `Exception`, plus the request-id middleware. The "database behind the code" 503 in `main.py` calls the same builder. No route builds an error body by hand.
 
 ### Rollout
 

@@ -14,10 +14,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.brain.turn import TurnOutput
-from superaide.db.models import Approval
-from superaide.db.session import session_scope
 from superaide.features.voice import gateway
 from superaide.identity.resolver import Sender
+from superaide.platform.db.models import Approval
+from superaide.platform.db.session import session_scope
 from superaide.policy import binding
 
 Understand = Callable[[str], TurnOutput]

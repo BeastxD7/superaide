@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from superaide.config import get_settings
+from superaide.platform.config import get_settings
 from tests.api_support import hire, signup
 
 ADMIN = {"Authorization": "Bearer test-admin-token"}

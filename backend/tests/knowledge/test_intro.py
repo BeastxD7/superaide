@@ -6,11 +6,11 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from superaide.db.models import Document, MemoryItem
-from superaide.db.session import session_scope
 from superaide.knowledge import extract
 from superaide.knowledge.facts import Fact, FactList
 from superaide.main import create_app
+from superaide.platform.db.models import Document, MemoryItem
+from superaide.platform.db.session import session_scope
 
 PASSWORD = "correct horse battery"
 
@@ -185,7 +185,7 @@ def test_a_failed_read_is_retried_later_and_never_marked_read(agent, client, bro
 
 def test_connecting_claude_reads_what_was_saved_while_offline(client, monkeypatch):
     from superaide.app import connections
-    from superaide.db.models import Job
+    from superaide.platform.db.models import Job
     from superaide.vault.check import Checked
 
     monkeypatch.setattr(connections.check, "check_anthropic", lambda key, http: Checked(values={"api_key": key}))

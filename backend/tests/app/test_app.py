@@ -11,9 +11,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from superaide.app import accounts
-from superaide.db.models import ChannelIdentity, Contact, OwnerPreference, Person
-from superaide.db.session import session_scope
 from superaide.main import create_app
+from superaide.platform.db.models import ChannelIdentity, Contact, OwnerPreference, Person
+from superaide.platform.db.session import session_scope
 from tests.conftest import sl, tg
 
 PASSWORD = "correct horse battery"
@@ -79,7 +79,7 @@ def test_hiring_needs_an_account_and_consent_and_everyone_gets_their_own(client,
 
 
 def test_in_single_owner_mode_hiring_happens_once(client, browser, monkeypatch):
-    from superaide.config import get_settings
+    from superaide.platform.config import get_settings
 
     monkeypatch.setattr(get_settings(), "allow_many_owners", False)
     _signup(client)
@@ -276,7 +276,7 @@ def test_remember_that_keeps_one_note_and_ignores_an_empty_one():
 def test_saying_the_same_thing_twice_keeps_one_note(agent, manager):
     from sqlalchemy import func, select
 
-    from superaide.db.models import MemoryItem
+    from superaide.platform.db.models import MemoryItem
     from tests.conftest import MANAGER_TG, tg
 
     agent.handle(tg(MANAGER_TG, "remember that my flight is on Friday"))

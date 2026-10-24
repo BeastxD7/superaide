@@ -29,14 +29,15 @@ import layout_report as lr  # noqa: E402
 PUBLIC_NAMES = {"api", "schemas", "models", "contracts", "registry", "deps", "wiring"}
 # Registration only: db/models.py imports every package's models to fill the metadata, and plugins.py imports
 # every module that registers itself with a core registry or the event bus (it is a composition root).
-EXEMPT_SOURCES = {"db.models", "plugins"}
+EXEMPT_SOURCES = {"db.models", "platform.db.models", "plugins"}
 
 
 def is_public(target: str) -> bool:
     pkg = lr.package_of(target)
     rest = target[len(pkg) :].lstrip(".")
-    # `contracts/` is the shared place for ports and events: everything in it is public by definition
-    return rest == "" or pkg == "contracts" or rest in PUBLIC_NAMES
+    # `contracts/` (ports, events) and `platform/` (config, db, tenancy, audit, ...) are what everything may depend on:
+    # everything in them is public by definition
+    return rest == "" or pkg == "contracts" or pkg.startswith("platform.") or rest in PUBLIC_NAMES
 
 
 def violations(graph) -> list[tuple[str, str]]:

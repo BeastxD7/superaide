@@ -19,7 +19,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.db.models import Approval, Person
+from superaide.platform.db.models import Approval, Person
 from superaide.policy.kinds import info
 
 log = logging.getLogger(__name__)

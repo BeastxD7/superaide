@@ -28,11 +28,11 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
-from superaide.config import get_settings
 from superaide.connectors import gmail as api
 from superaide.connectors import google
-from superaide.db.models import Approval, InstalledSkill, Person
+from superaide.platform.audit import audit
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import Approval, InstalledSkill, Person
 from superaide.policy import recipients
 from superaide.policy.binding import content_hash, payload_hash, seal
 from superaide.policy.registry import DISCARDERS, EXECUTORS

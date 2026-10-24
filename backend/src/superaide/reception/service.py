@@ -27,10 +27,10 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
 from superaide.channels.base import InboundMessage
-from superaide.db.models import Context, Event, Person
 from superaide.identity.resolver import Sender
+from superaide.platform.audit import audit
+from superaide.platform.db.models import Context, Event, Person
 from superaide.reception import turn as rturn
 from superaide.reception.models import ReceptionMessage, ReceptionSettings
 

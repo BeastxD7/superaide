@@ -9,9 +9,9 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
-from superaide.db.models import MirrorNote, MirrorSetting
 from superaide.features.mirror import patterns
+from superaide.platform.audit import audit
+from superaide.platform.db.models import MirrorNote, MirrorSetting
 
 NOT_USEFUL_LIMIT = 2
 

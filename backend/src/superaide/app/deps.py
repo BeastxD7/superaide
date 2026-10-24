@@ -18,8 +18,8 @@ from fastapi.concurrency import run_in_threadpool
 
 from superaide.app import accounts
 from superaide.auth.routes import current_user_id
-from superaide.db.session import session_scope
-from superaide.tenancy.context import InstanceScope, use_instance
+from superaide.platform.db.session import session_scope
+from superaide.platform.tenancy.context import InstanceScope, use_instance
 
 
 def slack_connected(settings: Any) -> bool:

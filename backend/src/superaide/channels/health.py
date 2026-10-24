@@ -22,7 +22,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
+from superaide.platform.audit import audit
 from superaide.policy.killswitch import get_state, set_state
 
 log = logging.getLogger(__name__)
@@ -67,7 +67,7 @@ def set_health(session: Session, provider: str, status: str, error: str = "") ->
 
 def record(provider: str, status: str, error: str = "") -> None:
     """Record from code that has no session (messengers, the poller), in its own short transaction."""
-    from superaide.db.session import session_scope
+    from superaide.platform.db.session import session_scope
 
     try:
         with session_scope() as s:

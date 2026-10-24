@@ -23,7 +23,7 @@ from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, Stri
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from superaide.db.models import Base, Scoped
+from superaide.platform.db.models import Base, Scoped
 
 
 def _now() -> datetime:

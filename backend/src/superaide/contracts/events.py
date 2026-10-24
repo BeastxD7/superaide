@@ -17,7 +17,7 @@ from typing import Any, TypeVar
 
 from sqlalchemy.orm import Session
 
-from superaide.db.models import Approval, Event
+from superaide.platform.db.models import Approval, Event
 
 E = TypeVar("E")
 

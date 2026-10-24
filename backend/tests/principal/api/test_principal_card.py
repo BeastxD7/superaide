@@ -9,10 +9,10 @@ import json
 
 import pytest
 
-from superaide.config import get_settings
-from superaide.db.session import session_scope
+from superaide.platform.config import get_settings
+from superaide.platform.db.session import session_scope
+from superaide.platform.tenancy.context import use_instance
 from superaide.principal import card
-from superaide.tenancy.context import use_instance
 from tests.api_support import OTHER, signup
 
 NOT_FOUND = {"detail": "Not Found"}
@@ -54,7 +54,7 @@ def token_for(owner) -> str:
 def _user_id(s):
     from sqlalchemy import select
 
-    from superaide.db.models import UserAccount
+    from superaide.platform.db.models import UserAccount
 
     return s.scalar(select(UserAccount.id).order_by(UserAccount.created_at))
 

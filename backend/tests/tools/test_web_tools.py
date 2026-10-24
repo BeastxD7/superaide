@@ -12,8 +12,8 @@ from sqlalchemy import select
 from superaide.brain.budget import BudgetGuard
 from superaide.brain.llm import ProviderLLM
 from superaide.brain.pricing import PriceRegistry
-from superaide.db.models import SpendEntry
-from superaide.db.session import session_scope
+from superaide.platform.db.models import SpendEntry
+from superaide.platform.db.session import session_scope
 from superaide.skills.manifest import Tool
 from superaide.tools import web
 from tests.brain.test_openai_compat import PRICE, Server, completion, provider

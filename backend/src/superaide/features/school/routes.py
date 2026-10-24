@@ -13,14 +13,14 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from superaide.app.deps import owner_person_id
-from superaide.audit import audit
 from superaide.auth.routes import reject_nul_text, require_csrf_header
 from superaide.brain.budget import AgentFrozen, BudgetExceeded
-from superaide.db.session import session_scope
 from superaide.features.school import checks, document, playbook, signing
 from superaide.features.school.models import Lesson
+from superaide.platform.audit import audit
+from superaide.platform.db.session import session_scope
+from superaide.platform.tenancy.context import scope_or_default
 from superaide.policy.killswitch import get_state, set_state
-from superaide.tenancy.context import scope_or_default
 
 LIMIT = 200
 SHARE_KEY = "school_share"

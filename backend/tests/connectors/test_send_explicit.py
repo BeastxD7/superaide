@@ -9,8 +9,8 @@ from sqlalchemy import select
 
 from superaide.brain import capabilities
 from superaide.connectors import gmail as api
-from superaide.db.models import Approval
-from superaide.db.session import session_scope
+from superaide.platform.db.models import Approval
+from superaide.platform.db.session import session_scope
 from superaide.policy import recipients
 from tests.connectors.gmail_fake import connect, gmail_fake_fixture, mail, owner_client_fixture  # noqa: F401
 from tests.pipeline.test_loop import Script, tool_use, turn_for
@@ -83,7 +83,7 @@ def test_denying_a_capability_she_has_is_replaced_with_a_correction(said):
 def test_the_block_says_she_can_email_in_one_step_when_drafts_are_on_and_not_when_they_are_off(
     owner_client, gmail_fake
 ):
-    from superaide.db.session import session_scope as scope
+    from superaide.platform.db.session import session_scope as scope
 
     connect(scopes=(api.READONLY,), drafts=False)
     with scope() as s:
@@ -99,7 +99,7 @@ def test_the_block_says_she_can_email_in_one_step_when_drafts_are_on_and_not_whe
 def test_the_intro_greets_once_even_when_the_brain_step_came_first():
     # #394: "Hi X, I'm Ava, your personal assistant" was said by the brain step and again by the hello step.
     from superaide.app.onboarding import lines_for
-    from superaide.db.models import Person
+    from superaide.platform.db.models import Person
 
     p = Person(display_name="Ananya Menon", relation="manager")
     brain = lines_for("brain", p, "Ava")

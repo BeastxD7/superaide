@@ -21,12 +21,12 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
 from superaide.channels.base import InboundMessage
-from superaide.config import get_settings
-from superaide.db.models import ChannelIdentity, IdentityClaim, IdentityLinkEvent, Person
 from superaide.identity.linking import detect_claimed_name, plain_name
 from superaide.identity.trust import Trust
+from superaide.platform.audit import audit
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import ChannelIdentity, IdentityClaim, IdentityLinkEvent, Person
 
 CHOICES = ("contact", "new", "stranger", "block")
 RELATIONS = ("colleague", "contact", "family", "partner", "friend", "client", "other")

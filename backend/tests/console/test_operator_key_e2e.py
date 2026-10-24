@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from superaide.config import get_settings
 from superaide.main import create_app
+from superaide.platform.config import get_settings
 
 SERVER_KEY = "sk-ant-server-env-key-111111111111111"
 

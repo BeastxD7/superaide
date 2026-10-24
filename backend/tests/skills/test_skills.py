@@ -8,8 +8,8 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from superaide.db.session import session_scope
 from superaide.main import create_app
+from superaide.platform.db.session import session_scope
 from superaide.skills import registry
 from superaide.skills.manifest import SCHEMA_PATH, SkillError, json_schema, load_skill
 

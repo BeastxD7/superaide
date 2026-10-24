@@ -9,10 +9,10 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
-from superaide.config import DEFAULT_AGENT_ID, get_settings
-from superaide.db.models import Context, Event, MemoryItem, Person, UserAccount
-from superaide.db.session import session_scope
-from superaide.tenancy.models import AgentInstance, InstanceMember, Tenant
+from superaide.platform.config import DEFAULT_AGENT_ID, get_settings
+from superaide.platform.db.models import Context, Event, MemoryItem, Person, UserAccount
+from superaide.platform.db.session import session_scope
+from superaide.platform.tenancy.models import AgentInstance, InstanceMember, Tenant
 from tests.api_support import OTHER, OWNER, hire, signup
 
 

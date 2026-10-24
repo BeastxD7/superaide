@@ -7,8 +7,8 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from superaide.config import get_settings
-from superaide.db.session import session_scope
+from superaide.platform.config import get_settings
+from superaide.platform.db.session import session_scope
 from superaide.skills import payouts, receipts
 from tests.api_support import signup
 

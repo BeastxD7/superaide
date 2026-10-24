@@ -16,7 +16,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel
 
-from superaide.db.models import MemoryItem
+from superaide.platform.db.models import MemoryItem
 
 MAX_PAIRS = 12  # one model call a night, over at most this many pairs
 MIN_OVERLAP = 0.3  # share of words two notes must have in common before the model is asked

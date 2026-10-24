@@ -21,10 +21,10 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
-from superaide.config import get_settings
 from superaide.features.brainshare.models import BrainShare
-from superaide.tenancy.context import InstanceScope, scope_or_default
+from superaide.platform.audit import audit
+from superaide.platform.config import get_settings
+from superaide.platform.tenancy.context import InstanceScope, scope_or_default
 
 TOKEN_PREFIX = "sa_brain_"
 MAX_DAYS = 7

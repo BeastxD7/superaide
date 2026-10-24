@@ -17,10 +17,10 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
 from superaide.brain.providers.presets import PRESETS
-from superaide.db.models import IntegrationSecret, LlmProvider, ModelRole
-from superaide.tenancy.context import mine
+from superaide.platform.audit import audit
+from superaide.platform.db.models import IntegrationSecret, LlmProvider, ModelRole
+from superaide.platform.tenancy.context import mine
 from superaide.vault.crypto import mask
 
 ROLES = ("chat", "triage", "deep")

@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from superaide.brain import wiring
 from superaide.channels.base import FakeMessenger, Messenger, WebMessenger
-from superaide.config import Settings, get_settings
 from superaide.pipeline import Agent
+from superaide.platform.config import Settings, get_settings
 
 
 def build_messengers(settings: Settings) -> dict[str, Messenger]:

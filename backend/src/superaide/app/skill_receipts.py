@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 
 from superaide.app.deps import owner_person_id
 from superaide.auth.routes import reject_nul_text, require_csrf_header
-from superaide.db.session import session_scope
+from superaide.platform.db.session import session_scope
 from superaide.skills import claim, receipts
 
 
@@ -27,7 +27,7 @@ class ClaimBody(BaseModel):
 
 
 def receipts_owner(person_id: uuid.UUID = Depends(owner_person_id)) -> uuid.UUID:
-    from superaide.config import get_settings
+    from superaide.platform.config import get_settings
 
     if not get_settings().skill_receipts_enabled:
         raise HTTPException(404, "Not Found")

@@ -16,11 +16,11 @@ from sqlalchemy import select
 from superaide.brain.llm import FakeLLM
 from superaide.channels.base import InboundMessage
 from superaide.channels.slack import parse_event
-from superaide.db.models import AuditLog, ChannelIdentity, ChannelInvite, Event, IdentityLinkEvent, Person
-from superaide.db.session import session_scope
 from superaide.identity.trust import Trust
 from superaide.main import create_app
 from superaide.pipeline import SLACK_BAD_CODES_PER_HOUR, Agent
+from superaide.platform.db.models import AuditLog, ChannelIdentity, ChannelInvite, Event, IdentityLinkEvent, Person
+from superaide.platform.db.session import session_scope
 from tests.conftest import OUR_TEAM
 
 PASSWORD = "correct horse battery"

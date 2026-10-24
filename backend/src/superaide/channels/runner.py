@@ -18,7 +18,7 @@ from collections.abc import Callable
 from typing import Any
 
 from superaide.channels.base import InboundMessage
-from superaide.config import Settings
+from superaide.platform.config import Settings
 
 log = logging.getLogger(__name__)
 LOCK_NAMESPACE = 784_221_002  # pg advisory lock namespace for "this process listens to that bot"
@@ -29,7 +29,7 @@ def claim_listener(key: str) -> Any:
     Closing the connection releases the lock."""
     from sqlalchemy import text
 
-    from superaide.db.session import lock_engine
+    from superaide.platform.db.session import lock_engine
 
     conn = lock_engine().connect()
     try:
@@ -68,7 +68,7 @@ class ChannelRunner:
         """Run exactly one poller per bot token in `bots` (token -> instance scope), each inside that
         instance, so what it receives is handled as that owner's. Returns the bot ids running."""
         from superaide.channels.telegram import bot_id, poll_forever
-        from superaide.tenancy.context import use_instance
+        from superaide.platform.tenancy.context import use_instance
 
         with self._lock:
             for token, (scope, stop, thread) in list(self._bots.items()):
@@ -103,8 +103,8 @@ class ChannelRunner:
 
         from superaide.channels import health
         from superaide.channels.slack import auth_error, socket_mode_handler
-        from superaide.tenancy.context import use_instance
-        from superaide.tenancy.endpoints import slack_key
+        from superaide.platform.tenancy.context import use_instance
+        from superaide.platform.tenancy.endpoints import slack_key
 
         with self._lock:
             for app, (scope, held) in list(self._apps.items()):

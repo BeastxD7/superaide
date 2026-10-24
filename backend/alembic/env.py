@@ -5,8 +5,8 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
-from superaide.config import get_settings
-from superaide.db.models import Base
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import Base
 
 config = context.config
 # Migrations run as the schema owner (MIGRATION_DATABASE_URL), never as the app's own role.
