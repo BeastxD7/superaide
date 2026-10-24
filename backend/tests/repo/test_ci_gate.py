@@ -97,3 +97,19 @@ def test_gate_script_wires_label_and_everything_else_stays_blocking():
     # Unreadable labels fail closed (LABELS=-).
     assert re.search(r"\|\| LABELS=-", run)
     assert "e2e-blocking" in text
+
+
+def test_full_workflow_grants_every_permission_the_called_ci_jobs_ask_for():
+    # A called workflow cannot exceed its caller's permissions, otherwise GitHub fails the run at startup
+    # ("startup_failure", no jobs): this broke the scheduled Full run when the gate asked for `actions: read`.
+    full = yaml.safe_load((ROOT / ".github" / "workflows" / "full.yml").read_text())
+    granted = full.get("permissions") or {}
+    ci = _ci()
+    wanted: dict[str, str] = dict(ci.get("permissions") or {})
+    for job in ci["jobs"].values():
+        for scope, level in (job.get("permissions") or {}).items():
+            if level == "write" or wanted.get(scope) != "write":
+                wanted[scope] = level
+    order = {"none": 0, "read": 1, "write": 2}
+    for scope, level in wanted.items():
+        assert order[granted.get(scope, "none")] >= order[level], (scope, level, granted)
