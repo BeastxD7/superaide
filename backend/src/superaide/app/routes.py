@@ -12,6 +12,7 @@ import uuid
 from collections.abc import AsyncIterator, Callable
 from datetime import UTC, datetime, timedelta
 from functools import lru_cache
+from types import SimpleNamespace
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile
@@ -50,7 +51,7 @@ from superaide.knowledge import extract
 from superaide.knowledge.erase import erase_document, erase_person
 from superaide.knowledge.erase import vacuum as erase_vacuum
 from superaide.knowledge.ingest import ingest
-from superaide.knowledge.store import conflicts_of, contacts_of, preferences_for, resolve_conflict, retire_document
+from superaide.knowledge.store import conflicts_of, preferences_for, resolve_conflict, retire_document
 from superaide.pagination import SortKey, bind_for, cursor_param, encode_cursor, limit_param, paginate, set_next_headers
 from superaide.policy import brake, kinds
 from superaide.policy.actions import ApprovalError, resolve
@@ -780,33 +781,60 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         "/people",
         tags=["Owner: people & rules"],
         summary="People who matter",
-        description="The owner's contacts and who can always get through.",
+        description="The owner's contacts and who can always get through: VIPs first, then by name. Paged: `limit` "
+        "(1 to 200, default 200) and `cursor` (the previous page's `next_cursor`); `has_more` says whether more "
+        "people follow. ADR 0014.",
     )
-    def people(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+    def people(
+        person_id: uuid.UUID = Depends(owner_person_id),
+        limit: int = limit_param(200, 200),
+        cursor: str | None = cursor_param(),
+    ) -> dict[str, Any]:
         """The people who matter to the owner, VIPs first, and where Ava can recognise them."""
         with session_scope() as s:
             owner = require(s, Person, person_id)
-            result = []
-            for contact, person in contacts_of(s, owner):
-                channels = sorted(
-                    set(
-                        s.scalars(
-                            select(ChannelIdentity.provider).where(
-                                ChannelIdentity.person_id == person.id, ChannelIdentity.lifecycle == "active"
-                            )
-                        )
+            stmt: Any = (
+                select(Contact, Person)
+                .join(Person, Person.id == Contact.person_id)
+                .where(Contact.owner_person_id == owner.id, Contact.removed_at.is_(None))
+            )
+            page = paginate(
+                s,
+                stmt,
+                [SortKey(Contact.vip), SortKey(Person.display_name, desc=False), SortKey(Contact.id, desc=False)],
+                endpoint="people",
+                bind=bind_for(person_id),
+                limit=limit,
+                cursor=cursor,
+                maximum=200,
+                entity_of=lambda row: SimpleNamespace(vip=row[0].vip, display_name=row[1].display_name, id=row[0].id),
+                build=lambda row: row,
+            )
+            # One query for the whole page (it was one per contact).
+            channels: dict[uuid.UUID, set[str]] = {}
+            ids = [p.id for _, p in page.items]
+            if ids:
+                for pid, provider in s.execute(
+                    select(ChannelIdentity.person_id, ChannelIdentity.provider).where(
+                        ChannelIdentity.person_id.in_(ids), ChannelIdentity.lifecycle == "active"
                     )
-                )
-                result.append(
+                ):
+                    if pid is not None:
+                        channels.setdefault(pid, set()).add(provider)
+            return {
+                "people": [
                     {
                         "id": str(contact.id),
                         "name": person.display_name,
                         "relationship": contact.relationship,
                         "vip": contact.vip,
-                        "channels": channels,
+                        "channels": sorted(channels.get(person.id, set())),
                     }
-                )
-            return {"people": result}
+                    for contact, person in page.items
+                ],
+                "next_cursor": page.next_cursor,
+                "has_more": page.has_more,
+            }
 
     @router.get(
         "/preferences",

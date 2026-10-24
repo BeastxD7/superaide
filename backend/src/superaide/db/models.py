@@ -403,7 +403,16 @@ class Contact(Scoped, Base):
     recognise them once their Telegram, Slack or email is linked."""
 
     __tablename__ = "contact"
-    __table_args__ = (UniqueConstraint("owner_person_id", "person_id", name="uq_contact_owner_person"),)
+    __table_args__ = (
+        UniqueConstraint("owner_person_id", "person_id", name="uq_contact_owner_person"),
+        # The owner's people list (VIPs first), only the contacts still kept (ADR 0014).
+        Index(
+            "ix_contact_owner_active",
+            "owner_person_id",
+            text("vip DESC"),
+            postgresql_where=text("removed_at IS NULL"),
+        ),
+    )
 
     owner_person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), index=True)
     person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"))

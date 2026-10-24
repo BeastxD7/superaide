@@ -112,7 +112,7 @@ test.describe('operator console', () => {
 test.describe('a page that crashes (#71)', () => {
   test('the dashboard keeps its menu, explains in plain words, and Try again recovers', async ({ page, owner }) => {
     void owner
-    await page.route('**/api/app/people', async (route) => {
+    await page.route('**/api/app/people*', async (route) => {
       await route.fulfill({
         json: { people: [{ id: 'p1', name: null, relationship: 'friend', channels: [], vip: false, notes: [] }] },
       })
@@ -125,7 +125,7 @@ test.describe('a page that crashes (#71)', () => {
     // The sidebar is still there, so the owner can go somewhere else.
     await expect(page.getByRole('link', { name: 'Settings' }).first()).toBeVisible()
 
-    await page.unroute('**/api/app/people')
+    await page.unroute('**/api/app/people*')
     await page.getByRole('button', { name: 'Try again' }).click()
     await expect(page.getByRole('heading', { level: 1, name: 'People who matter' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'This page hit a problem' })).toHaveCount(0)
@@ -133,7 +133,7 @@ test.describe('a page that crashes (#71)', () => {
 
   test('Log out on the error page ends the session', async ({ page, owner }) => {
     void owner
-    await page.route('**/api/app/people', (route) => route.fulfill({ json: { people: [{ id: 'p1', name: null, channels: [] }] } }))
+    await page.route('**/api/app/people*', (route) => route.fulfill({ json: { people: [{ id: 'p1', name: null, channels: [] }] } }))
     await page.goto('/dashboard/people')
     await page.getByRole('button', { name: 'Log out' }).click()
     await expect(page).toHaveURL(/\/login/)

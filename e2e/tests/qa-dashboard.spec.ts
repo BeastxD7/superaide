@@ -318,7 +318,7 @@ test.describe('dashboard: people', () => {
 
   test('chat still works after the People list fails to load', async ({ page, owner }) => {
     void owner
-    await page.route('**/api/app/people', serverError)
+    await page.route('**/api/app/people*', serverError)
     await page.goto('/dashboard/people')
     await expect(page.getByText('Something went wrong on our side.')).toBeVisible()
     await goToDashboardPage(page, 'Chat')

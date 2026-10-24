@@ -13,7 +13,7 @@ test('a 100-character URL in a note, a name and a rule does not scroll the page 
   await page.route('**/api/app/notebook*', (r) =>
     r.fulfill({ json: { memories: [{ id: 'n1', text: LONG, category: 'about', source: 'chat', document: null, shareable: false, private: false, at }] } }),
   )
-  await page.route('**/api/app/people', (r) =>
+  await page.route('**/api/app/people*', (r) =>
     r.fulfill({ json: { people: [{ id: 'p1', name: LONG.slice(8, 70), relationship: 'partner', vip: true, channels: [] }] } }),
   )
   await page.route('**/api/app/preferences', (r) =>
