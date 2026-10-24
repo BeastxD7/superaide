@@ -57,7 +57,7 @@ test.describe('owner B with A’s ids', () => {
   test('cannot list or remove A’s shared file, and sharing the same file says nothing about A', async ({ browser }) => {
     const a = await introduced(browser, 'Ananya Menon')
     const b = await introduced(browser, 'Bella Tan')
-    const file = { name: 'cv.txt', mimeType: 'text/plain', buffer: Buffer.from('Ananya Menon. Project NIGHTJAR. PebbleRoad.') }
+    const file = { name: 'cv.txt', mimeType: 'text/plain', buffer: Buffer.from('Ananya Menon. Project NIGHTJAR. Larkfield.') }
     const up = await a.context.request.post('/api/app/intro/files', {
       multipart: { file },
       headers: { 'X-Requested-With': 'superaide-e2e' },

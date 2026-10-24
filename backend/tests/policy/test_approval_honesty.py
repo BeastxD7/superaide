@@ -1,7 +1,7 @@
 # ruff: noqa: F811
 """#326: an approval is created only when something can carry it out, and every kind says what yes does.
 
-The Bluehost shape: the owner asked Ava to cancel a subscription "via their contact page"; she queued a
+The Fernhost shape: the owner asked Ava to cancel a subscription "via their contact page"; she queued a
 message_someone_else approval, and approving it recorded "Nothing can carry this out yet" while she had told
 the owner it was queued to be sent."""
 
@@ -46,13 +46,13 @@ def test_a_contact_page_request_creates_no_approval_and_the_refusal_says_what_av
                 "propose_action",
                 {
                     "kind": "message_someone_else",
-                    "summary": "Cancel the Bluehost subscription via their contact page",
+                    "summary": "Cancel the Fernhost subscription via their contact page",
                     "rationale": "Owner asked",
                 },
             ),
             "I can't use their contact page. Here is the text to paste.",
         )
-        result = turn_for(s, script, "cancel bluehost via their contact page").run([{"role": "user", "content": "x"}])
+        result = turn_for(s, script, "cancel fernhost via their contact page").run([{"role": "user", "content": "x"}])
         assert s.scalars(select(Approval)).all() == []
         refused = script.seen[1][-1]["content"][0]
         assert refused["is_error"] is True

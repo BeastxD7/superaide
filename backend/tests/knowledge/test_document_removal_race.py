@@ -16,7 +16,7 @@ from superaide.knowledge.ingest import ingest, read_documents
 from superaide.platform.db.models import Document, MemoryItem, Person
 from superaide.platform.db.session import session_scope
 
-FACTS = [Fact(content="Jordan leads applied AI at PebbleRoad.", category="work", confidence=1)]
+FACTS = [Fact(content="Jordan leads applied AI at Larkfield.", category="work", confidence=1)]
 
 
 @pytest.fixture

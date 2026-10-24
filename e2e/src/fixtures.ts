@@ -65,7 +65,7 @@ export class Api {
   async completeIntroduction(): Promise<void> {
     await this.ok(this.get('/app/onboarding'))
     await this.answer('hello', { choice: 'What will you do for me?' })
-    await this.answer('about', { mode: 'chat', text: 'I lead applied AI at PebbleRoad in Singapore.' })
+    await this.answer('about', { mode: 'chat', text: 'I lead applied AI at Larkfield in Singapore.' })
     await this.answer('people', {
       people: [
         { name: 'Priya', relationship: 'Partner', vip: true },
