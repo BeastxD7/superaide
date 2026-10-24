@@ -250,10 +250,12 @@ def test_options_route_is_owner_only(app, owner, fake):
 
 
 def test_free_busy_lists_busy_and_free_hours(owner, fake):
-    tomorrow = (datetime.now(UTC) + timedelta(days=1)).astimezone(UTC).date()
+    # The day the tool means by "tomorrow", not "UTC today + 1": just after midnight "tomorrow" is today's date
+    # (intentions/when.py), and the owner's zone may be a day ahead of UTC.
     with use_instance(scope_of("s@example.com")), session_scope() as s:
-        tz = calendar.zone(calendar.owner_zone(s, hired_owner(s)))
-    nine = datetime.combine(tomorrow, datetime.min.time(), tz).replace(hour=9)
+        owner_row = hired_owner(s)
+        start, _, tz = calendar.window(s, owner_row, "tomorrow", 1)
+    nine = start.replace(hour=9)
     fake.busy = [{"start": nine.isoformat(), "end": (nine + timedelta(hours=1)).isoformat()}]
     out, err = run("s@example.com", "calendar_free_busy", {"from": "tomorrow"})
     assert not err and "busy 09:00–10:00" in out and "free 08:00–09:00, 10:00–20:00" in out
