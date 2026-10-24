@@ -97,7 +97,7 @@ def raise_for_error(response: Any, service: str, fallback: str = "") -> None:
     if response.status_code == 403 and reason in SCOPE_REASONS:
         raise AccessDenied(
             f"Google didn't allow that: the {service} permission is missing or was removed. "
-            "Reconnect it under Connections, then ask me again."
+            "Reconnect Google under Capabilities, then ask me again."
         )
     if fallback:
         raise GoogleError(fallback)
@@ -205,7 +205,7 @@ def access_token(client_id: str, client_secret: str, refresh_token: str, client:
         raise GoogleError("Couldn't reach Google Calendar just now.") from exc
     if r.status_code != 200 or not isinstance(data, dict) or "access_token" not in data:
         log_failure("google token refresh", r)
-        raise GoogleError("Google Calendar access has expired or was removed. Reconnect it under Connections.")
+        raise GoogleError("Google Calendar access has expired or was removed. Reconnect Google under Capabilities.")
     with _lock:
         _cache[key] = _Token(str(data["access_token"]), time.time() + int(data.get("expires_in", 3600)))
     return str(data["access_token"])

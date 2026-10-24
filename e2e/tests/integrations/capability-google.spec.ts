@@ -17,14 +17,14 @@ test('Capabilities follows Disconnect Google on Connections', async ({ page, api
   await expect(page.getByText("Google isn't connected")).toHaveCount(0)
   await expect(card().getByRole('button', { name: 'Allow', exact: true })).toBeVisible()
 
-  await page.goto('/dashboard/connections')
-  await page.getByRole('button', { name: /^Google Calendar/ }).click()
-  await page.getByRole('button', { name: 'Disconnect Google Calendar' }).click()
-  await expect(page.getByRole('button', { name: /^Google Calendar/ })).toContainText('Connect')
+  // The Google account card is on this page (it used to be on Connections).
+  const google = page.getByRole('region', { name: 'Google account' })
+  await google.getByRole('button', { name: /^Google Calendar/ }).click()
+  await google.getByRole('button', { name: 'Disconnect Google Calendar' }).click()
+  await expect(google.getByRole('button', { name: /^Google Calendar/ })).toContainText('Connect')
 
-  await page.getByRole('link', { name: 'Capabilities', exact: true }).click()
   await expect(card().getByText("Google isn't connected, so this can't work yet.")).toBeVisible()
-  await expect(card().getByRole('link', { name: 'Connect Google under Connections' })).toBeVisible()
+  await expect(card().getByRole('link', { name: 'Connect your Google account above' })).toBeVisible()
   await expect(card().getByRole('button', { name: 'Allow', exact: true })).toHaveCount(0)
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${process.env.SHOT_PREFIX ?? 'after'}-capabilities-${info.project.name}.png` })
 })

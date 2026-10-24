@@ -212,10 +212,11 @@ def test_google_sign_in_round_trip_stores_the_refresh_token_once(owner):
     q = google_start(owner)
     # A forged or stale state is refused, and doesn't spoil the real sign-in.
     r = callback(owner, code="good-code", state="forged")
-    assert r.status_code == 303 and r.headers["location"].endswith("/dashboard/connections?google=expired")
+    assert r.status_code == 303 and r.headers["location"].endswith("/dashboard/capabilities?google=expired")
     r = callback(owner, code="good-code", state=q["state"])
     assert (
-        r.status_code == 303 and r.headers["location"] == "http://localhost:3000/dashboard/connections?google=connected"
+        r.status_code == 303
+        and r.headers["location"] == "http://localhost:3000/dashboard/capabilities?google=connected"
     )
     google = owner.get("/app/connections").json()["services"]["google"]
     assert google["connected"] and google["via"] == "app"
@@ -315,7 +316,7 @@ def test_connect_on_the_public_address_uses_it_for_the_authorise_url_the_token_e
     q = {k: v[0] for k, v in parse_qs(urlparse(r.json()["url"]).query).items()}
     assert q["redirect_uri"] == f"{PUBLIC}/api/app/connections/google/callback"
     done = callback(owner, code="good-code", state=q["state"])
-    assert done.headers["location"] == f"{PUBLIC}/dashboard/connections?google=connected"  # not localhost
+    assert done.headers["location"] == f"{PUBLIC}/dashboard/capabilities?google=connected"  # not localhost
     assert TOKEN_FORMS[-1]["redirect_uri"] == [q["redirect_uri"]]  # Google needs the same address twice
     # The forwarded host works too, as behind a tunnel or proxy.
     r = start_on(owner, {"X-Forwarded-Host": "superaide.webgraph.fun", "X-Forwarded-Proto": "https"})
@@ -406,5 +407,5 @@ def test_the_default_localhost_flow_is_unchanged(owner):
         q = {k: v[0] for k, v in parse_qs(urlparse(start_on(owner, headers).json()["url"]).query).items()}
         assert q["redirect_uri"] == f"{HOME}/api/app/connections/google/callback"
     done = callback(owner, code="good-code", state=q["state"])
-    assert done.headers["location"] == f"{HOME}/dashboard/connections?google=connected"
+    assert done.headers["location"] == f"{HOME}/dashboard/capabilities?google=connected"
     assert TOKEN_FORMS[-1]["redirect_uri"] == [f"{HOME}/api/app/connections/google/callback"]

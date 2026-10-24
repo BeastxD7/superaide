@@ -59,7 +59,7 @@ export function GmailPanel({ name }: { name: string }) {
       {shown && <Notice tone={shown.tone}>{shown.text}</Notice>}
       {problem && <Notice tone="error">{problem}</Notice>}
       {!status.client_ready ? (
-        <p className="text-body">Add your Google OAuth client under Connections first, then connect Gmail here.</p>
+        <p className="text-body">Add your Google OAuth client under Capabilities first (the Google account card), then connect Gmail here.</p>
       ) : !status.connected ? (
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-body">

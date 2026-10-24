@@ -51,8 +51,8 @@ export function CapabilityPage({ slug, page }: { slug: string; page?: string }) 
           {slug === 'calendar' && card?.google_connected === false && (
             <Notice tone="warn">
               Google isn&apos;t connected, so Ava can&apos;t see your calendar yet.{' '}
-              <Link href="/dashboard/connections" className="font-medium underline">
-                Connect Google under Connections
+              <Link href="/dashboard/capabilities#google" className="font-medium underline">
+                Connect your Google account on the Capabilities page
               </Link>
               .
             </Notice>
