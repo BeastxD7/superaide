@@ -182,3 +182,32 @@ def test_get_returns_every_setting_with_its_explanation(owner_client, gmail_fake
     assert set(out["choices"]) == set(gmail_settings.CHOICES)
     assert out["choices"]["codes"]["default"] == "never" and out["settings"]["body_chars"] == 1500
     assert all(c["label"] and c["help"] for c in out["choices"].values())
+
+
+BEC = "Accounts team <billing@vendor.example>"
+
+
+def test_a_request_to_change_bank_details_has_its_own_switch_separate_from_transaction_alerts(owner_client, gmail_fake):
+    # #433 follow-up: the invoice-fraud pattern is its own setting; a card alert is not affected by it
+    gmail_fake.add(
+        mail("b1", thread="tb", sender=BEC, subject="Our bank details have changed", body="Pay to the new account")
+    )
+    _setup(gmail_fake, extra={"payment_preview": "show"})  # transaction alerts shown...
+    found = text_of(run_tool("gmail_search", {"query": "bank"}))
+    assert "asks to change bank or account details" in found and "Bank and account change emails: previews" in found
+    assert "Pay to the new account" not in found  # ...but the bank-change mail stays hidden
+    assert "Payment details: your Kotak" in found
+    put({"payment_preview": "show", "bank_change_preview": "show"})
+    assert "Pay to the new account" in text_of(run_tool("gmail_search", {"query": "bank"}))
+
+
+def test_the_first_run_hint_is_part_of_the_card_view(owner_client, gmail_fake):
+    _setup(gmail_fake)
+    out = owner_client.get("/app/gmail/read-settings").json()
+    assert out["settings"]["bank_change_preview"] == "hide" and "bank_change_preview" in out["choices"]
+    assert (
+        owner_client.put("/app/gmail/read-settings", json={"bank_change_preview": "show"}).json()["settings"][
+            "bank_change_preview"
+        ]
+        == "show"
+    )

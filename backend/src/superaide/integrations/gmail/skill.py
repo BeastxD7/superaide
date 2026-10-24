@@ -192,6 +192,13 @@ def search(session: Session, owner: Person, args: dict[str, Any]) -> tuple[Any, 
                     + gmail_settings.blocked_note(gmail_settings.label_of("codes"))
                     + ")"
                 )
+            elif "payment" in found and gmail_settings.is_bank_change(subj + " " + preview):
+                if cfg.bank_change_preview == "hide":
+                    preview = (
+                        "(preview withheld: it asks to change bank or account details. "
+                        + gmail_settings.blocked_note(gmail_settings.label_of("bank_change_preview"))
+                        + ")"
+                    )
             elif "payment" in found and cfg.payment_preview == "hide" and not vip:
                 preview = (
                     "(preview withheld: it's about payment details. "

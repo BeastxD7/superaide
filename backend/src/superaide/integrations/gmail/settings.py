@@ -28,6 +28,14 @@ CHOICES: dict[str, tuple[tuple[Any, ...], Any, str, str]] = {
         "Payment and transaction emails: previews",
         "Search results for bank, card and payment mail show only the sender and subject, or also a short preview.",
     ),
+    "bank_change_preview": (
+        ("hide", "show"),
+        "hide",
+        "Bank and account change emails: previews",
+        "Mail asking you to change bank, account or payment details is the classic invoice-fraud pattern. "
+        "Hidden, a search shows only sender and subject. Example: 'Our bank details have changed, pay to the "
+        "new account'.",
+    ),
     "numbers": (
         ("blanked", "amounts"),
         "blanked",
@@ -60,6 +68,7 @@ _ENTRY = re.compile(r"^(?:label:[\w./ -]{1,60}|@?[\w.+-]+@[\w.-]+\.\w{2,}|@?[\w.
 @dataclass
 class ReadSettings:
     payment_preview: str = "hide"
+    bank_change_preview: str = "hide"
     numbers: str = "blanked"
     codes: str = "never"
     body_chars: int = 1500
@@ -71,6 +80,20 @@ class ReadSettings:
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+# Mail that asks for a change of bank, account or payment details (the fraud pattern), as opposed to a receipt or
+# a card alert. It has its own switch (#433); the rest of the payment risk is "Payment and transaction emails".
+BANK_CHANGE = re.compile(
+    r"\b(?:change|changed|update|updated|new)\b.{0,30}\b(?:bank|account|payment|iban)\b|"
+    r"\b(?:bank|account|payment|iban|routing|swift|sort code)\b.{0,40}\b(?:change[ds]?|update[ds]?|new)\b|"
+    r"\bwire (?:transfer|the)\b",
+    re.IGNORECASE,
+)
+
+
+def is_bank_change(text: str) -> bool:
+    return bool(BANK_CHANGE.search(text or ""))
 
 
 def clean_entry(raw: str) -> str:
@@ -131,6 +154,8 @@ def rules_text(s: ReadSettings) -> str:
         f"Gmail reading rules (the owner's settings under {CARD_NAME}; the tools enforce them):",
         "- Payment and transaction mail: "
         + ("search previews are withheld" if s.payment_preview == "hide" else "previews are shown")
+        + "; requests to change bank or account details: "
+        + ("previews withheld" if s.bank_change_preview == "hide" else "previews shown")
         + "; numbers: "
         + (
             "amounts next to a currency are quoted, long numbers are blanked"
