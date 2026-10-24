@@ -105,3 +105,12 @@ def test_the_facts_job_reads_as_many_events_as_the_setting_allows(owner_client, 
         connector_facts.schedule_calendar(s, events)
     assert len(queued) == 5
     _ = datetime.now(UTC)
+
+
+def test_each_setting_says_when_it_was_last_changed(owner_client, cal):
+    """#441: the shared setting row shows "last changed by/when" for every connector setting, from the audit log."""
+    url = "/app/calendar/read-settings"
+    assert owner_client.get(url).json()["last_changed"] == {}
+    assert owner_client.put(url, json={"ahead_days": 7}).status_code == 200
+    changed = owner_client.get(url).json()["last_changed"]
+    assert set(changed) == {"ahead_days"} and changed["ahead_days"]["by"] == "you"

@@ -33,6 +33,7 @@ from superaide.platform.db.models import ChannelIdentity, Contact, InstalledSkil
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import scope_or_default
 from superaide.platform.tenancy.models import PlatformState
+from superaide.skills.connector_settings import last_changed
 from superaide.vault import store
 from superaide.vault.store import runtime_settings
 
@@ -143,7 +144,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
     @router.get("", summary="Gmail capability status", description="Installed, connected, drafts, and the address.")
     def status(_: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         with session_scope() as s:
-            return {**gmail.status(s), "last_changed": _last_changed(s, "gmail_drafts", lambda d: ["drafts"])}
+            return {**gmail.status(s), "last_changed": last_changed(s, "gmail_drafts", lambda d: ["drafts"])}
 
     @router.post(
         "/connect",
@@ -196,27 +197,13 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             return {
                 **gmail.status(s),
                 "url": url,
-                "last_changed": _last_changed(s, "gmail_drafts", lambda d: ["drafts"]),
+                "last_changed": last_changed(s, "gmail_drafts", lambda d: ["drafts"]),
             }
-
-    def _last_changed(s: Any, action: str, keys: Any) -> dict[str, dict[str, str]]:
-        """Who last changed each setting and when, from the audit log (every owner change writes one line). Owner
-        changes only come through the owner's own session, so `by` is "you"."""
-        from superaide.platform.db.models import AuditLog
-
-        rows = s.scalars(
-            select(AuditLog).where(AuditLog.action == action).order_by(AuditLog.created_at.desc()).limit(300)
-        )
-        found: dict[str, dict[str, str]] = {}
-        for row in rows:
-            for key in keys(row.detail or {}):
-                found.setdefault(key, {"by": "you", "at": row.created_at.isoformat()})
-        return found
 
     def _read_view(s: Any) -> dict[str, Any]:
         cfg = gmail_settings.load(s)
         return {
-            "last_changed": _last_changed(s, "gmail_read_settings", lambda d: d.get("changed", [])),
+            "last_changed": last_changed(s, "gmail_read_settings", lambda d: d.get("changed", [])),
             "settings": cfg.as_dict(),
             "choices": {
                 k: {"values": list(v[0]), "default": v[1], "label": v[2], "help": v[3]}

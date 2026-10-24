@@ -2,10 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { Notice } from '@/components/site'
+import { SettingRow } from '@/features/dashboard/settings/SettingRow'
+import { SettingsSection } from '@/features/dashboard/settings/SettingsSection'
 import { call } from '@/lib/api'
 import { errorMessage } from '@/lib/action'
 
 type View = {
+  last_changed?: Record<string, { by: 'you' | 'Ava' | 'operator'; at: string }>
   settings: Record<string, string | number>
   choices: Record<string, { values: (string | number)[]; default: string | number; label: string; help: string; unit?: string }>
 }
@@ -46,42 +49,46 @@ export function ConnectorSettings({ path, title, anchor }: { path: string; title
 
   if (!view) return problem ? <Notice tone="error">{problem}</Notice> : null
   return (
-    <section id={anchor} className="mt-3 min-w-0 space-y-3 rounded-lg border border-line p-3 text-sm" role="group" aria-label={title}>
-      <div>
-        <p className="font-medium text-ink">{title}</p>
-        <p className="text-xs text-muted">These are your rules. Ava tells you which one when something is limited.</p>
-      </div>
-      {problem && <Notice tone="error">{problem}</Notice>}
+    <section id={anchor} className="min-w-0" role="group" aria-label={title}>
+      {problem && (
+        <div className="mb-3">
+          <Notice tone="error">{problem}</Notice>
+        </div>
+      )}
       {saved && (
-        <p role="status" className="text-xs text-emerald-700">
+        <p role="status" className="mb-3 text-xs text-emerald-700">
           {saved}
         </p>
       )}
-      {Object.entries(view.choices).map(([key, c]) => {
-        const id = `${anchor}-${key}`
-        return (
-          <div key={key}>
-            <label htmlFor={id} className="block font-medium text-ink">
-              {c.label}
-            </label>
-            <p className="text-xs text-muted">{c.help}</p>
-            <select
-              id={id}
-              className="mt-1 max-w-full rounded-md border border-line bg-white px-2 py-1.5"
-              value={String(view.settings[key])}
-              disabled={busy}
-              onChange={(e) => void save(key, typeof c.values[0] === 'number' ? Number(e.target.value) : e.target.value, c.label)}
-            >
-              {c.values.map((v) => (
-                <option key={String(v)} value={String(v)}>
-                  {optionText(v, c.unit)}
-                  {v === c.default ? ' (default)' : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-        )
-      })}
+      <SettingsSection title={title} description="These are your rules. Ava tells you which one when something is limited.">
+        {Object.entries(view.choices).map(([key, c]) => (
+          <SettingRow
+            key={key}
+            title={c.label}
+            why={c.help}
+            status={view.settings[key] === c.default ? 'Default' : 'Changed'}
+            audit={view.last_changed?.[key] ?? null}
+            field
+            control={({ id, describedBy }) => (
+              <select
+                id={id}
+                aria-describedby={describedBy}
+                className="min-h-11 max-w-full rounded-md border border-line bg-white px-2 py-1.5 text-base md:text-sm"
+                value={String(view.settings[key])}
+                disabled={busy}
+                onChange={(e) => void save(key, typeof c.values[0] === 'number' ? Number(e.target.value) : e.target.value, c.label)}
+              >
+                {c.values.map((v) => (
+                  <option key={String(v)} value={String(v)}>
+                    {optionText(v, c.unit)}
+                    {v === c.default ? ' (default)' : ''}
+                  </option>
+                ))}
+              </select>
+            )}
+          />
+        ))}
+      </SettingsSection>
     </section>
   )
 }
