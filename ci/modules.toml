@@ -243,6 +243,7 @@ e2e = [
   "e2e/tests/capability-google.spec.ts",
   "e2e/tests/gmail-api-disabled.spec.ts",
   "e2e/tests/journeys/calendar-connect.spec.ts",
+  "e2e/tests/journeys/approval-automated.spec.ts",
 ]
 
 [modules.context]

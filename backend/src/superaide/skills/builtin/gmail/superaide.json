@@ -34,7 +34,7 @@
     },
     {
       "name": "gmail_draft_reply",
-      "description": "Save a reply in the owner's Gmail drafts, in that thread, to its other participants. Never sends.",
+      "description": "Save a reply in the owner's Gmail drafts, in that thread, ONLY when the owner asked for a draft and not to send. If they asked to send, call gmail_send instead (draft and approval in one step). Never sends.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -48,7 +48,7 @@
     },
     {
       "name": "gmail_send",
-      "description": "Ask the owner to approve sending a reply in a thread. Read the thread first (gmail_read_thread). Code checks the history: if the message would not reach a person (an automated or unmonitored address, a contact page as the route), NO approval is created and you get the findings back; tell the owner plainly and offer alternatives. Otherwise it saves a draft and waits for their OK; it is sent only after they approve.",
+      "description": "Ask the owner to approve sending a reply in a thread. Read the thread first (gmail_read_thread). Call it as soon as the owner asks to send. Code checks the history: if the recipient looks automated or unmonitored and the owner did NOT name them, NO approval is created and you get the findings back; if the owner named them, the approval is queued with a strong warning on the card. Otherwise it saves a draft and waits for their OK; it is sent only after they approve.",
       "inputSchema": {
         "type": "object",
         "properties": {

@@ -177,6 +177,16 @@ def get_draft(client: httpx.Client, token: str, draft_id: str) -> dict[str, Any]
     return (data.get("message") or None) if data else None
 
 
+def delete_draft(client: httpx.Client, token: str, draft_id: str) -> None:
+    """Discard a draft (the owner said no to sending it). A draft that is already gone is fine."""
+    try:
+        r = client.delete(f"{API}/drafts/{quote(draft_id, safe='')}", headers={"Authorization": f"Bearer {token}"})
+    except httpx.HTTPError as exc:
+        raise GoogleError("Couldn't reach Gmail just now.") from exc
+    if r.status_code not in (200, 204, 404):
+        google.raise_for_error(r, "Gmail")
+
+
 def send_draft(client: httpx.Client, token: str, draft_id: str) -> dict[str, Any]:
     return _post(client, token, "/drafts/send", {"id": draft_id})
 

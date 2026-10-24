@@ -268,6 +268,10 @@ def _resolve(session: Session, approval: Approval, *, approve: bool, decided_by:
         return approval
     approval.status = "approved" if approve else "rejected"
     approval.decided_by = decided_by[:100]
+    if not approve and approval.kind == "gmail_send":
+        from superaide.skills import gmail
+
+        gmail.discard_draft(session, approval)  # a no leaves nothing behind in the owner's Gmail drafts
     if approve:
         blocked = _binding_blocks(session, approval)
         if blocked:
