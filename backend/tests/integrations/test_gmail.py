@@ -261,6 +261,7 @@ def test_gmail_asks_for_read_only_first_and_compose_only_when_drafts_go_on(owner
     assert q["scope"] == [api.READONLY] and q["include_granted_scopes"] == ["true"]
     assert _callback(owner_client, url, api.READONLY, gmail_fake).endswith("/dashboard/capabilities?gmail=connected")
     st = owner_client.get("/app/gmail").json()
+    assert st.pop("last_changed") == {}  # nothing changed yet (#441)
     assert st | {"address": None} == {
         "installed": True, "client_ready": True, "connected": True, "address": None, "drafts": False,
         "drafts_allowed": False,

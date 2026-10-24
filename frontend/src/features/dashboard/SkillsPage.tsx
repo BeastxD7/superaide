@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAppData } from '@/features/dashboard/data'
 import { capabilityBySkill, capabilityHref, HASH_REDIRECTS } from '@/features/dashboard/capabilities/registry'
-import { ConnectorSettings } from '@/features/dashboard/ConnectorSettings'
 import { SkillReleasesPanel } from '@/features/dashboard/SkillReleasesPanel'
 import { call, type SkillCard, type SkillOption } from '@/lib/api'
 import { useSession } from '@/lib/session-context'
@@ -214,12 +213,6 @@ export function SkillsPage({ google = null }: { google?: string | null }) {
                       <Link href={capabilityHref(capabilityBySkill(s.id)!.slug)}>{s.title} settings</Link>
                     </Button>
                   </div>
-                )}
-                {s.installed && s.id === 'superaide/web-research' && !asking && (
-                  <ConnectorSettings path="web" title={`How ${name} uses the web`} anchor="web" />
-                )}
-                {s.installed && s.id === 'superaide/google-calendar' && !asking && (
-                  <ConnectorSettings path="calendar" title={`What ${name} may read in your calendar`} anchor="calendar" />
                 )}
                 
                 {s.installed &&

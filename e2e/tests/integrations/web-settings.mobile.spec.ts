@@ -10,7 +10,7 @@ test('the Web research settings fit 390px', async ({ page, api, owner }, info) =
   const cards = await api.ok<{ id: string; permissions: { id: string }[] }[]>(api.get('/app/skills'))
   const cal = cards.find((c) => c.id === 'superaide/web-research')!
   await api.ok(api.post('/app/skills/superaide/web-research/install', { accepted: cal.permissions.map((p) => p.id) }))
-  await page.goto('/dashboard/capabilities')
+  await page.goto('/dashboard/capabilities/web/use')
   const group = page.getByRole('group', { name: 'How Ava uses the web' })
   await group.scrollIntoViewIfNeeded()
   for (const label of ['Searches per step', 'Pages she may open per step', 'When Ava searches the web'])

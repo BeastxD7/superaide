@@ -223,6 +223,7 @@ e2e = [
   "e2e/tests/integrations/gmail-read-settings.mobile.spec.ts",
   "e2e/tests/integrations/capability-routes.spec.ts",
   "e2e/tests/integrations/capability-routes.mobile.spec.ts",
+  "e2e/tests/integrations/gmail-setting-rows.spec.ts",
   "e2e/tests/integrations/calendar-settings.spec.ts",
   "e2e/tests/integrations/calendar-settings.mobile.spec.ts",
   "e2e/tests/integrations/web-settings.spec.ts",

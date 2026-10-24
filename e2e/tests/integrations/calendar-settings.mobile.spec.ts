@@ -10,7 +10,7 @@ test('the Calendar settings fit 390px', async ({ page, api, owner }, info) => {
   const cards = await api.ok<{ id: string; permissions: { id: string }[] }[]>(api.get('/app/skills'))
   const cal = cards.find((c) => c.id === 'superaide/google-calendar')!
   await api.ok(api.post('/app/skills/superaide/google-calendar/install', { accepted: cal.permissions.map((p) => p.id) }))
-  await page.goto('/dashboard/capabilities')
+  await page.goto('/dashboard/capabilities/calendar/reading') // the reading rules live under Calendar now (#441)
   const group = page.getByRole('group', { name: 'What Ava may read in your calendar' })
   await group.scrollIntoViewIfNeeded()
   for (const label of ['How far ahead Ava reads', 'Your day starts at', 'Your day ends at', 'Events she learns from per read'])
