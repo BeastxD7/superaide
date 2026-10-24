@@ -143,3 +143,6 @@
 - name: "full-suite"
   color: "b60205"
   description: "Run every test, not only those of the modules the pull request changes (re-run the Changed paths job after adding it)"
+- name: "tests-not-needed"
+  color: "ededed"
+  description: "Maintainer exemption: a feat or fix with no test file, reason in the PR body (re-run the Tests required job)"
