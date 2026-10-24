@@ -26,7 +26,7 @@ const optionText = (name: string, v: string | number) => {
 }
 const EXAMPLES: Record<string, string> = {
   payment_preview: 'Example: a card alert from your bank shows its sender and subject, or also its first lines.',
-  numbers: 'Example: "Rs 4,500.00 at SWIGGY" is quoted; "card 4111 1111 1111 1111" always becomes [number].',
+  numbers: 'Example: "Rs 4,500.00 at TEAHOUSE" is quoted; "card 4111 1111 1111 1111" always becomes [number].',
   codes: 'Example: "Your code is 834201". Off by default: a malicious email could try to make Ava repeat it.',
 }
 

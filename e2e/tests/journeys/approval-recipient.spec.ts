@@ -13,8 +13,8 @@ test('an email card leads with To and Subject and flags a new recipient', async 
       TENANT,
       AGENT,
       JSON.stringify({
-        summary: 'To: Bluehost Support <support@bluehost.com> · Subject: Re: Your ticket · Please cancel.',
-        to: ['support@bluehost.com'],
+        summary: 'To: Fernhost Support <support@fernhost.example> · Subject: Re: Your ticket · Please cancel.',
+        to: ['support@fernhost.example'],
         subject: 'Re: Your ticket',
         warnings: ['New recipient: not seen before in your mail.'],
       }),
@@ -23,7 +23,7 @@ test('an email card leads with To and Subject and flags a new recipient', async 
   await page.goto('/dashboard')
   const fields = page.getByTestId('approval-fields')
   await expect(fields).toContainText('To')
-  await expect(fields).toContainText('support@bluehost.com')
+  await expect(fields).toContainText('support@fernhost.example')
   await expect(fields).toContainText('Subject')
   await expect(fields).toContainText('Re: Your ticket')
   await expect(page.getByTestId('approval-warning')).toContainText('New recipient')

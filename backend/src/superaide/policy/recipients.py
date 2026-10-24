@@ -96,7 +96,7 @@ _GENERIC = {
 
 def owner_named(typed: str, address: str, display_name: str = "") -> bool:
     """Whether the owner's own words name this recipient: the address itself, or the sender's name or the
-    company in their domain ("say thanks to kotak"). This is how code tells "the owner asked for this
+    company in their domain ("say thanks to marlin"). This is how code tells "the owner asked for this
     recipient" from "the model picked it": the model's say-so is never used."""
     low = (typed or "").lower()
     if not low or not address:

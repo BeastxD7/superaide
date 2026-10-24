@@ -67,9 +67,9 @@ def test_an_address_the_owner_did_not_type_is_refused(owner_client, gmail_fake):
 def test_an_automated_address_the_owner_typed_is_queued_with_a_strong_warning(owner_client, gmail_fake):
     # #394: the owner asked for this address, so it is their call; the card says what it looks like.
     _connect()
-    text = "email noreply@account.bluehost.com that I want to cancel"
+    text = "email noreply@account.fernhost.example that I want to cancel"
     with session_scope() as s:
-        script = Script(tool_use("gmail_compose", {**ARGS, "to": "noreply@account.bluehost.com"}), "ok")
+        script = Script(tool_use("gmail_compose", {**ARGS, "to": "noreply@account.fernhost.example"}), "ok")
         turn_for(s, script, text).run([{"role": "user", "content": text}])
         [a] = s.scalars(select(Approval)).all()
         assert a.payload["warnings"][0] == "This address looks automated; a reply is probably not read."

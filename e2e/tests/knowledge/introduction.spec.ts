@@ -199,7 +199,7 @@ test.describe('hiring again', () => {
 
   test('the same owner hiring again is harmless: same person, same step, nothing repeated', async ({ page, api, owner }) => {
     await api.answer('hello', { choice: 'Nice to meet you' })
-    await api.answer('about', { mode: 'chat', text: 'I lead applied AI at PebbleRoad.' })
+    await api.answer('about', { mode: 'chat', text: 'I lead applied AI at Larkfield.' })
     const before = await totalEvents()
     const person = (await query<{ id: string }>('SELECT person_id::text AS id FROM onboarding'))[0].id
 
@@ -242,7 +242,7 @@ test.describe('the whole introduction, as a person sees it @smoke', () => {
     await meet.expectStep('About you')
     await expect(meet.line(new RegExp(`^${AVA.about}`))).toBeVisible()
     await expect(meet.tab('Tell me here')).toHaveAttribute('aria-selected', 'true')
-    const about = 'I lead applied AI at PebbleRoad in Singapore. Mornings are for client work.'
+    const about = 'I lead applied AI at Larkfield in Singapore. Mornings are for client work.'
     await meet.aboutBox().fill(about)
     await meet.send().click()
     await expect(meet.line(about)).toBeVisible()
@@ -351,12 +351,12 @@ test.describe('the introduction by chat', () => {
     await meet.open()
     await meet.expectStep('About you')
     await expect(meet.aboutBox()).toBeFocused() // the composer is ready to type into
-    await page.keyboard.type('I lead applied AI at PebbleRoad.')
+    await page.keyboard.type('I lead applied AI at Larkfield.')
     await page.keyboard.press('Shift+Enter')
     await page.keyboard.type('Most of my week is client work.')
     await page.keyboard.press('Enter')
     await meet.expectStep('Your people')
-    expect(await eventCount('I lead applied AI at PebbleRoad.\nMost of my week is client work.', 'in')).toBe(1)
+    expect(await eventCount('I lead applied AI at Larkfield.\nMost of my week is client work.', 'in')).toBe(1)
   })
 
   test('skipping people and sharing still finishes, with nothing shared', async ({ page, api }) => {
@@ -696,11 +696,11 @@ test.describe('each step refuses what it should, and says why', () => {
     await api.answer('hello', { choice: 'Nice to meet you' })
     const meet = new Meet(page)
     await meet.open()
-    const about = 'I lead applied AI at PebbleRoad. ' + 'Client work, research and hiring. '.repeat(160) // ~5,300 characters
+    const about = 'I lead applied AI at Larkfield. ' + 'Client work, research and hiring. '.repeat(160) // ~5,300 characters
     await meet.aboutBox().fill(about)
     await meet.send().click()
     await meet.expectStep('Your people')
-    await expect(meet.line(/^I lead applied AI at PebbleRoad\. Client work/)).toBeVisible()
+    await expect(meet.line(/^I lead applied AI at Larkfield\. Client work/)).toBeVisible()
     const said = await query<{ len: number }>("SELECT length(content) AS len FROM event WHERE direction = 'in' AND content LIKE 'I lead applied AI%'")
     expect(said).toEqual([{ len: 4000 }])
 
@@ -747,19 +747,19 @@ test.describe('each step refuses what it should, and says why', () => {
         ? route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ detail: 'Ava is busy. Try again in a minute.' }) })
         : route.continue(),
     )
-    await meet.aboutBox().fill('I lead applied AI at PebbleRoad.')
+    await meet.aboutBox().fill('I lead applied AI at Larkfield.')
     await meet.send().click()
     await expect(page.getByText('Ava is busy. Try again in a minute.')).toBeVisible()
     await meet.expectStep('About you')
-    await expect(meet.line('I lead applied AI at PebbleRoad.')).toHaveCount(0) // the unsent line is taken back
+    await expect(meet.line('I lead applied AI at Larkfield.')).toHaveCount(0) // the unsent line is taken back
     await expect(meet.aboutBox()).toBeVisible()
 
     await page.unroute('**/api/app/onboarding')
-    await meet.aboutBox().fill('I lead applied AI at PebbleRoad.')
+    await meet.aboutBox().fill('I lead applied AI at Larkfield.')
     await meet.send().click()
     await meet.expectStep('Your people')
     await expect(page.getByText('Ava is busy. Try again in a minute.')).toBeHidden()
-    expect(await eventCount('I lead applied AI at PebbleRoad.', 'in')).toBe(1)
+    expect(await eventCount('I lead applied AI at Larkfield.', 'in')).toBe(1)
   })
 
   test('when saving fails, what you typed is still there to resend', async ({ page, api }) => {
@@ -787,7 +787,7 @@ test.describe('coming back to the introduction', () => {
     const meet = new Meet(page)
     await meet.open()
     await meet.hello()
-    await meet.about('I lead applied AI at PebbleRoad.')
+    await meet.about('I lead applied AI at Larkfield.')
     await meet.settled()
     const before = await totalEvents()
 
@@ -796,7 +796,7 @@ test.describe('coming back to the introduction', () => {
     // The history is shown at once, each line once, and the controls are ready.
     await expect(meet.peopleSubmit()).toBeVisible()
     await expect(meet.typing()).toBeHidden()
-    for (const line of [AVA.hello(name), `Thanks, ${name}. I've noted that.`, 'I lead applied AI at PebbleRoad.']) {
+    for (const line of [AVA.hello(name), `Thanks, ${name}. I've noted that.`, 'I lead applied AI at Larkfield.']) {
       await expect(meet.line(line)).toHaveCount(1)
     }
     await expect(meet.line(new RegExp(`^${AVA.people}`))).toHaveCount(1)
@@ -946,11 +946,11 @@ test.describe('double submission', () => {
     const posts = trackPosts(page, '/api/app/onboarding')
     const meet = new Meet(page)
     await meet.open()
-    await meet.aboutBox().fill('I lead applied AI at PebbleRoad.')
+    await meet.aboutBox().fill('I lead applied AI at Larkfield.')
     await meet.send().dblclick()
     await meet.expectStep('Your people')
     expect(await posts.allFinished()).toBe(1)
-    expect(await eventCount('I lead applied AI at PebbleRoad.', 'in')).toBe(1)
+    expect(await eventCount('I lead applied AI at Larkfield.', 'in')).toBe(1)
   })
 
   test('double-clicking a hello reply sends it once', async ({ page }) => {

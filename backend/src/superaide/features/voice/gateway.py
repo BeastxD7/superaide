@@ -10,8 +10,8 @@ rules are in code, not in the model:
 - The read-back is the exact proposal as a structured list of fields, ends with where to confirm, and
   says nothing has happened. A spoken reply that claims completion while something is waiting is
   replaced by that read-back.
-Nothing here is reachable until VOICE_TWO_CHANNEL is on, and nothing existing changes with it off:
-approvals that did not begin on a call are untouched.
+Nothing here is reachable until a voice provider key is present (#448; there is no flag), and nothing existing
+changes without one: approvals that did not begin on a call are untouched.
 """
 
 from __future__ import annotations
@@ -21,8 +21,8 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from superaide.features.voice.provider import voice_available, voice_hint
 from superaide.identity.resolver import Sender
-from superaide.platform.config import get_settings
 from superaide.platform.db.models import Approval
 from superaide.policy.actions import decide
 from superaide.policy.confirmation import from_voice
@@ -49,8 +49,12 @@ def propose(
     payload: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """An action heard on a call. Returns the read-back; the approval waits for a text-channel tap."""
-    if not get_settings().voice_two_channel:
-        return {"status": "off", "spoken": "I can't take actions by voice yet. Please type it in the app."}
+    if not voice_available():
+        return {
+            "status": "off",
+            "spoken": "I can't take actions by voice yet. Please type it in the app.",
+            "hint": voice_hint(),
+        }
     decision = decide(
         session, kind=kind, summary=summary, requester=requester, payload=payload, origin="voice", require_executor=True
     )

@@ -49,7 +49,7 @@ def services(request: httpx.Request) -> httpx.Response:
         ok = TG_TOKEN in url
         return httpx.Response(200, json={"ok": ok, "result": {"username": "ava_for_jordan_bot", "first_name": "Ava"}})
     if "auth.test" in url:
-        return httpx.Response(200, json={"ok": True, "team_id": "T123", "team": "PebbleRoad", "user": "ava"})
+        return httpx.Response(200, json={"ok": True, "team_id": "T123", "team": "Larkfield", "user": "ava"})
     if "apps.connections.open" in url:
         return httpx.Response(200, json={"ok": True, "url": "wss://example"})
     if "oauth2.googleapis.com/token" in url:

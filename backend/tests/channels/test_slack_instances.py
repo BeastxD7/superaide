@@ -52,7 +52,7 @@ def test_the_endpoint_key_is_the_one_the_identity_layer_binds_links_to():
 def slack_api(request: httpx.Request) -> httpx.Response:
     url = str(request.url)
     if "auth.test" in url:
-        return httpx.Response(200, json={"ok": True, "team_id": "T123", "team": "PebbleRoad", "user": "ava"})
+        return httpx.Response(200, json={"ok": True, "team_id": "T123", "team": "Larkfield", "user": "ava"})
     if "apps.connections.open" in url:
         return httpx.Response(200, json={"ok": True, "url": "wss://example"})
     return httpx.Response(404)

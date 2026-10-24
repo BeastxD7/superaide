@@ -343,7 +343,7 @@ test.describe('console: impostor simulator', () => {
     // The receptionist (ADR 0010 TR5) answers strangers now; the linking challenge is unchanged and its note is appended.
     await expect(page.getByText(/If we already work together and you've linked another channel, I've sent a code there/)).toBeVisible()
     // Nothing the owner told Ava reaches the impostor.
-    for (const secret of ['PebbleRoad', 'Priya', 'Arjun', 'home address', 'Series A', 'quiet hours']) expect(body).not.toContain(secret)
+    for (const secret of ['Larkfield', 'Priya', 'Arjun', 'home address', 'Series A', 'quiet hours']) expect(body).not.toContain(secret)
     const result = JSON.parse(body) as { mode: string; outbox: { stable_key?: string; to_context?: string }[] }
     expect(result.mode).toBe('stranger')
     // The only message out is the reply to the impostor's own chat: no code went to anyone else.
@@ -372,7 +372,7 @@ test.describe('console: impostor simulator', () => {
     await page.getByRole('button', { name: 'Send pretend message' }).click()
     const body = await (await simulated).text()
     await expect(page.getByText('Handled as a stranger: no memory, no model call, no actions.')).toBeVisible()
-    expect(body).not.toContain('PebbleRoad')
+    expect(body).not.toContain('Larkfield')
     // Outside accounts can never be linked, so no code goes anywhere.
     const outbox = JSON.parse(body).outbox as { stable_key?: string; to_context?: string }[]
     expect(outbox.filter((m) => m.stable_key)).toEqual([])

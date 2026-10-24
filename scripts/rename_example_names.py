@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
-"""Keep the project owner's real name out of examples, fixtures and demo data.
+"""Keep real people's and real companies' names out of examples, fixtures and demo data.
 
-Applies a fixed, case-aware mapping over every git-tracked text file (stdlib only, idempotent):
+Applies a fixed, case-aware mapping over every git-tracked text file (stdlib only, idempotent). People:
 
   backend, scripts, .github   Shashank Rao -> Jordan Whitfield   Shashank -> Jordan   shashank@ -> jordan@
   e2e/, frontend/, docs/      Shashank Rao -> Ananya Menon       Shashank -> Ananya   shashank@ -> ananya@
+
+Companies (COMPANIES below): the owner's employer and a few real firms that appeared as fixtures are replaced by
+fictional ones everywhere (Pebble Road -> Larkfield, Bluehost -> Fernhost, Kotak -> Marlin, Swiggy -> Teahouse, and
+"interviewing at Stripe" in the privacy eval -> Quillstone).
 
 Files and lines in scripts/example_names_allowlist.txt are skipped (the real owner in notes, this mapping).
 See docs/design/example-names.md.
@@ -33,6 +37,20 @@ ANANYA_PREFIXES = ("e2e/", "frontend/", "docs/")
 
 OLD = re.compile(r"shashank", re.IGNORECASE)
 
+# (pattern, replacement, only these path prefixes or None for everywhere). Order matters: specific before general.
+# The replacement keeps the case of what it replaces (Bluehost -> Fernhost, BLUEHOST -> FERNHOST, bluehost -> fernhost).
+COMPANIES: list[tuple[re.Pattern[str], str, tuple[str, ...] | None]] = [
+    (re.compile(r"pebble[ _-]?road", re.IGNORECASE), "larkfield", None),
+    (re.compile(r"bluehost\.com", re.IGNORECASE), "fernhost.example", None),
+    (re.compile(r"bluehost", re.IGNORECASE), "fernhost", None),
+    (re.compile(r"kotak mahindra", re.IGNORECASE), "marlin", None),
+    (re.compile(r"kotak\.(?:com|example)", re.IGNORECASE), "marlin.example", None),
+    (re.compile(r"kotak", re.IGNORECASE), "marlin", None),
+    (re.compile(r"swiggy", re.IGNORECASE), "teahouse", None),
+    # Stripe is a real payment provider the product may name; only the employer in a fixture is replaced.
+    (re.compile(r"\bStripe\b"), "Quillstone", ("backend/evals/scenarios/privacy.yaml",)),
+]
+
 
 def persona(path: str) -> tuple[str, str]:
     return ANANYA if path.startswith(ANANYA_PREFIXES) else JORDAN
@@ -46,7 +64,28 @@ def _case(src: str, new: str) -> str:
     return new[0].upper() + new[1:].lower()
 
 
+def _company(m: re.Match[str], new: str) -> str:
+    return new if "." in new else _case(m.group(0).replace(" ", "").replace("_", "").replace("-", ""), new)
+
+
+def rewrite_companies(text: str, path: str) -> str:
+    for pattern, new, scope in COMPANIES:
+        if scope is None or path.startswith(scope):
+            text = pattern.sub(lambda m, new=new: _company(m, new), text)
+    return text
+
+
+def has_old(text: str, path: str) -> bool:
+    if OLD.search(text):
+        return True
+    return any(p.search(text) for p, _, scope in COMPANIES if scope is None or path.startswith(scope))
+
+
 def rewrite(text: str, path: str) -> str:
+    return rewrite_companies(rewrite_names(text, path), path)
+
+
+def rewrite_names(text: str, path: str) -> str:
     first, last = persona(path)
 
     def full(m: re.Match[str]) -> str:
@@ -90,13 +129,13 @@ def process(path: str, whole: set[str], lines: dict[str, list[re.Pattern[str]]],
         text = file.read_text(encoding="utf-8")
     except (UnicodeDecodeError, OSError):
         return []
-    if not OLD.search(text):
+    if not has_old(text, path):
         return []
     patterns = lines.get(path, [])
     found: list[str] = []
     out: list[str] = []
     for n, line in enumerate(text.splitlines(keepends=True), 1):
-        if OLD.search(line) and not any(p.search(line) for p in patterns):
+        if has_old(line, path) and not any(p.search(line) for p in patterns):
             found.append(f"{path}:{n}: {line.strip()[:140]}")
             line = rewrite(line, path)
         out.append(line)
@@ -113,7 +152,7 @@ def main(argv: list[str]) -> int:
         hits += process(path, whole, lines, write=not check)
     if check:
         if hits:
-            print("The owner's real name is used as an example name. Run `python3 scripts/rename_example_names.py`:")
+            print("A real name (the owner, a real employer or company) is used as an example. Run `python3 scripts/rename_example_names.py`:")
             print("\n".join(hits))
             return 1
         print("example names ok")

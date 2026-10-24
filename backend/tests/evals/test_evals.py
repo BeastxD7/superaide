@@ -65,7 +65,7 @@ SELF_TESTS = [
     "rcpt-group-stays-unchanged",
     "rcpt-per-sender-limit",
     # Task protocol (#330): read, plan, then ask; no plan or an unusable route means no approval.
-    "proto-bluehost-reads-plans-then-asks",
+    "proto-fernhost-reads-plans-then-asks",
     "proto-no-plan-no-approval",
     "proto-cannot-execute-route-hands-over",
 ]
