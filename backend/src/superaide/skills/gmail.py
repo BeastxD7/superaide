@@ -35,6 +35,7 @@ from superaide.connectors import google
 from superaide.db.models import Approval, InstalledSkill, Person
 from superaide.policy import recipients
 from superaide.policy.binding import content_hash, payload_hash, seal
+from superaide.policy.registry import DISCARDERS, EXECUTORS
 
 SKILL_ID = "superaide/gmail"
 SLOT = ("google", "gmail_refresh_token")
@@ -699,3 +700,7 @@ def run(
 
 TOOLS = {"gmail_search", "gmail_read_thread", "gmail_draft_reply", "gmail_send", "gmail_compose"}
 READS = {"gmail_search", "gmail_read_thread"}
+
+# What an approved gmail_send does, and what a "no" cleans up (policy.actions finds these in its registries).
+EXECUTORS.setdefault("gmail_send", send_approved)
+DISCARDERS["gmail_send"] = discard_draft

@@ -24,15 +24,18 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import layout_report as lr  # noqa: E402
 
-# `wiring` is the one place that turns settings into a model: it exists only to be imported by others, so it is a door.
-PUBLIC_NAMES = {"api", "schemas", "models", "contracts", "wiring"}
-# Registration only: db/models.py imports every package's models to fill the metadata.
-EXEMPT_SOURCES = {"db.models"}
+# `registry` (what other modules register into), `deps` (FastAPI dependencies shared by a package's routers) and
+# `wiring` (the one place that turns settings into a model) exist only to be imported by others: they are doors.
+PUBLIC_NAMES = {"api", "schemas", "models", "contracts", "registry", "deps", "wiring"}
+# Registration only: db/models.py imports every package's models to fill the metadata, and plugins.py imports
+# every module that registers itself with a core registry or the event bus (it is a composition root).
+EXEMPT_SOURCES = {"db.models", "plugins"}
 
 
 def is_public(target: str) -> bool:
     parts = target.split(".")
-    return len(parts) == 1 or parts[1] in PUBLIC_NAMES and len(parts) == 2
+    # `contracts/` is the shared place for ports and events: everything in it is public by definition
+    return len(parts) == 1 or parts[0] == "contracts" or parts[1] in PUBLIC_NAMES and len(parts) == 2
 
 
 def violations(graph) -> list[tuple[str, str]]:

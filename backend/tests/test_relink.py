@@ -63,9 +63,10 @@ def tgm(sender: str, body: str, bot: str, *, chat_kind: str = "dm") -> InboundMe
 @pytest.fixture
 def bots(model, outbox, settings, monkeypatch):
     """Ava on the old bot and on the new one (the app is connected to the new one)."""
-    from superaide.app import linked, routes
+    from superaide.app import deps, linked, routes
 
     names = {OLD_TOKEN: "AvaOldBot", NEW_TOKEN: "AvaNewBot"}
+    monkeypatch.setattr(deps, "telegram_username", lambda token: names.get(token))  # the pipeline's bot name
     monkeypatch.setattr(routes, "telegram_username", lambda token: names.get(token))
     monkeypatch.setattr(linked, "telegram_username", lambda token: names.get(token))
     old = Agent(

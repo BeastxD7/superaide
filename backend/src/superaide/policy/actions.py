@@ -7,7 +7,6 @@ Infant stage nothing with side effects runs without your approval.
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -16,63 +15,46 @@ from sqlalchemy.orm import Session
 
 from superaide.audit import audit
 from superaide.config import get_settings
+from superaide.contracts.events import ApprovalDecided, bus
 from superaide.db.models import Approval
 from superaide.identity.resolver import Sender
 from superaide.identity.trust import Trust
+from superaide.policy import footprint, kinds, outcomes, quote
 from superaide.policy.binding import EXPIRED_BY, check, expired, seal
+from superaide.policy.breaker import allow
+from superaide.policy.confirmation import check_confirmation
+from superaide.policy.registry import (
+    CREATION_RULES,
+    DISCARDERS,
+    EXECUTORS,
+    NEVER_VIA_CHAT,
+    RULES,
+    TOOL_RULES,
+    Rule,
+)
 
-
-@dataclass(frozen=True)
-class Rule:
-    min_trust: int
-    manager_only: bool
-    needs_approval: bool
-
-
-RULES: dict[str, Rule] = {
-    "publish_post": Rule(int(Trust.LINKED), manager_only=True, needs_approval=True),
-    "message_someone_else": Rule(int(Trust.LINKED), manager_only=True, needs_approval=True),
-    "grant_access": Rule(int(Trust.STEPPED_UP), manager_only=True, needs_approval=True),
-    "delete_memory": Rule(int(Trust.STEPPED_UP), manager_only=True, needs_approval=True),
-}
-# Footprint Guard (#136): things created in the world under the owner's name. Only offered and accepted when
-# FOOTPRINT_GUARD_ENABLED; always manager-only and always approved by the owner first.
-CREATION_RULES: dict[str, Rule] = {
-    kind: Rule(int(Trust.LINKED), manager_only=True, needs_approval=True)
-    for kind in ("create_account", "create_profile", "publish_post", "open_pull_request", "post_review")
-}
+__all__ = [
+    "CREATION_RULES",
+    "DISCARDERS",
+    "EXECUTORS",
+    "NEVER_VIA_CHAT",
+    "RULES",
+    "TOOL_RULES",
+    "ApprovalError",
+    "Decision",
+    "Rule",
+    "action_kinds",
+    "decide",
+    "resolve",
+]
 
 
 def action_kinds() -> list[str]:
     """The kinds the model may propose through propose_action."""
-    from superaide.config import get_settings
-
-    kinds = set(RULES)
+    offered = set(RULES)
     if get_settings().footprint_guard_enabled:
-        kinds |= set(CREATION_RULES)
-    return sorted(kinds)
-
-
-# Actions a skill's own tool asks for (never through propose_action, whose kinds are RULES): the
-# tool fills in exactly what would be done, and approving runs it (EXECUTORS).
-TOOL_RULES: dict[str, Rule] = {
-    "calendar_create_event": Rule(int(Trust.LINKED), manager_only=True, needs_approval=True),
-    "calendar_move_event": Rule(int(Trust.LINKED), manager_only=True, needs_approval=True),
-    "calendar_decline_event": Rule(int(Trust.LINKED), manager_only=True, needs_approval=True),
-}
-# Never through a chat channel, whatever the sender's trust: these need the signed-in app (or the
-# operator's CLI). Anything not in RULES is refused too; this set names them so the refusal is explicit
-# and tested. Approving is never an action at all: approvals are decided only by the app's routes.
-NEVER_VIA_CHAT = {
-    "change_identity",
-    "change_trust",
-    "approve_action",
-    "change_connection",
-    "change_credentials",
-    "change_settings",
-    "export_data",
-    "delete_data",
-}
+        offered |= set(CREATION_RULES)
+    return sorted(offered)
 
 
 @dataclass
@@ -104,8 +86,6 @@ def decide(
     `tainted`: untrusted content entered the turn; it only feeds the mandate shadow check (#112)."""
     if kind == "none":
         return Decision("none", "no action requested")
-    from superaide.policy import footprint
-
     if rules is RULES and footprint.enabled():
         rules = {**RULES, **CREATION_RULES}
     if kind in NEVER_VIA_CHAT or kind not in rules:
@@ -113,8 +93,6 @@ def decide(
         return Decision("refused", "not allowed via chat")
     rule = rules[kind]
     if require_executor and get_settings().approval_require_executor:
-        from superaide.policy import kinds
-
         if not kinds.has_executor(kind) or kinds.unsupported_route(summary):
             audit(session, "policy", "action_refused", kind=kind, reason="no executor", requester=requester.name)
             return Decision("refused", kinds.unsupported_message(kind, summary), unsupported=True)
@@ -156,7 +134,6 @@ def decide(
         return Decision("refused", "this needs a stronger identity check; do it from the dashboard instead")
     extra = footprint.assess(session, kind=kind, text=summary, requester=requester)
     from superaide.mandate import service as mandate
-    from superaide.policy import quote
 
     seen = mandate.shadow(session, kind=kind, payload=payload, tainted=tainted)  # a measurement; asks exactly as before
     approval = Approval(
@@ -184,20 +161,6 @@ class ApprovalError(Exception):
     def __init__(self, status: int, message: str) -> None:
         super().__init__(message)
         self.status = status
-
-
-# What each approved action actually does. Nothing is wired yet at the Infant stage:
-# approving records your yes, and the action runs once a connector exists for it.
-EXECUTORS: dict[str, Callable[[Session, Approval], str]] = {}
-
-
-def _load_executors() -> None:
-    """Capabilities that carry out approved actions (imported here, not at the top: they import policy)."""
-    import superaide.asklink.service  # noqa: F401  (registers ask_reply)
-    import superaide.skills.calendar  # noqa: F401  (registers the calendar executors)
-    from superaide.skills import gmail
-
-    EXECUTORS.setdefault("gmail_send", gmail.send_approved)
 
 
 def _binding_blocks(session: Session, approval: Approval) -> str | None:
@@ -233,8 +196,6 @@ def _log_executed(session: Session, approval: Approval) -> None:
 
 def resolve(session: Session, approval: Approval, *, approve: bool, decided_by: str, via: str = "") -> Approval:
     """Decide an approval (see `_resolve`), then write the outcome into the owner's conversation (#340)."""
-    from superaide.policy import outcomes
-
     was_pending = approval.status == "pending"
     done = _resolve(session, approval, approve=approve, decided_by=decided_by, via=via)
     if was_pending and done.status != "pending":
@@ -251,8 +212,6 @@ def _resolve(session: Session, approval: Approval, *, approve: bool, decided_by:
     if approval.status != "pending":
         raise ApprovalError(409, f"This was already {approval.status}.")
     if approve:
-        from superaide.voice.gateway import check_confirmation
-
         problem = check_confirmation(approval, via)
         if problem:
             audit(session, "policy", "voice_confirmation_refused", approval_id=approval.id, via=via or "unknown")
@@ -268,10 +227,9 @@ def _resolve(session: Session, approval: Approval, *, approve: bool, decided_by:
         return approval
     approval.status = "approved" if approve else "rejected"
     approval.decided_by = decided_by[:100]
-    if not approve and approval.kind == "gmail_send":
-        from superaide.skills import gmail
-
-        gmail.discard_draft(session, approval)  # a no leaves nothing behind in the owner's Gmail drafts
+    discard = DISCARDERS.get(approval.kind)
+    if not approve and discard:
+        discard(session, approval)  # a no leaves nothing behind (gmail_send: the owner's Gmail draft)
     if approve:
         blocked = _binding_blocks(session, approval)
         if blocked:
@@ -280,8 +238,6 @@ def _resolve(session: Session, approval: Approval, *, approve: bool, decided_by:
             audit(session, "policy", "approval_approved", kind=approval.kind, approval_id=approval.id, by=decided_by,
                   ran=False)  # fmt: skip
             return approval
-        from superaide.policy.breaker import allow
-
         if not allow(session, approval.kind):
             # Too many deletes or sends in a burst: Ava is frozen and this one is left for the owner.
             approval.status = "pending"
@@ -290,14 +246,11 @@ def _resolve(session: Session, approval: Approval, *, approve: bool, decided_by:
             payload["result"] = "Held: too many sends or deletes in a short time. Ava is paused; review and resume."
             approval.payload = payload
             return approval
-        from superaide.policy import quote
-
         if quote.enabled() and quote.prepare_only(approval):
             payload["result"] = (
                 "Prepared, not run: the odds for this are low. The details are on the card; do the last step yourself."
             )
         else:
-            _load_executors()
             _log_executed(session, approval)
             executor = EXECUTORS.get(approval.kind)
             payload["result"] = (
@@ -309,7 +262,5 @@ def _resolve(session: Session, approval: Approval, *, approve: bool, decided_by:
                 payload["outcome"] = quote.outcome_of(payload["result"])
     approval.payload = payload
     audit(session, "policy", f"approval_{approval.status}", kind=approval.kind, approval_id=approval.id, by=decided_by)
-    from superaide.skills import receipts
-
-    receipts.on_decision(session, approval, approve)  # SKILL_RECEIPTS_ENABLED (#131): a content-free receipt
+    bus.publish(ApprovalDecided(session, approval, approve))  # skills.receipts (#131) writes a content-free receipt
     return approval

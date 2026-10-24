@@ -23,7 +23,7 @@ from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
-from superaide.app.routes import owner_person_id
+from superaide.app.deps import owner_person_id
 from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header, session_token
 from superaide.auth.service import token_hash
 from superaide.config import get_settings

@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 from superaide.audit import audit
 from superaide.config import get_settings
 from superaide.db.models import Person
+from superaide.policy.registry import CREATION_RULES
 
 # Kinds whose text goes to or about someone else.
 OUTBOUND_KINDS = frozenset({"message_someone_else", "publish_post", "post_review", "gmail_send"})
@@ -53,8 +54,6 @@ def unknown_names(session: Session, text: str) -> list[str]:
 
 def assess(session: Session, *, kind: str, text: str, requester: Any = None) -> dict[str, Any]:
     """Extra approval-payload fields (empty when the guard is off or nothing was found); audits what it finds."""
-    from superaide.policy.actions import CREATION_RULES
-
     if not enabled():
         return {}
     out: dict[str, Any] = {}

@@ -12,16 +12,13 @@ import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 
 from superaide.db.models import Approval, Document, DocumentChunk, Event, Intention, MemoryItem
 from superaide.db.session import session_scope
-
-if TYPE_CHECKING:
-    from superaide.evals.harness import Run, TurnRecord
 
 # Hedges that were wrong in real use: Ava can remember, keeps notes and manages reminders.
 FALSE_LIMITS = [
@@ -46,8 +43,11 @@ class Outcome:
 
 @dataclass
 class Ctx:
-    run: Run
-    turn: TurnRecord | None  # None for scenario-level checks
+    # `run` is a harness Run and `turn` a harness TurnRecord (None for scenario-level checks). They are typed Any
+    # because importing the harness here, even for types, ties the product code that grades a lesson (school.playbook)
+    # to the whole code base the harness drives (ADR 0015).
+    run: Any
+    turn: Any
     live: bool
     judge: Callable[[str, str], tuple[bool, str]] | None = None
     notes: list[str] = field(default_factory=list)
@@ -80,7 +80,7 @@ def _found(pattern: str, text: str) -> bool:
     return re.search(pattern, text, re.I) is not None
 
 
-def _turn(ctx: Ctx) -> TurnRecord:
+def _turn(ctx: Ctx) -> Any:
     assert ctx.turn is not None, "this check belongs under a turn's expect:"
     return ctx.turn
 

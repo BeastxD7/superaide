@@ -49,7 +49,6 @@ def ran(monkeypatch):
     log: list[tuple[str, dict[str, Any]]] = []
     for kind in KINDS:
         monkeypatch.setitem(actions.EXECUTORS, kind, lambda s, a, k=kind: log.append((k, dict(a.payload))) or "done")
-    monkeypatch.setattr(actions, "_load_executors", lambda: None)
     return log
 
 

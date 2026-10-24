@@ -106,7 +106,7 @@ def _grade(spec: dict[str, Any], reply: str) -> list[dict[str, Any]]:
     turn = SimpleNamespace(reply=reply)
     for item in spec["expect"]:
         ((name, value),) = item.items()
-        ok, _ = checks.KNOWN[name](checks.Ctx(run=None, turn=turn, live=False), value)  # type: ignore[arg-type]
+        ok, _ = checks.KNOWN[name](checks.Ctx(run=None, turn=turn, live=False), value)
         out.append({"check": name, "ok": bool(ok)})  # never the reply or the check's explanation (it quotes it)
     return out
 

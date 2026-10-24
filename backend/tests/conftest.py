@@ -93,6 +93,7 @@ from typing import Any  # noqa: E402
 import pytest  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 
+import superaide.plugins  # noqa: E402, F401  (registers the approval executors and event subscribers)
 from superaide.brain.llm import FakeLLM  # noqa: E402
 from superaide.brain.turn import Prediction, RequestedAction, TurnOutput  # noqa: E402
 from superaide.channels.base import FakeMessenger, InboundMessage  # noqa: E402

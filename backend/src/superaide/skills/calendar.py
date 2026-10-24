@@ -13,6 +13,7 @@ from superaide.connectors import google
 from superaide.db.models import Person
 from superaide.intentions.service import owner_zone
 from superaide.intentions.when import find_moment, zone
+from superaide.policy.actions import EXECUTORS, TOOL_RULES, decide
 from superaide.skills.registry import active
 from superaide.vault.store import runtime_settings
 
@@ -225,8 +226,6 @@ def _clean_emails(raw: Any) -> list[str] | str:
 def _ask(
     session: Session, sender: Any, kind: str, summary: str, payload: dict[str, Any], tainted: bool = False
 ) -> tuple[str, bool]:
-    from superaide.policy.actions import TOOL_RULES, decide
-
     decision = decide(
         session, kind=kind, summary=summary, requester=sender, rules=TOOL_RULES, payload=payload, tainted=tainted
     )
@@ -414,8 +413,6 @@ def _do_decline(token: str, p: dict[str, Any]) -> dict[str, Any]:
 
 
 def _register() -> None:
-    from superaide.policy.actions import EXECUTORS
-
     EXECUTORS["calendar_create_event"] = lambda s, a: _carry_out(s, a, _do_create, "Added to your calendar.")
     EXECUTORS["calendar_move_event"] = lambda s, a: _carry_out(s, a, _do_move, "Moved.")
     EXECUTORS["calendar_decline_event"] = lambda s, a: _carry_out(

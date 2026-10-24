@@ -37,6 +37,7 @@ from superaide.asklink.models import AskHandle, AskLink, AskRate, AskRequest, As
 from superaide.audit import audit
 from superaide.config import get_settings
 from superaide.db.models import Approval, Person
+from superaide.policy.registry import EXECUTORS
 from superaide.tenancy.context import InstanceScope
 
 log = logging.getLogger(__name__)
@@ -385,8 +386,6 @@ def _execute_reply(session: Session, approval: Approval) -> str:
 
 
 def register() -> None:
-    from superaide.policy.actions import EXECUTORS
-
     EXECUTORS["ask_reply"] = _execute_reply
 
 

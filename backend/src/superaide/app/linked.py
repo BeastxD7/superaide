@@ -19,7 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.app import accounts
-from superaide.app.routes import owner_person_id, telegram_username
+from superaide.app.deps import owner_person_id, telegram_username
 from superaide.audit import audit
 from superaide.auth.routes import reject_nul_text, require_csrf_header
 from superaide.channels.telegram import bot_id

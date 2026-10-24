@@ -476,7 +476,7 @@ class Agent:
             from superaide.channels.telegram import bot_id
 
             if endpoint and endpoint == bot_id(self.settings.telegram_bot_token):
-                from superaide.app.routes import telegram_username
+                from superaide.app.deps import telegram_username
 
                 username = telegram_username(self.settings.telegram_bot_token)
                 if username:
