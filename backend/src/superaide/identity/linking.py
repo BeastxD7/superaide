@@ -60,7 +60,7 @@ def _reachable(identity: ChannelIdentity, settings: Settings) -> bool:
     whoever holds the Telegram account isn't trusted to receive codes until the owner confirms."""
     if identity.provider != "telegram":
         return True
-    from superaide.channels.telegram import bot_id
+    from superaide.channels.base import bot_id
     from superaide.identity.resolver import endpoint_confirmed
 
     return endpoint_confirmed(identity, bot_id(settings.telegram_bot_token)) and not (identity.verification or {}).get(

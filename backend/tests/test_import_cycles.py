@@ -39,6 +39,10 @@ FORBIDDEN: dict[str, set[str]] = {
     "policy.kinds": {"policy.actions"},
     "policy.footprint": {"policy.actions"},
     "evals.checks": {"evals.harness"},
+    # technique 3: notifications find the channel adapters through channels.base registries
+    "proactive.notify": {"channels.telegram", "channels.slack"},
+    "channels.telegram": {"triage.buttons"},
+    "brain.keyhealth": {"proactive.notify"},
 }
 
 
@@ -82,4 +86,4 @@ def test_the_biggest_import_cycle_only_shrinks(graph):
     lr = _load("layout_report")
     cycles = lr.sccs(sorted(graph.imports), graph.imports)
     biggest = max((len(c) for c in cycles), default=0)
-    assert biggest <= 12, f"the largest file-level import cycle grew to {biggest} files (ADR 0015 phase 2)"
+    assert biggest <= 10, f"the largest file-level import cycle grew to {biggest} files (ADR 0015 phase 2)"

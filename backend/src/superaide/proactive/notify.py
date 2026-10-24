@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from superaide.app.accounts import web_message
 from superaide.audit import audit
 from superaide.channels import health
+from superaide.channels.base import MESSENGER_FACTORIES, bot_id
 from superaide.context.audience import Audience
 from superaide.db.models import ChannelIdentity, Person
 from superaide.knowledge.store import preferences_for
@@ -62,13 +63,9 @@ def messenger_for(provider: str) -> Any:
 
     settings = runtime_settings()
     if provider == "telegram" and settings.telegram_bot_token:
-        from superaide.channels.telegram import TelegramMessenger
-
-        return TelegramMessenger(settings.telegram_bot_token)
+        return MESSENGER_FACTORIES["telegram"](settings.telegram_bot_token)
     if provider == "slack" and settings.slack_bot_token:
-        from superaide.channels.slack import SlackMessenger
-
-        return SlackMessenger(settings.slack_bot_token)
+        return MESSENGER_FACTORIES["slack"](settings.slack_bot_token)
     return None
 
 
@@ -76,7 +73,6 @@ def confirmed_here(provider: str, identity: ChannelIdentity) -> bool:
     """Is this account confirmed on the bot connected now? (Links are bound to a bot; see identity/resolver.py.)"""
     if provider != "telegram":
         return True
-    from superaide.channels.telegram import bot_id
     from superaide.identity.resolver import endpoint_confirmed
     from superaide.vault.store import runtime_settings
 

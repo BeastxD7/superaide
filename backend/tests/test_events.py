@@ -59,3 +59,11 @@ def test_the_plugins_subscribe_the_receipts_to_decided_approvals():
     import superaide.plugins  # noqa: F401
 
     assert bus._handlers[ApprovalDecided], "skills.receipts must listen for decisions once the plugins are loaded"
+
+
+def test_the_plugins_register_what_the_channel_code_looks_up():
+    import superaide.plugins  # noqa: F401
+    from superaide.channels.base import MESSENGER_FACTORIES, PRESS_HANDLERS
+
+    assert {"telegram", "slack"} <= set(MESSENGER_FACTORIES)
+    assert "telegram" in PRESS_HANDLERS

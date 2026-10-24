@@ -473,7 +473,7 @@ class Agent:
 
     def _endpoint_name(self, provider: str, endpoint: str) -> str:
         if provider == "telegram":
-            from superaide.channels.telegram import bot_id
+            from superaide.channels.base import bot_id
 
             if endpoint and endpoint == bot_id(self.settings.telegram_bot_token):
                 from superaide.app.deps import telegram_username
@@ -574,7 +574,7 @@ class Agent:
     def _key_rejected(self, s, exc: Exception, *, owner: bool) -> str | None:
         """The provider refused the key (or Superaide's credits): say so plainly to the owner, give others a
         plain "can't answer", and tell the owner in the app once per three hours. None: not that kind of error."""
-        from superaide.brain import keyhealth
+        from superaide.brain import keyhealth, keynote
 
         if not keyhealth.is_auth_error(exc):
             return None
@@ -586,7 +586,7 @@ class Agent:
 
             boss = hired_by(s)
             if boss is not None:
-                keyhealth.note_owner(s, boss, provider)
+                keynote.note_owner(s, boss, provider)
         return keyhealth.message_for(provider) if owner else keyhealth.OTHERS_CHAT
 
     def _budget_reply(self, s, exc: BudgetExceeded, *, owner: bool = True) -> str:

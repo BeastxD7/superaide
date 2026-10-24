@@ -25,11 +25,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.audit import audit
-from superaide.channels.base import Button, InboundAction
+from superaide.channels.base import MESSENGER_FACTORIES, PRESS_HANDLERS, Button, InboundAction
 from superaide.db.models import ChannelIdentity, Job, Person
 from superaide.db.session import session_scope
 from superaide.identity.trust import Trust
 from superaide.jobs.queue import enqueue, handler
+from superaide.proactive import notify
 from superaide.triage.models import Escalation, EscalationDelivery
 
 log = logging.getLogger(__name__)
@@ -68,9 +69,6 @@ def _owner_identity(session: Session, esc: Escalation, action: InboundAction) ->
 
 def on_telegram_press(bot_token: str, action: InboundAction) -> str:
     """Handle one press; returns what the presser is told. Never raises: the press is always answered."""
-    from superaide.channels.telegram import TelegramMessenger
-    from superaide.proactive.notify import messenger_for
-
     reply = "That button has expired."
     try:
         reply = press(action)
@@ -78,7 +76,7 @@ def on_telegram_press(bot_token: str, action: InboundAction) -> str:
         log.exception("escalation button press failed")
         reply = "Something went wrong. Open Needs you in the app."
     # The instance's own bot (the poller and webhook run in its scope); the receiving bot otherwise.
-    messenger: Any = messenger_for("telegram") or TelegramMessenger(bot_token)
+    messenger: Any = notify.messenger_for("telegram") or MESSENGER_FACTORIES["telegram"](bot_token)
     if hasattr(messenger, "answer_callback"):
         messenger.answer_callback(action.action_id, reply)
     return reply
@@ -130,7 +128,6 @@ def refresh(session: Session, esc: Escalation, *, verb: str, via: str) -> None:
 
 @handler(JOB_REFRESH)
 def _refresh_job(session: Session, job: Job) -> None:
-    from superaide.proactive.notify import messenger_for
     from superaide.triage.escalate import text_for
     from superaide.triage.models import TriageDecision
 
@@ -138,7 +135,7 @@ def _refresh_job(session: Session, job: Job) -> None:
     if esc is None:
         return
     decision = session.get(TriageDecision, esc.decision_id)
-    messenger = messenger_for("telegram")
+    messenger = notify.messenger_for("telegram")
     if decision is None or messenger is None or not hasattr(messenger, "edit_message"):
         return
     at = datetime.fromisoformat(job.payload["at"])
@@ -153,3 +150,6 @@ def _refresh_job(session: Session, job: Job) -> None:
     text = text_for(session, esc, decision, push=True)
     for row in rows:
         messenger.edit_message(row.external_ref, _stamp(text, job.payload["verb"], job.payload["via"], at))
+
+
+PRESS_HANDLERS["telegram"] = on_telegram_press

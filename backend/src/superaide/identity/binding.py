@@ -35,7 +35,7 @@ def bind_unbound_telegram(conn: Connection, bot: str, tenant_id: uuid.UUID | Non
 
 def current_bots(conn: Connection) -> list[tuple[uuid.UUID | None, str]]:
     """(tenant, bot id) for each Telegram bot token saved in the app, else the one from the environment."""
-    from superaide.channels.telegram import bot_id
+    from superaide.channels.base import bot_id
     from superaide.config import get_settings
 
     found: list[tuple[uuid.UUID | None, str]] = []

@@ -20,7 +20,15 @@ import httpx
 
 from superaide.channels import format as fmt
 from superaide.channels import health
-from superaide.channels.base import Button, InboundAction, InboundMessage, Sources
+from superaide.channels.base import (
+    MESSENGER_FACTORIES,
+    PRESS_HANDLERS,
+    Button,
+    InboundAction,
+    InboundMessage,
+    Sources,
+    bot_id,
+)
 from superaide.db.models import ChannelIdentity, Context
 
 log = logging.getLogger(__name__)
@@ -36,11 +44,6 @@ def verify_secret(received: str | None, expected: str) -> bool:
     if not expected or received is None:
         return False
     return hmac.compare_digest(received.encode(), expected.encode())
-
-
-def bot_id(token: str) -> str:
-    """The bot's public numeric id (the part of the token before the colon; not secret)."""
-    return token.split(":", 1)[0] if ":" in token else ""
 
 
 def parse_update(update: dict[str, Any], *, verified: bool, bot: str = "") -> InboundMessage | None:
@@ -97,10 +100,9 @@ def parse_callback(update: dict[str, Any], *, verified: bool, bot: str = "") -> 
 
 
 def _handle_press(token: str, action: InboundAction) -> None:
-    """Escalation buttons (ADR 0010): handled by triage, in the instance this poller runs in."""
-    from superaide.triage.buttons import on_telegram_press
-
-    on_telegram_press(token, action)
+    """Escalation buttons (ADR 0010): handled by triage (it registers in PRESS_HANDLERS), in the instance this
+    poller runs in."""
+    PRESS_HANDLERS["telegram"](token, action)
 
 
 TYPING_INTERVAL = 4.0  # Telegram shows "typing" for about 5 seconds, so it is sent again every ~4
@@ -394,3 +396,6 @@ def _poll_loop(http, base, token, handle, stop, queues, offset, backoff, known) 
                     queues.submit("press", lambda action=action: _handle_press(token, action))
             except Exception:  # keep polling even if one update is malformed
                 log.exception("failed to handle telegram update")
+
+
+MESSENGER_FACTORIES["telegram"] = TelegramMessenger

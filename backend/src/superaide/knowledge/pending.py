@@ -101,7 +101,7 @@ def sweep() -> int:
 
 @handler(JOB_KIND)
 def read(session: Session, job: Job) -> None:
-    from superaide.brain import keyhealth
+    from superaide.brain import keyhealth, keynote
     from superaide.brain.wiring import brain_ready, build_llm
     from superaide.knowledge.ingest import read_documents
     from superaide.vault.store import runtime_settings
@@ -120,7 +120,7 @@ def read(session: Session, job: Job) -> None:
             if bad:  # not a passing failure: stop retrying and tell the owner once
                 owner = s.get(Person, owner_id)
                 if owner is not None:
-                    keyhealth.note_owner(s, owner, bad[0], what="your documents stay unread until then")
+                    keynote.note_owner(s, owner, bad[0], what="your documents stay unread until then")
         if bad:
             return
         raise RuntimeError("couldn't read every document just now")  # the job retries later, with back-off
