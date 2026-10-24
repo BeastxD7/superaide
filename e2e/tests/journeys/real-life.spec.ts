@@ -116,7 +116,7 @@ test.describe('sharing a resume', () => {
     await input.setInputFiles({
       name: 'resume.txt',
       mimeType: 'text/plain',
-      buffer: Buffer.from('Ananya Menon\nHead of Applied AI, PebbleRoad, Singapore\nPreviously: ML engineer.\n'),
+      buffer: Buffer.from('Ananya Menon\nHead of Applied AI, Larkfield, Singapore\nPreviously: ML engineer.\n'),
     })
     await expect(page.getByText('resume.txt').or(page.getByText(/resume/i)).first()).toBeVisible({ timeout: 15_000 })
     await expect(page.getByRole('button', { name: 'Continue' })).toBeEnabled()

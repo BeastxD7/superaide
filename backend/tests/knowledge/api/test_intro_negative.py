@@ -230,10 +230,10 @@ def test_a_removed_file_can_be_shared_again_offline(owner):
 
 def test_a_removed_file_can_be_shared_again_once_facts_were_read_from_it(owner, brain):
     """The facts from the first copy are retired but still point at it; sharing it again used to 500."""
-    first = upload(owner, "cv.txt", b"Jordan builds agents at PebbleRoad.").json()
+    first = upload(owner, "cv.txt", b"Jordan builds agents at Larkfield.").json()
     assert first["facts"] == 2
     assert owner.post(f"/app/intro/documents/{first['document_id']}/remove").json()["facts_removed"] == 2
-    again = upload(owner, "cv.txt", b"Jordan builds agents at PebbleRoad.")
+    again = upload(owner, "cv.txt", b"Jordan builds agents at Larkfield.")
     assert again.status_code == 200, again.text
     assert again.json()["duplicate"] is False and again.json()["facts"] == 2
     docs = owner.get("/app/intro/documents").json()

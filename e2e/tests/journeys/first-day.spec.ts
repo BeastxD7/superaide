@@ -60,7 +60,7 @@ test('a new owner browses, hires Ava, introduces themselves and gets to work @sm
     const box = page.getByRole('textbox').last()
     await expect(box).toBeVisible({ timeout: 15_000 })
     await snap(page, 'about')
-    await box.fill('I lead applied AI at PebbleRoad in Singapore. Mornings are for deep work; I hate surprise meetings.')
+    await box.fill('I lead applied AI at Larkfield in Singapore. Mornings are for deep work; I hate surprise meetings.')
     await box.press('Enter')
   })
 

@@ -15,7 +15,7 @@ async function askFor(kind: string, payload: Record<string, unknown>) {
 test.describe('approval honesty', () => {
   test('a card with no executor says approving it will not do anything', async ({ page, owner }) => {
     void owner
-    await askFor('message_someone_else', { summary: 'Cancel the Bluehost subscription via their contact page' })
+    await askFor('message_someone_else', { summary: 'Cancel the Fernhost subscription via their contact page' })
     await page.goto('/dashboard')
     const note = page.getByTestId('approval-no-executor')
     await expect(note).toBeVisible()

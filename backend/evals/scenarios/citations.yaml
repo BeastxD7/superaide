@@ -48,14 +48,14 @@
   title: Two facts, two real citations
   world:
     memories:
-      - content: "Jordan works at Pebble Road."
+      - content: "Jordan works at Larkfield."
         category: work
       - content: "Jordan is a product designer."
         category: work
   turns:
     - say: "where do I work and what's my role?"
       expect:
-        - reply_contains: ["Pebble Road", "designer"]
+        - reply_contains: ["Larkfield", "designer"]
         - cited: true
         - citations_valid: true
 
