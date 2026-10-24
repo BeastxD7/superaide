@@ -1,4 +1,3 @@
-// ci-module: integrations
 // #441: Gmail's reading rules and drafts use the shared setting row: title, why, example, status, control and
 // "last changed by/when" from the audit log.
 import AxeBuilder from '@axe-core/playwright'
