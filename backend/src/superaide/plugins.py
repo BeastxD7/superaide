@@ -11,6 +11,9 @@ A new capability that registers an executor, a discarder or an event subscriber 
 from __future__ import annotations
 
 import superaide.asklink.service  # noqa: F401  (EXECUTORS["ask_reply"])
+import superaide.channels.slack  # noqa: F401  (MESSENGER_FACTORIES["slack"])
+import superaide.channels.telegram  # noqa: F401  (MESSENGER_FACTORIES["telegram"])
 import superaide.skills.calendar  # noqa: F401  (the calendar executors)
 import superaide.skills.gmail  # noqa: F401  (EXECUTORS["gmail_send"], DISCARDERS["gmail_send"])
 import superaide.skills.receipts  # noqa: F401  (subscribes to ApprovalDecided)
+import superaide.triage.buttons  # noqa: F401  (PRESS_HANDLERS["telegram"])

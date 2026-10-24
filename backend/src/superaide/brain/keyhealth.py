@@ -14,13 +14,13 @@ Superaide AI credits pay for.
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from typing import Any
 
 from sqlalchemy.orm import Session
 
 from superaide.channels import health
-from superaide.policy.killswitch import get_state, set_state
+from superaide.policy.killswitch import set_state
 
 log = logging.getLogger(__name__)
 
@@ -111,25 +111,6 @@ def reset(session: Session) -> None:
 
 def message_for(provider: str) -> str:
     return CREDITS_UNAVAILABLE_CHAT if provider == "credits" else KEY_REJECTED_CHAT
-
-
-def note_owner(session: Session, owner: Any, provider: str, *, what: str = "") -> bool:
-    """One in-app note per three hours, however many calls fail. Returns whether one was sent."""
-    from superaide.proactive.notify import notify_owner
-
-    state = get_state(session, "ai_key_note")
-    last = state.get("at")
-    now = datetime.now(UTC)
-    if last:
-        try:
-            if now - datetime.fromisoformat(last) < NOTE_EVERY:
-                return False
-        except ValueError:
-            pass
-    set_state(session, "ai_key_note", {"at": now.isoformat()})
-    text = CREDITS_NOTE if provider == "credits" else OWNER_NOTE
-    notify_owner(session, owner, text + (f" ({what})" if what else ""), {"kind": "ai_key_rejected"}, channel="app")
-    return True
 
 
 def status_view(session: Session) -> dict[str, Any]:

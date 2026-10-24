@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
@@ -134,3 +135,16 @@ class WebMessenger:
 
     def send_to_context(self, context: Context, text: str, thread_id: str = "", sources: Sources | None = None) -> None:
         return None
+
+
+def bot_id(token: str) -> str:
+    """A Telegram bot's public numeric id (the part of the token before the colon; not secret)."""
+    return token.split(":", 1)[0] if ":" in token else ""
+
+
+# What the channel adapters and the modules that use them tell each other (ADR 0015, technique 3), so neither
+# imports the other. Each adapter registers itself when imported; `superaide.plugins` imports them at startup.
+# provider -> builds that provider's outbound messenger from its bot token
+MESSENGER_FACTORIES: dict[str, Callable[[str], Messenger]] = {}
+# provider -> handles a button press (bot token, the press) that the provider's listener received
+PRESS_HANDLERS: dict[str, Callable[[str, InboundAction], Any]] = {}

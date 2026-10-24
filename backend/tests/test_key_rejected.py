@@ -9,7 +9,7 @@ from decimal import Decimal
 import pytest
 from sqlalchemy import select
 
-from superaide.brain import keyhealth
+from superaide.brain import keyhealth, keynote
 from superaide.brain.budget import BudgetGuard
 from superaide.brain.pricing import UsageCounts
 from superaide.brain.providers.base import Priced, metered
@@ -136,7 +136,7 @@ def test_the_owner_hears_about_a_rejected_key_once_per_three_hours(owner_client,
         with session_scope() as s:
             person = hired_owner(s)
             assert person is not None
-            return keyhealth.note_owner(s, person, "anthropic")
+            return keynote.note_owner(s, person, "anthropic")
 
     assert note() is True and note() is False
     with session_scope() as s:
@@ -154,7 +154,7 @@ def test_credits_get_their_own_wording(owner_client, provider, monkeypatch):  # 
     with session_scope() as s:
         person = hired_owner(s)
         assert person is not None
-        keyhealth.note_owner(s, person, "credits")
+        keynote.note_owner(s, person, "credits")
     assert any("Superaide's credits are unavailable right now" in t for t in told(owner_client))
 
 

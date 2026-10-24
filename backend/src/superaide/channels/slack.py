@@ -16,7 +16,7 @@ from typing import Any
 
 from superaide.channels import format as fmt
 from superaide.channels import health
-from superaide.channels.base import InboundMessage, Sources
+from superaide.channels.base import MESSENGER_FACTORIES, InboundMessage, Sources
 from superaide.db.models import ChannelIdentity, Context
 
 log = logging.getLogger(__name__)
@@ -281,3 +281,6 @@ def socket_mode_handler(bot_token: str, app_token: str, our_team_id: str, handle
 
     log.info("Slack Socket Mode ready")
     return SocketModeHandler(app, app_token)
+
+
+MESSENGER_FACTORIES["slack"] = SlackMessenger
