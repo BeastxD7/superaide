@@ -10,12 +10,12 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Path
+from fastapi import APIRouter, Depends, HTTPException, Path, Request
 from pydantic import BaseModel, ConfigDict, Field
 
 from superaide.app.deps import owner_person_id
-from superaide.auth.routes import reject_nul_text, require_csrf_header
 from superaide.links import is_local, public_base, public_url
+from superaide.auth.routes import client_of, reject_nul_text, require_csrf_header
 from superaide.platform.audit import audit
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import use_instance
@@ -74,13 +74,19 @@ def make_public_router() -> APIRouter:
         description="The signed statement that a message came from an AI acting for someone. Nothing private.",
         dependencies=[Depends(flag_on)],
     )
-    def page(token: str) -> dict[str, Any]:
+    def page(token: str, request: Request) -> dict[str, Any]:
+        ip = client_of(request).ip
+        with session_scope() as s:
+            if card.blocked(s, ip):  # too many misses from this address in the last minute
+                raise HTTPException(429, "Too many tries. Wait a minute and try again.", headers={"Retry-After": "60"})
         scope = card.scope_of(token)
-        if scope is None:
-            raise _not_found()
-        with use_instance(scope), session_scope() as s:
-            shown = card.verify(s, token, record=True)
+        shown = None
+        if scope is not None:
+            with use_instance(scope), session_scope() as s:
+                shown = card.verify(s, token, record=True)
         if shown is None:
+            with session_scope() as s:
+                card.record_miss(s, ip)
             raise _not_found()
         return shown
 

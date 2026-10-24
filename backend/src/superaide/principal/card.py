@@ -229,6 +229,27 @@ def _bump(session: Session, key: str) -> None:
     set_state(session, STATS_KEY, st)
 
 
+def _miss_bucket(ip: str) -> str:
+    from superaide.asklink.service import address_key
+
+    return f"card-miss:{address_key(ip)}"
+
+
+def blocked(session: Session, ip: str, *, now: datetime | None = None) -> bool:
+    """Whether this address has missed (unknown, expired or revoked links) too many times in the last minute. The
+    8-character code space is the only protection against guessing, so guessing is slowed down (#438)."""
+    from superaide.asklink.service import peek
+
+    limit = get_settings().card_misses_per_minute
+    return limit > 0 and peek(session, _miss_bucket(ip), timedelta(minutes=1), now or datetime.now(UTC)) >= limit
+
+
+def record_miss(session: Session, ip: str, *, now: datetime | None = None) -> None:
+    from superaide.asklink.service import hit
+
+    hit(session, _miss_bucket(ip), timedelta(minutes=1), now or datetime.now(UTC))
+
+
 def record_open(session: Session, card_id: str) -> None:
     """Count a distinct valid card being opened (the same card opened twice counts once)."""
     st = dict(get_state(session, STATS_KEY))
