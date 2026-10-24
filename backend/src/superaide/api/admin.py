@@ -32,6 +32,7 @@ from sqlalchemy.orm import aliased
 from superaide.app.accounts import owner as hired_owner
 from superaide.audit import audit
 from superaide.brain.budget import BudgetGuard
+from superaide.brain.wiring import brain_ready
 from superaide.config import get_settings
 from superaide.db.models import (
     Approval,
@@ -46,7 +47,6 @@ from superaide.db.models import (
     SpendEntry,
 )
 from superaide.db.session import session_scope
-from superaide.factory import brain_ready
 from superaide.identity.linking import operator_link, unlink
 from superaide.pagination import (
     Page,

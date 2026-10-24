@@ -134,7 +134,7 @@ class VoiceCall:
         return choose_asr(self.settings, fakes=self.fakes), choose_tts(self.settings, lang, fakes=self.fakes)
 
     def config(self, session: Session, person: Person, lang: str) -> dict[str, Any]:
-        from superaide.factory import brain_ready
+        from superaide.brain.wiring import brain_ready
         from superaide.voice.prices import per_minute
 
         asr, tts = self.providers(lang)
@@ -300,7 +300,7 @@ class VoiceCall:
         self, turns: list[dict[str, Any]], name: str, topic: int, follow_ups: int, lang: str, say: Callable[[str], None]
     ) -> tuple[str, str]:
         """(tag, words). Claude when there's a brain; the scripted interview otherwise or if it fails."""
-        from superaide.factory import brain_ready
+        from superaide.brain.wiring import brain_ready
 
         if brain_ready(self.settings):
             reader = interview.ReplyReader(say)

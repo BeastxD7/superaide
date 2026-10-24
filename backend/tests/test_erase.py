@@ -38,8 +38,8 @@ class Script:
 @pytest.fixture
 def script(agent, monkeypatch):
     m = Script()
-    monkeypatch.setattr("superaide.factory.brain_ready", lambda settings: True)
-    monkeypatch.setattr("superaide.factory.build_llm", lambda settings: FakeLLM(m))
+    monkeypatch.setattr("superaide.brain.wiring.brain_ready", lambda settings: True)
+    monkeypatch.setattr("superaide.brain.wiring.build_llm", lambda settings: FakeLLM(m))
     agent.llm = FakeLLM(m)
     return m
 

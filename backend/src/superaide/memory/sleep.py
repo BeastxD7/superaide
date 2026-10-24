@@ -344,7 +344,7 @@ def sleep(session: Session, job: Any) -> None:
     owner = session.get(Person, uuid.UUID(job.payload["owner_id"]))
     if owner is None:
         return
-    from superaide.factory import brain_ready, build_llm
+    from superaide.brain.wiring import brain_ready, build_llm
     from superaide.vault.store import runtime_settings
 
     settings = runtime_settings()

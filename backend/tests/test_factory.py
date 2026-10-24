@@ -12,11 +12,12 @@ import pytest
 
 from superaide.brain.llm import ClaudeLLM, FakeLLM, SystemBlock
 from superaide.brain.turn import TurnOutput
+from superaide.brain.wiring import brain_ready, brain_status, build_llm, demo_responder
 from superaide.channels.base import FakeMessenger, WebMessenger
 from superaide.channels.slack import SlackMessenger
 from superaide.channels.telegram import TelegramMessenger
 from superaide.config import Settings, get_settings
-from superaide.factory import brain_ready, brain_status, build_agent, build_llm, build_messengers, demo_responder
+from superaide.factory import build_agent, build_messengers
 from superaide.pipeline import Agent
 from tests.conftest import MANAGER_TG, tg
 

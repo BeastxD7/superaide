@@ -149,7 +149,7 @@ def schedule(session: Session, event: Event) -> None:
 
 @handler(JOB_KIND)
 def read_turn(session: Session, job: Job) -> None:
-    from superaide.factory import brain_ready, build_llm
+    from superaide.brain.wiring import brain_ready, build_llm
     from superaide.intentions.service import owner_zone
     from superaide.intentions.when import zone
     from superaide.vault.store import runtime_settings

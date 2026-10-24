@@ -24,7 +24,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import layout_report as lr  # noqa: E402
 
-PUBLIC_NAMES = {"api", "schemas", "models", "contracts"}
+# `wiring` is the one place that turns settings into a model: it exists only to be imported by others, so it is a door.
+PUBLIC_NAMES = {"api", "schemas", "models", "contracts", "wiring"}
 # Registration only: db/models.py imports every package's models to fill the metadata.
 EXEMPT_SOURCES = {"db.models"}
 

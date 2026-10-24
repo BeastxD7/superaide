@@ -52,7 +52,7 @@
   "backend/src/superaide/evals/baseline.py": "0e5aef050b27a6f0a3d5b95b5cfa247e5bca3d2d228b3df1ab55a2404fb54841",
   "backend/src/superaide/evals/checks.py": "e28c62ec5bfc2d6ca23eadf77816ad631e4b5c6dd72523c3826f2fbe3f0e878e",
   "backend/src/superaide/evals/gate.py": "49f3ea1a8098a6c3a30d2036e6de0893fbe52f0aed9cd02cdb942fb434c3fc72",
-  "backend/src/superaide/evals/harness.py": "65529c7207d64688a6fa2fe8dddf933e87b736d55bb7654424c71b0729d15e7d",
+  "backend/src/superaide/evals/harness.py": "9e4e9dabc3c56e0d7727516c74e48eac25ad97640314d33f2eefa9aa99b2bdcd",
   "backend/src/superaide/evals/report.py": "25fba3475564a3bb1fa74b422658eadc5ec7e8bb8df67d9505990df06952816b",
   "backend/src/superaide/evals/scenario.py": "ba7d7ae80c938a027926edea054144040a91452b5b3ce1c0c704abaecad1f459",
   "backend/src/superaide/evals/triage_report.py": "eb96f1617d0e8b1991adddcfa569942c0cf19d49b9b04146f752010f3652d8eb",

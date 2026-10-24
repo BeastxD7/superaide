@@ -26,15 +26,15 @@ def hosted_operator(monkeypatch):
 
 def test_the_operators_web_chat_is_not_offline(hosted_operator, monkeypatch):
     built = []
-    import superaide.factory as factory
+    import superaide.brain.wiring as wiring
 
-    real = factory.build_llm
+    real = wiring.build_llm
 
     def spy(settings):
         built.append(settings.anthropic_api_key == SERVER_KEY)
         return real(settings)
 
-    monkeypatch.setattr(factory, "build_llm", spy)
+    monkeypatch.setattr(wiring, "build_llm", spy)
     c = TestClient(create_app(), headers={"X-Requested-With": "superaide"})
     assert c.post("/auth/signup", json={"name": "Jordan", "email": "jordan@example.com",
                                         "password": "correct horse battery"}).status_code == 200  # fmt: skip

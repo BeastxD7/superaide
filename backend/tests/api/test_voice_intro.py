@@ -61,7 +61,7 @@ def voice_on(monkeypatch, settings, fakes):
 @pytest.fixture
 def scripted(agent, monkeypatch):
     """A Claude brain whose voice turns come from a list; fact extraction returns two facts."""
-    monkeypatch.setattr("superaide.factory.brain_ready", lambda settings: True)
+    monkeypatch.setattr("superaide.brain.wiring.brain_ready", lambda settings: True)
     replies: list[str] = []
     seen: list[dict[str, Any]] = []
 
@@ -200,7 +200,7 @@ def test_talking_again_before_ava_answered_marks_her_reply_unheard(owner, voice_
 
 
 def test_a_failing_model_falls_back_to_the_script(owner, voice_on, agent, monkeypatch):
-    monkeypatch.setattr("superaide.factory.brain_ready", lambda settings: True)
+    monkeypatch.setattr("superaide.brain.wiring.brain_ready", lambda settings: True)
 
     def boom(purpose, system, messages, output_model):
         raise RuntimeError("provider down")
@@ -344,14 +344,14 @@ def test_the_voice_budget_stops_paid_speech_and_the_browser_takes_over(owner, vo
 
 
 def test_choosing_providers_owner_key_then_credits_then_browser(monkeypatch, settings):
-    from superaide.factory import credits_on  # noqa: F401  (the function choose_* consults)
+    from superaide.brain.wiring import credits_on  # noqa: F401  (the function choose_* consults)
 
     monkeypatch.setattr(settings, "deepgram_api_key", "")
     monkeypatch.setattr(settings, "elevenlabs_api_key", "")
     assert providers.choose_asr(settings).kind == "browser"
     assert providers.choose_tts(settings, "en-US").kind == "browser"
     monkeypatch.setattr(settings, "platform_deepgram_api_key", "platform-dg-key-123456789012345")
-    monkeypatch.setattr("superaide.factory.credits_on", lambda s: True)
+    monkeypatch.setattr("superaide.brain.wiring.credits_on", lambda s: True)
     asr = providers.choose_asr(settings)
     assert (asr.kind, asr.key_source) == ("deepgram", "platform")
     tts = providers.choose_tts(settings, "en-US")
@@ -359,7 +359,7 @@ def test_choosing_providers_owner_key_then_credits_then_browser(monkeypatch, set
     assert providers.choose_tts(settings, "hi-IN").kind == "browser"  # Aura-2 is English-only
     monkeypatch.setattr(settings, "elevenlabs_api_key", "el_" + "c" * 30)
     assert providers.choose_tts(settings, "hi-IN").kind == "elevenlabs"
-    monkeypatch.setattr("superaide.factory.credits_on", lambda s: False)
+    monkeypatch.setattr("superaide.brain.wiring.credits_on", lambda s: False)
     assert providers.choose_asr(settings).kind == "browser"
 
 

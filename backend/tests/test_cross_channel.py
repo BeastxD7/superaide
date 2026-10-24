@@ -73,8 +73,8 @@ class Recorder:
 def scenario(agent, monkeypatch):
     """The owner signs up, links Telegram, says the colour thing there, and learning runs."""
     rec = Recorder()
-    monkeypatch.setattr("superaide.factory.brain_ready", lambda settings: True)
-    monkeypatch.setattr("superaide.factory.build_llm", lambda settings: FakeLLM(rec))
+    monkeypatch.setattr("superaide.brain.wiring.brain_ready", lambda settings: True)
+    monkeypatch.setattr("superaide.brain.wiring.build_llm", lambda settings: FakeLLM(rec))
     agent.llm = FakeLLM(rec)
     agent.settings.web_tools_enabled = False
 
@@ -190,7 +190,7 @@ def _live_preferences():
 
 def test_the_same_preference_said_again_in_other_words_is_kept_once(scenario, monkeypatch):
     reader = Reader("Jordan dislikes the color black.", "same_as")
-    monkeypatch.setattr("superaide.factory.build_llm", lambda settings: FakeLLM(reader))
+    monkeypatch.setattr("superaide.brain.wiring.build_llm", lambda settings: FakeLLM(reader))
     client, _ = scenario
     client.post("/app/chat", json={"text": "I really can't stand black as a colour, honestly"})
     run_due()
@@ -200,7 +200,7 @@ def test_the_same_preference_said_again_in_other_words_is_kept_once(scenario, mo
 
 def test_the_same_fact_in_other_spelling_is_kept_once_even_unflagged(scenario, monkeypatch):
     reader = Reader("Jordan does not like the color black", "same_as", points_at="nothing matches this")
-    monkeypatch.setattr("superaide.factory.build_llm", lambda settings: FakeLLM(reader))
+    monkeypatch.setattr("superaide.brain.wiring.build_llm", lambda settings: FakeLLM(reader))
     client, _ = scenario
     client.post("/app/chat", json={"text": "Just so you know: I do not like black, the color, at all"})
     run_due()
@@ -209,7 +209,7 @@ def test_the_same_fact_in_other_spelling_is_kept_once_even_unflagged(scenario, m
 
 def test_changing_your_mind_retires_the_old_fact(scenario, monkeypatch):
     reader = Reader("Jordan likes the colour black now.", "replaces")
-    monkeypatch.setattr("superaide.factory.build_llm", lambda settings: FakeLLM(reader))
+    monkeypatch.setattr("superaide.brain.wiring.build_llm", lambda settings: FakeLLM(reader))
     client, _ = scenario
     client.post("/app/chat", json={"text": "Actually I've come round to black, I like it now"})
     run_due()
@@ -224,7 +224,7 @@ def test_a_fact_never_merges_into_one_with_a_different_audience(scenario, monkey
         fact = s.scalar(select(MemoryItem).where(MemoryItem.content == LEARNED))
         fact.allowed_kind, fact.allowed_person_ids, fact.min_trust = "public", [], 0  # shared on purpose
     reader = Reader("Jordan dislikes the color black.", "same_as")
-    monkeypatch.setattr("superaide.factory.build_llm", lambda settings: FakeLLM(reader))
+    monkeypatch.setattr("superaide.brain.wiring.build_llm", lambda settings: FakeLLM(reader))
     client, _ = scenario
     client.post("/app/chat", json={"text": "I really can't stand black as a colour, honestly"})
     run_due()

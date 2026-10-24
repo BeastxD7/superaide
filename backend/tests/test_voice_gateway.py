@@ -105,7 +105,7 @@ def test_a_reply_that_claims_it_is_done_is_replaced_while_the_action_waits(on, o
 
 def test_the_voice_shell_holds_no_tools(settings, agent, monkeypatch):
     assert gateway.VOICE_TOOLS == ()
-    monkeypatch.setattr("superaide.factory.brain_ready", lambda s: True)
+    monkeypatch.setattr("superaide.brain.wiring.brain_ready", lambda s: True)
     VoiceCall(agent)._reply([{"role": "owner", "text": "hello"}], "Jordan", 0, 0, "en-US", lambda s: None)
     assert agent.llm.calls and all(c["tools"] == [] for c in agent.llm.calls)
 

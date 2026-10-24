@@ -44,7 +44,7 @@ def reads(agent, monkeypatch):
         return original(purpose, system, messages, output_model)
 
     agent.llm.responder = responder
-    monkeypatch.setattr("superaide.factory.build_llm", lambda settings: agent.llm)
+    monkeypatch.setattr("superaide.brain.wiring.build_llm", lambda settings: agent.llm)
     responder.calls = calls  # type: ignore[attr-defined]
     responder.result = FACTS  # type: ignore[attr-defined]
     return responder

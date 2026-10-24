@@ -248,7 +248,7 @@ class Chosen[P]:
 
 
 def _platform_ok(settings: Settings) -> bool:
-    from superaide.factory import credits_on
+    from superaide.brain.wiring import credits_on
 
     return credits_on(settings)
 

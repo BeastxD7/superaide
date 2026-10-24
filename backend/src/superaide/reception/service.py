@@ -148,7 +148,7 @@ def _talk(
     """(reply, taken message, mode): mode is model | code (no model, budget, bad answer) | paused."""
     from superaide.brain.budget import AgentFrozen, BudgetExceeded
     from superaide.brain.turn import build_messages
-    from superaide.factory import brain_ready, with_credits
+    from superaide.brain.wiring import brain_ready, with_credits
     from superaide.memory.store import recent_events
 
     if not brain_ready(agent.settings):

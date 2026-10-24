@@ -86,9 +86,9 @@ def script() -> Receptionist:
 @pytest.fixture
 def connected(monkeypatch) -> None:
     """A model is connected (the test environment forces the offline fake)."""
-    import superaide.factory as factory
+    import superaide.brain.wiring as wiring
 
-    monkeypatch.setattr(factory, "brain_ready", lambda settings: True)
+    monkeypatch.setattr(wiring, "brain_ready", lambda settings: True)
 
 
 @pytest.fixture
@@ -531,9 +531,9 @@ def test_a_provider_error_never_loses_the_message(owner_world, ava, script):
 def test_with_no_model_connected_the_message_is_taken_verbatim_and_no_model_runs(
     owner_world, outbox, settings, monkeypatch
 ):
-    import superaide.factory as factory
+    import superaide.brain.wiring as wiring
 
-    monkeypatch.setattr(factory, "brain_ready", lambda s: False)
+    monkeypatch.setattr(wiring, "brain_ready", lambda s: False)
     script = Receptionist()
     agent = Agent(llm=FakeLLM(script), messengers=outbox, settings=settings)
     r = agent.handle(hello("Tell him the parcel arrived"))

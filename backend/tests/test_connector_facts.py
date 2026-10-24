@@ -45,8 +45,8 @@ def fact(text_: str, category: str = "about") -> Fact:
 @pytest.fixture
 def script(agent, monkeypatch, settings):
     m = Script()
-    monkeypatch.setattr("superaide.factory.brain_ready", lambda s: True)
-    monkeypatch.setattr("superaide.factory.build_llm", lambda s: FakeLLM(m))
+    monkeypatch.setattr("superaide.brain.wiring.brain_ready", lambda s: True)
+    monkeypatch.setattr("superaide.brain.wiring.build_llm", lambda s: FakeLLM(m))
     monkeypatch.setattr(settings, "connector_facts_enabled", True)
     agent.llm = FakeLLM(m)
     return m

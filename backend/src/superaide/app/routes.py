@@ -27,6 +27,7 @@ from superaide.app.catalog import catalog, find
 from superaide.app.onboarding import SHARE_LABELS, Onboarder, documents_view
 from superaide.app.stream import stream_turn
 from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header
+from superaide.brain.wiring import brain_ready, brain_status
 from superaide.channels import health
 from superaide.config import get_settings
 from superaide.db.models import (
@@ -44,7 +45,6 @@ from superaide.db.models import (
     UserAccount,
 )
 from superaide.db.session import require, rescope, session_scope
-from superaide.factory import brain_ready, brain_status
 from superaide.intentions import service as intentions
 from superaide.intentions.when import clean_task, find_moment, zone
 from superaide.knowledge import extract

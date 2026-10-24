@@ -42,7 +42,7 @@ def test_removing_a_document_while_the_model_reads_it_keeps_no_facts(agent, mana
         remove_documents()  # the owner clicks remove during the model call
         return [(f, None) for f in FACTS], True
 
-    monkeypatch.setattr("superaide.factory.brain_ready", lambda settings: True)  # a model is connected
+    monkeypatch.setattr("superaide.brain.wiring.brain_ready", lambda settings: True)  # a model is connected
     monkeypatch.setattr(ingest_module, "extract_from_chunks", reads_then_owner_removes_it)
     result = ingest(agent, manager.id, extracted)
     assert result.facts == 0
@@ -52,9 +52,9 @@ def test_removing_a_document_while_the_model_reads_it_keeps_no_facts(agent, mana
 
 
 def test_removing_a_waiting_document_while_the_model_reads_it_keeps_no_facts(agent, manager, extracted, monkeypatch):
-    monkeypatch.setattr("superaide.factory.brain_ready", lambda settings: False)
+    monkeypatch.setattr("superaide.brain.wiring.brain_ready", lambda settings: False)
     ingest(agent, manager.id, extracted)  # kept, not read
-    monkeypatch.setattr("superaide.factory.brain_ready", lambda settings: True)
+    monkeypatch.setattr("superaide.brain.wiring.brain_ready", lambda settings: True)
 
     def reads_then_owner_removes_it(*a, **k):
         remove_documents()
@@ -68,7 +68,7 @@ def test_removing_a_waiting_document_while_the_model_reads_it_keeps_no_facts(age
 def test_a_removal_that_lands_while_facts_are_being_saved_waits_and_retires_them(
     agent, manager, extracted, monkeypatch
 ):
-    monkeypatch.setattr("superaide.factory.brain_ready", lambda settings: True)  # a model is connected
+    monkeypatch.setattr("superaide.brain.wiring.brain_ready", lambda settings: True)  # a model is connected
     monkeypatch.setattr(ingest_module, "extract_from_chunks", lambda *a, **k: ([(f, None) for f in FACTS], True))
     saving = threading.Event()
     real = ingest_module.remember_fact

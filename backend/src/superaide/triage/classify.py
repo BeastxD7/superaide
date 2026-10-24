@@ -138,7 +138,7 @@ def classify(
     ready: bool = True,
     system: str | None = None,
 ) -> Classified:
-    """`ready` is whether a model is connected (factory.brain_ready); without one, rules only."""
+    """`ready` is whether a model is connected (brain.wiring.brain_ready); without one, rules only."""
     c = Classified(model=model)
     if not ready or llm is None:
         c.fallback = "offline"

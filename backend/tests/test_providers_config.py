@@ -13,9 +13,9 @@ from sqlalchemy import select
 
 from superaide.brain.llm import ClaudeLLM, ProviderLLM, RoutedLLM
 from superaide.brain.providers.base import CheckReport
+from superaide.brain.wiring import brain_status, build_llm
 from superaide.db.models import AuditLog, IntegrationSecret, LlmProvider, ModelRole
 from superaide.db.session import session_scope
-from superaide.factory import brain_status, build_llm
 from superaide.main import create_app
 from superaide.security.urls import UnsafeURL, check_base_url
 from superaide.vault.store import runtime_settings

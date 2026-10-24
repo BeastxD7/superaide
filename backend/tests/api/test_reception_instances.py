@@ -22,9 +22,9 @@ def test_two_owners_are_isolated(browser, monkeypatch, settings):
     script, outbox = Receptionist(), {"telegram": FakeMessenger(), "slack": FakeMessenger(), "web": FakeMessenger()}
 
     monkeypatch.setattr(get_settings(), "allow_many_owners", True)
-    import superaide.factory as factory
+    import superaide.brain.wiring as wiring
 
-    monkeypatch.setattr(factory, "brain_ready", lambda s: True)
+    monkeypatch.setattr(wiring, "brain_ready", lambda s: True)
     a, b = browser(), browser()
     assert signup(a).status_code == 200 and hire(a).status_code == 200
     assert signup(b, **OTHER).status_code == 200 and hire(b).status_code == 200

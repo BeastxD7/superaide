@@ -16,10 +16,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select, text
 
 from superaide.app import connections
+from superaide.brain.wiring import brain_status
 from superaide.config import get_settings
 from superaide.db.models import IntegrationSecret
 from superaide.db.session import session_scope
-from superaide.factory import brain_status
 from superaide.main import create_app
 from superaide.policy.killswitch import is_frozen, set_frozen, set_platform_frozen
 from superaide.tenancy.context import InstanceScope, use_instance
