@@ -507,6 +507,22 @@
         "title": "CardBody",
         "type": "object"
       },
+      "ChannelsSettingsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "cross_channel_chars": {
+            "title": "Cross Channel Chars"
+          },
+          "slack_thread_depth": {
+            "title": "Slack Thread Depth"
+          },
+          "third_party_retention_days": {
+            "title": "Third Party Retention Days"
+          }
+        },
+        "title": "ChannelsSettingsBody",
+        "type": "object"
+      },
       "ChatBody": {
         "properties": {
           "text": {
@@ -5627,6 +5643,82 @@
         "summary": "Unlink an account",
         "tags": [
           "Connections"
+        ]
+      }
+    },
+    "/app/channels/read-settings": {
+      "get": {
+        "description": "The owner's limits for Reading and keeping messages, every allowed value and what it means (defaults until installed).",
+        "operationId": "get_settings_app_channels_read_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Settings App Channels Read Settings Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Reading and keeping messages: your settings",
+        "tags": [
+          "Owner: Connections"
+        ]
+      },
+      "put": {
+        "description": "Changes any of the settings. Each change is audited.",
+        "operationId": "put_settings_app_channels_read_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChannelsSettingsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Put Settings App Channels Read Settings Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Reading and keeping messages: change your settings",
+        "tags": [
+          "Owner: Connections"
         ]
       }
     },
