@@ -29,14 +29,14 @@ def vault_key(monkeypatch):
 def on(monkeypatch):
     monkeypatch.setattr(get_settings(), "principal_card_enabled", True)
     with session_scope() as s:
-        card.configure(s, display_name="A. Tan", can=None, cannot=None)
+        card.configure(s, first_name="Ananya", initial="T", can=None, cannot=None, opted_in=True)
 
 
 def test_a_colleague_reply_on_slack_carries_the_card_and_is_logged(agent, manager, colleague, outbox, model, on):
     model.reply = "Tuesday works."
     agent.handle(sl(COLLEAGUE_SLACK, "can we meet?"))
     text = outbox["slack"].sent[-1]["text"]
-    assert text.startswith("Tuesday works.") and "AI assistant acting for A. Tan" in text
+    assert text.startswith("Tuesday works.") and "AI assistant acting for Ananya T." in text
     token = re.search(r"/c/(\S+)", text).group(1).rstrip(">|)")
     with session_scope() as s:
         assert card.verify(s, token) is not None

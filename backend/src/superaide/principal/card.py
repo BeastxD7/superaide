@@ -4,7 +4,10 @@ The card is a small JSON (owner-chosen display name, what Ava can and cannot agr
 key derived from the vault master key. The key is derived here and never returned, logged or stored. The
 public page verifies the signature and expiry and shows only the card: it reads no memory, no contacts and no
 relationships. The owner revokes every card at once by bumping a generation number kept in the instance's
-own state. Off unless PRINCIPAL_CARD_ENABLED.
+own state. Off unless PRINCIPAL_CARD_ENABLED, and then still opt-in per owner: no footer is added until the
+owner turns the card on for themselves, and the name is a first name with an initial the owner chooses
+(never a full name). Counters (cards shown, distinct cards opened, cards revoked) feed the 10-owner experiment;
+they hold numbers and card ids only, never message text or recipients.
 """
 
 from __future__ import annotations
@@ -26,11 +29,14 @@ from superaide.tenancy.context import InstanceScope, scope_or_default
 from superaide.vault.crypto import master_key
 
 STATE_KEY = "principal_card"
+STATS_KEY = "principal_card_stats"
+MAX_OPENED = 2000
 SENT_KEY = "principal_card_sent"  # the owner's own log of cards sent: id, channel, time, expiry (no message text)
 MAX_SENT = 200
 DEFAULT_CAN = ["Propose times", "Pass on messages"]
 DEFAULT_CANNOT = ["Agree prices", "Sign anything", "Pay anyone"]
 MAX_LISTED, MAX_ITEM, MAX_NAME = 8, 80, 80
+MAX_FIRST = 40
 
 
 def enabled() -> bool:
@@ -55,10 +61,35 @@ def _sign(body: str) -> str:
     return _b64(hmac.new(_key(), body.encode(), hashlib.sha256).digest())
 
 
+def clean_first_name(text: str) -> str:
+    """One word, letters (any script) with an inner hyphen or apostrophe: a first name, not a full name."""
+    word = text.strip()
+    if not word or len(word) > MAX_FIRST or len(word.split()) != 1:
+        return ""
+    if not all(ch.isalpha() or ch in "-'\u2019" for ch in word) or not word[0].isalpha():
+        return ""
+    return word
+
+
+def clean_initial(text: str) -> str:
+    """Zero or one letter, with or without a trailing dot."""
+    t = text.strip().rstrip(".").strip()
+    return t.upper() if len(t) == 1 and t.isalpha() else ""
+
+
+def display_of(first_name: str, initial: str) -> str:
+    return f"{first_name} {initial}." if first_name and initial else first_name
+
+
 def settings_of(session: Session) -> dict[str, Any]:
     s = get_state(session, STATE_KEY)
+    first = clean_first_name(str(s.get("first_name") or ""))
+    initial = clean_initial(str(s.get("initial") or "")) if first else ""
     return {
-        "display_name": str(s.get("display_name") or ""),
+        "first_name": first,
+        "initial": initial,
+        "display_name": display_of(first, initial),
+        "opted_in": bool(s.get("opted_in")) and bool(first),
         "can": list(s.get("can") or DEFAULT_CAN),
         "cannot": list(s.get("cannot") or DEFAULT_CANNOT),
         "generation": int(s.get("generation") or 0),
@@ -71,10 +102,23 @@ def _clean(items: list[str]) -> list[str]:
 
 
 def configure(
-    session: Session, *, display_name: str, can: list[str] | None, cannot: list[str] | None
+    session: Session,
+    *,
+    first_name: str,
+    initial: str = "",
+    can: list[str] | None,
+    cannot: list[str] | None,
+    opted_in: bool | None = None,
 ) -> dict[str, Any]:
+    """Raises ValueError for a first name that is not a single word of letters."""
+    first = clean_first_name(first_name)
+    if not first:
+        raise ValueError("first_name must be one word of letters")
     cur = settings_of(session)
-    cur["display_name"] = " ".join(display_name.split())[:MAX_NAME]
+    cur["first_name"], cur["initial"] = first, clean_initial(initial)
+    cur["display_name"] = display_of(first, cur["initial"])
+    if opted_in is not None:
+        cur["opted_in"] = opted_in
     if can is not None:
         cur["can"] = _clean(can) or DEFAULT_CAN
     if cannot is not None:
@@ -83,19 +127,60 @@ def configure(
     return cur
 
 
+def set_opt_in(session: Session, opted_in: bool) -> dict[str, Any]:
+    """The owner's own switch. Turning it on needs a first name; turning it off keeps every setting."""
+    cur = settings_of(session)
+    if opted_in and not cur["first_name"]:
+        raise ValueError("choose a first name before turning the card on")
+    cur["opted_in"] = opted_in
+    set_state(session, STATE_KEY, cur)
+    return cur
+
+
+def stats(session: Session) -> dict[str, Any]:
+    """The experiment's numbers: cards shown (footers added), distinct cards opened, cards revoked."""
+    st = get_state(session, STATS_KEY)
+    shown, opened = int(st.get("shown") or 0), len(st.get("opened") or [])
+    return {
+        "shown": shown,
+        "opened": opened,
+        "revoked_one": int(st.get("revoked_one") or 0),
+        "revoked_all": int(st.get("revoked_all") or 0),
+        "open_rate": round(min(opened, shown) / shown, 3) if shown else 0.0,
+    }
+
+
+def _bump(session: Session, key: str) -> None:
+    st = dict(get_state(session, STATS_KEY))
+    st[key] = int(st.get(key) or 0) + 1
+    set_state(session, STATS_KEY, st)
+
+
+def record_open(session: Session, card_id: str) -> None:
+    """Count a distinct valid card being opened (the same card opened twice counts once)."""
+    st = dict(get_state(session, STATS_KEY))
+    opened = list(st.get("opened") or [])
+    if card_id in opened or len(opened) >= MAX_OPENED:
+        return
+    opened.append(card_id)
+    st["opened"] = opened
+    set_state(session, STATS_KEY, st)
+
+
 def revoke_all(session: Session) -> int:
     cur = settings_of(session)
     cur["generation"] += 1
     set_state(session, STATE_KEY, cur)
+    _bump(session, "revoked_all")
     return int(cur["generation"])
 
 
 def issue(session: Session, *, now: float | None = None) -> str | None:
-    """A signed token for the instance in scope, or None when off or the owner hasn't set a display name."""
+    """A signed token for the instance in scope, or None when off or the owner hasn't opted in."""
     if not enabled():
         return None
     cur = settings_of(session)
-    if not cur["display_name"]:
+    if not cur["opted_in"]:
         return None
     scope = scope_or_default()
     t = int(time.time() if now is None else now)
@@ -132,7 +217,7 @@ def _claims(token: str) -> dict[str, Any] | None:
     return claims if isinstance(claims, dict) and claims.get("v") == 1 else None
 
 
-def verify(session: Session, token: str, *, now: float | None = None) -> dict[str, Any] | None:
+def verify(session: Session, token: str, *, now: float | None = None, record: bool = False) -> dict[str, Any] | None:
     """What the public page shows, or None for a forged, expired or revoked card. The session must be in the
     token's own instance scope (see `scope_of`)."""
     if not enabled():
@@ -143,6 +228,8 @@ def verify(session: Session, token: str, *, now: float | None = None) -> dict[st
     cur = settings_of(session)
     if int(claims.get("g", -1)) != cur["generation"] or str(claims.get("id")) in cur["revoked"]:
         return None
+    if record:
+        record_open(session, str(claims.get("id")))
     return {
         "ai": True,
         "agent": get_settings().agent_name,
@@ -162,6 +249,7 @@ def footer(session: Session, *, channel: str = "", to: str = "") -> str:
     token = issue(session)
     if token is None:
         return ""
+    _bump(session, "shown")
     if channel:
         claims = _claims(token) or {}
         log = list(get_state(session, SENT_KEY).get("sent") or [])
@@ -197,4 +285,5 @@ def revoke_one(session: Session, card_id: str) -> bool:
     if card_id not in cur["revoked"]:
         cur["revoked"].append(card_id)
         set_state(session, STATE_KEY, cur)
+        _bump(session, "revoked_one")
     return True
