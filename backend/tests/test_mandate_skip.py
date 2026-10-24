@@ -233,3 +233,94 @@ def test_a_mandate_that_names_send_tools_never_skips_a_decline(ready, fake):
     _seed(fake, "ev3", others=True, mine=False)
     out, _ = run(EMAIL, "decline_event", {"id": "ev3"})
     assert "Waiting" in out and skipped() == 0
+
+
+# --- narrowed mandates are checked against the real call, never waved through ------------------------------------
+
+
+def test_a_mandate_limited_by_money_or_topic_never_skips_a_call_that_does_not_state_them(ready, fake):
+    sign(max_amount=10)
+    assert "Waiting" in run(EMAIL, "create_event", GYM)[0] and skipped() == 0
+
+
+def test_a_mandate_limited_by_topic_never_skips(ready, fake):
+    sign(topics=["gym"])
+    assert "Waiting" in run(EMAIL, "create_event", GYM)[0] and skipped() == 0
+
+
+def test_a_recipient_limited_mandate_still_covers_a_call_that_tells_nobody(ready, fake):
+    sign(recipient_domains=["example.com"])
+    assert run(EMAIL, "create_event", GYM)[0].startswith("Added") and skipped() == 1
+
+
+def test_a_recipient_limited_mandate_never_covers_a_guest_outside_it(ready, fake):
+    sign(recipient_domains=["example.com"])
+    out, _ = run(EMAIL, "create_event", {**GYM, "attendees": ["x@outside.org"]})
+    assert "Waiting" in out and skipped() == 0 and fake.writes() == []
+
+
+def test_a_child_that_narrowed_the_tools_cannot_create_events(ready, fake):
+    parent = sign()
+    with use_instance(scope_of(EMAIL)), session_scope() as s:
+        service.delegate(s, parent, label="move only", tools=["move_event"])
+        from superaide.db.models import Mandate
+
+        s.get(Mandate, parent).status = "revoked"  # only the child could cover it, and it names move_event alone
+    assert "Waiting" in run(EMAIL, "create_event", GYM)[0] and skipped() == 0
+
+
+def test_the_unknown_narrowing_key_fails_closed():
+    from superaide.mandate import token as tk
+
+    tok = tk.issue(
+        KEY,
+        agent_id="a",
+        issuer=None,
+        tools=["create_event"],
+        expires=(datetime.now(UTC) + timedelta(days=1)).isoformat(),
+    )
+    assert not tk.authorize(
+        KEY, tk.narrow(tok, "max_uses", 1), agent_id="a", tool="create_event", args={}, now=datetime.now(UTC), uses=1
+    ).ok
+
+
+# --- flag on, NO mandate: the same as main everywhere but the two stages that ask ---------------------------------
+
+
+def test_flag_on_without_a_mandate_nothing_is_relaxed_at_any_stage(owner, fake, monkeypatch):
+    """Compared with main (flag off): a tainted turn and an invite still ask at every stage; no stage asks LESS."""
+    flags(monkeypatch)
+    switch_on(owner, fake)
+    shadow_data()
+    for st in ("infant", "child", "adolescent", "adult"):
+        stage(st)
+        tainted, _ = run(EMAIL, "create_event", {**GYM, "title": f"t-{st}"}, tainted=True)
+        assert "Waiting" in tainted, st
+        invite, _ = run(EMAIL, "create_event", {**GYM, "title": f"i-{st}", "attendees": ["p@example.com"]})
+        assert ("Waiting" in invite) == (st in ("infant", "child")), st  # as on main
+    assert len(fake.writes()) == 2  # only the two invites at Adolescent and Adult ran, exactly as on main
+
+
+def test_flag_on_without_a_mandate_higher_stages_run_a_private_event_as_on_main(owner, fake, monkeypatch):
+    flags(monkeypatch)
+    switch_on(owner, fake)
+    for st in ("adolescent", "adult"):
+        stage(st)
+        assert run(EMAIL, "create_event", {**GYM, "title": st})[0].startswith("Added")
+    assert pending(EMAIL) == [] and skipped() == 0
+
+
+def test_flag_on_without_a_mandate_infant_and_child_ask_for_a_private_event_by_design(owner, fake, monkeypatch):
+    """The one deliberate difference from main: an own-calendar write is write_external while the flag is on."""
+    flags(monkeypatch)
+    switch_on(owner, fake)
+    for st in ("infant", "child"):
+        stage(st)
+        assert "Waiting" in run(EMAIL, "create_event", {**GYM, "title": st})[0]
+
+
+def test_no_skip_ever_happens_on_a_tainted_turn_even_with_every_condition_met(ready, fake):
+    sign()
+    for _ in range(3):
+        assert "Waiting" in run(EMAIL, "create_event", GYM, tainted=True)[0]
+    assert skipped() == 0 and fake.writes() == []

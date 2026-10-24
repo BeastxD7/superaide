@@ -159,13 +159,16 @@ def permits(
     now: datetime | None = None,
     mandate_id: uuid.UUID | None = None,
     dry_run: bool = False,
+    strict: bool = False,
 ) -> bool:
     """True when an active mandate (and every ancestor of it) covers this call and it may run without asking.
     Counts the use on the mandate and on each ancestor, so a sub-task's calls come out of its parent's count.
     A helper that was handed a mandate passes its `mandate_id`: only that mandate (and its chain) is considered,
     so a helper holding a narrow child cannot borrow the parent's wider reach.
     `dry_run` (the shadow check) counts nothing, audits nothing, and also says no when a token limits something
-    (money, recipients, topics) that the call does not state, since it cannot tell whether the limit holds."""
+    (money, recipients, topics) that the call does not state, since it cannot tell whether the limit holds.
+    `strict` (the card skip) does the same refusal for a real call: a narrowed mandate never covers a call whose
+    arguments don't say what the narrowing is about."""
     if not get_settings().mandates_enabled:
         return False
     if effect in NEVER_UNSUPERVISED or caps.violates_rule_of_two or caps.untrusted_input:
@@ -180,7 +183,7 @@ def permits(
         chain = ancestry(session, row)
         if not _chain_ok(key, chain, str(scope.agent_id), now):
             continue
-        if dry_run and any(_unstated_limit(tk.loads(r.token), args) for r in chain):
+        if (dry_run or strict) and any(_unstated_limit(tk.loads(r.token), args) for r in chain):
             continue
         # The call must pass every token in the chain (each with its own use count): the narrowest binds.
         if all(
@@ -314,7 +317,7 @@ def skips_card(
     if shadow_days(session) < get_settings().mandate_skip_min_days:
         return False
     caps = Caps(untrusted_input=False, private_data=True, can_act=True)
-    if not permits(session, tool=tool, args=args, effect="write_external", caps=caps):
+    if not permits(session, tool=tool, args=args, effect="write_external", caps=caps, strict=True):
         return False
     audit(session, "mandate", "mandate_skipped_card", tool=tool, stage=stage.value, summary=summary[:300])
     return True

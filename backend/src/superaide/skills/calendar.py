@@ -172,7 +172,15 @@ def _others(event: dict[str, Any]) -> list[str]:
     ]
 
 
-def _needs_approval(session: Session, effect: str, tainted: bool, *, tool: str = "", summary: str = "") -> bool:
+def _needs_approval(
+    session: Session,
+    effect: str,
+    tainted: bool,
+    *,
+    tool: str = "",
+    summary: str = "",
+    args: dict[str, Any] | None = None,
+) -> bool:
     """ADR 0006: side effects wait for the owner at the Infant and Child stages, and always after
     untrusted (web) content entered the turn.
 
@@ -188,7 +196,9 @@ def _needs_approval(session: Session, effect: str, tainted: bool, *, tool: str =
     if tool and effect == "write_own" and mandate.skip_enabled():
         if current_stage(session) not in (Stage.INFANT, Stage.CHILD):
             return False
-        return not mandate.skips_card(session, tool=tool, args={}, tainted=tainted, notifies=False, summary=summary)
+        return not mandate.skips_card(
+            session, tool=tool, args=args or {}, tainted=tainted, notifies=False, summary=summary
+        )
     return effect in SIDE_EFFECTS and current_stage(session) in (Stage.INFANT, Stage.CHILD)
 
 
@@ -270,7 +280,7 @@ def create_event(session: Session, sender: Any, args: dict[str, Any], *, tainted
     summary = f"Add “{title}” to your calendar, {when_text}" + (
         f", inviting {', '.join(attendees)}" if attendees else ""
     )
-    if _needs_approval(session, effect, tainted, tool="create_event", summary=summary):
+    if _needs_approval(session, effect, tainted, tool="create_event", summary=summary, args={"recipients": attendees}):
         return _ask(
             session, sender, "calendar_create_event", summary, {"event": body, "notify": bool(attendees)}, tainted
         )
@@ -321,7 +331,14 @@ def move_event(session: Session, sender: Any, args: dict[str, Any], *, tainted: 
     summary = f"Move “{title}” to {start:%a %d %b, %H:%M}–{start + length:%H:%M}" + (
         f" (Google will tell {', '.join(others[:6])})" if others else ""
     )
-    if _needs_approval(session, "send" if others else "write_own", tainted, tool="move_event", summary=summary):
+    if _needs_approval(
+        session,
+        "send" if others else "write_own",
+        tainted,
+        tool="move_event",
+        summary=summary,
+        args={"recipients": others},
+    ):
         payload = {"event_id": event["id"], "patch": body, "notify": bool(others)}
         return _ask(session, sender, "calendar_move_event", summary, payload, tainted)
     try:
