@@ -473,9 +473,12 @@ src = [
 tests = [
   "backend/tests/test_pagination.py",
   "backend/tests/test_messages_paging.py",
+  "backend/tests/test_notebook_paging.py",
 ]
 e2e = [
   "e2e/tests/pagination-chat.spec.ts",
+  "e2e/tests/pagination-console.spec.ts",
+  "e2e/tests/pagination-notebook.spec.ts",
 ]
 
 [modules.passport]
@@ -512,6 +515,7 @@ tests = [
   "backend/tests/test_approvals.py",
   "backend/tests/test_approval_binding.py",
   "backend/tests/test_approval_binding_all_kinds.py",
+  "backend/tests/test_approval_outcomes.py",
   "backend/tests/test_breaker.py",
   "backend/tests/api/test_brake.py",
 ]
