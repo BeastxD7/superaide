@@ -65,7 +65,11 @@ def make_router() -> APIRouter:
     def listing(person_id: uuid.UUID = Depends(owner_on)) -> dict[str, Any]:
         with session_scope() as s:
             rows = s.scalars(select(Mandate).order_by(Mandate.created_at)).all()
-            return {"mandates": [service.chain_view(s, r) for r in rows]}
+            return {
+                "mandates": [service.chain_view(s, r) for r in rows],
+                "skipping": service.skip_enabled(),
+                "skips": service.recent_skips(s),
+            }
 
     @router.post("", summary="Sign a mandate card", description="A named, limited thing Ava may do without asking.")
     def create(body: CreateBody, person_id: uuid.UUID = Depends(owner_on)) -> dict[str, Any]:
