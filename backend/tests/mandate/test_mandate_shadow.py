@@ -133,7 +133,7 @@ def test_the_report_counts_what_a_mandate_would_have_saved(on):
 
 
 def test_the_calendar_tool_passes_whether_the_turn_was_tainted(on):
-    from superaide.skills import calendar
+    from superaide.integrations.calendar import skill as calendar
 
     sign()
     with session_scope() as s:

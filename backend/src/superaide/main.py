@@ -158,7 +158,7 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     from superaide.app.providers import make_router as make_providers_router
 
     app.include_router(make_providers_router(get_agent, apply_connections))
-    from superaide.app.gmail import make_router as make_gmail_router
+    from superaide.integrations.gmail.routes import make_router as make_gmail_router
 
     app.include_router(make_gmail_router(get_agent))
     from superaide.triage.routes import make_router as make_triage_router
@@ -225,29 +225,29 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     from superaide.app.brain_map import make_brain_router
 
     app.include_router(make_brain_router(get_agent))
-    from superaide.app.passport import make_passport_router
+    from superaide.features.passport.routes import make_passport_router
 
     app.include_router(make_passport_router(get_agent))
-    from superaide.app.journal import make_journal_router
+    from superaide.features.journal.routes import make_journal_router
 
     app.include_router(make_journal_router(get_agent))
-    from superaide.app.mirror import make_mirror_router
+    from superaide.features.mirror.routes import make_mirror_router
 
     app.include_router(make_mirror_router(get_agent))  # 404 unless MIRROR_ENABLED
     from superaide.app.episodes import make_episodes_router
 
     app.include_router(make_episodes_router(get_agent))  # 404 unless SLEEP_JOB_ENABLED
 
-    from superaide.app.skill_releases import make_skill_releases_router
+    from superaide.skills.releases_routes import make_skill_releases_router
 
     app.include_router(make_skill_releases_router(get_agent))  # 404 unless SKILL_COOLDOWN_ENABLED (#129)
-    from superaide.app.skill_signals import make_skill_signals_router
+    from superaide.skills.signals_routes import make_skill_signals_router
 
     app.include_router(make_skill_signals_router(get_agent))  # 404 unless SKILL_SIGNALS_ENABLED (#130)
-    from superaide.app.skill_receipts import make_skill_receipts_router
+    from superaide.skills.receipts_routes import make_skill_receipts_router
 
     app.include_router(make_skill_receipts_router(get_agent))  # 404 unless SKILL_RECEIPTS_ENABLED (#131)
-    from superaide.app.skill_payouts import make_skill_payouts_router
+    from superaide.skills.payouts_routes import make_skill_payouts_router
 
     app.include_router(make_skill_payouts_router(get_agent))  # 404 unless PAYOUTS_ENABLED (#132)
     from superaide.features.voice.routes import make_router as make_voice_router
@@ -366,7 +366,7 @@ def create_app(agent: Agent | None = None) -> FastAPI:
         ),
     )
     def google_calendar_webhook(request: Request) -> dict[str, bool]:
-        from superaide.proactive import calendar_watch
+        from superaide.integrations.calendar import watch as calendar_watch
 
         if not settings.google_calendar_push:
             raise HTTPException(404, "Not Found")

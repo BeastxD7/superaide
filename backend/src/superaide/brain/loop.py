@@ -624,7 +624,7 @@ class OwnerTurn:
             if not found_rows:
                 return outcomes.list_text(self.s, args), False
             return search_results(found_rows), False
-        from superaide.skills import gmail
+        from superaide.integrations.gmail import skill as gmail
 
         if name in gmail.TOOLS:
             assert self.sender.person is not None
@@ -637,13 +637,13 @@ class OwnerTurn:
                 typed_by_owner=self._typed_by_owner(), mail_read=self.mail_read, channel=self._origin_channel(),
             )  # fmt: skip
         if name == "calendar_events":
-            from superaide.skills.calendar import calendar_events
+            from superaide.integrations.calendar.skill import calendar_events
 
             assert self.sender.person is not None
             self.notes.append("calendar")
             return calendar_events(self.s, self.sender.person, args)
         if name in {"calendar_free_busy", "create_event", "move_event", "decline_event"}:
-            from superaide.skills import calendar
+            from superaide.integrations.calendar import skill as calendar
 
             assert self.sender.person is not None
             if not any(s.manifest.id == calendar.SKILL_ID for s in self.skills()):
@@ -1210,7 +1210,7 @@ class OwnerTurn:
         return set(self.s.scalars(select(Approval.id).where(Approval.status == "pending")).all())
 
     def _result(self, text: str, sources: list[Cited], notes: list[str], steps: int) -> LoopResult:
-        from superaide.skills import gmail as gmail_skill
+        from superaide.integrations.gmail import skill as gmail_skill
 
         text, removed = capabilities.strip_claims(text, self.ok_tools, can_send=gmail_skill.can_draft(self.s))
         if removed:

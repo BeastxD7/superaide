@@ -6,10 +6,10 @@ from __future__ import annotations
 from sqlalchemy import select
 
 from superaide.brain.llm import RoutedLLM
-from superaide.connectors import gmail as api
+from superaide.integrations.gmail import client as api
 from superaide.platform.db.models import Approval
 from superaide.platform.db.session import session_scope
-from tests.connectors.gmail_fake import connect, gmail_fake_fixture, mail, owner_client_fixture  # noqa: F401
+from tests.integrations.gmail_fake import connect, gmail_fake_fixture, mail, owner_client_fixture  # noqa: F401
 from tests.pipeline.test_loop import Script, tool_use, turn_for
 
 ASK = "email jane@startup.example saying I am not feeling well and will be out tomorrow"

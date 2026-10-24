@@ -8,8 +8,8 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from superaide.connectors import google
 from superaide.contracts.events import CalendarEventsRead, bus
+from superaide.integrations.google import client as google
 from superaide.intentions.service import owner_zone
 from superaide.intentions.when import find_moment, zone
 from superaide.platform.audit import audit

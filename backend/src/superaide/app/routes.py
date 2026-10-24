@@ -151,8 +151,8 @@ class OptionBody(BaseModel):
 
 def skills_view(s: Any) -> list[dict[str, Any]]:
     """The skills list, plus whether Google is connected and still has to grant what calendar actions need."""
-    from superaide.skills import calendar
-    from superaide.skills import gmail as gmail_skill
+    from superaide.integrations.calendar import skill as calendar
+    from superaide.integrations.gmail import skill as gmail_skill
     from superaide.vault.store import find
 
     cards = skill_registry.view(s)
@@ -1273,7 +1273,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         person_id: uuid.UUID = Depends(owner_person_id),
         user_id: uuid.UUID = Depends(current_user_id),
     ) -> dict[str, Any]:
-        from superaide.skills import calendar
+        from superaide.integrations.calendar import skill as calendar
 
         skill_id = f"{publisher}/{name}"
         with session_scope() as s:
@@ -1474,7 +1474,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
     def sign_approval(
         approval_id: uuid.UUID, body: SignBody, person_id: uuid.UUID = Depends(owner_person_id)
     ) -> dict[str, Any]:
-        from superaide.skills import gmail as gmail_skill
+        from superaide.integrations.gmail import skill as gmail_skill
 
         with session_scope() as s:
             approval = s.get(Approval, approval_id)

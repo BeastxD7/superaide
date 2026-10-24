@@ -6,9 +6,9 @@ from __future__ import annotations
 import pytest
 
 from superaide.brain import capabilities
-from superaide.connectors import gmail as api
+from superaide.integrations.gmail import client as api
 from superaide.platform.db.session import session_scope
-from tests.connectors.gmail_fake import connect, gmail_fake_fixture, mail, owner_client_fixture  # noqa: F401
+from tests.integrations.gmail_fake import connect, gmail_fake_fixture, mail, owner_client_fixture  # noqa: F401
 from tests.pipeline.test_loop import Script, owner_client, tool_use, turn_for  # noqa: F401
 
 
