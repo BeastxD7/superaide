@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 
-from superaide.app.routes import owner_person_id
+from superaide.app.deps import owner_person_id
 from superaide.auth.routes import reject_nul_text, require_csrf_header
 from superaide.db.models import AuditLog
 from superaide.db.session import session_scope

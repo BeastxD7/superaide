@@ -6,7 +6,7 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
-from superaide.app.routes import _hired_instance
+from superaide.app.deps import _hired_instance
 from superaide.config import get_settings
 from superaide.db.models import MemoryItem, UserAccount
 from superaide.db.session import session_scope

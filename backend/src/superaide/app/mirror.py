@@ -12,7 +12,7 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from superaide.app.routes import owner_person_id
+from superaide.app.deps import owner_person_id
 from superaide.auth.routes import reject_nul_text, require_csrf_header
 from superaide.config import get_settings
 from superaide.db.session import session_scope
