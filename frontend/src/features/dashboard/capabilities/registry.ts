@@ -12,6 +12,7 @@ export const CAPABILITIES: CapabilityRoute[] = [
     summary: 'Connect Google once, then choose what Ava may read and how she works with your mail.',
     pages: [
       { slug: 'reading', label: 'Reading', summary: 'What Ava may read in your Gmail.' },
+      { slug: 'drafts', label: 'Drafts', summary: 'Whether Ava may save reply drafts in your Gmail.' },
       { slug: 'signature', label: 'Signature', summary: 'How Ava signs the emails and replies she sends for you (the Principal card).', requiresInstall: false },
     ],
   },

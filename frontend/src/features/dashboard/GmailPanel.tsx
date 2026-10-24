@@ -1,8 +1,6 @@
 'use client'
 
-import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { capabilityHref } from '@/features/dashboard/capabilities/registry'
 import { Notice } from '@/components/site'
 import { Button } from '@/components/ui/button'
 import { call, type GmailStatus } from '@/lib/api'
@@ -73,31 +71,11 @@ export function GmailPanel({ name }: { name: string }) {
         </div>
       ) : (
         <>
-          <p className="text-body">Connected{status.address ? ` as ${status.address}` : ''}. Read-only until you turn on drafts.</p>
-          <label className="flex items-start gap-2 text-body">
-            <input
-              type="checkbox"
-              className="mt-0.5 accent-violet-600"
-              checked={status.drafts}
-              disabled={busy}
-              onChange={(e) => {
-                const enabled = e.target.checked
-                void go(() => call('/gmail/drafts', { method: 'POST', json: { enabled } }))
-              }}
-            />
-            <span>
-              Let {name} save reply drafts in your Gmail. Google will ask you to allow it. Nothing is sent without your OK.
-              {status.drafts && !status.drafts_allowed && (
-                <span className="block text-xs text-muted">Waiting for Google&apos;s permission: untick and tick again to ask.</span>
-              )}
-            </span>
-          </label>
           <p className="text-body">
-            What {name} may read in your mail is on the{' '}
-            <Link href={capabilityHref('gmail', 'reading')} className="font-medium text-violet-700 underline">
-              Reading page
-            </Link>
-            .
+            Connected{status.address ? ` as ${status.address}` : ''}. Read-only until you turn on drafts on the Drafts page.
+          </p>
+          <p className="text-body">
+            What {name} may read, how she drafts and how she signs are on their own pages below.
           </p>
         </>
       )}
