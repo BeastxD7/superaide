@@ -16,6 +16,12 @@
 - [ ] `docs`: documentation or ADRs only
 - [ ] `build` / `ci` / `chore`: tooling, dependencies, CI
 
+## Authored with an AI agent
+
+<!-- AGENTS.md, section 4. Write the tool and model (for example `Claude Code, Claude Sonnet 5.5`), or `No`. -->
+
+- Agent:
+
 ## Linked issues and decisions
 
 <!-- "Closes #123". Name the ADR in docs/decisions/ this follows or changes, or write "None". -->
