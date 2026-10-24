@@ -1,7 +1,7 @@
 'use client'
 
 import { BellOff, Check, Clock, Mail, Plane, ShieldAlert, ThumbsDown, ThumbsUp } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Notice } from '@/components/site'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -43,7 +43,26 @@ export function NeedsYouPage() {
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
 
-  async function act(fn: () => Promise<unknown>) {
+  const listRef = useRef<HTMLUListElement>(null)
+  const focusAt = useRef<number | null>(null)
+
+  // Acting on an item usually removes it, and with it the button that had focus: the browser would drop focus to the
+  // top of the page, so a keyboard user would have to Tab all the way back. Put it on the next item instead.
+  useEffect(() => {
+    if (busy || focusAt.current === null) return
+    const at = focusAt.current
+    focusAt.current = null
+    const list = listRef.current
+    if (!list) return
+    const active = document.activeElement
+    if (active && active !== document.body && list.contains(active)) return // the same button is still there
+    const rows = list.querySelectorAll<HTMLElement>(':scope > li')
+    const row = rows[Math.min(at, rows.length - 1)]
+    ;(row?.querySelector<HTMLElement>('button:not(:disabled)') ?? list).focus()
+  }, [busy, data])
+
+  async function act(fn: () => Promise<unknown>, item: NeedsYouItem) {
+    focusAt.current = Math.max(0, data?.[tab].findIndex((i) => i.id === item.id) ?? 0)
     setBusy(true)
     setProblem(null)
     try {
@@ -57,9 +76,9 @@ export function NeedsYouPage() {
   }
 
   const verb = (item: NeedsYouItem, v: TriageVerb) =>
-    act(() => call(`/needs-you/${item.id}/action`, { method: 'POST', json: { verb: v, request_id: crypto.randomUUID() } }))
+    act(() => call(`/needs-you/${item.id}/action`, { method: 'POST', json: { verb: v, request_id: crypto.randomUUID() } }), item)
   const feedback = (item: NeedsYouItem, f: TriageFeedback) =>
-    act(() => call(`/needs-you/${item.id}/feedback`, { method: 'POST', json: { feedback: f } }))
+    act(() => call(`/needs-you/${item.id}/feedback`, { method: 'POST', json: { feedback: f } }), item)
 
   if (enabled === false) {
     return (
@@ -113,7 +132,7 @@ export function NeedsYouPage() {
           </div>
         )}
 
-        <ul className="mt-4 space-y-2" aria-label={TABS.find((t) => t.id === tab)?.label}>
+        <ul ref={listRef} tabIndex={-1} className="mt-4 space-y-2 outline-none" aria-label={TABS.find((t) => t.id === tab)?.label}>
           {!items && !error &&
             [0, 1].map((i) => (
               <li key={i} className="rounded-xl border border-line bg-white p-4">

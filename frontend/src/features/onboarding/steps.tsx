@@ -40,7 +40,13 @@ import { errorMessage } from '@/lib/action'
 
 export type Answer = (answer: Record<string, unknown>, said: string | null) => Promise<void>
 
+// What the Files & links tab last told the person ("Read resume.pdf: 12 facts"). The page hides the controls while the
+// agent types out her reply to a file, which unmounts the tab, so the notices live in the page and outlast that.
+export type DocNotices = { done: string | null; note: string | null }
+
 type Props = {
+  notices: DocNotices
+  setNotices: (n: (prev: DocNotices) => DocNotices) => void
   input: StepInput
   done: boolean
   agentName: string
@@ -51,7 +57,7 @@ type Props = {
   refreshMe: () => Promise<Me | null>
 }
 
-export function StepControls({ input, done, agentName, me, onAnswer, reload, openCall, refreshMe }: Props) {
+export function StepControls({ notices, setNotices, input, done, agentName, me, onAnswer, reload, openCall, refreshMe }: Props) {
   const router = useRouter()
   if (done || input.kind === 'none')
     return (
@@ -73,7 +79,7 @@ export function StepControls({ input, done, agentName, me, onAnswer, reload, ope
         </div>
       )
     case 'intro':
-      return <IntroPicker input={input} agentName={agentName} onAnswer={onAnswer} reload={reload} openCall={openCall} />
+      return <IntroPicker notices={notices} setNotices={setNotices} input={input} agentName={agentName} onAnswer={onAnswer} reload={reload} openCall={openCall} />
     case 'people':
       return <PeoplePicker input={input} onAnswer={onAnswer} />
     case 'urgent':
@@ -293,12 +299,16 @@ function BrainPicker({
 // --- About you: chat, files & links, or a video call ----------------------------------
 
 function IntroPicker({
+  notices,
+  setNotices,
   input,
   agentName,
   onAnswer,
   reload,
   openCall,
 }: {
+  notices: DocNotices
+  setNotices: Props['setNotices']
   input: Extract<StepInput, { kind: 'intro' }>
   agentName: string
   onAnswer: Answer
@@ -348,7 +358,7 @@ function IntroPicker({
       <AnimatePresence mode="wait">
         <motion.div key={tab} id="intro-tabpanel" role="tabpanel" aria-labelledby={`intro-tab-${tab}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.2 }}>
           {tab === 'chat' && <Composer placeholder={input.placeholder} onSend={(t) => onAnswer({ mode: 'chat', text: t }, t)} autoFocus />}
-          {tab === 'files' && <FilesAndLinks documents={input.documents} reload={reload} onContinue={() => onAnswer({ mode: 'continue' }, "That's me for now")} />}
+          {tab === 'files' && <FilesAndLinks notices={notices} setNotices={setNotices} documents={input.documents} reload={reload} onContinue={() => onAnswer({ mode: 'continue' }, "That's me for now")} />}
           {tab === 'call' && (
             <div className="rounded-2xl bg-white p-5 text-center">
               <div className="mx-auto grid size-12 place-items-center rounded-full bg-lilac-100 text-violet-600">
@@ -390,11 +400,24 @@ function readStatus(r: IngestResult): string {
   return `${r.title} is saved. It will be read as soon as Ava's brain is set up.`
 }
 
-function FilesAndLinks({ documents, reload, onContinue }: { documents: SharedDoc[]; reload: () => Promise<void>; onContinue: () => void }) {
+function FilesAndLinks({
+  notices,
+  setNotices,
+  documents,
+  reload,
+  onContinue,
+}: {
+  notices: DocNotices
+  setNotices: Props['setNotices']
+  documents: SharedDoc[]
+  reload: () => Promise<void>
+  onContinue: () => void
+}) {
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [note, setNote] = useState<string | null>(null)
-  const [done, setDone] = useState<string | null>(null)
+  const { note, done } = notices
+  const setNote = (note: string | null) => setNotices((n) => ({ ...n, note }))
+  const setDone = (done: string | null) => setNotices((n) => ({ ...n, done }))
   const [working, setWorking] = useState<Working | null>(null)
   const [retry, setRetry] = useState<(() => void) | null>(null)
   const [url, setUrl] = useState('')

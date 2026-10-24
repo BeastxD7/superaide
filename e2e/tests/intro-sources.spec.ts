@@ -318,7 +318,6 @@ test.describe('files', () => {
   })
 
   test('a warning about a partly readable file stays on screen', async ({ page }) => {
-    test.fail(true, "BUG: the warning flashes and disappears when Ava's reply re-mounts the panel; the list never shows it")
     const response = page.waitForResponse('**/api/app/intro/files')
     await chooseFile(page, { ...pdf(['Hi']), name: 'short.pdf' })
     // The server does say so…

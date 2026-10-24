@@ -17,14 +17,16 @@ const when = (unix: number) => new Date(unix * 1000).toLocaleString()
 export function PrincipalCardPage() {
   const { me } = useSession()
   const name = me?.agent.name ?? 'Ava'
-  const { enabled, card, sent, error, reload } = usePrincipalCard()
-  const [edited, setEdited] = useState<string | null>(null)
+  const { enabled, card, sent, stats, error, reload } = usePrincipalCard()
+  const [editedFirst, setEditedFirst] = useState<string | null>(null)
+  const [editedInitial, setEditedInitial] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [done, setDone] = useState<string | null>(null)
 
-  const display = edited ?? card?.display_name ?? ''
-  const setDisplay = setEdited
+  const first = editedFirst ?? card?.first_name ?? ''
+  const initial = editedInitial ?? card?.initial ?? ''
+  const shownAs = first.trim() ? (initial.trim() ? `${first.trim()} ${initial.trim().slice(0, 1).toUpperCase()}.` : first.trim()) : ''
 
   async function run(fn: () => Promise<void>) {
     setBusy(true)
@@ -74,24 +76,38 @@ export function PrincipalCardPage() {
           <h2 id="card-name" className="text-lg font-medium text-ink">
             The name it shows
           </h2>
-          <label htmlFor="card-display" className="text-sm font-medium text-ink">
-            How people should see you
+          <label htmlFor="card-first" className="text-sm font-medium text-ink">
+            Your first name
           </label>
           <Input
-            id="card-display"
-            value={display}
-            maxLength={80}
-            placeholder="A. Tan"
-            onChange={(e) => setDisplay(e.target.value)}
+            id="card-first"
+            value={first}
+            maxLength={40}
+            placeholder="Ananya"
+            onChange={(e) => setEditedFirst(e.target.value)}
           />
-          <p className="text-xs text-muted">Anyone who opens a card sees this name, so choose it yourself. No card is sent until you set one.</p>
+          <label htmlFor="card-initial" className="text-sm font-medium text-ink">
+            Initial to show after it (optional)
+          </label>
+          <Input
+            id="card-initial"
+            value={initial}
+            maxLength={1}
+            className="w-20"
+            placeholder="T"
+            onChange={(e) => setEditedInitial(e.target.value)}
+          />
+          <p className="text-xs text-muted">
+            {shownAs ? `People will see: ${shownAs}. ` : ''}Never your full name unless you type it as the first name
+            yourself, which is not allowed here.
+          </p>
           <div className="flex flex-wrap gap-2">
             <Button
-              disabled={busy || !display.trim()}
+              disabled={busy || !first.trim()}
               onClick={() =>
                 void run(async () => {
-                  await call('/principal-card', { method: 'PUT', json: { display_name: display } })
-                  setDone('Saved. New replies carry the card.')
+                  await call('/principal-card', { method: 'PUT', json: { first_name: first, initial } })
+                  setDone('Saved.')
                 })
               }
             >
@@ -106,6 +122,43 @@ export function PrincipalCardPage() {
             )}
           </div>
         </section>
+
+        <section aria-labelledby="card-switch" className="mt-6 space-y-2 rounded-xl border border-line bg-white p-4">
+          <h2 id="card-switch" className="text-lg font-medium text-ink">
+            Add the card to my replies
+          </h2>
+          <p className="text-sm text-body">
+            Off until you turn it on. Turning it off keeps your name and lists but adds nothing to any reply.
+          </p>
+          <Button
+            variant={card?.opted_in ? 'outline' : 'default'}
+            disabled={busy || (!card?.opted_in && !card?.first_name)}
+            onClick={() =>
+              void run(async () => {
+                await call('/principal-card/opt-in', { method: 'POST', json: { opted_in: !card?.opted_in } })
+                setDone(card?.opted_in ? 'The card is off. New replies carry nothing.' : 'The card is on. New replies carry it.')
+              })
+            }
+          >
+            {card?.opted_in ? 'Turn the card off' : 'Turn the card on'}
+          </Button>
+          {!card?.first_name && <p className="text-xs text-muted">Save your first name first.</p>}
+        </section>
+
+        {stats && (
+          <section aria-labelledby="card-stats" className="mt-6 rounded-xl border border-line bg-white p-4">
+            <h2 id="card-stats" className="text-lg font-medium text-ink">
+              How it is going
+            </h2>
+            <dl className="mt-2 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+              <div><dt className="text-muted">Cards shown</dt><dd className="font-medium text-ink">{stats.shown}</dd></div>
+              <div><dt className="text-muted">Cards opened</dt><dd className="font-medium text-ink">{stats.opened}</dd></div>
+              <div><dt className="text-muted">Taken back</dt><dd className="font-medium text-ink">{stats.revoked_one + stats.revoked_all}</dd></div>
+              <div><dt className="text-muted">Opened rate</dt><dd className="font-medium text-ink">{Math.round(stats.open_rate * 100)}%</dd></div>
+            </dl>
+            <p className="mt-2 text-xs text-muted">Counts only. No names and no message text are kept here.</p>
+          </section>
+        )}
 
         <section aria-labelledby="cards-sent" className="mt-8">
           <div className="flex items-center justify-between gap-2">

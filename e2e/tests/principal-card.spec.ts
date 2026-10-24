@@ -27,10 +27,17 @@ test.describe('Principal card, switched on', () => {
     await expect(page.getByRole('heading', { name: 'Principal card' })).toBeVisible()
     await expect(page.getByText('No cards sent yet.')).toBeVisible()
 
-    await page.getByLabel('How people should see you').fill('A. Tan')
-    await page.getByRole('button', { name: 'Save' }).click()
-    await expect(page.getByText('Saved. New replies carry the card.')).toBeVisible()
+    await page.getByLabel('Your first name').fill('Ananya')
+    await page.getByLabel('Initial to show after it (optional)').fill('T')
+    await expect(page.getByText('People will see: Ananya T.')).toBeVisible()
+    await page.getByRole('button', { name: 'Save', exact: true }).click()
+    await expect(page.getByText('Saved.', { exact: true })).toBeVisible()
+    // Saved is not on: the card stays off until the owner turns it on.
+    await expect(page.getByRole('link', { name: 'See how it looks' })).toHaveCount(0)
+    await page.getByRole('button', { name: 'Turn the card on' }).click()
+    await expect(page.getByText('The card is on. New replies carry it.')).toBeVisible()
     await expect(page.getByRole('link', { name: 'See how it looks' })).toBeVisible()
+    await expect(page.getByText('Cards shown')).toBeVisible()
 
     // Two cards as the channels would have noted them (a reply to a colleague on Slack and on Telegram).
     const now = Math.floor(Date.now() / 1000)
@@ -54,5 +61,7 @@ test.describe('Principal card, switched on', () => {
 
     await page.getByRole('button', { name: 'Revoke all cards' }).click()
     await expect(page.getByText('Every card sent so far no longer opens.')).toBeVisible()
+    await page.getByRole('button', { name: 'Turn the card off' }).click()
+    await expect(page.getByText('The card is off. New replies carry nothing.')).toBeVisible()
   })
 })
