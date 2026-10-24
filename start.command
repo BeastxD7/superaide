@@ -233,7 +233,7 @@ if [ "$MODE" = prod ]; then
   WANT="$(git rev-parse HEAD 2>/dev/null || echo none)-$(git status --porcelain -- frontend 2>/dev/null | shasum | cut -c1-12)"
   if [ ! -f frontend/.next/BUILD_ID ] || [ "$(cat frontend/.next/.superaide-rev 2>/dev/null)" != "$WANT" ]; then
     bold "Building the frontend for production (about a minute)…"
-    (cd frontend && API_INTERNAL_URL="http://127.0.0.1:$API_PORT" ./node_modules/.bin/next build) || { echo "The frontend build failed."; exit 1; }
+    (cd frontend && rm -rf .next/dev && API_INTERNAL_URL="http://127.0.0.1:$API_PORT" ./node_modules/.bin/next build) || { echo "The frontend build failed."; exit 1; }
     echo "$WANT" > frontend/.next/.superaide-rev
   else
     echo "Frontend build is current: not rebuilding."
