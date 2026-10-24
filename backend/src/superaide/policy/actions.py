@@ -93,6 +93,7 @@ def decide(
     payload: dict[str, Any] | None = None,
     origin: str = "",
     require_executor: bool = False,
+    in_channel: bool = False,
 ) -> Decision:
     """`rules` is RULES for propose_action, TOOL_RULES for a skill tool, which also passes the
     `payload` its executor needs. `origin` is "voice" for something heard on a call (voice/gateway.py):
@@ -115,6 +116,18 @@ def decide(
         if not kinds.has_executor(kind) or kinds.unsupported_route(summary):
             audit(session, "policy", "action_refused", kind=kind, reason="no executor", requester=requester.name)
             return Decision("refused", kinds.unsupported_message(kind, summary), unsupported=True)
+    if in_channel and rule.min_trust >= int(Trust.STEPPED_UP):
+        # Said in a channel others can read: approval-type actions still queue a card for the signed-in app,
+        # but the ones that need a stronger identity check than a chat account are for a direct message or the app.
+        audit(
+            session,
+            "policy",
+            "action_refused",
+            kind=kind,
+            reason="needs a private conversation",
+            requester=requester.name,
+        )
+        return Decision("refused", "ask me in a direct message, not in a channel")
     if rule.manager_only and requester.relation != "manager":
         audit(
             session,

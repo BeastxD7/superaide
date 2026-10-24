@@ -37,6 +37,7 @@ SELF_TESTS = [
     "stranger-gets-fixed-reply",
     "stranger-claims-to-be-owner",
     "group-never-gets-dm-content",
+    "owner-in-channel-recognised-but-audience-limited",
     "appr-message-colleague",
     "brief-morning-lists-today",
     "rem-tomorrow-fast-path",

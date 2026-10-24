@@ -38,6 +38,7 @@ from superaide.intentions.when import is_reminder_request
 from superaide.knowledge import trust
 from superaide.knowledge.profile import owner_brief
 from superaide.memory.store import (
+    Timeline,
     get_or_create_context,
     log_event,
     owner_timeline,
@@ -92,6 +93,7 @@ def thread_of(msg: InboundMessage) -> str:
 
 
 SET_PREFIX = "Got it. I'll remind you "
+OTHER_PERSON = "[Another person in this channel, not your owner]"
 
 
 def reminder_meta(reply: str) -> dict | None:
@@ -293,15 +295,22 @@ class Agent:
                     self._reply(s, ctx, aud, steady, thread)
                     return HandleResult("known", steady, ["steady_voice"])
 
-            if ctx.kind == "dm" and self._is_owner(s, sender):
+            if self._is_owner(s, sender):
+                # The owner is the owner everywhere (identity is by immutable id); what changes in a channel or
+                # thread is the audience for disclosure, so there the turn is restricted (ADR 0008 addendum).
+                shared = ctx.kind != "dm"
                 with self._working(ctx, thread):  # typing / "Working on it…" until the reply is posted
                     try:
                         with s.begin_nested():  # a failed turn undoes its own half-done work, not the inbound record
-                            reply, notes, meta = self._owner_turn(s, sender, ctx, aud, msg, inbound, emit)
+                            reply, notes, meta = self._owner_turn(
+                                s, sender, ctx, aud, msg, inbound, emit, shared=shared
+                            )
                     except Exception as exc:
                         reply, notes, meta = self._turn_failed(s, exc, msg), ["failed"], {"failed": type(exc).__name__}
                     reply = self._steady(s, reply)
                     self._reply(s, ctx, aud, reply, thread, meta=meta)
+                if shared:
+                    return HandleResult("known", reply, [*notes, "shared_context"])  # nothing is learned from a room
                 from superaide.knowledge import learn
 
                 learn.schedule(s, inbound)  # after the reply: learn anything worth keeping
@@ -601,10 +610,23 @@ class Agent:
         return f"I've reached my US${self.settings.max_spend_usd:.0f} spending cap, so I'm paused."
 
     def _owner_turn(
-        self, s, sender: Sender, ctx: Context, aud: Audience, msg: InboundMessage, inbound, emit: Emit | None = None
+        self,
+        s,
+        sender: Sender,
+        ctx: Context,
+        aud: Audience,
+        msg: InboundMessage,
+        inbound,
+        emit: Emit | None = None,
+        *,
+        shared: bool = False,
     ) -> tuple[str, list[str], dict]:
         """The owner's own conversation: a tool loop that can look things up, set reminders,
-        search the web and ask for approval, with every answer citing its sources."""
+        search the web and ask for approval, with every answer citing its sources.
+
+        `shared`: the owner wrote in a channel or thread others can read. Same person, narrower audience:
+        recall is the audience-gated public level, history is this conversation only, and the tool set is
+        cut to what is safe to answer in public (brain/loop.py SHARED_TOOLS)."""
         from superaide.brain.loop import OwnerTurn
         from superaide.factory import brain_ready
         from superaide.intentions.service import owner_zone
@@ -612,10 +634,15 @@ class Agent:
 
         assert sender.person is not None
         owner_tz = zone(owner_zone(s, sender.person))
-        timeline = owner_timeline(s, sender.person.id, ctx, thread_id=thread_of(msg), tz=owner_tz)
-        brief = owner_brief(s, sender, aud)
+        if shared:
+            # This conversation only: never the owner's other-channel DM turns (owner_timeline is for a private DM).
+            timeline = Timeline(recent_events(s, ctx, thread_id=thread_of(msg)), {})
+            brief = f"You work for {sender.name} (your owner)."
+        else:
+            timeline = owner_timeline(s, sender.person.id, ctx, thread_id=thread_of(msg), tz=owner_tz)
+            brief = owner_brief(s, sender, aud)
         playbook_arm: dict | None = None
-        if self.settings.skill_ratchet_enabled:
+        if self.settings.skill_ratchet_enabled and not shared:
             from superaide.trust import ratchet
 
             if text := ratchet.live_text(s, sender.person):  # only owner-edited, approved playbooks
@@ -634,10 +661,17 @@ class Agent:
             inbound=inbound,
             web=brain_ready(self.settings) and self.settings.web_tools_enabled,
             emit=emit,
-            learns=brain_ready(self.settings),
+            learns=brain_ready(self.settings) and not shared,
+            shared=shared,
         )
         try:
-            result = turn.run(build_messages(timeline.events, msg.text, timeline.labels, tz=owner_tz))
+            labels = timeline.labels
+            if shared:  # who wrote what: only the owner's own messages carry the owner's authority
+                me = sender.person.id
+                labels = {
+                    e.id: OTHER_PERSON for e in timeline.events if e.direction == "in" and e.resolved_person_id != me
+                }
+            result = turn.run(build_messages(timeline.events, msg.text, labels, tz=owner_tz))
         except BudgetExceeded as exc:
             return self._budget_reply(s, exc), ["budget"], {}
         except AgentFrozen:
@@ -669,7 +703,7 @@ class Agent:
         if timeline.labels:
             meta["other_channels"] = len(timeline.labels)  # turns from other channels this reply saw
         reply = strip_label(result.text)
-        if self.settings.second_opinion_enabled and brain_ready(self.settings):
+        if self.settings.second_opinion_enabled and brain_ready(self.settings) and not shared:
             from superaide.trust.second_opinion import review
 
             reply = review(self, s, sender.person, msg.text, reply)
