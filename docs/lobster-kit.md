@@ -25,4 +25,4 @@ Prints how many of the workspaces had each exposure. A file that is not a `lobst
 
 ## What is not covered
 
-Only the documented plain markdown names are read (`MEMORY.md`, `USER.md`, `DREAMS.md`, `memory/*.md`). The Hermes file layout is unverified. Recruiting the volunteers is a human step.
+Only the documented plain markdown names are read (`MEMORY.md`, `USER.md`, `DREAMS.md`, `memory/*.md`). The Hermes layout (`memories/MEMORY.md`, `memories/USER.md`) follows its public docs and is unverified on a real install; see [lobster-runbook.md](lobster-runbook.md). Recruiting the volunteers is a human step.

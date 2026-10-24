@@ -391,6 +391,12 @@ def _lobster(args: argparse.Namespace) -> None:
             summary = lobster_kit.summarise(args.files)
             print(json.dumps(summary, indent=2) if args.json else lobster_kit.render_summary(summary))
             return
+        if args.cmd == "lobster-dry-run":
+            print(json.dumps(lobster.dry_run(args.folder), indent=2, ensure_ascii=False))
+            return
+        if args.cmd == "lobster-layout":
+            print("\n".join(lobster.layout_listing(args.folder, names=args.names)))
+            return
         if args.cmd == "lobster-audit":
             report = lobster.audit(args.folder)
             print(json.dumps(report.as_dict(), indent=2) if args.json else report.render())
@@ -481,6 +487,15 @@ def main() -> None:
     p = sub.add_parser("lobster-kit-summary", help="combine the result files volunteers sent back")
     p.add_argument("files", nargs="+")
     p.add_argument("--json", action="store_true")
+    p.set_defaults(func=_lobster)
+    p = sub.add_parser(
+        "lobster-dry-run", help="show what an import would do (cards, left out, skills listed); writes nothing"
+    )
+    p.add_argument("folder")
+    p.set_defaults(func=_lobster)
+    p = sub.add_parser("lobster-layout", help="print a workspace's folder shape (names only) to help match its layout")
+    p.add_argument("folder")
+    p.add_argument("--names", action="store_true", help="show every name (read the output before sending it)")
     p.set_defaults(func=_lobster)
     p = sub.add_parser("lobster-cards", help="turn a workspace's memory files into context cards (prints JSON)")
     p.add_argument("folder")
