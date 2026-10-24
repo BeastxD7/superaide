@@ -268,11 +268,14 @@ def test_an_orphaned_platform_reservation_gives_back_the_platform_allowance(monk
     monkeypatch.setattr(get_settings(), "platform_daily_cap_usd", 5.0)
     monkeypatch.setattr(get_settings(), "platform_owner_daily_usd", 0)
     monkeypatch.setattr(get_settings(), "platform_owner_monthly_usd", 0)
+    # Everything reserved so far counts as stale. (Aging the row by an hour moved it into yesterday just after
+    # midnight UTC, and the platform allowance is given back to the day the reservation was made.)
+    monkeypatch.setattr("superaide.brain.budget.STALE_RESERVATION", timedelta(seconds=-1))
     guard = BudgetGuard(10, key_source="platform")
     old = guard.reserve(purpose="chat", model="claude-haiku-5-5", worst_case_usd=Decimal("1"))
     with session_scope() as s:
         assert platform_spend.committed_today(s) == Decimal("1")
-        s.get(SpendEntry, old).created_at = datetime.now(UTC) - timedelta(hours=1)  # type: ignore[union-attr]
+        assert s.get(SpendEntry, old).status == "reserved"  # type: ignore[union-attr]
     guard.reserve(purpose="chat", model="claude-haiku-5-5", worst_case_usd=Decimal("0.5"))
     with session_scope() as s:
         assert platform_spend.committed_today(s) == Decimal("0.5")
