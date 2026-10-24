@@ -5,6 +5,7 @@ import { Notice } from '@/components/site'
 import { Button } from '@/components/ui/button'
 import { call, type GmailStatus } from '@/lib/api'
 import { errorMessage } from '@/lib/action'
+import { GmailReadSettings } from '@/features/dashboard/GmailReadSettings'
 
 // What came back from Google's sign-in (?gmail=… on the Capabilities page).
 const RESULT: Record<string, { tone: 'info' | 'error'; text: string }> = {
@@ -55,7 +56,7 @@ export function GmailPanel({ name }: { name: string }) {
   if (!status) return null
   const shown = result ? RESULT[result] : undefined
   return (
-    <div className="mt-3 space-y-2 rounded-lg bg-mist p-3 text-sm" role="group" aria-label="Gmail settings">
+    <div id="gmail" className="mt-3 space-y-2 rounded-lg bg-mist p-3 text-sm" role="group" aria-label="Gmail settings">
       {shown && <Notice tone={shown.tone}>{shown.text}</Notice>}
       {problem && <Notice tone="error">{problem}</Notice>}
       {!status.client_ready ? (
@@ -90,6 +91,7 @@ export function GmailPanel({ name }: { name: string }) {
               )}
             </span>
           </label>
+          <GmailReadSettings name={name} />
         </>
       )}
     </div>

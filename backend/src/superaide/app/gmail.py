@@ -31,7 +31,7 @@ from superaide.platform.db.models import ChannelIdentity, Contact, InstalledSkil
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import scope_or_default
 from superaide.platform.tenancy.models import PlatformState
-from superaide.skills import gmail
+from superaide.skills import gmail, gmail_settings
 from superaide.vault import store
 from superaide.vault.store import runtime_settings
 
@@ -42,6 +42,21 @@ log = logging.getLogger(__name__)
 
 class DraftsBody(BaseModel):
     enabled: bool
+
+
+class ReadSettingsBody(BaseModel):
+    """Any subset of the reading settings. `codes: read` needs the account password (step-up)."""
+
+    payment_preview: str | None = None
+    numbers: str | None = None
+    codes: str | None = None
+    body_chars: int | None = None
+    search_limit: int | None = None
+    thread_depth: int | None = None
+    lookback_days: int | None = None
+    blocked: list[str] | None = None
+    allowed: list[str] | None = None
+    confirm_password: str | None = None
 
 
 class AddressBody(BaseModel):
@@ -177,6 +192,78 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             url = start_url(user_id, sorted(granted | {api.READONLY, api.COMPOSE}), origin)
         with session_scope() as s:
             return {**gmail.status(s), "url": url}
+
+    def _read_view(s: Any) -> dict[str, Any]:
+        cfg = gmail_settings.load(s)
+        return {
+            "settings": cfg.as_dict(),
+            "choices": {
+                k: {"values": list(v[0]), "default": v[1], "label": v[2], "help": v[3]}
+                for k, v in gmail_settings.CHOICES.items()
+            },
+        }
+
+    @router.get(
+        "/read-settings",
+        summary="What Ava may read in your Gmail",
+        description="The owner's reading settings (payment mail, numbers, codes, sizes, lookback, never-read and "
+        "always-allowed lists) with every allowed value and its explanation.",
+    )
+    def read_settings(_: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        with session_scope() as s:
+            return _read_view(s)  # the defaults until Gmail is installed
+
+    @router.put(
+        "/read-settings",
+        summary="Change what Ava may read in your Gmail",
+        description="Changes any of the reading settings. Each change is audited. Turning on one-time codes and "
+        "password resets needs `confirm_password`; mail about them stays hidden otherwise.",
+    )
+    def put_read_settings(
+        body: ReadSettingsBody,
+        _: uuid.UUID = Depends(owner_person_id),
+        user_id: uuid.UUID = Depends(current_user_id),
+    ) -> dict[str, Any]:
+        from superaide.auth.passwords import verify_password
+        from superaide.platform.audit import audit
+        from superaide.platform.db.models import UserAccount
+
+        with session_scope() as s:
+            if gmail.installed(s) is None:
+                raise HTTPException(409, "Install the Gmail capability first.")
+            row = s.scalar(select(InstalledSkill).where(InstalledSkill.skill_id == gmail.SKILL_ID))
+            assert row is not None
+            before = gmail_settings.load(s)
+            raw = before.as_dict()
+            sent = body.model_dump(exclude={"confirm_password"}, exclude_none=True)
+            for name, value in sent.items():
+                if name in gmail_settings.CHOICES and value not in gmail_settings.CHOICES[name][0]:
+                    raise HTTPException(422, f"{name}: choose one of {list(gmail_settings.CHOICES[name][0])}")
+                if name in gmail_settings.LISTS:
+                    cleaned = [gmail_settings.clean_entry(x) for x in value]
+                    if any(not c for c in cleaned):
+                        raise HTTPException(422, f"{name}: use an address, a domain or label:<name>")
+                    value = list(dict.fromkeys(cleaned))[: gmail_settings.MAX_ENTRIES]
+                raw[name] = value
+            if raw["codes"] == "read" and before.codes != "read":
+                user = s.get(UserAccount, user_id)
+                if not body.confirm_password or user is None or not user.password_hash:
+                    raise HTTPException(403, "Enter your password to let Ava read one-time codes and password resets.")
+                ok, _rehash = verify_password(user.password_hash, body.confirm_password)
+                if not ok:
+                    audit(s, "skills", "gmail_read_setting_refused", setting="codes", reason="wrong password")
+                    s.commit()
+                    raise HTTPException(403, "Your password isn't right.")  # not 401: the app would sign the owner out
+            row.settings = {**(row.settings or {}), "read": raw}
+            after = gmail_settings.load(s)
+            changed = sorted(k for k, v in after.as_dict().items() if v != before.as_dict()[k])
+            if changed:
+                audit(
+                    s, "skills", "gmail_read_settings", changed=changed,
+                    values={k: after.as_dict()[k] for k in changed if k not in gmail_settings.LISTS},
+                    list_sizes={k: len(after.as_dict()[k]) for k in changed if k in gmail_settings.LISTS},
+                )  # fmt: skip
+            return _read_view(s)
 
     @router.post(
         "/addresses",

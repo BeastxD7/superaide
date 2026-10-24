@@ -218,6 +218,8 @@ tests = [
 e2e = [
   "e2e/tests/connectors/capability-google.spec.ts",
   "e2e/tests/connectors/gmail-api-disabled.spec.ts",
+  "e2e/tests/connectors/gmail-read-settings.spec.ts",
+  "e2e/tests/connectors/gmail-read-settings.mobile.spec.ts",
   "e2e/tests/journeys/calendar-connect.spec.ts",
   "e2e/tests/journeys/approval-automated.spec.ts",
 ]

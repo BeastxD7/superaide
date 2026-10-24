@@ -36,6 +36,7 @@ from superaide.platform.db.models import Approval, InstalledSkill, Person
 from superaide.policy import recipients
 from superaide.policy.binding import content_hash, payload_hash, seal
 from superaide.policy.registry import DISCARDERS, EXECUTORS
+from superaide.skills import gmail_settings
 
 SKILL_ID = "superaide/gmail"
 SLOT = ("google", "gmail_refresh_token")
@@ -165,18 +166,38 @@ def search(session: Session, owner: Person, args: dict[str, Any]) -> tuple[Any, 
         if not can_read(session):
             raise NotReady("Gmail isn't connected yet. Ask the owner to connect it under Capabilities → Gmail.")
         tok = token(session)
-        limit = max(1, min(int(args.get("limit") or SEARCH_LIMIT), SEARCH_LIMIT))
+        cfg = gmail_settings.load(session)
+        limit = max(1, min(int(args.get("limit") or cfg.search_limit), cfg.search_limit))
+        query = str(args.get("query") or "")
+        if cfg.lookback_days and "newer_than:" not in query and "after:" not in query:
+            query = f"{query} newer_than:{cfg.lookback_days}d".strip()
         client = api.http_client()
-        ids = api.search(client, tok, str(args.get("query") or ""), limit)
+        ids = api.search(client, tok, query, limit)
         out = []
         for mid in ids:
             msg = api.message(client, tok, mid, fmt="metadata")
             if msg is None:
                 continue
+            addr, labels = api.sender(msg)[1], list(msg.get("labelIds") or [])
+            if gmail_settings.matches(cfg.blocked, address=addr, labels=labels):
+                continue  # on the owner's Never read list: not even a subject
+            vip = gmail_settings.matches(cfg.allowed, address=addr, labels=labels)
+            amounts = cfg.numbers == "amounts" or vip
             subj = api.subject(msg)
-            preview = api.redact(str(msg.get("snippet") or "")[:240])
-            if risks(subj + " " + preview) & QUIET_RISKS:
-                preview = "(preview withheld: it's about payment details, passwords or codes; open it in Gmail)"
+            preview = api.redact(str(msg.get("snippet") or "")[:240], amounts=amounts)
+            found = risks(subj + " " + preview)
+            if "credentials" in found and cfg.codes == "never":
+                preview = (
+                    "(preview withheld: it's about a one-time code or password. "
+                    + gmail_settings.blocked_note(gmail_settings.label_of("codes"))
+                    + ")"
+                )
+            elif "payment" in found and cfg.payment_preview == "hide" and not vip:
+                preview = (
+                    "(preview withheld: it's about payment details. "
+                    + gmail_settings.blocked_note(gmail_settings.label_of("payment_preview"))
+                    + ")"
+                )
             unread = "UNREAD" in (msg.get("labelIds") or [])
             out.append(
                 _source(
@@ -207,11 +228,31 @@ def read_thread(session: Session, owner: Person, args: dict[str, Any]) -> tuple[
     if found is None:
         return "No such thread. Use a thread id from gmail_search.", True
     out = []
-    for msg in (found.get("messages") or [])[-THREAD_LIMIT:]:
+    cfg = gmail_settings.load(session)
+    for msg in (found.get("messages") or [])[-cfg.thread_depth :]:
+        addr, labels = api.sender(msg)[1], list(msg.get("labelIds") or [])
         subj = api.subject(msg)
-        body = api.clean_body(api.body_text(msg))
-        if risks(subj + " " + body) & HIDDEN_RISKS:
-            body = "(not shown: it's about a password or a code; the owner can open it in Gmail)"
+        if gmail_settings.matches(cfg.blocked, address=addr, labels=labels):
+            out.append(
+                _source(
+                    msg,
+                    f"From: {who(msg)}\nDate: {_when(msg)}\n\n(not read: "
+                    + gmail_settings.blocked_note("Never read")
+                    + ")",
+                )
+            )
+            continue
+        vip = gmail_settings.matches(cfg.allowed, address=addr, labels=labels)
+        body = api.clean_body(api.body_text(msg), cfg.body_chars, amounts=cfg.numbers == "amounts" or vip)
+        if cfg.codes == "read" and risks(subj + " " + body) & HIDDEN_RISKS:
+            # the owner turned codes on (password-confirmed): a code is a number, so it is not blanked
+            body = api.clean_body(api.body_text(msg), cfg.body_chars, blank=False)
+        if cfg.codes == "never" and risks(subj + " " + body) & HIDDEN_RISKS:
+            body = (
+                "(not shown: it's about a one-time code or password. "
+                + gmail_settings.blocked_note(gmail_settings.label_of("codes"))
+                + ")"
+            )
         out.append(_source(msg, f"From: {who(msg)}\nDate: {_when(msg)}\nSubject: {subj}\n\n{body or '(no text)'}"))
     audit(session, "skills", "gmail_thread_read", messages=len(out))
     return out or "That thread is empty.", not out

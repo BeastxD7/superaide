@@ -1555,6 +1555,129 @@
         "title": "QueueBody",
         "type": "object"
       },
+      "ReadSettingsBody": {
+        "description": "Any subset of the reading settings. `codes: read` needs the account password (step-up).",
+        "properties": {
+          "allowed": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allowed"
+          },
+          "blocked": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocked"
+          },
+          "body_chars": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body Chars"
+          },
+          "codes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Codes"
+          },
+          "confirm_password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirm Password"
+          },
+          "lookback_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lookback Days"
+          },
+          "numbers": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numbers"
+          },
+          "payment_preview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Preview"
+          },
+          "search_limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Search Limit"
+          },
+          "thread_depth": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thread Depth"
+          }
+        },
+        "title": "ReadSettingsBody",
+        "type": "object"
+      },
       "RecheckBody": {
         "properties": {
           "answer": {
@@ -6161,6 +6284,82 @@
           }
         ],
         "summary": "Turn Gmail drafts on or off",
+        "tags": [
+          "Owner: Gmail"
+        ]
+      }
+    },
+    "/app/gmail/read-settings": {
+      "get": {
+        "description": "The owner's reading settings (payment mail, numbers, codes, sizes, lookback, never-read and always-allowed lists) with every allowed value and its explanation.",
+        "operationId": "read_settings_app_gmail_read_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Read Settings App Gmail Read Settings Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "What Ava may read in your Gmail",
+        "tags": [
+          "Owner: Gmail"
+        ]
+      },
+      "put": {
+        "description": "Changes any of the reading settings. Each change is audited. Turning on one-time codes and password resets needs `confirm_password`; mail about them stays hidden otherwise.",
+        "operationId": "put_read_settings_app_gmail_read_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReadSettingsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Put Read Settings App Gmail Read Settings Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Change what Ava may read in your Gmail",
         "tags": [
           "Owner: Gmail"
         ]
