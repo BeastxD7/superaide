@@ -44,3 +44,10 @@ def test_label_names_are_unique_with_colour_and_description():
     for b in blocks:
         assert re.search(r'^\s+color: "[0-9a-f]{6}"', b, flags=re.M), b
         assert re.search(r"^\s+description: ", b, flags=re.M), b
+
+
+def test_label_descriptions_fit_githubs_100_character_limit():
+    # GitHub rejects longer descriptions ("Validation Failed"), which made the Labels workflow fail on main.
+    text = (ROOT / ".github" / "labels.yml").read_text()
+    for m in re.finditer(r'^\s+description: "?(.*?)"?\s*$', text, flags=re.M):
+        assert len(m.group(1)) <= 100, (len(m.group(1)), m.group(1))
