@@ -45,7 +45,35 @@ def get(session: Session, provider: str) -> dict[str, Any]:
         "status": value.get("status", OK),
         "last_error": value.get("last_error", ""),
         "since": value.get("since"),
+        "missing_scopes": missing_scopes(session, provider),
     }
+
+
+def scopes_key(provider: str) -> str:
+    return f"channel_scopes:{provider}"
+
+
+def missing_scopes(session: Session, provider: str) -> list[str]:
+    """Permissions the service's app lacks (Slack bot scopes), from the last check at startup or connect."""
+    return list(get_state(session, scopes_key(provider)).get("missing") or [])
+
+
+def set_missing_scopes(session: Session, provider: str, missing: list[str]) -> bool:
+    if missing_scopes(session, provider) == missing:
+        return False
+    set_state(session, scopes_key(provider), {"missing": missing})
+    audit(session, "channels", "channel_scopes", provider=provider, missing=missing)
+    return True
+
+
+def record_missing_scopes(provider: str, missing: list[str]) -> None:
+    from superaide.platform.db.session import session_scope
+
+    try:
+        with session_scope() as s:
+            set_missing_scopes(s, provider, missing)
+    except Exception:
+        log.exception("couldn't record %s missing scopes", provider)
 
 
 def rejected(session: Session, provider: str) -> bool:
@@ -79,6 +107,7 @@ def record(provider: str, status: str, error: str = "") -> None:
 def reset(session: Session, provider: str) -> None:
     """A new token was saved, or the channel was disconnected: forget the old verdict."""
     set_health(session, provider, OK)
+    set_missing_scopes(session, provider, [])
 
 
 def describe(provider: str, health: dict[str, Any]) -> str:

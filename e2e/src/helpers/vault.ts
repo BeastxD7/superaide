@@ -27,3 +27,13 @@ export async function linkOwner(provider: string, key: string): Promise<void> {
     [provider, key],
   )
 }
+
+// What the startup / connect check of the Slack scopes records (backend channels/slack/scopes.py), without calling Slack.
+export async function plantMissingScopes(provider: string, missing: string[]): Promise<void> {
+  const [scope] = await query<{ tenant_id: string; agent_id: string }>("SELECT tenant_id, agent_id FROM context WHERE external_id LIKE 'web:%' LIMIT 1")
+  await query(
+    `INSERT INTO agent_state (tenant_id, agent_id, key, value) VALUES ($1, $2, $3, $4::jsonb)
+     ON CONFLICT (tenant_id, agent_id, key) DO UPDATE SET value = EXCLUDED.value`,
+    [scope.tenant_id, scope.agent_id, `channel_scopes:${provider}`, JSON.stringify({ missing })],
+  )
+}

@@ -206,6 +206,7 @@ tests = [
 e2e = [
   "e2e/tests/channels/channel-rows.spec.ts",
   "e2e/tests/channels/slack-link.spec.ts",
+  "e2e/tests/channels/slack-scopes.spec.ts",
 ]
 
 [modules.integrations]
