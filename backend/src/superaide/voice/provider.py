@@ -9,6 +9,10 @@ VOICE_PROVIDER picks the provider:
 - `none` (default): live voice is off; `choose` returns a provider that refuses to open.
 - `fake`: replays scripted transcript turns and records what was spoken. Used by the tests, the
   text-versus-voice experiment (evals/voice_vs_text.py) and the demo in docs/voice.md. Free, offline.
+- `deepgram`: the documented hosted adapter (`DeepgramVoiceProvider`): Deepgram speech-to-text for what the caller
+  said and Deepgram's voice for what the shell speaks, turn by turn. Every request goes through the budget guard
+  (bucket `voice_call`, its own monthly cap inside MAX_SPEND_USD). Deepgram is already the vendor of the introduction
+  call (ADR 0012), so it adds no new data holder.
 - `realtime`: the adapter stub for a real vendor (`RealtimeVendorStub`). It names the methods a vendor
   adapter must fill in and refuses to run until one is written, so choosing it spends nothing.
 
@@ -19,14 +23,19 @@ logged or stored here.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass, field
-from typing import Protocol
+from typing import Any, Protocol
 
+import httpx
+
+from superaide.brain.budget import BudgetExceeded
 from superaide.config import Settings, get_settings
+from superaide.voice import providers
 from superaide.voice.providers import VoiceError
 
-PROVIDER_KINDS = ("none", "fake", "realtime")
+PROVIDER_KINDS = ("none", "fake", "realtime", "deepgram")
+CALL_LANG = "en"
 
 
 class RealtimeVoiceProvider(Protocol):
@@ -122,12 +131,115 @@ class RealtimeVendorStub:
         return None
 
 
-def choose(settings: Settings | None = None, *, script: list[str] | None = None) -> RealtimeVoiceProvider:
+class DeepgramVoiceProvider:
+    """A hosted speech API as the realtime adapter: Deepgram transcribes each utterance the caller makes and speaks
+    back the text it is handed. It is turn by turn (one request per utterance, no barge-in); full-duplex
+    streaming is a later step, and the shell and the rules do not change when it comes.
+
+    The caller's audio arrives as an iterable of utterances (`audio_in`, e.g. cut by voice activity detection in the
+    browser) and the voice goes out through `audio_out(bytes)`; the telephony or browser transport is the caller's.
+    Rules kept: transcripts only come out of `listen`, `speak` sends exactly the text given, the session has no
+    tools and no instructions to act, the key is used only in requests to Deepgram, nothing is logged, and every
+    request is reserved and settled through the budget guard (purposes voice_call_asr / voice_call_tts, bucket
+    voice_call). A refusal by the guard (monthly voice cap, MAX_SPEND_USD, kill switch) ends the call; so does the
+    call reaching `max_seconds` of caller audio."""
+
+    name = "deepgram"
+
+    def __init__(
+        self,
+        api_key: str,
+        *,
+        guard: Any,
+        audio_in: Iterable[bytes],
+        audio_out: Callable[[bytes], None],
+        max_seconds: float = 600,
+        max_turn_seconds: float = 60,
+        voice: str = "aura-2-thalia-en",
+        lang: str = CALL_LANG,
+        client: Callable[[], httpx.Client] | None = None,
+        mime: str = "audio/wav",
+    ) -> None:
+        self._key = api_key
+        self._guard = guard
+        self._audio_in = audio_in
+        self._audio_out = audio_out
+        self._max_seconds, self._max_turn = float(max_seconds), float(max_turn_seconds)
+        self._voice, self._lang, self._mime = voice, lang, mime
+        self._asr = providers.DeepgramASR(api_key, client)
+        self._tts = providers.DeepgramTTS(api_key, client)
+        self._heard = 0.0
+        self._opened = False
+        self.ended_by = ""  # "", "caller", "length" or "budget": why the call ended, for the caller's screen
+
+    def open(self) -> None:
+        if not self._key:
+            raise VoiceError("Live voice needs a Deepgram key. Save it under Connections.")
+        if self._guard is None:
+            raise VoiceError("Live voice runs only with the spend guard.")
+        self._opened = True
+
+    def listen(self) -> Iterator[str]:
+        if not self._opened:
+            raise VoiceError("The call is not open.")
+        for audio in self._audio_in:
+            if self.ended_by == "budget":
+                return
+            if self._heard >= self._max_seconds:
+                self.ended_by = "length"
+                return
+            try:
+                heard = providers.metered_transcribe(
+                    self._guard, self._asr, audio, self._mime, self._lang, self._max_turn, purpose="voice_call_asr"
+                )
+            except BudgetExceeded:
+                self.ended_by = "budget"  # the call ends cleanly; the caller's screen says why
+                return
+            self._heard += min(heard.seconds, self._max_turn) if heard.seconds else 1.0
+            if heard.text:  # silence and noise produce an empty transcript: nothing to hand on
+                yield heard.text
+        self.ended_by = self.ended_by or "caller"
+
+    def speak(self, text: str) -> None:
+        if not self._opened:
+            raise VoiceError("The call is not open.")
+        try:
+            audio = providers.metered_speak(
+                self._guard, self._tts, text, self._voice, self._lang, purpose="voice_call_tts"
+            )
+        except BudgetExceeded:
+            self.ended_by = "budget"  # nothing is said; the next listen ends the call
+            return
+        self._audio_out(audio)
+
+    def close(self) -> None:
+        self._opened = False
+
+
+def choose(
+    settings: Settings | None = None,
+    *,
+    script: list[str] | None = None,
+    guard: Any = None,
+    audio_in: Iterable[bytes] = (),
+    audio_out: Callable[[bytes], None] | None = None,
+    client: Callable[[], httpx.Client] | None = None,
+) -> RealtimeVoiceProvider:
     """The provider VOICE_PROVIDER names. An unknown name is `none`: fail closed."""
     s = settings or get_settings()
     kind = (s.voice_provider or "none").strip().lower()
     if kind == "fake":
         return FakeVoiceProvider(script=list(script or []))
+    if kind == "deepgram":
+        return DeepgramVoiceProvider(
+            s.voice_provider_api_key or s.deepgram_api_key,
+            guard=guard,
+            audio_in=audio_in,
+            audio_out=audio_out or (lambda _b: None),
+            max_seconds=s.voice_call_max_seconds,
+            max_turn_seconds=s.voice_max_turn_seconds,
+            client=client,
+        )
     if kind == "realtime":
         return RealtimeVendorStub(s.voice_provider_api_key)
     return NoProvider()

@@ -1,6 +1,8 @@
 // The "Ask my Ava" link: the owner publishes a handle in Settings, a visitor with no account leaves a
 // request on /a/<handle>, and it shows up as a card on the owner's dashboard. Behind ASK_LINK_ENABLED,
 // so it runs only with E2E_ASK_LINK=1 (e.g. `E2E_ASK_LINK=1 E2E_SLOT=71 npx playwright test ask-link`).
+import AxeBuilder from '@axe-core/playwright'
+import type { Page } from '@playwright/test'
 import { expect, test } from '../src/fixtures'
 import { ASK_LINK } from '../src/env'
 
@@ -90,4 +92,44 @@ test('a link revoked while the form is open says so in words, and the date picke
   await expect(v.getByText('This link has just been turned off.')).toBeVisible()
   await expect(v.getByText('Not Found')).toHaveCount(0)
   await visitor.close()
+})
+
+async function violations(page: Page) {
+  await page.waitForTimeout(700) // let entrance animations finish: axe would read a half-faded colour
+  const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze()
+  return results.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).slice(0, 4).join(' | ')}`)
+}
+
+// #81: the public page is the one screen a stranger sees, so it gets the same axe run (colour contrast included) as the
+// signed-in pages: the form, the form with its errors showing, the sent confirmation, and the "no page here" page.
+test('the public /a/<handle> page has no axe violations on a desktop and on a 390px phone', async ({ page, owner, browser }) => {
+  void owner
+  await page.goto('/dashboard/settings')
+  await page.getByLabel('Pick a handle').fill('e2e-axe')
+  await page.getByRole('button', { name: 'Publish link' }).click()
+  await expect(page.getByText('Your link is live.')).toBeVisible()
+
+  for (const [label, viewport] of [['desktop', { width: 1280, height: 800 }], ['phone', { width: 390, height: 844 }]] as const) {
+    const visitor = await browser.newContext({ viewport })
+    const v = await visitor.newPage()
+    await v.goto('/a/e2e-axe')
+    await expect(v.getByRole('heading', { level: 1 })).toBeVisible()
+    expect(await violations(v), `${label}: the form`).toEqual([])
+
+    await v.getByRole('button', { name: 'Send to Ava' }).click() // empty: the field errors show
+    expect(await violations(v), `${label}: the form with its errors`).toEqual([])
+
+    await v.getByLabel(/Your name/).fill('Lee Wong')
+    await v.getByLabel(/How to reach you/).fill('lee@example.org')
+    await v.getByLabel(/What it.s about/).fill('Speaking at our conference')
+    await v.waitForTimeout(1200)
+    await v.getByRole('button', { name: 'Send to Ava' }).click()
+    await expect(v.getByText("Ava, an AI assistant, has passed this on. You'll hear back if it's a fit.")).toBeVisible()
+    expect(await violations(v), `${label}: sent`).toEqual([])
+
+    await v.goto('/a/nobody-has-this-one')
+    await expect(v.getByRole('heading', { name: "There's no page here" })).toBeVisible()
+    expect(await violations(v), `${label}: no page here`).toEqual([])
+    await visitor.close()
+  }
 })

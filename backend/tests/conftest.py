@@ -18,12 +18,26 @@ os.environ.setdefault(
     "TEST_DATABASE_URL",
     _from_file.get("TEST_DATABASE_URL") or "postgresql+psycopg://agent:agent@localhost:5432/agent_test",
 )
-# An xdist worker inherits the controller's DATABASE_URL (already set to the test database below),
-# so the guard runs in the controller only.
-if not os.environ.get("PYTEST_XDIST_WORKER") and os.environ["TEST_DATABASE_URL"] == (
-    os.environ.get("DATABASE_URL") or _from_file.get("DATABASE_URL")
-):
-    raise RuntimeError("TEST_DATABASE_URL must differ from DATABASE_URL: the tests wipe their database")
+# Load the guard by path: importing the superaide package here would read settings before the
+# environment below is prepared.
+import importlib.util  # noqa: E402
+
+_spec = importlib.util.spec_from_file_location(
+    "_superaide_db_safety", Path(__file__).resolve().parents[1] / "src/superaide/db/safety.py"
+)
+assert _spec and _spec.loader
+safety = importlib.util.module_from_spec(_spec)
+import sys  # noqa: E402
+
+sys.modules["_superaide_db_safety"] = safety
+_spec.loader.exec_module(safety)
+
+# The tests wipe their database, so it must be disposable (named test/eval/scratch/e2e) and must not be
+# the live DATABASE_URL, compared after normalising host, driver, port, case and an xdist suffix. An xdist
+# worker inherits the controller's DATABASE_URL (already the test database), so only the controller
+# compares against the process environment; every process compares against backend/.env.
+_process_live = () if os.environ.get("PYTEST_XDIST_WORKER") else (os.environ.get("DATABASE_URL") or "",)
+safety.assert_disposable_database(os.environ["TEST_DATABASE_URL"], extra_live=tuple(u for u in _process_live if u))
 
 
 def _worker_database(url: str, worker: str) -> str:
@@ -99,6 +113,7 @@ OUR_TEAM = "T_OURS"
 @pytest.fixture(scope="session", autouse=True)
 def _schema() -> Iterator[None]:
     engine = get_engine()
+    safety.assert_disposable_database(engine.url)
     ensure_extensions(engine)
     with engine.begin() as conn:
         conn.execute(text("DROP TABLE IF EXISTS memory_embedding, chunk_embedding"))  # outside the ORM metadata
@@ -111,6 +126,7 @@ def _schema() -> Iterator[None]:
 @pytest.fixture(autouse=True)
 def _clean() -> Iterator[None]:
     names = ", ".join(t.name for t in reversed(Base.metadata.sorted_tables))
+    safety.assert_disposable_database(get_engine().url)
     with get_engine().begin() as conn:
         conn.execute(text(f"TRUNCATE {names} CASCADE"))
     yield

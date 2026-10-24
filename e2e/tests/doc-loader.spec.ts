@@ -42,6 +42,10 @@ test('a file shows the loader with its name and type, then a done state', async 
   release()
   await expect(loader).toHaveCount(0)
   await expect(page.getByTestId('doc-done')).toContainText(/resume\.txt/)
+  // The notice survives the conversation reload that follows the upload (#81): it does not flash and vanish.
+  await page.waitForTimeout(1500)
+  await expect(page.getByTestId('doc-done')).toBeVisible()
+  await expect(page.getByTestId('doc-done')).toContainText(/resume\.txt/)
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/${process.env.SHOT_PREFIX ?? 'after'}-done-${info.project.name}.png` })
 })
 

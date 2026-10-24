@@ -27,10 +27,9 @@ Postgres comes from `E2E_PG_ADMIN_URL`. The default, `postgresql://agent:agent@l
 
 - `E2E_PROXY=1 npx playwright test --project=proxy` runs the `/api` proxy contract tests (`*.proxy.spec.ts`). It starts `scripts/fake-upstream.mjs` and three `next start` servers in front of it (defaults, `TRUST_PROXY_HEADERS=true`, and an unreachable upstream), so it needs `npm run build` in `frontend/` first. No browser and no database. CI runs it once, on shard 1.
 
-## Not covered yet
+## Accessibility coverage
 
-- Unit tests of the pure frontend logic (`safeNext`, `errorFromDetail`, the SSE parser in `streamChat`, the chat reducer): the frontend has no unit runner. Adding Vitest is the next step; until then these are exercised through the browser tests.
-- axe-core runs on the signed-out pages, the chat and the dashboard pages. It does not yet cover `/meet` (owned by the voice introduction work) or the public `/a/<handle>` page.
+axe-core runs (colour contrast included) on the signed-out pages, the chat, every dashboard page, each introduction step and tab, and the public `/a/<handle>` page (desktop and 390px; that spec needs `E2E_ASK_LINK=1`). Keyboard-only runs cover the list switcher, the Needs-you list (`fe-needs-you-keyboard.spec.ts`) and the introduction.
 
 ## Smoke subset
 

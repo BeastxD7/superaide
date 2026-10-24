@@ -49,6 +49,7 @@ FLAG_GATED = {
     ("GET", "/app/mandates"),  # MANDATES_ENABLED (#112)
     ("GET", "/app/principal-card"),  # PRINCIPAL_CARD_ENABLED (#135); its public side is in test_principal_card.py
     ("GET", "/app/principal-card/sent"),  # the cards sent (#135)
+    ("GET", "/app/principal-card/stats"),  # the experiment's counters (#135)
     ("GET", "/app/memory-socket"),  # MEMORY_SOCKET_ENABLED (#138); its MCP side is checked in test_memory_socket.py
     ("GET", "/app/fork-night"),  # FORK_NIGHT_ENABLED (#127)
     ("GET", "/app/standing-orders"),  # TIME_TRAVEL_RULES_ENABLED (#52)

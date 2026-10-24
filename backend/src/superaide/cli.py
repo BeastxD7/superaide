@@ -348,11 +348,21 @@ def _reset_db(args: argparse.Namespace) -> None:
     from sqlalchemy import text
 
     from superaide.db.models import Base
+    from superaide.db.safety import UnsafeDatabase, assert_disposable_database, database_name
     from superaide.db.session import get_engine
 
     if not args.yes:
         sys.exit("This deletes all data. Run again with --yes to confirm.")
-    engine = get_engine(get_settings().owner_database_url)
+    url = get_settings().owner_database_url
+    try:
+        assert_disposable_database(url)
+    except UnsafeDatabase as refusal:
+        # The configured live database (or any database not marked disposable) needs both an explicit
+        # flag and its name typed back, so a pasted command or an agent cannot wipe it by accident.
+        name = database_name(url)
+        if not (args.i_know_this_is_live and args.confirm_db_name == name):
+            sys.exit(f"{refusal} To wipe it anyway: --i-know-this-is-live --confirm-db-name {name}")
+    engine = get_engine(url)
     with engine.begin() as conn:
         conn.execute(text("DROP TABLE IF EXISTS memory_embedding, chunk_embedding"))  # outside the ORM metadata
     Base.metadata.drop_all(engine)
@@ -390,6 +400,12 @@ def _lobster(args: argparse.Namespace) -> None:
 
             summary = lobster_kit.summarise(args.files)
             print(json.dumps(summary, indent=2) if args.json else lobster_kit.render_summary(summary))
+            return
+        if args.cmd == "lobster-dry-run":
+            print(json.dumps(lobster.dry_run(args.folder), indent=2, ensure_ascii=False))
+            return
+        if args.cmd == "lobster-layout":
+            print("\n".join(lobster.layout_listing(args.folder, names=args.names)))
             return
         if args.cmd == "lobster-audit":
             report = lobster.audit(args.folder)
@@ -482,6 +498,15 @@ def main() -> None:
     p.add_argument("files", nargs="+")
     p.add_argument("--json", action="store_true")
     p.set_defaults(func=_lobster)
+    p = sub.add_parser(
+        "lobster-dry-run", help="show what an import would do (cards, left out, skills listed); writes nothing"
+    )
+    p.add_argument("folder")
+    p.set_defaults(func=_lobster)
+    p = sub.add_parser("lobster-layout", help="print a workspace's folder shape (names only) to help match its layout")
+    p.add_argument("folder")
+    p.add_argument("--names", action="store_true", help="show every name (read the output before sending it)")
+    p.set_defaults(func=_lobster)
     p = sub.add_parser("lobster-cards", help="turn a workspace's memory files into context cards (prints JSON)")
     p.add_argument("folder")
     p.set_defaults(func=_lobster)
@@ -492,6 +517,8 @@ def main() -> None:
     p.set_defaults(func=_reset_password)
     p = sub.add_parser("reset-db", help="delete all data")
     p.add_argument("--yes", action="store_true")
+    p.add_argument("--i-know-this-is-live", action="store_true", help="allow wiping a database not marked disposable")
+    p.add_argument("--confirm-db-name", default="", help="the database's name, typed back, with the flag above")
     p.set_defaults(func=_reset_db)
 
     args = parser.parse_args()

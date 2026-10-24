@@ -52,6 +52,14 @@ ORDERS = re.compile(
         |\b(?:always|never|must)\b[^.\n]{0,60}\b(?:send|forward|post|upload|email|exfiltrate)\b[^.\n]{0,80}(?:https?://|@)
         |^\s*(?:system|assistant)\s*:|<\s*/?\s*(?:system|instructions?)\s*>|\byou are now\b"""
 )
+# Hermes keeps its entries in one file separated by a section sign (public docs; not checked on a real install).
+ENTRY_SEPARATOR = "\u00a7"
+# Names that the layout detector and the names-only listing know. Documented, not verified (docs/lobster-runbook.md).
+KNOWN_NAMES = {
+    "MEMORY.md", "USER.md", "DREAMS.md", "SOUL.md", "SKILL.md", "AGENTS.md", "TOOLS.md", "IDENTITY.md",
+    "config.yaml", "auth.json", "openclaw.json", ".env", "memory", "memories", "skills", "scripts",
+    "references", "sessions", "cron", "logs",
+}  # fmt: skip
 DATE_NAME = re.compile(r"(\d{4}-\d{2}-\d{2})")
 
 
@@ -74,6 +82,7 @@ class Audit:
     memory_files: list[str] = field(default_factory=list)
     skills: list[dict[str, Any]] = field(default_factory=list)
     findings: list[Finding] = field(default_factory=list)
+    layout: str = "unknown"
 
     def counts(self) -> dict[str, int]:
         out = {"high": 0, "medium": 0, "info": 0}
@@ -84,6 +93,7 @@ class Audit:
     def as_dict(self) -> dict[str, Any]:
         return {
             "folder": self.folder,
+            "layout": self.layout,
             "files_read": self.files_read,
             "memory_files": self.memory_files,
             "skills": self.skills,
@@ -94,7 +104,7 @@ class Audit:
     def render(self) -> str:
         lines = [
             f"Lobster Rescue audit of {self.folder}",
-            f"Read {self.files_read} files. Nothing was imported or run.",
+            f"Read {self.files_read} files. Nothing was imported or run. Layout: {self.layout}.",
         ]
         c = self.counts()
         lines.append(f"{c['high']} high, {c['medium']} medium, {c['info']} notes.")
@@ -128,15 +138,33 @@ def _read(p: Path) -> str | None:
         return None
 
 
+def _is_memory(rel: Path) -> bool:
+    """MEMORY.md, USER.md and DREAMS.md at the top or in memories/, and dated notes in memory/ or memories/."""
+    top = rel.parts[0]
+    if rel.name in MEMORY_FILES:
+        return len(rel.parts) == 1 or (len(rel.parts) == 2 and top in {"memories", "memory"})
+    return top in {"memory", "memories"} and rel.suffix == ".md" and len(rel.parts) == 2
+
+
 def _is_skill(rel: Path) -> bool:
     return rel.name == "SKILL.md" or (rel.parts[0] == "skills" and rel.suffix == ".md")
+
+
+def detect_layout(root: Path) -> str:
+    """ "hermes" (a memories/ folder, or config.yaml with SOUL.md), "openclaw" (MEMORY.md or openclaw.json at the
+    top) or "unknown". Names only; no file is read. The Hermes shape is from public docs and community write-ups."""
+    if (root / "memories").is_dir() or ((root / "config.yaml").is_file() and (root / "SOUL.md").is_file()):
+        return "hermes"
+    if (root / "openclaw.json").is_file() or (root / "MEMORY.md").is_file() or (root / "memory").is_dir():
+        return "openclaw"
+    return "unknown"
 
 
 def audit(folder: str | Path) -> Audit:
     root = Path(folder).resolve()
     if not root.is_dir():
         raise ValueError("That is not a folder")
-    result = Audit(folder=root.name or str(root))
+    result = Audit(folder=root.name or str(root), layout=detect_layout(root))
     for path in _files(root):
         text = _read(path)
         rel = path.relative_to(root)
@@ -144,8 +172,12 @@ def audit(folder: str | Path) -> Audit:
             result.findings.append(Finding("info", "skipped", str(rel), "too large or unreadable, not read"))
             continue
         result.files_read += 1
-        if path.name in MEMORY_FILES or (rel.parts[0] == "memory" and path.suffix == ".md"):
+        if _is_memory(rel):
             result.memory_files.append(str(rel))
+        if path.name == "SOUL.md" and len(rel.parts) == 1:
+            result.findings.append(
+                Finding("info", "persona file", str(rel), "describes how the old assistant behaves; never imported")
+            )
         for n, line in enumerate(text.splitlines(), 1):
             for kind, pat in SECRET_PATTERNS:
                 if pat.search(line):
@@ -161,14 +193,23 @@ def audit(folder: str | Path) -> Audit:
                 result.findings.append(
                     Finding("high", "gateway without authentication", str(rel), line.strip()[:80], n)
                 )
-            if ORDERS.search(line) and (path.name in MEMORY_FILES or rel.parts[0] == "memory"):
+            if ORDERS.search(line) and _is_memory(rel):
                 result.findings.append(
                     Finding("medium", "memory line that gives orders", str(rel), "would be left out of an import", n)
                 )
         if _is_skill(rel):
             asks = sorted({m.group(0).strip()[:40] for m in SHELL_ASK.finditer(text)})
             name = _skill_name(rel, text)
-            result.skills.append({"name": name, "file": str(rel), "asks_for_shell": bool(asks)})
+            has_scripts = (path.parent / "scripts").is_dir()
+            result.skills.append(
+                {
+                    "name": name,
+                    "file": str(rel),
+                    "asks_for_shell": bool(asks),
+                    "has_scripts": has_scripts,
+                    "imported": False,
+                }  # fmt: skip
+            )
             if asks:
                 result.findings.append(
                     Finding("medium", "skill asks for a shell", str(rel), f"{name}: {', '.join(asks)[:100]}")
@@ -188,9 +229,10 @@ def _skill_name(rel: Path, text: str) -> str:
 
 
 def _lines(text: str) -> list[str]:
-    """Bullets and short paragraphs; headings only set the title of what follows."""
+    """Bullets and short paragraphs; headings only set the title of what follows. A section sign separates
+    entries (Hermes)."""
     out: list[str] = []
-    for block in re.split(r"\n\s*\n", text):
+    for block in re.split(r"\n\s*\n|" + ENTRY_SEPARATOR, text):
         buf: list[str] = []
         for raw in block.splitlines():
             line = raw.strip()
@@ -218,9 +260,9 @@ def cards(folder: str | Path, scope: str = "notes") -> dict[str, Any]:
     left_out = {"orders": 0, "secret": 0, "too_many": 0}
     for path in _files(root):
         rel = path.relative_to(root)
-        daily = rel.parts[0] == "memory" and path.suffix == ".md"
-        if path.name not in MEMORY_FILES and not daily:
+        if not _is_memory(rel):
             continue
+        daily = path.name not in MEMORY_FILES
         text = _read(path)
         if text is None:
             continue
@@ -246,3 +288,56 @@ def cards(folder: str | Path, scope: str = "notes") -> dict[str, Any]:
                 card["when"] = d.group(1)
             out.append(card)
     return {"cards": out, "left_out": left_out}
+
+
+def dry_run(folder: str | Path) -> dict[str, Any]:
+    """Exactly what an import would do, without doing it: per file how many cards, what is left out and why, and
+    the skills that are listed only. Nothing is written, no model or network is used, `would_write` is always 0
+    database rows. Card text is shortened to a preview."""
+    root = Path(folder).resolve()
+    report = audit(root)
+    made = cards(root)
+    per_file: dict[str, int] = {}
+    previews: list[dict[str, str]] = []
+    for c in made["cards"]:
+        per_file[c["title"]] = per_file.get(c["title"], 0) + 1
+        if len(previews) < 10:
+            previews.append({"from": c["title"], "text": c["text"][:80]})
+    return {
+        "dry_run": True,
+        "layout": report.layout,
+        "would_import_cards": len(made["cards"]),
+        "cards_per_file": dict(sorted(per_file.items())),
+        "preview": previews,
+        "left_out": made["left_out"],
+        "skills_listed_only": [{"name": s["name"], "asks_for_shell": s["asks_for_shell"]} for s in report.skills],
+        "skills_imported": 0,
+        "high_findings": report.counts()["high"],
+        "would_write": 0,
+    }
+
+
+def layout_listing(folder: str | Path, *, names: bool = False, max_entries: int = 200) -> list[str]:
+    """The folder's shape for a volunteer to send back so a parser can match a real layout. By default only names
+    this module already knows are shown; every other name becomes `<file>.ext` or `<dir>/`. With `names=True`
+    every name is shown, for the volunteer to read first. No file is opened, and links are not followed."""
+    root = Path(folder).resolve()
+    if not root.is_dir():
+        raise ValueError("That is not a folder")
+    out: list[str] = []
+    for p in sorted(root.rglob("*")):
+        if len(out) >= max_entries:
+            out.append(f"... (stopped at {max_entries} entries)")
+            break
+        if p.is_symlink():
+            continue
+        rel = p.relative_to(root)
+        if ".git" in rel.parts or len(rel.parts) > 4:
+            continue
+        shown = []
+        for i, part in enumerate(rel.parts):
+            known = names or part in KNOWN_NAMES
+            is_dir = root.joinpath(*rel.parts[: i + 1]).is_dir()
+            shown.append(part if known else ("<dir>" if is_dir else "<file>" + Path(part).suffix))
+        out.append("/".join(shown) + ("/" if p.is_dir() else ""))
+    return out
