@@ -408,7 +408,7 @@ ROOTS_MAP = (
 [modules.wiring]
 src = ["backend/src/superaide/main.py"]
 tests = ["backend/tests/test_wiring.py", "backend/tests/test_boot.py"]
-e2e = ["e2e/tests/smoke.spec.ts"]
+e2e = ["e2e/tests/web-shell/smoke.spec.ts"]
 """
 )
 ROOTS_FILES = {
@@ -449,7 +449,7 @@ def test_changing_the_composition_root_runs_its_own_module_and_the_smoke_specs(r
     sel = st.select(["backend/src/superaide/main.py"], roots_idx)
     assert "wiring" in sel.modules
     assert {"test_wiring.py", "test_boot.py", "test_guard.py"} <= names_of(sel)
-    assert "e2e/tests/smoke.spec.ts" in {f"e2e/{s}" if not s.startswith("e2e/") else s for s in sel.e2e_specs}
+    assert "e2e/tests/web-shell/smoke.spec.ts" in {f"e2e/{s}" if not s.startswith("e2e/") else s for s in sel.e2e_specs}
 
 
 def test_without_composition_roots_configured_the_root_is_an_ordinary_dependent(idx) -> None:
@@ -458,10 +458,10 @@ def test_without_composition_roots_configured_the_root_is_an_ordinary_dependent(
 
 def test_the_real_map_names_main_cli_and_plugins_as_roots(real) -> None:
     assert real.mmap.roots == {"main", "cli", "plugins"}
-    assert real.mmap.root_smoke == ["backend/tests/test_main.py"]
+    assert real.mmap.root_smoke == ["backend/tests/console/test_main.py"]
     sel = st.select(["backend/src/superaide/mirror/service.py"], real)
-    assert "tests/test_main.py" in sel.backend_files
-    assert "tests/test_cli.py" not in sel.backend_files  # cli is no longer a dependent of everything
+    assert "tests/console/test_main.py" in sel.backend_files
+    assert "tests/console/test_cli.py" not in sel.backend_files  # cli is no longer a dependent of everything
 
 
 def test_the_real_map_runs_everything_when_the_plugin_list_changes(real) -> None:

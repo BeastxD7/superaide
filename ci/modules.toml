@@ -24,7 +24,7 @@ expansion = "transitive"
 composition_roots = ["main", "cli", "plugins"]
 # Tests that boot the composed app; they run with every backend selection that changes code, in place of the
 # tests that merely import main or cli.
-composition_smoke = ["backend/tests/test_main.py"]
+composition_smoke = ["backend/tests/console/test_main.py"]
 
 # Paths that never need a test run (documentation and repository chrome).
 [ignore]
