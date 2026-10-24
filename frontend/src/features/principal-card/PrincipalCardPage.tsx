@@ -147,6 +147,25 @@ export function PrincipalCardPage() {
           </div>
         </section>
 
+        <section aria-labelledby="card-address" className="mt-6 space-y-1 rounded-xl border border-line bg-white p-4">
+          <h2 id="card-address" className="text-lg font-medium text-ink">
+            The address in your links
+          </h2>
+          <p className="text-sm text-body">
+            Links in your emails and messages, including the card link, point at{' '}
+            <span className="font-medium text-ink" data-testid="outward-address">
+              {card?.address}
+            </span>
+            .
+          </p>
+          {card?.address_is_local && (
+            <Notice tone="error">
+              That address only works on this computer, so people who get your email cannot open the link. Set
+              PUBLIC_BASE_URL to the address people reach Superaide at.
+            </Notice>
+          )}
+        </section>
+
         <section aria-labelledby="card-switch" className="mt-6 space-y-2 rounded-xl border border-line bg-white p-4">
           <h2 id="card-switch" className="text-lg font-medium text-ink">
             Sign my emails by default

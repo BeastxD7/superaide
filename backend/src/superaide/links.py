@@ -11,12 +11,16 @@ else FRONTEND_ORIGIN: a link in our email can never point at someone else's site
 
 from __future__ import annotations
 
+import logging
 from fnmatch import fnmatchcase
 from urllib.parse import urlsplit
 
 from fastapi import Request
 
 from superaide.platform.config import Settings, get_settings
+
+log = logging.getLogger(__name__)
+LOCAL_HOSTS = frozenset({"localhost", "127.0.0.1", "::1", "0.0.0.0"})
 
 
 def _parts(origin: str) -> tuple[str, str] | None:
@@ -84,12 +88,45 @@ def allowed_request_origin(request: Request, settings: Settings | None = None) -
     return None
 
 
+def public_base(settings: Settings | None = None) -> str:
+    """The address Superaide uses in every link that leaves the app: PUBLIC_BASE_URL when set, else FRONTEND_ORIGIN."""
+    s = settings or get_settings()
+    return (s.public_base_url or s.frontend_origin).strip().rstrip("/")
+
+
+def public_url(path: str = "", settings: Settings | None = None) -> str:
+    """The one place an outward-facing link (a card, a mail link, a footer, a share link) gets its address."""
+    return f"{public_base(settings)}/{path.lstrip('/')}" if path else public_base(settings)
+
+
+def is_local(url: str) -> bool:
+    host = (urlsplit(url).hostname or "").lower()
+    return not host or host in LOCAL_HOSTS or host.endswith(".local")
+
+
+def warn_if_local(settings: Settings | None = None) -> bool:
+    """Log a warning when the outward address is localhost but the deployment looks reachable from outside
+    (HTTPS-only cookies or a non-local FRONTEND_ORIGIN/PUBLIC_BASE_URL elsewhere). True when it warned."""
+    s = settings or get_settings()
+    base = public_base(s)
+    if not is_local(base):
+        return False
+    outside = s.session_cookie_secure or any(
+        u and not is_local(u) for u in (s.public_base_url, s.link_origins.split(",")[0].replace("*.", ""))
+    )
+    if outside:
+        log.warning(
+            "Links in emails and messages point at %s, which only works on this machine. Set PUBLIC_BASE_URL to the "
+            "address people reach Superaide at (for example https://example.org).",
+            base,
+        )
+    return outside
+
+
 def request_origin(request: Request, settings: Settings | None = None) -> str:
     """Where this person is using the app (if allowed), else the server's own address."""
     settings = settings or get_settings()
-    return allowed_request_origin(request, settings) or (settings.public_base_url or settings.frontend_origin).rstrip(
-        "/"
-    )
+    return allowed_request_origin(request, settings) or public_base(settings)
 
 
 def same_origin(a: str, b: str) -> bool:

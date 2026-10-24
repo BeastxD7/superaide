@@ -15,8 +15,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from superaide.app.deps import owner_person_id
 from superaide.auth.routes import reject_nul_text, require_csrf_header
+from superaide.links import is_local, public_base
 from superaide.platform.audit import audit
-from superaide.platform.config import get_settings
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import use_instance
 from superaide.principal import card
@@ -79,13 +79,15 @@ def make_owner_router() -> APIRouter:
         return person_id
 
     def _view(s: Any, cur: dict[str, Any]) -> dict[str, Any]:
-        token = card.issue(s) if card.owner_name(s) else None
+        link = card.issue_link(s)
         keys = ("first_name", "initial", "display_name", "can", "cannot", "sign_default", "channels", "wording")
         return {k: cur[k] for k in keys} | {
             "name_shown": card.owner_name(s),
             "default_wording": card.DEFAULT_WORDING,
             "active": cur["sign_default"] and bool(card.owner_name(s)),
-            "preview": f"{get_settings().frontend_origin.rstrip('/')}/c/{token}" if token else None,
+            "preview": link["url"] if link else None,
+            "address": public_base(),
+            "address_is_local": is_local(public_base()),
         }
 
     router = APIRouter(

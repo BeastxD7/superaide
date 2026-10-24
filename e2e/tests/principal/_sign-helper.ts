@@ -23,7 +23,7 @@ export async function queueEmail(): Promise<void> {
         sign_as_ava: true,
         signature_id: 'abc123',
         signature_label: 'Sign as Ava, personal assistant of Jordan',
-        signature_text: '--\nRegards,\nAva, personal assistant of Jordan\n\nAva is an AI assistant acting for Jordan.',
+        signature_text: '--\nRegards,\nAva, personal assistant of Jordan\n\nAva is an AI assistant acting for Jordan. What she may and may not agree to, and how to report a problem: https://example.org/c/Xk3pQ9aB',
       }),
     ],
   )
