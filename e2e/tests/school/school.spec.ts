@@ -10,8 +10,9 @@ test.describe('Ava School, switched off (the default)', () => {
   test('there is no link, the page says it is off and the API answers 404', async ({ page, api, owner }) => {
     void owner
     await page.goto('/dashboard')
-    await expect(page.getByRole('link', { name: 'Ava School' })).toHaveCount(0)
-    await page.goto('/dashboard/school')
+        await expect(page.getByRole('link', { name: 'Learning' })).toHaveCount(0)
+    await page.goto('/dashboard/school') // the old address redirects to Learning > Ava School
+    await expect(page).toHaveURL(/\/dashboard\/learning\/school$/)
     await expect(page.getByText('This isn’t turned on yet.')).toBeVisible()
     expect((await api.get('/app/school')).status()).toBe(404)
   })
@@ -23,7 +24,8 @@ test.describe('Ava School, switched on', () => {
   test('write, refuse a name, agree, save a file, then read a file back', async ({ page, owner }) => {
     void owner
     await page.goto('/dashboard')
-    await page.getByRole('link', { name: 'Ava School' }).click()
+    await page.getByRole('link', { name: 'Learning' }).click()
+    await page.getByRole('link', { name: 'Open Ava School' }).click()
     await expect(page.getByRole('heading', { name: 'Ava School' })).toBeVisible()
 
     // A lesson that names the owner is refused, with the reason.

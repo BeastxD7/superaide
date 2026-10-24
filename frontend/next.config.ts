@@ -40,6 +40,9 @@ const nextConfig: NextConfig = {
   // Old dashboard addresses move permanently (308), query string kept (docs/design/dashboard-ia.md, section 2.2).
   async redirects() {
     return [
+      // Ava School and the rehearsal room live under Learning.
+      { source: '/dashboard/school', destination: '/dashboard/learning/school', permanent: true },
+      { source: '/dashboard/rehearsal', destination: '/dashboard/learning/rehearsal', permanent: true },
       // The Principal card is Gmail's signature now.
       { source: '/dashboard/principal-card', destination: '/dashboard/capabilities/gmail/signature', permanent: true },
       // Gmail's Google sign-in used to come back to the capabilities index with ?gmail=<result>.

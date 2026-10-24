@@ -91,3 +91,16 @@ test('Google Calendar has its own overview and Reading page, and the #calendar a
   await page.goto('/dashboard/capabilities#calendar')
   await expect(page).toHaveURL(/\/dashboard\/capabilities\/calendar\/reading$/)
 })
+
+test('the old Ava School and Rehearsal room addresses redirect permanently to Learning, which is not in the menu while both are off', async ({ page, owner }) => {
+  void owner
+  for (const [old, now] of [['/dashboard/school', '/dashboard/learning/school'], ['/dashboard/rehearsal', '/dashboard/learning/rehearsal']] as const) {
+    const res = await page.request.get(old, { maxRedirects: 0 })
+    expect(res.status()).toBe(308)
+    expect(res.headers()['location']).toContain(now)
+  }
+  await page.goto('/dashboard/learning')
+  await expect(page.getByRole('heading', { level: 1, name: 'Learning' })).toBeVisible()
+  await expect(page.getByText('This isn’t turned on yet.')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Learning', exact: true })).toHaveCount(0) // hidden while nothing in it is on
+})
