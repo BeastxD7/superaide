@@ -1650,6 +1650,17 @@
             ],
             "title": "Confirm Password"
           },
+          "confirmation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmation"
+          },
           "lookback_days": {
             "anyOf": [
               {
@@ -2358,6 +2369,19 @@
           "status"
         ],
         "title": "StatusBody",
+        "type": "object"
+      },
+      "StepUpBody": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "title": "StepUpBody",
         "type": "object"
       },
       "StyleBody": {
@@ -6558,7 +6582,7 @@
         ]
       },
       "put": {
-        "description": "Changes any of the reading settings. Each change is audited. Turning on one-time codes and password resets needs `confirm_password`; mail about them stays hidden otherwise.",
+        "description": "Changes any of the reading settings. Each change is audited. Turning on one-time codes and password resets needs a confirmation first (POST /app/stepup, then send `confirmation`).",
         "operationId": "put_read_settings_app_gmail_read_settings_put",
         "requestBody": {
           "content": {
@@ -13751,6 +13775,55 @@
         "summary": "Replay this rule against my last 90 days",
         "tags": [
           "Owner: standing orders"
+        ]
+      }
+    },
+    "/app/stepup": {
+      "post": {
+        "description": "Returns a single-use `nonce` (valid two minutes, tied to this session and to `action`) and the `method` to show: `confirm` (a dialog with 'I understand') or `password` (STEPUP_MODE=password, for accounts that have one). Send the nonce as `confirmation` with the change. Refusals are 403.",
+        "operationId": "ask_app_stepup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StepUpBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Ask App Stepup Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Ask to confirm a sensitive change",
+        "tags": [
+          "Owner: confirmation"
         ]
       }
     },

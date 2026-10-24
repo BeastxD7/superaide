@@ -48,7 +48,7 @@ CHOICES: dict[str, tuple[tuple[Any, ...], Any, str, str]] = {
         "never",
         "One-time codes and password resets",
         "Mail about one-time codes and password resets is never shown. Turning it on lets a model read secrets "
-        "and means a malicious email could try to make Ava repeat them: it needs your password.",
+        "and means a malicious email could try to make Ava repeat them: you confirm it first.",
     ),
     "body_chars": (
         (1500, 3000, 6000),

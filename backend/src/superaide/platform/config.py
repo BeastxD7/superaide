@@ -59,6 +59,11 @@ class Settings(BaseSettings):
     # cannot say "queued" for something that would do nothing (#326). false restores the old behaviour.
     approval_require_executor: bool = True
 
+    # How a sensitive change (letting Ava read one-time codes, ...) is confirmed (#451). confirm (default): a
+    # dialog with a warning and "I understand", two-step on the server (a single-use nonce). password: the dialog
+    # plus the account password, for accounts that have one (Google-only accounts keep the dialog).
+    stepup_mode: Literal["confirm", "password"] = "confirm"
+
     # Circuit breaker (#140). Off by default. When on, more than `circuit_breaker_limit` deletes or sends
     # carried out inside `circuit_breaker_window_seconds` freeze this owner's Ava (the kill switch), and the
     # owner's own message that is exactly `halt_word` freezes her before any model sees it.

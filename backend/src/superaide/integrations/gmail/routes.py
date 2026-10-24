@@ -23,7 +23,8 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 
 from superaide.app.deps import owner_person_id
-from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header
+from superaide.auth import stepup
+from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header, session_token
 from superaide.identity.trust import Trust
 from superaide.integrations.gmail import client as api
 from superaide.integrations.gmail import settings as gmail_settings
@@ -59,7 +60,8 @@ class ReadSettingsBody(BaseModel):
     lookback_days: int | None = None
     blocked: list[str] | None = None
     allowed: list[str] | None = None
-    confirm_password: str | None = None
+    confirmation: str | None = None  # the single-use nonce from POST /app/stepup
+    confirm_password: str | None = None  # only in STEPUP_MODE=password
 
 
 class AddressBody(BaseModel):
@@ -225,14 +227,14 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         "/read-settings",
         summary="Change what Ava may read in your Gmail",
         description="Changes any of the reading settings. Each change is audited. Turning on one-time codes and "
-        "password resets needs `confirm_password`; mail about them stays hidden otherwise.",
+        "password resets needs a confirmation first (POST /app/stepup, then send `confirmation`).",
     )
     def put_read_settings(
+        request: Request,
         body: ReadSettingsBody,
         _: uuid.UUID = Depends(owner_person_id),
         user_id: uuid.UUID = Depends(current_user_id),
     ) -> dict[str, Any]:
-        from superaide.auth.passwords import verify_password
         from superaide.platform.audit import audit
         from superaide.platform.db.models import UserAccount
 
@@ -243,7 +245,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             assert row is not None
             before = gmail_settings.load(s)
             raw = before.as_dict()
-            sent = body.model_dump(exclude={"confirm_password"}, exclude_none=True)
+            sent = body.model_dump(exclude={"confirm_password", "confirmation"}, exclude_none=True)
             for name, value in sent.items():
                 if name in gmail_settings.CHOICES and value not in gmail_settings.CHOICES[name][0]:
                     raise HTTPException(422, f"{name}: choose one of {list(gmail_settings.CHOICES[name][0])}")
@@ -255,13 +257,20 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 raw[name] = value
             if raw["codes"] == "read" and before.codes != "read":
                 user = s.get(UserAccount, user_id)
-                if not body.confirm_password or user is None or not user.password_hash:
-                    raise HTTPException(403, "Enter your password to let Ava read one-time codes and password resets.")
-                ok, _rehash = verify_password(user.password_hash, body.confirm_password)
-                if not ok:
-                    audit(s, "skills", "gmail_read_setting_refused", setting="codes", reason="wrong password")
-                    s.commit()
-                    raise HTTPException(403, "Your password isn't right.")  # not 401: the app would sign the owner out
+                if user is None:
+                    raise HTTPException(403, "Confirm this change first.")
+                try:
+                    stepup.consume(
+                        s,
+                        user=user,
+                        session_token=session_token(request),
+                        action="gmail_codes_read",
+                        nonce=body.confirmation,
+                        password=body.confirm_password,
+                    )
+                except stepup.StepUpError as exc:
+                    s.commit()  # keep the audit line that says why it was refused
+                    raise HTTPException(403, str(exc)) from exc
             row.settings = {**(row.settings or {}), "read": raw}
             after = gmail_settings.load(s)
             changed = sorted(k for k, v in after.as_dict().items() if v != before.as_dict()[k])

@@ -90,19 +90,25 @@ def test_codes_stay_hidden_by_default_and_the_hidden_text_names_the_setting(owne
     assert "preview withheld" in text_of(run_tool("gmail_search", {"query": "code"}))
 
 
-def test_enabling_codes_needs_the_password_and_is_audited(owner_client, gmail_fake):
+def confirm(client, action="gmail_codes_read"):
+    got = client.post("/app/stepup", json={"action": action})
+    assert got.status_code == 200
+    return got.json()["nonce"]
+
+
+def test_enabling_codes_needs_a_confirmation_and_is_audited(owner_client, gmail_fake):
     _setup(gmail_fake)
     url = "/app/gmail/read-settings"
-    assert owner_client.put(url, json={"codes": "read"}).status_code == 403
-    assert owner_client.put(url, json={"codes": "read", "confirm_password": "nope-nope-nope"}).status_code == 403
+    assert owner_client.put(url, json={"codes": "read"}).status_code == 403  # a one-call change is refused
+    assert owner_client.put(url, json={"codes": "read", "confirmation": "made-up"}).status_code == 403
     assert "834201" not in text_of(run_tool("gmail_read_thread", {"thread_id": "tc"}))
-    ok = owner_client.put(url, json={"codes": "read", "confirm_password": PASSWORD})
+    ok = owner_client.put(url, json={"codes": "read", "confirmation": confirm(owner_client)})
     assert ok.status_code == 200 and ok.json()["settings"]["codes"] == "read"
     assert "834201" in text_of(run_tool("gmail_read_thread", {"thread_id": "tc"}))
     with session_scope() as s:
         actions = [a.action for a in s.query(AuditLog).all()]
-    assert "gmail_read_setting_refused" in actions and "gmail_read_settings" in actions
-    # turning it back off never needs the password
+    assert "stepup_refused" in actions and "stepup_confirmed" in actions and "gmail_read_settings" in actions
+    # turning it back off never needs a confirmation
     assert owner_client.put(url, json={"codes": "never"}).status_code == 200
     assert "834201" not in text_of(run_tool("gmail_read_thread", {"thread_id": "tc"}))
 
