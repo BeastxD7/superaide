@@ -126,7 +126,7 @@ export type StepView = {
   hint: string | null
 }
 
-export type SourceRef = { n: number; uri: string; kind: 'memory' | 'message' | 'web' | 'calendar' | 'email' | 'other'; title: string; cited_text: string }
+export type SourceRef = { n: number; uri: string; kind: 'memory' | 'message' | 'web' | 'calendar' | 'email' | 'approval' | 'other'; title: string; cited_text: string }
 export type Message = {
   id: string
   from: 'you' | 'agent'

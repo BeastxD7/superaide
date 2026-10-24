@@ -16,7 +16,7 @@ from typing import Any, Literal
 Role = Literal["user", "assistant"]
 Effort = Literal["low", "medium", "high"]
 StopReason = Literal["end", "tool_calls", "pause", "max_tokens", "refusal", "error"]
-SourceKind = Literal["memory", "message", "calendar", "web", "other"]
+SourceKind = Literal["memory", "message", "calendar", "email", "approval", "web", "other"]
 
 
 @dataclass
@@ -42,6 +42,10 @@ def source_kind(uri: str) -> SourceKind:
         return "message"
     if uri.startswith("ava://cal/"):
         return "calendar"
+    if uri.startswith("ava://mail/"):
+        return "email"
+    if uri.startswith("ava://approval/"):
+        return "approval"
     if uri.startswith(("http://", "https://")):
         return "web"
     return "other"

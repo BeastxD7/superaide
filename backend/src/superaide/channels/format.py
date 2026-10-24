@@ -163,17 +163,43 @@ def _label(title: str) -> str:
     return " ".join(title.split())[:80] or "Source"
 
 
+_MEMORY_ID = re.compile(r"^ava://memory/([0-9a-fA-F-]{8,40})$")
+_MAIL_ID = re.compile(r"^ava://mail/([A-Za-z0-9_-]{4,64})$")
+SOURCE_NOTE = "[1] means a source: open its link to see where it came from."
+
+
+def app_base() -> str:
+    """Where the signed-in owner's app lives, for links in a channel message (never from model text)."""
+    from superaide.config import get_settings
+
+    s = get_settings()
+    return (s.public_base_url or s.frontend_origin).rstrip("/")
+
+
+def deep_link(src: dict[str, Any]) -> str:
+    """A destination built in code from a stored source id: the owner's own Notebook entry or Gmail
+    message. Empty when the source has none. The cited text and any model text never go into it."""
+    uri = str(src.get("uri") or "")
+    kind = src.get("kind")
+    if kind == "web" and uri.startswith(("http://", "https://")):
+        return uri
+    if kind == "memory" and (m := _MEMORY_ID.match(uri)):
+        return f"{app_base()}/dashboard/notebook#note-{m.group(1)}"
+    if kind == "email" and (m := _MAIL_ID.match(uri)):
+        return f"https://mail.google.com/mail/u/0/#all/{m.group(1)}"
+    return ""
+
+
 def source_entries(sources: Iterable[dict[str, Any]]) -> list[tuple[int, str, str]]:
-    """(n, label, url) per source. Web sources are labelled by domain and keep their link;
-    everything else shows its title only. The cited text is never included."""
+    """(n, label, url) per source. Web sources are labelled by domain; notes and emails by title and
+    carry a deep link into the app or Gmail (signed-in only); the rest show their title. The cited
+    text is never included."""
     entries = []
     for i, src in enumerate(sources, start=1):
         n = int(src.get("n") or i)
-        uri = str(src.get("uri") or "")
-        if src.get("kind") == "web" and uri.startswith(("http://", "https://")):
-            entries.append((n, _domain(uri), uri))
-        else:
-            entries.append((n, _label(str(src.get("title") or "")), ""))
+        url = deep_link(src)
+        label = _domain(url) if src.get("kind") == "web" and url else _label(str(src.get("title") or ""))
+        entries.append((n, label, url))
     return entries
 
 
@@ -184,7 +210,9 @@ def telegram_footer(sources: Iterable[dict[str, Any]]) -> str:
         else f"[{n}] {html.escape(label, quote=False)}"
         for n, label, url in source_entries(sources)
     ]
-    return "<i>Sources: " + " · ".join(items) + "</i>" if items else ""
+    if not items:
+        return ""
+    return "<i>Sources: " + " · ".join(items) + "\n" + html.escape(SOURCE_NOTE, quote=False) + "</i>"
 
 
 def slack_footer(sources: Iterable[dict[str, Any]]) -> str:
@@ -194,12 +222,12 @@ def slack_footer(sources: Iterable[dict[str, Any]]) -> str:
         else f"[{n}] {_slack_escape(label)}"
         for n, label, url in source_entries(sources)
     ]
-    return "_Sources: " + " · ".join(items) + "_" if items else ""
+    return "_Sources: " + " · ".join(items) + "\n" + _slack_escape(SOURCE_NOTE) + "_" if items else ""
 
 
 def plain_footer(sources: Iterable[dict[str, Any]]) -> str:
     items = [f"[{n}] {label} ({url})" if url else f"[{n}] {label}" for n, label, url in source_entries(sources)]
-    return "Sources: " + " · ".join(items) if items else ""
+    return "Sources: " + " · ".join(items) + "\n" + SOURCE_NOTE if items else ""
 
 
 # --- splitting -----------------------------------------------------------------------
