@@ -44,6 +44,8 @@ For a changed file the selector finds the files that import it, transitively (`e
 
 Why file level and not package level: at package level the graph is one blob (the reverse closure of 40 of 58 packages is 52 of 58). At file level one cycle of 34 files remains (`pipeline`, `factory`, `app.routes`, `brain.loop`, `policy.actions`, `knowledge.*`, `triage.service`, `skills.registry`, `reception.service`, `voice.gateway` and a few more, joined by lazy imports). A change to any of those files selects about 150 of the 186 test files; a change to a leaf (`mirror`, `passport`, `school`, `push`, `rehearsal`, `memsocket`, `brainshare`, `dissent`, `mandate`, `imports`) selects 65 to 80, mostly because `app` and `console` (which import almost everything) and the route-wide guards come along. Breaking that cycle is the biggest lever for making selection sharper; it is out of scope here.
 
+**Composition roots.** `[settings] composition_roots = ["main", "cli", "plugins"]` are files that import everything to wire it together. They are never counted as dependents (nor walked through): without that, every module change selected the tests of everything `main` imports. `composition_smoke` (`tests/test_main.py`, which boots the composed app) runs with every backend selection that changes code instead. A change in `main.py` or `cli.py` still selects the console module and the smoke specs; a change in `plugins.py` (the list of modules that register themselves) runs everything.
+
 `expansion = "direct"` (only the first importer, not the whole chain) is available as an owner decision: faster, can miss a break that travels through two hops. The dry run below shows both.
 
 ## What the selector decides
