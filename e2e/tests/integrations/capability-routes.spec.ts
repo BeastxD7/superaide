@@ -1,4 +1,3 @@
-// ci-module: integrations
 // #441: a capability has its own pages under /dashboard/capabilities/<capability>, with breadcrumbs and a sub-navigation,
 // and the old addresses redirect permanently. Desktop here, the phone in capability-routes.mobile.spec.ts.
 import AxeBuilder from '@axe-core/playwright'
