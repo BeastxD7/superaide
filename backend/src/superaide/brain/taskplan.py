@@ -1,5 +1,5 @@
 # ruff: noqa: E501  (prompt text and owner-facing messages)
-"""The human-like task protocol (issue #330), behind TASK_PROTOCOL_ENABLED (off by default).
+"""The human-like task protocol (issue #330), behind TASK_PROTOCOL_ENABLED (on by default).
 
 A good human assistant handed a multi-step errand does not go straight to "may I send this?". She states the
 goal, reads what is already there (the thread, the calendar, her notes), picks a route she can actually

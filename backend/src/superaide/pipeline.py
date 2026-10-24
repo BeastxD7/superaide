@@ -720,11 +720,11 @@ class Agent:
         return reply, [*result.notes, f"steps:{result.steps}"], meta
 
     def _slack_thread_block(self, ctx: Context, msg: InboundMessage, owner_name: str) -> str:
-        """SLACK_THREAD_HISTORY_ENABLED: the thread the owner @-mentioned Ava in, read with conversations.replies, as
+        """The thread the owner @-mentioned Ava in, read with conversations.replies, as
         quoted text for this turn only (never stored). A thread is readable by everyone in the channel, so it is
-        public-level; each line says who wrote it, and only the owner's lines are the owner's. Empty when off, not a
-        Slack thread, or Slack refuses (no history scope)."""
-        if not (self.settings.slack_thread_history_enabled and ctx.provider == "slack" and msg.thread_id):
+        public-level; each line says who wrote it, and only the owner's lines are the owner's. Empty when not a
+        Slack thread, or Slack refuses (no history scope; startup reports it, channels/slack/scopes.py)."""
+        if not (ctx.provider == "slack" and msg.thread_id):
             return ""
         messenger = getattr(self.messengers.get("slack"), "thread_history", None)
         if messenger is None:

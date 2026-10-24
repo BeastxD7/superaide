@@ -80,9 +80,6 @@ class Settings(BaseSettings):
     # "Typing..." on Telegram and a status or "Working on it..." placeholder on Slack while Ava prepares a
     # reply. Cosmetic only: it changes neither what is said nor who may see it. On by default; false = silent.
     typing_indicators: bool = True
-    slack_thread_history_enabled: bool = (
-        False  # read the thread when the owner @-mentions Ava in it (needs history scopes)
-    )
     principal_card_days: int = Field(default=30, ge=1, le=365)
     # Misses (unknown, expired or revoked card links) one address may make a minute before /p/card answers 429.
     # 0 = no limit.
@@ -379,11 +376,12 @@ class Settings(BaseSettings):
     # Echo Filter (#137, tracking #142). Off: facts are stored as before. On: a fact from a link, Telegram or
     # Slack is stored as hearsay with its root origin; a second independent root, or the owner, makes it a fact.
     echo_filter_enabled: bool = False
-    # Human-like task protocol (#330). Off: nothing changes (same prompt, tools and gates). On: for an errand that ends
+    # Human-like task protocol (#330). On by default (owner decision, #448). Off: nothing changes (same prompt,
+    # tools and gates). On: for an errand that ends
     # in an approval, Ava must first read the relevant mail/calendar/notes and record a plan (goal, evidence, route,
     # ability check, recommendation) that code validates; propose_action is refused without one, and the plan is shown
     # beside the approval. The model proposes, code decides.
-    task_protocol_enabled: bool = False
+    task_protocol_enabled: bool = True
     # One Good Question (#121, tracking #142). Off: /app/question answers 404. On: Ava may ask the owner at most
     # one clarifying question a day (a database rule), chosen in code by uncertainty times impact.
     one_good_question_enabled: bool = False

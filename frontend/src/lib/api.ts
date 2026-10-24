@@ -38,7 +38,7 @@ export type Me = {
     // The Slack app is connected, whether or not the owner's own Slack account is linked. Optional: an older API omits it.
     slack_available?: boolean
     // Whether Telegram and Slack still accept the saved token. Optional: an older API doesn't send it.
-    health?: Partial<Record<'telegram' | 'slack', { status: 'ok' | 'auth_failed' | 'unreachable' }>>
+    health?: Partial<Record<'telegram' | 'slack', { status: 'ok' | 'auth_failed' | 'unreachable'; missing_scopes?: string[] }>>
   }
 }
 

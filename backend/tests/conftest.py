@@ -80,6 +80,7 @@ os.environ.update(
         "MANDATES_ENABLED": "false",  # on by default (#448); pinned off here, tests opt in (tests/mandate)
         "MANDATE_SHADOW_ENABLED": "false",
         "MANDATE_SKIP_ENABLED": "false",
+        "TASK_PROTOCOL_ENABLED": "false",  # on by default (#448); pinned off here, tests opt in
         "FAKE_LLM": "true",
         "EMBEDDER": "fake",
         "VOYAGE_API_KEY": "",

@@ -22,11 +22,14 @@ type Service = {
   available?: boolean
   reason?: string
   // Telegram and Slack: whether the service still accepts the saved token (backend channels/health.py).
-  health?: { status: 'ok' | 'auth_failed' | 'unreachable'; last_error?: string; since?: string | null }
+  health?: { status: 'ok' | 'auth_failed' | 'unreachable'; last_error?: string; since?: string | null; missing_scopes?: string[] }
 }
 
 // Saved but refused by the service (revoked or regenerated token): needs a new one.
 const rejected = (s: Service) => s.connected && s.health?.status === 'auth_failed'
+
+// Slack: bot permissions the installed app lacks (backend channels/slack/scopes.py, checked at startup and on connect).
+const missingScopes = (s: Service) => (s.connected && !rejected(s) ? (s.health?.missing_scopes ?? []) : [])
 
 type Status = {
   services: Record<'telegram' | 'slack' | 'whatsapp' | 'deepgram' | 'elevenlabs', Service> & { google: GoogleService }
@@ -149,9 +152,11 @@ export function Connections({ agentName, me, refreshMe }: { agentName: string; m
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-medium text-ink">{name}</span>
-                <span className={`block truncate text-xs ${rejected(s) ? 'text-warn' : 'text-muted'}`}>
+                <span className={`block truncate text-xs ${rejected(s) || missingScopes(s).length ? 'text-warn' : 'text-muted'}`}>
                   {rejected(s)
                     ? `Token rejected: reconnect${s.meta?.username ? ` (@${s.meta.username})` : ''}`
+                    : missingScopes(s).length
+                      ? `Missing Slack permissions: ${missingScopes(s).join(', ')}`
                     : s.connected
                       ? s.via === 'env'
                         ? 'Connected from the .env file'
@@ -292,6 +297,17 @@ function ConnectForm({
             {provider === 'telegram'
               ? 'In BotFather, send /token and pick your bot to get its current token, then paste it below.'
               : 'Reinstall your Slack app (OAuth & Permissions) and paste the new tokens below.'}
+          </Notice>
+        </div>
+      )}
+      {provider === 'slack' && missingScopes(service).length > 0 && (
+        <div className="mb-3" data-testid="slack-missing-scopes">
+          <Notice tone="warn">
+            Your Slack app is missing {missingScopes(service).length === 1 ? 'a permission' : 'permissions'}:{' '}
+            <strong>{missingScopes(service).join(', ')}</strong>. Ava still works, but the part that needs{' '}
+            {missingScopes(service).length === 1 ? 'it' : 'them'} (for example reading a thread) is off. In your Slack app, open
+            OAuth &amp; Permissions, add {missingScopes(service).length === 1 ? 'it' : 'them'} under Bot Token Scopes, reinstall
+            the app to your workspace, then paste the new Bot User OAuth Token below.
           </Notice>
         </div>
       )}

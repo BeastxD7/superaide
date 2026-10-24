@@ -102,7 +102,7 @@ class ChannelRunner:
         import hashlib
 
         from superaide.channels import health
-        from superaide.channels.slack import auth_error, socket_mode_handler
+        from superaide.channels.slack import auth_error, scopes, socket_mode_handler
         from superaide.platform.tenancy.context import use_instance
         from superaide.platform.tenancy.endpoints import slack_key
 
@@ -137,6 +137,7 @@ class ChannelRunner:
                             health.record("slack", health.AUTH_FAILED, f"Slack rejected the token ({code})")
                         continue
                     health.record("slack", health.OK)
+                    scopes.validate_and_record(bot)  # #447: ERROR + in-app notice if a permission is missing
                 self._apps[app] = (scope, _Held(handler, lock))
             return sorted(slack_key(apps[a][2], a) for a in self._apps if a in apps)
 
@@ -185,7 +186,7 @@ class ChannelRunner:
             import hashlib
 
             from superaide.channels import health
-            from superaide.channels.slack import auth_error, socket_mode_handler
+            from superaide.channels.slack import auth_error, scopes, socket_mode_handler
 
             held = claim_listener(f"slack:{hashlib.sha256(app.encode()).hexdigest()[:16]}")
             if held is None:
@@ -203,6 +204,7 @@ class ChannelRunner:
                     health.record("slack", health.AUTH_FAILED, f"Slack rejected the token ({code})")
             else:
                 health.record("slack", health.OK)
+                scopes.validate_and_record(bot)
 
 
 class _Held:
