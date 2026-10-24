@@ -238,3 +238,20 @@ def test_the_gmail_status_says_when_drafts_were_last_switched(owner_client, gmai
     assert owner_client.get("/app/gmail").json()["last_changed"] == {}
     owner_client.post("/app/gmail/drafts", json={"enabled": False})
     assert set(owner_client.get("/app/gmail").json()["last_changed"]) == {"drafts"}
+
+
+def test_the_inbox_sorter_reads_the_owners_excerpt_and_batch(owner_client, gmail_fake):
+    # #433: the inbox triage excerpt and the emails sorted per check were constants (1000 and 50)
+    from superaide.integrations.gmail import inbox
+
+    assert gmail_settings.from_raw(None).triage_excerpt == 1000 and gmail_settings.from_raw(None).triage_batch == 50
+    _setup(gmail_fake)
+    assert (
+        owner_client.put("/app/gmail/read-settings", json={"triage_excerpt": 500, "triage_batch": 25}).status_code
+        == 200
+    )
+    assert owner_client.put("/app/gmail/read-settings", json={"triage_batch": 7}).status_code == 422
+    with session_scope() as s:
+        cfg = gmail_settings.load(s)
+        assert (cfg.triage_excerpt, cfg.triage_batch) == (500, 25)
+        assert inbox.gmail_settings is gmail_settings  # the sorter asks the same settings the card writes

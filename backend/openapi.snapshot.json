@@ -1731,6 +1731,28 @@
               }
             ],
             "title": "Thread Depth"
+          },
+          "triage_batch": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Triage Batch"
+          },
+          "triage_excerpt": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Triage Excerpt"
           }
         },
         "title": "ReadSettingsBody",
