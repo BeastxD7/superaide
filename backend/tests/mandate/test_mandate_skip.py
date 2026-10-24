@@ -16,7 +16,7 @@ from superaide.platform.db.models import Approval, AuditLog
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import use_instance
 from superaide.policy.killswitch import set_state
-from tests.connectors.test_calendar_actions import (  # noqa: F401  (fixtures)
+from tests.integrations.test_calendar_actions import (  # noqa: F401  (fixtures)
     _seed,
     app,
     fake,

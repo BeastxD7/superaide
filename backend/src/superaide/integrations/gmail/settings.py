@@ -92,7 +92,7 @@ def from_raw(raw: dict[str, Any] | None) -> ReadSettings:
 
 
 def load(session: Session) -> ReadSettings:
-    from superaide.skills import gmail
+    from superaide.integrations.gmail import skill as gmail
 
     row = gmail.installed(session)
     return from_raw(((row.settings if row is not None else None) or {}).get("read"))

@@ -32,7 +32,7 @@ def schedule_recurring() -> None:
             with use_instance(scope), session_scope() as s:
                 ensure_scheduled(s)
             with use_instance(scope), session_scope() as s:
-                from superaide.skills import gmail_inbox
+                from superaide.integrations.gmail import inbox as gmail_inbox
 
                 gmail_inbox.ensure_scheduled(s)  # nothing unless Gmail triage is on and connected
             with use_instance(scope), session_scope() as s:

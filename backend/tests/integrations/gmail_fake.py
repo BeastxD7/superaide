@@ -13,10 +13,11 @@ from urllib.parse import parse_qs
 import httpx
 import pytest
 
-from superaide.connectors import gmail as api
-from superaide.connectors import google
+from superaide.integrations.gmail import client as api
+from superaide.integrations.gmail import skill as gmail
+from superaide.integrations.google import client as google
 from superaide.platform.db.session import session_scope
-from superaide.skills import gmail, registry
+from superaide.skills import registry
 from superaide.vault import store
 
 OWNER_ADDR = "jordan@example.com"

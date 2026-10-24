@@ -37,7 +37,7 @@ def _since(at: datetime | None, tz: str) -> str:
 
 
 def gmail_line(session: Session, tz: str) -> str:
-    from superaide.skills import gmail
+    from superaide.integrations.gmail import skill as gmail
     from superaide.vault.store import stored
 
     st = gmail.status(session)
@@ -65,7 +65,7 @@ def gmail_line(session: Session, tz: str) -> str:
 
 
 def calendar_line(session: Session) -> str:
-    from superaide.skills import calendar
+    from superaide.integrations.calendar import skill as calendar
 
     if not calendar.enabled(session):
         return f"Calendar: not added. The owner can add it under {PLACE_CALENDAR}."
@@ -133,7 +133,8 @@ def block(session: Session, *, tz: str, web: bool) -> str:
         "- " + approvals_line() + ". Anything else cannot be queued; say so and offer text the owner can send.",
         CHANGED_RULE,
     ]
-    from superaide.skills import gmail, gmail_settings
+    from superaide.integrations.gmail import settings as gmail_settings
+    from superaide.integrations.gmail import skill as gmail
 
     if gmail.can_read(session):
         lines.append(gmail_settings.rules_text(gmail_settings.load(session)))

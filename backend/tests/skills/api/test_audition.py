@@ -91,7 +91,7 @@ def test_nothing_is_sent_or_changed_and_no_content_is_shown(owner, on, agent):
 
 def test_no_network_tool_runs_for_real_even_a_read(owner, on, agent, monkeypatch):
     """Gmail and calendar reads would call Google; the executor answers them with a canned result instead."""
-    import superaide.skills.gmail as gmail
+    import superaide.integrations.gmail.skill as gmail
 
     called = []
     monkeypatch.setattr(gmail, "search", lambda *a, **k: called.append("gmail") or "REAL", raising=False)

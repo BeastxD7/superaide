@@ -29,7 +29,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.connectors import google
+from superaide.integrations.google import client as google
 from superaide.jobs.queue import enqueue, handler
 from superaide.platform.audit import audit
 from superaide.platform.config import get_settings
@@ -133,7 +133,7 @@ def stop(session: Session, row: CalendarWatch) -> None:
 def ensure(session: Session, owner: Person, now: datetime | None = None) -> CalendarWatch | None:
     """Keep exactly one live channel while push is on and the calendar is readable; none otherwise.
     Called from each meeting scan, so it follows the owner connecting or disconnecting."""
-    from superaide.skills import calendar
+    from superaide.integrations.calendar import skill as calendar
 
     now = now or datetime.now(UTC)
     current = active(session, owner)
@@ -159,7 +159,7 @@ def renew(session: Session, job: object) -> None:
     owner = session.get(Person, row.owner_person_id)
     if owner is None:
         return
-    from superaide.skills import calendar
+    from superaide.integrations.calendar import skill as calendar
 
     if not (push_on() and calendar.enabled(session) and calendar.connected()):
         row.status = "stopped"

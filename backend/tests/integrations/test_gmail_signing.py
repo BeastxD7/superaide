@@ -8,14 +8,14 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
-from superaide.connectors import gmail as api
+from superaide.integrations.gmail import client as api
 from superaide.platform.config import get_settings
 from superaide.platform.db.models import Approval
 from superaide.platform.db.session import session_scope
 from superaide.policy import binding
 from superaide.principal import card
-from tests.connectors.gmail_fake import connect, gmail_fake_fixture, owner_client_fixture  # noqa: F401
-from tests.connectors.test_gmail_compose import ARGS, ASK
+from tests.integrations.gmail_fake import connect, gmail_fake_fixture, owner_client_fixture  # noqa: F401
+from tests.integrations.test_gmail_compose import ARGS, ASK
 from tests.pipeline.test_loop import Script, tool_use, turn_for
 
 LINE = "Ava, personal assistant of Jordan"
@@ -163,7 +163,7 @@ def test_the_owners_chosen_name_and_wording_are_used(owner_client, gmail_fake):
 
 
 def test_a_reply_draft_is_signed_the_same_way(owner_client, gmail_fake):
-    from tests.connectors.gmail_fake import mail
+    from tests.integrations.gmail_fake import mail
 
     connect(scopes=(api.READONLY, api.COMPOSE), drafts=True)
     gmail_fake.add(mail("m1", thread="t1", sender="Daniel Kim <daniel@acme.com>"))

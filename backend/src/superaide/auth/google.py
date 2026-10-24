@@ -34,8 +34,8 @@ from sqlalchemy.orm import Session
 
 from superaide.auth import service
 from superaide.auth.service import AuthError, Client
-from superaide.connectors import google_signin
-from superaide.connectors.google_signin import GoogleIdentity, SignInError
+from superaide.integrations.google import signin as google_signin
+from superaide.integrations.google.signin import GoogleIdentity, SignInError
 from superaide.links import allowed_request_origin, same_origin
 from superaide.platform.audit import account_audit
 from superaide.platform.config import get_settings

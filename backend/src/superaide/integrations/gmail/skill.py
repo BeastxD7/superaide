@@ -28,15 +28,15 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.connectors import gmail as api
-from superaide.connectors import google
+from superaide.integrations.gmail import client as api
+from superaide.integrations.gmail import settings as gmail_settings
+from superaide.integrations.google import client as google
 from superaide.platform.audit import audit
 from superaide.platform.config import get_settings
 from superaide.platform.db.models import Approval, InstalledSkill, Person
 from superaide.policy import recipients
 from superaide.policy.binding import content_hash, payload_hash, seal
 from superaide.policy.registry import DISCARDERS, EXECUTORS
-from superaide.skills import gmail_settings
 
 SKILL_ID = "superaide/gmail"
 SLOT = ("google", "gmail_refresh_token")

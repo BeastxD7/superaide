@@ -1,4 +1,3 @@
-# ci-module: connectors
 # ruff: noqa: F811
 """#433: what Ava may read in Gmail is the owner's own setting, enforced in the tool results, never hidden."""
 
@@ -6,11 +5,12 @@ from __future__ import annotations
 
 import pytest
 
-from superaide.connectors import gmail as api
+from superaide.integrations.gmail import client as api
+from superaide.integrations.gmail import settings as gmail_settings
+from superaide.integrations.gmail import skill as gmail
 from superaide.platform.db.models import AuditLog, InstalledSkill
 from superaide.platform.db.session import session_scope
-from superaide.skills import gmail, gmail_settings
-from tests.connectors.gmail_fake import connect, gmail_fake_fixture, mail, owner_client_fixture  # noqa: F401
+from tests.integrations.gmail_fake import connect, gmail_fake_fixture, mail, owner_client_fixture  # noqa: F401
 from tests.pipeline.test_loop import Script, tool_use, turn_for
 
 KOTAK = "Kotak Bank <alerts@kotak.example>"
