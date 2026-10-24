@@ -27,7 +27,7 @@ async function hold(page: import('@playwright/test').Page, glob: string) {
 
 test('a file shows the loader with its name and type, then a done state', async ({ page }, info) => {
   const release = await hold(page, '**/api/app/intro/files')
-  await chooseFile(page, textFile('resume.txt', 'I lead applied AI at PebbleRoad in Singapore.'))
+  await chooseFile(page, textFile('resume.txt', 'I lead applied AI at Larkfield in Singapore.'))
   const loader = page.getByTestId('doc-loader')
   await expect(loader).toBeVisible()
   await expect(loader).toContainText('Reading resume.txt…')
@@ -63,7 +63,7 @@ test('a link shows a link icon and the host name', async ({ page }) => {
 test('a failed upload shows the error and Try again reads the file again', async ({ page }) => {
   let fail = true
   await page.route('**/api/app/intro/files', (route) => (fail ? route.abort('connectionrefused') : route.continue()))
-  await chooseFile(page, textFile('resume.txt', 'I lead applied AI at PebbleRoad in Singapore.'))
+  await chooseFile(page, textFile('resume.txt', 'I lead applied AI at Larkfield in Singapore.'))
   await expect(page.getByText(/Can't reach Superaide/)).toBeVisible()
   await expect(page.getByTestId('doc-loader')).toHaveCount(0)
   fail = false
@@ -95,7 +95,7 @@ test('a file that could not be read says so and Try again reads it again', async
     retried += 1
     return route.fulfill({ json: RETRIED })
   })
-  await chooseFile(page, textFile('resume.txt', 'I lead applied AI at PebbleRoad in Singapore.'))
+  await chooseFile(page, textFile('resume.txt', 'I lead applied AI at Larkfield in Singapore.'))
   await expect(page.getByText("I couldn't read resume.txt.")).toBeVisible()
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/${process.env.SHOT_PREFIX ?? 'after'}-failed-${info.project.name}.png` })
   await page.getByRole('button', { name: 'Try again' }).click()

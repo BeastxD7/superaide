@@ -12,7 +12,7 @@ from superaide.policy.actions import decide
 
 @pytest.fixture
 def on(monkeypatch, settings):
-    monkeypatch.setattr(settings, "voice_two_channel", True)
+    monkeypatch.setattr(settings, "voice_provider", "fake")
 
 
 def test_the_web_route_confirms_a_call_proposal_and_shows_the_readback(on, owner):

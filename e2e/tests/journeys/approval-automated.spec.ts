@@ -13,8 +13,8 @@ test('an automated recipient the owner asked for is queued with a strong warning
       TENANT,
       AGENT,
       JSON.stringify({
-        summary: 'To: Kotak Mahindra Bank <noreply@mailer.kotak.com> · Subject: Re: Your offer · Thank you!',
-        to: ['noreply@mailer.kotak.com'],
+        summary: 'To: Marlin Bank <noreply@mailer.marlin.example> · Subject: Re: Your offer · Thank you!',
+        to: ['noreply@mailer.marlin.example'],
         subject: 'Re: Your offer',
         warnings: ['This address looks automated; a reply is probably not read.'],
       }),
@@ -22,7 +22,7 @@ test('an automated recipient the owner asked for is queued with a strong warning
   )
   await page.goto('/dashboard/approvals')
   const fields = page.getByTestId('approval-fields')
-  await expect(fields).toContainText('noreply@mailer.kotak.com')
+  await expect(fields).toContainText('noreply@mailer.marlin.example')
   await expect(fields).toContainText('Re: Your offer')
   const chip = page.getByTestId('approval-warning').first()
   await expect(chip).toContainText('This address looks automated')

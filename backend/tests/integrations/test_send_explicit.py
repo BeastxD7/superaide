@@ -1,5 +1,5 @@
 # ruff: noqa: F811
-"""#394: the owner says "say thanks to kotak" / "send it": the draft and the approval are made in ONE step, even to
+"""#394: the owner says "say thanks to marlin" / "send it": the draft and the approval are made in ONE step, even to
 an automated address (with a strong warning on the card), and Ava never contradicts what she can do."""
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ from superaide.policy import recipients
 from tests.integrations.gmail_fake import connect, gmail_fake_fixture, mail, owner_client_fixture  # noqa: F401
 from tests.pipeline.test_loop import Script, tool_use, turn_for
 
-KOTAK = "Kotak Mahindra Bank <noreply@mailer.kotak.com>"
+MARLIN = "Marlin Bank <noreply@mailer.marlin.example>"
 YES = {"reaches_a_person": "no", "evidence": "bulk marketing sender"}
 
 
@@ -25,23 +25,23 @@ def _connect() -> None:
 
 def _marketing(gmail_fake):
     gmail_fake.add(
-        mail("k1", thread="tk", sender=KOTAK, subject="Your offer", body="Do not reply to this automated message.")
+        mail("k1", thread="tk", sender=MARLIN, subject="Your offer", body="Do not reply to this automated message.")
     )
 
 
-def test_the_exact_conversation_say_thanks_to_kotak_makes_the_draft_and_the_card_in_one_step(owner_client, gmail_fake):
+def test_the_exact_conversation_say_thanks_to_marlin_makes_the_draft_and_the_card_in_one_step(owner_client, gmail_fake):
     _marketing(gmail_fake)
     _connect()
     with session_scope() as s:
         script = Script(
-            tool_use("gmail_search", {"query": "kotak"}, "a"),
+            tool_use("gmail_search", {"query": "marlin"}, "a"),
             tool_use("gmail_send", {"thread_id": "tk", "text": "Thank you!", **YES}, "b"),
-            "I've drafted a thank-you to Kotak and queued it for your approval. It is flagged as an automated address.",
+            "I've drafted a thank-you to Marlin and queued it for your approval. It is flagged as an automated one.",
         )
         # the owner's own words name the sender, so this is their request, not the model's idea
-        result = turn_for(s, script, "Say thanks to kotak").run([{"role": "user", "content": "x"}])
+        result = turn_for(s, script, "Say thanks to marlin").run([{"role": "user", "content": "x"}])
         [a] = s.scalars(select(Approval)).all()
-        assert a.kind == "gmail_send" and a.status == "pending" and a.payload["to"] == ["noreply@mailer.kotak.com"]
+        assert a.kind == "gmail_send" and a.status == "pending" and a.payload["to"] == ["noreply@mailer.marlin.example"]
         assert a.payload["reaches_a_person"] == "no"  # still recorded
     assert gmail_fake.drafts and not gmail_fake.sent
     assert "queued it for your approval" in result.text  # backed by the tool result, so kept

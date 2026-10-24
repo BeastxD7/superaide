@@ -1,4 +1,4 @@
-"""Realtime voice providers for the live call shell (#125). Pluggable, off by default, nothing bought.
+"""Realtime voice providers for the live call shell (#125). Pluggable; on with a provider key.
 
 A realtime voice vendor does one job here: turn the caller's speech into transcript turns and speak
 back the text we hand it. It is a thin shell. It holds no tools, no identity, no memory and no policy:
@@ -6,7 +6,9 @@ what the caller wants goes to the text agent as plain text, anything it proposes
 approval marked voice-origin (voice/gateway.py), and only a tap inside the Superaide app confirms it.
 
 VOICE_PROVIDER picks the provider:
-- `none` (default): live voice is off; `choose` returns a provider that refuses to open.
+- `auto` (default, #448): `deepgram` when a key is present (VOICE_PROVIDER_API_KEY or DEEPGRAM_API_KEY), else `none`.
+  There is no on/off flag: adding the key turns voice on; `voice_hint` tells the owner what to add while it is off.
+- `none`: live voice is off; `choose` returns a provider that refuses to open.
 - `fake`: replays scripted transcript turns and records what was spoken. Used by the tests, the
   text-versus-voice experiment (evals/voice_vs_text.py) and the demo in docs/voice.md. Free, offline.
 - `deepgram`: the documented hosted adapter (`DeepgramVoiceProvider`): Deepgram speech-to-text for what the caller
@@ -34,7 +36,38 @@ from superaide.features.voice import providers
 from superaide.features.voice.providers import VoiceError
 from superaide.platform.config import Settings, get_settings
 
-PROVIDER_KINDS = ("none", "fake", "realtime", "deepgram")
+PROVIDER_KINDS = ("auto", "none", "fake", "realtime", "deepgram")
+NEEDS_KEY_HINT = "Voice is off. Add a Deepgram key (DEEPGRAM_API_KEY, or save it under Connections) to turn it on."
+
+
+def _key(s: Settings) -> str:
+    return (s.voice_provider_api_key or s.deepgram_api_key or "").strip()
+
+
+def resolved_kind(settings: Settings | None = None) -> str:
+    """The provider in force: `auto` is deepgram with a key and none without. An unknown name is `none`."""
+    s = settings or get_settings()
+    kind = (s.voice_provider or "auto").strip().lower()
+    if kind == "auto":
+        return "deepgram" if _key(s) else "none"
+    return kind if kind in PROVIDER_KINDS else "none"
+
+
+def voice_available(settings: Settings | None = None) -> bool:
+    """Is live voice on? Only with a provider that can run: the offline fake, or a vendor with its key.
+    Never true without a key, so nothing is ever sent to a vendor unkeyed."""
+    s = settings or get_settings()
+    kind = resolved_kind(s)
+    if kind == "fake":
+        return True
+    return kind in ("deepgram", "realtime") and bool(_key(s))
+
+
+def voice_hint(settings: Settings | None = None) -> str | None:
+    """What the owner should do to turn voice on, or None when it is on."""
+    return None if voice_available(settings) else NEEDS_KEY_HINT
+
+
 CALL_LANG = "en"
 
 
@@ -60,7 +93,7 @@ class NoProvider:
     name = "none"
 
     def open(self) -> None:
-        raise VoiceError("Live voice is not set up. Set VOICE_PROVIDER to try it.")
+        raise VoiceError("Live voice is off. Add a Deepgram key to turn it on.")
 
     def listen(self) -> Iterator[str]:
         return iter(())
@@ -225,14 +258,16 @@ def choose(
     audio_out: Callable[[bytes], None] | None = None,
     client: Callable[[], httpx.Client] | None = None,
 ) -> RealtimeVoiceProvider:
-    """The provider VOICE_PROVIDER names. An unknown name is `none`: fail closed."""
+    """The provider VOICE_PROVIDER names (`auto` follows the key). An unknown name is `none`: fail closed."""
     s = settings or get_settings()
-    kind = (s.voice_provider or "none").strip().lower()
+    kind = resolved_kind(s)
+    if kind == "deepgram" and not _key(s):
+        return NoProvider()  # never reach a vendor without a key
     if kind == "fake":
         return FakeVoiceProvider(script=list(script or []))
     if kind == "deepgram":
         return DeepgramVoiceProvider(
-            s.voice_provider_api_key or s.deepgram_api_key,
+            _key(s),
             guard=guard,
             audio_in=audio_in,
             audio_out=audio_out or (lambda _b: None),

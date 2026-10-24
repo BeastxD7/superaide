@@ -112,7 +112,7 @@ export const OFFLINE_REPLY = /Offline mode: no AI model is connected yet, so I c
 
 // A line from the introduction (fixtures.completeIntroduction), so its presence
 // means the conversation history has loaded.
-export const INTRO_LINE = 'I lead applied AI at PebbleRoad in Singapore.'
+export const INTRO_LINE = 'I lead applied AI at Larkfield in Singapore.'
 
 // Open the dashboard's chat and wait until the conversation history has loaded.
 // (The old /workspace screen became the dashboard; /workspace redirects to /dashboard/chat.)

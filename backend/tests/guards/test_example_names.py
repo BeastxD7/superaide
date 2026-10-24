@@ -47,3 +47,35 @@ def test_allowlist_keeps_the_real_owner_notes() -> None:
     whole, lines = m.load_allowlist()
     assert "CLAUDE.md" in whole
     assert m.process("CLAUDE.md", whole, lines, write=False) == []
+
+
+def test_real_companies_map_to_fictional_ones_keeping_case() -> None:
+    m = _load()
+    path = "backend/tests/x.py"
+    assert (
+        m.rewrite("Pebble Road, PebbleRoad, pebble-road, PEBBLEROAD", path)
+        == "Larkfield, Larkfield, larkfield, LARKFIELD"
+    )
+    assert (
+        m.rewrite("noreply@account.bluehost.com Bluehost BLUEHOST", path)
+        == "noreply@account.fernhost.example Fernhost FERNHOST"
+    )
+    assert (
+        m.rewrite("Kotak Mahindra Bank <a@kotak.com> at SWIGGY", path) == "Marlin Bank <a@marlin.example> at TEAHOUSE"
+    )
+    once = m.rewrite("Pebble Road and Bluehost", path)
+    assert m.rewrite(once, path) == once
+
+
+def test_stripe_is_only_replaced_where_it_is_a_fixture_employer() -> None:
+    m = _load()
+    assert m.rewrite("interviewing at Stripe", "backend/evals/scenarios/privacy.yaml") == "interviewing at Quillstone"
+    assert m.rewrite("billing runs on Stripe", "docs/decisions/0009-many-owners-one-ava.md") == "billing runs on Stripe"
+
+
+def test_the_guard_fails_on_a_real_employer_name_outside_the_allowlist() -> None:
+    m = _load()
+    whole, lines = m.load_allowlist()
+    assert m.has_old("I work at PebbleRoad", "e2e/tests/x.spec.ts")
+    assert "docs/overnight-log.md" in whole  # the owner's real email lives only in the allowlisted logs
+    assert m.process("deploy/README.md", whole, lines, write=False) == []  # a real hosting provider named on purpose
