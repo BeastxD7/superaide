@@ -84,7 +84,7 @@ def test_list_approvals_reads_the_rows_and_a_turn_can_use_it(owner_client):
         make(s, kind="gmail_send", summary="To: Dan <d@acme.com> · Hi")
         script = Script(tool_use("list_approvals", {}), "Yes, the Kaggle reply went out.")
         turn_for(s, script, "did you send anything?").run([{"role": "user", "content": "x"}])
-        result = script.seen[1][-1]["content"][0]["content"]
+        result = str(script.seen[1][-1]["content"])
         assert "APPROVED" in result and "Sent from your Gmail." in result and "WAITING for the owner's OK" in result
 
 

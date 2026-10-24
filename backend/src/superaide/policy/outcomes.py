@@ -53,7 +53,7 @@ def line(a: Approval) -> str:
     return f"[{a.id}] {a.kind}: {what} -> {a.status.upper()}{when}" + (f": {result}" if result else "")
 
 
-def list_text(session: Session, args: dict[str, Any]) -> str:
+def _rows(session: Session, args: dict[str, Any]) -> list[Approval]:
     status = str(args.get("status") or "any")
     q = select(Approval).order_by(Approval.created_at.desc()).limit(30)
     if status in {"pending", "approved", "rejected"}:
@@ -62,9 +62,32 @@ def list_text(session: Session, args: dict[str, Any]) -> str:
     if args.get("hours"):
         cutoff = datetime.now(UTC) - timedelta(hours=max(1, min(int(args["hours"]), 720)))
         rows = [a for a in rows if (a.decided_at or a.created_at) >= cutoff]
+    return rows
+
+
+def list_text(session: Session, args: dict[str, Any]) -> str:
+    rows = _rows(session, args)
     if not rows:
         return "No approval requests match."
     return "\n".join(line(a) for a in rows[:15])
+
+
+def list_sources(session: Session, args: dict[str, Any]) -> list[Any]:
+    """The same rows as `list_text`, as citable sources (`ava://approval/<id>`): an action report is
+    backed by its approval record, never by a note."""
+    from superaide.context.recall import Source
+
+    rows = _rows(session, args)
+    return [
+        Source(
+            uri=f"ava://approval/{a.id}",
+            kind="approval",
+            title=f"Approval · {info(a.kind).label}",
+            text=line(a),
+            at=a.decided_at or a.created_at,
+        )
+        for a in rows[:15]
+    ]
 
 
 def announce(session: Session, approval: Approval) -> None:

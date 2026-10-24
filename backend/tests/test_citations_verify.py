@@ -240,3 +240,89 @@ def test_avas_own_words_never_ground_a_claim():
     assert "verifywhoistyping" not in grounding and "personaldetails" not in grounding
     hedge = "You told me to keep personal details limited because I can't verify who is typing."
     assert verify.unsupported(hedge, grounding=grounding, recall_found=False) == [hedge]
+
+
+# --- marks must sit on sentences their source backs (issue #341 D) -------------------------
+
+PREF = "Wants a reply sent as a new email rather than through the existing send option"
+NOTE_URI = "ava://memory/00000000-0000-0000-0000-000000000111"
+APPROVAL_URI = "ava://approval/00000000-0000-0000-0000-000000000222"
+
+
+def test_the_issue_341_reply_loses_its_wrong_marks_and_keeps_the_right_one():
+    text = (
+        "I've saved a thank-you reply and sent it to your dashboard for approval. [1] It won't go out until you "
+        "approve it. Your notebook says you prefer replies sent as a new email rather than through the usual "
+        "send option. [1] I used the usual option because I can't write to new addresses. [1]"
+    )
+    out, used, dropped = verify.prune_marks(text, [(NOTE_URI, PREF)])
+    assert dropped == 2 and used == [0]
+    assert out.count("[1]") == 1 and "approval. It won't" in out
+    assert "send option. [1]" in out and out.rstrip().endswith("new addresses.")
+
+
+def test_an_action_report_keeps_its_mark_only_on_an_approval_record():
+    text = "I've queued the reply for your approval. [1]"
+    assert verify.prune_marks(text, [(APPROVAL_URI, "gmail_send -> WAITING")])[2] == 0
+    assert verify.prune_marks(text, [(NOTE_URI, PREF)])[2] == 1
+
+
+def test_supported_sentences_keep_their_marks_false_positives():
+    # A paraphrase, a date-only match, a web source, a source with no text and several marks all stay.
+    cases = [
+        ("You like your coffee black with no sugar. [1]", NOTE_URI, "Likes black coffee, no sugar"),
+        ("The flight leaves on 3 Nov. [1]", NOTE_URI, "Berlin trip: departs 3 Nov 09:10"),
+        ("Python 3.14 is out. [1]", "https://www.python.org/downloads/", "Python 3.14 release"),
+        ("Your dentist is on Friday. [1]", NOTE_URI, ""),
+        ("Gym is at noon on Friday. [1] [2]", NOTE_URI, "Gym session Friday noon"),
+        ("Your note says you decided to move to Lisbon in March. [1]", NOTE_URI, "Decided: move to Lisbon in March"),
+    ]
+    for sentence, uri, src in cases:
+        srcs = [(uri, src), ("https://example.com/x", "anything")]
+        out, used, dropped = verify.prune_marks(sentence, srcs)
+        assert dropped == 0 and out == sentence, sentence
+
+
+def test_marks_are_renumbered_when_a_whole_source_goes():
+    text = "I sent the mail. [1] Gym is at 12pm on 21 Oct. [2]"
+    out, used, dropped = verify.prune_marks(text, [(NOTE_URI, PREF), ("ava://memory/other", "Gym on 21 Oct at 12pm")])
+    assert (out, used, dropped) == ("I sent the mail. Gym is at 12pm on 21 Oct. [1]", [1], 1)
+
+
+def test_no_marks_no_change():
+    assert verify.prune_marks("Hello there.", [(NOTE_URI, PREF)]) == ("Hello there.", [0], 0)
+
+
+def test_a_turn_drops_the_unbacked_marks_and_logs_it():
+    with session_scope() as s:
+        person = hired_owner(s)
+        assert person is not None
+        m = note(s, person.id, PREF)
+        reply = cited(
+            "Your notebook says you prefer replies sent as a new email rather than through the usual send option.",
+            f"ava://memory/{m.id}",
+        ) + cited(" I used the usual option because I can't write to new addresses.", f"ava://memory/{m.id}")
+        script = Script(tool_use("recall", {"query": "reply"}), reply)
+        result = turn_for(s, script).run([{"role": "user", "content": "How do you send replies?"}])
+    assert result.text.count("[1]") == 1 and result.text.rstrip().endswith("new addresses.")
+    assert len(result.sources) == 1 and "marks_dropped:1" in result.notes
+    assert "Removed 1 mark" in checks(result)[0]["detail"]
+
+
+def test_an_action_report_cites_the_approval_record_list_approvals_returned():
+    from superaide.db.models import Approval
+
+    with session_scope() as s:
+        person = hired_owner(s)
+        assert person is not None
+        a = Approval(kind="gmail_send", status="pending", payload={"summary": "To: Kaggle · Thanks"})
+        s.add(a)
+        s.flush()
+        uri = f"ava://approval/{a.id}"
+        script = Script(
+            tool_use("list_approvals", {}),
+            cited("Your thank-you reply is waiting for your approval.", uri, "WAITING"),
+        )
+        result = turn_for(s, script, "did you send it?").run([{"role": "user", "content": "did you send it?"}])
+    assert result.text == "Your thank-you reply is waiting for your approval. [1]"
+    assert [c.kind for c in result.sources] == ["approval"] and "marks_dropped:1" not in result.notes
