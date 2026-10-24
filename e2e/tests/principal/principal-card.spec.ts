@@ -11,7 +11,8 @@ test.describe('Principal card, global kill flag off', () => {
     void owner
     await page.goto('/dashboard')
     await expect(page.getByRole('link', { name: 'Principal card' })).toHaveCount(0)
-    await page.goto('/dashboard/principal-card')
+    await page.goto('/dashboard/principal-card') // the old address redirects to Gmail > Signature
+    await expect(page).toHaveURL(/\/dashboard\/capabilities\/gmail\/signature$/)
     await expect(page.getByText('This isn’t turned on yet.')).toBeVisible()
     expect((await api.get('/app/principal-card')).status()).toBe(404)
   })
@@ -23,8 +24,12 @@ test.describe('Principal card, on by default', () => {
   test('set the name, see the cards sent, revoke one and then all', async ({ page, owner }) => {
     void owner
     await page.goto('/dashboard')
-    await page.getByRole('link', { name: 'Principal card' }).click()
-    await expect(page.getByRole('heading', { name: 'Principal card' })).toBeVisible()
+    // The card is not a menu item any more: it is Gmail's signature, one level under Capabilities. The old address redirects.
+    await expect(page.getByRole('link', { name: 'Principal card' })).toHaveCount(0)
+    await page.goto('/dashboard/principal-card')
+    await expect(page).toHaveURL(/\/dashboard\/capabilities\/gmail\/signature$/)
+    await expect(page.getByRole('heading', { level: 1, name: 'Signature' })).toBeVisible()
+    await expect(page.getByRole('navigation', { name: 'breadcrumb' }).getByRole('link', { name: 'Gmail' })).toBeVisible()
     await expect(page.getByText('No cards sent yet.')).toBeVisible()
 
     await expect(page.getByRole('button', { name: 'Turn the default off' })).toBeVisible() // on without doing anything

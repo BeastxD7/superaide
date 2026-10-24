@@ -16,7 +16,8 @@ const when = (unix: number) => new Date(unix * 1000).toLocaleString()
 
 // The one-line "this is an AI acting for X" card that ends replies to other people. The owner chooses the
 // name it shows, sees every card sent, and can take back one card or all of them.
-export function PrincipalCardPage() {
+// `embedded`: shown inside a capability page (Gmail > Signature), which draws the title and the frame itself.
+export function PrincipalCardPage({ embedded = false }: { embedded?: boolean }) {
   const { me } = useSession()
   const name = me?.agent.name ?? 'Ava'
   const { enabled, card, sent, stats, error, reload } = usePrincipalCard()
@@ -59,7 +60,9 @@ export function PrincipalCardPage() {
   }
 
   if (enabled === false) {
-    return (
+    return embedded ? (
+      <p className="text-body">This isn&rsquo;t turned on yet.</p>
+    ) : (
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 lg:py-8">
           <h1 className="text-3xl font-medium text-ink tight">Principal card</h1>
@@ -69,10 +72,9 @@ export function PrincipalCardPage() {
     )
   }
 
-  return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 lg:py-8">
-        <h1 className="text-3xl font-medium text-ink tight">Principal card</h1>
+  const content = (
+    <>
+        {!embedded && <h1 className="text-3xl font-medium text-ink tight">Principal card</h1>}
         <p className="mt-1 text-body">
           Every email {name} sends for you ends with a sign-off and one honest line with a link: she is an AI, who she
           acts for, and what she may not agree to. It is on by default. You can untick it on any email&rsquo;s approval
@@ -291,7 +293,13 @@ export function PrincipalCardPage() {
             ))}
           </ul>
         </section>
-      </div>
+    </>
+  )
+  return embedded ? (
+    content
+  ) : (
+    <div className="flex-1 overflow-y-auto">
+      <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 lg:py-8">{content}</div>
     </div>
   )
 }
