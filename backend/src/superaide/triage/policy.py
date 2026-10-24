@@ -185,9 +185,17 @@ def decide(
     *,
     agreement: float | None = None,
     deadline_at: datetime | None = None,
+    raise_urgent: bool = False,
 ) -> Outcome:
+    """`raise_urgent` (the promoted kNN head, #117): a calm model-only decision becomes an interrupt candidate. It is
+    never applied to a rule's decision or a verify, and goes through the same stage cap and breakpoints."""
     deadline = deadline_at or f.deadline_at
     b = _base(f, r, out, agreement, deadline)
+    if raise_urgent and not b.from_rule and b.decision in (Decision.HOLD, Decision.HANDLE):
+        b = _Base(
+            Decision.INTERRUPT, [*b.hits, "knn_raise"], "your past corrections say messages like this are urgent",
+            False, f.theta_interrupt + CHILD_MARGIN, b.urgency,
+        )  # fmt: skip
 
     def finish(stage: Stage) -> Outcome:
         decision, maybe, max_step = _cap(b, stage, f)

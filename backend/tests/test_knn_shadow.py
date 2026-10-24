@@ -82,4 +82,7 @@ def test_nothing_in_the_decision_path_reads_the_knn_score():
 
     root = pathlib.Path(pkg.__file__).parent
     for name in ("policy.py", "rules.py", "escalate.py", "classify.py", "buttons.py"):
-        assert "knn" not in (root / name).read_text().replace("knn.forget", "").replace("import knn", ""), name
+        # policy.py only receives the promoted head's yes/no as `raise_urgent` and labels the hit "knn_raise";
+        # it never imports or reads the score (#117 raise-only head, tests/test_knn_raise.py).
+        text = (root / name).read_text().replace("knn.forget", "").replace("import knn", "").replace("knn_raise", "")
+        assert "knn" not in text, name

@@ -645,7 +645,28 @@ export type TriageSettings = {
   tell_sender_seen: boolean
   phone_enabled: boolean
   // TRIAGE_KNN_ENABLED only (#117): the kNN head runs in shadow and never decides.
-  knn_shadow?: { text: string; n: number; needs: number; eligible: boolean } | null
+  knn_shadow?: KnnShadow | null
+}
+
+// The kNN head's card (#117): the shadow numbers and where the owner's promotion stands.
+export type KnnShadow = {
+  text: string
+  n: number
+  needs: number
+  eligible: boolean
+  agreement: number | null
+  lower_bound: number
+  gate: number
+  z?: number
+  window_days?: number
+  promoted?: boolean
+  can_promote?: boolean
+  can_demote?: boolean
+  demotes_in_days?: number | null
+  demote_after_days?: number
+  below_gate_since?: string | null
+  raise_enabled?: boolean
+  acting?: boolean
 }
 
 // The "Ask my Ava" link (owner side). Every route answers 404 while ASK_LINK_ENABLED is off.

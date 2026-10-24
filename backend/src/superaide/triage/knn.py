@@ -218,19 +218,26 @@ def describe(report: dict[str, Any] | None) -> str:
 # --- shadow status: how often the head agrees with the owner's own corrections (#117) ----------------------
 
 SHADOW_MIN_SAMPLE = 200  # corrections with a recorded kNN score needed before promotion is even considered
-SHADOW_GATE = 0.8  # the lower end of the 95% Wilson interval on agreement that must be cleared
+SHADOW_GATE = 0.8  # the lower end of the Wilson interval on agreement that must be cleared
+SHADOW_Z = 1.96  # two-sided 95% (the owner's choice for promotion; the stage gates in promotion.py use 1.645)
+SHADOW_WINDOW_DAYS = 30  # only corrections on decisions made in the last 30 days count
 
 
-def shadow_status(session: Session, *, enabled: bool) -> dict[str, Any]:
+def shadow_status(session: Session, *, enabled: bool, now: Any = None) -> dict[str, Any]:
     """Where the head stands, for the owner. It only ever runs in shadow: it records a score beside each
     decision and nothing reads it. Agreement is how often its recorded score (urgent when >= 0.5) matched
     the owner's own label on the same decision; the score was written before the label existed, so it never
     saw the answer. Promotion to deciding is not built; `eligible` only says the evidence would allow asking.
     Below `SHADOW_MIN_SAMPLE` corrections it is never eligible, however high the agreement."""
+    from datetime import UTC, datetime, timedelta
+
     from superaide.triage.promotion import wilson_lower
 
+    since = (now or datetime.now(UTC)) - timedelta(days=SHADOW_WINDOW_DAYS)
     n = agree = 0
     for d, _ in _labelled(session):
+        if d.created_at < since:
+            continue
         stored = (d.features or {}).get("knn")
         score = stored.get("score") if isinstance(stored, dict) else None
         if not isinstance(score, int | float):
@@ -238,7 +245,7 @@ def shadow_status(session: Session, *, enabled: bool) -> dict[str, Any]:
         n += 1
         agree += (float(score) >= 0.5) == (LABEL_VALUE[str(d.feedback)] == 1.0)
     pct = round(100 * agree / n) if n else None
-    lower = wilson_lower(agree, n)
+    lower = wilson_lower(agree, n, SHADOW_Z)
     eligible = enabled and n >= SHADOW_MIN_SAMPLE and lower >= SHADOW_GATE
     if not enabled:
         text = ""
@@ -253,5 +260,5 @@ def shadow_status(session: Session, *, enabled: bool) -> dict[str, Any]:
     return {
         "enabled": enabled, "mode": "shadow", "n": n, "agree": agree, "agreement": None if pct is None else pct / 100,
         "lower_bound": round(lower, 3), "needs": SHADOW_MIN_SAMPLE, "gate": SHADOW_GATE, "eligible": eligible,
-        "text": text,
+        "z": SHADOW_Z, "window_days": SHADOW_WINDOW_DAYS, "text": text,
     }  # fmt: skip

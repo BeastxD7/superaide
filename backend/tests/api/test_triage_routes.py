@@ -238,3 +238,69 @@ def test_settings_carry_the_knn_shadow_line_only_while_that_flag_is_on(owner_bro
     assert shadow["mode"] == "shadow" and shadow["needs"] == 200 and shadow["eligible"] is False
     assert shadow["text"].startswith("Shadow:")
     assert "knn_shadow" not in owner_browser.put("/app/triage/settings", json={"max_per_day": 3}).json()
+
+
+# --- #117: the owner's Promote control ---------------------------------------------------------------------------
+
+
+def _fill_eligible(n: int = 200) -> None:
+    from superaide.triage.types import Feedback
+    from tests.test_knn_shadow import add
+    from tests.test_knn_shadow import world as ctx_world
+
+    with session_scope() as s:
+        c = ctx_world(s)
+        c.agent_id = owner_of(OWNER["email"]).agent_id
+        for i in range(n):
+            add(s, c, i, 0.95, Feedback.USEFUL)
+        for d in s.scalars(select(TriageDecision).where(TriageDecision.agent_id != owner_of(OWNER["email"]).agent_id)):
+            d.agent_id = owner_of(OWNER["email"]).agent_id
+
+
+def test_promote_is_hidden_while_the_knn_flag_is_off(owner_browser):
+    assert owner_browser.post("/app/triage/knn/promote").status_code == 404
+    assert owner_browser.post("/app/triage/knn/demote").status_code == 404
+
+
+def test_promote_is_refused_with_the_numbers_until_eligible_then_recorded(owner_browser, settings, monkeypatch):
+    monkeypatch.setattr(settings, "triage_knn_enabled", True)
+    card = owner_browser.get("/app/triage/settings").json()["knn_shadow"]
+    assert card["can_promote"] is False and card["promoted"] is False and card["z"] == 1.96
+    r = owner_browser.post("/app/triage/knn/promote")
+    assert r.status_code == 409 and "0 of the 200" in r.json()["detail"]
+    _fill_eligible()
+    card = owner_browser.get("/app/triage/settings").json()["knn_shadow"]
+    assert card["eligible"] is True and card["can_promote"] is True
+    done = owner_browser.post("/app/triage/knn/promote")
+    assert done.status_code == 200 and done.json()["promoted"] is True and done.json()["can_demote"] is True
+    assert owner_browser.get("/app/triage/settings").json()["knn_shadow"]["promoted"] is True
+    back = owner_browser.post("/app/triage/knn/demote")
+    assert back.status_code == 200 and back.json()["promoted"] is False
+
+
+def test_promote_and_demote_need_the_owner_and_the_csrf_header(app, browser, owner_browser, settings, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    monkeypatch.setattr(settings, "triage_knn_enabled", True)
+    bare = TestClient(app)
+    assert bare.post("/app/triage/knn/promote").status_code in (401, 403)
+    owner_browser.headers.pop("X-Requested-With", None)
+    assert owner_browser.post("/app/triage/knn/promote").status_code in (400, 403)
+    stranger = browser()
+    assert signup(stranger, **OTHER).status_code == 200
+    stranger.headers["X-Requested-With"] = "superaide"
+    assert stranger.post("/app/triage/knn/promote").status_code == 403  # signed in, but hired nobody
+    assert stranger.post("/app/triage/knn/demote").status_code == 403
+
+
+def test_another_owners_promotion_is_theirs_alone(browser, settings, monkeypatch):
+    monkeypatch.setattr(get_settings(), "allow_many_owners", True)
+    monkeypatch.setattr(settings, "triage_knn_enabled", True)
+    a, b = browser(), browser()
+    assert signup(a).status_code == 200 and hire(a).status_code == 200
+    assert signup(b, **OTHER).status_code == 200 and hire(b).status_code == 200
+    _fill_eligible()  # owner A's corrections
+    assert a.post("/app/triage/knn/promote").status_code == 200
+    card = b.get("/app/triage/settings").json()["knn_shadow"]
+    assert card["promoted"] is False and card["can_promote"] is False and card["n"] == 0
+    assert b.post("/app/triage/knn/promote").status_code == 409

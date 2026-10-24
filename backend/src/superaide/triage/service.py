@@ -98,7 +98,26 @@ def decide(
             system = active_text(session)
         c = classify.classify(llm, model=model, f=f, earlier=_earlier(session, event), ready=ready, system=system)
     out = c.output if c is not None else None
-    o = policy.decide(f, r, out, agreement=c.agreement if c else None, deadline_at=c.deadline_at if c else None)
+    features = f.snapshot()
+    from superaide.vault.store import runtime_settings
+
+    shadow = None
+    raise_urgent = False
+    if runtime_settings().triage_knn_enabled:  # #117: a shadow score, recorded beside the decision
+        from superaide.triage import knn, knn_promotion
+
+        shadow = knn.shadow_score(session, f.text)
+        if shadow is not None:
+            features["knn"] = shadow
+            # Only an owner-promoted head under TRIAGE_KNN_RAISE_ENABLED may act, and only upward.
+            knn_promotion.review(session, now=now)
+            raise_urgent = shadow["score"] >= knn_promotion.RAISE_AT and knn_promotion.raise_active(session)
+    o = policy.decide(
+        f, r, out, agreement=c.agreement if c else None, deadline_at=c.deadline_at if c else None,
+        raise_urgent=raise_urgent,
+    )  # fmt: skip
+    if raise_urgent and "knn_raise" in o.hits:
+        features["knn_raised"] = True
     if c is not None and c.fallback:
         o.hits.append(f"classifier:{c.fallback}")
         if c.fallback == "bad_quote":
@@ -106,15 +125,6 @@ def decide(
         if c.fallback == "budget":
             audit(session, "triage", "triage_budget_fallback", event_id=event.id)
 
-    features = f.snapshot()
-    from superaide.vault.store import runtime_settings
-
-    if runtime_settings().triage_knn_enabled:  # #117: a shadow score; nothing below reads it
-        from superaide.triage import knn
-
-        shadow = knn.shadow_score(session, f.text)
-        if shadow is not None:
-            features["knn"] = shadow
     features.update(
         shadow_decision=str(o.shadow or o.decision), maybe_urgent=o.maybe_urgent, score=o.score,
         needs_approval=o.needs_approval, from_rule=o.from_rule, urgency=o.urgency, escalate=o.escalate,
