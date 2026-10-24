@@ -1,6 +1,6 @@
 # What a thoughtful human assistant does, and what Ava still lacks
 
-Written 25 Oct 2026. Research only: nothing here is built. It starts from a real test (issue [#472](https://github.com/BeastxD7/superaide/issues/472)), turns the owner's expectations into requirements, compares Ava with how good human assistants and the best current systems behave, and ends with design principles, a reference architecture, worked scenarios and an evaluation plan. The work is split into issues listed in the tracking issue (see "Issues" at the end).
+Written 25 Oct 2026. Research only: nothing here is built. It starts from a real test (issue [#472](https://github.com/BeastxD7/superaide/issues/472)), turns the owner's expectations into requirements, compares Ava with how good human assistants and the best current systems behave, and ends with design principles, a reference architecture, worked scenarios and an evaluation plan. The work is split into issues listed in the tracking issue [#488](https://github.com/BeastxD7/superaide/issues/488): #474 to #487 (cap and store-first #474, honest greeting #475, owner inbox #476, notifications #477, proxy messaging #478, friends #479, commitments #480, concurrency #481, conversation quality #482, own mail #483, evaluation #484, briefings #485, standing policy #486, abuse limits #487).
 
 Names in the story are fictional: the owner is Ananya, the friend is Meera.
 
