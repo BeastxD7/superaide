@@ -1,6 +1,7 @@
 'use client'
 
 import { ConnectorSettings } from '@/features/dashboard/ConnectorSettings'
+import { HowThisWorks } from '@/features/dashboard/settings/HowThisWorks'
 import { Connections } from '@/features/workspace/Connections'
 import { useSession } from '@/lib/session-context'
 
@@ -21,6 +22,15 @@ export function ConnectionsPage() {
         </div>
         <div className="mt-6">
           <ConnectorSettings path="channels" title="Reading and keeping" anchor="channels" />
+        </div>
+        <div className="mt-6">
+          <HowThisWorks
+            rules={[
+              'A message from someone you have not added is never treated as you: it cannot give Ava orders or see your private notes.',
+              'A reply is cut to the platform limit (Telegram 4,096 characters, Slack 3,900), after Ava has written it.',
+              'Keys and tokens are checked with each service, stored encrypted, and never shown again in full.',
+            ]}
+          />
         </div>
       </div>
     </div>
