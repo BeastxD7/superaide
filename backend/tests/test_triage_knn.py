@@ -232,3 +232,65 @@ def test_auc_and_the_leave_one_out_comparison(me, labelled):
         assert knn.compare(s, NoEmbedder()) is None
     assert report is not None and report["labels"] == 8
     assert report["knn"]["auc"] == 1.0 and report["model"]["auc"] == 0.5
+
+
+# --- the replay command (#117): `superaide triage-knn-compare` ----------------------------------------------
+
+
+def _run_compare(monkeypatch, capsys, *argv, embedder=None):
+    import sys
+
+    from superaide import cli
+
+    monkeypatch.setattr("superaide.brain.embed.get_embedder", lambda settings: embedder or FakeEmbedder())
+    monkeypatch.setattr(sys, "argv", ["superaide", "triage-knn-compare", *argv])
+    cli.main()
+    return capsys.readouterr().out
+
+
+def test_describe_says_too_few_with_a_handful_of_labels(me, labelled):
+    with session_scope() as s:
+        text = knn.describe(knn.compare(s, FakeEmbedder()))
+    assert "Labelled decisions (your own button presses): 8" in text
+    assert "kNN head: AUC 1.000 over 8 decisions" in text and "Too few to say anything" in text
+    assert "changes no decision" in text
+
+
+def test_describe_compares_once_there_are_enough_labels_and_says_nothing_without_an_embedder():
+    enough = {"labels": 40, "knn": {"n": 40, "auc": 0.9}, "model": {"n": 40, "auc": 0.7}}
+    assert "better than the model" in knn.describe(enough) and "+0.200" in knn.describe(enough)
+    assert "worse than" in knn.describe({**enough, "model": {"n": 40, "auc": 0.95}})
+    assert "about the same as" in knn.describe({**enough, "model": {"n": 40, "auc": 0.89}})
+    assert "nothing to compare" in knn.describe({**enough, "model": {"n": 0, "auc": None}})
+    assert "No embedder is ready" in knn.describe(None)
+
+
+def test_the_command_prints_the_replay_and_changes_no_decision(me, labelled, monkeypatch, capsys):
+    with session_scope() as s:
+        before = [(d.id, d.decision, d.feedback) for d in s.scalars(select(TriageDecision).order_by(TriageDecision.id))]
+    out = _run_compare(monkeypatch, capsys)
+    assert "Labelled decisions (your own button presses): 8" in out and "kNN head: AUC" in out
+    with session_scope() as s:
+        after = [(d.id, d.decision, d.feedback) for d in s.scalars(select(TriageDecision).order_by(TriageDecision.id))]
+    assert before == after
+
+
+def test_the_command_counts_only_the_owners_own_labels(me, labelled, monkeypatch, capsys):
+    label(me, "lunch is urgent!", "useful", via="inferred")  # not a button press
+    assert "(your own button presses): 8" in _run_compare(monkeypatch, capsys)
+
+
+def test_the_command_with_no_embedder_says_so(me, labelled, monkeypatch, capsys):
+    assert "No embedder is ready" in _run_compare(monkeypatch, capsys, embedder=NoEmbedder())
+
+
+def test_the_command_will_not_send_labelled_messages_to_a_remote_embedder_unless_told(
+    me, labelled, monkeypatch, capsys
+):
+    class VoyageEmbedder(FakeEmbedder):  # the same class name the real remote embedder has
+        pass
+
+    with pytest.raises(SystemExit) as exc:
+        _run_compare(monkeypatch, capsys, embedder=VoyageEmbedder())
+    assert "Voyage" in str(exc.value) and "--allow-remote" in str(exc.value)
+    assert "kNN head: AUC" in _run_compare(monkeypatch, capsys, "--allow-remote", embedder=VoyageEmbedder())
