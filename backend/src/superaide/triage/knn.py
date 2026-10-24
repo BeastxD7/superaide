@@ -191,6 +191,30 @@ def compare(session: Session, embedder: Any, *, k: int = K) -> dict[str, Any] | 
     }
 
 
+MIN_REPLAY_LABELS = 30  # below this the comparison says "too few" instead of two noisy numbers
+
+
+def describe(report: dict[str, Any] | None) -> str:
+    """The replay comparison in words, for `superaide triage-knn-compare`. Nothing here decides anything."""
+    if report is None:
+        return "No embedder is ready (EMBEDDER=none, or the local model is still downloading), so nothing was compared."
+    labels, knn, model = report["labels"], report["knn"], report["model"]
+    lines = [f"Labelled decisions (your own button presses): {labels}"]
+    for name, part in (("kNN head", knn), ("Model's stated score", model)):
+        auc_text = "n/a" if part["auc"] is None else f"{part['auc']:.3f}"
+        lines.append(f"  {name}: AUC {auc_text} over {part['n']} decisions")
+    if labels < MIN_REPLAY_LABELS or knn["auc"] is None:
+        lines.append(f"Too few to say anything: needs at least {MIN_REPLAY_LABELS} labels, urgent and not urgent.")
+    elif model["auc"] is None:
+        lines.append("The model's score was not stored on these decisions, so there is nothing to compare to.")
+    else:
+        gap = knn["auc"] - model["auc"]
+        verdict = "better than" if gap > 0.02 else "worse than" if gap < -0.02 else "about the same as"
+        lines.append(f"The kNN head ranks urgency {verdict} the model on your history (AUC gap {gap:+.3f}).")
+    lines.append("Each message is scored against all the OTHER labels (leave one out). This changes no decision.")
+    return "\n".join(lines)
+
+
 # --- shadow status: how often the head agrees with the owner's own corrections (#117) ----------------------
 
 SHADOW_MIN_SAMPLE = 200  # corrections with a recorded kNN score needed before promotion is even considered
