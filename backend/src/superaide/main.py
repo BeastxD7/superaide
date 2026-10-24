@@ -192,7 +192,7 @@ def create_app(agent: Agent | None = None) -> FastAPI:
             event="channels_read_settings",
         )
     )
-    from superaide.platform import retention as retention_settings
+    from superaide.skills import retention_settings
 
     app.include_router(
         make_connector_settings_router(

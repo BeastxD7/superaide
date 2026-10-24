@@ -1964,6 +1964,19 @@
         "title": "ResolveConflict",
         "type": "object"
       },
+      "RetentionSettingsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "approval_ttl_hours": {
+            "title": "Approval Ttl Hours"
+          },
+          "reminder_auto_close_days": {
+            "title": "Reminder Auto Close Days"
+          }
+        },
+        "title": "RetentionSettingsBody",
+        "type": "object"
+      },
       "RetireBody": {
         "properties": {
           "reason": {
@@ -11993,6 +12006,82 @@
         "summary": "Resume Ava",
         "tags": [
           "Owner"
+        ]
+      }
+    },
+    "/app/retention/read-settings": {
+      "get": {
+        "description": "The owner's limits for Reminders and approvals, every allowed value and what it means (defaults until installed).",
+        "operationId": "get_settings_app_retention_read_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Settings App Retention Read Settings Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Reminders and approvals: your settings",
+        "tags": [
+          "Owner: Settings"
+        ]
+      },
+      "put": {
+        "description": "Changes any of the settings. Each change is audited.",
+        "operationId": "put_settings_app_retention_read_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetentionSettingsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Put Settings App Retention Read Settings Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Reminders and approvals: change your settings",
+        "tags": [
+          "Owner: Settings"
         ]
       }
     },

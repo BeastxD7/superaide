@@ -10,6 +10,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from superaide.policy.binding import APPROVAL_TTL_CHOICES
 from superaide.policy.killswitch import get_state
 from superaide.skills.connector_settings import Choice
 from superaide.skills.connector_settings import load as load_raw
@@ -27,7 +28,7 @@ CHOICES: dict[str, Choice] = {
         "days",
     ),
     "approval_ttl_hours": Choice(
-        (0, 1, 24, 72, 168),
+        APPROVAL_TTL_CHOICES,
         0,
         "Requests that wait for your yes expire after",
         "A request nobody answers can no longer be approved after this many hours, so an old yes cannot run a stale "
