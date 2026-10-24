@@ -77,6 +77,7 @@ os.environ.update(
         "ADMIN_TOKEN": "test-admin-token",
         "ENABLE_SIMULATOR": "true",
         "APPROVAL_REQUIRE_EXECUTOR": "false",  # tests opt in (tests/policy/test_approval_honesty.py)
+        "TASK_PROTOCOL_ENABLED": "false",  # on by default (#448); pinned off here, tests opt in
         "FAKE_LLM": "true",
         "EMBEDDER": "fake",
         "VOYAGE_API_KEY": "",
