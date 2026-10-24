@@ -64,14 +64,28 @@ def test_an_address_the_owner_did_not_type_is_refused(owner_client, gmail_fake):
     assert "not one the owner typed" in msg and not gmail_fake.drafts
 
 
-def test_an_automated_address_is_refused_even_if_typed(owner_client, gmail_fake):
+def test_an_automated_address_the_owner_typed_is_queued_with_a_strong_warning(owner_client, gmail_fake):
+    # #394: the owner asked for this address, so it is their call; the card says what it looks like.
+    _connect()
     text = "email noreply@account.bluehost.com that I want to cancel"
-    msg = refused(owner_client, gmail_fake, {**ARGS, "to": "noreply@account.bluehost.com"}, text)
-    assert "looks automated" in msg
+    with session_scope() as s:
+        script = Script(tool_use("gmail_compose", {**ARGS, "to": "noreply@account.bluehost.com"}), "ok")
+        turn_for(s, script, text).run([{"role": "user", "content": text}])
+        [a] = s.scalars(select(Approval)).all()
+        assert a.payload["warnings"][0] == "This address looks automated; a reply is probably not read."
+    [card] = owner_client.get("/app/approvals").json()
+    assert card["warnings"][0].startswith("This address looks automated")
 
 
-def test_unknown_reach_or_two_addresses_or_a_turn_that_read_email_is_refused(owner_client, gmail_fake):
-    assert "reaches_a_person" in refused(owner_client, gmail_fake, {**ARGS, "reaches_a_person": "unknown"})
+def test_unknown_reach_is_queued_with_a_warning_but_two_addresses_or_read_email_are_refused(owner_client, gmail_fake):
+    _connect()
+    with session_scope() as s:
+        script = Script(tool_use("gmail_compose", {**ARGS, "reaches_a_person": "unknown"}), "ok")
+        turn_for(s, script, ASK).run([{"role": "user", "content": ASK}])
+        [a] = s.scalars(select(Approval)).all()
+        assert a.payload["warnings"][0] == "Ava could not confirm that a person reads this."
+        assert a.payload["reaches_a_person"] == "unknown"  # still recorded
+        s.delete(a)
     assert "exactly one" in refused(owner_client, gmail_fake, {**ARGS, "to": "jane@startup.example, x@y.example"})
     assert "read email in this turn" in refused(owner_client, gmail_fake, ARGS, read_mail=True)
 

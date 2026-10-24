@@ -76,6 +76,7 @@ class FakeGoogle:
         self.oldest_history = 0
         self.drafts: dict[str, dict[str, Any]] = {}
         self.sent: list[str] = []
+        self.deleted: list[str] = []
         self.requests: list[httpx.Request] = []
         self.grant = f"{api.READONLY}"
         self.fail = False
@@ -131,6 +132,10 @@ class FakeGoogle:
                 if h > start
             ]
             return httpx.Response(200, json={"history": rows, "historyId": str(self.history_id)})
+        if "/drafts/" in path and r.method == "DELETE":
+            self.drafts.pop(path.rsplit("/", 1)[1], None)
+            self.deleted.append(path.rsplit("/", 1)[1])
+            return httpx.Response(204)
         if "/drafts/" in path and r.method == "GET" and not path.endswith("/drafts/send"):
             did = path.rsplit("/", 1)[1]
             return (

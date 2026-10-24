@@ -83,3 +83,26 @@ def says_not_monitored(text: str) -> bool:
 
 def names_another_route(text: str) -> bool:
     return bool(_ROUTE_PHRASES.search(text or ""))
+
+
+AUTOMATED_CHIP = "This address looks automated; a reply is probably not read."
+UNSURE_CHIP = "Ava could not confirm that a person reads this."
+_GENERIC = {
+    "com", "net", "org", "mail", "mailer", "email", "info", "support", "account", "accounts", "noreply", "reply",
+    "no-reply", "donotreply", "hello", "team", "help", "customer", "service", "services", "from", "your", "bank",
+    "online", "marketing", "notifications", "alerts", "news", "newsletter",
+}  # fmt: skip
+
+
+def owner_named(typed: str, address: str, display_name: str = "") -> bool:
+    """Whether the owner's own words name this recipient: the address itself, or the sender's name or the
+    company in their domain ("say thanks to kotak"). This is how code tells "the owner asked for this
+    recipient" from "the model picked it": the model's say-so is never used."""
+    low = (typed or "").lower()
+    if not low or not address:
+        return False
+    if address.lower() in low:
+        return True
+    dom = address.lower().partition("@")[2]
+    words = {w for w in re.split(r"[^a-z0-9]+", dom + " " + (display_name or "").lower()) if len(w) >= 4}
+    return any(w in low for w in words - _GENERIC)

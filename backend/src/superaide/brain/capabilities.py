@@ -55,9 +55,12 @@ def gmail_line(session: Session, tz: str) -> str:
             f"To enable: {PLACE_GMAIL} → turn on drafts (Google will ask permission)."
         )
     return (
-        f"Gmail: connected{since}, drafts on: you can {can}, save a reply draft in a thread, and ask the owner to "
-        "approve sending a reply. You can also write a brand-new email to an address the owner typed "
-        "(gmail_compose, approval first). You cannot forward."
+        f"Gmail: connected{since}, drafts on: you can {can}, and you CAN email people for the owner: reply in a "
+        "thread (gmail_send) or write a new email to an address the owner typed or named (gmail_compose). Each "
+        "saves the Gmail draft and queues the owner's approval in ONE step; nothing is sent without their yes. "
+        "When the owner asks you to send something, call it straight away: do not ask 'want me to request "
+        "approval?' and do not use gmail_draft_reply (a draft with no approval) unless they asked for a draft "
+        "only. Never say you can't send messages to other people or that Gmail is read-only. You cannot forward."
     )
 
 
@@ -167,17 +170,35 @@ def unsupported_claims(text: str, ok_tools: set[str]) -> list[str]:
     return [what for pattern, tools, what in _CLAIMS if pattern.search(text or "") and not (tools & ok_tools)]
 
 
-def strip_claims(text: str, ok_tools: set[str]) -> tuple[str, list[str]]:
-    """Remove the sentences that claim an action nothing did. (text, what was removed)."""
+_CANT_SEND = re.compile(
+    r"\b(can't|cannot|can not|unable to|not able to|am not able to)\s+(send|email|message)\b[^.\n]{0,40}"
+    r"\b(other people|anyone|others|people|emails?)\b|\bread-only\b",
+    re.IGNORECASE,
+)
+
+
+def contradicts_capability(text: str, can_send: bool) -> bool:
+    """With Gmail drafts on she can email people (with approval); "I can't send to other people" or "Gmail is
+    read-only" in the same conversation as a saved draft is a contradiction (#394)."""
+    return bool(can_send and _CANT_SEND.search(text or ""))
+
+
+def strip_claims(text: str, ok_tools: set[str], can_send: bool = False) -> tuple[str, list[str]]:
+    """Remove the sentences that claim an action nothing did, or deny a capability she has. (text, removed)."""
     removed: list[str] = []
     kept: list[str] = []
     for sentence in re.split(r"(?<=[.!?])\s+|\n+", text or ""):
         bad = unsupported_claims(sentence, ok_tools)
+        if contradicts_capability(sentence, can_send):
+            bad = [*bad, "a statement that you cannot email people"]
         if bad:
             removed += bad
         elif sentence.strip():
             kept.append(sentence.strip())
     if not removed:
         return text, []
-    note = "Correction: I haven't actually done that, no tool ran for " + " or ".join(dict.fromkeys(removed)) + "."
+    undone = [r for r in dict.fromkeys(removed) if not r.startswith("a statement that")]
+    note = "Correction: I haven't actually done that, no tool ran for " + " or ".join(undone) + "." if undone else ""
+    if len(undone) < len(set(removed)):
+        note = ("Correction: I can email people for you; every send waits for your approval. " + note).strip()
     return "\n".join([*kept, note]), removed
