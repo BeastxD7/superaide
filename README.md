@@ -196,6 +196,7 @@ Every setting is an environment variable. [`backend/.env.example`](backend/.env.
 | `PUSH_ENABLED` | `false` | Web push to the owner's phone (makes a VAPID key pair on first use) | Real `VAPID_SUBJECT`; https | Safe |
 | `ECHO_FILTER_ENABLED` | `false` | Facts heard via links, Telegram or Slack stay hearsay until a second independent origin or the owner confirms | None | Safe |
 | `ONE_GOOD_QUESTION_ENABLED` | `false` | At most one clarifying question to the owner a day | None | Safe |
+| `TASK_PROTOCOL_ENABLED` | `false` | Errands that end in an approval need a plan first: Ava reads mail, calendar and notes, records goal, route, ability check and recommendation, code validates it, and the plan line is shown with the approval | None | Safe |
 | `IDENTITY_CLAIM_REVIEW` | `false` | An unknown account named like a contact is a stranger; the owner is asked who they are (link, new person, stranger, block) | None; `CLAIM_QUESTIONS_PER_DAY` | Safe |
 | `SECOND_OPINION_ENABLED` | `false` | Memory-free second view on the owner's own claims (up to 2 small-model calls per message) | Model key; `AGREEMENT_LIMIT` | Safe (small cost) |
 | `WHY_REPLAY_ENABLED` | `false` | "Why did you say that?" replay (up to `REPLAY_MAX_ABLATIONS` + 1 small-model calls) | Model key | Safe (small cost) |

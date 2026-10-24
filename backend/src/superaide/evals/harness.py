@@ -581,6 +581,9 @@ def run_scenario(sc: Scenario, *, inner: LLM | None = None, judge: Judge | None 
 
     reset_db()
     run = Run(sc, start=start_time(sc))
+    live_settings = get_settings()
+    protocol_before = live_settings.task_protocol_enabled
+    live_settings.task_protocol_enabled = sc.world.task_protocol
     began, spent_before = time.monotonic(), ledger_total()
     traveller = time_machine.travel(run.start, tick=True)
     clock = traveller.start()
@@ -662,6 +665,7 @@ def run_scenario(sc: Scenario, *, inner: LLM | None = None, judge: Judge | None 
         run.error = traceback.format_exc(limit=6)
     finally:
         traveller.stop()
+        live_settings.task_protocol_enabled = protocol_before
     run.cost = ledger_total() - spent_before
     run.seconds = time.monotonic() - began
     return run

@@ -112,6 +112,7 @@ class World(Strict):
     away_days: int = 0  # away from the start, for this many days
     away_visibility: Literal["everyone", "colleagues", "nobody"] = "colleagues"
     # Receptionist mode (ADR 0010 TR5): on by default. False keeps the old fixed reply for strangers.
+    task_protocol: bool = False  # TASK_PROTOCOL_ENABLED (#330): the owner's errands need a plan first
     receptionist: bool = True
     reception_profile: str = ""  # the owner's public profile text
     reception_show_name: bool = False  # may Ava say the owner's first name to people she doesn't know
