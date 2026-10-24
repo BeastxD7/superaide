@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -62,8 +63,8 @@ from __future__ import annotations
 
 import importlib
 import importlib.abc
-import importlib.util
 import importlib.machinery
+import importlib.util
 import sys
 from types import ModuleType
 from typing import Any
@@ -226,7 +227,7 @@ def run(root: Path, moves: dict[str, str], dry: bool = False) -> dict[str, str]:
     # Import-graph file ids ("mirror.service") are hard-coded as bare strings in the selector and layout tests
     # and in the tools' own tables; they are not `superaide.<name>`, so they get their own, narrower rule.
     ids_re = re.compile(rf"(?<=[\"'])({alt})(?=\.\w+[\"'])")
-    id_files = re.compile(r"^(backend/tests/repo/test_(?!codemod)\w+\.py|scripts/(?!codemod)\w+\.py)$")
+    id_files = re.compile(r"^(backend/tests/repo/test_(select_tests|import_cycles)\.py|scripts/(?!codemod)\w+\.py)$")
 
     def sub_id(m: re.Match) -> str:
         return dotted[m.group(1)]
@@ -269,18 +270,234 @@ def run(root: Path, moves: dict[str, str], dry: bool = False) -> dict[str, str]:
     return todo
 
 
+
+# Phase 5: single modules (and data files) that move to a new place, possibly into a package of their own.
+# old dotted module -> new path under backend/src/superaide (`__init__.py` makes it a package of that name).
+FILE_PHASES = {
+    5: {
+        "files": {
+            "channels.slack": "channels/slack/__init__.py",
+            "channels.telegram": "channels/telegram/__init__.py",
+            "connectors.google": "integrations/google/client.py",
+            "connectors.google_signin": "integrations/google/signin.py",
+            "connectors.gmail": "integrations/gmail/client.py",
+            "skills.gmail": "integrations/gmail/skill.py",
+            "skills.gmail_inbox": "integrations/gmail/inbox.py",
+            "app.gmail": "integrations/gmail/routes.py",
+            "skills.calendar": "integrations/calendar/skill.py",
+            "proactive.calendar_watch": "integrations/calendar/watch.py",
+            "app.passport": "features/passport/routes.py",
+            "app.mirror": "features/mirror/routes.py",
+            "app.journal": "features/journal/routes.py",
+            "app.skill_payouts": "skills/payouts_routes.py",
+            "app.skill_receipts": "skills/receipts_routes.py",
+            "app.skill_releases": "skills/releases_routes.py",
+            "app.skill_signals": "skills/signals_routes.py",
+        },
+        "data": {"channels/slack_manifest.yml": "channels/slack/manifest.yml"},
+        "test_dirs": {"connectors": "integrations"},  # backend/tests/<old> -> backend/tests/<new>
+        "e2e_dirs": {"connectors": "integrations"},  # e2e/tests/<old> -> e2e/tests/<new>
+        "module_renames": {"connectors": "integrations"},  # ci/modules.toml [modules.<old>]
+    }
+}
+
+
+def dotted_of(path: str) -> str:
+    """integrations/gmail/skill.py -> integrations.gmail.skill ; channels/slack/__init__.py -> channels.slack"""
+    parts = path.removesuffix(".py").split("/")
+    if parts[-1] == "__init__":
+        parts = parts[:-1]
+    return ".".join(parts)
+
+
+def old_file(root: Path, dotted: str) -> Path | None:
+    base = root / SRC / dotted.replace(".", "/")
+    for cand in (base.with_suffix(".py"), base / "__init__.py"):
+        if cand.exists():
+            return cand
+    return None
+
+
+def run_files(root: Path, plan: dict, dry: bool = False) -> dict[str, str]:
+    """Move single modules and data files; rewrite imports (including `from pkg import name`), dotted names, paths."""
+    files: dict[str, str] = plan["files"]
+    todo = {o: n for o, n in files.items() if old_file(root, o) is not None and not (root / SRC / n).exists()}
+    data = {o: n for o, n in plan.get("data", {}).items() if (root / SRC / o).exists() and not (root / SRC / n).exists()}
+    tdirs = {o: n for o, n in plan.get("test_dirs", {}).items() if (root / "backend/tests" / o).is_dir()}
+    edirs = {o: n for o, n in plan.get("e2e_dirs", {}).items() if (root / "e2e/tests" / o).is_dir()}
+    renames = {o: n for o, n in plan.get("module_renames", {}).items()}
+    if dry or not (todo or data or tdirs or edirs):
+        for o, n in {**todo, **data}.items():
+            print(f"{o} -> {n}")
+        return todo
+    moved_py: dict[str, int] = {}
+    path_map: dict[str, str] = {}
+    for o, n in todo.items():
+        src = old_file(root, o)
+        assert src is not None
+        dest = root / SRC / n
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        group = dest.parent
+        while group != root / SRC:
+            if not (group / "__init__.py").exists() and not (dest.name == "__init__.py" and group == dest.parent):
+                (group / "__init__.py").write_text("")
+                git(root, "add", str((group / "__init__.py").relative_to(root)))
+            group = group.parent
+        old_rel = src.relative_to(root).as_posix()
+        git(root, "mv", old_rel, str(dest.relative_to(root)))
+        path_map[old_rel] = dest.relative_to(root).as_posix()
+        moved_py[dest.relative_to(root).as_posix()] = len(Path(n).parts) - len(src.relative_to(root / SRC).parts)
+    for o, n in data.items():
+        (root / SRC / n).parent.mkdir(parents=True, exist_ok=True)
+        git(root, "mv", f"{SRC}/{o}", f"{SRC}/{n}")
+        path_map[f"{SRC}/{o}"] = f"{SRC}/{n}"
+    for o, n in tdirs.items():
+        git(root, "mv", f"backend/tests/{o}", f"backend/tests/{n}")
+        path_map[f"backend/tests/{o}/"] = f"backend/tests/{n}/"
+    for o, n in edirs.items():
+        git(root, "mv", f"e2e/tests/{o}", f"e2e/tests/{n}")
+        path_map[f"e2e/tests/{o}/"] = f"e2e/tests/{n}/"
+
+    new_dotted = {o: dotted_of(n) for o, n in todo.items()}
+    changed = {o: d for o, d in new_dotted.items() if d != o}
+    olds = sorted(changed, key=len, reverse=True)
+    alt = "|".join(re.escape(o) for o in olds) or r"(?!)"
+    dotted_re = re.compile(rf"(?<![\w.])superaide\.({alt})(?!\w)")
+    id_re = re.compile(rf"(?<=[\"'])({alt})(?=[\"'])")
+    id_files = re.compile(r"^(backend/tests/repo/test_(select_tests|import_cycles)\.py|scripts/(?!codemod)\w+\.py)$")
+    tdir_re = re.compile(r"(?<![\w.])tests\.(" + "|".join(re.escape(o) for o in tdirs) + r")(?=[.\s,)]|$)") if tdirs else None
+    # path forms of moved files, longest first
+    path_pairs = sorted(path_map.items(), key=lambda kv: -len(kv[0]))
+    pair_forms: dict[str, str] = {}
+    for old, new in path_pairs:
+        pair_forms[old] = new
+        if old.startswith("backend/"):
+            pair_forms[old.removeprefix("backend/")] = new.removeprefix("backend/")
+        if old.startswith(SRC + "/"):
+            pair_forms[old.removeprefix("backend/src/")] = new.removeprefix("backend/src/")
+    path_re = (
+        re.compile(
+            r"(?<![\w./\-])(?:"
+            + "|".join(re.escape(k) + ("" if k.endswith("/") else r"(?![\w\-])") for k in sorted(pair_forms, key=len, reverse=True))
+            + r")"
+        )
+        if pair_forms
+        else None
+    )
+    # bare source-relative paths in quotes ("skills/gmail_inbox.py"), as the repo tests compare them
+    rel_pairs = {o: n for o, n in ((p[len(SRC) + 1 :], q[len(SRC) + 1 :]) for p, q in path_map.items() if p.startswith(SRC + "/"))}
+    rel_re = (
+        re.compile(r"(?<=[\"'])(" + "|".join(re.escape(k) for k in sorted(rel_pairs, key=len, reverse=True)) + r")(?=[\"'])")
+        if rel_pairs
+        else None
+    )
+    by_pkg: dict[str, dict[str, str]] = {}  # old package -> {leaf: new dotted}
+    for o, d in changed.items():
+        pkg, _, leaf = o.rpartition(".")
+        by_pkg.setdefault(pkg, {})[leaf] = d
+    from_re = re.compile(r"^(\s*)from superaide\.([\w.]+) import (\([^)]*\)|[^\n(]+)$", re.M)
+
+    def from_sub(m: re.Match) -> str:
+        pkg = m.group(2)
+        moved = by_pkg.get(pkg)
+        if not moved:
+            return m.group(0)
+        body = m.group(3)
+        wrapped = body.startswith("(")
+        items = [i.strip() for i in body.strip("()").replace("\n", " ").split(",") if i.strip()]
+        keep: list[str] = []
+        out: list[str] = []
+        for item in items:
+            name, _, alias = item.partition(" as ")
+            name = name.split("#")[0].strip()
+            if name in moved:
+                target = moved[name]
+                parent, _, leaf = target.rpartition(".")
+                bound = alias.strip() or name
+                out.append(f"{m.group(1)}from superaide.{parent} import {leaf}" + (f" as {bound}" if bound != leaf else ""))
+            else:
+                keep.append(item)
+        lines = ([f"{m.group(1)}from superaide.{pkg} import {', '.join(keep)}"] if keep else []) + out
+        return "\n".join(lines) if lines else m.group(0)
+
+    def sub_dotted(m: re.Match) -> str:
+        return "superaide." + changed[m.group(1)]
+
+    for rel in tracked(root) + [p.relative_to(root).as_posix() for p in (root / "backend/tests").rglob("*.py") if tdirs]:
+        if any(rel.startswith(s) or rel.endswith(s) for s in TEXT_SKIP) or rel.startswith(SKIP_PREFIX):
+            continue
+        path = root / rel
+        if not path.is_file():
+            continue
+        try:
+            text = path.read_text()
+        except (UnicodeDecodeError, OSError):
+            continue
+        orig = text
+        text = from_re.sub(from_sub, text)
+        text = dotted_re.sub(sub_dotted, text)
+        if tdir_re:
+            text = tdir_re.sub(lambda m: f"tests.{tdirs[m.group(1)]}", text)
+        if path_re:
+            text = path_re.sub(lambda m: pair_forms[m.group(0)], text)
+        if id_files.match(rel) and changed:
+            text = id_re.sub(lambda m: changed[m.group(1)], text)
+        if rel_re and rel.startswith("backend/tests/"):
+            text = rel_re.sub(lambda m: rel_pairs[m.group(1)], text)
+        if moved_py.get(rel):
+            text = deepen(text, moved_py[rel])
+        if text != orig:
+            path.write_text(text)
+
+    for o in {o.split(".")[0] for o in todo}:  # a package left holding only an empty __init__.py goes away
+        pkg = root / SRC / o
+        left = [p for p in pkg.rglob("*") if p.is_file() and "__pycache__" not in p.parts] if pkg.is_dir() else []
+        if pkg.is_dir() and left == [pkg / "__init__.py"] and not left[0].read_text().strip():
+            git(root, "rm", "-q", "-f", str(left[0].relative_to(root)))
+            shutil.rmtree(pkg, ignore_errors=True)
+    toml = root / "ci" / "modules.toml"
+    text = toml.read_text()
+    for o, n in renames.items():
+        text = text.replace(f"[modules.{o}]", f"[modules.{n}]")
+        text = re.sub(rf'"backend/src/superaide/{o}/\*\*"', f'"backend/src/superaide/{n}/**"', text)
+    toml.write_text(text)
+
+    lock = root / SRC / "security" / "surface.lock.json"
+    if not lock.exists():
+        lock = root / SRC / "platform" / "security" / "surface.lock.json"
+    if lock.exists():
+        d = json.loads(lock.read_text())
+        lock.write_text(json.dumps(dict(sorted(d.items())), indent=2) + "\n")
+
+    moves_file = root / "ci" / "layout-moves.json"
+    meta = json.loads(moves_file.read_text()) if moves_file.exists() else {"paths": {}, "prefixes": {}, "modules": {}}
+    aliases = meta.setdefault("aliases", {})
+    for o, n in path_map.items():
+        meta["paths"][o] = n
+    for o, d in changed.items():
+        meta["modules"][f"superaide.{o}"] = f"superaide.{d}"
+        aliases[f"superaide.{o}"] = f"superaide.{d}"
+    moves_file.write_text(json.dumps(meta, indent=1, sort_keys=True) + "\n")
+    write_compat(root, aliases)
+    print(f"moved {len(todo)} modules, {len(data)} data files, {len(tdirs)} test folders")
+    return todo
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--root", default=str(ROOT))
-    ap.add_argument("--phase", type=int, choices=sorted(PHASES))
+    ap.add_argument("--phase", type=int, choices=sorted({*PHASES, *FILE_PHASES}))
     ap.add_argument("--move", action="append", default=[], metavar="old=new")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args(argv)
     moves = dict(PHASES.get(args.phase, {}))
     moves.update(dict(m.split("=", 1) for m in args.move))
-    if not moves:
+    if not moves and args.phase not in FILE_PHASES:
         ap.error("give --phase or --move")
-    run(Path(args.root), moves, args.dry_run)
+    if moves:
+        run(Path(args.root), moves, args.dry_run)
+    if args.phase in FILE_PHASES:
+        run_files(Path(args.root), FILE_PHASES[args.phase], args.dry_run)
     return 0
 
 

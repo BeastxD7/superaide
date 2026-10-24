@@ -14,7 +14,7 @@ file as it is on the new main (git merge-file, a normal 3-way merge). Conflicts 
 end. Nothing is committed: review, run the tests, commit.
 
 The map (JSON, written by the move PR's codemod next to the move):
-    {"paths":   {"backend/src/superaide/channels/slack.py": "backend/src/superaide/channels/slack/client.py"},
+    {"paths":   {"backend/src/superaide/channels/slack/__init__.py": "backend/src/superaide/channels/slack/client.py"},
      "prefixes": {"backend/tests/test_slack": "backend/tests/channels/slack/test_slack"},
      "modules": {"superaide.channels.slack": "superaide.channels.slack.client"}}
 `paths` (exact) wins over `prefixes` (longest first); `modules` rewrites dotted names, longest first.

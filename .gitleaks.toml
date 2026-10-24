@@ -6,7 +6,7 @@ useDefault = true
 [[allowlists]]
 description = "Made-up Google credentials planted by the capability e2e spec"
 condition = "AND"
-paths = ['''(^|/)tests/connectors/capability-google\.spec\.ts$''']
+paths = ['''(^|/)tests/integrations/capability-google\.spec\.ts$''']
 regexes = ['''^rt-1234567890abcdef$''', '''^GOCSPX-secretsecret$''', '''^abc\.apps\.googleusercontent\.com$''']
 
 [[allowlists]]

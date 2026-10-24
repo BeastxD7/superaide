@@ -14,13 +14,13 @@ from sqlalchemy import select, text
 from sqlalchemy.dialects import postgresql
 
 from superaide.app.accounts import owner as hired_owner
+from superaide.integrations.gmail import inbox as gmail_inbox
 from superaide.main import create_app
 from superaide.memory.store import log_event, touch_context
 from superaide.platform.db.models import Context, Event
 from superaide.platform.db.session import session_scope
 from superaide.platform.pagination import SortKey, bind_for, encode_cursor, page_query
-from superaide.skills import gmail_inbox
-from tests.connectors.gmail_fake import mail, owner_client_fixture  # noqa: F401  (fixture)
+from tests.integrations.gmail_fake import mail, owner_client_fixture  # noqa: F401  (fixture)
 
 ADMIN = {"Authorization": "Bearer test-admin-token", "X-Operator-Reason": "checking a reported problem"}
 SRC = Path(__file__).resolve().parents[2] / "src" / "superaide"
@@ -56,7 +56,7 @@ def test_only_two_places_construct_an_event_and_both_touch_the_context():
     log_event (or calls touch_context itself)."""
     pattern = re.compile(r"(?<![A-Za-z_.])(?<!class )Event\(")
     homes = {str(p.relative_to(SRC)) for p in SRC.rglob("*.py") if pattern.search(p.read_text())}
-    assert homes == {"memory/store.py", "skills/gmail_inbox.py"}, homes
+    assert homes == {"memory/store.py", "integrations/gmail/inbox.py"}, homes
     for home in homes:
         assert "touch_context(" in (SRC / home).read_text()
 

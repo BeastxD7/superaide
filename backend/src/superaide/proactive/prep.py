@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 
 from superaide.context.audience import Audience
 from superaide.context.recall import Source, recall
+from superaide.integrations.calendar import skill as calendar
 from superaide.intentions.service import owner_zone
 from superaide.intentions.when import zone
 from superaide.jobs.queue import enqueue, handler
@@ -32,7 +33,6 @@ from superaide.platform.audit import audit
 from superaide.platform.db.models import Contact, Job, Person
 from superaide.platform.db.session import require, session_scope
 from superaide.proactive.notify import notify_owner
-from superaide.skills import calendar
 
 log = logging.getLogger(__name__)
 JOB_KIND = "meeting_prep"
@@ -224,7 +224,7 @@ def scan(session: Session, job: Job) -> None:
     # transaction rolls back, and the chain must not end with it (issue #86).
     with session_scope() as booking:
         schedule_scan(booking, require(booking, Person, owner.id), now + timedelta(seconds=1))
-    from superaide.proactive import calendar_watch
+    from superaide.integrations.calendar import watch as calendar_watch
 
     try:
         calendar_watch.ensure(session, owner, now)  # push (when on) makes this scan run at once; never needed

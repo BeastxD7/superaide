@@ -9,11 +9,11 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
-from superaide.connectors import gmail as api
+from superaide.integrations.gmail import client as api
 from superaide.platform.db.models import Approval
 from superaide.platform.db.session import session_scope
 from superaide.policy import recipients
-from tests.connectors.gmail_fake import connect, gmail_fake_fixture, mail, owner_client_fixture  # noqa: F401
+from tests.integrations.gmail_fake import connect, gmail_fake_fixture, mail, owner_client_fixture  # noqa: F401
 from tests.pipeline.test_loop import Script, tool_use, turn_for
 
 BLUEHOST = "Bluehost <noreply@account.bluehost.com>"

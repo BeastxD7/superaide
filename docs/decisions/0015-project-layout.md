@@ -123,8 +123,8 @@ What is deliberately not nested: the 13 `features/*` leaves (3 to 8 files each: 
 Before (five places, 283-line file, tests mixed into 151 flat files):
 
 ```
-src/superaide/channels/slack.py            signature check, event parsing, SlackMessenger, socket mode (283 lines)
-src/superaide/channels/slack_manifest.yml
+src/superaide/channels/slack/__init__.py            signature check, event parsing, SlackMessenger, socket mode (283 lines)
+src/superaide/channels/slack/manifest.yml
 src/superaide/channels/format.py           322 lines, Slack and Telegram formatting mixed
 src/superaide/identity/linking.py          link codes (all channels)
 src/superaide/app/connections.py           Slack connect/disconnect routes

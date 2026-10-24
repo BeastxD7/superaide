@@ -146,10 +146,10 @@ def run(session: Session, job: Job) -> None:
         text, label, ref = event.content, "an email the owner received", f"gmail:{meta.get('gmail_id') or item_id}"
         author = str(meta.get("from_domain") or meta.get("from_name") or "") or None
     elif kind == "calendar":
-        from superaide.connectors import google
+        from superaide.integrations.calendar import skill as calendar
+        from superaide.integrations.google import client as google
         from superaide.intentions.service import owner_zone
         from superaide.intentions.when import zone
-        from superaide.skills import calendar
 
         try:
             event_json = calendar.fresh_event(session, owner, item_id)

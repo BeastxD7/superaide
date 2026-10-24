@@ -37,7 +37,7 @@ def _since(at: datetime | None, tz: str) -> str:
 
 
 def gmail_line(session: Session, tz: str) -> str:
-    from superaide.skills import gmail
+    from superaide.integrations.gmail import skill as gmail
     from superaide.vault.store import stored
 
     st = gmail.status(session)
@@ -65,7 +65,7 @@ def gmail_line(session: Session, tz: str) -> str:
 
 
 def calendar_line(session: Session) -> str:
-    from superaide.skills import calendar
+    from superaide.integrations.calendar import skill as calendar
 
     if not calendar.enabled(session):
         return f"Calendar: not added. The owner can add it under {PLACE_CALENDAR}."

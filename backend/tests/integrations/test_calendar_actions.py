@@ -19,13 +19,14 @@ from sqlalchemy import select, text
 from superaide.app import connections
 from superaide.app.accounts import owner as hired_owner
 from superaide.brain.loop import narrate
-from superaide.connectors import google
+from superaide.integrations.calendar import skill as calendar
+from superaide.integrations.google import client as google
 from superaide.main import create_app
 from superaide.platform.db.models import Approval, AuditLog
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import InstanceScope, use_instance
 from superaide.policy.killswitch import set_state
-from superaide.skills import calendar, registry
+from superaide.skills import registry
 
 PASSWORD = "correct horse battery"
 CLIENT = "1234-cal.apps.googleusercontent.com"

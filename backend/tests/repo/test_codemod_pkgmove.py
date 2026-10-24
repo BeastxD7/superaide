@@ -29,7 +29,7 @@ FILES = {
     "ci/modules.toml": f'[modules.a]\nsrc = ["{SRC}/leafa/**"]\n',
     "docs/note.md": "See backend/src/superaide/leafb/sub.py and `superaide.leafa`; superaide.leafabc stays.\n",
     "backend/tests/test_x.py": 'import superaide.leafb.sub\nPATCH = "superaide.leafa.thing"\n',
-    "backend/tests/repo/test_ids.py": 'EDGE = "leafa.thing"\nOTHER = "leafabc.x"\n',
+    "backend/tests/repo/test_import_cycles.py": 'EDGE = "leafa.thing"\nOTHER = "leafabc.x"\n',
     ".github/CODEOWNERS": "/backend/src/superaide/leafa/   @owner\n",
 }
 
@@ -85,7 +85,7 @@ def test_packages_move_and_everything_that_names_them_follows(repo: Path) -> Non
     assert "superaide.leafabc stays" in note  # a longer name is not a match
     test = (repo / "backend/tests/test_x.py").read_text()
     assert "import superaide.features.leafb.sub" in test and '"superaide.features.leafa.thing"' in test
-    ids = (repo / "backend/tests/repo/test_ids.py").read_text()
+    ids = (repo / "backend/tests/repo/test_import_cycles.py").read_text()
     assert '"features.leafa.thing"' in ids and '"leafabc.x"' in ids  # import-graph ids in the repo tests follow too
     moves = json.loads((repo / "ci/layout-moves.json").read_text())
     assert moves["aliases"]["superaide.leafa"] == "superaide.features.leafa"

@@ -2429,49 +2429,6 @@
         "title": "LinkBody",
         "type": "object"
       },
-      "superaide__app__journal__SettingsBody": {
-        "properties": {
-          "enabled": {
-            "title": "Enabled",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "enabled"
-        ],
-        "title": "SettingsBody",
-        "type": "object"
-      },
-      "superaide__app__mirror__FeedbackBody": {
-        "properties": {
-          "action": {
-            "enum": [
-              "not_useful",
-              "mute"
-            ],
-            "title": "Action",
-            "type": "string"
-          }
-        },
-        "required": [
-          "action"
-        ],
-        "title": "FeedbackBody",
-        "type": "object"
-      },
-      "superaide__app__mirror__SettingsBody": {
-        "properties": {
-          "enabled": {
-            "title": "Enabled",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "enabled"
-        ],
-        "title": "SettingsBody",
-        "type": "object"
-      },
       "superaide__app__routes__AnswerBody": {
         "properties": {
           "answer": {
@@ -2633,6 +2590,49 @@
           "options"
         ],
         "title": "AskBody",
+        "type": "object"
+      },
+      "superaide__features__journal__routes__SettingsBody": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "SettingsBody",
+        "type": "object"
+      },
+      "superaide__features__mirror__routes__FeedbackBody": {
+        "properties": {
+          "action": {
+            "enum": [
+              "not_useful",
+              "mute"
+            ],
+            "title": "Action",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "title": "FeedbackBody",
+        "type": "object"
+      },
+      "superaide__features__mirror__routes__SettingsBody": {
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "SettingsBody",
         "type": "object"
       },
       "superaide__features__rehearsal__routes__StartBody": {
@@ -7354,7 +7354,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/superaide__app__journal__SettingsBody"
+                "$ref": "#/components/schemas/superaide__features__journal__routes__SettingsBody"
               }
             }
           },
@@ -7887,7 +7887,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/superaide__app__mirror__FeedbackBody"
+                "$ref": "#/components/schemas/superaide__features__mirror__routes__FeedbackBody"
               }
             }
           },
@@ -7938,7 +7938,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/superaide__app__mirror__SettingsBody"
+                "$ref": "#/components/schemas/superaide__features__mirror__routes__SettingsBody"
               }
             }
           },

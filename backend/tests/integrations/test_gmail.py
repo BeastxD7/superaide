@@ -1,6 +1,6 @@
 """The Gmail capability: reading with citations, drafting, sending only after approval, the
 incremental scope upgrade, email as untrusted text, and one owner's Gmail never reaching another's.
-Gmail is a fake (tests/connectors/gmail_fake.py); nothing reaches Google."""
+Gmail is a fake (tests/integrations/gmail_fake.py); nothing reaches Google."""
 
 from __future__ import annotations
 
@@ -12,12 +12,12 @@ import pytest
 from sqlalchemy import select
 
 from superaide.app.accounts import owner as hired_owner
-from superaide.connectors import gmail as api
+from superaide.integrations.gmail import client as api
+from superaide.integrations.gmail import skill as gmail
 from superaide.platform.db.models import Approval, Person
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import InstanceScope, use_instance
-from superaide.skills import gmail
-from tests.connectors.gmail_fake import (  # noqa: F401  (fixtures)
+from tests.integrations.gmail_fake import (  # noqa: F401  (fixtures)
     CLIENT_ID,
     CLIENT_SECRET,
     OWNER_ADDR,
@@ -377,7 +377,7 @@ def test_any_other_gmail_error_stays_failed_and_is_logged(owner_client, gmail_fa
 def test_calendar_api_not_enabled_is_told_apart_too():
     from datetime import UTC, datetime
 
-    from superaide.connectors import google
+    from superaide.integrations.google import client as google
 
     disabled = httpx.Response(403, json={"error": {"errors": [{"reason": "accessNotConfigured"}]}})
     client = httpx.Client(transport=httpx.MockTransport(lambda r: disabled))
