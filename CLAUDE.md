@@ -4,6 +4,8 @@ Superaide is a marketplace of AI agents you **hire**. They start at the Infant s
 
 Read `README.md` for the overview and `docs/architecture.md` for how a request flows. Read `docs/decisions/` before changing anything structural.
 
+> Contribution protocol for every agent (claim the issue, safe databases, definition of done, PR rules): see [AGENTS.md](AGENTS.md).
+
 ## Layout
 
 - `backend/`: Python 3.14, uv, FastAPI (JSON API only), SQLAlchemy 2, Alembic, Postgres 17 + pgvector. Code is in `src/superaide/`; `pipeline.py` is the message path.
