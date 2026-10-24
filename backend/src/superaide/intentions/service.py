@@ -76,7 +76,9 @@ def reconcile(session: Session) -> int:
 def auto_close_delivered(session: Session) -> int:
     """Close (as done) the open reminders that went off more than `reminder_auto_close_days` ago, so they do
     not pile up for ever (issue #85). Runs in one instance's scope, from the worker's recurring pass."""
-    days = get_settings().reminder_auto_close_days
+    from superaide.skills import retention_settings as retention
+
+    days = retention.effective(session, "reminder_auto_close_days", get_settings().reminder_auto_close_days)
     if days <= 0:
         return 0
     now = datetime.now(UTC)

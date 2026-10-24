@@ -229,6 +229,8 @@ e2e = [
   "e2e/tests/integrations/calendar-settings.mobile.spec.ts",
   "e2e/tests/integrations/channels-settings.spec.ts",
   "e2e/tests/integrations/channels-settings.mobile.spec.ts",
+  "e2e/tests/integrations/retention-settings.spec.ts",
+  "e2e/tests/integrations/retention-settings.mobile.spec.ts",
   "e2e/tests/journeys/calendar-connect.spec.ts",
   "e2e/tests/journeys/approval-automated.spec.ts",
 ]

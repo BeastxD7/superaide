@@ -192,6 +192,18 @@ def create_app(agent: Agent | None = None) -> FastAPI:
             event="channels_read_settings",
         )
     )
+    from superaide.skills import retention_settings
+
+    app.include_router(
+        make_connector_settings_router(
+            prefix="retention",
+            skill_id=retention_settings.SKILL_ID,
+            choices=retention_settings.CHOICES,
+            tag="Owner: Settings",
+            what="Reminders and approvals",
+            event="retention_read_settings",
+        )
+    )
     from superaide.triage.routes import make_router as make_triage_router
 
     app.include_router(make_triage_router(get_agent))  # 404 everywhere while TRIAGE_ENABLED is off
