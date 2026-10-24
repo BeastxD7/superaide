@@ -44,6 +44,6 @@ test('Gmail asks before it can send, then points to the Google client before con
   await gmail.getByRole('link', { name: 'Gmail settings' }).click()
   await expect(page).toHaveURL(/\/dashboard\/capabilities\/gmail$/)
   const settings = page.getByRole('group', { name: 'Gmail settings' })
-  await expect(settings.getByText('Add your Google OAuth client under Connections first')).toBeVisible()
+  await expect(settings.getByText('Add your Google OAuth client under Capabilities first')).toBeVisible()
   await expect(settings.getByRole('button', { name: 'Connect Gmail' })).toHaveCount(0)
 })

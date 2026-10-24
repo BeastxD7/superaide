@@ -1,16 +1,21 @@
-// Google Calendar on the Connections page: save your own OAuth client, sign in with
+// The Google account card on the Capabilities page (was Connections): save your own OAuth client, sign in with
 // Google, come back to a clear result. Google is never contacted: the browser's trip to
 // accounts.google.com is answered here, and the outcomes that would need the backend to
 // trade a code with Google (connected) are shown with a mocked status instead.
 import type { Page, Route } from '@playwright/test'
 import { expect, test } from '../../src/fixtures'
 import { apiEnv } from '../../src/env'
-import { openConnections, storedSecrets } from '../../src/helpers/workspace'
+import { storedSecrets } from '../../src/helpers/workspace'
 
 const CLIENT_ID = '123456789012-e2etestclient.apps.googleusercontent.com'
 const CLIENT_SECRET = 'e2e-placeholder-client-secret-1234'
 const REDIRECT_URI = `${apiEnv().FRONTEND_ORIGIN}/api/app/connections/google/callback`
 
+// The Google account card is on the Capabilities page (it used to be on Connections, #441).
+async function openGoogleCard(page: Page): Promise<void> {
+  await page.goto('/dashboard/capabilities')
+  await expect(page.getByRole('heading', { level: 1, name: 'Capabilities' })).toBeVisible()
+}
 const googleRow = (page: Page) => page.getByRole('button', { name: /^Google Calendar/ })
 
 // Anything sent to Google that a test didn't answer is stopped and recorded.
@@ -55,7 +60,7 @@ test('set up the OAuth client, go to Google, and come back cancelled', async ({ 
   void owner
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])
   const outside = await blockGoogle(page)
-  await openConnections(page)
+  await openGoogleCard(page)
   const row = googleRow(page)
   await expect(row).toHaveAttribute('aria-expanded', 'false')
   await row.click()
@@ -93,7 +98,7 @@ test('set up the OAuth client, go to Google, and come back cancelled', async ({ 
   await expect(connect).toBeEnabled()
   await connect.click()
   await expect(page.getByRole('status', { name: 'Google Calendar result' })).toContainText('Google sign-in was cancelled')
-  await expect(page).toHaveURL(/\/dashboard\/connections$/) // the ?google= note is tidied away
+  await expect(page).toHaveURL(/\/dashboard\/capabilities$/) // the ?google= note is tidied away
   const asked = google.url
   expect(asked, 'the browser went to Google').not.toBeNull()
   expect(asked?.searchParams.get('client_id')).toBe(CLIENT_ID)
@@ -112,7 +117,7 @@ test('a forged sign-in is refused and nothing is connected', async ({ page, api,
   await api.ok(api.post('/app/connections/google', { client_id: CLIENT_ID, client_secret: CLIENT_SECRET }))
   // Google comes back with a code, but not with the state this app made, so the code is never used.
   await fakeGoogleConsent(page, () => ({ code: 'e2e-fake-code', state: 'forged-state' }))
-  await openConnections(page)
+  await openGoogleCard(page)
   await googleRow(page).click()
   await page.getByRole('button', { name: 'Connect Google Calendar', exact: true }).click()
   await expect(page.getByRole('status', { name: 'Google Calendar result' })).toContainText('expired or was already used')
@@ -141,9 +146,9 @@ test('once connected, it points to the Google Calendar capability until that is 
       await route.fulfill({ response, json: body })
     },
   )
-  await page.goto('/dashboard/connections?google=connected')
+  await page.goto('/dashboard/capabilities?google=connected')
   await expect(page.getByRole('status', { name: 'Google Calendar result' })).toContainText('Google Calendar is connected')
-  await expect(page).toHaveURL(/\/dashboard\/connections$/)
+  await expect(page).toHaveURL(/\/dashboard\/capabilities$/)
   await expect(googleRow(page)).toContainText('Connected')
   await expect(page.getByRole('button', { name: 'Connect Google Calendar', exact: true })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Disconnect Google Calendar' })).toBeVisible()
@@ -155,7 +160,7 @@ test('once connected, it points to the Google Calendar capability until that is 
   await page.getByRole('group', { name: 'Permissions for Google Calendar' }).getByRole('button', { name: 'Allow and install' }).click()
   await expect(calendar.getByText('Installed')).toBeVisible()
 
-  await openConnections(page)
+  await openGoogleCard(page)
   await googleRow(page).click()
   await expect(page.getByText('Signed in with Google')).toBeVisible()
   await expect(page.getByRole('link', { name: 'Enable it on the Capabilities page' })).toHaveCount(0)
