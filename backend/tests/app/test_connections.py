@@ -408,3 +408,18 @@ def test_the_default_localhost_flow_is_unchanged(owner):
     done = callback(owner, code="good-code", state=q["state"])
     assert done.headers["location"] == f"{HOME}/dashboard/connections?google=connected"
     assert TOKEN_FORMS[-1]["redirect_uri"] == [f"{HOME}/api/app/connections/google/callback"]
+
+
+def test_google_sign_in_can_come_back_to_capabilities(owner):
+    """#441: the Google account card lives on Capabilities, so its sign-in returns there (callers that send nothing
+    still return to Connections, above)."""
+    owner.post("/app/connections/google", json={"client_id": GOOGLE_CLIENT, "client_secret": GOOGLE_SECRET})
+    r = owner.post("/app/connections/google/start", json={"back": "skills"})
+    assert r.status_code == 200
+    state = parse_qs(urlparse(r.json()["url"]).query)["state"][0]
+    back = callback(owner, code="good-code", state=state)
+    assert (
+        back.status_code == 303
+        and back.headers["location"] == "http://localhost:3000/dashboard/capabilities?google=connected"
+    )
+    assert owner.post("/app/connections/google/start", json={"back": "elsewhere"}).status_code == 422

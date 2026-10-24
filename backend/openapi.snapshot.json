@@ -993,6 +993,22 @@
         "title": "GoogleClientBody",
         "type": "object"
       },
+      "GoogleConnectStartBody": {
+        "description": "Where Google's sign-in comes back to: Capabilities (the Google account card lives there) or, for older\ncallers that send nothing, Connections.",
+        "properties": {
+          "back": {
+            "default": "connections",
+            "enum": [
+              "connections",
+              "skills"
+            ],
+            "title": "Back",
+            "type": "string"
+          }
+        },
+        "title": "GoogleConnectStartBody",
+        "type": "object"
+      },
       "GoogleStartBody": {
         "properties": {
           "next": {
@@ -5933,6 +5949,23 @@
       "post": {
         "description": "Returns the Google sign-in URL (OAuth 2.1 with PKCE). Open it in the browser.",
         "operationId": "google_start_app_connections_google_start_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/GoogleConnectStartBody"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {
@@ -5947,6 +5980,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [

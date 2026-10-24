@@ -14,7 +14,7 @@ import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import quote
 
 import httpx
@@ -122,6 +122,13 @@ class TelegramBody(BaseModel):
 
 class VoiceKeyBody(BaseModel):
     api_key: str = Field(min_length=10, max_length=300)
+
+
+class GoogleConnectStartBody(BaseModel):
+    """Where Google's sign-in comes back to: Capabilities (the Google account card lives there) or, for older
+    callers that send nothing, Connections."""
+
+    back: Literal["connections", "skills"] = "connections"
 
 
 class GoogleClientBody(BaseModel):
@@ -359,7 +366,10 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
         description="Returns the Google sign-in URL (OAuth 2.1 with PKCE). Open it in the browser.",
     )
     def google_start(
-        request: Request, _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
+        request: Request,
+        body: GoogleConnectStartBody | None = None,
+        _: uuid.UUID = Depends(owner_person_id),
+        user_id: uuid.UUID = Depends(current_user_id),
     ) -> dict[str, str]:
         from superaide.integrations.calendar import skill as calendar
 
@@ -367,14 +377,15 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
 
         with session_scope() as s:
             events = calendar.actions_on(s)  # reconnecting keeps the right to change events, if it was given
-        return {"url": begin_google(user_id, events=events, origin=origin)}
+        return {"url": begin_google(user_id, events=events, origin=origin, back=body.back if body else "connections")}
 
     @router.get(
         "/google/callback",
         summary="Google sign-in callback",
         description=(
             "Google sends the browser here. Checks the one-time state from Start (which is tied to the signed-in "
-            "owner), stores the refresh token, then sends the browser back to Connections with ?google=<result>."
+            "owner), stores the refresh token, then sends the browser back to Capabilities (or Connections, for older "
+            "callers) with ?google=<result>."
         ),
         include_in_schema=False,
     )
