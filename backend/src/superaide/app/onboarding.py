@@ -105,7 +105,8 @@ def first_name(person: Person) -> str:
     return person.display_name.split()[0] if person.display_name.strip() else "there"
 
 
-def lines_for(step: str, person: Person, agent_name: str) -> list[str]:
+def lines_for(step: str, person: Person, agent_name: str, *, introduced: bool = False) -> list[str]:
+    """`introduced`: the brain step already said "Hi, I'm Ava", so the hello step does not greet a second time."""
     name = first_name(person)
     if step == "brain":
         return [
@@ -117,7 +118,9 @@ def lines_for(step: str, person: Person, agent_name: str) -> list[str]:
         ]
     if step == "hello":
         return [
-            f"Hi {name}, I'm {agent_name}, your personal assistant. Thanks for hiring me.",
+            f"Thanks for hiring me, {name}."
+            if introduced
+            else f"Hi {name}, I'm {agent_name}, your personal assistant. Thanks for hiring me.",
             "First, so there's no confusion: I'm an AI, not a person. When you're busy, people can talk to me "
             "instead. I'll help where you let me, take clear messages, and only interrupt you when something "
             "really can't wait.",
@@ -181,7 +184,7 @@ class Onboarder:
             index=STEPS.index(step) - (0 if with_brain else 1),
             total=len(labels),
             labels=labels,
-            ava=lines_for(step, person, self.settings.agent_name),
+            ava=lines_for(step, person, self.settings.agent_name, introduced=bool((state.answers or {}).get("brain"))),
             input=self.input_for(session, person, step, state.answers or {}),
             done=step == "done",
             hint=hint,
@@ -496,7 +499,7 @@ class Onboarder:
         session.flush()
         if extra:
             self._say(session, person, extra)
-        lines = lines_for(nxt, person, self.settings.agent_name)
+        lines = lines_for(nxt, person, self.settings.agent_name, introduced=step == "brain")
         if nxt == "done":
             lines = lines + [self._learned_summary(session, person, closing=True)]
         self._say(session, person, lines)

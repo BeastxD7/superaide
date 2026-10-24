@@ -45,8 +45,8 @@ def test_connected_gmail_with_drafts_lists_exactly_what_she_can_do(owner_client,
         text = system_text(s)
     assert (
         "drafts on" in text
-        and "save a reply draft" in text
-        and "brand-new email to an address the owner typed" in text
+        and "reply in a thread (gmail_send)" in text
+        and "gmail_compose" in text
         and "cannot forward" in text
     )
     assert "since " in text  # when it was connected, so a change since earlier in the chat is visible

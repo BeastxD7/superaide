@@ -243,6 +243,7 @@ e2e = [
   "e2e/tests/capability-google.spec.ts",
   "e2e/tests/gmail-api-disabled.spec.ts",
   "e2e/tests/journeys/calendar-connect.spec.ts",
+  "e2e/tests/journeys/approval-automated.spec.ts",
 ]
 
 [modules.context]
@@ -699,6 +700,7 @@ tests = [
   "backend/tests/test_triage_rules.py",
   "backend/tests/test_triage_schema.py",
   "backend/tests/test_knn_shadow.py",
+  "backend/tests/test_knn_promotion.py",
   "backend/tests/test_gmail_triage.py",
   "backend/tests/api/test_triage_instances.py",
   "backend/tests/api/test_triage_routes.py",
@@ -849,6 +851,7 @@ tests = [
 e2e = [
   "e2e/tests/halt-resume.spec.ts",
   "e2e/tests/mandate-skips.spec.ts",
+  "e2e/tests/knn-promote.spec.ts",
   "e2e/tests/chat-empty.mobile.spec.ts",
   "e2e/tests/citation-marks.mobile.spec.ts",
   "e2e/tests/citation-marks.spec.ts",

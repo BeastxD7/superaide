@@ -11,7 +11,7 @@ import { AskRequests } from '@/features/ask/AskRequests'
 import { IdentityClaims } from '@/features/identity/IdentityClaims'
 import { CHANNEL_LABEL } from '@/features/dashboard/data'
 import { useNeedsYou } from '@/features/needs-you/useNeedsYou'
-import { call, type NeedsYouItem, type TriageFeedback, type TriageSettings, type TriageVerb } from '@/lib/api'
+import { call, type KnnShadow, type NeedsYouItem, type TriageFeedback, type TriageSettings, type TriageVerb } from '@/lib/api'
 import { formatWhen } from '@/lib/dates'
 import { wholeNumber } from '@/lib/numbers'
 import { useSession } from '@/lib/session-context'
@@ -277,6 +277,19 @@ function SettingsPanel({ name }: { name: string }) {
       .catch((e) => setProblem(errorMessage(e)))
   }, [])
 
+  async function knn(path: '/triage/knn/promote' | '/triage/knn/demote') {
+    setProblem(null)
+    setSaving(true)
+    try {
+      const k = await call<KnnShadow>(path, { method: 'POST' })
+      setSettings((cur) => (cur ? { ...cur, knn_shadow: k } : cur))
+    } catch (e) {
+      setProblem(errorMessage(e))
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function save(path: string, json: unknown, method: 'POST' | 'PUT' = 'POST') {
     setProblem(null)
     setSaved(false)
@@ -306,6 +319,35 @@ function SettingsPanel({ name }: { name: string }) {
         <p className="mt-2 text-sm text-muted" data-testid="knn-shadow">
           {settings.knn_shadow.text}
         </p>
+      )}
+      {settings.knn_shadow?.can_promote && (
+        <div className="mt-3 rounded-lg border border-line bg-surface p-3" data-testid="knn-promote">
+          <p className="text-sm font-medium text-ink">Let the head decide who interrupts you?</p>
+          <p className="mt-1 text-sm text-body">
+            It agrees with you {Math.round((settings.knn_shadow.agreement ?? 0) * 100)}% over {settings.knn_shadow.n} corrections in the last{' '}
+            {settings.knn_shadow.window_days ?? 30} days. If you say yes it can only raise: it may tell you about a message {name} thought was calm, and it
+            never silences one. You can take it back at any time.
+          </p>
+          <Button size="sm" className="mt-2" disabled={saving} onClick={() => void knn('/triage/knn/promote')}>
+            Promote
+          </Button>
+        </div>
+      )}
+      {settings.knn_shadow?.can_demote && (
+        <div className="mt-3 rounded-lg border border-line bg-surface p-3" data-testid="knn-promoted">
+          <p className="text-sm font-medium text-ink">The head may raise what {name} tells you</p>
+          <p className="mt-1 text-sm text-body">
+            {settings.knn_shadow.acting
+              ? 'It is on: a message that sounds like ones you called urgent is raised, never lowered.'
+              : 'You said yes, but raising is switched off by the operator, so nothing changes yet.'}
+            {settings.knn_shadow.below_gate_since
+              ? ` It has been under the bar since ${when(settings.knn_shadow.below_gate_since)} and ends in ${settings.knn_shadow.demotes_in_days ?? 0} days unless it recovers.`
+              : ''}
+          </p>
+          <Button size="sm" variant="outline" className="mt-2" disabled={saving} onClick={() => void knn('/triage/knn/demote')}>
+            Take it back
+          </Button>
+        </div>
       )}
       {problem && (
         <div className="mt-3">

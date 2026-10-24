@@ -13269,6 +13269,63 @@
         ]
       }
     },
+    "/app/triage/knn/demote": {
+      "post": {
+        "operationId": "knn_demote_app_triage_knn_demote_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Knn Demote App Triage Knn Demote Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Take back the kNN head's promotion",
+        "tags": [
+          "Owner: needs you"
+        ]
+      }
+    },
+    "/app/triage/knn/promote": {
+      "post": {
+        "description": "Records your yes. Refused with 409 unless the head is eligible now (z 1.96, at least 200 corrections in the last 30 days, lower bound 0.8). Once promoted the head may only raise, and only while TRIAGE_KNN_RAISE_ENABLED is on. It ends by itself after 14 days under the gate.",
+        "operationId": "knn_promote_app_triage_knn_promote_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Knn Promote App Triage Knn Promote Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Let the kNN head raise urgency",
+        "tags": [
+          "Owner: needs you"
+        ]
+      }
+    },
     "/app/triage/promotion": {
       "get": {
         "description": "Interrupt precision from your own feedback, with the lower end of a 95% interval and the gate it has to clear. Advice only: Ava never changes her own stage.",

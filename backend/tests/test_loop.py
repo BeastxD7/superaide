@@ -380,7 +380,12 @@ def test_email_requests_are_named_as_approvals_in_the_prompt_and_tool():
     from superaide.brain.loop import ACTION_TOOL, LEARNS, OWNER_RULES
 
     assert "email" in ACTION_TOOL["description"] and "message_someone_else" in ACTION_TOOL["description"]
-    assert "emails" in OWNER_RULES and "gmail_send" in OWNER_RULES and "NO approval was created" in OWNER_RULES
+    assert (
+        "email" in OWNER_RULES
+        and "gmail_send" in OWNER_RULES
+        and "gmail_compose" in OWNER_RULES
+        and "NO approval was created" in OWNER_RULES
+    )
     assert "forget it by your next conversation" in LEARNS and "say yes plainly" in LEARNS
 
 
