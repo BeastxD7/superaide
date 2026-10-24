@@ -1,5 +1,6 @@
 'use client'
 
+import { HowThisWorks } from '@/features/dashboard/settings/HowThisWorks'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Notice } from '@/components/site'
@@ -57,6 +58,7 @@ export function CapabilityPage({ slug, page }: { slug: string; page?: string }) 
               .
             </Notice>
           )}
+          {cap.fixedRules && <HowThisWorks rules={cap.fixedRules} />}
           <SettingsSection title="Settings in this capability" description="Each group has its own page.">
             {cap.pages.map((p) => (
               <SettingRow

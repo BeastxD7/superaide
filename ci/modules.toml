@@ -221,6 +221,8 @@ e2e = [
   "e2e/tests/integrations/gmail-api-disabled.spec.ts",
   "e2e/tests/integrations/gmail-read-settings.spec.ts",
   "e2e/tests/integrations/gmail-read-settings.mobile.spec.ts",
+  "e2e/tests/integrations/how-this-works.spec.ts",
+  "e2e/tests/integrations/how-this-works.mobile.spec.ts",
   "e2e/tests/integrations/capability-routes.spec.ts",
   "e2e/tests/integrations/capability-routes.mobile.spec.ts",
   "e2e/tests/integrations/gmail-setting-rows.spec.ts",
