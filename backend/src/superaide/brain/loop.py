@@ -833,6 +833,7 @@ class OwnerTurn:
             summary=summary,
             requester=self.sender,
             in_channel=self.shared,
+            tainted=self.tainted,
             payload={
                 "rationale": str(args.get("rationale", ""))[:500],
                 "tainted": self.tainted,

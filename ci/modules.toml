@@ -421,6 +421,7 @@ src = [
 tests = [
   "backend/tests/test_mandate.py",
   "backend/tests/test_mandate_delegation.py",
+  "backend/tests/test_mandate_shadow.py",
   "backend/tests/api/test_mandates_route.py",
 ]
 e2e = []
