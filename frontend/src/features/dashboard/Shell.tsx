@@ -8,10 +8,12 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/s
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppSidebar } from '@/features/dashboard/AppSidebar'
 import { agentStatus, navItemFor } from '@/features/dashboard/nav'
+import { ReminderWatcher } from '@/features/dashboard/ReminderWatcher'
 import { MobileTabBar } from '@/features/mobile/TabBar'
 import { InstallHint } from '@/features/pwa/install'
 import { MOBILE_TABS_ENABLED, PWA_ENABLED } from '@/lib/flags'
 import { useSession } from '@/lib/session-context'
+import { ToastHost } from '@/lib/toast-host'
 
 // The signed-in app: a sidebar for moving around, and the page beside it.
 // Only for an owner who has hired an agent and finished the introduction.
@@ -50,6 +52,8 @@ export function DashboardShell({ defaultOpen, children }: { defaultOpen: boolean
           scrolls inside it (the chat keeps its composer on screen). */}
       <SidebarProvider defaultOpen={defaultOpen} className="h-svh">
         <AppSidebar session={session} me={me} />
+        <ReminderWatcher />
+        <ToastHost />
         <SidebarInset className="min-h-0 overflow-hidden md:peer-data-[variant=inset]:shadow-[0_1px_2px_rgba(27,22,56,0.06),0_12px_40px_-24px_rgba(27,22,56,0.25)]">
           <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line/70 px-4">
             <SidebarTrigger className="-ml-1" />

@@ -39,6 +39,7 @@ const KIND_LABEL: Record<SourceRef['kind'], string> = {
   web: 'Web',
   calendar: 'Calendar',
   email: 'Email',
+  approval: 'Approval',
   other: 'Source',
 }
 

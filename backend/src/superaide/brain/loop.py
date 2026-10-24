@@ -248,6 +248,8 @@ def _cited_from(citation: dict[str, Any]) -> Cited | None:
             if uri.startswith("ava://cal/")
             else "email"
             if uri.startswith("ava://mail/")
+            else "approval"
+            if uri.startswith(verify.APPROVAL_PREFIX)
             else "other"
         )
         return Cited(uri, src_kind, str(citation.get("title") or ""), str(citation.get("cited_text") or ""))
@@ -379,6 +381,7 @@ class OwnerTurn:
         self.reasoning = ""
         self._said = ""  # text streamed in the current step
         self._server_calls: dict[str, tuple[str, str]] = {}
+        self.pruned = 0  # citation marks removed from sentences their source does not back (verify.prune_marks)
         self.returned_uris: set[str] = set()  # ava:// sources tools actually returned this turn
         self.recall_hits = 0
         self.ok_tools: set[str] = set()  # tools that succeeded this turn (an action claim needs one)
@@ -617,7 +620,10 @@ class OwnerTurn:
             return self._record_plan(args)
         if name == "list_approvals":
             self.notes.append("approvals")
-            return outcomes.list_text(self.s, args), False
+            found_rows = outcomes.list_sources(self.s, args)
+            if not found_rows:
+                return outcomes.list_text(self.s, args), False
+            return search_results(found_rows), False
         from superaide.skills import gmail
 
         if name in gmail.TOOLS:
@@ -852,6 +858,7 @@ class OwnerTurn:
             summary=summary,
             requester=self.sender,
             in_channel=self.shared,
+            tainted=self.tainted,
             payload={
                 "rationale": str(args.get("rationale", ""))[:500],
                 "tainted": self.tainted,
@@ -1020,10 +1027,11 @@ class OwnerTurn:
         citations of anything no tool returned, then revise once, or own up, if a claim about
         the owner's data has no source."""
         grounding = verify.grounding_text(msgs, last.content) + verify.flat(self._known)
+        self.pruned = 0
         content, dropped = verify.drop_unreturned(last.content, self.returned_uris)
         text, sources = self._attribute(*render(content))
         flagged = verify.unsupported(text, grounding=grounding, recall_found=self.recall_hits > 0)
-        if not (sources or dropped or flagged):
+        if not (sources or dropped or flagged or self.pruned):
             return self._result(text or "…", sources, self.notes, steps)  # chit-chat: nothing to check
 
         check_id = f"verify_{steps}"
@@ -1049,6 +1057,8 @@ class OwnerTurn:
             self.notes.append(f"cite_dropped:{len(dropped)}")
         if flagged:
             self.notes.append(f"unsupported:{len(flagged)}")
+        if self.pruned:
+            self.notes.append(f"marks_dropped:{self.pruned}")
         self.notes.append(f"verify:{outcome}")
         audit(
             self.s,
@@ -1059,12 +1069,32 @@ class OwnerTurn:
             unsupported=[f[:200] for f in flagged[:5]],
             sources=len(sources),
         )
-        self.tool_event(check_id, "verify", "done", label, verify.detail(len(dropped), len(flagged), outcome))
+        self.tool_event(
+            check_id, "verify", "done", label, verify.detail(len(dropped), len(flagged), outcome, self.pruned)
+        )
         return self._result(text or "…", sources, self.notes, steps)
 
     def _attribute(self, text: str, sources: list[Cited]) -> tuple[str, list[Cited]]:
         """Cite, in code, an uncited sentence that restates a note or message found this turn: the
         model sometimes answers from its sources without marking them."""
+        text, sources = self._attribute_restatements(text, sources)
+        return self._prune(text, sources)
+
+    def _prune(self, text: str, sources: list[Cited]) -> tuple[str, list[Cited]]:
+        """Drop marks that sit on sentences their source does not back (verify.prune_marks)."""
+        if not sources:
+            return text, sources
+        texts = [
+            (c.uri, f"{c.cited_text} {self.found[c.uri].text if c.uri in self.found else ''}".strip()) for c in sources
+        ]
+        text, used, dropped = verify.prune_marks(text, texts)
+        if dropped:
+            self.pruned += dropped
+            log.info("dropped %d citation mark(s) on sentences their source does not support", dropped)
+            sources = [sources[i] for i in used]
+        return text, sources
+
+    def _attribute_restatements(self, text: str, sources: list[Cited]) -> tuple[str, list[Cited]]:
         found = list(self.found.values())
         if not found:
             return text, sources

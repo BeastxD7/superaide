@@ -1,9 +1,14 @@
 'use client'
 
-import { useState } from 'react'
-import type { AuditRow, Connection } from '@/features/console/api'
+import { useMemo, useState } from 'react'
+import { arrayPageFetcher, type AuditRow, type Connection } from '@/features/console/api'
 import { ago, describeAudit, type AuditKind } from '@/features/console/format'
-import { useApi } from '@/features/console/useApi'
+import { usePoll } from '@/features/console/usePoll'
+import { ListFooter } from '@/components/ui/list-footer'
+import { SkeletonList } from '@/components/ui/skeleton'
+import { usePaginated } from '@/lib/paginated'
+
+const PAGE = 100
 
 const FILTERS: { key: AuditKind | 'all'; label: string }[] = [
   { key: 'all', label: 'Everything' },
@@ -15,13 +20,15 @@ const FILTERS: { key: AuditKind | 'all'; label: string }[] = [
 ]
 
 export function SafetyLog({ conn }: { conn: Connection }) {
-  const { data, error } = useApi<AuditRow[]>(conn, '/api/audit?limit=300')
+  const fetcher = useMemo(() => arrayPageFetcher<AuditRow>(conn), [conn])
+  const list = usePaginated<AuditRow>('/api/audit', { limit: PAGE, fetcher })
+  usePoll(list, 10_000, PAGE)
   const [filter, setFilter] = useState<AuditKind | 'all'>('all')
 
-  if (error) return <p className="error">{error.message}</p>
-  if (!data) return <p className="quiet">Loading the log…</p>
+  if (list.status === 'error' && list.failed === 'first') return <p className="error">{list.error}</p>
+  if (list.status === 'loading') return <SkeletonList count={8} rowHeight={40} what="the log" />
 
-  const rows = data.map((r) => ({ row: r, ...describeAudit(r) })).filter((r) => filter === 'all' || r.kind === filter)
+  const rows = list.items.map((r) => ({ row: r, ...describeAudit(r) })).filter((r) => filter === 'all' || r.kind === filter)
 
   return (
     <div className="log">
@@ -44,6 +51,8 @@ export function SafetyLog({ conn }: { conn: Connection }) {
           ))}
         </ol>
       )}
+      {filter !== 'all' && list.hasMore && <p className="quiet">Showing matches among the entries loaded so far. Load more to look further back.</p>}
+      <ListFooter {...list.footer} endLabel="That is the whole log" />
     </div>
   )
 }

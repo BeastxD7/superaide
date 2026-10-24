@@ -7,8 +7,9 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useAppData } from '@/features/dashboard/data'
-import { call, type Reminder } from '@/lib/api'
+import { useReminders } from '@/features/dashboard/useReminders'
+import { announceRemindersChanged } from '@/lib/reminders-sync'
+import { call } from '@/lib/api'
 import { useSession } from '@/lib/session-context'
 import { errorMessage } from '@/lib/action'
 
@@ -20,7 +21,7 @@ const SNOOZES = [
 export function RemindersPage() {
   const { me } = useSession()
   const name = me?.agent.name ?? 'Ava'
-  const { data, error, reload } = useAppData<{ timezone: string; reminders: Reminder[] }>('/reminders')
+  const { data, error, reload } = useReminders()
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
@@ -36,6 +37,7 @@ export function RemindersPage() {
       // Read again even when it failed: "already cancelled" means this list was stale, and the reminder it
       // still shows can never be acted on (#297).
       await reload()
+      announceRemindersChanged() // the sidebar pill and Home read again too
       setBusy(false)
     }
   }

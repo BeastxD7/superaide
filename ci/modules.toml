@@ -421,6 +421,7 @@ src = [
 tests = [
   "backend/tests/test_mandate.py",
   "backend/tests/test_mandate_delegation.py",
+  "backend/tests/test_mandate_shadow.py",
   "backend/tests/api/test_mandates_route.py",
 ]
 e2e = []
@@ -475,11 +476,15 @@ tests = [
   "backend/tests/test_pagination.py",
   "backend/tests/test_messages_paging.py",
   "backend/tests/test_notebook_paging.py",
+  "backend/tests/test_log_paging.py",
+  "backend/tests/test_people_paging.py",
 ]
 e2e = [
   "e2e/tests/pagination-chat.spec.ts",
   "e2e/tests/pagination-console.spec.ts",
+  "e2e/tests/pagination-logs.spec.ts",
   "e2e/tests/pagination-notebook.spec.ts",
+  "e2e/tests/pagination-people.spec.ts",
 ]
 
 [modules.passport]
@@ -606,6 +611,8 @@ tests = [
 ]
 e2e = [
   "e2e/tests/reminders-sync.spec.ts",
+  "e2e/tests/reminders-pill.spec.ts",
+  "e2e/tests/reminders-pill.mobile.spec.ts",
   "e2e/tests/journeys/reminders.spec.ts",
 ]
 
@@ -802,6 +809,8 @@ tests = [
   "frontend/src/instrumentation.test.ts",
   "frontend/src/lib/*.test.ts",
   "frontend/src/components/**/*.test.ts",
+  "frontend/src/components/**/*.test.tsx",
+  "frontend/src/hooks/*.test.ts",
 ]
 e2e = [
   "e2e/tests/responsive.mobile.spec.ts",
@@ -847,6 +856,8 @@ e2e = [
   "e2e/tests/qa-dashboard.spec.ts",
   "e2e/tests/qa-dashboard.mobile.spec.ts",
   "e2e/tests/approvals-sync.spec.ts",
+  "e2e/tests/reminders-pill.spec.ts",
+  "e2e/tests/reminders-pill.mobile.spec.ts",
   "e2e/tests/journeys/workspace.spec.ts",
   "e2e/tests/journeys/approvals.spec.ts",
   "e2e/tests/journeys/reminders.spec.ts",

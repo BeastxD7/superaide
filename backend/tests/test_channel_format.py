@@ -90,10 +90,12 @@ def test_citation_marks_are_stripped_but_indexing_and_links_survive():
 
 def test_footer_shows_titles_and_web_domains_never_the_cited_text():
     tg = fmt.telegram_footer([NOTE, WEB])
-    assert tg == ('<i>Sources: [1] Note · preference · [2] <a href="https://www.example.com/a?b=1">example.com</a></i>')
-    assert (
-        fmt.slack_footer([NOTE, WEB])
-        == "_Sources: [1] Note · preference · [2] <https://www.example.com/a?b=1|example.com>_"
+    assert tg == (
+        '<i>Sources: [1] Note · preference · [2] <a href="https://www.example.com/a?b=1">example.com</a>\n'
+        f"{fmt.SOURCE_NOTE}</i>"
+    )
+    assert fmt.slack_footer([NOTE, WEB]) == (
+        f"_Sources: [1] Note · preference · [2] <https://www.example.com/a?b=1|example.com>\n{fmt.SOURCE_NOTE}_"
     )
     for footer in (tg, fmt.slack_footer([NOTE, WEB]), fmt.plain_footer([NOTE, WEB])):
         assert "SECRET" not in footer and "PRIVATE" not in footer
@@ -214,7 +216,9 @@ def test_slack_sends_mrkdwn_and_the_footer():
     )
     [post] = client.posts
     assert post["thread_ts"] == "17.1"
-    assert post["text"] == "You dislike *black* [1].\n\n_Sources: [2] <https://www.example.com/a?b=1|example.com>_"
+    assert post["text"] == (
+        f"You dislike *black* [1].\n\n_Sources: [2] <https://www.example.com/a?b=1|example.com>\n{fmt.SOURCE_NOTE}_"
+    )
 
 
 # --- the pipeline: footer only in the owner's own DM -----------------------------------
@@ -291,3 +295,39 @@ def test_citation_marks_are_stripped_outside_the_owner_dm(agent, outbox, colleag
     agent.handle(sl(COLLEAGUE_SLACK, "is the meeting on?"))
     [sent] = outbox["slack"].sent
     assert sent["text"] == "Yes, Thursday." and "sources" not in sent
+
+
+# --- deep links in the footer (#341 C) --------------------------------------------------
+
+MEM_ID = "3f2b8c1e-aaaa-bbbb-cccc-0123456789ab"
+
+
+def test_a_note_and_an_email_get_deep_links_built_from_the_stored_id(monkeypatch):
+    from superaide.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "public_base_url", "https://ava.example.org/")
+    note = {"n": 1, "uri": f"ava://memory/{MEM_ID}", "kind": "memory", "title": "Note · about", "cited_text": "SECRET"}
+    mail = {"n": 2, "uri": "ava://mail/18c0ffee12ab", "kind": "email", "title": "Squares", "cited_text": "PRIVATE"}
+    tg = fmt.telegram_footer([note, mail])
+    assert f'<a href="https://ava.example.org/dashboard/notebook#note-{MEM_ID}">Note · about</a>' in tg
+    assert '<a href="https://mail.google.com/mail/u/0/#all/18c0ffee12ab">Squares</a>' in tg
+    assert f"<https://ava.example.org/dashboard/notebook#note-{MEM_ID}|Note · about>" in fmt.slack_footer([note, mail])
+    assert fmt.SOURCE_NOTE in tg and fmt.SOURCE_NOTE in fmt.plain_footer([note])
+    for footer in (tg, fmt.slack_footer([note, mail]), fmt.plain_footer([note, mail])):
+        assert "SECRET" not in footer and "PRIVATE" not in footer
+
+
+def test_a_source_id_that_is_not_ours_gets_no_link_and_titles_never_become_links():
+    evil = [
+        {"n": 1, "uri": "ava://memory/../../x", "kind": "memory", "title": "https://evil.example"},
+        {"n": 2, "uri": "ava://mail/a/../b", "kind": "email", "title": "x"},
+        {"n": 3, "uri": "javascript:alert(1)", "kind": "web", "title": "x"},
+        {"n": 4, "uri": f"ava://chunk/{MEM_ID}", "kind": "memory", "title": "File"},
+        {"n": 5, "uri": "ava://msg/telegram/1", "kind": "message", "title": "Chat"},
+    ]
+    assert [e[2] for e in fmt.source_entries(evil)] == [""] * 5
+    assert "<a " not in fmt.telegram_footer(evil)
+
+
+def test_no_sources_no_footer():
+    assert fmt.telegram_footer([]) == fmt.slack_footer([]) == fmt.plain_footer([]) == ""

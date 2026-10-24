@@ -403,7 +403,16 @@ class Contact(Scoped, Base):
     recognise them once their Telegram, Slack or email is linked."""
 
     __tablename__ = "contact"
-    __table_args__ = (UniqueConstraint("owner_person_id", "person_id", name="uq_contact_owner_person"),)
+    __table_args__ = (
+        UniqueConstraint("owner_person_id", "person_id", name="uq_contact_owner_person"),
+        # The owner's people list (VIPs first), only the contacts still kept (ADR 0014).
+        Index(
+            "ix_contact_owner_active",
+            "owner_person_id",
+            text("vip DESC"),
+            postgresql_where=text("removed_at IS NULL"),
+        ),
+    )
 
     owner_person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), index=True)
     person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"))
@@ -544,6 +553,18 @@ class AuditLog(Scoped, Base):
     """Append-only record of decisions, model calls and refused actions."""
 
     __tablename__ = "audit_log"
+    __table_args__ = (
+        # The safety log and the owner's access log, newest first (ADR 0014); the second serves only the operator's
+        # own visits, a small slice of a log that mostly holds model calls and identity checks.
+        Index("ix_audit_log_agent_created", "agent_id", text("created_at DESC"), text("id DESC")),
+        Index(
+            "ix_audit_log_operator_access",
+            "agent_id",
+            text("created_at DESC"),
+            text("id DESC"),
+            postgresql_where=text("actor = 'operator' AND action = 'operator_access'"),
+        ),
+    )
 
     actor: Mapped[str] = mapped_column(String(100))
     action: Mapped[str] = mapped_column(String(60), index=True)

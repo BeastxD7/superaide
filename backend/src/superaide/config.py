@@ -112,6 +112,10 @@ class Settings(BaseSettings):
     # Mandate cards: a signed, narrowing token lets Ava do a named, limited thing without asking each time
     # (issue #112). Off by default; never covers send or spend.
     mandates_enabled: bool = False
+    # Mandate shadow check (#112). Needs MANDATES_ENABLED. Off: nothing changes. On: each approval records whether a
+    # mandate WOULD have covered it (`mandate_shadow` on the approval); the owner is still asked every time. The
+    # report (`superaide mandate-shadow-report`) shows how many prompts a mandate could save before it is trusted.
+    mandate_shadow_enabled: bool = False
 
     # An MCP tool whose description, schema or annotations differ from what the owner approved is blocked
     # (issue #116). The MCP client calls mcp.pin.may_call; off by default until that client exists.

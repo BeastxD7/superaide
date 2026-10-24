@@ -204,10 +204,14 @@ def _clean_emails(raw: Any) -> list[str] | str:
     return sorted(set(out))
 
 
-def _ask(session: Session, sender: Any, kind: str, summary: str, payload: dict[str, Any]) -> tuple[str, bool]:
+def _ask(
+    session: Session, sender: Any, kind: str, summary: str, payload: dict[str, Any], tainted: bool = False
+) -> tuple[str, bool]:
     from superaide.policy.actions import TOOL_RULES, decide
 
-    decision = decide(session, kind=kind, summary=summary, requester=sender, rules=TOOL_RULES, payload=payload)
+    decision = decide(
+        session, kind=kind, summary=summary, requester=sender, rules=TOOL_RULES, payload=payload, tainted=tainted
+    )
     if decision.outcome == "approval":
         return (
             f"Waiting for the owner's approval: {summary}. Tell them it's waiting for their OK; it isn't done yet.",
@@ -259,7 +263,9 @@ def create_event(session: Session, sender: Any, args: dict[str, Any], *, tainted
         f", inviting {', '.join(attendees)}" if attendees else ""
     )
     if _needs_approval(session, effect, tainted):
-        return _ask(session, sender, "calendar_create_event", summary, {"event": body, "notify": bool(attendees)})
+        return _ask(
+            session, sender, "calendar_create_event", summary, {"event": body, "notify": bool(attendees)}, tainted
+        )
     try:
         made = google.insert_event(_token(), body, notify=False)
     except google.GoogleError as exc:
@@ -309,7 +315,7 @@ def move_event(session: Session, sender: Any, args: dict[str, Any], *, tainted: 
     )
     if _needs_approval(session, "send" if others else "write_own", tainted):
         payload = {"event_id": event["id"], "patch": body, "notify": bool(others)}
-        return _ask(session, sender, "calendar_move_event", summary, payload)
+        return _ask(session, sender, "calendar_move_event", summary, payload, tainted)
     try:
         google.patch_event(_token(), str(event["id"]), body, notify=False)
     except google.GoogleError as exc:
@@ -330,7 +336,7 @@ def decline_event(session: Session, sender: Any, args: dict[str, Any], *, tainte
     note = " ".join(str(args.get("note") or "").split())[:300]
     summary = f"Decline “{title}”" + (f" with the note “{note}”" if note else "") + " (Google tells the organiser)"
     # Always the owner's call: declining sends a reply to the organiser (effect "send").
-    return _ask(session, sender, "calendar_decline_event", summary, {"event_id": event["id"], "note": note})
+    return _ask(session, sender, "calendar_decline_event", summary, {"event_id": event["id"], "note": note}, tainted)
 
 
 TOOLS = {"calendar_free_busy", "create_event", "move_event", "decline_event"}

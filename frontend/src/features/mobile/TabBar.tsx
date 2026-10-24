@@ -5,9 +5,10 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSidebar } from '@/components/ui/sidebar'
 import { useApprovals } from '@/features/dashboard/useApprovals'
+import { useReminders } from '@/features/dashboard/useReminders'
 import { useNeedsYou } from '@/features/needs-you/useNeedsYou'
 
-type Tab = { href: string; label: string; icon: typeof Bell; triage?: boolean; approvals?: boolean }
+type Tab = { href: string; label: string; icon: typeof Bell; triage?: boolean; approvals?: boolean; reminders?: boolean }
 
 // The phone's main places (ADR 0011 section 2). "Needs you" is ADR 0010 TR9's page: a link with
 // the count while triage is on; while it's off, the tab shows disabled so the bar doesn't shift.
@@ -15,7 +16,7 @@ const TABS: Tab[] = [
   { href: '/dashboard/needs-you', label: 'Needs you', icon: Bell, triage: true },
   { href: '/dashboard/chat', label: 'Chat', icon: MessageCircle },
   { href: '/dashboard/approvals', label: 'Approvals', icon: ShieldQuestion, approvals: true },
-  { href: '/dashboard/reminders', label: 'Reminders', icon: AlarmClock },
+  { href: '/dashboard/reminders', label: 'Reminders', icon: AlarmClock, reminders: true },
 ]
 
 const ITEM = 'flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[11px] leading-tight'
@@ -28,12 +29,13 @@ export function MobileTabBar() {
   const triage = useNeedsYou(60_000)
   const needsYou = triage.data?.counts.needs_you ?? 0
   const approvalsWaiting = useApprovals().waiting.length
+  const remindersDue = useReminders().due.length
   return (
     <nav
       aria-label="Main"
       className="flex shrink-0 border-t border-line/70 bg-white/95 pb-[env(safe-area-inset-bottom)] md:hidden"
     >
-      {TABS.map(({ href, label, icon: Icon, triage: needsTriage, approvals: needsApprovals }) => {
+      {TABS.map(({ href, label, icon: Icon, triage: needsTriage, approvals: needsApprovals, reminders: needsReminders }) => {
         if (needsTriage && !triage.enabled) {
           return (
             <span key={href} className={`${ITEM} text-muted/60`} aria-disabled="true" title="Coming soon">
@@ -44,7 +46,8 @@ export function MobileTabBar() {
           )
         }
         const active = pathname.startsWith(href)
-        const waiting = needsTriage ? needsYou : needsApprovals ? approvalsWaiting : 0
+        const waiting = needsTriage ? needsYou : needsApprovals ? approvalsWaiting : needsReminders ? remindersDue : 0
+        const word = needsReminders ? 'due today' : 'waiting'
         return (
           <Link
             key={href}
@@ -57,7 +60,7 @@ export function MobileTabBar() {
               {waiting > 0 && (
                 <span className="absolute -top-1.5 -right-2.5 min-w-4 rounded-full bg-violet-600 px-1 text-center text-[10px] leading-4 font-medium text-white">
                   {waiting}
-                  <span className="sr-only"> waiting</span>
+                  <span className="sr-only"> {word}</span>
                 </span>
               )}
             </span>

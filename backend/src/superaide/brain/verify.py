@@ -193,13 +193,94 @@ def uncited_restatements(text: str, sources: list[str]) -> list[tuple[str, int]]
     """Uncited sentences that restate one of this turn's sources, with that source's index."""
     out: list[tuple[str, int]] = []
     for sentence in sentences(text):
-        if _MARK.search(sentence) or HONEST.search(sentence):
+        if _MARK.search(sentence) or HONEST.search(sentence) or is_action_report(sentence) or is_reasoning(sentence):
             continue
         for i, src in enumerate(sources):
             if restates(sentence, src):
                 out.append((sentence, i))
                 break
     return out
+
+
+# --- marks on sentences their source does not support (issue #341 D) ----------------------
+
+# What Ava did ("I saved...", "queued for approval"): its evidence is the action record, never a note.
+ACTION_REPORT = re.compile(
+    r"\bI(?:'ve|\s+have|'ll|\s+will)?\s+(?:just\s+|already\s+|now\s+)?"
+    r"(?:saved|sent|queued|set|created|scheduled|cancell?ed|moved|added|drafted|booked|deleted|updated|posted"
+    r"|forwarded|replied|archived|declined|accepted|put|asked|submitted|filed)\b"
+    r"|\b(?:sent|queued|waiting|saved)\s+(?:it\s+)?(?:to\s+your\s+dashboard|for\s+(?:your\s+)?approval)\b"
+    r"|\bfor\s+your\s+approval\b|\bwon't\s+go\s+out\s+until\b|\bnothing\s+(?:has\s+)?(?:been\s+)?sent\b",
+    re.IGNORECASE,
+)
+
+# Ava explaining her own choice or limits: not something a note says.
+REASONING = re.compile(
+    r"\bbecause\s+(?:I|my)\b|\b(?:so|and)\s+I\s+(?:used|chose|picked|went\s+with|decided|will|can)\b"
+    r"|\bI\s+(?:used|chose|picked|went\s+with|decided|can't|cannot|couldn't|am\s+not\s+able|don't\s+have\s+access)\b"
+    r"|\bI\s+(?:think|guess|assume|suppose)\b",
+    re.IGNORECASE,
+)
+
+APPROVAL_PREFIX = "ava://approval/"
+
+
+def is_action_report(sentence: str) -> bool:
+    return bool(ACTION_REPORT.search(sentence))
+
+
+def is_reasoning(sentence: str) -> bool:
+    return bool(REASONING.search(sentence))
+
+
+def _stems(text: str) -> set[str]:
+    return {w[:5] for w in _content_words(text)}
+
+
+def mark_supported(sentence: str, uri: str, source_text: str) -> bool:
+    """Whether a [n] on this sentence is fair to its source. Web sources (the API's own grounding) and
+    action records pass; an action report or Ava's own reasoning does not take a note's mark; any
+    other sentence needs to share two content words (or a date or time) with the source's text."""
+    if not uri.startswith("ava://") or uri.startswith(APPROVAL_PREFIX):
+        return True
+    if is_action_report(sentence) or is_reasoning(sentence):
+        return False
+    if not source_text.strip():
+        return True  # nothing to compare with: don't second-guess
+    plain = _MARK.sub("", sentence)
+    if len(_stems(plain) & _stems(source_text)) >= 2:
+        return True
+    hay = flat(source_text)
+    specifics = [m.group(0) for m in SPECIFIC.finditer(plain)]
+    return bool(specifics) and any(flat(sp) in hay for sp in specifics)
+
+
+def prune_marks(text: str, sources: list[tuple[str, str]]) -> tuple[str, list[int], int]:
+    """Drop [n] marks the source does not support (never ask the model to rewrite: no mark beats a wrong
+    one). `sources` is (uri, text) per mark number. Returns the text with the remaining marks renumbered,
+    the old indexes (0-based) of the sources still cited, and how many marks were dropped."""
+    dropped = 0
+    out = text
+    for sentence in sentences(text):
+        marks = _MARK.findall(sentence)
+        if not marks:
+            continue
+        body = sentence
+        for mark in dict.fromkeys(marks):
+            i = int(mark[1:-1]) - 1
+            if 0 <= i < len(sources) and not mark_supported(sentence, *sources[i]):
+                body = re.sub(rf"[ \t]?{re.escape(mark)}", "", body)
+                dropped += 1
+        if body != sentence:
+            out = out.replace(sentence, body, 1)
+    if not dropped:
+        return text, list(range(len(sources))), 0
+    used = sorted({int(m[1:-1]) - 1 for m in _MARK.findall(out) if 0 < int(m[1:-1]) <= len(sources)})
+    new_n = {old: k + 1 for k, old in enumerate(used)}
+    out = _MARK.sub(
+        lambda m: f"[{new_n[int(m.group(0)[1:-1]) - 1]}]" if int(m.group(0)[1:-1]) - 1 in new_n else m.group(0), out
+    )
+    return out, used, dropped
 
 
 # Words that only say where something came from, not what it was.
@@ -228,11 +309,13 @@ def revision_request(flagged: list[str]) -> str:
     )
 
 
-def detail(dropped: int, flagged: int, outcome: str) -> str:
+def detail(dropped: int, flagged: int, outcome: str, pruned: int = 0) -> str:
     """The work-log line for the check."""
     bits = []
     if dropped:
         bits.append(f"Dropped {dropped} citation{'s' if dropped != 1 else ''} I couldn't find")
+    if pruned:
+        bits.append(f"Removed {pruned} mark{'s' if pruned != 1 else ''} the source didn't back")
     if flagged:
         bits.append(f"{flagged} claim{'s' if flagged != 1 else ''} had no source")
     if outcome == "revised":

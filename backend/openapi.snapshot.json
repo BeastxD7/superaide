@@ -3091,7 +3091,7 @@
     },
     "/api/audit": {
       "get": {
-        "description": "The audit trail: identity checks, refusals, links, spend and sign-ins.",
+        "description": "The audit trail: identity checks, refusals, links, spend and sign-ins, newest first. `limit` is 1 to 200, clamped (default 200). When older entries exist the response has `X-Next-Cursor`, `Link: rel=next` and `X-Has-More: true`; send the cursor back as `cursor`. The body stays a bare array. ADR 0014.",
         "operationId": "audit_log_api_audit_get",
         "parameters": [
           {
@@ -3102,6 +3102,25 @@
               "default": 200,
               "title": "Limit",
               "type": "integer"
+            }
+          },
+          {
+            "description": "Opaque cursor from the previous page's `next_cursor`.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 1024,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from the previous page's `next_cursor`.",
+              "title": "Cursor"
             }
           }
         ],
@@ -3925,7 +3944,7 @@
     },
     "/app/access-log": {
       "get": {
-        "description": "Every time a Superaide operator opened your Ava's people, conversations, memories or log (ADR 0009): when, what, and the reason they gave. Newest first.",
+        "description": "Every time a Superaide operator opened your Ava's people, conversations, memories or log (ADR 0009): when, what, and the reason they gave. Newest first, in pages: `limit` 1 to 200 (default 100); when older entries exist the response has `X-Next-Cursor`, `Link: rel=next` and `X-Has-More: true`.",
         "operationId": "access_log_app_access_log_get",
         "parameters": [
           {
@@ -3936,6 +3955,25 @@
               "default": 100,
               "title": "Limit",
               "type": "integer"
+            }
+          },
+          {
+            "description": "Opaque cursor from the previous page's `next_cursor`.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 1024,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from the previous page's `next_cursor`.",
+              "title": "Cursor"
             }
           }
         ],
@@ -8743,8 +8781,43 @@
     },
     "/app/people": {
       "get": {
-        "description": "The owner's contacts and who can always get through.",
+        "description": "The owner's contacts and who can always get through: VIPs first, then by name. Paged: `limit` (1 to 200, default 200) and `cursor` (the previous page's `next_cursor`); `has_more` says whether more people follow. ADR 0014.",
         "operationId": "people_app_people_get",
+        "parameters": [
+          {
+            "description": "Page size, 1 to 200. Default 200.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "description": "Page size, 1 to 200. Default 200.",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Opaque cursor from the previous page's `next_cursor`.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 1024,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from the previous page's `next_cursor`.",
+              "title": "Cursor"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -8757,6 +8830,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "security": [

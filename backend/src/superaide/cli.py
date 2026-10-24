@@ -180,6 +180,50 @@ def _approval_report(_: argparse.Namespace) -> None:
     )
 
 
+def _triage_knn_compare(args: argparse.Namespace) -> None:
+    """Replay the owner's own labelled triage history through the kNN head and the model's stored score (issue #117).
+    Read-only apart from the vector cache the shadow head keeps (deleting a label deletes its vector)."""
+    from superaide.brain.embed import get_embedder
+    from superaide.db.session import rescope, session_scope
+    from superaide.tenancy.context import default_scope, use_instance
+    from superaide.tenancy.service import active_scopes
+    from superaide.triage import knn
+
+    embedder = get_embedder(get_settings())
+    if type(embedder).__name__ == "VoyageEmbedder" and not args.allow_remote:
+        sys.exit(
+            "EMBEDDER=voyage would send your labelled messages to Voyage AI. Run with --allow-remote to do that, "
+            "or use the local embedder (EMBEDDER=local)."
+        )
+    with session_scope() as s:
+        scopes = active_scopes(s) or [default_scope()]
+    for scope in scopes:
+        with use_instance(scope), session_scope() as s:
+            rescope(s)
+            report = knn.compare(s, embedder, k=args.k)
+        print(f"Ava {scope.agent_id}:")
+        print(knn.describe(report))
+
+
+def _mandate_shadow_report(args: argparse.Namespace) -> None:
+    """How many recent approvals would a mandate have covered? Read-only (issue #112)."""
+    from superaide.db.session import rescope, session_scope
+    from superaide.mandate.service import shadow_report
+    from superaide.tenancy.context import default_scope, use_instance
+    from superaide.tenancy.service import active_scopes
+
+    with session_scope() as s:
+        scopes = active_scopes(s) or [default_scope()]
+    for scope in scopes:
+        with use_instance(scope), session_scope() as s:
+            rescope(s)
+            r = shadow_report(s, days=args.days)
+        print(
+            f"Ava {scope.agent_id}: last {r['days']} days, {r['approvals']} approvals, {r['measured']} measured, "
+            f"a mandate would have covered {r['would_cover']}"
+        )
+
+
 def _witness(args: argparse.Namespace) -> None:
     """Verify each Ava's action log and freeze any Ava whose log looks wrong (issue #113)."""
     from datetime import UTC, datetime
@@ -396,6 +440,15 @@ def main() -> None:
     sub.add_parser("approval-report", help="would strict approval binding have refused a real approval?").set_defaults(
         func=_approval_report
     )
+    p = sub.add_parser(
+        "triage-knn-compare", help="replay your labelled triage history: kNN head vs the model's score (read-only)"
+    )
+    p.add_argument("-k", type=int, default=5, help="neighbours per message (default 5)")
+    p.add_argument("--allow-remote", action="store_true", help="allow a remote embedder (EMBEDDER=voyage)")
+    p.set_defaults(func=_triage_knn_compare)
+    p = sub.add_parser("mandate-shadow-report", help="how many approvals would a mandate have covered? (read-only)")
+    p.add_argument("--days", type=int, default=30)
+    p.set_defaults(func=_mandate_shadow_report)
     p = sub.add_parser("witness", help="check every Ava's action log; freeze one whose log looks wrong")
     p.add_argument("--dry-run", action="store_true", help="report only, freeze nothing")
     p.set_defaults(func=_witness)

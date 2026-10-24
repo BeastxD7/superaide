@@ -30,6 +30,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar'
 import { useApprovals } from '@/features/dashboard/useApprovals'
+import { useReminders } from '@/features/dashboard/useReminders'
 import { useNeedsYou } from '@/features/needs-you/useNeedsYou'
 import { useRehearsalEnabled } from '@/features/rehearsal/useRehearsal'
 import { usePrincipalCardEnabled } from '@/features/principal-card/usePrincipalCard'
@@ -45,6 +46,7 @@ export function AppSidebar({ session, me }: { session: Session; me: Me }) {
   const isActive = (href: string) => navItemFor(pathname)?.href === href
   const triage = useNeedsYou(60_000)
   const { waiting: approvalsWaiting } = useApprovals()
+  const { due: remindersDue } = useReminders()
   const rehearsal = useRehearsalEnabled()
   const school = useSchoolEnabled()
   const principalCard = usePrincipalCardEnabled()
@@ -88,7 +90,7 @@ export function AppSidebar({ session, me }: { session: Session; me: Me }) {
               <SidebarMenu>
                 {items
                   .filter((i) => (!i.triage || triage.enabled) && (!i.rehearsal || rehearsal) && (!i.school || school) && (!i.card || principalCard))
-                  .map(({ href, label, icon: Icon, triage: counted, approvals: approvalsCounted }) => (
+                  .map(({ href, label, icon: Icon, triage: counted, approvals: approvalsCounted, reminders: remindersCounted }) => (
                   <SidebarMenuItem key={href}>
                     <SidebarMenuButton asChild isActive={isActive(href)} tooltip={label}>
                       <Link href={href} aria-current={isActive(href) ? 'page' : undefined} onClick={() => setOpenMobile(false)}>
@@ -103,6 +105,12 @@ export function AppSidebar({ session, me }: { session: Session; me: Me }) {
                           <span className="ml-auto rounded-full bg-lilac-200 px-1.5 text-xs text-violet-700">
                             {approvalsWaiting.length}
                             <span className="sr-only"> waiting</span>
+                          </span>
+                        )}
+                        {remindersCounted && remindersDue.length > 0 && (
+                          <span className="ml-auto rounded-full bg-lilac-200 px-1.5 text-xs text-violet-700" title="Due today or overdue">
+                            {remindersDue.length}
+                            <span className="sr-only"> due today</span>
                           </span>
                         )}
                       </Link>
