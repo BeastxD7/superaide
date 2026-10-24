@@ -61,8 +61,13 @@ def seal(approval: Approval) -> None:
     settings = get_settings()
     if settings.approval_binding != "off":
         approval.bound_hash = payload_hash(approval.kind, approval.payload)
-    if settings.approval_ttl_hours > 0:
-        approval.expires_at = datetime.now(UTC) + timedelta(hours=settings.approval_ttl_hours)
+    from superaide.platform import retention
+    from superaide.platform.db.session import session_scope
+
+    with session_scope() as cfg:  # the owner's choice, else the operator's
+        hours = retention.effective(cfg, "approval_ttl_hours", settings.approval_ttl_hours)
+    if hours > 0:
+        approval.expires_at = datetime.now(UTC) + timedelta(hours=hours)
 
 
 def expired(approval: Approval, *, now: datetime | None = None) -> bool:
