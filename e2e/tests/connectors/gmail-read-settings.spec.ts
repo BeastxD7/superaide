@@ -8,7 +8,7 @@ const CLIENT = 'abc.apps.googleusercontent.com'
 async function connectGmail(api: { ok: <T>(p: Promise<unknown>) => Promise<T>; get: (u: string) => Promise<unknown>; post: (u: string, b?: unknown) => Promise<unknown> }) {
   await plantSecret('google', 'client_id', CLIENT)
   await plantSecret('google', 'client_secret', 'GOCSPX-secretsecret')
-  await plantSecret('google', 'gmail_refresh_token', 'rt-1234567890abcdef')
+  await plantSecret('google', 'gmail_refresh_token', 'rt-test-only-placeholder')
   await query(
     `UPDATE integration_secret SET meta = $1::jsonb WHERE name = 'gmail_refresh_token'`,
     [JSON.stringify({ scopes: ['https://www.googleapis.com/auth/gmail.readonly'], client_id: CLIENT, address: 'ananya@example.com' })],
