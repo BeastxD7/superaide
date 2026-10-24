@@ -392,9 +392,20 @@
             ],
             "title": "Cannot"
           },
+          "channels": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channels"
+          },
           "first_name": {
+            "default": "",
             "maxLength": 40,
-            "minLength": 1,
             "title": "First Name",
             "type": "string"
           },
@@ -404,7 +415,7 @@
             "title": "Initial",
             "type": "string"
           },
-          "opt_in": {
+          "sign_default": {
             "anyOf": [
               {
                 "type": "boolean"
@@ -413,12 +424,21 @@
                 "type": "null"
               }
             ],
-            "title": "Opt In"
+            "title": "Sign Default"
+          },
+          "wording": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wording"
           }
         },
-        "required": [
-          "first_name"
-        ],
         "title": "CardBody",
         "type": "object"
       },
@@ -1194,19 +1214,6 @@
           "password"
         ],
         "title": "LoginBody",
-        "type": "object"
-      },
-      "OptIn": {
-        "properties": {
-          "opted_in": {
-            "title": "Opted In",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "opted_in"
-        ],
-        "title": "OptIn",
         "type": "object"
       },
       "OptionBody": {
@@ -2014,6 +2021,33 @@
           "categories"
         ],
         "title": "SharingBody",
+        "type": "object"
+      },
+      "SignBody": {
+        "additionalProperties": false,
+        "properties": {
+          "sign": {
+            "title": "Sign",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "sign"
+        ],
+        "title": "SignBody",
+        "type": "object"
+      },
+      "SignDefault": {
+        "properties": {
+          "on": {
+            "title": "On",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "on"
+        ],
+        "title": "SignDefault",
         "type": "object"
       },
       "SignupBody": {
@@ -4191,6 +4225,67 @@
           }
         ],
         "summary": "How fast you have been approving",
+        "tags": [
+          "Owner: approvals"
+        ]
+      }
+    },
+    "/app/approvals/{approval_id}/signature": {
+      "post": {
+        "description": "The tick on an email's approval card. Allowed only while the card is waiting; the choice becomes part of what the approval is sealed on, so it cannot change after the yes.",
+        "operationId": "sign_approval_app_approvals__approval_id__signature_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "approval_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Approval Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Sign Approval App Approvals  Approval Id  Signature Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Sign an email as Ava, or not",
         "tags": [
           "Owner: approvals"
         ]
@@ -9345,55 +9440,6 @@
         ]
       }
     },
-    "/app/principal-card/opt-in": {
-      "post": {
-        "description": "Off by default. Off keeps every setting but adds no card to any reply.",
-        "operationId": "opt_in_app_principal_card_opt_in_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/OptIn"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Opt In App Principal Card Opt In Post",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "X-Requested-With": []
-          }
-        ],
-        "summary": "Turn my principal card on or off",
-        "tags": [
-          "Owner: principal card"
-        ]
-      }
-    },
     "/app/principal-card/revoke": {
       "post": {
         "operationId": "revoke_app_principal_card_revoke_post",
@@ -9496,6 +9542,55 @@
           }
         ],
         "summary": "Revoke one card I have sent",
+        "tags": [
+          "Owner: principal card"
+        ]
+      }
+    },
+    "/app/principal-card/sign-default": {
+      "post": {
+        "description": "On by default. Off keeps every setting; each email's approval card still has its own tick.",
+        "operationId": "sign_default_app_principal_card_sign_default_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignDefault"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Sign Default App Principal Card Sign Default Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Sign my emails by default, or not",
         "tags": [
           "Owner: principal card"
         ]

@@ -554,6 +554,7 @@
  "policy.outcomes -> context.recall",
  "policy.outcomes -> proactive.notify",
  "policy.registry -> identity.trust",
+ "principal.card -> app.accounts",
  "principal.card -> policy.killswitch",
  "principal.card -> tenancy.context",
  "principal.card -> vault.crypto",

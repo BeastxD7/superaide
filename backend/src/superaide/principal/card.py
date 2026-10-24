@@ -1,13 +1,18 @@
 """Principal Card (issue #135): a signed, checkable statement that an outbound message comes from an AI.
 
-The card is a small JSON (owner-chosen display name, what Ava can and cannot agree to, expiry) signed with a
-key derived from the vault master key. The key is derived here and never returned, logged or stored. The
-public page verifies the signature and expiry and shows only the card: it reads no memory, no contacts and no
-relationships. The owner revokes every card at once by bumping a generation number kept in the instance's
-own state. Off unless PRINCIPAL_CARD_ENABLED, and then still opt-in per owner: no footer is added until the
-owner turns the card on for themselves, and the name is a first name with an initial the owner chooses
-(never a full name). Counters (cards shown, distinct cards opened, cards revoked) feed the 10-owner experiment;
-they hold numbers and card ids only, never message text or recipients.
+The card is a small JSON (the owner's first name and optional initial, what Ava can and cannot agree to, expiry)
+signed with a key derived from the vault master key. The key is derived here and never returned, logged or stored.
+The public page verifies the signature and expiry and shows only the card: it reads no memory, no contacts and no
+relationships. The owner revokes every card at once by bumping a generation number kept in the instance's own
+state.
+
+Owner decision (2026-10-24): every email Ava sends carries the sign-off by default ("Regards, Ava, personal
+assistant of <first name>" plus a fixed honest line and the card link). The owner can switch the default off in
+Settings and can untick it for one email on that email's approval card (gmail_send); the choice is part of the
+sealed approval, so it cannot change after the yes. PRINCIPAL_CARD_ENABLED is the global kill flag (on by
+default). Telegram and Slack replies to other people carry the card only if the owner turned that on
+(`channels`, default off). Counters (cards shown, distinct cards opened, cards revoked) hold numbers and card ids
+only, never message text.
 """
 
 from __future__ import annotations
@@ -81,20 +86,48 @@ def display_of(first_name: str, initial: str) -> str:
     return f"{first_name} {initial}." if first_name and initial else first_name
 
 
+DEFAULT_WORDING = "Regards,\n{agent}, personal assistant of {name}"
+MAX_WORDING = 200
+
+
+def clean_wording(text: str) -> str:
+    """The owner's sign-off wording: plain text with {agent} and {name}, at most two short lines."""
+    lines = [" ".join(ln.split()) for ln in text.replace("\r", "").split("\n")]
+    out = "\n".join(ln for ln in lines if ln)[:MAX_WORDING]
+    return out
+
+
+def render_wording(wording: str, *, agent: str, name: str) -> str:
+    return (wording or DEFAULT_WORDING).replace("{agent}", agent).replace("{name}", name)
+
+
 def settings_of(session: Session) -> dict[str, Any]:
     s = get_state(session, STATE_KEY)
     first = clean_first_name(str(s.get("first_name") or ""))
     initial = clean_initial(str(s.get("initial") or "")) if first else ""
     return {
-        "first_name": first,
+        "first_name": first,  # the owner's own choice; empty means "use the first name on the account"
         "initial": initial,
         "display_name": display_of(first, initial),
-        "opted_in": bool(s.get("opted_in")) and bool(first),
+        "sign_default": s.get("sign_default") is not False,  # on unless the owner explicitly turned it off
+        "channels": s.get("channels") is True,  # Telegram and Slack replies to others: off unless asked for
+        "wording": clean_wording(str(s.get("wording") or "")) or DEFAULT_WORDING,
         "can": list(s.get("can") or DEFAULT_CAN),
         "cannot": list(s.get("cannot") or DEFAULT_CANNOT),
         "generation": int(s.get("generation") or 0),
         "revoked": [str(i) for i in (s.get("revoked") or [])][-MAX_SENT:],  # single cards the owner took back
     }
+
+
+def owner_name(session: Session) -> str:
+    """What the sign-off calls the owner: their chosen first name and initial, else the first name on the account."""
+    cur = settings_of(session)
+    if cur["display_name"]:
+        return str(cur["display_name"])
+    from superaide.app.accounts import owner
+
+    person = owner(session)
+    return clean_first_name((person.display_name or "").split(" ")[0]) if person else ""
 
 
 def _clean(items: list[str]) -> list[str]:
@@ -104,35 +137,42 @@ def _clean(items: list[str]) -> list[str]:
 def configure(
     session: Session,
     *,
-    first_name: str,
+    first_name: str = "",
     initial: str = "",
-    can: list[str] | None,
-    cannot: list[str] | None,
-    opted_in: bool | None = None,
+    can: list[str] | None = None,
+    cannot: list[str] | None = None,
+    sign_default: bool | None = None,
+    channels: bool | None = None,
+    wording: str | None = None,
 ) -> dict[str, Any]:
-    """Raises ValueError for a first name that is not a single word of letters."""
-    first = clean_first_name(first_name)
-    if not first:
-        raise ValueError("first_name must be one word of letters")
+    """Raises ValueError for a first name that is not a single word of letters (blank clears it)."""
     cur = settings_of(session)
-    cur["first_name"], cur["initial"] = first, clean_initial(initial)
-    cur["display_name"] = display_of(first, cur["initial"])
-    if opted_in is not None:
-        cur["opted_in"] = opted_in
+    if first_name.strip():
+        first = clean_first_name(first_name)
+        if not first:
+            raise ValueError("first_name must be one word of letters")
+        cur["first_name"], cur["initial"] = first, clean_initial(initial)
+    else:
+        cur["first_name"], cur["initial"] = "", ""
+    cur["display_name"] = display_of(cur["first_name"], cur["initial"])
     if can is not None:
         cur["can"] = _clean(can) or DEFAULT_CAN
     if cannot is not None:
         cur["cannot"] = _clean(cannot) or DEFAULT_CANNOT
+    if sign_default is not None:
+        cur["sign_default"] = sign_default
+    if channels is not None:
+        cur["channels"] = channels
+    if wording is not None:
+        cur["wording"] = clean_wording(wording) or DEFAULT_WORDING
     set_state(session, STATE_KEY, cur)
     return cur
 
 
-def set_opt_in(session: Session, opted_in: bool) -> dict[str, Any]:
-    """The owner's own switch. Turning it on needs a first name; turning it off keeps every setting."""
+def set_sign_default(session: Session, on: bool) -> dict[str, Any]:
+    """The owner's own switch for the default. Off keeps every setting and adds nothing unless ticked per email."""
     cur = settings_of(session)
-    if opted_in and not cur["first_name"]:
-        raise ValueError("choose a first name before turning the card on")
-    cur["opted_in"] = opted_in
+    cur["sign_default"] = on
     set_state(session, STATE_KEY, cur)
     return cur
 
@@ -176,17 +216,15 @@ def revoke_all(session: Session) -> int:
 
 
 def issue(session: Session, *, now: float | None = None) -> str | None:
-    """A signed token for the instance in scope, or None when off or the owner hasn't opted in."""
+    """A signed token for the instance in scope, or None when the card is switched off globally."""
     if not enabled():
         return None
     cur = settings_of(session)
-    if not cur["opted_in"]:
-        return None
     scope = scope_or_default()
     t = int(time.time() if now is None else now)
     payload = {
         "v": 1, "t": str(scope.tenant_id), "a": str(scope.agent_id), "g": cur["generation"],
-        "n": cur["display_name"], "can": cur["can"], "cannot": cur["cannot"],
+        "n": owner_name(session), "can": cur["can"], "cannot": cur["cannot"],
         "iat": t, "exp": t + get_settings().principal_card_days * 86400, "id": secrets.token_hex(6),
     }  # fmt: skip
     body = _b64(json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode())
@@ -243,27 +281,61 @@ def verify(session: Session, token: str, *, now: float | None = None, record: bo
     }
 
 
-def footer(session: Session, *, channel: str = "", to: str = "") -> str:
-    """The line added under an outbound message, or empty. With `channel` the card is also noted in the
-    owner's sent list (id, channel, who it went to by name, time, expiry; never the message)."""
-    token = issue(session)
-    if token is None:
-        return ""
-    _bump(session, "shown")
-    if channel:
-        claims = _claims(token) or {}
-        log = list(get_state(session, SENT_KEY).get("sent") or [])
-        log.append(
-            {"id": claims.get("id"), "channel": channel[:20], "to": " ".join(to.split())[:80],
-             "at": int(claims.get("iat", 0)), "exp": int(claims.get("exp", 0)), "g": int(claims.get("g", 0))}
-        )  # fmt: skip
-        set_state(session, SENT_KEY, {"sent": log[-MAX_SENT:]})
-    name = settings_of(session)["display_name"]
+def _block(session: Session, token: str) -> str:
+    cur = settings_of(session)
+    name = owner_name(session)
+    agent = get_settings().agent_name
     base = get_settings().frontend_origin.rstrip("/")
     return (
-        f"\n\n--\n{get_settings().agent_name} is an AI assistant acting for {name}. "
+        f"\n\n--\n{render_wording(cur['wording'], agent=agent, name=name)}\n\n"
+        f"{agent} is an AI assistant acting for {name}. "
         f"What she may and may not agree to, and how to report a problem: {base}/c/{token}"
     )
+
+
+def email_signature(session: Session) -> dict[str, str] | None:
+    """The sign-off for an email: {"text", "id", "token", "label"}, or None when the card is off globally or no name is
+    known. Nothing is counted here: the card counts as shown when the email is actually sent (`record_sent`)."""
+    token = issue(session)
+    if token is None or not owner_name(session):
+        return None
+    claims = _claims(token) or {}
+    name = owner_name(session)
+    return {
+        "text": _block(session, token),
+        "id": str(claims.get("id") or ""),
+        "token": token,
+        "label": f"Sign as {get_settings().agent_name}, personal assistant of {name}",
+    }
+
+
+def record_sent(session: Session, card_id: str, *, channel: str, to: str = "") -> None:
+    """Note one card as shown (sent): the counter and the owner's sent list (id, channel, who by name, time,
+    expiry; never the message)."""
+    cur = settings_of(session)
+    t = int(time.time())
+    log = list(get_state(session, SENT_KEY).get("sent") or [])
+    log.append(
+        {"id": card_id, "channel": channel[:20], "to": " ".join(to.split())[:80], "at": t,
+         "exp": t + get_settings().principal_card_days * 86400, "g": cur["generation"]}
+    )  # fmt: skip
+    set_state(session, SENT_KEY, {"sent": log[-MAX_SENT:]})
+    _bump(session, "shown")
+
+
+def footer(session: Session, *, channel: str = "", to: str = "") -> str:
+    """The sign-off under a Telegram or Slack reply to someone who isn't the owner, or empty. Only if the owner
+    turned the card on for those channels and left the default on. (Email goes through `email_signature`.)"""
+    if not channel:
+        return ""
+    cur = settings_of(session)
+    if not (cur["channels"] and cur["sign_default"]):
+        return ""
+    sig = email_signature(session)
+    if sig is None:
+        return ""
+    record_sent(session, sig["id"], channel=channel, to=to)
+    return sig["text"]
 
 
 def sent(session: Session, *, now: float | None = None) -> list[dict[str, Any]]:

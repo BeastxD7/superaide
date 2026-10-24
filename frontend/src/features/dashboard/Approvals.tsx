@@ -59,8 +59,28 @@ export function ApprovalsCard({ name, empty = null, showExpired = false }: { nam
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [reasons, setReasons] = useState<Record<string, string>>({})
+  const [ticks, setTicks] = useState<Record<string, boolean>>({}) // the tick as clicked, until the saved answer is back
   const stale = showExpired ? expired : []
   if (!pending.length && !stale.length) return data ? empty : null
+
+  // The tick on an email's card: the choice is saved (and sealed with the approval) before any yes.
+  async function setSign(id: string, sign: boolean) {
+    setTicks((t) => ({ ...t, [id]: sign }))
+    setBusy(id)
+    setError(null)
+    try {
+      await call(`/approvals/${id}/signature`, { method: 'POST', json: { sign } })
+    } catch (e) {
+      setError(errorMessage(e))
+    } finally {
+      await reload()
+      setTicks((t) => {
+        const { [id]: _gone, ...rest } = t
+        return rest
+      })
+      setBusy(null)
+    }
+  }
 
   async function decide(id: string, verdict: 'approve' | 'reject') {
     setBusy(id)
@@ -138,6 +158,27 @@ export function ApprovalsCard({ name, empty = null, showExpired = false }: { nam
                       If you say yes: {a.on_approval}
                     </p>
                   )
+                )}
+                {a.sign && (
+                  <div className="mt-2 rounded-md border border-line bg-slate-50 p-2" data-testid="approval-sign">
+                    <label className="flex items-start gap-2 text-sm font-medium text-ink">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 size-4 shrink-0"
+                        checked={ticks[a.id] ?? a.sign.checked}
+                        disabled={!a.sign.can_change}
+                        onChange={(e) => void setSign(a.id, e.target.checked)}
+                      />
+                      <span>{a.sign.label}</span>
+                    </label>
+                    {(ticks[a.id] ?? a.sign.checked) ? (
+                      <pre className="mt-1 whitespace-pre-wrap break-words text-xs text-body" data-testid="approval-sign-text">
+                        {a.sign.text}
+                      </pre>
+                    ) : (
+                      <p className="mt-1 text-xs text-muted">Goes out in your own name, with no line from {name}.</p>
+                    )}
+                  </div>
                 )}
                 {a.origin === 'voice' && a.readback && <VoiceReadback readback={a.readback} />}
                 {a.notes?.map((n) => (

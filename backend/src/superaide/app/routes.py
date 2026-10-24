@@ -16,7 +16,7 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
@@ -99,6 +99,12 @@ class CounterBody(BaseModel):
     on: bool
 
 
+class SignBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    sign: bool
+
+
 class DraftPlaybookBody(BaseModel):
     task: str = Field(min_length=3, max_length=500)
 
@@ -168,6 +174,21 @@ class LinkBody(BaseModel):
 class CallAnswerBody(BaseModel):
     question_id: str = Field(max_length=10)
     transcript: str = Field(default="", max_length=8000)
+
+
+def _sign_view(a: Approval) -> dict[str, Any]:
+    """The tick on an email's card: "Sign as Ava, personal assistant of <first name>", and the exact sign-off."""
+    p = a.payload or {}
+    if a.kind != "gmail_send" or not p.get("signature_available"):
+        return {}
+    return {
+        "sign": {
+            "label": str(p.get("signature_label") or "Sign as Ava"),
+            "checked": bool(p.get("sign_as_ava")),
+            "text": str(p.get("signature_text") or "") if p.get("sign_as_ava") else "",
+            "can_change": a.status == "pending" and not expired(a),
+        }
+    }
 
 
 def _card_fields(a: Approval) -> list[dict[str, str]]:
@@ -1384,6 +1405,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                     "at": a.created_at.isoformat(),
                     "decided_at": a.decided_at.isoformat() if a.decided_at else None,
                     "needs_reason": bool(state and a.status == "pending" and brake.needs_reason(a.kind, state)),
+                    **_sign_view(a),
                     **({"origin": "voice", "readback": gateway.readback(a)} if gateway.from_voice(a) else {}),
                 }
                 for a in rows
@@ -1431,6 +1453,30 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
 
         with session_scope() as s:
             return asdict(owner_twin.calibration(s))
+
+    @router.post(
+        "/approvals/{approval_id}/signature",
+        tags=["Owner: approvals"],
+        summary="Sign an email as Ava, or not",
+        description=(
+            "The tick on an email's approval card. Allowed only while the card is waiting; the choice becomes part "
+            "of what the approval is sealed on, so it cannot change after the yes."
+        ),
+    )
+    def sign_approval(
+        approval_id: uuid.UUID, body: SignBody, person_id: uuid.UUID = Depends(owner_person_id)
+    ) -> dict[str, Any]:
+        from superaide.skills import gmail as gmail_skill
+
+        with session_scope() as s:
+            approval = s.get(Approval, approval_id)
+            if approval is None:
+                raise HTTPException(404, "No such approval")
+            if approval.status != "pending" or expired(approval):
+                raise HTTPException(409, "That email has already been decided.")
+            if not gmail_skill.set_signing(s, approval, body.sign):
+                raise HTTPException(404, "That card has no sign-off to choose.")
+            return _sign_view(approval)["sign"]
 
     @router.post(
         "/approvals/{approval_id}/{verdict}",

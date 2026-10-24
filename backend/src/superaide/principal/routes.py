@@ -34,17 +34,19 @@ def flag_on() -> None:
 class CardBody(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    first_name: str = Field(min_length=1, max_length=card.MAX_FIRST)
+    first_name: str = Field(default="", max_length=card.MAX_FIRST)  # blank: use the first name on the account
     initial: str = Field(default="", max_length=2)
-    opt_in: bool | None = None  # omitted keeps the owner's current choice (the default is off)
+    sign_default: bool | None = None  # omitted keeps the owner's choice (the default is on)
+    channels: bool | None = None  # also sign Telegram and Slack replies to other people (default off)
+    wording: str | None = Field(default=None, max_length=card.MAX_WORDING)
     can: list[str] | None = Field(default=None, max_length=card.MAX_LISTED)
     cannot: list[str] | None = Field(default=None, max_length=card.MAX_LISTED)
 
 
-class OptIn(BaseModel):
+class SignDefault(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    opted_in: bool
+    on: bool
 
 
 def make_public_router() -> APIRouter:
@@ -77,9 +79,12 @@ def make_owner_router() -> APIRouter:
         return person_id
 
     def _view(s: Any, cur: dict[str, Any]) -> dict[str, Any]:
-        token = card.issue(s)
-        return {k: cur[k] for k in ("first_name", "initial", "display_name", "can", "cannot", "opted_in")} | {
-            "active": cur["opted_in"],
+        token = card.issue(s) if card.owner_name(s) else None
+        keys = ("first_name", "initial", "display_name", "can", "cannot", "sign_default", "channels", "wording")
+        return {k: cur[k] for k in keys} | {
+            "name_shown": card.owner_name(s),
+            "default_wording": card.DEFAULT_WORDING,
+            "active": cur["sign_default"] and bool(card.owner_name(s)),
             "preview": f"{get_settings().frontend_origin.rstrip('/')}/c/{token}" if token else None,
         }
 
@@ -105,25 +110,22 @@ def make_owner_router() -> APIRouter:
             try:
                 cur = card.configure(
                     s, first_name=body.first_name, initial=body.initial, can=body.can, cannot=body.cannot,
-                    opted_in=body.opt_in,
+                    sign_default=body.sign_default, channels=body.channels, wording=body.wording,
                 )  # fmt: skip
             except ValueError:
                 raise HTTPException(422, "first_name must be a single first name (letters only)") from None
-            audit(s, "owner", "principal_card_set", opted_in=cur["opted_in"])
+            audit(s, "owner", "principal_card_set", sign_default=cur["sign_default"])
             return _view(s, cur)
 
     @router.post(
-        "/opt-in",
-        summary="Turn my principal card on or off",
-        description="Off by default. Off keeps every setting but adds no card to any reply.",
+        "/sign-default",
+        summary="Sign my emails by default, or not",
+        description="On by default. Off keeps every setting; each email's approval card still has its own tick.",
     )
-    def opt_in(body: OptIn, person_id: uuid.UUID = Depends(owner_on)) -> dict[str, Any]:
+    def sign_default(body: SignDefault, person_id: uuid.UUID = Depends(owner_on)) -> dict[str, Any]:
         with session_scope() as s:
-            try:
-                cur = card.set_opt_in(s, body.opted_in)
-            except ValueError:
-                raise HTTPException(422, "Choose a first name before turning the card on") from None
-            audit(s, "owner", "principal_card_opt_in" if body.opted_in else "principal_card_opt_out")
+            cur = card.set_sign_default(s, body.on)
+            audit(s, "owner", "principal_card_sign_on" if body.on else "principal_card_sign_off")
             return _view(s, cur)
 
     @router.get(
