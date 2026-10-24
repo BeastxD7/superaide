@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAppData } from '@/features/dashboard/data'
+import { ConnectorSettings } from '@/features/dashboard/ConnectorSettings'
 import { GmailPanel } from '@/features/dashboard/GmailPanel'
 import { SkillReleasesPanel } from '@/features/dashboard/SkillReleasesPanel'
 import { call, type SkillCard, type SkillOption } from '@/lib/api'
@@ -201,6 +202,9 @@ export function SkillsPage({ google = null }: { google?: string | null }) {
                   </div>
                 )}
                 {s.installed && s.id === 'superaide/gmail' && !asking && <GmailPanel name={name} />}
+                {s.installed && s.id === 'superaide/google-calendar' && !asking && (
+                  <ConnectorSettings path="calendar" title={`What ${name} may read in your calendar`} anchor="calendar" />
+                )}
 
                 {s.installed &&
                   (s.google_connected !== false || s.id === 'superaide/gmail') && // Gmail's own panel and options explain a missing Google

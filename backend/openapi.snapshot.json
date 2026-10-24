@@ -275,6 +275,25 @@
         "title": "BusyBody",
         "type": "object"
       },
+      "CalendarSettingsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "ahead_days": {
+            "title": "Ahead Days"
+          },
+          "day_end": {
+            "title": "Day End"
+          },
+          "day_start": {
+            "title": "Day Start"
+          },
+          "events_per_read": {
+            "title": "Events Per Read"
+          }
+        },
+        "title": "CalendarSettingsBody",
+        "type": "object"
+      },
       "CallAnswerBody": {
         "properties": {
           "question_id": {
@@ -5243,6 +5262,82 @@
         "summary": "Shareable shape of the memory",
         "tags": [
           "Owner: glass brain"
+        ]
+      }
+    },
+    "/app/calendar/read-settings": {
+      "get": {
+        "description": "The owner's limits for Google Calendar reading, every allowed value and what it means (defaults until installed).",
+        "operationId": "get_settings_app_calendar_read_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Settings App Calendar Read Settings Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Google Calendar reading: your settings",
+        "tags": [
+          "Owner: Calendar"
+        ]
+      },
+      "put": {
+        "description": "Changes any of the settings. Each change is audited.",
+        "operationId": "put_settings_app_calendar_read_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarSettingsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Put Settings App Calendar Read Settings Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Google Calendar reading: change your settings",
+        "tags": [
+          "Owner: Calendar"
         ]
       }
     },
