@@ -2569,6 +2569,22 @@
         "title": "VoiceKeyBody",
         "type": "object"
       },
+      "WebSettingsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "pages_per_answer": {
+            "title": "Pages Per Answer"
+          },
+          "search_when": {
+            "title": "Search When"
+          },
+          "searches_per_answer": {
+            "title": "Searches Per Answer"
+          }
+        },
+        "title": "WebSettingsBody",
+        "type": "object"
+      },
       "superaide__api__admin__LinkBody": {
         "properties": {
           "person_id": {
@@ -14381,6 +14397,82 @@
         "tags": [
           "Owner: skills",
           "Owner: skills"
+        ]
+      }
+    },
+    "/app/web/read-settings": {
+      "get": {
+        "description": "The owner's limits for Web research, every allowed value and what it means (defaults until installed).",
+        "operationId": "get_settings_app_web_read_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Settings App Web Read Settings Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Web research: your settings",
+        "tags": [
+          "Owner: Web research"
+        ]
+      },
+      "put": {
+        "description": "Changes any of the settings. Each change is audited.",
+        "operationId": "put_settings_app_web_read_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebSettingsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Put Settings App Web Read Settings Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Web research: change your settings",
+        "tags": [
+          "Owner: Web research"
         ]
       }
     },

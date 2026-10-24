@@ -147,7 +147,11 @@ def set_option(session: Session, skill_id: str, setting: str, *, on: bool, accep
 
 
 def tools_for(
-    skills: list[Skill], *, web_allowed: bool, options: set[tuple[str, str]] | frozenset = frozenset()
+    skills: list[Skill],
+    *,
+    web_allowed: bool,
+    options: set[tuple[str, str]] | frozenset = frozenset(),
+    web_limits: dict[str, int] | None = None,
 ) -> list[dict[str, Any]]:
     """Claude tool definitions for these skills. Server tools (web) only when allowed (real model);
     a tool behind a skill setting only while that setting is on (`options`, from options_on)."""
@@ -162,7 +166,9 @@ def tools_for(
                 from superaide.brain.providers.anthropic import HOSTED_TYPES
 
                 spec: dict[str, Any] = {"type": HOSTED_TYPES[tool.hosted], "name": tool.name}
-                spec["max_uses"] = WEB_SEARCHES_PER_STEP if tool.hosted == "web_search" else 3
+                spec["max_uses"] = (web_limits or {}).get(
+                    tool.hosted, WEB_SEARCHES_PER_STEP if tool.hosted == "web_search" else 3
+                )
                 if tool.hosted == "web_fetch":
                     spec["citations"] = {"enabled": True}
                 tools.append(spec)

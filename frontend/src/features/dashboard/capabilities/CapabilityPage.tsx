@@ -74,6 +74,8 @@ export function CapabilityPage({ slug, page }: { slug: string; page?: string }) 
             ))}
           </SettingsSection>
         </>
+      ) : page === 'use' && slug === 'web' ? (
+        <ConnectorSettings path="web" title={`How ${name} uses the web`} anchor="web" />
       ) : page === 'reading' && slug === 'calendar' ? (
         <ConnectorSettings path="calendar" title={`What ${name} may read in your calendar`} anchor="calendar" />
       ) : page === 'reading' ? (
