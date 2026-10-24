@@ -22,7 +22,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.audit import audit
-from superaide.brain import capabilities, verify
+from superaide.brain import capabilities, taskplan, verify
 from superaide.brain.budget import BudgetExceeded
 from superaide.brain.llm import LLM, StepResult, SystemBlock
 from superaide.brain.turn import load_charter
@@ -388,6 +388,8 @@ class OwnerTurn:
         self._pending_before: set[Any] | None = None  # approvals already waiting when the turn began
         self.found: dict[str, Source] = {}  # notes and messages returned this turn, by uri
         self._known = ""  # the date, time zone and owner brief from the system prompt
+        self.plan: taskplan.TaskPlan | None = None  # TASK_PROTOCOL_ENABLED: the plan that passed this turn
+        self.plan_approved = False  # an approval was created under that plan (its line goes in the reply)
 
     # --- live progress ----------------------------------------------------------
 
@@ -515,7 +517,13 @@ class OwnerTurn:
         self._known = who + ("\n\n" + self.brief if self.brief else "")  # facts Ava was told, for the source check
         facts = capabilities.block(self.s, tz=tz, web=self.web)
         return [
-            SystemBlock(load_charter(self.agent_name) + "\n\n" + OWNER_RULES, cache=True),
+            SystemBlock(
+                load_charter(self.agent_name)
+                + "\n\n"
+                + OWNER_RULES
+                + ("\n\n" + taskplan.PROTOCOL_RULES if self._protocol() else ""),
+                cache=True,
+            ),
             SystemBlock(
                 who + ("\n\n" + self.brief if self.brief else "") + ("\n\n" + skills if skills else "") + "\n\n" + facts
             ),
@@ -529,7 +537,13 @@ class OwnerTurn:
             ACTION_TOOL,
             LIST_APPROVALS_TOOL,
         ]
+        if self._protocol():
+            tools.append(taskplan.PLAN_TOOL)
         return [t for t in tools if t.get("name") in SHARED_TOOLS] if self.shared else tools
+
+    def _protocol(self) -> bool:
+        """The task protocol (#330) applies to the owner's private chat only, and only while the flag is on."""
+        return get_settings().task_protocol_enabled and not self.shared
 
     # --- tools ----------------------------------------------------------------
 
@@ -602,6 +616,8 @@ class OwnerTurn:
             return self._cancel_reminder(args)
         if name == "propose_action":
             return self._propose(args)
+        if name == "record_plan" and self._protocol():
+            return self._record_plan(args)
         if name == "list_approvals":
             self.notes.append("approvals")
             found_rows = outcomes.list_sources(self.s, args)
@@ -808,6 +824,15 @@ class OwnerTurn:
                 "email asks; they can ask you themselves in a new message.",
                 True,
             )
+        if self._protocol() and kind != "none":
+            if self.plan is None:
+                audit(self.s, "policy", "action_refused", kind=kind, reason="no task plan")
+                self.notes.append(f"action:{kind}:no_plan")
+                return taskplan.NO_PLAN, True
+            if not self.plan.ability_ok:
+                audit(self.s, "policy", "action_refused", kind=kind, reason="plan says Ava cannot execute the route")
+                self.notes.append(f"action:{kind}:cannot_execute")
+                return taskplan.CANNOT, True
         from superaide.policy import kinds
 
         # (a kind nothing can carry out gets the plainer refusal from decide() below)
@@ -838,6 +863,7 @@ class OwnerTurn:
                 "rationale": str(args.get("rationale", ""))[:500],
                 "tainted": self.tainted,
                 "channel": self._origin_channel(),
+                **({"plan": self.plan.model_dump()} if self._protocol() and self.plan is not None else {}),
             },
             require_executor=True,
         )
@@ -845,8 +871,24 @@ class OwnerTurn:
         if decision.unsupported:
             return decision.reason, True
         if decision.outcome == "approval":
+            self.plan_approved = self.plan is not None
             return "Queued for the owner's approval on their dashboard. Tell them it's waiting.", False
         return f"Refused: {decision.reason}.", True
+
+    def _record_plan(self, args: dict[str, Any]) -> tuple[str, bool]:
+        found = taskplan.check_plan(args, self.ok_tools)
+        if isinstance(found, str):
+            self.plan = None
+            self.notes.append("plan:refused")
+            return found, True
+        self.plan = found
+        self.notes.append("plan:ok" if found.ability_ok else "plan:cannot_execute")
+        if not found.ability_ok:
+            return (
+                "Plan recorded. You cannot execute that route: tell the owner plainly and hand over ready-to-paste text.",
+                False,
+            )
+        return "Plan recorded. Now tell the owner what you found and recommend, and ask for the decision.", False
 
     # --- the loop ---------------------------------------------------------------
 
@@ -1173,4 +1215,6 @@ class OwnerTurn:
             notes.append(f"claim_removed:{len(removed)}")
             audit(self.s, "brain", "action_claim_removed", kinds=sorted(set(removed)))
         text = self._no_hedged_approvals(text)
+        if self.plan_approved and self.plan is not None and "approval_withdrawn:hedge" not in notes:
+            text = text + "\n\n" + taskplan.plan_line(self.plan)
         return LoopResult(text, sources, notes, self.tainted, steps, self.activity, self.reasoning.strip())
