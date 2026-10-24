@@ -374,7 +374,7 @@ def test_the_import_graph_sees_the_edges_we_know_about(real) -> None:
     assert "features.mirror.service" in g.imports["app.mirror"]  # a plain absolute import
     assert "app.routes" in g.imports["triage.routes"] or g.imports["triage.routes"]  # the graph is not empty
     # db/models.py registers every package's models; those are not behavioural edges
-    assert not [t for t in g.imports["db.models"] if t.endswith(".models")]
+    assert not [t for t in g.imports["platform.db.models"] if t.endswith(".models")]
     # every edge points at a real file
     assert all(t in g.files for ts in g.imports.values() for t in ts)
 
