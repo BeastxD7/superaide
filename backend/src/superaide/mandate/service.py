@@ -159,13 +159,16 @@ def permits(
     now: datetime | None = None,
     mandate_id: uuid.UUID | None = None,
     dry_run: bool = False,
+    strict: bool = False,
 ) -> bool:
     """True when an active mandate (and every ancestor of it) covers this call and it may run without asking.
     Counts the use on the mandate and on each ancestor, so a sub-task's calls come out of its parent's count.
     A helper that was handed a mandate passes its `mandate_id`: only that mandate (and its chain) is considered,
     so a helper holding a narrow child cannot borrow the parent's wider reach.
     `dry_run` (the shadow check) counts nothing, audits nothing, and also says no when a token limits something
-    (money, recipients, topics) that the call does not state, since it cannot tell whether the limit holds."""
+    (money, recipients, topics) that the call does not state, since it cannot tell whether the limit holds.
+    `strict` (the card skip) does the same refusal for a real call: a narrowed mandate never covers a call whose
+    arguments don't say what the narrowing is about."""
     if not get_settings().mandates_enabled:
         return False
     if effect in NEVER_UNSUPERVISED or caps.violates_rule_of_two or caps.untrusted_input:
@@ -180,7 +183,7 @@ def permits(
         chain = ancestry(session, row)
         if not _chain_ok(key, chain, str(scope.agent_id), now):
             continue
-        if dry_run and any(_unstated_limit(tk.loads(r.token), args) for r in chain):
+        if (dry_run or strict) and any(_unstated_limit(tk.loads(r.token), args) for r in chain):
             continue
         # The call must pass every token in the chain (each with its own use count): the narrowest binds.
         if all(
@@ -270,3 +273,71 @@ def chain_view(session: Session, row: Mandate) -> dict[str, Any]:
         "depth": len(live) - 1,
         "chain": " -> ".join(parts),
     }
+
+
+# --- skipping the card (issue #112, MANDATE_SKIP_ENABLED) ---------------------------------------------
+
+# The only tools a mandate can ever let run without a card: your own calendar, nobody else told. Anything else
+# (invites, declines, sending, spending, every unlisted tool) keeps asking.
+SKIP_TOOLS = {"create_event", "move_event", "gmail_draft_reply"}
+
+
+def skip_enabled() -> bool:
+    s = get_settings()
+    return s.mandates_enabled and s.mandate_skip_enabled
+
+
+def shadow_days(session: Session, *, now: datetime | None = None) -> int:
+    """How many whole days ago the shadow check first recorded an approval (0 when it never has)."""
+    from sqlalchemy import func
+
+    from superaide.db.models import Approval
+
+    first = session.scalar(select(func.min(Approval.created_at)).where(Approval.payload.has_key("mandate_shadow")))
+    if first is None:
+        return 0
+    return max(0, ((now or datetime.now(UTC)) - first).days)
+
+
+def skips_card(
+    session: Session, *, tool: str, args: dict[str, Any], tainted: bool, notifies: bool, summary: str = ""
+) -> bool:
+    """May this call run without an approval card because a signed mandate covers it? All of these must hold,
+    else the owner is asked as before: the flag, a tool on SKIP_TOOLS, nobody else told, an untainted turn, a stage
+    above Infant, shadow data older than MANDATE_SKIP_MIN_DAYS, and an active, unexpired, in-scope mandate chain
+    with uses left (`permits`). A use is counted and the skip is audited for the owner's activity."""
+    if not skip_enabled() or tool not in SKIP_TOOLS or notifies or tainted:
+        return False
+    from superaide.triage.store import current_stage
+    from superaide.triage.types import Stage
+
+    stage = current_stage(session)
+    if stage == Stage.INFANT:
+        return False
+    if shadow_days(session) < get_settings().mandate_skip_min_days:
+        return False
+    caps = Caps(untrusted_input=False, private_data=True, can_act=True)
+    if not permits(session, tool=tool, args=args, effect="write_external", caps=caps, strict=True):
+        return False
+    audit(session, "mandate", "mandate_skipped_card", tool=tool, stage=stage.value, summary=summary[:300])
+    return True
+
+
+def recent_skips(session: Session, *, limit: int = 20) -> list[dict[str, Any]]:
+    """The owner's activity: calls that ran on a mandate with no card, newest first."""
+    from superaide.db.models import AuditLog
+
+    rows = session.scalars(
+        select(AuditLog)
+        .where(AuditLog.action == "mandate_skipped_card")
+        .order_by(AuditLog.created_at.desc())
+        .limit(limit)
+    )
+    return [
+        {
+            "at": r.created_at.isoformat(),
+            "tool": (r.detail or {}).get("tool", ""),
+            "summary": (r.detail or {}).get("summary", ""),
+        }
+        for r in rows
+    ]

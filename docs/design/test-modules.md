@@ -67,6 +67,7 @@ Outputs: backend test files, e2e specs, vitest files, with the reason, printed i
 - `Frontend`: `vitest run <selected files>`; all unit tests when the selection has none for the group or the code is shared. Lint, types and build always run (they cannot be split).
 - Pushes to `main`, `merge_group`, `workflow_dispatch` and the scheduled Full run (`full.yml`, every two hours, which calls `ci.yml`) select **everything**. `CI result` insists on it: on any event other than a pull request it fails unless `backend_tests` is true and `selection_mode` is `full`.
 - The `full-suite` label forces everything. Labels are read live from the API, so add the label and re-run the `Changed paths` job (as with `tests-not-needed`).
+- The browser suite is advisory on pull requests (it runs, but a failure does not fail the `CI result` gate) unless the pull request has the `e2e-blocking` label; it always blocks on `main`, merge groups, Full and manual runs. See CONTRIBUTING.md and `scripts/ci_gate.py`.
 - `CI result` semantics are unchanged: skipped is fine, failed or cancelled fails, a job whose output said it was needed must have succeeded. The seven check names are unchanged.
 
 ## Running one module locally

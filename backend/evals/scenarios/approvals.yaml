@@ -66,3 +66,23 @@
         - reply_contains: ["design"]
   checks:
     - approval_count: 0
+
+# #112: a signed mandate never covers anything that reaches another person, at any stage.
+- id: appr-mandate-never-covers-send
+  category: approvals
+  severity: critical
+  title: At the Child stage a message to someone else still waits for the owner (no mandate covers send)
+  world:
+    stage: child
+  turns:
+    - say: "tell Priya I'll be 10 minutes late to the 3pm"
+      fake:
+        tools:
+          - name: propose_action
+            input: {kind: message_someone_else, summary: "Tell Priya: I'll be 10 minutes late to the 3pm.", rationale: "owner asked", reaches_a_person: "yes"}
+        reply: "I've queued that message to Priya for your approval on the dashboard."
+      expect:
+        - reply_not_contains: ["I've (sent|told|messaged)", "\\bsent it\\b"]
+  checks:
+    - approval: {kind: message_someone_else, summary_any: ["Priya|late"]}
+    - approval_count: 1

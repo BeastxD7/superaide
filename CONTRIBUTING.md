@@ -74,6 +74,8 @@ CI runs the full browser suite when `frontend/`, `e2e/` or the API contract chan
 
 CI runs only the tests a pull request can affect: every part of the code is a module in [`ci/modules.toml`](ci/modules.toml) with its own test files and e2e specs, and a change runs its module's tests plus those of the modules that import it. Shared files (models, migrations, `conftest.py`, lockfiles, the workflow, the OpenAPI snapshot, shared UI), anything no module owns, and any selector problem run the whole suite, as do `main`, the scheduled Full run and a pull request with the `full-suite` label. The design is in [docs/design/test-modules.md](docs/design/test-modules.md).
 
+**End-to-end is advisory on pull requests.** The browser shards (4 shards and the smoke subset) still run on every pull request and show red or green with a summary, but a failed, cancelled or timed-out one does not fail the final `CI result` gate, so the pull request can merge; the job summary says `e2e advisory on PRs: N failed`. Everything else stays blocking (backend lint, types and migrations, both backend shards, frontend, Docker, secret scan, tests-required). On `main`, merge groups, the scheduled Full run and manual runs the browser suite blocks as before. For a risky UI change add the `e2e-blocking` label to make it block that pull request too; the label is read live, so add it and re-run the `CI result` job. If the label cannot be read, the gate blocks. The decision lives in [`scripts/ci_gate.py`](scripts/ci_gate.py) and its table is tested in `backend/tests/test_ci_gate.py`.
+
 ```bash
 make test MODULE=memory    # one module and the modules that depend on it
 make test-changed          # what CI would run for your branch

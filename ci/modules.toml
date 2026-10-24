@@ -423,9 +423,10 @@ tests = [
   "backend/tests/test_mandate.py",
   "backend/tests/test_mandate_delegation.py",
   "backend/tests/test_mandate_shadow.py",
+  "backend/tests/test_mandate_skip.py",
   "backend/tests/api/test_mandates_route.py",
 ]
-e2e = []
+e2e = ["e2e/tests/mandate-skips.spec.ts"]
 
 [modules.mcp]
 src = [
@@ -851,6 +852,7 @@ tests = [
 ]
 e2e = [
   "e2e/tests/halt-resume.spec.ts",
+  "e2e/tests/mandate-skips.spec.ts",
   "e2e/tests/knn-promote.spec.ts",
   "e2e/tests/chat-empty.mobile.spec.ts",
   "e2e/tests/citation-marks.mobile.spec.ts",

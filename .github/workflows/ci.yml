@@ -355,7 +355,8 @@ jobs:
   e2e:
     name: End-to-end (shard ${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # Shards take 7 to 12 minutes; a hung one should not hold a pull request for 25 (advisory on pull requests, see the gate).
+    timeout-minutes: 15
     # Runs beside backend, not after it: it builds its own API and web. A frontend failure still stops it,
     # and the CI result gate still requires backend, so main loses no protection (docs/0013).
     needs: [changes, frontend]
@@ -569,29 +570,66 @@ jobs:
   # The one check to require in branch protection. Skipped jobs count as success, a failed or
   # cancelled one (or an unexpected state) fails it. Without this, a required job that was
   # skipped would stay pending forever.
+  # End-to-end is ADVISORY on pull requests (owner decision 2026-10-24): the shards still run and show red or green, but a
+  # failed or cancelled one does not fail this gate, unless the PR has the `e2e-blocking` label (read live, like
+  # tests-required) or the label cannot be read. On main, merge_group, Full and manual runs it blocks. scripts/ci_gate.py
+  # holds the decision; backend/tests/test_ci_gate.py proves the table.
   result:
     name: CI result
     if: always()
     needs: [changes, backend-static, backend-tests, frontend, e2e, e2e-smoke, images, secrets, tests-required]
     runs-on: ubuntu-latest
     timeout-minutes: 2
+    permissions:
+      contents: read
+      pull-requests: read # the e2e-blocking label
+      actions: read # which e2e shards failed, for the summary
     steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts/ci_gate.py
+          sparse-checkout-cone-mode: false
       - name: Every needed job succeeded or was skipped
         env:
           NEEDS: ${{ toJSON(needs) }}
           EVENT: ${{ github.event_name }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          RUN_ID: ${{ github.run_id }}
         run: |
           set -euo pipefail
           echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          res() { echo "$NEEDS" | jq -r --arg j "$1" '.[$j].result'; }
+          # End-to-end verdict. Labels are read live; on a read error LABELS is "-" and e2e stays blocking.
+          LABELS=-
+          if [ "$EVENT" = pull_request ]; then
+            LABELS=$(gh api "repos/$REPO/pulls/$PR" --jq '[.labels[].name] | join(",")' 2>/dev/null) || LABELS=-
+            [ -n "$LABELS" ] || LABELS=,
+          fi
+          E2E_RESULTS="e2e=$(res e2e) e2e-smoke=$(res e2e-smoke)"
+          export EVENT LABELS E2E_RESULTS
+          verdict=$(python3 scripts/ci_gate.py)
+          echo "$verdict"
+          e2e_blocking=$(echo "$verdict" | sed -n 's/^blocking=//p')
+          e2e_gate_failures=$(echo "$verdict" | sed -n 's/^gate_failures=//p')
+          e2e_forgiven=$(echo "$verdict" | sed -n 's/^advisory_failed=//p')
+          if [ -n "$e2e_forgiven" ]; then
+            # Count failed shards (best effort; the matrix job is one result in needs).
+            n=$(gh api --paginate "repos/$REPO/actions/runs/$RUN_ID/jobs" --jq '.jobs[]|select(.name|startswith("End-to-end"))|select(.conclusion=="failure" or .conclusion=="cancelled" or .conclusion=="timed_out")|.name' 2>/dev/null | wc -l | tr -d ' ') || n=0
+            [ "${n:-0}" -gt 0 ] || n=$(echo "$e2e_forgiven" | tr ',' '\n' | wc -l | tr -d ' ')
+            echo "e2e advisory on PRs: $n failed" | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "::warning::e2e advisory on PRs: $n failed (not blocking this pull request; add the e2e-blocking label to make it block)"
+          fi
           # changes and the secret scan are never skipped.
           for j in changes secrets; do
-            [ "$(echo "$NEEDS" | jq -r --arg j "$j" '.[$j].result')" = success ] || { echo "::error::$j did not succeed"; exit 1; }
+            [ "$(res "$j")" = success ] || { echo "::error::$j did not succeed"; exit 1; }
           done
-          bad=$(echo "$NEEDS" | jq -r 'to_entries[] | select(.value.result != "success" and .value.result != "skipped") | .key')
+          bad=$(echo "$NEEDS" | jq -r 'to_entries[] | select(.value.result != "success" and .value.result != "skipped") | select(.key != "e2e" and .key != "e2e-smoke") | .key')
           [ -z "$bad" ] || { echo "::error::failed, cancelled or unknown: $bad"; exit 1; }
+          [ -z "$e2e_gate_failures" ] || { echo "::error::end-to-end failed or unknown (blocking, e2e_blocking=$e2e_blocking): $e2e_gate_failures"; exit 1; }
           # A job skipped although its filter asked for it ran into an upstream problem: fail.
           out() { echo "$NEEDS" | jq -r --arg k "$1" '.changes.outputs[$k]'; }
-          res() { echo "$NEEDS" | jq -r --arg j "$1" '.[$j].result'; }
           [ "$(out backend)" != true ] || [ "$(res backend-static)" = success ] || { echo "::error::backend-static was required but is $(res backend-static)"; exit 1; }
           # Test selection (docs/design/test-modules.md): backend-tests is required whenever it was selected, and ALWAYS
           # on anything but a pull request (main, merge group, Full, manual); a selection can only trim a pull request.
@@ -610,8 +648,11 @@ jobs:
           if { [ "$(out backend)" = true ] || [ "$(out frontend)" = true ]; } && [ "$full" != true ] && [ "$smoke" != true ]; then
             echo "::error::code changed but no e2e path was selected"; exit 1
           fi
-          [ "$full" != true ] || [ "$(res e2e)" = success ] || { echo "::error::full e2e was required but is $(res e2e)"; exit 1; }
-          [ "$smoke" != true ] || [ "$(res e2e-smoke)" = success ] || { echo "::error::smoke e2e was required but is $(res e2e-smoke)"; exit 1; }
+          # Required e2e: success, or (advisory on a pull request) a failure or cancellation already forgiven above.
+          # Skipped although selected still fails closed.
+          adv() { [ "$e2e_blocking" = false ] && { [ "$(res "$1")" = failure ] || [ "$(res "$1")" = cancelled ]; }; }
+          [ "$full" != true ] || [ "$(res e2e)" = success ] || adv e2e || { echo "::error::full e2e was required but is $(res e2e)"; exit 1; }
+          [ "$smoke" != true ] || [ "$(res e2e-smoke)" = success ] || adv e2e-smoke || { echo "::error::smoke e2e was required but is $(res e2e-smoke)"; exit 1; }
           want=$(echo "$NEEDS" | jq -r '.changes.outputs.docker')
           [ "$want" != true ] || [ "$(echo "$NEEDS" | jq -r '.images.result')" = success ] || { echo "::error::images was required but did not succeed"; exit 1; }
           # tests-required only runs on pull requests (the job decides by PR title type, so a docs PR
