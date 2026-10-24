@@ -218,6 +218,7 @@ tests = [
   "backend/tests/test_slack.py",
   "backend/tests/test_slack_instances.py",
   "backend/tests/test_slack_link.py",
+  "backend/tests/test_slack_owner_channels.py",
   "backend/tests/test_telegram.py",
 ]
 e2e = [
