@@ -94,6 +94,13 @@ class ModuleMap:
     expansion: str
     ignore: list[str]
     full: list[str]
+    # Composition roots (`main`, `cli`, `plugins`) import everything to wire it together. They are not dependents in
+    # the sense that matters here: a change in a module cannot break what a root does except by breaking its own
+    # tests, and counting them as dependents drags every module that main imports into every selection.
+    roots: frozenset[str] = frozenset()
+    # Backend tests run whenever any backend code changed, because they boot the composed app: a router that
+    # no longer imports, a registration that is missing. They replace "everything that imports main".
+    root_smoke: list[str] = field(default_factory=list)
 
     def owners(self, path: str) -> list[str]:
         return [m.name for m in self.modules.values() if matches(path, m.src)]
@@ -121,8 +128,14 @@ def load_map(root: Path = ROOT) -> ModuleMap:
     expansion = raw.get("settings", {}).get("expansion", "transitive")
     if expansion not in ("transitive", "direct"):
         raise ValueError(f"settings.expansion must be transitive or direct, not {expansion!r}")
+    settings = raw.get("settings", {})
     return ModuleMap(
-        mods, expansion, list(raw.get("ignore", {}).get("paths", [])), list(raw.get("full", {}).get("paths", []))
+        mods,
+        expansion,
+        list(raw.get("ignore", {}).get("paths", [])),
+        list(raw.get("full", {}).get("paths", [])),
+        frozenset(settings.get("composition_roots", [])),
+        list(settings.get("composition_smoke", [])),
     )
 
 
@@ -184,15 +197,16 @@ class Graph:
     imports: dict[str, set[str]]  # file id -> file ids it imports
     importers: dict[str, set[str]] = field(default_factory=dict)  # reverse
 
-    def closure(self, start: set[str], transitive: bool) -> set[str]:
-        """Files that depend on `start` (not including `start` itself unless it is reached back through a cycle)."""
+    def closure(self, start: set[str], transitive: bool, skip: frozenset[str] = frozenset()) -> set[str]:
+        """Files that depend on `start` (not including `start` itself unless it is reached back through a cycle).
+        Files in `skip` (the composition roots) are neither reported nor walked through."""
         seen: set[str] = set()
         frontier = set(start)
         while frontier:
             nxt: set[str] = set()
             for f in frontier:
                 for imp in self.importers.get(f, ()):
-                    if imp not in seen:
+                    if imp not in seen and imp not in skip:
                         seen.add(imp)
                         nxt.add(imp)
             if not transitive:
@@ -422,7 +436,7 @@ def select(changed: list[str], idx: Index, extra_ids: set[str] | None = None) ->
             changed_ids.update(idx.module_files(owners[0]))
 
     transitive = mmap.expansion == "transitive"
-    dependents = idx.graph.closure(changed_ids, transitive)
+    dependents = idx.graph.closure(changed_ids, transitive, mmap.roots)
     affected_ids = changed_ids | dependents
     affected = set(changed_modules)
     for fid in affected_ids:
@@ -433,6 +447,8 @@ def select(changed: list[str], idx: Index, extra_ids: set[str] | None = None) ->
     )
     backend_set: set[str] = set(direct_tests)
     if run_backend:
+        if changed_ids:
+            backend_set.update(t for t in mmap.root_smoke if t in idx.backend_tests)
         for name in affected:
             backend_set.update(idx.tests_of(name))
         for t, (targets, helpers) in idx.test_deps.items():
