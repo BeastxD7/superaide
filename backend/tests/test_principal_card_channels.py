@@ -29,7 +29,7 @@ def vault_key(monkeypatch):
 def on(monkeypatch):
     monkeypatch.setattr(get_settings(), "principal_card_enabled", True)
     with session_scope() as s:
-        card.configure(s, first_name="Ananya", initial="T", can=None, cannot=None, opted_in=True)
+        card.configure(s, first_name="Ananya", initial="T", channels=True)
 
 
 def test_a_colleague_reply_on_slack_carries_the_card_and_is_logged(agent, manager, colleague, outbox, model, on):

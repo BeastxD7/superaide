@@ -1,11 +1,11 @@
 // Principal Card (#135): the owner's page to choose the shown name, see the cards sent and revoke them.
-// The off-by-default check runs everywhere. The live flow needs the card switched on:
-//   E2E_CARD=1 E2E_SLOT=48 npx playwright test tests/principal-card.spec.ts --project=desktop
-import { CARD } from '../src/env'
+// On by default. The kill-flag check needs the stack with the card off:
+//   E2E_CARD=0 E2E_SLOT=48 npx playwright test tests/principal-card.spec.ts --project=desktop
+import { CARD_OFF } from '../src/env'
 import { expect, query, test } from '../src/fixtures'
 
-test.describe('Principal card, switched off (the default)', () => {
-  test.skip(CARD, 'only when the card is off')
+test.describe('Principal card, global kill flag off', () => {
+  test.skip(!CARD_OFF, 'needs E2E_CARD=0')
 
   test('there is no link, the page says it is off and the API answers 404', async ({ page, api, owner }) => {
     void owner
@@ -17,8 +17,8 @@ test.describe('Principal card, switched off (the default)', () => {
   })
 })
 
-test.describe('Principal card, switched on', () => {
-  test.skip(!CARD, 'needs E2E_CARD=1')
+test.describe('Principal card, on by default', () => {
+  test.skip(CARD_OFF, 'only when the card is on')
 
   test('set the name, see the cards sent, revoke one and then all', async ({ page, owner }) => {
     void owner
@@ -27,15 +27,12 @@ test.describe('Principal card, switched on', () => {
     await expect(page.getByRole('heading', { name: 'Principal card' })).toBeVisible()
     await expect(page.getByText('No cards sent yet.')).toBeVisible()
 
-    await page.getByLabel('Your first name').fill('Ananya')
+    await expect(page.getByRole('button', { name: 'Turn the default off' })).toBeVisible() // on without doing anything
+    await page.getByLabel('Your first name (optional)').fill('Ananya')
     await page.getByLabel('Initial to show after it (optional)').fill('T')
     await expect(page.getByText('People will see: Ananya T.')).toBeVisible()
     await page.getByRole('button', { name: 'Save', exact: true }).click()
     await expect(page.getByText('Saved.', { exact: true })).toBeVisible()
-    // Saved is not on: the card stays off until the owner turns it on.
-    await expect(page.getByRole('link', { name: 'See how it looks' })).toHaveCount(0)
-    await page.getByRole('button', { name: 'Turn the card on' }).click()
-    await expect(page.getByText('The card is on. New replies carry it.')).toBeVisible()
     await expect(page.getByRole('link', { name: 'See how it looks' })).toBeVisible()
     await expect(page.getByText('Cards shown')).toBeVisible()
 
@@ -61,7 +58,8 @@ test.describe('Principal card, switched on', () => {
 
     await page.getByRole('button', { name: 'Revoke all cards' }).click()
     await expect(page.getByText('Every card sent so far no longer opens.')).toBeVisible()
-    await page.getByRole('button', { name: 'Turn the card off' }).click()
-    await expect(page.getByText('The card is off. New replies carry nothing.')).toBeVisible()
+    await page.getByRole('button', { name: 'Turn the default off' }).click()
+    await expect(page.getByText('Emails are no longer signed by default.')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Turn the default on' })).toBeVisible()
   })
 })
