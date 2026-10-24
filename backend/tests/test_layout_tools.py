@@ -80,3 +80,55 @@ def test_baseline_ratchet(tmp_path) -> None:
     assert cb.main(["--baseline", str(base), "--strict"]) == 0  # nothing new against itself
     base.write_text("[]")
     assert cb.main(["--baseline", str(base), "--strict"]) == 1  # everything is new against an empty baseline
+
+
+# --- scripts/rebase_after_move.py ----------------------------------------------------------------------------
+
+rb = _load("rebase_after_move")
+MOVES = {
+    "paths": {"src/old/a.py": "src/new/a.py"},
+    "prefixes": {"tests/test_old": "tests/new/test_old"},
+    "modules": {"pkg.old.a": "pkg.new.a"},
+}
+
+
+def test_remap_path_and_text() -> None:
+    assert rb.remap_path("src/old/a.py", MOVES) == "src/new/a.py"
+    assert rb.remap_path("tests/test_old_x.py", MOVES) == "tests/new/test_old_x.py"
+    assert rb.remap_path("README.md", MOVES) == "README.md"
+    assert (
+        rb.remap_text("from pkg.old.a import x\nimport pkg.old.ab\n", MOVES)
+        == "from pkg.new.a import x\nimport pkg.old.ab\n"
+    )
+
+
+def test_replay_merges_a_branch_into_the_moved_tree(tmp_path) -> None:
+    import subprocess
+
+    def sh(*a: str) -> None:
+        subprocess.run(
+            ["git", "-c", "user.name=t", "-c", "user.email=t@t", *a], cwd=tmp_path, check=True, capture_output=True
+        )
+
+    sh("init", "-q", "-b", "main")
+    (tmp_path / "src/old").mkdir(parents=True)
+    (tmp_path / "src/old/a.py").write_text("one\ntwo\nthree\nfrom pkg.old.a import x\n")
+    sh("add", ".")
+    sh("commit", "-qm", "base")
+    sh("tag", "base")
+    sh("checkout", "-qb", "feature")
+    (tmp_path / "src/old/a.py").write_text("one\ntwo\nthree\nfrom pkg.old.a import x\nfeature\n")
+    (tmp_path / "src/old/b.py").write_text("new file\n")
+    sh("add", ".")
+    sh("commit", "-qm", "feature")
+    # main performs the move and an unrelated edit
+    sh("checkout", "-q", "main")
+    (tmp_path / "src/new").mkdir(parents=True)
+    sh("mv", "src/old/a.py", "src/new/a.py")
+    (tmp_path / "src/new/a.py").write_text("ONE\ntwo\nthree\nfrom pkg.new.a import x\n")
+    sh("add", ".")
+    sh("commit", "-qm", "move")
+    moves = dict(MOVES, paths={"src/old/a.py": "src/new/a.py", "src/old/b.py": "src/new/b.py"})
+    assert rb.replay(moves, "base", "feature", tmp_path) == []
+    assert (tmp_path / "src/new/a.py").read_text() == "ONE\ntwo\nthree\nfrom pkg.new.a import x\nfeature\n"
+    assert (tmp_path / "src/new/b.py").read_text() == "new file\n"
