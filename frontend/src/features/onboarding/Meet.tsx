@@ -10,7 +10,7 @@ import type { Session } from '@/lib/session-context'
 import { Conversation } from '@/components/Conversation'
 import { useReveal } from '@/hooks/use-reveal'
 import { Orb } from '@/components/Orb'
-import { StepControls } from '@/features/onboarding/steps'
+import { StepControls, type DocNotices } from '@/features/onboarding/steps'
 import { unlockSpeech } from '@/features/onboarding/speech'
 import { VideoCall, type CallQuestion, type CallTurnResult } from '@/features/onboarding/VideoCall'
 import { VoiceIntro, type VoiceConfig } from '@/features/onboarding/voice/VoiceIntro'
@@ -24,6 +24,7 @@ export function Meet({ session }: { session: Session }) {
   const [messages, setMessages] = useState<Message[]>([])
   const [loaded, setLoaded] = useState(false)
   const [pending, setPending] = useState(false)
+  const [notices, setNotices] = useState<DocNotices>({ done: null, note: null })
   const [error, setError] = useState<string | null>(null)
   const [fresh, setFresh] = useState(false)
   const scrollerRef = useRef<HTMLElement>(null)
@@ -237,6 +238,8 @@ export function Meet({ session }: { session: Session }) {
                 onAnimationComplete={focusNewStep}
               >
                 <StepControls
+                  notices={notices}
+                  setNotices={setNotices}
                   input={view.input}
                   done={view.done}
                   agentName={agentName}
