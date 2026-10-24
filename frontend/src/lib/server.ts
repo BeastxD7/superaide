@@ -1,15 +1,15 @@
 // Server-side calls to the backend API, used while rendering pages on the server.
 // The browser never calls these URLs directly; it goes through /api (see app/api/[...path]/route.ts).
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import type { Account, AgentCard } from '@/lib/api'
 
 export const API_INTERNAL_URL = (process.env.API_INTERNAL_URL ?? 'http://127.0.0.1:8000').replace(/\/$/, '')
 export const SESSION_COOKIE = process.env.SESSION_COOKIE_NAME ?? 'superaide_session'
 
-async function get<T>(path: string, cookie?: string): Promise<T | null> {
+async function get<T>(path: string, cookie?: string, extra?: Record<string, string>): Promise<T | null> {
   try {
     const res = await fetch(`${API_INTERNAL_URL}${path}`, {
-      headers: cookie ? { cookie } : undefined,
+      headers: cookie || extra ? { ...(cookie ? { cookie } : {}), ...extra } : undefined,
       cache: 'no-store',
       signal: AbortSignal.timeout(5000),
     })
@@ -56,8 +56,18 @@ export type PrincipalCard = {
   notice: string
 }
 
+// The visitor's address, passed on so the API can slow down someone guessing card links. Only when a trusted proxy
+// in front of this server sets X-Forwarded-For (TRUST_PROXY_HEADERS=true, as for the /api proxy); otherwise every
+// visitor shares one bucket, which is the same limit the sign-up and Ask forms have in that setup.
+export async function visitorHeaders(): Promise<Record<string, string>> {
+  if (process.env.TRUST_PROXY_HEADERS !== 'true') return {}
+  const h = await headers()
+  const ip = (h.get('x-forwarded-for') ?? h.get('x-real-ip') ?? '').split(',')[0]?.trim()
+  return ip ? { 'x-forwarded-for': ip.slice(0, 64) } : {}
+}
+
 export async function principalCard(token: string): Promise<PrincipalCard | null> {
-  return get<PrincipalCard>(`/p/card/${encodeURIComponent(token)}`)
+  return get<PrincipalCard>(`/p/card/${encodeURIComponent(token)}`, undefined, await visitorHeaders())
 }
 
 // The counts-only picture an owner shared by an unlisted link (Glass brain). null for an unknown, forged,

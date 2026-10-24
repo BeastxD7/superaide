@@ -84,6 +84,9 @@ class Settings(BaseSettings):
         False  # read the thread when the owner @-mentions Ava in it (needs history scopes)
     )
     principal_card_days: int = Field(default=30, ge=1, le=365)
+    # Misses (unknown, expired or revoked card links) one address may make a minute before /p/card answers 429.
+    # 0 = no limit.
+    card_misses_per_minute: int = Field(default=30, ge=0, le=10000)
 
     # Every tool call is recorded as hashes only (tool, effect class, argument and result hashes; issue #110).
     trace_recorder: bool = True
