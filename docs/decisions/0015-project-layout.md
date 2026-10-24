@@ -43,6 +43,23 @@ What this costs, measured with `select_tests.py --changed`:
 
 A change to Slack runs 89% of the suite. Even a leaf runs 80 tests, because `app` and `console` import it and the route-wide guards come along. Sharper test ownership does not help while the graph is one blob; the graph has to be cut first.
 
+### Phase 2, measured (2026-10-24)
+
+Techniques 1 to 5 were applied in place (no file moved), one small PR per technique. `select_tests.py --changed <file>`: backend tests selected of 216 (modules selected in brackets); largest file-level import cycle; boundary violations (`check_boundaries.py`, baseline 840).
+
+| After | slack.py | memory/recheck.py | policy/actions.py | brain/loop.py | mirror/service.py | Largest cycle (files) | Violations |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| main (before) | 192 (38) | 171 (31) | 171 (31) | 171 (31) | 80 (3) | 44 | 840 |
+| #420 factory: model wiring split out | 192 (38) | 170 (30) | 167 (29) | 167 (29) | 80 (3) | 34 | 832 |
+| policy: action kinds registered, event bus | 193 (38) | 166 (29) | 168 (29) | 163 (28) | 80 (3) | 22 | 820 |
+| app.deps: routers stop importing app.routes | 187 (35) | 104 (8) | 152 (18) | 111 (8) | 80 (3) | 12 | 803 |
+| channels: messenger and press registries | 90 (5) | 104 (8) | 152 (18) | 111 (8) | 80 (3) | 10 | 801 |
+| skills: connector facts via events, mail digest to triage | 90 (5) | 104 (8) | 144 (15) | 111 (8) | 80 (3) | 7 | 794 |
+
+What was done, per technique of the list above: (1) `factory` was split instead of hidden behind a Protocol: `brain/wiring.py` holds `brain_ready`/`build_llm`/..., `factory` keeps `build_agent` and only `runtime` and `cli` import it; (2) `policy/registry.py` holds the rule tables and the `EXECUTORS`/`DISCARDERS` registries, the owning skills register themselves, `policy/confirmation.py` keeps the voice-yes rule inside policy; (3) `channels/base.py` holds `MESSENGER_FACTORIES` and `PRESS_HANDLERS`, `plugins.py` is the startup list that imports every registering module; (4) `contracts/events.py` is the synchronous in-process bus (`ApprovalDecided`, `SkillRemoved`, `CalendarEventsRead`, `MailIngested`); (5) the 30 routers import `app/deps.py` instead of `app/routes.py`, which now has one importer, `main`. The pipeline, `brain.loop`, `policy.*`, `skills.*`, `knowledge.*`, `triage.digest/routes/service`, `asklink.*`, `proactive.*` and `app.routes` are in no cycle; `tests/test_import_cycles.py` is the ratchet.
+
+Left: the 7-file `audit`/`auth`/`db`/`jobs`/`tenancy` cycle (all `core`, a change there runs everything anyway; phase 3 and 7) and four pairs (`triage.buttons`/`escalate`, `app.connections`/`gmail`, `brain.pricing`/`price_tables`, `brain.providers.config`/`vault.store`). The leaf `mirror/service.py` stays at 80 tests: `main` (the composition root) imports it and every test that imports `main`, `cli` or `app` is selected with it. Excluding composition roots from the dependents closure in `select_tests.py` (a separate, reviewed change to the selector) is the next lever, not another import cut. Not done: routers of the leaf features are still registered from `main` one by one rather than by an `api` composer; that belongs with the file moves of phase 5.
+
 ## Decision
 
 Organise the backend as a modular monolith, package by feature (Django apps, NestJS modules, bulletproof-react features). One folder per feature or integration owns everything about it: code, its types, its routes, its models, its tests. Four rules:
