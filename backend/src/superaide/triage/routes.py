@@ -24,15 +24,14 @@ from superaide.db.models import Person
 from superaide.db.session import require, session_scope
 from superaide.tenancy.context import scope_or_default
 from superaide.triage import escalate, knn, knn_promotion, promotion
+from superaide.triage.buckets import bucket
 from superaide.triage.models import Escalation, EscalationDelivery, TriageDecision, TriageSettings
 from superaide.triage.store import current_stage, settings_for
-from superaide.triage.types import AWAY_VISIBILITY, Decision, EscalationState, Feedback
+from superaide.triage.types import AWAY_VISIBILITY, Feedback
 
 WINDOW = timedelta(days=7)
 LIMIT = 100
 HIDDEN_QUOTES = escalate.QUOTE_HIDDEN
-NEEDS_YOU = {Decision.INTERRUPT, Decision.DEFER, Decision.VERIFY}
-CLOSED = {EscalationState.RESOLVED, EscalationState.EXPIRED}
 
 Verb = Literal["ack", "reply", "call", "not_urgent", "snooze_30m", "snooze_2h", "done"]
 
@@ -120,7 +119,7 @@ def item_view(s: Any, d: TriageDecision, esc: Escalation | None) -> dict[str, An
     meta: dict[str, Any] = {}
     if email:
         from superaide.db.models import Event
-        from superaide.skills.gmail_inbox import quotable
+        from superaide.triage.mail_digest import quotable
 
         event = s.get(Event, d.inbound_event_id)
         meta = dict(event.meta or {}) if event is not None else {}
@@ -148,16 +147,6 @@ def item_view(s: Any, d: TriageDecision, esc: Escalation | None) -> dict[str, An
                             "sent_at": _iso(r.sent_at)} for r in rows],
         }  # fmt: skip
     return out
-
-
-def bucket(d: TriageDecision, esc: Escalation | None) -> str:
-    """needs_you | handled | held"""
-    if d.decision == Decision.HANDLE:
-        return "handled"
-    maybe = bool((d.features or {}).get("maybe_urgent")) and d.decision == Decision.HOLD
-    if (d.decision in NEEDS_YOU or maybe) and d.feedback is None and (esc is None or esc.state not in CLOSED):
-        return "needs_you"
-    return "held"
 
 
 def make_router(get_agent: Callable[[], Any]) -> APIRouter:

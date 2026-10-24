@@ -29,6 +29,7 @@ from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.orm import Session
 
 from superaide.audit import audit
+from superaide.contracts.events import CalendarEventsRead, MailIngested, SkillRemoved, bus
 from superaide.db.models import Event, Job, MemoryItem, Person
 from superaide.jobs.queue import enqueue, handler
 from superaide.knowledge.store import remember_fact
@@ -91,7 +92,7 @@ def schedule_gmail(session: Session, event: Event) -> None:
 
 
 def _mail_worth_reading(event: Event) -> bool:
-    from superaide.skills.gmail_inbox import NEVER_QUOTED
+    from superaide.triage.mail_digest import NEVER_QUOTED
 
     meta = event.meta or {}
     subject = str(meta.get("subject") or "")
@@ -191,3 +192,17 @@ def _delete(session: Session, where: Any) -> int:
     session.execute(delete(MemoryItem).where(MemoryItem.id.in_(ids)))  # vectors and origins cascade
     audit(session, "memory", "connector_facts_erased", facts=len(ids))
     return len(ids)
+
+
+# Taking a source away takes what was read from it; reading calendar or mail may schedule a few facts.
+_SOURCE_OF_SKILL = {"superaide/gmail": "gmail", "superaide/google-calendar": "calendar"}
+
+
+def _on_skill_removed(event: SkillRemoved) -> None:
+    if event.skill_id in _SOURCE_OF_SKILL:
+        erase_source(event.session, _SOURCE_OF_SKILL[event.skill_id])
+
+
+bus.subscribe(SkillRemoved, _on_skill_removed)
+bus.subscribe(CalendarEventsRead, lambda event: schedule_calendar(event.session, event.events))
+bus.subscribe(MailIngested, lambda event: schedule_gmail(event.session, event.event))

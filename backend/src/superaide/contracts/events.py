@@ -17,7 +17,7 @@ from typing import Any, TypeVar
 
 from sqlalchemy.orm import Session
 
-from superaide.db.models import Approval
+from superaide.db.models import Approval, Event
 
 E = TypeVar("E")
 
@@ -47,3 +47,27 @@ class ApprovalDecided:
     session: Session
     approval: Approval
     approved: bool
+
+
+@dataclass(frozen=True)
+class SkillRemoved:
+    """The owner removed a skill; whatever was learned from its source goes with it (knowledge.connector_facts)."""
+
+    session: Session
+    skill_id: str
+
+
+@dataclass(frozen=True)
+class CalendarEventsRead:
+    """Ava read these Google Calendar events for the owner (skills.calendar)."""
+
+    session: Session
+    events: list[Any]
+
+
+@dataclass(frozen=True)
+class MailIngested:
+    """One email was logged as an inbound event (skills.gmail_inbox)."""
+
+    session: Session
+    event: Event

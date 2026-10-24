@@ -67,3 +67,11 @@ def test_the_plugins_register_what_the_channel_code_looks_up():
 
     assert {"telegram", "slack"} <= set(MESSENGER_FACTORIES)
     assert "telegram" in PRESS_HANDLERS
+
+
+def test_the_plugins_subscribe_the_connector_facts_to_what_the_skills_publish():
+    import superaide.plugins  # noqa: F401
+    from superaide.contracts.events import CalendarEventsRead, MailIngested, SkillRemoved
+
+    for event_type in (SkillRemoved, CalendarEventsRead, MailIngested):
+        assert bus._handlers[event_type], event_type.__name__
