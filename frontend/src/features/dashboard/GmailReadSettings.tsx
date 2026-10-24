@@ -5,6 +5,7 @@ import { Notice } from '@/components/site'
 import { Button } from '@/components/ui/button'
 import { call, type GmailReadSettings as Settings, type GmailReadView } from '@/lib/api'
 import { errorMessage } from '@/lib/action'
+import { StepUpDialog } from '@/features/dashboard/StepUpDialog'
 
 // What each choice means, in the owner's words (the backend sends the label and one-line help).
 const VALUE_LABEL: Record<string, string> = {
@@ -26,7 +27,7 @@ const ORDER = ['payment_preview', 'bank_change_preview', 'numbers', 'codes', 'bo
 const EXAMPLES: Record<string, string> = {
   payment_preview: 'Example: a card alert from your bank shows its sender and subject, or also its first lines.',
   numbers: 'Example: "Rs 4,500.00 at SWIGGY" is quoted; "card 4111 1111 1111 1111" always becomes [number].',
-  codes: 'Example: "Your code is 834201". Off by default: a malicious email could try to make Ava repeat it.',
+  codes: 'Example: "Your code is 834201". Off by default: you confirm it first.',
 }
 
 // Everything that limits what Ava reads in Gmail, as the owner's own settings (#433). The tools enforce these.
@@ -35,7 +36,6 @@ export function GmailReadSettings({ name }: { name: string }) {
   const [problem, setProblem] = useState<string | null>(null)
   const [saved, setSaved] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [password, setPassword] = useState('')
   const [asking, setAsking] = useState(false)
   const [lists, setLists] = useState<{ blocked: string; allowed: string }>({ blocked: '', allowed: '' })
 
@@ -53,7 +53,7 @@ export function GmailReadSettings({ name }: { name: string }) {
     }
   }, [])
 
-  async function save(patch: Partial<Settings> & { confirm_password?: string }, what: string) {
+  async function save(patch: Partial<Settings> & { confirmation?: string; confirm_password?: string }, what: string) {
     setBusy(true)
     setProblem(null)
     setSaved(null)
@@ -61,7 +61,6 @@ export function GmailReadSettings({ name }: { name: string }) {
       const v = await call<GmailReadView>('/gmail/read-settings', { method: 'PUT', json: patch })
       setView(v)
       setAsking(false)
-      setPassword('')
       setSaved(`${what} saved.`)
     } catch (e) {
       setProblem(errorMessage(e))
@@ -129,30 +128,6 @@ export function GmailReadSettings({ name }: { name: string }) {
                 </option>
               ))}
             </select>
-            {isCodes && asking && (
-              <div className="mt-2 space-y-2 rounded-md border border-amber-300 bg-amber-50 p-2" role="alertdialog" aria-label="Confirm">
-                <p className="text-xs font-medium text-amber-900">
-                  Careful: one-time codes and password resets are secrets. If you allow this, anything in your mail that
-                  tricks {name} could make her repeat one. Enter your password to turn it on.
-                </p>
-                <input
-                  type="password"
-                  aria-label="Your password"
-                  autoComplete="current-password"
-                  className="w-full rounded-md border border-line px-2 py-1.5"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                <div className="flex gap-2">
-                  <Button size="sm" disabled={busy || !password} onClick={() => void save({ codes: 'read', confirm_password: password }, c.label)}>
-                    Turn on
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => { setAsking(false); setPassword('') }}>
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            )}
           </div>
         )
       })}
@@ -183,6 +158,17 @@ export function GmailReadSettings({ name }: { name: string }) {
           </Button>
         </div>
       ))}
+      {asking && (
+        <StepUpDialog
+          action="gmail_codes_read"
+          title="Let Ava read one-time codes and password resets?"
+          warning={`Mail about one-time codes and password resets would no longer be hidden from ${name}. If anything in your mail tricks her, she could repeat a code or a reset link. Turn this on only if you need it.`}
+          example='Example: a "Your login code is 834201" email, or a "Reset your bank password" link. Anyone who gets that code can sign in as you.'
+          confirmLabel="Confirm and turn on"
+          onConfirmed={(confirmation, password) => save({ codes: 'read', confirmation, confirm_password: password }, 'One-time codes and password resets')}
+          onCancel={() => setAsking(false)}
+        />
+      )}
     </section>
   )
 }

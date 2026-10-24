@@ -52,12 +52,24 @@ test('the Gmail card shows every reading rule, saves a change, and asks for the 
   await expect(group.getByText('Never-read list saved.')).toBeVisible()
 
   await group.getByLabel('One-time codes and password resets').selectOption('read')
-  await expect(page.getByRole('alertdialog', { name: 'Confirm' })).toContainText('Enter your password')
-  await page.getByLabel('Your password').fill('definitely-not-it')
-  await page.getByRole('button', { name: 'Turn on' }).click()
-  await expect(page.getByText("Your password isn't right.")).toBeVisible()
+  const dialog = page.getByRole('dialog', { name: 'Let Ava read one-time codes and password resets?' })
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused() // Cancel is the default
+  await expect(dialog.getByText('Your login code is 834201', { exact: false })).toBeVisible()
+  const confirmBtn = dialog.getByRole('button', { name: 'Confirm and turn on' })
+  await expect(confirmBtn).toBeDisabled() // until "I understand" is ticked
+  const dialogAxe = await new AxeBuilder({ page }).include('dialog').analyze()
+  expect(dialogAxe.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([])
+  if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/451-dialog-${info.project.name}.png` })
+  await page.keyboard.press('Escape') // keyboard: Escape cancels and nothing changes
+  await expect(dialog).toHaveCount(0)
   await expect(group.getByLabel('One-time codes and password resets')).toHaveValue('never')
-  await group.getByLabel('Search size').scrollIntoViewIfNeeded()
+
+  await group.getByLabel('One-time codes and password resets').selectOption('read')
+  await dialog.getByLabel('I understand').check()
+  await confirmBtn.click()
+  await expect(group.getByText('One-time codes and password resets saved.')).toBeVisible()
+  await expect(group.getByLabel('One-time codes and password resets')).toHaveValue('read')
   const axe = await new AxeBuilder({ page }).include('#gmail-read').analyze()
   expect(axe.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([])
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/433-${info.project.name}.png` })
