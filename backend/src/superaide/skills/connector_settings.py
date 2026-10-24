@@ -8,7 +8,7 @@ separate copy). Gmail has its own richer module (integrations/gmail/settings.py)
 """
 
 import uuid
-from collections.abc import Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 from superaide.app.deps import owner_person_id
 from superaide.auth.routes import reject_nul_text, require_csrf_header
 from superaide.platform.audit import audit
-from superaide.platform.db.models import InstalledSkill
+from superaide.platform.db.models import AuditLog, InstalledSkill
 from superaide.platform.db.session import session_scope
 
 
@@ -54,8 +54,25 @@ def load(session: Session, skill_id: str, choices: Mapping[str, Choice]) -> dict
     return from_raw(((row.settings if row is not None else None) or {}).get("read"), choices)
 
 
-def view(session: Session, skill_id: str, choices: Mapping[str, Choice]) -> dict[str, Any]:
+def last_changed(
+    session: Session, action: str, keys: Callable[[dict[str, Any]], Iterable[str]] | None = None
+) -> dict[str, dict[str, str]]:
+    """Who last changed each setting and when, from the audit log (every owner change writes one line). Owner
+    changes only come through the owner's own session, so `by` is "you". A setting never changed has no entry."""
+    which = keys or (lambda detail: detail.get("changed", []))
+    rows = session.scalars(
+        select(AuditLog).where(AuditLog.action == action).order_by(AuditLog.created_at.desc()).limit(300)
+    )
+    found: dict[str, dict[str, str]] = {}
+    for row in rows:
+        for key in which(row.detail or {}):
+            found.setdefault(key, {"by": "you", "at": row.created_at.isoformat()})
+    return found
+
+
+def view(session: Session, skill_id: str, choices: Mapping[str, Choice], event: str | None = None) -> dict[str, Any]:
     return {
+        "last_changed": last_changed(session, event) if event else {},
         "settings": load(session, skill_id, choices),
         "choices": {
             k: {"values": list(c.values), "default": c.default, "label": c.label, "help": c.help, "unit": c.unit}
@@ -91,7 +108,7 @@ def make_router(
     )
     def get_settings(_: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         with session_scope() as s:
-            return view(s, skill_id, choices)
+            return view(s, skill_id, choices, event)
 
     @router.put(
         "/read-settings",
@@ -114,6 +131,6 @@ def make_router(
             changed = sorted(k for k in now if now[k] != before[k])
             if changed:
                 audit(s, "skills", event, changed=changed, values={k: now[k] for k in changed})
-            return view(s, skill_id, choices)
+            return view(s, skill_id, choices, event)
 
     return router

@@ -34,6 +34,7 @@ from superaide.platform.db.models import ChannelIdentity, Contact, InstalledSkil
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import scope_or_default
 from superaide.platform.tenancy.models import PlatformState
+from superaide.skills.connector_settings import last_changed
 from superaide.vault import store
 from superaide.vault.store import runtime_settings
 
@@ -145,7 +146,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
     @router.get("", summary="Gmail capability status", description="Installed, connected, drafts, and the address.")
     def status(_: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         with session_scope() as s:
-            return gmail.status(s)
+            return {**gmail.status(s), "last_changed": last_changed(s, "gmail_drafts", lambda d: ["drafts"])}
 
     @router.post(
         "/connect",
@@ -195,11 +196,16 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         if body.enabled and api.COMPOSE not in granted:
             url = start_url(user_id, sorted(granted | {api.READONLY, api.COMPOSE}), origin)
         with session_scope() as s:
-            return {**gmail.status(s), "url": url}
+            return {
+                **gmail.status(s),
+                "url": url,
+                "last_changed": last_changed(s, "gmail_drafts", lambda d: ["drafts"]),
+            }
 
     def _read_view(s: Any) -> dict[str, Any]:
         cfg = gmail_settings.load(s)
         return {
+            "last_changed": last_changed(s, "gmail_read_settings", lambda d: d.get("changed", [])),
             "settings": cfg.as_dict(),
             "choices": {
                 k: {"values": list(v[0]), "default": v[1], "label": v[2], "help": v[3]}

@@ -71,6 +71,6 @@ test('the Gmail card shows every reading rule, saves a change, and asks for the 
   await expect(group.getByText('One-time codes and password resets saved.')).toBeVisible()
   await expect(group.getByLabel('One-time codes and password resets')).toHaveValue('read')
   const axe = await new AxeBuilder({ page }).include('#gmail-read').analyze()
-  expect(axe.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([])
+  expect(axe.violations.map((v) => `${v.id}: ${v.help} ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`)).toEqual([])
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/433-${info.project.name}.png` })
 })

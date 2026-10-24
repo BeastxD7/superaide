@@ -7,7 +7,7 @@ test('the Calendar card shows its reading rules and saves a change', async ({ pa
   const cards = await api.ok<{ id: string; permissions: { id: string }[] }[]>(api.get('/app/skills'))
   const cal = cards.find((c) => c.id === 'superaide/google-calendar')!
   await api.ok(api.post('/app/skills/superaide/google-calendar/install', { accepted: cal.permissions.map((p) => p.id) }))
-  await page.goto('/dashboard/capabilities')
+  await page.goto('/dashboard/capabilities/calendar/reading') // the reading rules live under Calendar now (#441)
   const group = page.getByRole('group', { name: 'What Ava may read in your calendar' })
   await group.scrollIntoViewIfNeeded()
   for (const label of ['How far ahead Ava reads', 'Your day starts at', 'Your day ends at', 'Events she learns from per read'])
@@ -15,6 +15,8 @@ test('the Calendar card shows its reading rules and saves a change', async ({ pa
   await expect(group.getByLabel('How far ahead Ava reads')).toHaveValue('14')
   await group.getByLabel('How far ahead Ava reads').selectOption('7')
   await expect(group.getByText('How far ahead Ava reads saved.')).toBeVisible()
+  await expect(group.getByTestId('setting-row').filter({ hasText: 'How far ahead Ava reads' })).toContainText(/Last changed by you, Today, /)
+  await expect(group.getByTestId('setting-row').filter({ hasText: 'Your day starts at' })).toContainText('Never changed')
   await page.reload()
   await expect(page.getByRole('group', { name: 'What Ava may read in your calendar' }).getByLabel('How far ahead Ava reads')).toHaveValue('7')
   const axe = await new AxeBuilder({ page }).include('#calendar').analyze()

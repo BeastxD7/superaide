@@ -12,8 +12,16 @@ export const CAPABILITIES: CapabilityRoute[] = [
     summary: 'Connect Google once, then choose what Ava may read and how she works with your mail.',
     pages: [
       { slug: 'reading', label: 'Reading', summary: 'What Ava may read in your Gmail.' },
+      { slug: 'drafts', label: 'Drafts', summary: 'Whether Ava may save reply drafts in your Gmail.' },
       { slug: 'signature', label: 'Signature', summary: 'How Ava signs the emails and replies she sends for you (the Principal card).', requiresInstall: false },
     ],
+  },
+  {
+    slug: 'calendar',
+    skillId: 'superaide/google-calendar',
+    title: 'Google Calendar',
+    summary: 'See what is on and when you are free, and choose what Ava may read.',
+    pages: [{ slug: 'reading', label: 'Reading', summary: 'What Ava may read in your calendar.' }],
   },
 ]
 
@@ -26,4 +34,5 @@ export const capabilityHref = (slug: string, page?: string) => `/dashboard/capab
 export const HASH_REDIRECTS: Record<string, string> = {
   '#gmail': capabilityHref('gmail'),
   '#gmail-read': capabilityHref('gmail', 'reading'),
+  '#calendar': capabilityHref('calendar', 'reading'),
 }

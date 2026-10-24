@@ -11,6 +11,8 @@ import { CapabilityShell } from '@/features/dashboard/capabilities/CapabilityShe
 import { capabilityBySlug, capabilityHref } from '@/features/dashboard/capabilities/registry'
 import { PrincipalCardPage } from '@/features/principal-card/PrincipalCardPage'
 import { GmailPanel } from '@/features/dashboard/GmailPanel'
+import { ConnectorSettings } from '@/features/dashboard/ConnectorSettings'
+import { GmailDrafts } from '@/features/dashboard/GmailDrafts'
 import { GmailReadSettings } from '@/features/dashboard/GmailReadSettings'
 import { SettingRow } from '@/features/dashboard/settings/SettingRow'
 import { SettingsSection } from '@/features/dashboard/settings/SettingsSection'
@@ -46,6 +48,15 @@ export function CapabilityPage({ slug, page }: { slug: string; page?: string }) 
       ) : !page ? (
         <>
           {slug === 'gmail' && <GmailPanel name={name} />}
+          {slug === 'calendar' && card?.google_connected === false && (
+            <Notice tone="warn">
+              Google isn&apos;t connected, so Ava can&apos;t see your calendar yet.{' '}
+              <Link href="/dashboard/connections" className="font-medium underline">
+                Connect Google under Connections
+              </Link>
+              .
+            </Notice>
+          )}
           <SettingsSection title="Settings in this capability" description="Each group has its own page.">
             {cap.pages.map((p) => (
               <SettingRow
@@ -63,8 +74,12 @@ export function CapabilityPage({ slug, page }: { slug: string; page?: string }) 
             ))}
           </SettingsSection>
         </>
+      ) : page === 'reading' && slug === 'calendar' ? (
+        <ConnectorSettings path="calendar" title={`What ${name} may read in your calendar`} anchor="calendar" />
       ) : page === 'reading' ? (
         <GmailReading name={name} />
+      ) : page === 'drafts' ? (
+        <GmailDraftsGate name={name} />
       ) : page === 'signature' ? (
         <PrincipalCardPage embedded />
       ) : null}
@@ -72,8 +87,8 @@ export function CapabilityPage({ slug, page }: { slug: string; page?: string }) 
   )
 }
 
-// The reading rules only mean something once Gmail is connected: until then, point to the overview where it is connected.
-function GmailReading({ name }: { name: string }) {
+// The reading rules and drafts only mean something once Gmail is connected: until then, point to the overview where it is connected.
+function useGmailConnected() {
   const [status, setStatus] = useState<GmailStatus | null>(null)
   useEffect(() => {
     let live = true
@@ -82,16 +97,29 @@ function GmailReading({ name }: { name: string }) {
       live = false
     }
   }, [])
+  return status
+}
+
+function ConnectGmailFirst() {
+  return (
+    <Notice tone="warn">
+      Gmail isn&apos;t connected yet, so there is nothing to change here.{' '}
+      <Link href={capabilityHref('gmail')} className="font-medium underline">
+        Connect it on the Gmail overview
+      </Link>
+      .
+    </Notice>
+  )
+}
+
+function GmailReading({ name }: { name: string }) {
+  const status = useGmailConnected()
   if (!status) return <Skeleton className="h-24 w-full" />
-  if (!status.connected)
-    return (
-      <Notice tone="warn">
-        Gmail isn&apos;t connected yet, so there is nothing to read.{' '}
-        <Link href={capabilityHref('gmail')} className="font-medium underline">
-          Connect it on the Gmail overview
-        </Link>
-        .
-      </Notice>
-    )
-  return <GmailReadSettings name={name} />
+  return status.connected ? <GmailReadSettings name={name} /> : <ConnectGmailFirst />
+}
+
+function GmailDraftsGate({ name }: { name: string }) {
+  const status = useGmailConnected()
+  if (!status) return <Skeleton className="h-24 w-full" />
+  return status.connected ? <GmailDrafts name={name} /> : <ConnectGmailFirst />
 }

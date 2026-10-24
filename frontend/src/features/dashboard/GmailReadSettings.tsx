@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { Notice } from '@/components/site'
+import { SettingRow } from '@/features/dashboard/settings/SettingRow'
+import { SettingsSection } from '@/features/dashboard/settings/SettingsSection'
 import { Button } from '@/components/ui/button'
 import { call, type GmailReadSettings as Settings, type GmailReadView } from '@/lib/api'
 import { errorMessage } from '@/lib/action'
@@ -23,7 +25,6 @@ const optionText = (name: string, v: string | number) => {
   if (name === 'body_chars') return `${v} characters`
   return String(v)
 }
-const ORDER = ['payment_preview', 'bank_change_preview', 'numbers', 'codes', 'body_chars', 'search_limit', 'thread_depth', 'lookback_days']
 const EXAMPLES: Record<string, string> = {
   payment_preview: 'Example: a card alert from your bank shows its sender and subject, or also its first lines.',
   numbers: 'Example: "Rs 4,500.00 at TEAHOUSE" is quoted; "card 4111 1111 1111 1111" always becomes [number].',
@@ -72,92 +73,116 @@ export function GmailReadSettings({ name }: { name: string }) {
   if (!view) return problem ? <Notice tone="error">{problem}</Notice> : null
   const s = view.settings
   const split = (text: string) => text.split('\n').map((x) => x.trim()).filter(Boolean)
-  return (
-    <section
-      id="gmail-read"
-      className="mt-3 min-w-0 space-y-3 rounded-lg border border-line p-3 text-sm"
-      role="group"
-      aria-label="What Ava may read in Gmail"
-    >
-      <div>
-        <p className="font-medium text-ink">What {name} may read</p>
-        <p className="text-xs text-muted">
-          These are your rules. They change what {name} can see in your mail; she tells you which one when something is hidden.
-        </p>
-      </div>
-      {problem && <Notice tone="error">{problem}</Notice>}
-      {(s.payment_preview === 'hide' || s.numbers === 'blanked') && (
-        <Notice tone="info">
-          {name} can&apos;t read amounts in payment emails right now. Change &ldquo;Payment and transaction emails&rdquo; and
-          &ldquo;Numbers in emails&rdquo; below to let her.
-        </Notice>
-      )}
-      {saved && <p role="status" className="text-xs text-emerald-700">{saved}</p>}
-      {ORDER.map((key) => {
-        const c = view.choices[key]
-        if (!c) return null
-        const id = `gmail-read-${key}`
-        const value = (s as unknown as Record<string, string | number>)[key]
-        const isCodes = key === 'codes'
-        return (
-          <div key={key}>
-            <label htmlFor={id} className="block font-medium text-ink">
-              {c.label}
-            </label>
-            <p className="text-xs text-muted">{c.help}</p>
-            {EXAMPLES[key] && <p className="text-xs text-muted">{EXAMPLES[key]}</p>}
-            <select
-              id={id}
-              className="mt-1 max-w-full rounded-md border border-line bg-white px-2 py-1.5"
-              value={String(value)}
-              disabled={busy}
-              onChange={(e) => {
-                const raw = e.target.value
-                const next = typeof c.values[0] === 'number' ? Number(raw) : raw
-                if (isCodes && next === 'read') {
-                  setAsking(true)
-                  return
-                }
-                void save({ [key]: next } as Partial<Settings>, c.label)
-              }}
-            >
-              {c.values.map((v) => (
-                <option key={String(v)} value={String(v)}>
-                  {optionText(key, v)}
-                  {v === c.default ? ' (default)' : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-        )
-      })}
-      {(['blocked', 'allowed'] as const).map((key) => (
-        <div key={key}>
-          <label htmlFor={`gmail-read-${key}`} className="block font-medium text-ink">
-            {key === 'blocked' ? 'Never read these senders, domains or labels' : 'Always allow these senders'}
-          </label>
-          <p className="text-xs text-muted">
-            {key === 'blocked'
-              ? `One per line: jane@example.com, @clinic.example or label:Taxes. ${name} will not see them at all.`
-              : 'One per line. Their payment mail may be previewed and amounts quoted. One-time codes stay hidden.'}
-          </p>
+  const audit = (key: string) => view.last_changed?.[key] ?? null
+
+  const choiceRow = (key: string) => {
+    const c = view.choices[key]
+    if (!c) return null
+    const value = (s as unknown as Record<string, string | number>)[key]
+    const isCodes = key === 'codes'
+    return (
+      <SettingRow
+        key={key}
+        title={c.label}
+        why={c.help}
+        example={EXAMPLES[key]}
+        status={value === c.default ? 'Default' : 'Changed'}
+        audit={audit(key)}
+        field
+        control={({ id, describedBy }) => (
+          <select
+            id={id}
+            aria-describedby={describedBy}
+            className="min-h-11 max-w-full rounded-md border border-line bg-white px-2 py-1.5 text-base md:text-sm"
+            value={String(value)}
+            disabled={busy}
+            onChange={(e) => {
+              const raw = e.target.value
+              const next = typeof c.values[0] === 'number' ? Number(raw) : raw
+              if (isCodes && next === 'read') {
+                setAsking(true)
+                return
+              }
+              void save({ [key]: next } as Partial<Settings>, c.label)
+            }}
+          >
+            {c.values.map((v) => (
+              <option key={String(v)} value={String(v)}>
+                {optionText(key, v)}
+                {v === c.default ? ' (default)' : ''}
+              </option>
+            ))}
+          </select>
+        )}
+      />
+    )
+  }
+
+  const listRow = (key: 'blocked' | 'allowed') => (
+    <SettingRow
+      key={key}
+      title={key === 'blocked' ? 'Never read these senders, domains or labels' : 'Always allow these senders'}
+      why={
+        key === 'blocked'
+          ? `One per line. ${name} will not see them at all.`
+          : 'One per line. Their payment mail may be previewed and amounts quoted. One-time codes stay hidden.'
+      }
+      example={key === 'blocked' ? 'jane@example.com, @clinic.example or label:Taxes' : 'billing@vendor.example'}
+      status={s[key].length ? `${s[key].length} on the list` : 'Empty'}
+      audit={audit(key)}
+      field
+      control={({ id, describedBy }) => (
+        <div className="w-full min-w-0 space-y-2 sm:w-72">
           <textarea
-            id={`gmail-read-${key}`}
+            id={id}
+            aria-describedby={describedBy}
             rows={3}
-            className="mt-1 w-full rounded-md border border-line px-2 py-1.5"
+            className="w-full rounded-md border border-line px-2 py-1.5 text-base md:text-sm"
             value={lists[key]}
             onChange={(e) => setLists({ ...lists, [key]: e.target.value })}
           />
           <Button
             size="sm"
             variant="outline"
+            className="touch:min-h-11"
             disabled={busy}
             onClick={() => void save({ [key]: split(lists[key]) } as Partial<Settings>, key === 'blocked' ? 'Never-read list' : 'Allow list')}
           >
             Save list
           </Button>
         </div>
-      ))}
+      )}
+    />
+  )
+
+  return (
+    <section id="gmail-read" className="min-w-0" role="group" aria-label="What Ava may read in Gmail">
+      <p className="mb-3 text-sm text-body">
+        These are your rules. They change what {name} can see in your mail; she tells you which one when something is hidden.
+      </p>
+      {problem && (
+        <div className="mb-3">
+          <Notice tone="error">{problem}</Notice>
+        </div>
+      )}
+      {(s.payment_preview === 'hide' || s.numbers === 'blanked') && (
+        <div className="mb-3">
+          <Notice tone="info">
+            {name} can&apos;t read amounts in payment emails right now. Change &ldquo;Payment and transaction emails&rdquo; and
+            &ldquo;Numbers in emails&rdquo; below to let her.
+          </Notice>
+        </div>
+      )}
+      {saved && <p role="status" className="mb-3 text-xs text-emerald-700">{saved}</p>}
+      <SettingsSection title="Payment and account mail" description="How much of bank and payment emails Ava may see.">
+        {['payment_preview', 'bank_change_preview', 'numbers', 'codes'].map(choiceRow)}
+      </SettingsSection>
+      <SettingsSection title="How much she reads" description="Sizes and how far back she looks.">
+        {['body_chars', 'search_limit', 'thread_depth', 'lookback_days'].map(choiceRow)}
+      </SettingsSection>
+      <SettingsSection title="Senders" description="People and labels that are always off limits or always allowed.">
+        {(['blocked', 'allowed'] as const).map(listRow)}
+      </SettingsSection>
       {asking && (
         <StepUpDialog
           action="gmail_codes_read"
