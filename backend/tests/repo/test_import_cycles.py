@@ -88,7 +88,7 @@ def test_policy_does_not_depend_on_what_it_gates(graph):
         for src, targets in graph.imports.items()
         if src.startswith("policy.")
         for dst in targets
-        if dst.split(".")[0] in {"skills", "asklink", "voice", "app", "brain", "triage", "jobs"}
+        if dst.split(".")[0] in {"skills", "asklink", "features", "app", "brain", "triage", "jobs"}
     )
     assert not leaked, leaked
 

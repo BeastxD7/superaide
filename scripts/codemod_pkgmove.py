@@ -223,6 +223,14 @@ def run(root: Path, moves: dict[str, str], dry: bool = False) -> dict[str, str]:
     def sub_path(m: re.Match) -> str:
         return f"{m.group(1)}/{todo[m.group(2)]}"
 
+    # Import-graph file ids ("mirror.service") are hard-coded as bare strings in the selector and layout tests
+    # and in the tools' own tables; they are not `superaide.<name>`, so they get their own, narrower rule.
+    ids_re = re.compile(rf"(?<=[\"'])({alt})(?=\.\w+[\"'])")
+    id_files = re.compile(r"^(backend/tests/repo/test_(?!codemod)\w+\.py|scripts/(?!codemod)\w+\.py)$")
+
+    def sub_id(m: re.Match) -> str:
+        return dotted[m.group(1)]
+
     for rel in tracked(root):
         if any(rel.startswith(s) or rel.endswith(s) for s in TEXT_SKIP) or rel.startswith(SKIP_PREFIX):
             continue
@@ -235,6 +243,8 @@ def run(root: Path, moves: dict[str, str], dry: bool = False) -> dict[str, str]:
         text = from_re.sub(from_sub, text)
         text = dotted_re.sub(sub_dotted, text)
         text = path_re.sub(sub_path, text)
+        if id_files.match(rel):
+            text = ids_re.sub(sub_id, text)
         if rel in moved_py and moved_py[rel]:
             text = deepen(text, moved_py[rel])
         if text != orig:
