@@ -412,6 +412,11 @@ class Settings(BaseSettings):
     # hands over; nothing is sent. Needs SCHOOL_ENABLED. School signer provider: "local" (Ed25519, no service).
     school_sharing_enabled: bool = False
     school_signer: str = "local"
+    # Ava School playbook (#57): the owner may write playbook text for a lesson, attach a scenario-shaped eval, run it
+    # (two model calls, inside the spend cap) and, only after it passed, switch the lesson into the owner's own
+    # prompt. Imported lesson text itself never goes in. Needs SCHOOL_ENABLED. Off: those routes answer 404 and no
+    # lesson is ever read into a prompt.
+    school_playbook_enabled: bool = False
     # The owner's Gmail sign-in (same OAuth client as Calendar); kept per instance in the vault.
     gmail_refresh_token: str = ""
 
