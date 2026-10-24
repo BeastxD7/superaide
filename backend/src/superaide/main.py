@@ -177,6 +177,9 @@ def create_app(agent: Agent | None = None) -> FastAPI:
             event="calendar_read_settings",
         )
     )
+    from superaide.auth.stepup_routes import make_router as make_stepup_router
+
+    app.include_router(make_stepup_router())
     from superaide.skills import web_settings
 
     app.include_router(

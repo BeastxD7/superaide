@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAppData } from '@/features/dashboard/data'
+import { GoogleAccountCard } from '@/features/dashboard/capabilities/GoogleAccountCard'
 import { capabilityBySkill, capabilityHref, HASH_REDIRECTS } from '@/features/dashboard/capabilities/registry'
 import { SkillReleasesPanel } from '@/features/dashboard/SkillReleasesPanel'
 import { call, type SkillCard, type SkillOption } from '@/lib/api'
@@ -22,18 +23,7 @@ const SKILL_BRAND: Record<string, Brand> = {
   'superaide/gmail': 'gmail',
 }
 
-// What Google's consent screen sent back (?google=…) after switching calendar actions on.
-const GOOGLE_OUTCOME: Record<string, { tone: 'info' | 'error'; text: string }> = {
-  connected: { tone: 'info', text: 'Google allowed it. Ava can now add, move and decline events; anything that emails other people waits for your OK.' },
-  no_actions: { tone: 'error', text: "Google didn't allow changes to your calendar (the box was left unticked). Try again and tick it." },
-  no_calendar: { tone: 'error', text: "Google didn't allow calendar access. Try again and tick the calendar boxes." },
-  cancelled: { tone: 'error', text: 'You cancelled on Google. Calendar actions stay unusable until you allow them there.' },
-  expired: { tone: 'error', text: 'That Google page expired. Press Finish on Google again.' },
-  api_disabled: { tone: 'error', text: "The Google Calendar API isn't switched on for your Google project. In Google Cloud open APIs & Services, Library, search Google Calendar API, press Enable, then try again." },
-  failed: { tone: 'error', text: "Google didn't confirm. Try again in a minute." },
-}
-
-export function SkillsPage({ google = null }: { google?: string | null }) {
+export function SkillsPage() {
   const { me } = useSession()
   const router = useRouter()
   const name = me?.agent.name ?? 'Ava'
@@ -47,7 +37,6 @@ export function SkillsPage({ google = null }: { google?: string | null }) {
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [optionConsent, setOptionConsent] = useState<string | null>(null) // "<skill id>:<setting>"
-  const outcome = google ? (GOOGLE_OUTCOME[google] ?? GOOGLE_OUTCOME.failed) : null
 
   // Switch an option on (with consent) or off. Calendar actions then need Google's own consent too.
   async function setOption(skill: SkillCard, option: SkillOption, on: boolean) {
@@ -64,7 +53,7 @@ export function SkillsPage({ google = null }: { google?: string | null }) {
         window.location.assign(card.google_url)
         return
       }
-      if (on && card.google_url === null) setProblem('Connect Google Calendar under Connections first, then come back to finish.')
+      if (on && card.google_url === null) setProblem('Set up your Google account on this page first, then come back to finish.')
       await reload()
     } catch (e) {
       setProblem(errorMessage(e))
@@ -100,12 +89,9 @@ export function SkillsPage({ google = null }: { google?: string | null }) {
             <Notice tone="error">{problem ?? error}</Notice>
           </div>
         )}
-        {outcome && !problem && (
-          <div className="mt-4">
-            <Notice tone={outcome.tone}>{outcome.text}</Notice>
-          </div>
-        )}
-        <ul className="mt-6 grid gap-3 sm:grid-cols-2" aria-label="Capabilities">
+        <GoogleAccountCard onChanged={() => void reload()} />
+        <h2 className="mt-8 text-lg font-medium text-ink">What {name} can do</h2>
+        <ul className="mt-3 grid gap-3 sm:grid-cols-2" aria-label="Capabilities">
           {!data &&
             [0, 1, 2].map((i) => (
               <li key={i} className="rounded-xl border border-line bg-white p-4">
@@ -200,9 +186,9 @@ export function SkillsPage({ google = null }: { google?: string | null }) {
                   <div className="mt-3">
                     <Notice tone="warn">
                       Google isn&apos;t connected, so this can&apos;t work yet.{' '}
-                      <Link href="/dashboard/connections" className="font-medium underline">
-                        Connect Google under Connections
-                      </Link>
+                      <a href="#google" className="font-medium underline">
+                        Connect your Google account above
+                      </a>
                       .
                     </Notice>
                   </div>

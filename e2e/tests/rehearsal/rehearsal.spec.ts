@@ -12,8 +12,9 @@ test.describe('rehearsal room, switched off (the default)', () => {
   test('there is no link, the page says it is off and the API answers 404', async ({ page, api, owner }) => {
     void owner
     await page.goto('/dashboard')
-    await expect(page.getByRole('link', { name: 'Rehearsal room' })).toHaveCount(0)
-    await page.goto('/dashboard/rehearsal')
+    await expect(page.getByRole('link', { name: 'Learning' })).toHaveCount(0)
+    await page.goto('/dashboard/rehearsal') // the old address redirects to Learning > Rehearsal room
+    await expect(page).toHaveURL(/\/dashboard\/learning\/rehearsal$/)
     await expect(page.getByText('This isn’t turned on yet.')).toBeVisible()
     expect((await api.get('/app/rehearsal')).status()).toBe(404)
   })
@@ -31,7 +32,8 @@ test.describe('rehearsal room, switched on', () => {
     const memories = (await query<{ n: number }>('SELECT count(*)::int AS n FROM memory_item'))[0].n
 
     await page.goto('/dashboard')
-    await page.getByRole('link', { name: 'Rehearsal room' }).click()
+    await page.getByRole('link', { name: 'Learning' }).click()
+    await page.getByRole('link', { name: 'Open Rehearsal room' }).click()
     await expect(page.getByRole('heading', { name: 'Rehearsal room' })).toBeVisible()
     await page.getByLabel(/What should .* know about the situation/).fill('Goal: keep the team together.')
     await page.getByRole('button', { name: 'Start rehearsing' }).click()

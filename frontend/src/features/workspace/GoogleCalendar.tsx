@@ -10,7 +10,7 @@ import { Button, Notice } from '@/components/site'
 
 // Google Calendar. Two steps: an OAuth client (the owner's own, or this server's), then sign in
 // with Google. Read-only unless calendar actions are switched on under Capabilities. The backend runs the OAuth flow with PKCE
-// and sends the browser back to /dashboard/connections?google=<outcome>.
+// and sends the browser back to /dashboard/capabilities?google=<outcome> (the Google account card lives there).
 
 export type GoogleService = {
   connected: boolean
@@ -29,6 +29,7 @@ const SKILL_ID = 'superaide/google-calendar'
 // What the callback's ?google= value means, for the owner.
 const OUTCOMES: Record<string, { tone: 'info' | 'error'; text: string }> = {
   connected: { tone: 'info', text: 'Google Calendar is connected. I can read your calendar now; changing it needs calendar actions, under Capabilities.' },
+  'actions-enabled': { tone: 'info', text: 'Google allowed it. I can now add, move and decline events; anything that emails other people waits for your OK.' },
   cancelled: { tone: 'error', text: 'Google sign-in was cancelled, so nothing was connected. Press Connect Google Calendar to try again.' },
   expired: { tone: 'error', text: 'That sign-in had expired or was already used. Press Connect Google Calendar to start again.' },
   failed: {
@@ -115,7 +116,8 @@ function GoogleSetup({
   const editing = changing || !service.client_ready
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const shown = outcome ? OUTCOMES[outcome] : undefined
+  // An old or unknown value (a sign-in started before this release) reads as the plain "connected" message.
+  const shown = outcome ? (OUTCOMES[outcome] ?? OUTCOMES.connected) : undefined
   const fromApp = service.via !== 'env'
 
   async function run(fn: () => Promise<void>) {
@@ -179,7 +181,7 @@ function GoogleSetup({
           </section>
           <section aria-label="Step 2: sign in with Google">
             <p className="text-xs font-medium tracking-wide text-muted uppercase">Step 2 · Sign in with Google</p>
-            <p className="mt-1 text-sm text-body">Google asks you to allow read-only access to your calendar, then sends you back here.</p>
+            <p className="mt-1 text-sm text-body">Google asks you to allow read-only access to your calendar, then sends you back here (Gmail has its own sign-in step).</p>
             <Button tone="violet" className="mt-2 w-full py-3" disabled={busy || !service.client_ready || editing} onClick={() => void connect()}>
               {busy ? 'Opening Google…' : 'Connect Google Calendar'}
             </Button>

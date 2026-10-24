@@ -284,12 +284,12 @@ test.describe('dashboard: connections', () => {
 
   test('a crafted ?google=connected link does not announce a connection that does not exist', async ({ page, owner }) => {
     void owner
-    await page.goto('/dashboard/connections?google=connected')
-    await expect(page.getByRole('heading', { level: 1, name: 'Connections' })).toBeVisible()
+    await page.goto('/dashboard/capabilities?google=connected')
+    await expect(page.getByRole('heading', { level: 1, name: 'Capabilities' })).toBeVisible()
     const row = page.getByRole('button', { name: /^Google Calendar/ })
     await expect(row).toContainText('Connect')
     await expect(row).not.toContainText('Connected')
-    await expect(page).toHaveURL(/\/dashboard\/connections$/)
+    await expect(page).toHaveURL(/\/dashboard\/capabilities$/)
     await shot(page, 'google-connected-spoof.png')
     await expect(page.getByText('Google Calendar is connected. I can read your calendar now, never change it.')).toHaveCount(0)
   })
