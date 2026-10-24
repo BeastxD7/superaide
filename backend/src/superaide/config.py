@@ -403,6 +403,12 @@ class Settings(BaseSettings):
     # The owner sees how often it agrees with their corrections ("Needs you"); promotion to deciding is not built
     # and would need 200 corrections and a 0.8 Wilson lower bound (triage/knn.py shadow_status).
     triage_knn_enabled: bool = False
+    # Raise-only kNN head (#117). Needs TRIAGE_ENABLED and TRIAGE_KNN_ENABLED, and works only after the OWNER has
+    # pressed Promote (Ava never promotes herself; promotion needs z 1.96, 200 corrections in 30 days, lower bound
+    # 0.8, and ends after 14 days under the gate). Off: the head stays a shadow. On and promoted: a message the
+    # model called calm may be raised to the interrupt path when the head's score is high; it never silences or
+    # lowers anything, and quiet hours, the stage cap and the interrupt budget still apply.
+    triage_knn_raise_enabled: bool = False
     # Ava School (#57), local part only: the owner writes generic lessons, consents to each one, and exports
     # them to a file to review, or imports a file from another Ava. Nothing is sent over the network and
     # nothing here changes how Ava answers. Off: /app/school/* answer 404.

@@ -23,7 +23,7 @@ from superaide.auth.routes import reject_nul_text, require_csrf_header
 from superaide.db.models import Person
 from superaide.db.session import require, session_scope
 from superaide.tenancy.context import scope_or_default
-from superaide.triage import escalate, promotion
+from superaide.triage import escalate, knn, knn_promotion, promotion
 from superaide.triage.models import Escalation, EscalationDelivery, TriageDecision, TriageSettings
 from superaide.triage.store import current_stage, settings_for
 from superaide.triage.types import AWAY_VISIBILITY, Decision, EscalationState, Feedback
@@ -285,11 +285,44 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
     def get_settings_(person_id: uuid.UUID = Depends(owner_on)) -> dict[str, Any]:
         with session_scope() as s:
             view = settings_view(settings_for(s, require(s, Person, person_id)))
-            from superaide.triage import knn
             from superaide.vault.store import runtime_settings
 
             status = knn.shadow_status(s, enabled=runtime_settings().triage_knn_enabled)
+            if status["enabled"]:
+                knn_promotion.review(s)
+                status = knn_promotion.view(s, status)
             return {**view, "knn_shadow": status if status["enabled"] else None}
+
+    def _knn_on() -> None:
+        from superaide.vault.store import runtime_settings
+
+        if not runtime_settings().triage_knn_enabled:
+            raise HTTPException(404, "Not Found")
+
+    @router.post(
+        "/triage/knn/promote",
+        summary="Let the kNN head raise urgency",
+        description=(
+            "Records your yes. Refused with 409 unless the head is eligible now (z 1.96, at least 200 corrections "
+            "in the last 30 days, lower bound 0.8). Once promoted the head may only raise, and only while "
+            "TRIAGE_KNN_RAISE_ENABLED is on. It ends by itself after 14 days under the gate."
+        ),
+    )
+    def knn_promote(person_id: uuid.UUID = Depends(owner_on)) -> dict[str, Any]:
+        _knn_on()
+        with session_scope() as s:
+            try:
+                knn_promotion.promote(s, by=f"owner:{person_id}")
+            except knn_promotion.PromotionError as exc:
+                raise HTTPException(exc.status, str(exc)) from exc
+            return knn_promotion.view(s, knn.shadow_status(s, enabled=True))
+
+    @router.post("/triage/knn/demote", summary="Take back the kNN head's promotion")
+    def knn_demote(person_id: uuid.UUID = Depends(owner_on)) -> dict[str, Any]:
+        _knn_on()
+        with session_scope() as s:
+            knn_promotion.demote(s, reason="taken back by you", by=f"owner:{person_id}")
+            return knn_promotion.view(s, knn.shadow_status(s, enabled=True))
 
     @router.put(
         "/triage/settings",
