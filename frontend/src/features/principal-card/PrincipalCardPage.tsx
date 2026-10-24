@@ -5,6 +5,7 @@ import { Notice } from '@/components/site'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { usePrincipalCard } from '@/features/principal-card/usePrincipalCard'
 import { AppError, call } from '@/lib/api'
 import { useSession } from '@/lib/session-context'
@@ -20,13 +21,20 @@ export function PrincipalCardPage() {
   const { enabled, card, sent, stats, error, reload } = usePrincipalCard()
   const [editedFirst, setEditedFirst] = useState<string | null>(null)
   const [editedInitial, setEditedInitial] = useState<string | null>(null)
+  const [editedWording, setEditedWording] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [done, setDone] = useState<string | null>(null)
 
   const first = editedFirst ?? card?.first_name ?? ''
   const initial = editedInitial ?? card?.initial ?? ''
-  const shownAs = first.trim() ? (initial.trim() ? `${first.trim()} ${initial.trim().slice(0, 1).toUpperCase()}.` : first.trim()) : ''
+  const wording = editedWording ?? card?.wording ?? ''
+  const shownAs = first.trim()
+    ? initial.trim()
+      ? `${first.trim()} ${initial.trim().slice(0, 1).toUpperCase()}.`
+      : first.trim()
+    : (card?.name_shown ?? '')
+  const preview = (wording || card?.default_wording || '').replaceAll('{agent}', name).replaceAll('{name}', shownAs || 'you')
 
   async function run(fn: () => Promise<void>) {
     setBusy(true)
@@ -58,8 +66,9 @@ export function PrincipalCardPage() {
       <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 lg:py-8">
         <h1 className="text-3xl font-medium text-ink tight">Principal card</h1>
         <p className="mt-1 text-body">
-          When {name} replies to someone who isn&rsquo;t you, on Gmail, Telegram or Slack, the reply ends with one honest
-          line and a link: she is an AI, who she acts for, and what she may not agree to. The page shows only that.
+          Every email {name} sends for you ends with a sign-off and one honest line with a link: she is an AI, who she
+          acts for, and what she may not agree to. It is on by default. You can untick it on any email&rsquo;s approval
+          card, so that email goes out in your own name, or switch it off for all of them below. The page shows only that.
         </p>
         {(error || problem) && (
           <div className="mt-4">
@@ -77,13 +86,13 @@ export function PrincipalCardPage() {
             The name it shows
           </h2>
           <label htmlFor="card-first" className="text-sm font-medium text-ink">
-            Your first name
+            Your first name (optional)
           </label>
           <Input
             id="card-first"
             value={first}
             maxLength={40}
-            placeholder="Ananya"
+            placeholder={card?.name_shown || 'Ananya'}
             onChange={(e) => setEditedFirst(e.target.value)}
           />
           <label htmlFor="card-initial" className="text-sm font-medium text-ink">
@@ -98,15 +107,30 @@ export function PrincipalCardPage() {
             onChange={(e) => setEditedInitial(e.target.value)}
           />
           <p className="text-xs text-muted">
-            {shownAs ? `People will see: ${shownAs}. ` : ''}Never your full name unless you type it as the first name
-            yourself, which is not allowed here.
+            {shownAs ? `People will see: ${shownAs}. ` : ''}Left empty, the first name on your account is used. Never a
+            full name.
+          </p>
+          <label htmlFor="card-wording" className="text-sm font-medium text-ink">
+            Sign-off wording
+          </label>
+          <Textarea
+            id="card-wording"
+            rows={2}
+            maxLength={200}
+            value={wording}
+            placeholder={card?.default_wording}
+            onChange={(e) => setEditedWording(e.target.value)}
+          />
+          <p className="text-xs text-muted">
+            Use {'{agent}'} and {'{name}'}. Preview: <span className="whitespace-pre-line">{preview}</span>. The line saying she is an
+            AI, and the link, are always added.
           </p>
           <div className="flex flex-wrap gap-2">
             <Button
-              disabled={busy || !first.trim()}
+              disabled={busy}
               onClick={() =>
                 void run(async () => {
-                  await call('/principal-card', { method: 'PUT', json: { first_name: first, initial } })
+                  await call('/principal-card', { method: 'PUT', json: { first_name: first, initial, wording } })
                   setDone('Saved.')
                 })
               }
@@ -125,24 +149,41 @@ export function PrincipalCardPage() {
 
         <section aria-labelledby="card-switch" className="mt-6 space-y-2 rounded-xl border border-line bg-white p-4">
           <h2 id="card-switch" className="text-lg font-medium text-ink">
-            Add the card to my replies
+            Sign my emails by default
           </h2>
           <p className="text-sm text-body">
-            Off until you turn it on. Turning it off keeps your name and lists but adds nothing to any reply.
+            On unless you turn it off. Turning it off keeps your name and lists; you can still tick it on one email at a time.
           </p>
           <Button
-            variant={card?.opted_in ? 'outline' : 'default'}
-            disabled={busy || (!card?.opted_in && !card?.first_name)}
+            variant={card?.sign_default ? 'outline' : 'default'}
+            disabled={busy}
             onClick={() =>
               void run(async () => {
-                await call('/principal-card/opt-in', { method: 'POST', json: { opted_in: !card?.opted_in } })
-                setDone(card?.opted_in ? 'The card is off. New replies carry nothing.' : 'The card is on. New replies carry it.')
+                await call('/principal-card/sign-default', { method: 'POST', json: { on: !card?.sign_default } })
+                setDone(card?.sign_default ? 'Emails are no longer signed by default.' : 'Emails are signed by default.')
               })
             }
           >
-            {card?.opted_in ? 'Turn the card off' : 'Turn the card on'}
+            {card?.sign_default ? 'Turn the default off' : 'Turn the default on'}
           </Button>
-          {!card?.first_name && <p className="text-xs text-muted">Save your first name first.</p>}
+          <label className="flex items-start gap-2 pt-2 text-sm text-ink">
+            <input
+              type="checkbox"
+              className="mt-0.5 size-4"
+              checked={card?.channels ?? false}
+              disabled={busy}
+              onChange={(e) =>
+                void run(async () => {
+                  await call('/principal-card', {
+                    method: 'PUT',
+                    json: { first_name: card?.first_name ?? '', initial: card?.initial ?? '', channels: e.target.checked },
+                  })
+                  setDone(e.target.checked ? 'Telegram and Slack replies to other people carry it too.' : 'Telegram and Slack replies are left alone.')
+                })
+              }
+            />
+            <span>Also add it to my Telegram and Slack replies to other people (off by default)</span>
+          </label>
         </section>
 
         {stats && (

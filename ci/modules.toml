@@ -545,6 +545,8 @@ tests = [
 ]
 e2e = [
   "e2e/tests/principal-card.spec.ts",
+  "e2e/tests/approval-sign.spec.ts",
+  "e2e/tests/approval-sign.mobile.spec.ts",
 ]
 
 [modules.privacy]
@@ -881,6 +883,8 @@ e2e = [
   "e2e/tests/qa-models.spec.ts",
   "e2e/tests/notebook-sync.spec.ts",
   "e2e/tests/principal-card.spec.ts",
+  "e2e/tests/approval-sign.spec.ts",
+  "e2e/tests/approval-sign.mobile.spec.ts",
   "e2e/tests/rehearsal.spec.ts",
   "e2e/tests/reminders-sync.spec.ts",
   "e2e/tests/school.spec.ts",

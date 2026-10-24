@@ -54,7 +54,9 @@ def test_the_request_keeps_a_hash_and_the_card_carries_everything_that_will_be_s
             long_reply.strip()
         )  # the card shows all of it, not the first 400 characters
     sent_text = api.body_text(gmail_fake.draft_message("d1")["message"])
-    assert " ".join(sent_text.split()) == " ".join(long_reply.split())
+    flat = " ".join(sent_text.split())
+    assert flat.startswith(" ".join(long_reply.split()))  # the owner's text, whole ...
+    assert "personal assistant of" in flat[len(" ".join(long_reply.split())) :]  # ... then the default sign-off
 
 
 def test_an_unchanged_draft_is_sent_in_every_mode(owner_client, gmail_fake, mode):
