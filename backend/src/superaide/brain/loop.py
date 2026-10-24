@@ -529,9 +529,11 @@ class OwnerTurn:
         ]
 
     def _web_limits(self) -> dict[str, int]:
+        from superaide.platform.db.session import session_scope
         from superaide.skills import web_settings
 
-        return web_settings.limits(self.s)
+        with session_scope() as cfg:  # its own short session: tools() can run after the turn's session has closed
+            return web_settings.limits(cfg)
 
     def tools(self) -> list[dict[str, Any]]:
         """The installed skills' tools, plus propose_action, which every turn has."""
