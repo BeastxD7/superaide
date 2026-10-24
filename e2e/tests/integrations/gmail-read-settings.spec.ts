@@ -26,6 +26,7 @@ test('the Gmail card shows every reading rule, saves a change, and asks for the 
   await expect(group).toBeVisible()
   for (const label of [
     'Payment and transaction emails: previews',
+    'Bank and account change emails: previews',
     'Numbers in emails',
     'One-time codes and password resets',
     'How much of a message Ava reads',
@@ -37,6 +38,9 @@ test('the Gmail card shows every reading rule, saves a change, and asks for the 
   ])
     await expect(group.getByText(label, { exact: true })).toBeVisible()
   await expect(group.getByLabel('One-time codes and password resets')).toHaveValue('never')
+  await expect(group.getByText("can't read amounts in payment emails right now")).toBeVisible() // the first-run hint
+  await group.scrollIntoViewIfNeeded()
+  if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/433-hint-${info.project.name}.png` })
 
   await group.getByLabel('Payment and transaction emails: previews').selectOption('show')
   await expect(group.getByText('Payment and transaction emails: previews saved.')).toBeVisible()

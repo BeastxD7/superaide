@@ -1572,6 +1572,17 @@
             ],
             "title": "Allowed"
           },
+          "bank_change_preview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bank Change Preview"
+          },
           "blocked": {
             "anyOf": [
               {

@@ -573,6 +573,7 @@ export type GmailStatus = {
 
 export type GmailReadSettings = {
   payment_preview: string
+  bank_change_preview: string
   numbers: string
   codes: string
   body_chars: number

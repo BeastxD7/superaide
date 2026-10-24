@@ -49,6 +49,7 @@ class ReadSettingsBody(BaseModel):
     """Any subset of the reading settings. `codes: read` needs the account password (step-up)."""
 
     payment_preview: str | None = None
+    bank_change_preview: str | None = None
     numbers: str | None = None
     codes: str | None = None
     body_chars: int | None = None

@@ -22,7 +22,7 @@ const optionText = (name: string, v: string | number) => {
   if (name === 'body_chars') return `${v} characters`
   return String(v)
 }
-const ORDER = ['payment_preview', 'numbers', 'codes', 'body_chars', 'search_limit', 'thread_depth', 'lookback_days']
+const ORDER = ['payment_preview', 'bank_change_preview', 'numbers', 'codes', 'body_chars', 'search_limit', 'thread_depth', 'lookback_days']
 const EXAMPLES: Record<string, string> = {
   payment_preview: 'Example: a card alert from your bank shows its sender and subject, or also its first lines.',
   numbers: 'Example: "Rs 4,500.00 at SWIGGY" is quoted; "card 4111 1111 1111 1111" always becomes [number].',
@@ -87,6 +87,12 @@ export function GmailReadSettings({ name }: { name: string }) {
         </p>
       </div>
       {problem && <Notice tone="error">{problem}</Notice>}
+      {(s.payment_preview === 'hide' || s.numbers === 'blanked') && (
+        <Notice tone="info">
+          {name} can&apos;t read amounts in payment emails right now. Change &ldquo;Payment and transaction emails&rdquo; and
+          &ldquo;Numbers in emails&rdquo; below to let her.
+        </Notice>
+      )}
       {saved && <p role="status" className="text-xs text-emerald-700">{saved}</p>}
       {ORDER.map((key) => {
         const c = view.choices[key]
