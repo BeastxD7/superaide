@@ -300,6 +300,8 @@ GMAIL_ROUTES = {
     ("POST", "/app/gmail/connect"),
     ("POST", "/app/gmail/drafts"),
     ("POST", "/app/gmail/addresses"),
+    ("GET", "/app/gmail/read-settings"),
+    ("PUT", "/app/gmail/read-settings"),
 }
 
 

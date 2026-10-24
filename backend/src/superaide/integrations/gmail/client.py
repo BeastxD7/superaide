@@ -292,7 +292,7 @@ def body_html(msg: dict[str, Any]) -> str:
     return ""
 
 
-def clean_body(text: str, limit: int = MAX_BODY) -> str:
+def clean_body(text: str, limit: int = MAX_BODY, amounts: bool = False, blank: bool = True) -> str:
     """Only what was written in this message: quoted earlier mail, '>' lines and the signature go."""
     m = QUOTE_START.search(text)
     if m:
@@ -303,17 +303,35 @@ def clean_body(text: str, limit: int = MAX_BODY) -> str:
     lines = [ln.rstrip() for ln in text.splitlines() if not ln.lstrip().startswith(">")]
     text = re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
     text = re.sub(r"[ \t]{2,}", " ", text)
-    return redact(text[:limit] + ("…" if len(text) > limit else ""))
+    return redact(text[:limit] + ("…" if len(text) > limit else ""), amounts=amounts, blank=blank)
 
 
 LONG_NUMBER = re.compile(r"(?<![\w])(?:\d[ -]?){5,}\d(?![\w])")  # 6 digits or more
 URL_TOKEN = re.compile(r"(https?://[^\s?#]+)[?#][^\s]*")
 
 
-def redact(text: str) -> str:
+AMOUNT = re.compile(
+    r"(?:₹|Rs\.?|INR|USD|EUR|GBP|[$€£])\s?\d[\d,]*(?:\.\d{1,2})?|\d[\d,]*(?:\.\d{1,2})?\s?(?:INR|USD|EUR|GBP)\b",
+    re.IGNORECASE,
+)
+
+
+def redact(text: str, amounts: bool = False, blank: bool = True) -> str:
     """Blank what a model never needs: long numbers (cards, accounts, codes) and link query strings
-    (which carry sign-in and unsubscribe tokens)."""
-    return URL_TOKEN.sub(r"\1", LONG_NUMBER.sub("[number]", text))
+    (which carry sign-in and unsubscribe tokens). With `amounts` (the owner's setting, #433) an amount written
+    next to a currency stays readable; everything else long is still blanked."""
+    kept: list[str] = []
+
+    def keep(m: re.Match[str]) -> str:
+        kept.append(m.group(0))
+        return f"\x00{len(kept) - 1}\x00"
+
+    if amounts:
+        text = AMOUNT.sub(keep, text)
+    text = URL_TOKEN.sub(r"\1", LONG_NUMBER.sub("[number]", text) if blank else text)
+    for i, value in enumerate(kept):
+        text = text.replace(f"\x00{i}\x00", value)
+    return text
 
 
 def subject(msg: dict[str, Any]) -> str:

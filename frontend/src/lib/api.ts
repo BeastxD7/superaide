@@ -571,6 +571,22 @@ export type GmailStatus = {
   drafts_allowed: boolean
 }
 
+export type GmailReadSettings = {
+  payment_preview: string
+  numbers: string
+  codes: string
+  body_chars: number
+  search_limit: number
+  thread_depth: number
+  lookback_days: number
+  blocked: string[]
+  allowed: string[]
+}
+export type GmailReadView = {
+  settings: GmailReadSettings
+  choices: Record<string, { values: (string | number)[]; default: string | number; label: string; help: string }>
+}
+
 export type NeedsYouItem = {
   id: string
   source?: 'email' | 'message'
