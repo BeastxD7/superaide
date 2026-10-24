@@ -31,16 +31,16 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.connectors import gmail as api
-from superaide.connectors import google
 from superaide.contracts.events import MailIngested, bus
 from superaide.identity.trust import Trust
+from superaide.integrations.gmail import client as api
+from superaide.integrations.gmail import skill as gmail
+from superaide.integrations.google import client as google
 from superaide.jobs.queue import enqueue, handler
 from superaide.memory.store import touch_context
 from superaide.platform.audit import audit
 from superaide.platform.db.models import ChannelIdentity, Context, Event, Job, Person
 from superaide.policy.killswitch import get_state, set_state
-from superaide.skills import gmail
 from superaide.triage.models import TriageDecision
 
 JOB_KIND = "gmail_poll"

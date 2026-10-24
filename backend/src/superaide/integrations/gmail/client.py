@@ -23,8 +23,8 @@ from urllib.parse import quote, urlencode
 
 import httpx
 
-from superaide.connectors import google
-from superaide.connectors.google import AUTH_URL, TOKEN_URL, GoogleError
+from superaide.integrations.google import client as google
+from superaide.integrations.google.client import AUTH_URL, TOKEN_URL, GoogleError
 
 READONLY = "https://www.googleapis.com/auth/gmail.readonly"
 COMPOSE = "https://www.googleapis.com/auth/gmail.compose"  # drafts, and sending a draft

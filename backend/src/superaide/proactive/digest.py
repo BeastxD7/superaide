@@ -21,8 +21,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from superaide.app.accounts import owner as hired_owner
-from superaide.connectors.google import event_text
 from superaide.context.audience import Audience, memory_filter
+from superaide.integrations.calendar import skill as calendar
+from superaide.integrations.google.client import event_text
 from superaide.intentions.service import owner_zone
 from superaide.intentions.when import zone
 from superaide.jobs.queue import enqueue, handler
@@ -33,7 +34,6 @@ from superaide.platform.db.session import require, session_scope
 from superaide.policy.binding import waiting as waiting_clause
 from superaide.proactive import prep
 from superaide.proactive.notify import notify_owner
-from superaide.skills import calendar
 
 JOB_KIND = "send_digest"
 SLOTS = {"morning": time(8, 0), "evening": time(18, 0)}

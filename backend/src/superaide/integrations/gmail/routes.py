@@ -24,14 +24,14 @@ from sqlalchemy import select
 
 from superaide.app.deps import owner_person_id
 from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header
-from superaide.connectors import gmail as api
-from superaide.connectors import google
 from superaide.identity.trust import Trust
+from superaide.integrations.gmail import client as api
+from superaide.integrations.gmail import skill as gmail
+from superaide.integrations.google import client as google
 from superaide.platform.db.models import ChannelIdentity, Contact, InstalledSkill
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import scope_or_default
 from superaide.platform.tenancy.models import PlatformState
-from superaide.skills import gmail
 from superaide.vault import store
 from superaide.vault.store import runtime_settings
 

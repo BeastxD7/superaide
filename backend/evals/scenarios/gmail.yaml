@@ -1,7 +1,7 @@
 # The Gmail capability (skills/builtin/gmail). Known gaps until the harness has a world with a
 # connected Gmail (a fake inbox and the capability installed) and live runs: offline, the tools
 # answer "isn't installed", so these grade the shape of the answer only. The code paths are
-# covered in tests/connectors/test_gmail.py and tests/triage/test_gmail_triage.py with a fake Gmail.
+# covered in tests/integrations/test_gmail.py and tests/triage/test_gmail_triage.py with a fake Gmail.
 
 - id: gmail-summarise-unread
   category: recall

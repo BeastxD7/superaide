@@ -27,7 +27,7 @@ from superaide.app.deps import owner_person_id, telegram_username
 from superaide.auth import google as google_auth
 from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header
 from superaide.channels import health
-from superaide.connectors import google
+from superaide.integrations.google import client as google
 from superaide.platform.config import get_settings
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy import endpoints
@@ -189,7 +189,7 @@ GUIDES = {
 
 
 def slack_manifest_url() -> str:
-    manifest = Path(__file__).resolve().parents[1] / "channels" / "slack_manifest.yml"
+    manifest = Path(__file__).resolve().parents[1] / "channels" / "slack" / "manifest.yml"
     if not manifest.exists():
         return "https://api.slack.com/apps?new_app=1"
     return "https://api.slack.com/apps?new_app=1&manifest_yaml=" + quote(manifest.read_text())
@@ -356,7 +356,7 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
     def google_start(
         request: Request, _: uuid.UUID = Depends(owner_person_id), user_id: uuid.UUID = Depends(current_user_id)
     ) -> dict[str, str]:
-        from superaide.skills import calendar
+        from superaide.integrations.calendar import skill as calendar
 
         origin = connect_origin(request)
 
@@ -396,7 +396,7 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
         owner_scope = InstanceScope(tenant_id=uuid.UUID(pending["tenant_id"]), agent_id=uuid.UUID(pending["agent_id"]))
         with use_instance(owner_scope):  # the owner who started the sign-in, whoever's browser comes back
             if pending.get("purpose") == "gmail":  # the Gmail capability's sign-in (app/gmail.py)
-                from superaide.app.gmail import finish
+                from superaide.integrations.gmail.routes import finish
 
                 return finish(code, pending)
             return _finish_google(code, pending, back)

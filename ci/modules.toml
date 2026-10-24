@@ -208,16 +208,16 @@ e2e = [
   "e2e/tests/channels/slack-link.spec.ts",
 ]
 
-[modules.connectors]
+[modules.integrations]
 src = [
-  "backend/src/superaide/connectors/**",
+  "backend/src/superaide/integrations/**",
 ]
 tests = [
-  "backend/tests/connectors/**",
+  "backend/tests/integrations/**",
 ]
 e2e = [
-  "e2e/tests/connectors/capability-google.spec.ts",
-  "e2e/tests/connectors/gmail-api-disabled.spec.ts",
+  "e2e/tests/integrations/capability-google.spec.ts",
+  "e2e/tests/integrations/gmail-api-disabled.spec.ts",
   "e2e/tests/journeys/calendar-connect.spec.ts",
   "e2e/tests/journeys/approval-automated.spec.ts",
 ]
@@ -763,7 +763,7 @@ e2e = [
   "e2e/tests/school/school.spec.ts",
   "e2e/tests/push/settings-notifications.spec.ts",
   "e2e/tests/journal/decision-journal.spec.ts",
-  "e2e/tests/connectors/capability-google.spec.ts",
+  "e2e/tests/integrations/capability-google.spec.ts",
   "e2e/tests/app/fe-chat-streaming.spec.ts",
   "e2e/tests/pagination/pagination-chat.spec.ts",
   "e2e/tests/knowledge/brain-first.spec.ts",

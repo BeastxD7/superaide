@@ -1,6 +1,6 @@
 """Gmail inbox triage: polling with history.list per instance, verified senders mapped to contacts,
 newsletters held, strangers never sent to a model, the Needs-you inbox and the digest's email section.
-Gmail is a fake (tests/connectors/gmail_fake.py)."""
+Gmail is a fake (tests/integrations/gmail_fake.py)."""
 
 from __future__ import annotations
 
@@ -11,17 +11,18 @@ import pytest
 from sqlalchemy import select
 
 from superaide.app.accounts import owner as hired_owner
-from superaide.connectors import gmail as api
 from superaide.identity.trust import Trust
+from superaide.integrations.gmail import client as api
+from superaide.integrations.gmail import inbox as gmail_inbox
+from superaide.integrations.gmail import skill as gmail
 from superaide.jobs.queue import run_due
 from superaide.platform.config import get_settings
 from superaide.platform.db.models import ChannelIdentity, Contact, Event, Job, Person
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import InstanceScope, use_instance
-from superaide.skills import gmail, gmail_inbox
 from superaide.triage import digest as triage_digest
 from superaide.triage.models import TriageDecision
-from tests.connectors.gmail_fake import connect, gmail_fake_fixture, mail, owner_client_fixture  # noqa: F401  (fixtures)
+from tests.integrations.gmail_fake import connect, gmail_fake_fixture, mail, owner_client_fixture  # noqa: F401  (fixtures)
 
 
 @pytest.fixture

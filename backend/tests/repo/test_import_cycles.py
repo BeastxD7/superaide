@@ -35,8 +35,8 @@ FORBIDDEN: dict[str, set[str]] = {
     "factory": set(),
     # technique 2: policy knows action kinds through registries, never the modules that carry them out
     "policy.actions": {
-        "skills.calendar",
-        "skills.gmail",
+        "integrations.calendar.skill",
+        "integrations.gmail.skill",
         "skills.receipts",
         "asklink.service",
         "features.voice.gateway",
@@ -50,10 +50,10 @@ FORBIDDEN: dict[str, set[str]] = {
     "brain.keyhealth": {"proactive.notify"},
     # technique 4: reactions to "a source was read / removed" are event subscribers, not calls from the skills
     "skills.registry": {"knowledge.connector_facts"},
-    "skills.calendar": {"knowledge.connector_facts"},
-    "skills.gmail_inbox": {"knowledge.connector_facts", "triage.digest", "triage.routes"},
-    "triage.digest": {"skills.gmail_inbox"},
-    "triage.routes": {"skills.gmail_inbox"},
+    "integrations.calendar.skill": {"knowledge.connector_facts"},
+    "integrations.gmail.inbox": {"knowledge.connector_facts", "triage.digest", "triage.routes"},
+    "triage.digest": {"integrations.gmail.inbox"},
+    "triage.routes": {"integrations.gmail.inbox"},
 }
 
 
