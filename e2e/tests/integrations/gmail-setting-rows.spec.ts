@@ -23,7 +23,7 @@ test('every reading rule is a row with a status badge and "Never changed", then 
   await connectGmail(api)
   await page.goto('/dashboard/capabilities/gmail/reading')
   const rows = page.getByTestId('setting-row')
-  await expect(rows).toHaveCount(10)
+  await expect(rows).toHaveCount(12) // ten reading rules plus the two inbox sorter rows (#469)
   await expect(rows.first()).toContainText('Never changed')
   await expect(rows.first()).toContainText('Default')
   const numbers = rows.filter({ hasText: 'Numbers in emails' })
