@@ -1,5 +1,6 @@
 'use client'
 
+import { ConnectorSettings } from '@/features/dashboard/ConnectorSettings'
 import { useState, type FormEvent } from 'react'
 import { Loadable } from '@/components/load-state'
 import { ConfirmAction } from '@/components/confirm-action'
@@ -54,6 +55,8 @@ export function SettingsPage() {
         <PasswordCard />
 
         {PWA_ENABLED && <NotificationsCard name={name} />}
+
+        <ConnectorSettings path="retention" title="Reminders and approvals" anchor="retention" />
 
         <Card>
           <CardHeader>

@@ -58,6 +58,8 @@ class ReadSettingsBody(BaseModel):
     search_limit: int | None = None
     thread_depth: int | None = None
     lookback_days: int | None = None
+    triage_excerpt: int | None = None
+    triage_batch: int | None = None
     blocked: list[str] | None = None
     allowed: list[str] | None = None
     confirmation: str | None = None  # the single-use nonce from POST /app/stepup

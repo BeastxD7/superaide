@@ -34,6 +34,7 @@ from sqlalchemy.orm import Session
 from superaide.contracts.events import MailIngested, bus
 from superaide.identity.trust import Trust
 from superaide.integrations.gmail import client as api
+from superaide.integrations.gmail import settings as gmail_settings
 from superaide.integrations.gmail import skill as gmail
 from superaide.integrations.google import client as google
 from superaide.jobs.queue import enqueue, handler
@@ -114,7 +115,8 @@ def ingest(session: Session, owner: Person, msg: dict[str, Any]) -> Event | None
     verified = api.authenticated(msg)
     identity = _identity(session, address)
     trust = int(identity.trust_level) if identity is not None and verified else int(Trust.HINT)
-    text = f"{subject}\n\n{api.clean_body(api.body_text(msg), EXCERPT)}".strip()
+    excerpt = gmail_settings.load(session).triage_excerpt
+    text = f"{subject}\n\n{api.clean_body(api.body_text(msg), excerpt)}".strip()
     event = Event(
         context_id=ctx.id, direction="in", sender_identity_id=identity.id if identity else None,
         resolved_person_id=identity.person_id if identity else None, trust_at_time=trust,
@@ -186,7 +188,8 @@ def poll(session: Session, *, llm: Any = None, model: str = "", ready: bool = Fa
         audit(session, "skills", "gmail_sync_restarted")
         return 0
     done = 0
-    for mid in ids[:MAX_PER_POLL]:
+    batch = gmail_settings.load(session).triage_batch
+    for mid in ids[:batch]:
         msg = api.message(client, tok, mid)
         if msg is None:
             continue
@@ -196,7 +199,7 @@ def poll(session: Session, *, llm: Any = None, model: str = "", ready: bool = Fa
         if event is not None:
             bus.publish(MailIngested(session, event))  # knowledge.connector_facts: a few short facts, if turned on
     set_state(session, STATE_KEY, {"history_id": latest, "at": now.isoformat()})
-    audit(session, "skills", "gmail_polled", new=len(ids), triaged=done, skipped=max(0, len(ids) - MAX_PER_POLL))
+    audit(session, "skills", "gmail_polled", new=len(ids), triaged=done, skipped=max(0, len(ids) - batch))
     return done
 
 
