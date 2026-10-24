@@ -5,10 +5,12 @@ import { BrandIcon } from '@/components/BrandIcon'
 import { isBrand } from '@/components/brands/marks'
 import { Notice } from '@/components/site'
 import { Badge } from '@/components/ui/badge'
-import { Skeleton } from '@/components/ui/skeleton'
-import { CHANNEL_LABEL, capitalise, useAppData } from '@/features/dashboard/data'
+import { ListFooter } from '@/components/ui/list-footer'
+import { SkeletonTableRows } from '@/components/ui/skeleton'
+import { CHANNEL_LABEL, capitalise } from '@/features/dashboard/data'
 import type { PersonCard } from '@/lib/api'
 import { initialOf } from '@/lib/initial'
+import { usePaginated } from '@/lib/paginated'
 import { useSession } from '@/lib/session-context'
 
 // Where someone is recognised, or that they are not yet. The table shows it as a column from the small
@@ -30,12 +32,15 @@ function Channels({ channels }: { channels: string[] }) {
 
 export function PeoplePage() {
   const { me } = useSession()
-  const { data, error } = useAppData<{ people: PersonCard[] }>('/people')
+  const list = usePaginated<PersonCard>('/people', { limit: 50, itemsKey: 'people' })
+  const error = list.failed === 'first' ? list.error : null
   const name = me?.agent.name ?? 'Ava'
-  const people = data?.people
+  const people = list.status === 'loading' || (list.status === 'error' && list.failed === 'first') ? undefined : list.items
 
   return (
-    <div className="flex-1 overflow-y-auto">
+    // A long list makes this region scroll; with no focusable row in it the keyboard could not reach the rest, so the
+    // region itself takes focus (axe: scrollable-region-focusable).
+    <div className="flex-1 overflow-y-auto focus-visible:outline-2 focus-visible:-outline-offset-2" tabIndex={0} role="region" aria-label="People">
       <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 lg:py-8">
         <h1 className="text-3xl font-medium text-ink tight">People who matter</h1>
         <p className="mt-1 text-body">
@@ -60,14 +65,7 @@ export function PeoplePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
-              {!people &&
-                [0, 1].map((i) => (
-                  <tr key={i}>
-                    <td className="px-4 py-3" colSpan={4}>
-                      <Skeleton className="h-4 w-1/2" />
-                    </td>
-                  </tr>
-                ))}
+              {!people && !error && <SkeletonTableRows rows={4} columns={4} rowHeight={57} />}
               {people?.map((p) => (
                 <tr key={p.id}>
                   <td className="px-4 py-3">
@@ -106,6 +104,7 @@ export function PeoplePage() {
             </tbody>
           </table>
         </div>
+        {people && people.length > 0 && <ListFooter {...list.footer} endLabel="That is everyone" />}
       </div>
     </div>
   )

@@ -216,7 +216,7 @@ test('Back is not trapped by the guard redirects on /login', async ({ page, owne
 
 test('a contact whose name starts with an emoji shows the whole emoji as the avatar', async ({ page, owner }) => {
   void owner
-  await page.route('**/api/app/people', (r) =>
+  await page.route('**/api/app/people*', (r) =>
     r.fulfill({ json: { people: [{ id: 'p1', name: '🙂 Priya', relationship: 'partner', vip: true, channels: [] }] } }),
   )
   await page.goto('/dashboard')
