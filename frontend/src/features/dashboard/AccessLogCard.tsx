@@ -3,10 +3,11 @@
 // When someone at Superaide opened this Ava's people, conversations, memories or log (ADR 0009):
 // operators can only do that by giving a reason, and every time is listed here for the owner.
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
-import { useAppData } from '@/features/dashboard/data'
+import { ListFooter } from '@/components/ui/list-footer'
+import { SkeletonList } from '@/components/ui/skeleton'
+import { arrayAppFetcher, usePaginated } from '@/lib/paginated'
 
-type Access = { at: string; what: string; reason: string }
+type Access = { id: string; at: string; what: string; reason: string }
 
 const WHAT: Record<string, string> = {
   '/api/people': 'People and linked accounts',
@@ -28,7 +29,8 @@ function what(raw: string): string {
 }
 
 export function AccessLogCard({ name }: { name: string }) {
-  const log = useAppData<Access[]>('/access-log')
+  const log = usePaginated<Access>('/access-log', { limit: 25, fetcher: arrayAppFetcher<Access> })
+  const error = log.failed === 'first' ? log.error : null
   return (
     <Card>
       <CardHeader>
@@ -39,16 +41,16 @@ export function AccessLogCard({ name }: { name: string }) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {log.error ? (
-          <p className="text-sm text-danger">{log.error}</p>
-        ) : !log.data ? (
-          <Skeleton className="h-10 w-full" />
-        ) : log.data.length === 0 ? (
+        {error ? (
+          <p className="text-sm text-danger">{error}</p>
+        ) : log.status === 'loading' ? (
+          <SkeletonList count={3} rowHeight={64} what="the access log" />
+        ) : log.items.length === 0 ? (
           <p className="text-sm text-body">No one at Superaide has opened your assistant's content.</p>
         ) : (
           <ul className="divide-y divide-mist text-sm" aria-label="Access by Superaide staff">
-            {log.data.map((a, i) => (
-              <li key={`${a.at}-${i}`} className="grid gap-1 py-2 sm:grid-cols-[11rem_1fr]">
+            {log.items.map((a) => (
+              <li key={a.id} className="grid gap-1 py-2 sm:grid-cols-[11rem_1fr]">
                 <time className="text-muted" dateTime={a.at}>
                   {new Date(a.at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
                 </time>
@@ -60,6 +62,7 @@ export function AccessLogCard({ name }: { name: string }) {
             ))}
           </ul>
         )}
+        {log.items.length > 0 && <ListFooter {...log.footer} endLabel="That is every visit" />}
       </CardContent>
     </Card>
   )

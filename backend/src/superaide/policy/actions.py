@@ -94,12 +94,14 @@ def decide(
     origin: str = "",
     require_executor: bool = False,
     in_channel: bool = False,
+    tainted: bool = False,
 ) -> Decision:
     """`rules` is RULES for propose_action, TOOL_RULES for a skill tool, which also passes the
     `payload` its executor needs. `origin` is "voice" for something heard on a call (voice/gateway.py):
     such an approval can then be approved only from the Superaide app, never by what was said.
     `require_executor` (the model's propose_action): a kind nothing can carry out, or a route nothing
-    can use (a web form), creates no approval at all (issue #326, APPROVAL_REQUIRE_EXECUTOR)."""
+    can use (a web form), creates no approval at all (issue #326, APPROVAL_REQUIRE_EXECUTOR).
+    `tainted`: untrusted content entered the turn; it only feeds the mandate shadow check (#112)."""
     if kind == "none":
         return Decision("none", "no action requested")
     from superaide.policy import footprint
@@ -153,14 +155,17 @@ def decide(
         )
         return Decision("refused", "this needs a stronger identity check; do it from the dashboard instead")
     extra = footprint.assess(session, kind=kind, text=summary, requester=requester)
+    from superaide.mandate import service as mandate
     from superaide.policy import quote
 
+    seen = mandate.shadow(session, kind=kind, payload=payload, tainted=tainted)  # a measurement; asks exactly as before
     approval = Approval(
         kind=kind,
         payload={
             **(payload or {}),
             **extra,
             **quote.assess(session, kind),
+            **({"mandate_shadow": seen} if seen is not None else {}),
             "summary": summary,
             "trust_at_request": requester.trust,
             "required_trust": rule.min_trust,

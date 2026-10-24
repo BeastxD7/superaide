@@ -158,11 +158,14 @@ def permits(
     caps: Caps,
     now: datetime | None = None,
     mandate_id: uuid.UUID | None = None,
+    dry_run: bool = False,
 ) -> bool:
     """True when an active mandate (and every ancestor of it) covers this call and it may run without asking.
     Counts the use on the mandate and on each ancestor, so a sub-task's calls come out of its parent's count.
     A helper that was handed a mandate passes its `mandate_id`: only that mandate (and its chain) is considered,
-    so a helper holding a narrow child cannot borrow the parent's wider reach."""
+    so a helper holding a narrow child cannot borrow the parent's wider reach.
+    `dry_run` (the shadow check) counts nothing, audits nothing, and also says no when a token limits something
+    (money, recipients, topics) that the call does not state, since it cannot tell whether the limit holds."""
     if not get_settings().mandates_enabled:
         return False
     if effect in NEVER_UNSUPERVISED or caps.violates_rule_of_two or caps.untrusted_input:
@@ -177,6 +180,8 @@ def permits(
         chain = ancestry(session, row)
         if not _chain_ok(key, chain, str(scope.agent_id), now):
             continue
+        if dry_run and any(_unstated_limit(tk.loads(r.token), args) for r in chain):
+            continue
         # The call must pass every token in the chain (each with its own use count): the narrowest binds.
         if all(
             tk.authorize(
@@ -184,11 +189,65 @@ def permits(
             ).ok
             for r in chain
         ):
+            if dry_run:
+                return True
             for r in chain:
                 r.uses += 1
             audit(session, "mandate", "mandate_used", mandate_id=row.id, tool=tool, depth=len(chain))
             return True
     return False
+
+
+# The call argument each limit is checked against (token.authorize).
+_LIMIT_ARG = {"max_amount": "amount", "recipient_domains": "recipients", "topics": "topic"}
+
+
+def _unstated_limit(tok: tk.Token, args: dict[str, Any]) -> bool:
+    return any(name in _LIMIT_ARG and _LIMIT_ARG[name] not in args for name, _ in tok.caveats)
+
+
+# Approval kinds that are a mandate tool under another name, and the effect class of each (tooltrace/effects.py).
+# A kind not listed here is never covered: an unknown tool is `send`, which no mandate covers.
+SHADOW_TOOL = {"calendar_create_event": "create_event", "calendar_move_event": "move_event"}
+
+
+def shadow(
+    session: Session, *, kind: str, payload: dict[str, Any] | None, tainted: bool = False
+) -> dict[str, Any] | None:
+    """Would a mandate have let this call run without asking? Only a measurement (issue #112's experiment):
+    nothing is spent, counted or skipped, the owner is asked exactly as before. None when it is off."""
+    settings = get_settings()
+    if not (settings.mandates_enabled and settings.mandate_shadow_enabled):
+        return None
+    from superaide.tooltrace.effects import effect_of
+
+    payload = payload or {}
+    tool = SHADOW_TOOL.get(kind, kind)
+    effect = "send" if kind in SHADOW_TOOL and payload.get("notify") else effect_of(tool)  # tells other people
+    args: dict[str, Any] = {k: payload[k] for k in ("amount", "recipients", "topic") if k in payload}
+    caps = Caps(untrusted_input=tainted, private_data=True, can_act=True)
+    try:
+        covered = permits(session, tool=tool, args=args, effect=effect, caps=caps, dry_run=True)
+    except Exception:  # a measurement must never break the approval it is measuring
+        covered = False
+    return {"would_cover": covered, "effect": effect, "tainted": tainted}
+
+
+def shadow_report(session: Session, *, days: int = 30) -> dict[str, Any]:
+    """Of the approvals asked in the last `days`, how many a mandate would have covered (the prompts saved)."""
+    from datetime import timedelta
+
+    from superaide.db.models import Approval
+
+    since = datetime.now(UTC) - timedelta(days=days)
+    total = covered = measured = 0
+    for a in session.scalars(select(Approval).where(Approval.created_at >= since)):
+        total += 1
+        seen = (a.payload or {}).get("mandate_shadow")
+        if isinstance(seen, dict):
+            measured += 1
+            covered += bool(seen.get("would_cover"))
+    return {"days": days, "approvals": total, "measured": measured, "would_cover": covered}
 
 
 def chain_view(session: Session, row: Mandate) -> dict[str, Any]:

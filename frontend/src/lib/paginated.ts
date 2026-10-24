@@ -10,7 +10,7 @@
 //   <ListFooter {...list.footer} />   (Load more / End of list / Retry)
 import { useEffect, useMemo, useSyncExternalStore } from 'react'
 import { errorMessage } from '@/lib/action'
-import { AppError, call } from '@/lib/api'
+import { AppError, call, callPage } from '@/lib/api'
 import {
   PaginatedController,
   type Fetcher,
@@ -35,6 +35,12 @@ export type UsePaginatedOptions<T> = {
 }
 
 const appFetcher = <T,>(path: string, signal: AbortSignal): Promise<PageResponse<T>> => call<PageResponse<T>>(path, { signal })
+
+/** For an /app route that answers a bare array and pages by header (`X-Next-Cursor`, `X-Has-More`), such as /access-log. */
+export const arrayAppFetcher = async <T,>(path: string, signal: AbortSignal): Promise<PageResponse<T>> => {
+  const { data, hasMore, nextCursor } = await callPage<T[]>(path, { signal })
+  return { items: data, next_cursor: nextCursor, has_more: hasMore ?? false }
+}
 
 const staleCursor = (e: unknown) => e instanceof AppError && e.code === 'invalid_cursor'
 

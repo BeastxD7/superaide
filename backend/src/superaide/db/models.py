@@ -544,6 +544,18 @@ class AuditLog(Scoped, Base):
     """Append-only record of decisions, model calls and refused actions."""
 
     __tablename__ = "audit_log"
+    __table_args__ = (
+        # The safety log and the owner's access log, newest first (ADR 0014); the second serves only the operator's
+        # own visits, a small slice of a log that mostly holds model calls and identity checks.
+        Index("ix_audit_log_agent_created", "agent_id", text("created_at DESC"), text("id DESC")),
+        Index(
+            "ix_audit_log_operator_access",
+            "agent_id",
+            text("created_at DESC"),
+            text("id DESC"),
+            postgresql_where=text("actor = 'operator' AND action = 'operator_access'"),
+        ),
+    )
 
     actor: Mapped[str] = mapped_column(String(100))
     action: Mapped[str] = mapped_column(String(60), index=True)

@@ -93,7 +93,7 @@ def test_break_glass_opens_one_instance_and_tells_its_owner(browser, owners):
     assert row.detail["reason"] == REASON and row.detail["path"] == "/api/memories"
     # The owner sees it in the app; the other owner doesn't.
     seen = b.get("/app/access-log").json()
-    assert seen == [{"at": seen[0]["at"], "what": "/api/memories", "reason": REASON}]
+    assert seen == [{"id": seen[0]["id"], "at": seen[0]["at"], "what": "/api/memories", "reason": REASON}]
     assert a.get("/app/access-log").json() == []
 
 

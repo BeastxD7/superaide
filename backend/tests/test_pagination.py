@@ -11,6 +11,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import statistics
 import time
 import tracemalloc
 import uuid
@@ -471,6 +472,9 @@ def test_page_queries_use_the_index_and_do_not_sort_the_table():
 # --- scale ---------------------------------------------------------------------------------------------
 
 SCALE_ROWS = int(os.environ.get("PAGINATION_SCALE_ROWS", "100000"))
+DEPTH_FACTOR = 5  # deepest-tenth median may be at most 5x the shallowest-tenth median (keyset paging is ~1x)
+TAIL_FACTOR = 20  # p95 may be at most 20x the median page
+SLACK_SECONDS = 0.05  # floor so a ~1 ms baseline cannot make the factor absurdly tight
 
 
 def test_scale_deep_pages_are_fast_and_memory_stays_flat():
@@ -503,11 +507,21 @@ def test_scale_deep_pages_are_fast_and_memory_stays_flat():
     finally:
         tracemalloc.stop()
     assert seen == SCALE_ROWS
-    latencies.sort()
-    p95 = latencies[int(len(latencies) * 0.95)]
-    assert p95 < 0.25, f"p95 page latency {p95 * 1000:.0f} ms"
-    first_tenth = sum(latencies[: max(len(latencies) // 10, 1)]) / max(len(latencies) // 10, 1)
-    assert latencies[-1] < max(first_tenth * 50, 0.25)  # the deepest page is not meaningfully slower than the median
+    # Latency is judged against a baseline measured in this same run, never in absolute milliseconds, so a busy
+    # machine (parallel CI workers, a laptop under load) slows the baseline and the deep pages alike. What the test
+    # proves is "depth does not matter": the median of the deepest tenth of the pages stays within a documented
+    # factor of the median of the shallowest tenth (OFFSET paging would be 100x slower at the end, see the plan
+    # test above for the exact guarantee). Medians, because a one-off stall hits a single page, not a tenth of them.
+    tenth = max(len(latencies) // 10, 1)
+    shallow = statistics.median(latencies[:tenth])
+    deep = statistics.median(latencies[-tenth:])
+    assert deep < max(shallow * DEPTH_FACTOR, SLACK_SECONDS), (
+        f"deep pages {deep * 1000:.1f} ms vs shallow {shallow * 1000:.1f} ms (factor {DEPTH_FACTOR})"
+    )
+    ordered = sorted(latencies)
+    median = statistics.median(ordered)
+    p95 = ordered[int(len(ordered) * 0.95)]
+    assert p95 < max(median * TAIL_FACTOR, SLACK_SECONDS), f"p95 {p95 * 1000:.1f} ms vs median {median * 1000:.1f} ms"
     assert max(heap) - min(heap) < 5 * 1024 * 1024, (
         f"heap grew by {(max(heap) - min(heap)) / 1e6:.1f} MB over {pages} pages"
     )
