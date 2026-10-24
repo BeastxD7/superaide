@@ -15,7 +15,7 @@ from superaide.policy.actions import ApprovalError, decide, resolve
 
 @pytest.fixture
 def on(monkeypatch, settings):
-    monkeypatch.setattr(settings, "voice_two_channel", True)
+    monkeypatch.setattr(settings, "voice_provider", "fake")
 
 
 @pytest.fixture

@@ -393,13 +393,14 @@ class Settings(BaseSettings):
     # Owner Twin (#119, tracking #142). Off: /app/twin answers 404. On: a calibration page scores a small
     # predictor of the owner's approve/reject choices. It reads approvals only and grants nothing.
     owner_twin_enabled: bool = False
-    # Two-channel voice (#125). Off: voice can propose nothing. On: an action heard on a call becomes an approval
-    # marked as voice-origin; it can be approved only by a tap in the Superaide app, never by what is said, and the
-    # call reads it back as a structured proposal and never says it is done. The voice shell holds no tools.
-    voice_two_channel: bool = False
-    # Live voice (#125): which realtime voice provider carries the call. none | fake (scripted, offline) | realtime
-    # (the adapter stub for a real vendor; no vendor is wired yet). Default none: nothing is bought or locked in.
-    voice_provider: str = "none"  # none | fake | realtime (stub) | deepgram (the documented hosted adapter)
+    # Live voice (#125). No on/off flag (#448): voice is available when a provider key is present
+    # (VOICE_PROVIDER_API_KEY or DEEPGRAM_API_KEY) and off, with a hint saying what to add, when there is none.
+    # An action heard on a call becomes an approval marked voice-origin that only a tap in the Superaide app can
+    # approve, never what is said; the call reads it back as a structured proposal and never says it is done.
+    # The voice shell holds no tools.
+    # VOICE_PROVIDER: auto (default: deepgram when a key is present, otherwise none) | none (force off) |
+    # fake (scripted, offline) | realtime (adapter stub, no vendor wired) | deepgram (the documented hosted adapter).
+    voice_provider: str = "auto"
     voice_provider_api_key: str = ""  # saved under the voice_provider connection; never logged
     # Import lease (#133). Off: /app/import-leases/* answer 404. On: the owner can bring in context cards
     # converted on their own machine from a third-party export, under a time-limited lease that erases them.

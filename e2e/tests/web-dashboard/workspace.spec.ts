@@ -859,6 +859,22 @@ test.describe('connections', () => {
     expect(await auditActions()).toContain('disconnected')
   })
 
+  test('without a Deepgram key the row says voice is off and what to add; the hint is gone once it is connected', async ({ page, owner }) => {
+    void owner
+    await openConnections(page)
+    const row = connectionRow(page, /Deepgram, for the voice call/)
+    await row.click()
+    const hint = page.getByTestId('voice-hint-deepgram')
+    await expect(hint).toContainText('Voice is off until you add this key')
+    await expect(page.getByLabel('Deepgram API key')).toBeVisible()
+    await page.waitForTimeout(700) // let the row finish opening before a screenshot
+    if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/voice-hint-${test.info().project.name}.png`, fullPage: true })
+    await plantSecret('deepgram', 'api_key', 'sk-e2e-planted-placeholder-not-real-7f3a')
+    await openConnections(page)
+    await connectionRow(page, /Deepgram, for the voice call/).click()
+    await expect(page.getByTestId('voice-hint-deepgram')).toHaveCount(0)
+  })
+
   test('WhatsApp is shown as unavailable, with the reason', async ({ page, owner }) => {
     void owner
     await openConnections(page)
