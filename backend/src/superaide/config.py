@@ -116,6 +116,13 @@ class Settings(BaseSettings):
     # mandate WOULD have covered it (`mandate_shadow` on the approval); the owner is still asked every time. The
     # report (`superaide mandate-shadow-report`) shows how many prompts a mandate could save before it is trusted.
     mandate_shadow_enabled: bool = False
+    # Mandate skip (#112). Needs MANDATES_ENABLED and MANDATE_SHADOW_ENABLED. Off: every own-calendar write asks as
+    # before. On: a covering, signed mandate lets Ava create or move an event with no guests at the Child stage and
+    # above without a card, but only after the shadow check has been recording for MANDATE_SKIP_MIN_DAYS, never on a
+    # turn that read untrusted content, never at the Infant stage, and every skip is audited and shown to the owner.
+    # While on, an event with no guests is classed write_external (ADR 0006) so it asks at Infant and Child.
+    mandate_skip_enabled: bool = False
+    mandate_skip_min_days: int = Field(default=14, ge=0, le=365)
 
     # An MCP tool whose description, schema or annotations differ from what the owner approved is blocked
     # (issue #116). The MCP client calls mcp.pin.may_call; off by default until that client exists.

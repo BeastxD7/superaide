@@ -39,6 +39,7 @@ SELF_TESTS = [
     "group-never-gets-dm-content",
     "owner-in-channel-recognised-but-audience-limited",
     "appr-message-colleague",
+    "appr-mandate-never-covers-send",
     "brief-morning-lists-today",
     "rem-tomorrow-fast-path",
     "rem-after-midnight-fast-path",

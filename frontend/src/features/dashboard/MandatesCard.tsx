@@ -20,10 +20,12 @@ type Mandate = {
   chain: string
 }
 
+type Skip = { at: string; tool: string; summary: string }
+
 // Mandate cards: the named, limited things Ava may do without asking, and who each was handed on to, narrower each
 // time. Shown only while the feature is on (the API answers 404 when off). Revoking one revokes what was handed on from it.
 export function MandatesCard({ name }: { name: string }) {
-  const { data, error, reload } = useAppData<{ mandates: Mandate[] }>('/mandates')
+  const { data, error, reload } = useAppData<{ mandates: Mandate[]; skipping?: boolean; skips?: Skip[] }>('/mandates')
   const [busy, setBusy] = useState<string | null>(null)
   if (error || !data) return null
   const active = data.mandates.filter((m) => m.status === 'active')
@@ -71,6 +73,26 @@ export function MandatesCard({ name }: { name: string }) {
               </li>
             ))}
           </ul>
+        )}
+        {data.skipping && (
+          <div className="mt-4" data-testid="mandate-skips">
+            <p className="text-sm font-medium text-ink">Done on a mandate, without asking</p>
+            {!data.skips || data.skips.length === 0 ? (
+              <p className="mt-1 text-sm text-muted">Nothing yet. Every time a mandate saves you a card it is listed here.</p>
+            ) : (
+              <ul className="mt-2 space-y-1">
+                {data.skips.map((k, i) => (
+                  <li key={`${k.at}-${i}`} className="break-words text-sm text-body">
+                    {k.summary || k.tool}
+                    <span className="text-xs text-muted">
+                      {' '}
+                      · {new Date(k.at).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         )}
       </CardContent>
     </Card>
