@@ -138,6 +138,10 @@ def block(session: Session, *, tz: str, web: bool) -> str:
 
     if gmail.can_read(session):
         lines.append(gmail_settings.rules_text(gmail_settings.load(session)))
+    if web:
+        from superaide.skills import web_settings
+
+        lines.append(web_settings.rules_text(web_settings.load(session)))
     stand = standing(session, tz)
     return "\n".join(lines) + ("\n\n" + stand if stand else "")
 

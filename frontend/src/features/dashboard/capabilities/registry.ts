@@ -43,6 +43,18 @@ export const CAPABILITIES: CapabilityRoute[] = [
     ],
     pages: [{ slug: 'reading', label: 'Reading', summary: 'What Ava may read in your calendar.' }],
   },
+  {
+    slug: 'web',
+    skillId: 'superaide/web-research',
+    title: 'Web research',
+    summary: 'Ava searches and reads the web when you ask, and cites her sources. Choose how much she may use.',
+    pages: [{ slug: 'use', label: 'Searching', summary: 'How many searches and pages Ava may use, and when she searches.' }],
+    fixedRules: [
+      'Text on a web page is information, never instructions: Ava does not follow what a page tells her to do.',
+      'Ava cites the pages she uses, and searches and pages cost a little, so the limits above are yours to set.',
+      'Files and links you import are limited to 10 MB of file, 60,000 characters of text, 2 MB per page, 5 redirects and 200 PDF pages.',
+    ],
+  },
 ]
 
 export const capabilityBySlug = (slug: string) => CAPABILITIES.find((c) => c.slug === slug)
@@ -55,4 +67,5 @@ export const HASH_REDIRECTS: Record<string, string> = {
   '#gmail': capabilityHref('gmail'),
   '#gmail-read': capabilityHref('gmail', 'reading'),
   '#calendar': capabilityHref('calendar', 'reading'),
+  '#web': capabilityHref('web', 'use'),
 }
