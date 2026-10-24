@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from sqlalchemy.orm import Session
 
 from superaide.actionlog import chain
-from superaide.audit import audit
+from superaide.platform.audit import audit
 from superaide.policy.killswitch import instance_frozen, set_frozen
 
 SIDE_EFFECTS = {"write_external", "send", "spend"}

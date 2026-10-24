@@ -6,7 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
-from superaide.db.models import ChannelIdentity, Context
+from superaide.platform.db.models import ChannelIdentity, Context
 
 
 @dataclass

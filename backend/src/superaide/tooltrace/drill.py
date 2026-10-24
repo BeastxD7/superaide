@@ -14,9 +14,9 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
 from superaide.brain.pricing import UnknownModelPrice, price_for
-from superaide.db.models import Person
+from superaide.platform.audit import audit
+from superaide.platform.db.models import Person
 from superaide.tooltrace import rehearse
 from superaide.tooltrace.recorder import Call
 from superaide.tooltrace.replay import drill as headline

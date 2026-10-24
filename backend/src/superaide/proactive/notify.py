@@ -13,13 +13,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.app.accounts import web_message
-from superaide.audit import audit
 from superaide.channels import health
 from superaide.channels.base import MESSENGER_FACTORIES, bot_id
 from superaide.context.audience import Audience
-from superaide.db.models import ChannelIdentity, Person
 from superaide.knowledge.store import preferences_for
 from superaide.memory.store import get_or_create_context, log_event
+from superaide.platform.audit import audit
+from superaide.platform.db.models import ChannelIdentity, Person
 from superaide.policy.killswitch import get_state, set_state
 
 log = logging.getLogger(__name__)

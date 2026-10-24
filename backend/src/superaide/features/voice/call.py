@@ -31,9 +31,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.app.onboarding import Onboarder, first_name
-from superaide.audit import audit
-from superaide.db.models import Onboarding, Person
-from superaide.db.session import require, session_scope
 from superaide.features.voice import interview
 from superaide.features.voice.providers import (
     ASR,
@@ -49,6 +46,9 @@ from superaide.features.voice.providers import (
 )
 from superaide.knowledge.store import CATEGORIES, remember_fact
 from superaide.memory.store import log_event
+from superaide.platform.audit import audit
+from superaide.platform.db.models import Onboarding, Person
+from superaide.platform.db.session import require, session_scope
 
 log = logging.getLogger(__name__)
 

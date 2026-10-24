@@ -7,9 +7,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from superaide.brain.turn import RequestedAction
-from superaide.db.models import Approval, AuditLog
-from superaide.db.session import session_scope
 from superaide.main import create_app
+from superaide.platform.db.models import Approval, AuditLog
+from superaide.platform.db.session import session_scope
 from tests.conftest import MANAGER_TG, tg
 
 PASSWORD = "correct horse battery"

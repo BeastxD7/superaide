@@ -22,11 +22,11 @@ from typing import Any
 from superaide.channels import telegram
 from superaide.channels.base import InboundMessage
 from superaide.channels.runner import ChannelRunner
-from superaide.config import Settings
-from superaide.db.session import session_scope
 from superaide.pipeline import Agent
-from superaide.tenancy.context import current_scope, default_scope, scope_or_default, use_instance
-from superaide.tenancy.endpoints import owner_of, sync_telegram, webhook_secret
+from superaide.platform.config import Settings
+from superaide.platform.db.session import session_scope
+from superaide.platform.tenancy.context import current_scope, default_scope, scope_or_default, use_instance
+from superaide.platform.tenancy.endpoints import owner_of, sync_telegram, webhook_secret
 
 log = logging.getLogger(__name__)
 MAX_CACHED = 256  # agents kept built, one per recently active instance
@@ -85,7 +85,7 @@ class Runtime:
         if self.fixed is not None or not listen:
             self.get_agent()
             return {}
-        from superaide.tenancy.endpoints import sync_slack
+        from superaide.platform.tenancy.endpoints import sync_slack
 
         started: dict[str, bool] = {"slack": bool(self.runner.ensure_slack_apps(sync_slack()))}
         bots = sync_telegram()  # each owner's own bot, registered to their instance

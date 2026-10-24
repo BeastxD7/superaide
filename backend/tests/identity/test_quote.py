@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from superaide.config import get_settings
-from superaide.db.models import Approval, Person
-from superaide.db.session import session_scope
 from superaide.identity.resolver import Sender
 from superaide.identity.trust import Trust
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import Approval, Person
+from superaide.platform.db.session import session_scope
 from superaide.policy import actions, quote
 from superaide.policy.binding import seal
 

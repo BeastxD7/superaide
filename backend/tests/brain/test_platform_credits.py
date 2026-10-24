@@ -12,10 +12,10 @@ from sqlalchemy import select
 from superaide.brain.budget import BudgetExceeded, BudgetGuard, Limits
 from superaide.brain.llm import ClaudeLLM, FakeLLM, RoutedLLM
 from superaide.brain.wiring import brain_status, build_llm, with_credits
-from superaide.config import get_settings
-from superaide.db.models import AuditLog, SpendEntry
-from superaide.db.session import session_scope
-from superaide.tenancy.context import InstanceScope
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import AuditLog, SpendEntry
+from superaide.platform.db.session import session_scope
+from superaide.platform.tenancy.context import InstanceScope
 from superaide.vault.store import runtime_settings
 from tests.pipeline.test_loop import owner_client  # noqa: F401  (fixture)
 
@@ -167,7 +167,7 @@ def test_the_owner_still_hears_which_limit_was_reached(model, outbox, settings, 
 
 
 def test_one_owners_opt_in_never_reaches_another(owner_client, credits):  # noqa: F811
-    from superaide.tenancy.context import use_instance
+    from superaide.platform.tenancy.context import use_instance
 
     owner_client.post("/app/providers/credits", json={"on": True})
     assert runtime_settings().use_platform_ai is True  # the owner's own instance
@@ -196,7 +196,7 @@ def test_the_operators_own_ava_uses_the_server_key_as_its_own(owner_client, cred
     from decimal import Decimal
 
     from superaide.brain import platform_spend
-    from superaide.tenancy.context import use_instance
+    from superaide.platform.tenancy.context import use_instance
 
     monkeypatch.setattr(credits, "platform_ai_enabled", False)
     monkeypatch.setattr(credits, "anthropic_api_key", SERVER_KEY)

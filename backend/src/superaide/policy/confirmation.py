@@ -6,7 +6,7 @@ Moved out of `voice/gateway.py` so `policy.actions` can enforce it without impor
 
 from __future__ import annotations
 
-from superaide.db.models import Approval
+from superaide.platform.db.models import Approval
 
 # Owner decision (#125): only a tap inside the Superaide app is the second channel. A Telegram or Slack
 # tap is not enough, because a chat account is easier to take over than a signed-in session. Fail closed.

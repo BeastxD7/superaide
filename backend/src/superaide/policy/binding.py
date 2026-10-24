@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
-    from superaide.db.models import Approval
+    from superaide.platform.db.models import Approval
 
 
 def content_hash(*, to: Iterable[str], thread_id: str, subject: str, text: str) -> str:
@@ -52,7 +52,7 @@ def payload_hash(kind: str, payload: dict[str, Any]) -> str:
 def seal(approval: Approval) -> None:
     """Record what the owner is about to be shown: the hash of the payload and, when a lifetime is set, the
     moment the request stops being answerable. Call it once the payload is final, before the first flush."""
-    from superaide.config import get_settings
+    from superaide.platform.config import get_settings
 
     settings = get_settings()
     if settings.approval_binding != "off":
@@ -69,7 +69,7 @@ def waiting() -> Any:
     """SQL condition for "still waiting for the owner's yes": pending and not past its expiry."""
     from sqlalchemy import and_, func, or_
 
-    from superaide.db.models import Approval
+    from superaide.platform.db.models import Approval
 
     return and_(Approval.status == "pending", or_(Approval.expires_at.is_(None), Approval.expires_at > func.now()))
 
@@ -89,9 +89,9 @@ def report(session: Session) -> dict[str, Any]:
     """
     from sqlalchemy import func, select
 
-    from superaide.config import get_settings
-    from superaide.db.models import Approval as Row
-    from superaide.db.models import AuditLog
+    from superaide.platform.config import get_settings
+    from superaide.platform.db.models import Approval as Row
+    from superaide.platform.db.models import AuditLog
 
     kinds: dict[str, dict[str, int]] = {}
 

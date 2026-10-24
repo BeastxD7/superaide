@@ -28,7 +28,7 @@ from typing import Any, Literal, Protocol
 
 import httpx
 
-from superaide.config import Settings
+from superaide.platform.config import Settings
 
 log = logging.getLogger(__name__)
 
@@ -172,7 +172,7 @@ class VoyageEmbedder:
     def _spent_this_month(self, s: Any) -> Decimal:
         from sqlalchemy import func, select
 
-        from superaide.db.models import SpendEntry
+        from superaide.platform.db.models import SpendEntry
 
         since = datetime.now(UTC) - timedelta(days=30)
         total = s.scalar(
@@ -183,9 +183,9 @@ class VoyageEmbedder:
         return Decimal(total or 0)
 
     def embed(self, texts: list[str], *, kind: Kind) -> list[list[float]] | None:
-        from superaide.audit import audit
-        from superaide.db.models import SpendEntry
-        from superaide.db.session import session_scope
+        from superaide.platform.audit import audit
+        from superaide.platform.db.models import SpendEntry
+        from superaide.platform.db.session import session_scope
         from superaide.policy.killswitch import is_frozen
 
         if not self.api_key or not texts:

@@ -13,9 +13,9 @@ import pytest
 from superaide.channels import health, telegram
 from superaide.channels.health import DeliveryFailed
 from superaide.channels.telegram import TelegramMessenger, parse_update, poll_forever, verify_secret
-from superaide.db.models import ChannelIdentity, Context
-from superaide.db.session import session_scope
 from superaide.pipeline import parse_start_code
+from superaide.platform.db.models import ChannelIdentity, Context
+from superaide.platform.db.session import session_scope
 
 TOKEN = "123456789:" + "A" * 35
 

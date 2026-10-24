@@ -145,8 +145,8 @@ def test_the_model_is_told_what_a_placeholder_is_only_when_something_was_replace
 def test_a_proposal_carrying_a_placeholder_recipient_is_stored_with_the_real_address(owner_client):
     from sqlalchemy import select
 
-    from superaide.db.models import Approval
-    from superaide.db.session import session_scope
+    from superaide.platform.db.models import Approval
+    from superaide.platform.db.session import session_scope
     from tests.pipeline.test_loop import Script, tool_use, turn_for
 
     text = "email test@superaide.com that I am unwell"

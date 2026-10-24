@@ -6,8 +6,8 @@ import logging
 
 import pytest
 
-from superaide.config import Settings
-from superaide.security import deploy
+from superaide.platform.config import Settings
+from superaide.platform.security import deploy
 
 
 def settings(**kw) -> Settings:

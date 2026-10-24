@@ -5,9 +5,9 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from superaide.config import get_settings
 from superaide.main import create_app
-from superaide.security import dbcheck
+from superaide.platform.config import get_settings
+from superaide.platform.security import dbcheck
 
 
 def fake(monkeypatch, *, applied, heads):

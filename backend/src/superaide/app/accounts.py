@@ -15,9 +15,10 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
 from superaide.channels.base import InboundMessage
-from superaide.db.models import (
+from superaide.identity.trust import Trust
+from superaide.platform.audit import audit
+from superaide.platform.db.models import (
     AgentHire,
     ChannelIdentity,
     ChannelInvite,
@@ -25,7 +26,6 @@ from superaide.db.models import (
     Person,
     UserAccount,
 )
-from superaide.identity.trust import Trust
 
 INVITE_TTL_MINUTES = 15
 NOTICE_VERSION = "2026-10-21"
@@ -60,7 +60,7 @@ def active_hire(session: Session, agent_slug: str = "ava") -> AgentHire | None:
 
 def owner_account(session: Session, agent_slug: str = "ava") -> UserAccount | None:
     """The account that hired the agent instance in scope (ADR 0009), if anyone has."""
-    from superaide.tenancy.service import instance_owner
+    from superaide.platform.tenancy.service import instance_owner
 
     found = instance_owner(session)
     return found[0] if found else None
@@ -68,7 +68,7 @@ def owner_account(session: Session, agent_slug: str = "ava") -> UserAccount | No
 
 def owner(session: Session, agent_slug: str = "ava") -> Person | None:
     """The Person who hired the agent instance in scope, if anyone has: its owner, as seen inside it."""
-    from superaide.tenancy.service import instance_owner
+    from superaide.platform.tenancy.service import instance_owner
 
     found = instance_owner(session)
     return found[1] if found else None
@@ -76,7 +76,7 @@ def owner(session: Session, agent_slug: str = "ava") -> Person | None:
 
 def anyone_hired(session: Session, agent_slug: str = "ava") -> bool:
     """Whether any account has hired this agent, on the whole server."""
-    from superaide.tenancy.models import AgentInstance
+    from superaide.platform.tenancy.models import AgentInstance
 
     return (
         session.scalar(
@@ -89,9 +89,9 @@ def anyone_hired(session: Session, agent_slug: str = "ava") -> bool:
 def hire(session: Session, user: UserAccount, agent_slug: str = "ava") -> Person:
     """Hire the agent for this account: its own instance (ADR 0009), with the account's Person
     inside it as the manager. Hiring again returns the same Person."""
-    from superaide.db.session import rescope
-    from superaide.tenancy.context import use_instance
-    from superaide.tenancy.service import AlreadyTaken, place_hire
+    from superaide.platform.db.session import rescope
+    from superaide.platform.tenancy.context import use_instance
+    from superaide.platform.tenancy.service import AlreadyTaken, place_hire
 
     try:
         scope = place_hire(session, user, agent_slug)
@@ -105,8 +105,8 @@ def hire(session: Session, user: UserAccount, agent_slug: str = "ava") -> Person
 
 
 def _hire_inside(session: Session, user: UserAccount, agent_slug: str) -> Person:
-    from superaide.tenancy.context import require_scope
-    from superaide.tenancy.service import join_as_owner
+    from superaide.platform.tenancy.context import require_scope
+    from superaide.platform.tenancy.service import join_as_owner
 
     existing = session.scalar(
         select(AgentHire).where(
@@ -155,7 +155,7 @@ def _hire_inside(session: Session, user: UserAccount, agent_slug: str) -> Person
 
 def instance_of(session: Session, user_id: uuid.UUID, agent_slug: str = "ava"):
     """(scope, person_id) of the account's hired instance of this agent, or None."""
-    from superaide.tenancy.service import membership, scope_of
+    from superaide.platform.tenancy.service import membership, scope_of
 
     found = membership(session, user_id, agent_slug)
     return (scope_of(found[0]), found[1].person_id) if found else None

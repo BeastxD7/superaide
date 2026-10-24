@@ -13,7 +13,7 @@ import unicodedata
 import pytest
 
 from superaide.brain.llm import FakeLLM, RoutedLLM, StepResult, SystemBlock
-from superaide.config import Settings, get_settings
+from superaide.platform.config import Settings, get_settings
 from superaide.privacy import airlock
 from tests.privacy.airlock_fixtures import CASES, OWNER, PLAIN_ONLY, Case
 
@@ -215,9 +215,9 @@ def test_known_people_come_from_the_database_and_the_owner_stays(monkeypatch, ag
     from fastapi.testclient import TestClient
 
     from superaide.app.accounts import owner
-    from superaide.db.session import session_scope
     from superaide.knowledge.store import add_contact
     from superaide.main import create_app
+    from superaide.platform.db.session import session_scope
 
     monkeypatch.setattr(get_settings(), "airlock_enabled", True)
     c = TestClient(create_app(agent), headers={"X-Requested-With": "superaide"})

@@ -11,9 +11,9 @@ import pytest
 from sqlalchemy import select
 
 from superaide.brain.embed import FakeEmbedder
-from superaide.config import get_settings
-from superaide.db.models import AuditLog, Person
-from superaide.db.session import session_scope
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import AuditLog, Person
+from superaide.platform.db.session import session_scope
 from superaide.policy.killswitch import set_state
 from superaide.triage import knn, knn_promotion
 from superaide.triage.models import TriageDecision

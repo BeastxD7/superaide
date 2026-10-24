@@ -26,9 +26,9 @@ from sqlalchemy.orm import Session, aliased
 
 from superaide.context import lexicon
 from superaide.context.audience import Audience, memory_filter
-from superaide.db.models import Context, Document, DocumentChunk, Event, MemoryItem
 from superaide.memory import importance
 from superaide.memory.echo import label as echo_label
+from superaide.platform.db.models import Context, Document, DocumentChunk, Event, MemoryItem
 
 LANG = "english"
 RRF_K = 60

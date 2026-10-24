@@ -5,11 +5,11 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
-from superaide.config import get_settings
-from superaide.db.models import UserAccount
-from superaide.db.session import session_scope
-from superaide.tenancy.context import all_instances, use_instance
-from superaide.tenancy.models import AgentInstance, InstanceMember
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import UserAccount
+from superaide.platform.db.session import session_scope
+from superaide.platform.tenancy.context import all_instances, use_instance
+from superaide.platform.tenancy.models import AgentInstance, InstanceMember
 from superaide.vault import store
 from tests.api_support import hire, signup
 
@@ -24,7 +24,7 @@ def overview(client) -> dict:
 
 
 def scope_of_owner():
-    from superaide.tenancy.context import InstanceScope
+    from superaide.platform.tenancy.context import InstanceScope
 
     with session_scope() as s:
         user = s.scalar(select(UserAccount))
@@ -82,7 +82,7 @@ def test_signing_in_is_not_an_identity_failure_and_the_finished_introduction_is_
     with all_instances(), session_scope() as s:
         from datetime import UTC, datetime
 
-        from superaide.db.models import Onboarding
+        from superaide.platform.db.models import Onboarding
 
         for o in s.scalars(select(Onboarding)):
             o.completed_at = datetime.now(UTC)

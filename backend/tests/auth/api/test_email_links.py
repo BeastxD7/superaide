@@ -13,9 +13,9 @@ from sqlalchemy import select, update
 
 from superaide import mail
 from superaide.auth.models import EmailToken
-from superaide.config import get_settings
-from superaide.db.models import OwnerPreference, UserAccount
-from superaide.db.session import session_scope
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import OwnerPreference, UserAccount
+from superaide.platform.db.session import session_scope
 from tests.api_support import OWNER, PASSWORD, hire, login, signup
 
 NEW_PASSWORD = "a brand new long passphrase"

@@ -11,14 +11,14 @@ import pytest
 from sqlalchemy import select
 
 from superaide.app.accounts import owner as hired_owner
-from superaide.config import get_settings
 from superaide.connectors import gmail as api
-from superaide.db.models import ChannelIdentity, Contact, Event, Job, Person
-from superaide.db.session import session_scope
 from superaide.identity.trust import Trust
 from superaide.jobs.queue import run_due
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import ChannelIdentity, Contact, Event, Job, Person
+from superaide.platform.db.session import session_scope
+from superaide.platform.tenancy.context import InstanceScope, use_instance
 from superaide.skills import gmail, gmail_inbox
-from superaide.tenancy.context import InstanceScope, use_instance
 from superaide.triage import digest as triage_digest
 from superaide.triage.models import TriageDecision
 from tests.connectors.gmail_fake import connect, gmail_fake_fixture, mail, owner_client_fixture  # noqa: F401  (fixtures)
@@ -164,7 +164,7 @@ def test_polling_is_per_instance_and_off_by_default(gmail_fake, monkeypatch):
     with use_instance(b), session_scope() as s:
         gmail_inbox.ensure_scheduled(s)  # b never connected Gmail
     with session_scope() as s:
-        from superaide.tenancy.context import all_instances
+        from superaide.platform.tenancy.context import all_instances
 
         with all_instances():
             jobs = list(s.scalars(select(Job).where(Job.kind == "gmail_poll")))

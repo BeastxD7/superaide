@@ -28,9 +28,9 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from superaide.config import get_settings
+from superaide.platform.config import get_settings
+from superaide.platform.tenancy.context import InstanceScope, scope_or_default
 from superaide.policy.killswitch import get_state, set_state
-from superaide.tenancy.context import InstanceScope, scope_or_default
 from superaide.vault.crypto import master_key
 
 STATE_KEY = "principal_card"

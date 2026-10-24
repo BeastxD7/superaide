@@ -223,7 +223,7 @@ def build_graph(root: Path = ROOT) -> Graph:
     for fid, p in files.items():
         tree = ast.parse((root / p).read_text(), filename=p)
         found = _imports(tree, fid, p.endswith("__init__.py"), known)
-        if fid == "db.models":
+        if fid in ("db.models", "platform.db.models"):
             # db/models.py imports every package's models.py only to register the tables on the metadata. That
             # is not a behavioural dependency (changing a models.py already runs everything, see [full]) and
             # it would tie the whole code base into one cycle.

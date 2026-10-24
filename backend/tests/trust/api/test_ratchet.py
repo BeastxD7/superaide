@@ -9,8 +9,8 @@ import pytest
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import DBAPIError
 
-from superaide.db.models import Person, UserAccount
-from superaide.db.session import session_scope
+from superaide.platform.db.models import Person, UserAccount
+from superaide.platform.db.session import session_scope
 from superaide.trust import ratchet
 from superaide.trust.models import Playbook
 

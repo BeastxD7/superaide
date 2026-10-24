@@ -8,10 +8,10 @@ import uuid
 from sqlalchemy import delete, select, update
 
 from superaide.context.audience import Audience, visible_memories
-from superaide.db.models import ChannelIdentity, Context, Event, MemoryItem, Person
-from superaide.db.session import session_scope
+from superaide.platform.db.models import ChannelIdentity, Context, Event, MemoryItem, Person
+from superaide.platform.db.session import session_scope
+from superaide.platform.tenancy.context import InstanceScope, all_instances, use_instance
 from superaide.policy.killswitch import get_state, set_state
-from superaide.tenancy.context import InstanceScope, all_instances, use_instance
 
 A = InstanceScope(tenant_id=uuid.uuid4(), agent_id=uuid.uuid4())
 B = InstanceScope(tenant_id=uuid.uuid4(), agent_id=uuid.uuid4())

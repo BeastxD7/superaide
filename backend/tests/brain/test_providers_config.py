@@ -14,10 +14,10 @@ from sqlalchemy import select
 from superaide.brain.llm import ClaudeLLM, ProviderLLM, RoutedLLM
 from superaide.brain.providers.base import CheckReport
 from superaide.brain.wiring import brain_status, build_llm
-from superaide.db.models import AuditLog, IntegrationSecret, LlmProvider, ModelRole
-from superaide.db.session import session_scope
 from superaide.main import create_app
-from superaide.security.urls import UnsafeURL, check_base_url
+from superaide.platform.db.models import AuditLog, IntegrationSecret, LlmProvider, ModelRole
+from superaide.platform.db.session import session_scope
+from superaide.platform.security.urls import UnsafeURL, check_base_url
 from superaide.vault.store import runtime_settings
 from tests.pipeline.test_loop import owner_client  # noqa: F401  (fixture)
 
@@ -181,7 +181,7 @@ def test_hosted_mode_refuses_every_internal_address_even_for_local_servers(url):
 
 def test_hosted_mode_refuses_a_local_server_in_the_app_and_never_prices_it_free(owner_client, service, monkeypatch):  # noqa: F811
     from superaide.brain.pricing import PriceRegistry, UnknownModelPrice
-    from superaide.config import get_settings
+    from superaide.platform.config import get_settings
 
     monkeypatch.setattr(get_settings(), "deploy_mode", "hosted")
     r = owner_client.post("/app/providers/ollama", json={"base_url": "http://localhost:11434/v1"})
@@ -194,7 +194,7 @@ BRAVE = "BSA-test-brave-key-0123456789"
 
 
 def test_web_search_key_is_tested_charged_stored_masked_and_removable(owner_client, monkeypatch):  # noqa: F811
-    from superaide.db.models import SpendEntry
+    from superaide.platform.db.models import SpendEntry
     from superaide.tools import web as webtools
 
     calls = []
@@ -249,7 +249,7 @@ def test_openrouter_models_are_priced_from_its_list_without_asking(owner_client,
 def test_several_endpoints_of_one_kind_each_have_their_own_key_price_and_role(owner_client, service, monkeypatch):  # noqa: F811
     import ipaddress
 
-    from superaide.security import urls
+    from superaide.platform.security import urls
 
     # custom = a server on this machine (free); custom-2 = a hosted endpoint (needs a price).
     monkeypatch.setattr(

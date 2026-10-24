@@ -20,13 +20,13 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
-from superaide.config import get_settings
 from superaide.context.audience import Audience
 from superaide.context.recall import recall_memories
 from superaide.features.memsocket.models import MemorySocketClient
 from superaide.identity.trust import Trust
-from superaide.tenancy.context import InstanceScope, scope_or_default
+from superaide.platform.audit import audit
+from superaide.platform.config import get_settings
+from superaide.platform.tenancy.context import InstanceScope, scope_or_default
 
 SCOPES = ("public", "owner")
 TOKEN_PREFIX = "sa_mem_"

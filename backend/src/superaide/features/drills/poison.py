@@ -19,8 +19,8 @@ from sqlalchemy.orm import Session
 
 from superaide.context.audience import Audience
 from superaide.context.recall import Source, recall_memories
-from superaide.db.models import MemoryItem, Person
 from superaide.knowledge.store import remember_fact
+from superaide.platform.db.models import MemoryItem, Person
 
 PREFIX = "HT"  # every honeytoken starts HT-<drill>-
 # channel -> the memory `source` a fact from it would carry today

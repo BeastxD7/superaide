@@ -5,9 +5,9 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from superaide.db import rls
-from superaide.db.models import Base, Person
-from superaide.db.session import session_scope
+from superaide.platform.db import rls
+from superaide.platform.db.models import Base, Person
+from superaide.platform.db.session import session_scope
 from superaide.triage.models import TriageSettings
 from superaide.triage.types import DEFAULTS, TriageOutput
 

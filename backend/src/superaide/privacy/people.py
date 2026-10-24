@@ -8,7 +8,7 @@ import logging
 
 from sqlalchemy import select
 
-from superaide.db.models import Person
+from superaide.platform.db.models import Person
 
 log = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ def known_people() -> tuple[list[str], list[str]]:
     """(names to redact, owner values to keep) for the instance in scope. Never raises: with no database, or
     no owner yet, the pattern-based redaction still runs and no name is listed."""
     from superaide.app.accounts import owner as hired_owner
-    from superaide.db.session import session_scope
+    from superaide.platform.db.session import session_scope
     from superaide.privacy.airlock import name_variants
 
     try:

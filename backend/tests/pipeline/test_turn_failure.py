@@ -6,9 +6,9 @@ import pytest
 from sqlalchemy import select
 
 from superaide.brain.llm import FakeLLM
-from superaide.db.models import Event
-from superaide.db.session import session_scope
 from superaide.pipeline import Agent
+from superaide.platform.db.models import Event
+from superaide.platform.db.session import session_scope
 from tests.conftest import MANAGER_TG, tg
 
 

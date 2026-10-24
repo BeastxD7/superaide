@@ -24,11 +24,11 @@ from sqlalchemy import select
 from superaide.auth import emails, service
 from superaide.auth import google as google_signin
 from superaide.auth.service import AuthError, Client
-from superaide.config import get_settings
-from superaide.db.models import AgentHire, Onboarding, UserAccount
-from superaide.db.session import session_scope
 from superaide.links import request_origin
 from superaide.mail import Mail, MailError, get_mailer
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import AgentHire, Onboarding, UserAccount
+from superaide.platform.db.session import session_scope
 
 log = logging.getLogger(__name__)
 

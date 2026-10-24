@@ -265,7 +265,7 @@ class OpenAICompatProvider:
             if not self.base_url:
                 raise RuntimeError(f"{preset.label} needs a base URL")
             headers = {"api-key": api_key} if preset.azure_key_header and api_key else None
-            from superaide.security.urls import safe_client
+            from superaide.platform.security.urls import safe_client
 
             client = openai.OpenAI(
                 api_key=api_key or "not-needed", base_url=self.base_url, max_retries=2, timeout=120,

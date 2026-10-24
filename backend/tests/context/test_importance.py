@@ -9,10 +9,10 @@ from sqlalchemy import select
 
 from superaide.context.audience import Audience
 from superaide.context.recall import recall_memories
-from superaide.db.models import MemoryItem, Person
-from superaide.db.session import session_scope
 from superaide.knowledge.store import remember_fact
 from superaide.memory import importance, recheck
+from superaide.platform.db.models import MemoryItem, Person
+from superaide.platform.db.session import session_scope
 from superaide.proactive import digest
 
 NOW = datetime(2026, 10, 23, 10, 0, tzinfo=UTC)

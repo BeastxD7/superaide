@@ -23,11 +23,11 @@ from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
 from superaide.brain import keyhealth
-from superaide.db.models import Job
-from superaide.db.session import session_scope
-from superaide.tenancy.context import InstanceScope, scope_or_default, use_instance
+from superaide.platform.audit import audit
+from superaide.platform.db.models import Job
+from superaide.platform.db.session import session_scope
+from superaide.platform.tenancy.context import InstanceScope, scope_or_default, use_instance
 
 log = logging.getLogger(__name__)
 

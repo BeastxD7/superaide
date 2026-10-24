@@ -26,8 +26,8 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
-from superaide.config import get_settings
+from superaide.platform.audit import audit
+from superaide.platform.config import get_settings
 from superaide.skills.manifest import Manifest, Skill
 from superaide.skills.models import SkillCounter, SkillDemotion, SkillScan
 
@@ -121,7 +121,7 @@ def record_scan(
         "skill_id": skill_id, "version": version, "scanner": scanner[:40], "verdict": finding.verdict,
         "reasons": list(finding.reasons), "scanned_at": now or datetime.now(UTC),
     }  # fmt: skip
-    from superaide.tenancy.context import scope_or_default
+    from superaide.platform.tenancy.context import scope_or_default
 
     scope = scope_or_default()
     stmt = insert(SkillScan).values(tenant_id=scope.tenant_id, agent_id=scope.agent_id, **values)
@@ -228,7 +228,7 @@ def host_of(url_or_host: str | None) -> str | None:
 def _bump(session: Session, skill_id: str, version: str, kind: str, key: str) -> None:
     if kind not in ALLOWED_KINDS:
         raise ValueError(f"{kind!r} is not in the telemetry allowlist")
-    from superaide.tenancy.context import scope_or_default
+    from superaide.platform.tenancy.context import scope_or_default
 
     scope = scope_or_default()
     stmt = insert(SkillCounter).values(

@@ -23,11 +23,11 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
 from superaide.brain.budget import AgentFrozen, BudgetExceeded
 from superaide.brain.llm import SystemBlock
-from superaide.db.models import Job, Person
 from superaide.jobs.queue import enqueue, handler
+from superaide.platform.audit import audit
+from superaide.platform.db.models import Job, Person
 from superaide.policy.killswitch import get_state, set_state
 
 log = logging.getLogger(__name__)

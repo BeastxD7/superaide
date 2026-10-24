@@ -6,8 +6,8 @@ import pytest
 from sqlalchemy import func, select
 
 from superaide.app import accounts
-from superaide.db.models import AgentHire, Onboarding, Person, UserAccount
-from superaide.db.session import session_scope
+from superaide.platform.db.models import AgentHire, Onboarding, Person, UserAccount
+from superaide.platform.db.session import session_scope
 from tests.api_support import OTHER, OWNER, hire, signup
 
 
@@ -57,7 +57,7 @@ def test_unknown_or_coming_soon_agents_cannot_be_hired(browser, agent):
 @pytest.fixture
 def single_owner(monkeypatch):
     """ALLOW_MANY_OWNERS=false: a self-hosted server for one person (ADR 0009)."""
-    from superaide.config import get_settings
+    from superaide.platform.config import get_settings
 
     monkeypatch.setattr(get_settings(), "allow_many_owners", False)
 

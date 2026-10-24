@@ -18,7 +18,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
+from superaide.platform.audit import audit
 from superaide.policy.killswitch import get_state, set_state
 from superaide.triage import knn
 

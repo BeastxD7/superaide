@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 from urllib.parse import urlsplit
 
-from superaide.config import Settings, get_settings
+from superaide.platform.config import Settings, get_settings
 
 log = logging.getLogger(__name__)
 

@@ -18,7 +18,6 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from superaide.audit import account_audit
 from superaide.auth.models import EmailToken
 from superaide.auth.passwords import hash_password, password_problem
 from superaide.auth.service import (
@@ -31,10 +30,11 @@ from superaide.auth.service import (
     revoke_all,
     token_hash,
 )
-from superaide.config import get_settings
-from superaide.db.models import UserAccount
-from superaide.db.session import rows_affected
 from superaide.mail import Mail
+from superaide.platform.audit import account_audit
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import UserAccount
+from superaide.platform.db.session import rows_affected
 
 VERIFY = "verify_email"
 RESET = "reset_password"

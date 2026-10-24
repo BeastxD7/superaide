@@ -8,9 +8,9 @@ import pytest
 from sqlalchemy import select
 
 from superaide.brain.budget import BudgetExceeded
-from superaide.db.models import Event, Person, UserAccount
-from superaide.db.session import session_scope
 from superaide.knowledge.store import remember_fact
+from superaide.platform.db.models import Event, Person, UserAccount
+from superaide.platform.db.session import session_scope
 from superaide.trust import replay
 
 BLUEBIRD = "Project Bluebird launches in March."

@@ -32,8 +32,8 @@ from superaide.brain.providers.types import (
     ToolResult,
     ToolSpec,
 )
-from superaide.db.models import AuditLog, SpendEntry
-from superaide.db.session import session_scope
+from superaide.platform.db.models import AuditLog, SpendEntry
+from superaide.platform.db.session import session_scope
 from tests.pipeline.test_loop import note, owner_client, turn_for  # noqa: F401  (owner_client is a fixture)
 
 PRICE = ModelPrice(Decimal("1"), Decimal("4"))  # US$ per million tokens

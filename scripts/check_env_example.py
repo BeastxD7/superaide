@@ -2,7 +2,7 @@
 """Fail when an environment variable the app reads is missing from its example file.
 
 Sources of truth (read with the standard library only, so this runs anywhere):
-  * backend/src/superaide/config.py  every `Settings` field is an environment variable (NAME = FIELD.upper(),
+  * backend/src/superaide/platform/config.py  every `Settings` field is an environment variable (NAME = FIELD.upper(),
     or its alias). Fields that are never read from the environment are listed in NOT_FROM_ENV below.
   * backend/src/superaide/**/*.py    literal os.environ.get("NAME") / os.getenv("NAME") reads.
   * frontend/src and next.config.ts  process.env.NAME reads (NODE_ENV is Next's own).
@@ -24,7 +24,7 @@ from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-CONFIG = ROOT / "backend/src/superaide/config.py"
+CONFIG = ROOT / "backend/src/superaide/platform/config.py"
 BACKEND_SRC = ROOT / "backend/src/superaide"
 BACKEND_EXAMPLE = ROOT / "backend/.env.example"
 FRONTEND_EXAMPLE = ROOT / "frontend/.env.example"

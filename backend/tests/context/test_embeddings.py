@@ -9,15 +9,15 @@ from sqlalchemy import func, select, text
 
 from superaide.brain import embed
 from superaide.brain.embed import FakeEmbedder, LocalEmbedder, NoEmbedder, VoyageEmbedder, get_embedder
-from superaide.config import Settings
 from superaide.context import vectors
 from superaide.context.audience import Audience
 from superaide.context.recall import recall
-from superaide.db.models import Job, MemoryItem, SpendEntry
-from superaide.db.session import get_engine, session_scope
 from superaide.jobs.handlers import load
 from superaide.jobs.queue import run_due
 from superaide.knowledge.store import remember_fact
+from superaide.platform.config import Settings
+from superaide.platform.db.models import Job, MemoryItem, SpendEntry
+from superaide.platform.db.session import get_engine, session_scope
 
 load()
 TOKYO = "Jordan flies to Tokyo on Friday."

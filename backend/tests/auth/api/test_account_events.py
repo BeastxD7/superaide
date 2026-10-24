@@ -11,10 +11,10 @@ import uuid
 
 from sqlalchemy import select, text
 
-from superaide.db.models import AccountAudit, AuditLog, Person, UserAccount
-from superaide.db.session import get_engine, session_scope
-from superaide.tenancy.models import AgentInstance, InstanceMember
-from superaide.tenancy.service import move_stray_account_data
+from superaide.platform.db.models import AccountAudit, AuditLog, Person, UserAccount
+from superaide.platform.db.session import get_engine, session_scope
+from superaide.platform.tenancy.models import AgentInstance, InstanceMember
+from superaide.platform.tenancy.service import move_stray_account_data
 from tests.api_support import OTHER, OWNER, PASSWORD, hire, signup
 
 NEW_PASSWORD = "another correct horse staple 2"

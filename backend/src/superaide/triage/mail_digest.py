@@ -12,7 +12,7 @@ import re
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.db.models import Event
+from superaide.platform.db.models import Event
 from superaide.triage.buckets import bucket
 from superaide.triage.models import TriageDecision
 

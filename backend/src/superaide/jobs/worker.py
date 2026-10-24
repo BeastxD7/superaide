@@ -14,12 +14,12 @@ log = logging.getLogger(__name__)
 def schedule_recurring() -> None:
     """Make sure each hired instance's recurring work (the daily digest, the meeting scan) is
     queued, inside that instance's scope. One instance failing never stops the others."""
-    from superaide.db.session import session_scope
     from superaide.intentions.service import auto_close_delivered
     from superaide.intentions.service import reconcile as reconcile_reminders
+    from superaide.platform.db.session import session_scope
+    from superaide.platform.tenancy.context import default_scope, use_instance
+    from superaide.platform.tenancy.service import active_scopes
     from superaide.proactive.digest import ensure_scheduled
-    from superaide.tenancy.context import default_scope, use_instance
-    from superaide.tenancy.service import active_scopes
 
     try:
         with session_scope() as s:
@@ -43,8 +43,8 @@ def schedule_recurring() -> None:
             log.exception("couldn't schedule the digest for instance %s", scope.agent_id)
         try:
             from superaide.app.accounts import owner as hired_owner
-            from superaide.config import get_settings
             from superaide.knowledge.erase import roll_off_third_party_messages
+            from superaide.platform.config import get_settings
 
             days = get_settings().third_party_message_retention_days
             if days > 0:  # off unless the operator sets it

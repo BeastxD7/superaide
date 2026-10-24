@@ -25,12 +25,12 @@ from sqlalchemy import select
 from superaide.brain.budget import BudgetGuard
 from superaide.brain.llm import ClaudeLLM, LLMResult
 from superaide.brain.turn import TurnOutput
-from superaide.config import Settings
-from superaide.db.models import MemoryItem
-from superaide.db.session import session_scope
 from superaide.knowledge.facts import FactList, extract_facts
 from superaide.main import create_app
 from superaide.pipeline import Agent
+from superaide.platform.config import Settings
+from superaide.platform.db.models import MemoryItem
+from superaide.platform.db.session import session_scope
 from tests.conftest import MANAGER_TG, tg
 
 ENV_FILE = Path(__file__).resolve().parents[2] / ".env"

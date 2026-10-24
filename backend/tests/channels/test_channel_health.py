@@ -17,10 +17,10 @@ from superaide.channels import health
 from superaide.channels.health import DeliveryFailed
 from superaide.channels.slack import SlackMessenger
 from superaide.channels.telegram import TelegramMessenger
-from superaide.db.models import AuditLog, ChannelIdentity, Event, Intention
-from superaide.db.session import session_scope
 from superaide.intentions import service as intentions
 from superaide.knowledge.store import preferences_for
+from superaide.platform.db.models import AuditLog, ChannelIdentity, Event, Intention
+from superaide.platform.db.session import session_scope
 from superaide.policy.killswitch import get_state, set_state
 from superaide.proactive import notify
 from superaide.proactive.notify import notify_owner
@@ -123,7 +123,7 @@ class SlackRejects:
 
 
 def test_slack_invalid_auth_marks_slack_auth_failed():
-    from superaide.db.models import Context
+    from superaide.platform.db.models import Context
 
     with pytest.raises(DeliveryFailed):
         SlackMessenger("xoxb-x", SlackRejects("token_revoked")).send_to_context(Context(external_id="C1"), "hi")
@@ -132,7 +132,7 @@ def test_slack_invalid_auth_marks_slack_auth_failed():
 
 
 def test_other_slack_errors_are_not_token_problems():
-    from superaide.db.models import Context
+    from superaide.platform.db.models import Context
 
     with pytest.raises(SlackRejects.Error):
         SlackMessenger("xoxb-x", SlackRejects("channel_not_found")).send_to_context(Context(external_id="C1"), "hi")
@@ -242,7 +242,7 @@ def test_a_default_reminder_says_it_will_arrive_in_the_app_only_while_telegram_i
 def test_health_is_kept_per_agent_instance(settings):
     with session_scope() as s:
         health.set_health(s, "telegram", health.AUTH_FAILED, "x")
-        from superaide.db.models import AgentState
+        from superaide.platform.db.models import AgentState
 
         row = s.get(AgentState, (settings.tenant_id, settings.agent_id, "channel_health:telegram"))
         assert row is not None and row.value["status"] == health.AUTH_FAILED

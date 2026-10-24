@@ -10,10 +10,10 @@ from sqlalchemy import delete, select, text
 
 from superaide.app import accounts
 from superaide.auth.service import Client, signup
-from superaide.config import DEFAULT_AGENT_ID, DEFAULT_TENANT_ID
-from superaide.db.models import Person, UserAccount
-from superaide.db.session import get_engine, session_scope
-from superaide.tenancy.context import (
+from superaide.platform.config import DEFAULT_AGENT_ID, DEFAULT_TENANT_ID
+from superaide.platform.db.models import Person, UserAccount
+from superaide.platform.db.session import get_engine, session_scope
+from superaide.platform.tenancy.context import (
     InstanceScope,
     NoScope,
     current_scope,
@@ -22,8 +22,8 @@ from superaide.tenancy.context import (
     scope_or_default,
     use_instance,
 )
-from superaide.tenancy.models import AgentInstance, InstanceMember, Tenant
-from superaide.tenancy.service import AmbiguousTenancy, backfill_default_instance, instances_of
+from superaide.platform.tenancy.models import AgentInstance, InstanceMember, Tenant
+from superaide.platform.tenancy.service import AmbiguousTenancy, backfill_default_instance, instances_of
 
 PASSWORD = "correct horse battery staple"
 
@@ -151,8 +151,8 @@ def test_concurrent_first_hires_do_not_race_on_the_default_tenant():
     This used to be check-then-insert, so each saw no row and all inserted: a unique violation
     for every request but one (seen in the end-to-end logs as duplicate key "tenant_pkey").
     """
-    from superaide.tenancy.context import default_scope
-    from superaide.tenancy.service import _create
+    from superaide.platform.tenancy.context import default_scope
+    from superaide.platform.tenancy.service import _create
 
     with session_scope() as s:
         user, _ = signup(s, email="race@example.com", password=PASSWORD, name="Race", client=Client())

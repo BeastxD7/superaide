@@ -49,7 +49,7 @@ paths = ["backend/alembic/**", "backend/pyproject.toml", "backend/src/superaide/
 
 [modules.config]
 core = true
-src = ["backend/src/superaide/config.py", "backend/src/superaide/__init__.py"]
+src = ["backend/src/superaide/platform/config.py", "backend/src/superaide/__init__.py"]
 tests = []
 e2e = []
 
@@ -99,7 +99,7 @@ e2e = ["e2e/tests/web-shell/smoke.spec.ts"]
 FILES = {
     "ci/modules.toml": MAP,
     "backend/src/superaide/__init__.py": "",
-    "backend/src/superaide/config.py": "",
+    "backend/src/superaide/platform/config.py": "",
     "backend/src/superaide/alpha/__init__.py": "",
     "backend/src/superaide/alpha/core.py": "VALUE = 1\n",
     "backend/src/superaide/beta/__init__.py": "",
@@ -109,7 +109,7 @@ FILES = {
     # imports beta lazily, inside a function: still a dependency
     "backend/src/superaide/gamma/api.py": "def f():\n    from superaide.beta import svc\n    return svc\n",
     "backend/src/superaide/loner/__init__.py": "",
-    "backend/src/superaide/loner/x.py": "from superaide.config import X\n",
+    "backend/src/superaide/loner/x.py": "from superaide.platform.config import X\n",
     "backend/src/superaide/nocode/__init__.py": "",
     "backend/tests/test_alpha.py": "from superaide.alpha.core import VALUE\n",
     "backend/tests/test_beta.py": "from tests.beta_helper import HELP\nfrom superaide.beta import svc\n",
@@ -185,7 +185,7 @@ def test_a_module_with_no_tests_still_runs_the_guards(idx) -> None:
 @pytest.mark.parametrize(
     "path",
     [
-        "backend/src/superaide/config.py",  # core module
+        "backend/src/superaide/platform/config.py",  # core module
         "backend/src/superaide/beta/models.py",  # [full]: every models.py
         "backend/alembic/versions/0100_x.py",  # [full]
         "backend/pyproject.toml",
@@ -374,7 +374,7 @@ def test_the_import_graph_sees_the_edges_we_know_about(real) -> None:
     assert "features.mirror.service" in g.imports["app.mirror"]  # a plain absolute import
     assert "app.routes" in g.imports["triage.routes"] or g.imports["triage.routes"]  # the graph is not empty
     # db/models.py registers every package's models; those are not behavioural edges
-    assert not [t for t in g.imports["db.models"] if t.endswith(".models")]
+    assert not [t for t in g.imports["platform.db.models"] if t.endswith(".models")]
     # every edge points at a real file
     assert all(t in g.files for ts in g.imports.values() for t in ts)
 

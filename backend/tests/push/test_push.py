@@ -21,15 +21,15 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 
-from superaide.config import get_settings
-from superaide.db import rls
-from superaide.db.models import AuditLog, Base, IntegrationSecret, Person
-from superaide.db.session import session_scope
 from superaide.features.push import payload, send, subscriptions, vapid
 from superaide.features.push.models import PushSend, PushSubscription
 from superaide.main import create_app
-from superaide.tenancy.context import InstanceScope, use_instance
-from superaide.tenancy.models import PlatformState
+from superaide.platform.config import get_settings
+from superaide.platform.db import rls
+from superaide.platform.db.models import AuditLog, Base, IntegrationSecret, Person
+from superaide.platform.db.session import session_scope
+from superaide.platform.tenancy.context import InstanceScope, use_instance
+from superaide.platform.tenancy.models import PlatformState
 from superaide.vault import crypto
 from superaide.vault.crypto import VaultError
 
@@ -284,7 +284,7 @@ def test_another_account_saving_the_same_browser_takes_it_over_with_fresh_settin
     with session_scope() as s:
         row = s.get(PushSubscription, uuid.UUID(device_id))
         assert row is not None
-        from superaide.db.models import UserAccount
+        from superaide.platform.db.models import UserAccount
 
         newcomer = Person(display_name="Someone", relation="manager")
         s.add(newcomer)
@@ -393,7 +393,7 @@ def _subscribe(*devices: Device, level: str = "none") -> list[PushSubscription]:
         owner = Person(display_name="Jordan", relation="manager")
         s.add(owner)
         s.flush()
-        from superaide.db.models import UserAccount
+        from superaide.platform.db.models import UserAccount
 
         user = UserAccount(email="o@example.com", email_normalized="o@example.com", password_hash="x",
                            display_name="Jordan", person_id=owner.id)  # fmt: skip

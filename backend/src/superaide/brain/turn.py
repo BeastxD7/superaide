@@ -11,8 +11,8 @@ from pydantic import BaseModel, ConfigDict, field_validator
 
 from superaide.brain.llm import SystemBlock
 from superaide.context.audience import Audience
-from superaide.db.models import Event, MemoryItem
 from superaide.identity.resolver import Sender
+from superaide.platform.db.models import Event, MemoryItem
 
 CHARTER_PATH = Path(__file__).with_name("charter.md")
 

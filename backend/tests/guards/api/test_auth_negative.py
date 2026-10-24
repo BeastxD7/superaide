@@ -9,9 +9,9 @@ import pytest
 from sqlalchemy import func, select, update
 
 from superaide.auth import service
-from superaide.config import get_settings
-from superaide.db.models import AuthEvent, Person, UserAccount, UserSession
-from superaide.db.session import session_scope
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import AuthEvent, Person, UserAccount, UserSession
+from superaide.platform.db.session import session_scope
 from tests.api_support import OTHER, OWNER, PASSWORD, app_routes, fill_path, login, signup
 
 GENERIC_LOGIN_ERROR = "That email and password don't match."

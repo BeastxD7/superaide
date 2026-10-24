@@ -13,8 +13,8 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
-from superaide.db.models import Approval
 from superaide.identity.trust import Trust
+from superaide.platform.db.models import Approval
 
 
 @dataclass(frozen=True)

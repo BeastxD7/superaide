@@ -30,11 +30,11 @@ from pywebpush import WebPusher
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
-from superaide.config import get_settings
 from superaide.features.push import payload, vapid
 from superaide.features.push.models import PushSend, PushSubscription
 from superaide.features.push.subscriptions import open_secret
+from superaide.platform.audit import audit
+from superaide.platform.config import get_settings
 
 log = logging.getLogger(__name__)
 VAPID_EXPIRY_S = 12 * 60 * 60

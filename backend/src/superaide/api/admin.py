@@ -30,11 +30,12 @@ from sqlalchemy import func, select, text
 from sqlalchemy.orm import aliased
 
 from superaide.app.accounts import owner as hired_owner
-from superaide.audit import audit
 from superaide.brain.budget import BudgetGuard
 from superaide.brain.wiring import brain_ready
-from superaide.config import get_settings
-from superaide.db.models import (
+from superaide.identity.linking import operator_link, unlink
+from superaide.platform.audit import audit
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import (
     Approval,
     AuditLog,
     ChannelIdentity,
@@ -46,9 +47,8 @@ from superaide.db.models import (
     Person,
     SpendEntry,
 )
-from superaide.db.session import session_scope
-from superaide.identity.linking import operator_link, unlink
-from superaide.pagination import (
+from superaide.platform.db.session import session_scope
+from superaide.platform.pagination import (
     Page,
     SortKey,
     bind_for,
@@ -57,11 +57,11 @@ from superaide.pagination import (
     paginate,
     set_next_headers,
 )
+from superaide.platform.tenancy.context import InstanceScope, default_scope, use_instance
+from superaide.platform.tenancy.models import AgentInstance, ChannelEndpoint, Tenant
+from superaide.platform.tenancy.service import active_scopes
 from superaide.policy import binding
 from superaide.policy.killswitch import instance_frozen, is_frozen, set_frozen, set_platform_frozen
-from superaide.tenancy.context import InstanceScope, default_scope, use_instance
-from superaide.tenancy.models import AgentInstance, ChannelEndpoint, Tenant
-from superaide.tenancy.service import active_scopes
 
 admin_bearer = HTTPBearer(scheme_name="Admin token", description="`ADMIN_TOKEN` from `.env`.", auto_error=False)
 
@@ -167,7 +167,7 @@ def _live_memories() -> Any:
 def _runtime_live() -> dict[str, bool]:
     """What is connected on this server, as the app sees it: the server's .env plus the credentials each hired Ava
     saved in the app (the vault), not .env alone (issues #277, #278). Metadata only."""
-    from superaide.tenancy.service import active_scopes
+    from superaide.platform.tenancy.service import active_scopes
     from superaide.vault.store import runtime_settings
 
     env = get_settings()

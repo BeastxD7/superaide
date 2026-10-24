@@ -12,11 +12,11 @@ import json
 import pytest
 from sqlalchemy import select
 
-from superaide.config import get_settings
-from superaide.db.models import AuditLog, UserAccount
-from superaide.db.session import session_scope
-from superaide.tenancy.context import all_instances
-from superaide.tenancy.models import InstanceMember
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import AuditLog, UserAccount
+from superaide.platform.db.session import session_scope
+from superaide.platform.tenancy.context import all_instances
+from superaide.platform.tenancy.models import InstanceMember
 from tests.api_support import OTHER, OWNER, hire, signup
 
 ADMIN = {"Authorization": "Bearer test-admin-token"}

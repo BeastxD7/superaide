@@ -27,7 +27,7 @@ from sqlalchemy.orm import Session
 
 from superaide.brain.providers.types import SystemBlock
 from superaide.context.audience import Audience, memory_filter
-from superaide.db.models import MemoryItem, OwnerPreference, Person
+from superaide.platform.db.models import MemoryItem, OwnerPreference, Person
 from superaide.reception.models import ReceptionSettings
 
 PERSONA = Path(__file__).resolve().parents[1] / "brain" / "receptionist.md"

@@ -11,9 +11,9 @@ from pathlib import Path
 import pytest
 from sqlalchemy import select
 
-from superaide.db.models import MemoryItem
-from superaide.db.session import session_scope
 from superaide.features.imports import lobster
+from superaide.platform.db.models import MemoryItem
+from superaide.platform.db.session import session_scope
 
 LEASES = "/app/import-leases"
 # Built at run time so no secret-shaped string sits in the repository.

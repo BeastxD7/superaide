@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from superaide.config import Settings
+from superaide.platform.config import Settings
 
 
 def catalog(settings: Settings) -> list[dict[str, Any]]:

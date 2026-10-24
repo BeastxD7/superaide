@@ -16,9 +16,9 @@ from sqlalchemy.orm import Session
 
 from superaide.app.accounts import owner as hired_by
 from superaide.context.audience import Audience, memory_filter
-from superaide.db.models import Contact, MemoryItem, OwnerPreference, Person
 from superaide.identity.resolver import Sender
 from superaide.knowledge.store import contacts_of
+from superaide.platform.db.models import Contact, MemoryItem, OwnerPreference, Person
 
 SHARE_LABELS = {
     "availability": "whether they're free or busy (no details)",

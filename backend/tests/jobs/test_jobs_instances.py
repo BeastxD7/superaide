@@ -9,13 +9,13 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select, text
 
-from superaide.config import get_settings
-from superaide.db.models import AuditLog, Job
-from superaide.db.session import get_engine, session_scope
 from superaide.jobs import queue
 from superaide.jobs.worker import schedule_recurring
 from superaide.main import create_app
-from superaide.tenancy.context import InstanceScope, current_scope, use_instance
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import AuditLog, Job
+from superaide.platform.db.session import get_engine, session_scope
+from superaide.platform.tenancy.context import InstanceScope, current_scope, use_instance
 
 A = InstanceScope(tenant_id=uuid.uuid4(), agent_id=uuid.uuid4())
 B = InstanceScope(tenant_id=uuid.uuid4(), agent_id=uuid.uuid4())
@@ -34,7 +34,7 @@ def seen() -> list[InstanceScope | None]:
 
     def probe(session, job: Job) -> None:
         log.append(current_scope())
-        from superaide.audit import audit
+        from superaide.platform.audit import audit
 
         audit(session, "test", "probe_ran", job_id=job.id)
 
@@ -102,7 +102,7 @@ def test_the_app_role_claims_every_instances_jobs_only_through_the_function():
     with get_engine().connect() as conn:
         tx = conn.begin()
         try:
-            from superaide.db import rls
+            from superaide.platform.db import rls
 
             rls.enable(conn)
             role = f"jobs_probe_{uuid.uuid4().hex[:8]}"

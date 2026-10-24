@@ -23,9 +23,9 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
-from superaide.config import get_settings
-from superaide.db.models import SkillRelease, SkillTombstone
+from superaide.platform.audit import audit
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import SkillRelease, SkillTombstone
 from superaide.skills.manifest import Effect
 
 # Weakest first. A release's effect class is the strongest one it can use.

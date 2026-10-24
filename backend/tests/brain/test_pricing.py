@@ -21,8 +21,8 @@ from superaide.brain.pricing import (
     set_owner_price,
     worst_case_cost,
 )
-from superaide.db.models import AuditLog, SpendEntry
-from superaide.db.session import session_scope
+from superaide.platform.db.models import AuditLog, SpendEntry
+from superaide.platform.db.session import session_scope
 
 
 def test_claude_prices_are_built_in_and_anything_else_is_refused():

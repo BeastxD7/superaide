@@ -28,8 +28,8 @@ from superaide.brain.providers.types import (
     sources_in,
     tainted,
 )
-from superaide.db.models import SpendEntry
-from superaide.db.session import session_scope
+from superaide.platform.db.models import SpendEntry
+from superaide.platform.db.session import session_scope
 
 
 def test_the_legacy_system_block_is_the_neutral_one():

@@ -18,9 +18,9 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
-from superaide.config import get_settings
-from superaide.db.models import Person
+from superaide.platform.audit import audit
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import Person
 from superaide.policy.registry import CREATION_RULES
 
 # Kinds whose text goes to or about someone else.

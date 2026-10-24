@@ -26,12 +26,12 @@ from superaide.app.deps import owner_person_id
 from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header
 from superaide.connectors import gmail as api
 from superaide.connectors import google
-from superaide.db.models import ChannelIdentity, Contact, InstalledSkill
-from superaide.db.session import session_scope
 from superaide.identity.trust import Trust
+from superaide.platform.db.models import ChannelIdentity, Contact, InstalledSkill
+from superaide.platform.db.session import session_scope
+from superaide.platform.tenancy.context import scope_or_default
+from superaide.platform.tenancy.models import PlatformState
 from superaide.skills import gmail
-from superaide.tenancy.context import scope_or_default
-from superaide.tenancy.models import PlatformState
 from superaide.vault import store
 from superaide.vault.store import runtime_settings
 
@@ -169,7 +169,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             assert row is not None
             row.settings = {**(row.settings or {}), "drafts": body.enabled}
             granted = gmail.granted(s)
-            from superaide.audit import audit
+            from superaide.platform.audit import audit
 
             audit(s, "skills", "gmail_drafts", enabled=body.enabled)
         url = None
@@ -208,7 +208,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             found.person_id, found.trust_level, found.lifecycle = body.person_id, int(Trust.LINKED), "active"
             found.verification = {"method": "owner_entered", "at": datetime.now(UTC).isoformat()}
             s.flush()
-            from superaide.audit import audit
+            from superaide.platform.audit import audit
 
             audit(s, "skills", "email_address_linked", person_id=body.person_id, identity_id=found.id)
             return {"person_id": str(body.person_id), "email": email}

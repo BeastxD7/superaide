@@ -7,8 +7,8 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy import func, select
 
-from superaide.db.models import Approval
-from superaide.db.session import session_scope
+from superaide.platform.db.models import Approval
+from superaide.platform.db.session import session_scope
 from superaide.trust import twin
 
 

@@ -14,11 +14,11 @@ from typing import Any
 from sqlalchemy import Float, and_, func, literal, select, update
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
-from superaide.db.models import Contact, Document, MemoryItem, OwnerPreference, Person, UserAccount
-from superaide.db.session import rows_affected
 from superaide.knowledge import trust
 from superaide.memory import importance as weigh
+from superaide.platform.audit import audit
+from superaide.platform.db.models import Contact, Document, MemoryItem, OwnerPreference, Person, UserAccount
+from superaide.platform.db.session import rows_affected
 
 CATEGORIES = ("about", "work", "person", "preference", "urgency", "availability", "sharing", "other")
 SOURCES = (
@@ -98,8 +98,8 @@ def remember_fact(
     """Store one fact about the owner. Returns None if the same fact is already known (with the Echo Filter
     on, a repeat from a *different* root origin is still noted on the known fact). Its trust rank comes from its
     source unless given; a link fact outside about/work is held for review."""
-    from superaide.config import get_settings
     from superaide.memory import echo
+    from superaide.platform.config import get_settings
 
     hearsay = get_settings().echo_filter_enabled and source in echo.HEARSAY_SOURCES
     content = " ".join(content.split())[:2000]

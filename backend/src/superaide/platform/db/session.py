@@ -10,9 +10,9 @@ from typing import Any, cast
 from sqlalchemy import Connection, CursorResult, Engine, Result, create_engine, event, text
 from sqlalchemy.orm import ORMExecuteState, Session, SessionTransaction, sessionmaker, with_loader_criteria
 
-from superaide.config import get_settings
-from superaide.db.rls import set_scope_sql
-from superaide.tenancy.context import across_instances, current_scope, scope_or_default
+from superaide.platform.config import get_settings
+from superaide.platform.db.rls import set_scope_sql
+from superaide.platform.tenancy.context import across_instances, current_scope, scope_or_default
 
 # Every connection speaks UTC, so a timestamp read back and compared as text matches the one written,
 # whatever time zone the database server is set to (a deferred escalation compared isoformat strings).
@@ -57,8 +57,8 @@ def _scope_transaction(session: Session, transaction: SessionTransaction, connec
 def _per_instance_classes() -> list[type]:
     """Every mapped class whose rows belong to one agent instance (it has agent_id), except the
     routing tables read before an instance is known (db/rls.py EXEMPT)."""
-    from superaide.db.models import Base
-    from superaide.db.rls import EXEMPT
+    from superaide.platform.db.models import Base
+    from superaide.platform.db.rls import EXEMPT
 
     return [
         m.class_

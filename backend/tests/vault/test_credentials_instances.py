@@ -17,13 +17,13 @@ from sqlalchemy import select, text
 
 from superaide.app import connections
 from superaide.brain.wiring import brain_status
-from superaide.config import get_settings
-from superaide.db.models import IntegrationSecret
-from superaide.db.session import session_scope
 from superaide.main import create_app
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import IntegrationSecret
+from superaide.platform.db.session import session_scope
+from superaide.platform.tenancy.context import InstanceScope, use_instance
+from superaide.platform.tenancy.models import AgentInstance, InstanceMember
 from superaide.policy.killswitch import is_frozen, set_frozen, set_platform_frozen
-from superaide.tenancy.context import InstanceScope, use_instance
-from superaide.tenancy.models import AgentInstance, InstanceMember
 from superaide.vault import crypto, store
 from superaide.vault.crypto import VaultError
 

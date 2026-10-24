@@ -29,7 +29,7 @@ from superaide.channels.base import (
     Sources,
     bot_id,
 )
-from superaide.db.models import ChannelIdentity, Context
+from superaide.platform.db.models import ChannelIdentity, Context
 
 log = logging.getLogger(__name__)
 SECRET_HEADER = "X-Telegram-Bot-Api-Secret-Token"

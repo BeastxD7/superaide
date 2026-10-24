@@ -8,11 +8,11 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from superaide.app.accounts import owner
-from superaide.db.models import ChannelIdentity, Person
-from superaide.db.session import session_scope
 from superaide.identity.trust import Trust
 from superaide.knowledge.store import add_contact, preferences_for
 from superaide.main import create_app
+from superaide.platform.db.models import ChannelIdentity, Person
+from superaide.platform.db.session import session_scope
 from tests.conftest import sl, tg
 
 CLOCK = re.compile(r"It's [A-Z][a-z]{2} \d\d:\d\d")  # "It's Sat 03:10 for ..."
@@ -73,7 +73,7 @@ def test_a_vip_contact_is_recognised_as_urgent(agent, model):
 
 
 def _fact(s, person, content, category="preference", allowed=None, valid_to=None):
-    from superaide.db.models import MemoryItem
+    from superaide.platform.db.models import MemoryItem
 
     s.add(
         MemoryItem(

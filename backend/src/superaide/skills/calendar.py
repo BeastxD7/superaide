@@ -8,12 +8,12 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
 from superaide.connectors import google
 from superaide.contracts.events import CalendarEventsRead, bus
-from superaide.db.models import Person
 from superaide.intentions.service import owner_zone
 from superaide.intentions.when import find_moment, zone
+from superaide.platform.audit import audit
+from superaide.platform.db.models import Person
 from superaide.policy.actions import EXECUTORS, TOOL_RULES, decide
 from superaide.skills.registry import active
 from superaide.vault.store import runtime_settings

@@ -19,9 +19,9 @@ from urllib.parse import parse_qsl, urlencode, urlsplit
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
-from superaide.db.models import MemoryItem
-from superaide.db.session import rows_affected
+from superaide.platform.audit import audit
+from superaide.platform.db.models import MemoryItem
+from superaide.platform.db.session import rows_affected
 
 HEARSAY_SOURCES = frozenset({"link", "telegram", "slack", "gmail"})
 PROMOTE_AT = 2  # independent roots needed

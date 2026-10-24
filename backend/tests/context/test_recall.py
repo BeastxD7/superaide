@@ -7,8 +7,8 @@ import pytest
 from superaide.context import lexicon
 from superaide.context.audience import Audience
 from superaide.context.recall import pre_recall, recall
-from superaide.db.models import Context, Event, MemoryItem
-from superaide.db.session import session_scope
+from superaide.platform.db.models import Context, Event, MemoryItem
+from superaide.platform.db.session import session_scope
 
 
 @pytest.fixture

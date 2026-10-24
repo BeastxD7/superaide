@@ -19,11 +19,11 @@ from email_validator import EmailNotValidError, validate_email
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from superaide.audit import account_audit
 from superaide.auth.passwords import hash_password, password_problem, verify_password
-from superaide.config import get_settings
-from superaide.db.models import AuthEvent, UserAccount, UserSession
-from superaide.db.session import rows_affected
+from superaide.platform.audit import account_audit
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import AuthEvent, UserAccount, UserSession
+from superaide.platform.db.session import rows_affected
 
 # Only refresh last_used_at/expiry this often, so reads don't write on every request.
 TOUCH_EVERY = timedelta(minutes=5)

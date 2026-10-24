@@ -18,11 +18,11 @@ from superaide import cli
 from superaide.auth.service import AuthError, Client, login, signup, user_for_token
 from superaide.brain.llm import LLMResult
 from superaide.brain.pricing import UsageCounts
-from superaide.config import Settings, get_settings
-from superaide.db.models import AuditLog, Base, ChannelIdentity, IdentityLinkEvent, Person, SpendEntry
-from superaide.db.session import get_engine, session_scope
 from superaide.identity.trust import Trust
 from superaide.pipeline import Agent
+from superaide.platform.config import Settings, get_settings
+from superaide.platform.db.models import AuditLog, Base, ChannelIdentity, IdentityLinkEvent, Person, SpendEntry
+from superaide.platform.db.session import get_engine, session_scope
 from superaide.policy.killswitch import is_frozen
 from tests.conftest import MANAGER_TG, OUR_TEAM
 
@@ -498,7 +498,7 @@ def test_a_command_is_required(monkeypatch):
 
 
 def _live_settings(monkeypatch, tmp_path, name: str = "agent") -> None:
-    from superaide.db import safety
+    from superaide.platform.db import safety
 
     env = tmp_path / ".env"
     env.write_text(f"DATABASE_URL=postgresql+psycopg://agent:agent@localhost:5432/{name}\n")
@@ -506,7 +506,9 @@ def _live_settings(monkeypatch, tmp_path, name: str = "agent") -> None:
     use_settings(
         monkeypatch, database_url=f"postgresql+psycopg://agent:agent@127.0.0.1:5432/{name}", migration_database_url=""
     )
-    monkeypatch.setattr("superaide.db.session.get_engine", lambda *a, **k: pytest.fail("opened the live database"))
+    monkeypatch.setattr(
+        "superaide.platform.db.session.get_engine", lambda *a, **k: pytest.fail("opened the live database")
+    )
 
 
 def test_reset_db_refuses_the_live_database_even_with_yes(monkeypatch, tmp_path):

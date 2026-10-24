@@ -28,11 +28,11 @@ from typing import Any
 from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
 from superaide.contracts.events import CalendarEventsRead, MailIngested, SkillRemoved, bus
-from superaide.db.models import Event, Job, MemoryItem, Person
 from superaide.jobs.queue import enqueue, handler
 from superaide.knowledge.store import remember_fact
+from superaide.platform.audit import audit
+from superaide.platform.db.models import Event, Job, MemoryItem, Person
 
 log = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ MAX_PER_CALL = 10  # calendar events looked at per read
 
 
 def enabled() -> bool:
-    from superaide.config import get_settings
+    from superaide.platform.config import get_settings
 
     return bool(get_settings().connector_facts_enabled)
 
@@ -61,7 +61,7 @@ def facts_today(session: Session) -> int:
 
 
 def room_today(session: Session) -> int:
-    from superaide.config import get_settings
+    from superaide.platform.config import get_settings
 
     return max(0, get_settings().connector_facts_per_day - facts_today(session))
 

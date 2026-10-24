@@ -16,8 +16,8 @@ from statistics import median
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
-from superaide.db.models import Approval
+from superaide.platform.audit import audit
+from superaide.platform.db.models import Approval
 
 WINDOW = 20  # the most recent decided approvals that count
 MIN_DECISIONS = 8  # fewer than this and there is nothing to judge

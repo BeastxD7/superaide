@@ -11,13 +11,13 @@ from sqlalchemy import func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
 from superaide.channels.base import InboundMessage
 from superaide.context.audience import Audience
-from superaide.db.models import Context, Event, MemoryItem
 from superaide.identity.resolver import Sender
 from superaide.knowledge import trust
 from superaide.knowledge.store import channel_source
+from superaide.platform.audit import audit
+from superaide.platform.db.models import Context, Event, MemoryItem
 
 REMEMBER_RE = re.compile(r"^\s*remember(?:\s+that)?[:,]?\s+(.+)$", re.IGNORECASE | re.DOTALL)
 

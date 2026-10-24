@@ -16,7 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.brain.llm import SystemBlock
-from superaide.db.models import Event, MemoryItem
+from superaide.platform.db.models import Event, MemoryItem
 from superaide.triage.models import TriageDecision
 from superaide.triage.types import TriageOutput
 

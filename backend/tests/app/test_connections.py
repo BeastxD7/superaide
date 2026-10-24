@@ -14,9 +14,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from superaide.app import connections
-from superaide.db.models import AuditLog, IntegrationSecret
-from superaide.db.session import session_scope
 from superaide.main import create_app
+from superaide.platform.db.models import AuditLog, IntegrationSecret
+from superaide.platform.db.session import session_scope
 from superaide.vault import crypto
 from superaide.vault.store import runtime_settings
 
@@ -269,7 +269,7 @@ def test_only_the_owner_can_set_up_google(owner):
 def test_the_deployments_google_client_serves_every_owners_calendar_even_when_hosted(owner, monkeypatch):
     """One OAuth client for sign-in and Calendar: set in .env, an owner connects without pasting one.
     The refresh token is still each owner's own, and a hosted server never uses one from .env."""
-    from superaide.config import get_settings
+    from superaide.platform.config import get_settings
 
     settings = get_settings()
     monkeypatch.setattr(settings, "deploy_mode", "hosted")
@@ -294,7 +294,7 @@ HOME = "http://localhost:3000"
 
 
 def public_setup(owner, monkeypatch, *, registered: bool = True) -> None:
-    from superaide.config import get_settings
+    from superaide.platform.config import get_settings
 
     settings = get_settings()
     monkeypatch.setattr(settings, "link_origins", PUBLIC)  # an address we serve (links.py)
@@ -347,7 +347,7 @@ def test_an_allowed_address_that_google_does_not_know_gets_a_message_not_a_faile
     assert f"open the app at {HOME}" in detail
     assert "google_pending" not in str(owner.get("/app/connections").json())  # nothing was started
     with session_scope() as s:
-        from superaide.tenancy.models import PlatformState
+        from superaide.platform.tenancy.models import PlatformState
 
         assert s.scalars(select(PlatformState).where(PlatformState.key.like("google_pending:%"))).all() == []
 
@@ -363,7 +363,7 @@ def test_an_allowed_address_that_google_does_not_know_gets_a_message_not_a_faile
 )
 def test_a_spoofed_origin_is_never_reflected(owner, monkeypatch, headers):
     public_setup(owner, monkeypatch)
-    from superaide.config import get_settings
+    from superaide.platform.config import get_settings
 
     monkeypatch.setattr(get_settings(), "google_redirect_origins", f"{PUBLIC},https://evil.example")  # even if listed
     r = start_on(owner, headers)
@@ -375,7 +375,7 @@ def test_a_spoofed_origin_is_never_reflected(owner, monkeypatch, headers):
 
 
 def test_the_stored_address_is_checked_again_at_the_callback(owner, monkeypatch):
-    from superaide.tenancy.models import PlatformState
+    from superaide.platform.tenancy.models import PlatformState
 
     public_setup(owner, monkeypatch)
     q = {k: v[0] for k, v in parse_qs(urlparse(start_on(owner, {"Origin": PUBLIC}).json()["url"]).query).items()}
@@ -395,7 +395,7 @@ def test_the_stored_address_is_checked_again_at_the_callback(owner, monkeypatch)
 
 
 def get_settings_():
-    from superaide.config import get_settings
+    from superaide.platform.config import get_settings
 
     return get_settings()
 

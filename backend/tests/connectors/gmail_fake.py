@@ -15,7 +15,7 @@ import pytest
 
 from superaide.connectors import gmail as api
 from superaide.connectors import google
-from superaide.db.session import session_scope
+from superaide.platform.db.session import session_scope
 from superaide.skills import gmail, registry
 from superaide.vault import store
 

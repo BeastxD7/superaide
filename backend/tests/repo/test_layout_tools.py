@@ -39,7 +39,7 @@ def test_measure_reports_the_real_repository() -> None:
     m = lr.measure()
     assert m["packages_dirs"] > 20
     assert m["backend_test_files"] >= m["backend_tests_flat"] >= 0  # 0 once the tests live in module folders
-    assert m["packages"]["db"]["fan_in"] > 10
+    assert m["packages"]["platform.db"]["fan_in"] > 10
     text = lr.render_md(m)
     assert "## Import cycles" in text and "| db |" in text
     json.dumps(m, default=list)

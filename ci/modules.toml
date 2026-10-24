@@ -62,10 +62,11 @@ e2e = []
 # settings every module reads
 core = true
 src = [
-  "backend/src/superaide/config.py",
+  "backend/src/superaide/platform/config.py",
   "backend/src/superaide/__init__.py",
   "backend/src/superaide/_compat.py",
   "backend/src/superaide/features/__init__.py",
+  "backend/src/superaide/platform/__init__.py",
 ]
 tests = [
   "backend/tests/config/**",
@@ -76,7 +77,9 @@ e2e = []
 # engine, session, row-level security, models
 core = true
 src = [
-  "backend/src/superaide/db/**",
+  "backend/src/superaide/platform/db/**",
+  "backend/src/superaide/db/__init__.py",  # the frozen `superaide.db.rls` re-export (Alembic revisions import it)
+  "backend/src/superaide/db/rls.py",
 ]
 tests = [
   "backend/tests/db/**",
@@ -86,7 +89,7 @@ e2e = []
 [modules.audit]
 core = true
 src = [
-  "backend/src/superaide/audit.py",
+  "backend/src/superaide/platform/audit.py",
 ]
 tests = []
 e2e = []
@@ -94,7 +97,7 @@ e2e = []
 [modules.tenancy]
 core = true
 src = [
-  "backend/src/superaide/tenancy/**",
+  "backend/src/superaide/platform/tenancy/**",
 ]
 tests = [
   "backend/tests/tenancy/**",
@@ -402,8 +405,8 @@ e2e = [
 
 [modules.pagination]
 src = [
-  "backend/src/superaide/pagination.py",
-  "backend/src/superaide/envelope.py",
+  "backend/src/superaide/platform/pagination.py",
+  "backend/src/superaide/platform/envelope.py",
 ]
 tests = [
   "backend/tests/pagination/**",
@@ -549,7 +552,7 @@ e2e = [
 
 [modules.security]
 src = [
-  "backend/src/superaide/security/**",
+  "backend/src/superaide/platform/security/**",
 ]
 tests = [
   "backend/tests/security/**",

@@ -7,7 +7,7 @@ import pytest
 
 from superaide.brain import capabilities
 from superaide.connectors import gmail as api
-from superaide.db.session import session_scope
+from superaide.platform.db.session import session_scope
 from tests.connectors.gmail_fake import connect, gmail_fake_fixture, mail, owner_client_fixture  # noqa: F401
 from tests.pipeline.test_loop import Script, owner_client, tool_use, turn_for  # noqa: F401
 
@@ -120,7 +120,7 @@ def test_where_things_stand_comes_from_the_approval_rows_not_the_transcript(owne
     # #340: she said "waiting for approval" in the app, the owner approved, then asked on Telegram.
     from datetime import UTC, datetime
 
-    from superaide.db.models import Approval
+    from superaide.platform.db.models import Approval
 
     with session_scope() as s:
         s.add(
@@ -138,7 +138,7 @@ def test_where_things_stand_comes_from_the_approval_rows_not_the_transcript(owne
 
 
 def test_where_things_stand_is_capped_and_absent_when_there_is_nothing(owner_client):
-    from superaide.db.models import Approval
+    from superaide.platform.db.models import Approval
 
     with session_scope() as s:
         assert "Where things stand" not in system_text(s)

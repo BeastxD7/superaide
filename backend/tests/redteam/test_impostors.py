@@ -14,8 +14,8 @@ from __future__ import annotations
 from sqlalchemy import func, select
 
 from superaide.brain.turn import RequestedAction
-from superaide.db.models import Approval, AuditLog, ChannelIdentity
-from superaide.db.session import session_scope
+from superaide.platform.db.models import Approval, AuditLog, ChannelIdentity
+from superaide.platform.db.session import session_scope
 from tests.conftest import COLLEAGUE_SLACK, MANAGER_SLACK, MANAGER_TG, codes_sent, sl, tg
 
 SECRET = "the launch slips to 24 November"

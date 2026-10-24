@@ -12,9 +12,9 @@ import pytest
 from sqlalchemy import select, text
 
 from superaide.actionlog import chain, witness
-from superaide.config import get_settings
-from superaide.db.models import ActionLog, AuditLog
-from superaide.db.session import session_scope
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import ActionLog, AuditLog
+from superaide.platform.db.session import session_scope
 from superaide.policy.killswitch import instance_frozen
 from tests.pipeline.test_loop import Script, owner_client, tool_use, turn_for  # noqa: F401
 

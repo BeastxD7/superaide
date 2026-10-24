@@ -20,12 +20,12 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
 from superaide.context.lexicon import normalise
-from superaide.db.models import Contact, Document, MemoryImport, MemoryItem, Person
-from superaide.db.session import rows_affected
 from superaide.features.passport.schema import Passport
 from superaide.knowledge.store import find_same_fact
+from superaide.platform.audit import audit
+from superaide.platform.db.models import Contact, Document, MemoryImport, MemoryItem, Person
+from superaide.platform.db.session import rows_affected
 
 
 @dataclass

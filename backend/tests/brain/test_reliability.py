@@ -16,8 +16,6 @@ from superaide.brain import platform_spend
 from superaide.brain.budget import BudgetGuard
 from superaide.brain.pricing import UsageCounts
 from superaide.brain.providers.base import Priced, mark_billable, metered
-from superaide.db.models import Intention, Job, SpendEntry
-from superaide.db.session import session_scope
 from superaide.intentions import service as intentions
 from superaide.jobs import queue
 from superaide.jobs.handlers import load
@@ -25,6 +23,8 @@ from superaide.jobs.queue import enqueue, handler, run_due
 from superaide.jobs.worker import JobWorker, schedule_recurring
 from superaide.knowledge.store import preferences_for
 from superaide.main import create_app
+from superaide.platform.db.models import Intention, Job, SpendEntry
+from superaide.platform.db.session import session_scope
 from superaide.proactive import digest, prep
 
 PASSWORD = "correct horse battery"
@@ -263,7 +263,7 @@ def test_a_reservation_orphaned_by_a_crash_is_released_by_the_next_reserve():
 
 
 def test_an_orphaned_platform_reservation_gives_back_the_platform_allowance(monkeypatch):
-    from superaide.config import get_settings
+    from superaide.platform.config import get_settings
 
     monkeypatch.setattr(get_settings(), "platform_daily_cap_usd", 5.0)
     monkeypatch.setattr(get_settings(), "platform_owner_daily_usd", 0)
@@ -325,7 +325,7 @@ def test_a_stream_that_dies_midway_marks_the_error_billable():
 
 
 def test_the_engine_pool_comes_from_settings():
-    from superaide.db.session import get_engine
+    from superaide.platform.db.session import get_engine
 
     pool = get_engine().pool
     assert pool.size() >= 10 and pool._max_overflow >= 10  # type: ignore[attr-defined]
@@ -337,7 +337,7 @@ def test_turns_are_capped_below_the_pool_so_each_can_get_its_second_connection(a
     from superaide.pipeline import max_concurrent_turns
 
     cap = max_concurrent_turns()
-    from superaide.db.session import get_engine
+    from superaide.platform.db.session import get_engine
 
     pool = get_engine().pool
     assert 1 <= cap < pool.size() + pool._max_overflow  # type: ignore[attr-defined]

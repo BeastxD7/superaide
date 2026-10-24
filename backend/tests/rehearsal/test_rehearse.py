@@ -7,8 +7,8 @@ from sqlalchemy import func, select
 
 from superaide.app.accounts import owner as hired_owner
 from superaide.brain.budget import BudgetExceeded
-from superaide.db.models import Intention, Person, ToolTrace
-from superaide.db.session import session_scope
+from superaide.platform.db.models import Intention, Person, ToolTrace
+from superaide.platform.db.session import session_scope
 from superaide.tooltrace import rehearse
 from superaide.tooltrace.recorder import digest
 from tests.pipeline.test_loop import owner_client  # noqa: F401  (fixture)
@@ -120,7 +120,7 @@ def test_someone_elses_messages_are_never_rehearsed(agent, owner_client):
         other = Person(display_name="Priya Tan", relation="colleague")
         s.add(other)
         s.flush()
-        from superaide.db.models import Event
+        from superaide.platform.db.models import Event
 
         for e in s.scalars(select(Event).where(Event.direction == "in")):
             e.resolved_person_id = other.id  # as if Priya, not the owner, had written them

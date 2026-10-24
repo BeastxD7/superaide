@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
-from superaide.config import get_settings
-from superaide.db.session import session_scope
+from superaide.platform.config import get_settings
+from superaide.platform.db.session import session_scope
 from superaide.skills import registry, signals
 from superaide.skills.manifest import Manifest, Skill
 from superaide.skills.models import SkillCounter

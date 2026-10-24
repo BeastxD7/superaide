@@ -107,7 +107,7 @@ def _note_rejected_key(guard: Guard, provider: str, exc: BaseException) -> None:
     if scope is None:
         keyhealth.record_rejected(label)
         return
-    from superaide.tenancy.context import use_instance
+    from superaide.platform.tenancy.context import use_instance
 
     with use_instance(scope):
         keyhealth.record_rejected(label)

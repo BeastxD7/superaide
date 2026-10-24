@@ -16,9 +16,9 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
-from superaide.db.models import Event, Job, Person
 from superaide.jobs.queue import enqueue, handler
+from superaide.platform.audit import audit
+from superaide.platform.db.models import Event, Job, Person
 from superaide.triage.mail_digest import QUOTE_HIDDEN, digest_section
 from superaide.triage.models import Escalation, TriageDecision
 from superaide.triage.types import Decision
@@ -29,7 +29,7 @@ MAX_ITEMS = 8
 
 
 def enabled() -> bool:
-    from superaide.config import get_settings
+    from superaide.platform.config import get_settings
 
     return get_settings().triage_enabled
 

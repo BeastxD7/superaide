@@ -16,18 +16,25 @@ from types import ModuleType
 from typing import Any
 
 ALIASES: dict[str, str] = {
+    "superaide.audit": "superaide.platform.audit",
     "superaide.brainshare": "superaide.features.brainshare",
+    "superaide.config": "superaide.platform.config",
+    "superaide.db": "superaide.platform.db",
     "superaide.dissent": "superaide.features.dissent",
     "superaide.drills": "superaide.features.drills",
+    "superaide.envelope": "superaide.platform.envelope",
     "superaide.forknight": "superaide.features.forknight",
     "superaide.imports": "superaide.features.imports",
     "superaide.journal": "superaide.features.journal",
     "superaide.memsocket": "superaide.features.memsocket",
     "superaide.mirror": "superaide.features.mirror",
+    "superaide.pagination": "superaide.platform.pagination",
     "superaide.passport": "superaide.features.passport",
     "superaide.push": "superaide.features.push",
     "superaide.rehearsal": "superaide.features.rehearsal",
     "superaide.school": "superaide.features.school",
+    "superaide.security": "superaide.platform.security",
+    "superaide.tenancy": "superaide.platform.tenancy",
     "superaide.voice": "superaide.features.voice",
 }
 

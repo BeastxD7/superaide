@@ -23,10 +23,10 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
-from superaide.db.models import AgentState, Person
 from superaide.knowledge.store import contacts_of
-from superaide.tenancy.context import scope_or_default
+from superaide.platform.audit import audit
+from superaide.platform.db.models import AgentState, Person
+from superaide.platform.tenancy.context import scope_or_default
 from superaide.trust.models import EmotionalUse
 
 REACH_OUT_AFTER = 3  # emotional turns in 7 days before she suggests a real person

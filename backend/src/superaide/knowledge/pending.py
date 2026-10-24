@@ -17,10 +17,10 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from superaide.app.accounts import owner as hired_owner
-from superaide.db.models import Document, Job, Person
-from superaide.db.session import session_scope
 from superaide.jobs.queue import enqueue, handler
-from superaide.tenancy.context import default_scope, scope_or_default, use_instance
+from superaide.platform.db.models import Document, Job, Person
+from superaide.platform.db.session import session_scope
+from superaide.platform.tenancy.context import default_scope, scope_or_default, use_instance
 
 log = logging.getLogger(__name__)
 
@@ -84,7 +84,7 @@ def brain_became_ready(*, changed: bool = True) -> bool:
 def sweep() -> int:
     """The safety net: for every hired instance with documents waiting and a ready brain, queue reading.
     Returns how many jobs it queued."""
-    from superaide.tenancy.service import active_scopes
+    from superaide.platform.tenancy.service import active_scopes
 
     try:
         with session_scope() as s:

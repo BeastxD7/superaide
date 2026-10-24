@@ -9,7 +9,7 @@ from sqlalchemy import DateTime, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from superaide.db.models import Base
+from superaide.platform.db.models import Base
 
 
 class EmailToken(Base):

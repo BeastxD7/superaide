@@ -7,13 +7,13 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from superaide.brain.turn import Prediction, RequestedAction, TurnOutput
-from superaide.db.models import Job, MemoryItem
-from superaide.db.session import session_scope
 from superaide.jobs.handlers import load
 from superaide.jobs.queue import run_due
 from superaide.knowledge.facts import Fact, FactList
 from superaide.knowledge.learn import worth_reading
 from superaide.main import create_app
+from superaide.platform.db.models import Job, MemoryItem
+from superaide.platform.db.session import session_scope
 
 PASSWORD = "correct horse battery"
 load()
@@ -90,8 +90,8 @@ def test_a_statement_in_chat_is_learned_after_the_reply(owner, real_brain):
 
 
 def test_a_fact_the_owner_confirms_in_chat_outlives_the_document_it_first_came_from(owner, real_brain):
-    from superaide.db.models import Document, Person
     from superaide.knowledge.store import retire_document
+    from superaide.platform.db.models import Document, Person
 
     text = "I'm moving to the Bangalore office in January, and Arjun will run the Singapore team."
     owner.post("/app/chat", json={"text": text})
@@ -115,8 +115,8 @@ def test_a_fact_the_owner_confirms_in_chat_outlives_the_document_it_first_came_f
 
 
 def test_a_document_fact_nobody_confirmed_is_still_retired_with_its_document(owner, real_brain):
-    from superaide.db.models import Document, Person
     from superaide.knowledge.store import retire_document
+    from superaide.platform.db.models import Document, Person
 
     text = "I'm moving to the Bangalore office in January, and Arjun will run the Singapore team."
     owner.post("/app/chat", json={"text": text})

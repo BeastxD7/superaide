@@ -28,9 +28,9 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from superaide.db.models import OwnerPreference
 from superaide.intentions.when import find_moment, zone
 from superaide.knowledge.profile import in_quiet_hours
+from superaide.platform.db.models import OwnerPreference
 from superaide.triage import classify, policy, rules
 from superaide.triage.features import Features, next_local
 from superaide.triage.types import Decision, Stage, TriageOutput
@@ -231,8 +231,8 @@ def run(
     if live:
         from superaide.brain.budget import BudgetGuard
         from superaide.brain.llm import ClaudeLLM
-        from superaide.config import get_settings
         from superaide.evals.harness import reset_db
+        from superaide.platform.config import get_settings
 
         reset_db()  # the evals database: its schema, and its ledger for the cap
         llm, model = ClaudeLLM(BudgetGuard(cap), api_key=key), get_settings().model_triage

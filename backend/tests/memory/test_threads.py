@@ -9,9 +9,9 @@ import httpx
 from sqlalchemy import func, select
 
 from superaide.channels import slack, telegram
-from superaide.db.models import AuditLog, Context, Event
-from superaide.db.session import session_scope
 from superaide.memory.store import recent_events
+from superaide.platform.db.models import AuditLog, Context, Event
+from superaide.platform.db.session import session_scope
 from tests.conftest import MANAGER_SLACK, MANAGER_TG, sl, tg
 
 

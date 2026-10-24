@@ -33,7 +33,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from superaide.db.models import Base, Scoped
+from superaide.platform.db.models import Base, Scoped
 from superaide.triage.types import DEFAULTS
 
 

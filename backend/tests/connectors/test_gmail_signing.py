@@ -8,10 +8,10 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
-from superaide.config import get_settings
 from superaide.connectors import gmail as api
-from superaide.db.models import Approval
-from superaide.db.session import session_scope
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import Approval
+from superaide.platform.db.session import session_scope
 from superaide.policy import binding
 from superaide.principal import card
 from tests.connectors.gmail_fake import connect, gmail_fake_fixture, owner_client_fixture  # noqa: F401

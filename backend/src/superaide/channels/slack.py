@@ -17,7 +17,7 @@ from typing import Any
 from superaide.channels import format as fmt
 from superaide.channels import health
 from superaide.channels.base import MESSENGER_FACTORIES, InboundMessage, Sources
-from superaide.db.models import ChannelIdentity, Context
+from superaide.platform.db.models import ChannelIdentity, Context
 
 log = logging.getLogger(__name__)
 MAX_SKEW_SECONDS = 60 * 5

@@ -15,13 +15,13 @@ from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
 
 from superaide.app.deps import owner_person_id
-from superaide.audit import audit
 from superaide.auth.routes import reject_nul_text, require_csrf_header
 from superaide.brain.budget import AgentFrozen, BudgetExceeded
-from superaide.db.session import require, session_scope
 from superaide.features.rehearsal import service
 from superaide.features.rehearsal.models import RehearsalSession
-from superaide.tenancy.context import scope_or_default
+from superaide.platform.audit import audit
+from superaide.platform.db.session import require, session_scope
+from superaide.platform.tenancy.context import scope_or_default
 
 KEEP_FOR = timedelta(days=1)
 PAUSED = "Practice is paused right now. {why} Your session is saved as it was; try again later."

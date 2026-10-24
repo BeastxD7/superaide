@@ -15,14 +15,14 @@ from sqlalchemy import func, select
 from superaide.app.accounts import owner as hired_owner
 from superaide.brain.llm import FakeLLM
 from superaide.channels.base import FakeMessenger
-from superaide.db.models import ChannelIdentity, Contact, Event, Job, Person
-from superaide.db.session import session_scope
 from superaide.identity.trust import Trust
 from superaide.jobs.handlers import load
 from superaide.jobs.queue import run_due
 from superaide.knowledge.store import preferences_for
 from superaide.main import create_app
 from superaide.pipeline import Agent
+from superaide.platform.db.models import ChannelIdentity, Contact, Event, Job, Person
+from superaide.platform.db.session import session_scope
 from superaide.policy.killswitch import set_state
 from superaide.triage import escalate
 from superaide.triage.models import Escalation, EscalationAck, EscalationDelivery, TriageDecision
@@ -398,7 +398,7 @@ def test_a_fake_quote_is_discarded_and_held(world, on, classifier):
 
 def test_a_budget_refusal_holds_and_is_audited(world, on, classifier):
     from superaide.brain.budget import BudgetExceeded
-    from superaide.db.models import AuditLog
+    from superaide.platform.db.models import AuditLog
 
     classifier.append(BudgetExceeded("today's triage limit", "bucket"))
 

@@ -8,9 +8,9 @@ from sqlalchemy import select
 
 from superaide.brain import taskplan
 from superaide.brain.loop import OWNER_RULES
-from superaide.config import get_settings
-from superaide.db.models import Approval
-from superaide.db.session import session_scope
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import Approval
+from superaide.platform.db.session import session_scope
 from tests.pipeline.test_loop import Script, owner_client, tool_use, turn_for  # noqa: F401  (fixtures)
 
 PLAN = {

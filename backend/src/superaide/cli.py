@@ -8,14 +8,14 @@ import sys
 import uuid
 
 import superaide.plugins  # noqa: F401  (registers the approval executors and event subscribers)
-from superaide.config import get_settings
+from superaide.platform.config import get_settings
 
 
 def _init_db(_: argparse.Namespace) -> None:
     """Create tables directly (quick start). For real deployments use `alembic upgrade head`."""
     from superaide.context.vectors import ensure_vector_store
-    from superaide.db.models import Base
-    from superaide.db.session import ensure_extensions, get_engine
+    from superaide.platform.db.models import Base
+    from superaide.platform.db.session import ensure_extensions, get_engine
 
     engine = get_engine(get_settings().owner_database_url)
     ensure_extensions(engine)
@@ -28,8 +28,8 @@ def _db_app_role(args: argparse.Namespace) -> None:
     """Create or update the app's own database role (no superuser, no BYPASSRLS). Run as the owner."""
     import os
 
-    from superaide.db.roles import RoleError, ensure_app_role
-    from superaide.db.session import get_engine
+    from superaide.platform.db.roles import RoleError, ensure_app_role
+    from superaide.platform.db.session import get_engine
 
     password = os.environ.get(args.password_env, "")
     if not password:
@@ -43,8 +43,8 @@ def _db_app_role(args: argparse.Namespace) -> None:
 
 
 def _add_person(args: argparse.Namespace) -> None:
-    from superaide.db.session import session_scope
     from superaide.identity.linking import bootstrap_person
+    from superaide.platform.db.session import session_scope
 
     settings = get_settings()
     identities: list[tuple[str, str, str]] = []
@@ -77,12 +77,12 @@ def _worker(args: argparse.Namespace) -> None:
     import signal
     import threading
 
-    from superaide.db.session import session_scope
     from superaide.jobs.worker import JobWorker
+    from superaide.platform.db.session import session_scope
     from superaide.runtime import Runtime
 
     settings = get_settings()
-    from superaide.security import deploy
+    from superaide.platform.security import deploy
 
     deploy.check(settings)
     stop = threading.Event()
@@ -138,7 +138,7 @@ def _slack_socket(_: argparse.Namespace) -> None:
 
 
 def _freeze(args: argparse.Namespace) -> None:
-    from superaide.db.session import session_scope
+    from superaide.platform.db.session import session_scope
     from superaide.policy.killswitch import set_platform_frozen
 
     with session_scope() as s:
@@ -158,10 +158,10 @@ def _spend(_: argparse.Namespace) -> None:
 
 def _approval_report(_: argparse.Namespace) -> None:
     """Would `APPROVAL_BINDING=strict` have refused anything the owner really approved? (issue #111)"""
-    from superaide.db.session import rescope, session_scope
+    from superaide.platform.db.session import rescope, session_scope
+    from superaide.platform.tenancy.context import default_scope, use_instance
+    from superaide.platform.tenancy.service import active_scopes
     from superaide.policy.binding import report
-    from superaide.tenancy.context import default_scope, use_instance
-    from superaide.tenancy.service import active_scopes
 
     with session_scope() as s:
         scopes = active_scopes(s) or [default_scope()]
@@ -185,9 +185,9 @@ def _triage_knn_compare(args: argparse.Namespace) -> None:
     """Replay the owner's own labelled triage history through the kNN head and the model's stored score (issue #117).
     Read-only apart from the vector cache the shadow head keeps (deleting a label deletes its vector)."""
     from superaide.brain.embed import get_embedder
-    from superaide.db.session import rescope, session_scope
-    from superaide.tenancy.context import default_scope, use_instance
-    from superaide.tenancy.service import active_scopes
+    from superaide.platform.db.session import rescope, session_scope
+    from superaide.platform.tenancy.context import default_scope, use_instance
+    from superaide.platform.tenancy.service import active_scopes
     from superaide.triage import knn
 
     embedder = get_embedder(get_settings())
@@ -208,10 +208,10 @@ def _triage_knn_compare(args: argparse.Namespace) -> None:
 
 def _mandate_shadow_report(args: argparse.Namespace) -> None:
     """How many recent approvals would a mandate have covered? Read-only (issue #112)."""
-    from superaide.db.session import rescope, session_scope
     from superaide.mandate.service import shadow_report
-    from superaide.tenancy.context import default_scope, use_instance
-    from superaide.tenancy.service import active_scopes
+    from superaide.platform.db.session import rescope, session_scope
+    from superaide.platform.tenancy.context import default_scope, use_instance
+    from superaide.platform.tenancy.service import active_scopes
 
     with session_scope() as s:
         scopes = active_scopes(s) or [default_scope()]
@@ -230,9 +230,9 @@ def _witness(args: argparse.Namespace) -> None:
     from datetime import UTC, datetime
 
     from superaide.actionlog import chain, witness
-    from superaide.db.session import rescope, session_scope
-    from superaide.tenancy.context import default_scope, use_instance
-    from superaide.tenancy.service import active_scopes
+    from superaide.platform.db.session import rescope, session_scope
+    from superaide.platform.tenancy.context import default_scope, use_instance
+    from superaide.platform.tenancy.service import active_scopes
 
     with session_scope() as s:
         scopes = active_scopes(s) or [default_scope()]
@@ -250,8 +250,8 @@ def _witness(args: argparse.Namespace) -> None:
 
 def _push_keys(_: argparse.Namespace) -> None:
     """Show the web push public key, making the pair once if PUSH_ENABLED is on (ADR 0011). Never rotates."""
-    from superaide.db.session import session_scope
     from superaide.features.push import vapid
+    from superaide.platform.db.session import session_scope
 
     with session_scope() as s:
         keys = vapid.ensure(s)
@@ -262,9 +262,9 @@ def _push_keys(_: argparse.Namespace) -> None:
 
 
 def _unlink(args: argparse.Namespace) -> None:
-    from superaide.db.models import ChannelIdentity
-    from superaide.db.session import session_scope
     from superaide.identity.linking import unlink
+    from superaide.platform.db.models import ChannelIdentity
+    from superaide.platform.db.session import session_scope
 
     try:
         identity_id = uuid.UUID(args.identity)
@@ -303,9 +303,9 @@ def _seed_demo(_: argparse.Namespace) -> None:
     Does nothing if anyone is already registered."""
     from sqlalchemy import func, select
 
-    from superaide.db.models import Person
-    from superaide.db.session import session_scope
     from superaide.identity.linking import bootstrap_person
+    from superaide.platform.db.models import Person
+    from superaide.platform.db.session import session_scope
 
     team = get_settings().slack_team_id or "T_DEMO"
     with session_scope() as s:
@@ -330,7 +330,7 @@ def _reset_password(args: argparse.Namespace) -> None:
     import getpass
 
     from superaide.auth.service import AuthError, reset_password
-    from superaide.db.session import session_scope
+    from superaide.platform.db.session import session_scope
 
     first = getpass.getpass("New password (10+ characters): ")
     if getpass.getpass("Type it again: ") != first:
@@ -348,9 +348,9 @@ def _reset_db(args: argparse.Namespace) -> None:
     """Delete every table. Run `alembic upgrade head` afterwards."""
     from sqlalchemy import text
 
-    from superaide.db.models import Base
-    from superaide.db.safety import UnsafeDatabase, assert_disposable_database, database_name
-    from superaide.db.session import get_engine
+    from superaide.platform.db.models import Base
+    from superaide.platform.db.safety import UnsafeDatabase, assert_disposable_database, database_name
+    from superaide.platform.db.session import get_engine
 
     if not args.yes:
         sys.exit("This deletes all data. Run again with --yes to confirm.")
@@ -418,7 +418,7 @@ def _lobster(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
-    from superaide.security import logredact
+    from superaide.platform.security import logredact
 
     logredact.install()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")

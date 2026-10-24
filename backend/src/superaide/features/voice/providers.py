@@ -22,8 +22,8 @@ from typing import Any, Protocol
 
 import httpx
 
-from superaide.config import Settings, get_settings
 from superaide.features.voice.prices import asr_cost, tts_cost
+from superaide.platform.config import Settings, get_settings
 
 ASR_KINDS = ("deepgram", "browser", "fake")
 TTS_KINDS = ("elevenlabs", "deepgram", "browser", "fake")

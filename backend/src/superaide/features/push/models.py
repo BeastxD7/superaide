@@ -17,7 +17,7 @@ from datetime import UTC, datetime
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
-from superaide.db.models import Base, Scoped
+from superaide.platform.db.models import Base, Scoped
 
 
 def _now() -> datetime:

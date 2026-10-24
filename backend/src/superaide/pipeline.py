@@ -20,7 +20,6 @@ from typing import cast
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
-from superaide.audit import audit
 from superaide.brain.budget import AgentFrozen, BudgetExceeded
 from superaide.brain.llm import LLM
 from superaide.brain.llm import OnEvent as Emit
@@ -28,10 +27,7 @@ from superaide.brain.turn import TurnOutput, build_messages, build_system
 from superaide.channels.base import InboundMessage, Messenger
 from superaide.channels.format import strip_citations
 from superaide.channels.health import DeliveryFailed
-from superaide.config import Settings, get_settings
 from superaide.context.audience import Audience, audience_for, visible_memories
-from superaide.db.models import AuditLog, Context, Person
-from superaide.db.session import session_scope
 from superaide.identity import linking
 from superaide.identity.resolver import Sender, resolve
 from superaide.intentions.when import is_reminder_request
@@ -48,6 +44,10 @@ from superaide.memory.store import (
     seen_before,
     strip_label,
 )
+from superaide.platform.audit import audit
+from superaide.platform.config import Settings, get_settings
+from superaide.platform.db.models import AuditLog, Context, Person
+from superaide.platform.db.session import session_scope
 from superaide.policy.actions import decide
 from superaide.policy.killswitch import is_frozen
 

@@ -23,9 +23,9 @@ from superaide.brain.providers import config
 from superaide.brain.providers.base import CheckReport
 from superaide.brain.providers.presets import PRESETS, Preset
 from superaide.brain.providers.types import Capabilities
-from superaide.db.session import session_scope
 from superaide.knowledge.pending import brain_became_ready
-from superaide.security import urls
+from superaide.platform.db.session import session_scope
+from superaide.platform.security import urls
 from superaide.vault import check, store
 from superaide.vault.store import runtime_settings
 
@@ -131,7 +131,7 @@ class SearchKeyBody(BaseModel):
 
 def web_search_view(settings: Any) -> dict[str, Any]:
     """Whether Superaide's own web search has a key, and how it's set. Never the key."""
-    from superaide.config import get_settings
+    from superaide.platform.config import get_settings
 
     with session_scope() as s:
         row = store.stored(s).get(("brave", "api_key"))

@@ -15,7 +15,7 @@ For every `old=new` (package folders under backend/src/superaide, `new` a path b
      backend/src/superaide/_compat.py from `aliases`: a meta-path finder that keeps `import superaide.old.x`
      working, as the same module object, for one release (ADR 0015 "Compatibility shim").
 It is idempotent (a package already at its new place is skipped; a second run changes nothing) and never edits
-a revision under backend/alembic (they import `superaide.db.rls`, which phase 3 keeps as a permanent shim).
+a revision under backend/alembic (they import `superaide.platform.db.rls`, which phase 3 keeps as a permanent shim).
 """
 
 from __future__ import annotations
@@ -38,7 +38,11 @@ TEXT_SKIP = (
     "superaide/_compat.py",
 )
 SKIP_PREFIX = ("backend/alembic/versions/",)  # applied revisions are never rewritten (shims keep them importing)
+# Old import paths that must keep importing after the alias shim is gone (applied Alembic revisions use them):
+# a real one-line re-export is written at the old place. `superaide.platform.db.rls`: 37 revisions import it.
+PERMANENT = {"db": ["rls"]}
 PHASES = {
+    3: {name: f"platform/{name}" for name in "config db audit tenancy pagination envelope security".split()},
     4: {
         name: f"features/{name}"
         for name in (
@@ -131,7 +135,7 @@ def deepen(text: str, by: int) -> str:
                 line,
             )
             line = re.sub(
-                r"(Path\(__file__\)(?:\.resolve\(\))?)((?:\.parent(?!\w))+)",
+                r"(Path\(__file__\)(?:\.resolve\(\))?)((?:\.parent(?!\w)){2,})",
                 lambda m: m.group(1) + m.group(2) + ".parent" * by,
                 line,
             )
@@ -139,8 +143,33 @@ def deepen(text: str, by: int) -> str:
     return "".join(out)
 
 
+def source_of(root: Path, name: str) -> Path | None:
+    """A package folder, or a single module file, under backend/src/superaide."""
+    for cand in (root / SRC / name, root / SRC / f"{name}.py"):
+        if cand.exists():
+            return cand
+    return None
+
+
+def write_permanent_shims(root: Path, todo: dict[str, str]) -> None:
+    for old, subs in PERMANENT.items():
+        if old not in todo or (root / SRC / old).exists():
+            continue
+        new = "superaide." + todo[old].replace("/", ".")
+        pkg = root / SRC / old
+        pkg.mkdir(parents=True)
+        (pkg / "__init__.py").write_text(f'"""Old import path of `{new}` (kept: see scripts/codemod_pkgmove.py PERMANENT)."""\n')
+        for sub in subs:
+            (pkg / f"{sub}.py").write_text(
+                f'"""`superaide.{old}.{sub}` is frozen: applied Alembic revisions import it (ADR 0015, Risks)."""\n\n'
+                f"import sys\n\nfrom {new} import {sub} as _real\n\nsys.modules[__name__] = _real\n"
+            )
+        git(root, "add", str(pkg.relative_to(root)))
+
+
 def run(root: Path, moves: dict[str, str], dry: bool = False) -> dict[str, str]:
-    todo = {o: n for o, n in moves.items() if (root / SRC / o).is_dir() and not (root / SRC / n).exists()}
+    todo = {o: n for o, n in moves.items() if source_of(root, o) is not None and not (root / SRC / n).exists()
+            and not (root / SRC / f"{n}.py").exists()}
     if dry or not todo:
         for o, n in todo.items():
             print(f"{SRC}/{o} -> {SRC}/{n}")
@@ -157,9 +186,13 @@ def run(root: Path, moves: dict[str, str], dry: bool = False) -> dict[str, str]:
                 init.write_text("")
                 git(root, "add", str(init.relative_to(root)))
             group = group.parent
-        git(root, "mv", f"{SRC}/{o}", f"{SRC}/{n}")
+        src = source_of(root, o)
+        assert src is not None
+        is_file = src.is_file()
+        target = f"{SRC}/{n}.py" if is_file else f"{SRC}/{n}"
+        git(root, "mv", str(src.relative_to(root)), target)
         extra = len(Path(n).parts) - len(Path(o).parts)
-        for p in (root / SRC / n).rglob("*.py"):
+        for p in [root / target] if is_file else (root / target).rglob("*.py"):
             moved_py[p.relative_to(root).as_posix()] = extra
 
     olds = sorted(todo, key=len, reverse=True)
@@ -167,14 +200,22 @@ def run(root: Path, moves: dict[str, str], dry: bool = False) -> dict[str, str]:
     dotted = {o: n.replace("/", ".") for o, n in todo.items()}
     dotted_re = re.compile(rf"(?<![\w.])superaide\.({alt})(?!\w)")
     path_re = re.compile(rf"(?<![\w\-])((?:backend/)?(?:src/)?superaide)/({alt})(?=[/\s\"'`)\]*,.:;]|$)")
-    from_re = re.compile(rf"^(\s*)from superaide import ({alt})(,\s*({alt}))*\s*$", re.M)
+    from_re = re.compile(r"^(\s*)from superaide import ([\w, ]+)$", re.M)
 
     def from_sub(m: re.Match) -> str:
-        names = [n.strip() for n in m.group(0).split("import", 1)[1].split(",")]
-        group = {Path(todo[n]).parent.as_posix() for n in names}
-        if len(group) != 1:
+        names = [n.strip() for n in m.group(2).split(",") if n.strip()]
+        if not any(n.split()[0] in todo for n in names):
             return m.group(0)
-        return f"{m.group(1)}from superaide.{group.pop().replace('/', '.')} import {', '.join(names)}"
+        stay = [n for n in names if n.split()[0] not in todo]
+        by_group: dict[str, list[str]] = {}
+        for n in names:
+            if n.split()[0] in todo:
+                by_group.setdefault(Path(todo[n.split()[0]]).parent.as_posix(), []).append(n)
+        lines = [f"{m.group(1)}from superaide import {', '.join(stay)}"] if stay else []
+        for group, ns in by_group.items():
+            mod = "superaide" if group == "." else "superaide." + group.replace("/", ".")
+            lines.append(f"{m.group(1)}from {mod} import {', '.join(ns)}")
+        return "\n".join(lines)
 
     def sub_dotted(m: re.Match) -> str:
         return "superaide." + dotted[m.group(1)]
@@ -223,6 +264,7 @@ def run(root: Path, moves: dict[str, str], dry: bool = False) -> dict[str, str]:
         aliases[f"superaide.{o}"] = f"superaide.{dotted[o]}"
     moves_file.write_text(json.dumps(data, indent=1, sort_keys=True) + "\n")
     write_compat(root, aliases)
+    write_permanent_shims(root, todo)
     print(f"moved {len(todo)} packages; wrote ci/layout-moves.json and {SRC}/_compat.py")
     return todo
 

@@ -7,8 +7,8 @@ import pytest
 from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 
-from superaide.db.models import UserAccount
-from superaide.db.session import session_scope
+from superaide.platform.db.models import UserAccount
+from superaide.platform.db.session import session_scope
 from tests.api_support import OTHER, OWNER, PASSWORD, login, signup
 from tests.auth.api.test_email_links import outbox, token_in  # noqa: F401  (outbox is an autouse fixture)
 
@@ -65,7 +65,7 @@ def test_the_database_refuses_a_hand_edit_that_splits_the_two_columns(browser):
 
 
 def test_a_refused_change_at_the_hourly_email_limit_leaves_the_address_alone(browser, outbox):  # noqa: F811
-    from superaide.config import get_settings
+    from superaide.platform.config import get_settings
 
     c = browser()
     signup(c)

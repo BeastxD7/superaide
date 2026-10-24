@@ -32,15 +32,15 @@ from fastapi import Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.audit import account_audit
 from superaide.auth import service
 from superaide.auth.service import AuthError, Client
-from superaide.config import get_settings
 from superaide.connectors import google_signin
 from superaide.connectors.google_signin import GoogleIdentity, SignInError
-from superaide.db.models import UserAccount
 from superaide.links import allowed_request_origin, same_origin
-from superaide.tenancy.models import PlatformState
+from superaide.platform.audit import account_audit
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import UserAccount
+from superaide.platform.tenancy.models import PlatformState
 
 PENDING_TTL = timedelta(minutes=10)
 PREFIX = "gsignin:"

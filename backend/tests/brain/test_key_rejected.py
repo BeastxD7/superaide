@@ -13,12 +13,12 @@ from superaide.brain import keyhealth, keynote
 from superaide.brain.budget import BudgetGuard
 from superaide.brain.pricing import UsageCounts
 from superaide.brain.providers.base import Priced, metered
-from superaide.config import get_settings
-from superaide.db.models import Document, Job
-from superaide.db.session import session_scope
 from superaide.jobs import queue
 from superaide.jobs.queue import enqueue, run_due
 from superaide.knowledge.pending import brain_became_ready
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import Document, Job
+from superaide.platform.db.session import session_scope
 from superaide.policy.killswitch import set_state
 from superaide.vault.check import Checked
 from tests.knowledge.test_read_pending import FACTS, going_live, read_jobs, share, statuses, told  # noqa: F401
@@ -247,7 +247,7 @@ def test_the_verdict_never_holds_key_material(owner_client, provider, monkeypatc
     connect(owner_client, monkeypatch)
     owner_client.post("/app/chat", json={"text": "hi"})
     with session_scope() as s:
-        from superaide.db.models import AgentState
+        from superaide.platform.db.models import AgentState
 
         blob = " ".join(str(r.value) for r in s.scalars(select(AgentState)))
     assert KEY not in blob and "x" * 20 not in blob

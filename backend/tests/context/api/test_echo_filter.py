@@ -5,10 +5,10 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
-from superaide.db.models import AuditLog, MemoryItem, Person
-from superaide.db.session import session_scope
 from superaide.knowledge.store import remember_fact
 from superaide.memory import echo
+from superaide.platform.db.models import AuditLog, MemoryItem, Person
+from superaide.platform.db.session import session_scope
 
 RUMOUR = "The Acme merger closes in March."
 
@@ -71,7 +71,7 @@ def test_repeats_through_a_forwarded_chain_of_one_root_do_not_promote(manager, o
 def test_the_owner_can_confirm(owner, on):
     hear_id = None
     with session_scope() as s:
-        from superaide.db.models import UserAccount
+        from superaide.platform.db.models import UserAccount
 
         pid = s.scalar(select(UserAccount.person_id))
         hear_id = pid

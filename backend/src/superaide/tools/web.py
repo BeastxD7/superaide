@@ -16,7 +16,7 @@ from urllib.parse import urljoin
 
 import httpx
 
-from superaide.security.urls import UnsafeURL, check_base_url
+from superaide.platform.security.urls import UnsafeURL, check_base_url
 
 SEARCH_URL = "https://api.search.brave.com/res/v1/web/search"
 MAX_BYTES = 2_000_000
@@ -47,7 +47,7 @@ FETCH_TOOL = {
 
 def client() -> httpx.Client:
     """Replaced in tests with one that doesn't touch the network."""
-    from superaide.security.urls import safe_client
+    from superaide.platform.security.urls import safe_client
 
     # Every connection, redirects included, is checked again when it is made (DNS rebinding).
     return safe_client(allow_private=False, hosted_mode=True, timeout=10, follow_redirects=False)

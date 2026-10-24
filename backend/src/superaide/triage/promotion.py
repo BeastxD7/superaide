@@ -20,7 +20,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.tenancy.context import scope_or_default
+from superaide.platform.tenancy.context import scope_or_default
 from superaide.triage.models import TriageDecision
 from superaide.triage.types import STAGE_ORDER, Decision, Feedback, Stage
 

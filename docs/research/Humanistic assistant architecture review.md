@@ -163,7 +163,7 @@ The code review confirms a precise and somewhat lopsided picture. The identity h
 | Background work | No scheduler at all; the only background tasks dispatch webhooks ([main.py:152](../../backend/src/superaide/main.py#L152)) | Nothing can consolidate, remind or digest | One `SKIP LOCKED` job worker |
 | Actions and growth | Approvals queued but never decidable; `min_trust` unenforced; "Infant" is a string ([actions.py:63-71](../../backend/src/superaide/policy/actions.py#L63); [catalog.py:18](../../backend/src/superaide/app/catalog.py#L18)) | No path to Child | Approve endpoint, executor, stage controller |
 | Learning signal | Every turn audits a `prediction`; nothing reads it back ([pipeline.py:176-183](../../backend/src/superaide/pipeline.py#L176)) | The "prediction-error ledger" is write-only | Compare predictions to outcomes and feed surprise into the sleep job |
-| Cost | A lifetime US$10 cap with no time window; chat defaults to Sonnet ([budget.py:81-86](../../backend/src/superaide/brain/budget.py#L81); [config.py:30](../../backend/src/superaide/config.py#L30)) | Any recurring job eventually exhausts the cap | Per-period and per-purpose budgets |
+| Cost | A lifetime US$10 cap with no time window; chat defaults to Sonnet ([budget.py:81-86](../../backend/src/superaide/brain/budget.py#L81); [config.py:30](../../backend/src/superaide/platform/config.py#L30)) | Any recurring job eventually exhausts the cap | Per-period and per-purpose budgets |
 
 ### Measured against the repo's earlier research
 

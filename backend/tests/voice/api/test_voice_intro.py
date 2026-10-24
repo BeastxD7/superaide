@@ -12,13 +12,13 @@ import httpx
 import pytest
 from sqlalchemy import select
 
-from superaide.config import get_settings
-from superaide.db.models import AuditLog, MemoryItem, Onboarding, SpendEntry
-from superaide.db.session import session_scope
 from superaide.features.voice import providers
 from superaide.features.voice.interview import TOPICS, ReplyReader, split_sentences
 from superaide.features.voice.prices import asr_cost, per_minute, tts_cost
 from superaide.knowledge.facts import Fact, FactList
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import AuditLog, MemoryItem, Onboarding, SpendEntry
+from superaide.platform.db.session import session_scope
 from tests.api_support import OTHER, hire, signup
 
 WAV = providers.silent_wav(1.0)

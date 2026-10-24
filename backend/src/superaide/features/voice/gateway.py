@@ -21,9 +21,9 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from superaide.config import get_settings
-from superaide.db.models import Approval
 from superaide.identity.resolver import Sender
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import Approval
 from superaide.policy.actions import decide
 from superaide.policy.confirmation import from_voice
 

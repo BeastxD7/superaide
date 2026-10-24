@@ -28,8 +28,16 @@ from superaide.app.stream import stream_turn
 from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header
 from superaide.brain.wiring import brain_ready, brain_status
 from superaide.channels import health
-from superaide.config import get_settings
-from superaide.db.models import (
+from superaide.features.voice import gateway
+from superaide.intentions import service as intentions
+from superaide.intentions.when import clean_task, find_moment, zone
+from superaide.knowledge import extract
+from superaide.knowledge.erase import erase_document, erase_person
+from superaide.knowledge.erase import vacuum as erase_vacuum
+from superaide.knowledge.ingest import ingest
+from superaide.knowledge.store import conflicts_of, preferences_for, resolve_conflict, retire_document
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import (
     Approval,
     AuditLog,
     ChannelIdentity,
@@ -43,23 +51,23 @@ from superaide.db.models import (
     Person,
     UserAccount,
 )
-from superaide.db.session import require, rescope, session_scope
-from superaide.features.voice import gateway
-from superaide.intentions import service as intentions
-from superaide.intentions.when import clean_task, find_moment, zone
-from superaide.knowledge import extract
-from superaide.knowledge.erase import erase_document, erase_person
-from superaide.knowledge.erase import vacuum as erase_vacuum
-from superaide.knowledge.ingest import ingest
-from superaide.knowledge.store import conflicts_of, preferences_for, resolve_conflict, retire_document
-from superaide.pagination import SortKey, bind_for, cursor_param, encode_cursor, limit_param, paginate, set_next_headers
+from superaide.platform.db.session import require, rescope, session_scope
+from superaide.platform.pagination import (
+    SortKey,
+    bind_for,
+    cursor_param,
+    encode_cursor,
+    limit_param,
+    paginate,
+    set_next_headers,
+)
+from superaide.platform.tenancy.context import use_instance
+from superaide.platform.tenancy.endpoints import slack_key
 from superaide.policy import brake, kinds
 from superaide.policy.actions import ApprovalError, resolve
 from superaide.policy.binding import expired
 from superaide.policy.killswitch import instance_frozen, is_frozen, platform_frozen, set_frozen
 from superaide.skills import registry as skill_registry
-from superaide.tenancy.context import use_instance
-from superaide.tenancy.endpoints import slack_key
 
 
 def _require_text(extracted: extract.Extracted) -> None:
@@ -1179,7 +1187,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             if m is None or person_id not in (m.subject_person_ids or []) or m.valid_to is not None:
                 raise HTTPException(404, "Not found in your notebook")
             m.valid_to = datetime.now(UTC)
-            from superaide.audit import audit
+            from superaide.platform.audit import audit
 
             audit(s, "app", "memory_forgotten", memory_id=m.id, person_id=person_id)
         return {"status": "forgotten"}

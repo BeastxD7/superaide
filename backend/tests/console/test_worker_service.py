@@ -12,7 +12,7 @@ import pytest
 from superaide import cli
 from superaide.channels import telegram
 from superaide.channels.runner import ChannelRunner, claim_listener
-from superaide.tenancy.context import InstanceScope
+from superaide.platform.tenancy.context import InstanceScope
 
 A = InstanceScope(tenant_id=uuid.uuid4(), agent_id=uuid.uuid4())
 TOKEN = "111111:" + "A" * 35

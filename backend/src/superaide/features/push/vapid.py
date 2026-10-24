@@ -22,10 +22,10 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
-from superaide.config import get_settings
-from superaide.db.session import rows_affected
-from superaide.tenancy.models import PlatformState
+from superaide.platform.audit import audit
+from superaide.platform.config import get_settings
+from superaide.platform.db.session import rows_affected
+from superaide.platform.tenancy.models import PlatformState
 from superaide.vault.crypto import decrypt, encrypt
 
 KEY = "vapid"  # the platform_state row

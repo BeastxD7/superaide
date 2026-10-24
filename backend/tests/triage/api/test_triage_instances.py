@@ -9,14 +9,14 @@ import pytest
 import time_machine
 from sqlalchemy import select
 
-from superaide.config import get_settings
-from superaide.db.models import AuditLog, ChannelIdentity, Contact, Context, Event, Job, Person, UserAccount
-from superaide.db.session import session_scope
 from superaide.identity.trust import Trust
 from superaide.jobs.handlers import load
 from superaide.jobs.queue import run_due
 from superaide.knowledge.store import preferences_for
-from superaide.tenancy.context import InstanceScope, use_instance
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import AuditLog, ChannelIdentity, Contact, Context, Event, Job, Person, UserAccount
+from superaide.platform.db.session import session_scope
+from superaide.platform.tenancy.context import InstanceScope, use_instance
 from superaide.triage import digest as tdigest
 from superaide.triage import service
 from superaide.triage.models import Escalation, EscalationDelivery, TriageDecision
@@ -139,7 +139,7 @@ def test_the_ladder_and_catch_up_stay_in_the_instance(daytime, two):
 
 
 def test_the_stage_is_read_for_the_instance_in_scope(two):
-    from superaide.db.models import AgentState
+    from superaide.platform.db.models import AgentState
     from superaide.triage.store import current_stage
 
     sa, pa, sb, pb = two

@@ -21,11 +21,11 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
 from superaide.brain.budget import AgentFrozen, BudgetExceeded
 from superaide.brain.llm import SystemBlock
 from superaide.context.audience import Audience, visible_memories
-from superaide.db.models import Event, MemoryItem, Person
+from superaide.platform.audit import audit
+from superaide.platform.db.models import Event, MemoryItem, Person
 from superaide.trust.models import MemoryInfluence
 
 SAME = 0.9  # answers at least this alike (word overlap) count as unchanged

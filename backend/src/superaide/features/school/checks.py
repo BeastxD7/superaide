@@ -21,8 +21,8 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.db.models import Event, MemoryItem, Person, UserAccount
-from superaide.tenancy.context import scope_or_default
+from superaide.platform.db.models import Event, MemoryItem, Person, UserAccount
+from superaide.platform.tenancy.context import scope_or_default
 
 MAX_CHARS = 300
 MIN_CHARS = 12

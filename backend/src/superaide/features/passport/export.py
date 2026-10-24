@@ -20,10 +20,10 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
-from superaide.db.models import Contact, Document, MemoryItem, Person
 from superaide.features.passport.schema import FORMAT, SCHEMA_VERSION
 from superaide.knowledge.store import preferences_for
+from superaide.platform.audit import audit
+from superaide.platform.db.models import Contact, Document, MemoryItem, Person
 
 
 def _iso(value: datetime | None) -> str | None:

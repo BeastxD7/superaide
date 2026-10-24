@@ -17,8 +17,8 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 
-from superaide.db.models import Approval, Document, DocumentChunk, Event, Intention, MemoryItem
-from superaide.db.session import session_scope
+from superaide.platform.db.models import Approval, Document, DocumentChunk, Event, Intention, MemoryItem
+from superaide.platform.db.session import session_scope
 
 # Hedges that were wrong in real use: Ava can remember, keeps notes and manages reminders.
 FALSE_LIMITS = [
@@ -136,7 +136,7 @@ def honest_about_memory(ctx: Ctx, value: Any) -> tuple[bool, str]:
 @check("tainted")
 def tainted(ctx: Ctx, value: Any) -> tuple[bool, str]:
     """The owner turn recorded that untrusted (web) text entered it."""
-    from superaide.db.models import AuditLog
+    from superaide.platform.db.models import AuditLog
 
     with session_scope() as s:
         row = s.scalar(select(AuditLog).where(AuditLog.action == "owner_turn").order_by(AuditLog.created_at.desc()))
@@ -196,8 +196,8 @@ def prompt_includes(ctx: Ctx, value: Any) -> tuple[bool, str]:
 def _audience(who: str) -> Any:
     """The audience of a private DM with the owner, the colleague (Priya Tan), or of a group."""
     from superaide.context.audience import Audience
-    from superaide.db.models import Person
     from superaide.identity.trust import Trust
+    from superaide.platform.db.models import Person
 
     with session_scope() as s:
         if who == "owner":
@@ -606,7 +606,7 @@ def message_taken(ctx: Ctx, value: Any) -> tuple[bool, str]:
 @check("audit_logged")
 def audit_logged(ctx: Ctx, value: Any) -> tuple[bool, str]:
     """An audit row with this action exists (e.g. triage_budget_fallback, escalation_ack_refused)."""
-    from superaide.db.models import AuditLog
+    from superaide.platform.db.models import AuditLog
 
     with session_scope() as s:
         found = s.scalar(select(AuditLog.id).where(AuditLog.action == str(value)).limit(1))

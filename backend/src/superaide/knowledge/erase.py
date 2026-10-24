@@ -15,10 +15,10 @@ from typing import Any
 
 from sqlalchemy import delete, or_, select, text, update
 
-from superaide.audit import audit
-from superaide.db.models import Contact, Document, DocumentChunk, Event, MemoryItem, Person
-from superaide.db.session import get_engine, rows_affected
 from superaide.knowledge.store import lock_document
+from superaide.platform.audit import audit
+from superaide.platform.db.models import Contact, Document, DocumentChunk, Event, MemoryItem, Person
+from superaide.platform.db.session import get_engine, rows_affected
 
 log = logging.getLogger(__name__)
 

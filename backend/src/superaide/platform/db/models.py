@@ -38,14 +38,14 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, validates
 
 def _tenant() -> uuid.UUID:
     """The customer of the agent instance in scope (ADR 0009); the dev instance when none is."""
-    from superaide.tenancy.context import scope_or_default
+    from superaide.platform.tenancy.context import scope_or_default
 
     return scope_or_default().tenant_id
 
 
 def _agent() -> uuid.UUID:
     """The agent instance in scope: new rows belong to it (and Row-Level Security checks that they do)."""
-    from superaide.tenancy.context import scope_or_default
+    from superaide.platform.tenancy.context import scope_or_default
 
     return scope_or_default().agent_id
 
@@ -744,7 +744,7 @@ class AuthEvent(TenantScoped, Base):
 class AccountAudit(Base):
     """Append-only record of events about an account that belongs to no Ava (yet): sign-up, e-mail checks,
     password changes before the first hire. Platform-level, so it has no agent_id and no isolation policy;
-    once the account hires, the same kind of line goes to its own Ava's audit_log (superaide.audit)."""
+    once the account hires, the same kind of line goes to its own Ava's audit_log (superaide.platform.audit)."""
 
     __tablename__ = "account_audit"
 
@@ -1026,9 +1026,9 @@ from superaide.features.push import models as _push_models  # noqa: E402, F401
 from superaide.features.rehearsal import models as _rehearsal_models  # noqa: E402, F401
 from superaide.features.school import models as _school_models  # noqa: E402, F401
 from superaide.jobs import claim as _job_claim  # noqa: E402, F401  (the claim function, made after the job table)
+from superaide.platform.tenancy import models as _tenancy_models  # noqa: E402, F401
 from superaide.reception import models as _reception_models  # noqa: E402, F401
 from superaide.skills import models as _skills_models  # noqa: E402, F401
-from superaide.tenancy import models as _tenancy_models  # noqa: E402, F401
 from superaide.tooltrace import models as _tooltrace_models  # noqa: E402, F401
 from superaide.triage import models as _triage_models  # noqa: E402, F401
 from superaide.trust import models as _trust_models  # noqa: E402, F401

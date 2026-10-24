@@ -12,12 +12,12 @@ from concurrent.futures import ThreadPoolExecutor
 import pytest
 from sqlalchemy import select
 
-from superaide.config import get_settings
-from superaide.db.models import AuditLog
-from superaide.db.session import session_scope
+from superaide.platform.config import get_settings
+from superaide.platform.db.models import AuditLog
+from superaide.platform.db.session import session_scope
+from superaide.platform.tenancy.context import InstanceScope, use_instance
+from superaide.platform.tenancy.models import AgentInstance
 from superaide.policy.killswitch import instance_frozen, platform_frozen, set_frozen
-from superaide.tenancy.context import InstanceScope, use_instance
-from superaide.tenancy.models import AgentInstance
 from tests.api_support import hire, login, signup
 
 ADMIN = {"Authorization": "Bearer test-admin-token"}

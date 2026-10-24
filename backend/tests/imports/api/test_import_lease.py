@@ -10,10 +10,10 @@ import pytest
 from sqlalchemy import func, select
 
 from superaide.context.audience import Audience, visible_memories
-from superaide.db.models import MemoryItem, Person, UserAccount
-from superaide.db.session import session_scope
 from superaide.features.imports import convert
 from superaide.features.imports.models import ImportLease
+from superaide.platform.db.models import MemoryItem, Person, UserAccount
+from superaide.platform.db.session import session_scope
 from tests.api_support import OWNER
 
 LEASES = "/app/import-leases"

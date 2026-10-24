@@ -9,9 +9,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import func, select, update
 
 from superaide.auth import service
-from superaide.db.models import AuthEvent, Person, UserAccount, UserSession
-from superaide.db.session import session_scope
 from superaide.main import create_app
+from superaide.platform.db.models import AuthEvent, Person, UserAccount, UserSession
+from superaide.platform.db.session import session_scope
 
 PASSWORD = "correct horse battery"
 EMAIL = "Jordan@Example.com"

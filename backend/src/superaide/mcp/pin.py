@@ -22,8 +22,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.audit import audit
-from superaide.db.models import McpPin
+from superaide.platform.audit import audit
+from superaide.platform.db.models import McpPin
 
 DEFAULT_TTL_MS = 60_000  # when a server does not say (older servers): re-check every minute
 MAX_TTL_MS = 3_600_000  # whatever a server asks, never trust a list for longer than an hour
@@ -148,7 +148,7 @@ def may_call(
     session: Session, *, skill_id: str, server: str, tool: dict[str, Any], enabled: bool | None = None
 ) -> bool:
     """The client's gate just before a call: the tool as the server describes it right now must match its pin."""
-    from superaide.config import get_settings
+    from superaide.platform.config import get_settings
 
     if not (get_settings().mcp_pinning if enabled is None else enabled):
         return True
