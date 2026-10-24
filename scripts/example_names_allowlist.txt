@@ -15,3 +15,6 @@ docs/morning-summary-2026-10-22.md
 backend/pyproject.toml::name = "Shashank"
 docs/decisions/0006-skill-protocol.md::Shashank wants a marketplace
 docs/decisions/0008-one-ava-across-channels.md::Shashank, the owner, reported
+
+# Hosting how-to for real VPS providers: the provider's real name is the point of the page.
+deploy/README.md::Bluehost

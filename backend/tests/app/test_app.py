@@ -247,7 +247,7 @@ def test_backend_is_an_api_for_the_frontend_on_port_3000(client):
         ("A family emergency", "a family emergency"),
         ("Anything about the Series A", "anything about the Series A"),
         ("AWS outages", "AWS outages"),
-        ("PebbleRoad clients", "PebbleRoad clients"),
+        ("Larkfield clients", "Larkfield clients"),
         ("Priya's birthday", "Priya's birthday"),
         ("Legal, money or contracts", "legal, money or contracts"),
         ("", ""),

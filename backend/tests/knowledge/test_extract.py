@@ -59,7 +59,7 @@ def make_pdf(lines: list[str]) -> bytes:
     return bytes(out)
 
 
-RESUME_LINES = ["Jordan W - Applied AI engineer", "Builds document intelligence at PebbleRoad"]
+RESUME_LINES = ["Jordan W - Applied AI engineer", "Builds document intelligence at Larkfield"]
 
 
 def encrypt_pdf(data: bytes, user_password: str) -> bytes:
@@ -104,7 +104,7 @@ def resume_docx() -> bytes:
 
     layout = document.add_table(rows=1, cols=2)
     layout.cell(0, 0).text = "Experience"
-    layout.cell(0, 0).add_paragraph("PebbleRoad, 2020-now")
+    layout.cell(0, 0).add_paragraph("Larkfield, 2020-now")
     layout.cell(0, 1).text = "Education"
 
     anchor = document.add_paragraph("See box:")
@@ -213,7 +213,7 @@ def test_password_protected_pdf_is_refused() -> None:
 
 def test_pdf_encrypted_with_an_empty_password_still_opens() -> None:
     result = extract_file("restricted.pdf", encrypt_pdf(make_pdf(RESUME_LINES), user_password=""))
-    assert "PebbleRoad" in result.text
+    assert "Larkfield" in result.text
 
 
 @pytest.mark.parametrize("data", [b"%PDF-1.4\n" + b"garbage " * 20, b"%PDF-1.7\n"])
@@ -231,7 +231,7 @@ def test_docx_reads_paragraphs_tables_headers_text_boxes_and_content_controls() 
     assert "Skill | Level\nPython | Expert" in text
     assert text.count("Merged once") == 1 and text.count("Tall cell") == 1
     assert "Merged once | Tall cell\nBottom left" in text
-    assert "Experience\nPebbleRoad, 2020-now\n\nEducation" in text
+    assert "Experience\nLarkfield, 2020-now\n\nEducation" in text
     assert text.count("Boxed text") == 1
     assert "Inside a content control" in text
     assert "Phone: +65 1234 5678" in text
@@ -617,10 +617,10 @@ def test_html_page_is_turned_into_text() -> None:
 
 def test_short_homepage_keeps_the_owners_name() -> None:
     page = """<html><head><title>Jordan W</title></head><body><nav><a href="/">Home</a></nav>
-    <h1>Hi, I'm Jordan.</h1><p>I build applied AI systems at PebbleRoad.</p></body></html>"""
+    <h1>Hi, I'm Jordan.</h1><p>I build applied AI systems at Larkfield.</p></body></html>"""
     result = extract_url("https://example.com/", client=mock_client(lambda r: html_response(page)))
     assert "Hi, I'm Jordan." in result.text
-    assert "I build applied AI systems at PebbleRoad." in result.text
+    assert "I build applied AI systems at Larkfield." in result.text
 
 
 def test_tag_stripping_fallback(monkeypatch: pytest.MonkeyPatch) -> None:

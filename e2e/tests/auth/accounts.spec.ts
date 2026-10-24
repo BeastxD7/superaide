@@ -720,7 +720,7 @@ test.describe('log-out', () => {
     await expect(page).toHaveURL('/login?next=%2Fdashboard%2Fchat')
     await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
     await expect(workspaceHeading(page, owner)).toHaveCount(0)
-    await expect(page.getByText('I lead applied AI at PebbleRoad in Singapore.')).toHaveCount(0)
+    await expect(page.getByText('I lead applied AI at Larkfield in Singapore.')).toHaveCount(0)
   })
 
   test('logging out and back in picks up where you left off', async ({ page, owner }) => {

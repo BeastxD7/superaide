@@ -385,7 +385,7 @@ test.describe('workspace: notebook', () => {
     await expect(page.getByRole('heading', { name: "Ava's notebook" })).toBeVisible()
     await expect(page.getByText('Everything Ava remembers about you, and where she learned it. Only you can see it.')).toBeVisible()
 
-    const about = notebookFact(page, 'says: I lead applied AI at PebbleRoad in Singapore.')
+    const about = notebookFact(page, 'says: I lead applied AI at Larkfield in Singapore.')
     await expect(about).toContainText('About you')
     await expect(about).toContainText('from your introduction')
     const priya = notebookFact(page, "Priya is Ananya Menon's partner")
@@ -542,7 +542,7 @@ test.describe('workspace: privacy between accounts', () => {
         expect(r.status(), path).toBe(403)
         const body = await r.text()
         expect(body).not.toContain('acquisition')
-        expect(body).not.toContain('PebbleRoad')
+        expect(body).not.toContain('Larkfield')
       }
       const writes: [string, unknown][] = [
         ['/app/chat', { text: 'What did my boss tell you?' }],
@@ -562,7 +562,7 @@ test.describe('workspace: privacy between accounts', () => {
         await other.page.goto(path)
         await expect(other.page).toHaveURL(/\/$/)
         await expect(other.page.getByText('the acquisition closes in May')).toHaveCount(0)
-        await expect(other.page.getByText('PebbleRoad')).toHaveCount(0)
+        await expect(other.page.getByText('Larkfield')).toHaveCount(0)
       }
 
       // Many owners is the default (23e3430), so they can hire their own Ava. Everything they read
@@ -574,14 +574,14 @@ test.describe('workspace: privacy between accounts', () => {
         expect(r.status(), path).toBe(200)
         const body = await r.text()
         expect(body, path).not.toContain('acquisition')
-        expect(body, path).not.toContain('PebbleRoad')
+        expect(body, path).not.toContain('Larkfield')
       }
       expect((await other.api.post(`/app/notebook/${secret.id}/forget`, {})).status()).toBe(404)
       expect((await memories()).find((m) => m.id === secret.id)?.valid_to).toBeNull()
       for (const path of ['/dashboard/notebook', '/dashboard/chat']) {
         await other.page.goto(path)
         await expect(other.page.getByText('the acquisition closes in May')).toHaveCount(0)
-        await expect(other.page.getByText('PebbleRoad')).toHaveCount(0)
+        await expect(other.page.getByText('Larkfield')).toHaveCount(0)
       }
     } finally {
       await other.context.close()
@@ -857,6 +857,22 @@ test.describe('connections', () => {
     await expect(claude).toContainText('Hears you on the call')
     expect(await storedSecrets()).toEqual([])
     expect(await auditActions()).toContain('disconnected')
+  })
+
+  test('without a Deepgram key the row says voice is off and what to add; the hint is gone once it is connected', async ({ page, owner }) => {
+    void owner
+    await openConnections(page)
+    const row = connectionRow(page, /Deepgram, for the voice call/)
+    await row.click()
+    const hint = page.getByTestId('voice-hint-deepgram')
+    await expect(hint).toContainText('Voice is off until you add this key')
+    await expect(page.getByLabel('Deepgram API key')).toBeVisible()
+    await page.waitForTimeout(700) // let the row finish opening before a screenshot
+    if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/voice-hint-${test.info().project.name}.png`, fullPage: true })
+    await plantSecret('deepgram', 'api_key', 'sk-e2e-planted-placeholder-not-real-7f3a')
+    await openConnections(page)
+    await connectionRow(page, /Deepgram, for the voice call/).click()
+    await expect(page.getByTestId('voice-hint-deepgram')).toHaveCount(0)
   })
 
   test('WhatsApp is shown as unavailable, with the reason', async ({ page, owner }) => {
