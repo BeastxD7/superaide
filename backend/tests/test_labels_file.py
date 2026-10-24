@@ -19,9 +19,10 @@ def _defined() -> set[str]:
 def test_labels_used_by_ci_are_defined():
     defined = _defined()
     ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
-    used = {"tests-not-needed", "full-suite"}
+    used = {"tests-not-needed", "full-suite", "e2e-blocking"}
     for label in used:
-        assert label in ci or label in (ROOT / "scripts" / "tests_required.py").read_text(), label
+        scripts = "".join((ROOT / "scripts" / f).read_text() for f in ("tests_required.py", "ci_gate.py"))
+        assert label in ci or label in scripts, label
     missing = used - defined
     assert not missing, f"add to .github/labels.yml or the sync deletes them: {sorted(missing)}"
 
