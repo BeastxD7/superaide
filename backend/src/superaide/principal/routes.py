@@ -34,9 +34,17 @@ def flag_on() -> None:
 class CardBody(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    display_name: str = Field(min_length=1, max_length=card.MAX_NAME)
+    first_name: str = Field(min_length=1, max_length=card.MAX_FIRST)
+    initial: str = Field(default="", max_length=2)
+    opt_in: bool | None = None  # omitted keeps the owner's current choice (the default is off)
     can: list[str] | None = Field(default=None, max_length=card.MAX_LISTED)
     cannot: list[str] | None = Field(default=None, max_length=card.MAX_LISTED)
+
+
+class OptIn(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    opted_in: bool
 
 
 def make_public_router() -> APIRouter:
@@ -53,7 +61,7 @@ def make_public_router() -> APIRouter:
         if scope is None:
             raise _not_found()
         with use_instance(scope), session_scope() as s:
-            shown = card.verify(s, token)
+            shown = card.verify(s, token, record=True)
         if shown is None:
             raise _not_found()
         return shown
@@ -70,8 +78,8 @@ def make_owner_router() -> APIRouter:
 
     def _view(s: Any, cur: dict[str, Any]) -> dict[str, Any]:
         token = card.issue(s)
-        return {k: cur[k] for k in ("display_name", "can", "cannot")} | {
-            "active": bool(cur["display_name"]),
+        return {k: cur[k] for k in ("first_name", "initial", "display_name", "can", "cannot", "opted_in")} | {
+            "active": cur["opted_in"],
             "preview": f"{get_settings().frontend_origin.rstrip('/')}/c/{token}" if token else None,
         }
 
@@ -94,9 +102,38 @@ def make_owner_router() -> APIRouter:
     )
     def put_card(body: CardBody, person_id: uuid.UUID = Depends(owner_on)) -> dict[str, Any]:
         with session_scope() as s:
-            cur = card.configure(s, display_name=body.display_name, can=body.can, cannot=body.cannot)
-            audit(s, "owner", "principal_card_set")
+            try:
+                cur = card.configure(
+                    s, first_name=body.first_name, initial=body.initial, can=body.can, cannot=body.cannot,
+                    opted_in=body.opt_in,
+                )  # fmt: skip
+            except ValueError:
+                raise HTTPException(422, "first_name must be a single first name (letters only)") from None
+            audit(s, "owner", "principal_card_set", opted_in=cur["opted_in"])
             return _view(s, cur)
+
+    @router.post(
+        "/opt-in",
+        summary="Turn my principal card on or off",
+        description="Off by default. Off keeps every setting but adds no card to any reply.",
+    )
+    def opt_in(body: OptIn, person_id: uuid.UUID = Depends(owner_on)) -> dict[str, Any]:
+        with session_scope() as s:
+            try:
+                cur = card.set_opt_in(s, body.opted_in)
+            except ValueError:
+                raise HTTPException(422, "Choose a first name before turning the card on") from None
+            audit(s, "owner", "principal_card_opt_in" if body.opted_in else "principal_card_opt_out")
+            return _view(s, cur)
+
+    @router.get(
+        "/stats",
+        summary="How my cards are doing",
+        description="Counts only: cards shown, distinct cards opened, cards revoked. No recipients, no text.",
+    )
+    def stats(person_id: uuid.UUID = Depends(owner_on)) -> dict[str, Any]:
+        with session_scope() as s:
+            return card.stats(s)
 
     @router.post(
         "/revoke",

@@ -392,15 +392,32 @@
             ],
             "title": "Cannot"
           },
-          "display_name": {
-            "maxLength": 80,
+          "first_name": {
+            "maxLength": 40,
             "minLength": 1,
-            "title": "Display Name",
+            "title": "First Name",
             "type": "string"
+          },
+          "initial": {
+            "default": "",
+            "maxLength": 2,
+            "title": "Initial",
+            "type": "string"
+          },
+          "opt_in": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opt In"
           }
         },
         "required": [
-          "display_name"
+          "first_name"
         ],
         "title": "CardBody",
         "type": "object"
@@ -1147,6 +1164,19 @@
           "password"
         ],
         "title": "LoginBody",
+        "type": "object"
+      },
+      "OptIn": {
+        "properties": {
+          "opted_in": {
+            "title": "Opted In",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "opted_in"
+        ],
+        "title": "OptIn",
         "type": "object"
       },
       "OptionBody": {
@@ -9257,6 +9287,55 @@
         ]
       }
     },
+    "/app/principal-card/opt-in": {
+      "post": {
+        "description": "Off by default. Off keeps every setting but adds no card to any reply.",
+        "operationId": "opt_in_app_principal_card_opt_in_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OptIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Opt In App Principal Card Opt In Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Turn my principal card on or off",
+        "tags": [
+          "Owner: principal card"
+        ]
+      }
+    },
     "/app/principal-card/revoke": {
       "post": {
         "operationId": "revoke_app_principal_card_revoke_post",
@@ -9359,6 +9438,35 @@
           }
         ],
         "summary": "Revoke one card I have sent",
+        "tags": [
+          "Owner: principal card"
+        ]
+      }
+    },
+    "/app/principal-card/stats": {
+      "get": {
+        "description": "Counts only: cards shown, distinct cards opened, cards revoked. No recipients, no text.",
+        "operationId": "stats_app_principal_card_stats_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Stats App Principal Card Stats Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "How my cards are doing",
         "tags": [
           "Owner: principal card"
         ]
