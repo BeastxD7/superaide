@@ -180,6 +180,7 @@ GUIDES = {
         "steps": [
             "Open the link: Slack creates your own Ava app with everything set up.",
             "Click Install to Workspace and allow it.",
+            "Made the app by hand? It also needs channels:history and groups:history (Ava reads threads).",
             "Copy the Bot User OAuth Token (xoxb-…) from OAuth & Permissions.",
             "Under Basic Information, create an app-level token with connections:write and copy it (xapp-…).",
             "Paste both here.",
@@ -239,6 +240,10 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
             store.save(s, provider, checked.values, user_id=user_id, meta=checked.meta)
             if provider in health.PROVIDERS:
                 health.reset(s, provider)  # the service just accepted this token
+        if provider == "slack":  # #447: say now which Slack permissions the installed app lacks
+            from superaide.channels.slack import scopes
+
+            scopes.validate_and_record(checked.values["bot_token"], http_client())
         telegram_username.cache_clear()
         apply()
         return view(request)

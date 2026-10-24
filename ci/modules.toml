@@ -206,6 +206,7 @@ tests = [
 e2e = [
   "e2e/tests/channels/channel-rows.spec.ts",
   "e2e/tests/channels/slack-link.spec.ts",
+  "e2e/tests/channels/slack-scopes.spec.ts",
 ]
 
 [modules.integrations]
@@ -220,6 +221,8 @@ e2e = [
   "e2e/tests/integrations/gmail-api-disabled.spec.ts",
   "e2e/tests/integrations/gmail-read-settings.spec.ts",
   "e2e/tests/integrations/gmail-read-settings.mobile.spec.ts",
+  "e2e/tests/integrations/capability-routes.spec.ts",
+  "e2e/tests/integrations/capability-routes.mobile.spec.ts",
   "e2e/tests/integrations/calendar-settings.spec.ts",
   "e2e/tests/integrations/calendar-settings.mobile.spec.ts",
   "e2e/tests/integrations/web-settings.spec.ts",
@@ -471,6 +474,7 @@ e2e = [
   "e2e/tests/principal/principal-card.spec.ts",
   "e2e/tests/principal/approval-sign.spec.ts",
   "e2e/tests/principal/approval-sign.mobile.spec.ts",
+  "e2e/tests/principal/signature-look.mobile.spec.ts",
 ]
 
 [modules.privacy]
@@ -764,6 +768,7 @@ e2e = [
   "e2e/tests/principal/principal-card.spec.ts",
   "e2e/tests/principal/approval-sign.spec.ts",
   "e2e/tests/principal/approval-sign.mobile.spec.ts",
+  "e2e/tests/principal/signature-look.mobile.spec.ts",
   "e2e/tests/rehearsal/rehearsal.spec.ts",
   "e2e/tests/reminders/reminders-sync.spec.ts",
   "e2e/tests/school/school.spec.ts",

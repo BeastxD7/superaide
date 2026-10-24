@@ -310,3 +310,66 @@ def test_telegram_and_slack_are_unaffected_unless_the_owner_turned_them_on(owner
     owner.post("/app/principal-card/sign-default", json={"on": False})
     with session_scope() as s:
         assert card.footer(s, channel="slack", to="Priya Tan") == ""
+
+
+# The signature block's settings and the live preview (#439).
+
+
+def test_signature_settings_round_trip_with_safe_defaults(owner, on):
+    cur = owner.get("/app/principal-card").json()
+    assert (cur["avatar"], cur["mark"], cur["title"], cur["accent"]) == (True, False, "", "indigo")
+    assert cur["accents"] == ["indigo", "teal", "slate", "rose", "amber"]
+    r = owner.put(
+        "/app/principal-card",
+        json={
+            "first_name": "Ananya",
+            "avatar": False,
+            "mark": True,
+            "title": "Chief of staff to {name}",
+            "accent": "rose",
+        },
+    )
+    assert r.status_code == 200 and (r.json()["avatar"], r.json()["mark"], r.json()["accent"]) == (False, True, "rose")
+    assert r.json()["title"] == "Chief of staff to {name}"
+
+
+@pytest.mark.parametrize("bad", ["hotpink", "#ff0000", "", "indigo; background:url(x)"])
+def test_an_accent_outside_the_palette_is_refused(owner, on, bad):
+    assert owner.put("/app/principal-card", json={"first_name": "Ananya", "accent": bad}).status_code == 422
+
+
+def test_the_preview_renders_unsaved_edits_and_changes_nothing(owner, on):
+    r = owner.post("/app/principal-card/preview", json={"first_name": "Meera", "accent": "amber", "mark": True})
+    assert r.status_code == 200
+    body = r.json()
+    assert "Personal assistant of Meera" in body["html"] and "#b45309" in body["html"] and "Sent with" in body["html"]
+    assert "Verify this assistant" in body["html"] and "AI assistant acting for Meera" in body["text"]
+    assert body["verify_url"].endswith("/c/Preview1")
+    assert owner.get("/app/principal-card").json()["accent"] == "indigo"  # nothing was saved
+
+
+def test_opening_settings_does_not_issue_a_new_link_each_time(owner, on):
+    from sqlalchemy import func, select
+
+    from superaide.principal.models import CardLink
+
+    first = owner.get("/app/principal-card").json()["preview"]
+    for _ in range(3):
+        assert owner.get("/app/principal-card").json()["preview"] == first
+    with session_scope() as s:
+        assert s.scalar(select(func.count()).select_from(CardLink)) == 1
+    owner.post("/app/principal-card/revoke", json={})  # after a revoke the preview link is a fresh one
+    assert owner.get("/app/principal-card").json()["preview"] != first
+
+
+def test_the_preview_refuses_a_bad_accent_and_everyone_else(owner, on, browser):
+    assert owner.post("/app/principal-card/preview", json={"accent": "nope"}).status_code == 422
+    assert browser().post("/app/principal-card/preview", json={}).status_code in (401, 403)
+    stranger = browser()
+    signup(stranger, **OTHER)
+    assert stranger.post("/app/principal-card/preview", json={}).status_code == 403
+
+
+def test_the_preview_is_off_with_the_global_flag(owner, monkeypatch):
+    monkeypatch.setattr(get_settings(), "principal_card_enabled", False)
+    assert owner.post("/app/principal-card/preview", json={}).status_code == 404

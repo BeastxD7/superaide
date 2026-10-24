@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, type ReactNode } from 'react'
 import { Separator } from '@/components/ui/separator'
@@ -64,6 +65,15 @@ export function DashboardShell({ defaultOpen, children }: { defaultOpen: boolean
               {me.agent.name}: {status.label.toLowerCase()}
             </span>
           </header>
+          {(me.channels.health?.slack?.missing_scopes?.length ?? 0) > 0 && (
+            <div role="alert" data-testid="slack-scopes-banner" className="shrink-0 border-b border-line/70 bg-rose-100 px-4 py-2 text-sm text-[#6b3d06]">
+              Slack is missing permissions ({me.channels.health?.slack?.missing_scopes?.join(', ')}), so {me.agent.name} can&apos;t do
+              everything there.{' '}
+              <Link href="/dashboard/connections" className="font-medium underline">
+                See how to fix it
+              </Link>
+            </div>
+          )}
           {PWA_ENABLED && <InstallHint />}
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">{children}</div>
           {/* Phones only (below md), behind NEXT_PUBLIC_MOBILE_TABS; desktop is unchanged. */}

@@ -2,7 +2,6 @@ import {
   AlarmClock,
   BookOpen,
   Brain,
-  BadgeCheck,
   Drama,
   GraduationCap,
   House,
@@ -19,7 +18,6 @@ import type { Me } from '@/lib/api'
 // `triage`: shown only while the backend has triage turned on (ADR 0010).
 // `rehearsal`: shown only while the backend has the rehearsal room turned on (#58).
 export type NavItem = { href: string; label: string; icon: typeof House; triage?: boolean; rehearsal?: boolean; school?: boolean; card?: boolean; approvals?: boolean; reminders?: boolean }
-// `card`: shown only while the backend has the Principal Card turned on (#135).
 // `approvals`: carries the count of requests waiting for the owner's yes (#294).
 // `reminders`: carries the count of reminders due today or overdue (#345).
 // `school`: shown only while the backend has Ava School turned on (#57).
@@ -37,7 +35,6 @@ export const NAV: { group: string; items: NavItem[] }[] = [
       { href: '/dashboard/notebook', label: 'Notebook', icon: BookOpen },
       { href: '/dashboard/school', label: 'Ava School', icon: GraduationCap, school: true },
       { href: '/dashboard/people', label: 'People', icon: Users },
-      { href: '/dashboard/principal-card', label: 'Principal card', icon: BadgeCheck, card: true },
     ],
   },
   {

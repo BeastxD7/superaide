@@ -45,9 +45,9 @@ test('the intro tab labels are readable in full on a phone', async ({ page }) =>
 test('the files list fits a phone screen, even with a long file name', async ({ page }) => {
   await openTab(page, 'Files & links')
   const long = 'Ananya-Menon-Curriculum-Vitae-2026-final-final-v3-for-the-assistant-with-a-very-long-name.txt'
-  await chooseFile(page, textFile(long, 'I lead applied AI at PebbleRoad in Singapore.'))
+  await chooseFile(page, textFile(long, 'I lead applied AI at Larkfield in Singapore.'))
   await expect(fileRow(page, long)).toBeVisible()
-  await chooseFile(page, pdf(['Ananya Menon', 'Leads applied AI at PebbleRoad in Singapore.']))
+  await chooseFile(page, pdf(['Ananya Menon', 'Leads applied AI at Larkfield in Singapore.']))
   await expect(fileRow(page, 'resume.pdf')).toBeVisible()
 
   for (const title of [long, 'resume.pdf']) {
@@ -84,7 +84,7 @@ test('the call screen fits a phone screen and can be answered by typing', async 
   await insideViewport(page, you, 'your camera tile')
   await insideViewport(page, dialog.getByText(CALL_QUESTIONS[0], { exact: true }), 'the question')
 
-  await typeAnswer(dialog, CALL_QUESTIONS[0], 'I lead applied AI at PebbleRoad in Singapore.')
+  await typeAnswer(dialog, CALL_QUESTIONS[0], 'I lead applied AI at Larkfield in Singapore.')
   await expect(dialog.getByText(CALL_QUESTIONS[1], { exact: true })).toBeVisible()
   const box = dialog.getByRole('textbox', { name: 'Type your answer' })
   await insideViewport(page, box, 'the answer box')

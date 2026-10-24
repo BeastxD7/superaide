@@ -2,15 +2,16 @@
 
 import { BadgeCheck, Puzzle, ShieldCheck } from 'lucide-react'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { BrandIcon, type Brand } from '@/components/BrandIcon'
 import { Notice } from '@/components/site'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAppData } from '@/features/dashboard/data'
+import { capabilityBySkill, capabilityHref, HASH_REDIRECTS } from '@/features/dashboard/capabilities/registry'
 import { ConnectorSettings } from '@/features/dashboard/ConnectorSettings'
-import { GmailPanel } from '@/features/dashboard/GmailPanel'
 import { SkillReleasesPanel } from '@/features/dashboard/SkillReleasesPanel'
 import { call, type SkillCard, type SkillOption } from '@/lib/api'
 import { useSession } from '@/lib/session-context'
@@ -35,8 +36,14 @@ const GOOGLE_OUTCOME: Record<string, { tone: 'info' | 'error'; text: string }> =
 
 export function SkillsPage({ google = null }: { google?: string | null }) {
   const { me } = useSession()
+  const router = useRouter()
   const name = me?.agent.name ?? 'Ava'
   const { data, error, reload } = useAppData<SkillCard[]>('/skills')
+  // Old bookmarks and links to /dashboard/capabilities#gmail land on the capability's own page (a hash never reaches the server).
+  useEffect(() => {
+    const to = HASH_REDIRECTS[window.location.hash]
+    if (to) router.replace(to)
+  }, [router])
   const [consent, setConsent] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
@@ -201,14 +208,20 @@ export function SkillsPage({ google = null }: { google?: string | null }) {
                     </Notice>
                   </div>
                 )}
-                {s.installed && s.id === 'superaide/gmail' && !asking && <GmailPanel name={name} />}
+                {s.installed && capabilityBySkill(s.id) && !asking && (
+                  <div className="mt-3">
+                    <Button asChild size="sm" variant="outline" className="touch:min-h-11">
+                      <Link href={capabilityHref(capabilityBySkill(s.id)!.slug)}>{s.title} settings</Link>
+                    </Button>
+                  </div>
+                )}
                 {s.installed && s.id === 'superaide/web-research' && !asking && (
                   <ConnectorSettings path="web" title={`How ${name} uses the web`} anchor="web" />
                 )}
                 {s.installed && s.id === 'superaide/google-calendar' && !asking && (
                   <ConnectorSettings path="calendar" title={`What ${name} may read in your calendar`} anchor="calendar" />
                 )}
-
+                
                 {s.installed &&
                   (s.google_connected !== false || s.id === 'superaide/gmail') && // Gmail's own panel and options explain a missing Google
                   (s.options ?? []).map((o) => {

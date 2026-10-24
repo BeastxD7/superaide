@@ -11,7 +11,8 @@ test.describe('reminders', () => {
     // Between midnight and 4am "tomorrow" means the coming day, which is today's date (intentions/when.py).
     await expect(page.getByText(/Got it\. I'll remind you (today|tomorrow) at 5:00 pm: Call Priya/)).toBeVisible()
 
-    await page.getByRole('link', { name: 'Reminders', exact: true }).click()
+    // Between midnight and 4am "tomorrow 5pm" is today, so the menu link carries the due-today count ("Reminders 1 due today"): match the name, not the badge.
+    await page.getByRole('link', { name: /^Reminders(\s*\d+ due today)?$/ }).click()
     await expect(page).toHaveURL(/\/dashboard\/reminders$/)
     const list = page.getByRole('list', { name: 'Upcoming reminders' })
     await expect(list.getByText('Call Priya')).toBeVisible()

@@ -1,11 +1,12 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { capabilityHref } from '@/features/dashboard/capabilities/registry'
 import { Notice } from '@/components/site'
 import { Button } from '@/components/ui/button'
 import { call, type GmailStatus } from '@/lib/api'
 import { errorMessage } from '@/lib/action'
-import { GmailReadSettings } from '@/features/dashboard/GmailReadSettings'
 
 // What came back from Google's sign-in (?gmail=… on the Capabilities page).
 const RESULT: Record<string, { tone: 'info' | 'error'; text: string }> = {
@@ -91,7 +92,13 @@ export function GmailPanel({ name }: { name: string }) {
               )}
             </span>
           </label>
-          <GmailReadSettings name={name} />
+          <p className="text-body">
+            What {name} may read in your mail is on the{' '}
+            <Link href={capabilityHref('gmail', 'reading')} className="font-medium text-violet-700 underline">
+              Reading page
+            </Link>
+            .
+          </p>
         </>
       )}
     </div>
