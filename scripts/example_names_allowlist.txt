@@ -1,12 +1,12 @@
 # Paths (and single lines) where the old example name may legitimately remain.
 # Format: `path` (whole file) or `path::regex` (only lines matching the regex).
-# Used by scripts/rename_example_names.py and backend/tests/test_example_names.py.
+# Used by scripts/rename_example_names.py and backend/tests/guards/test_example_names.py.
 
 # Documents the old to new mapping, so it has to name the old names.
 docs/design/example-names.md
 scripts/rename_example_names.py
 scripts/example_names_allowlist.txt
-backend/tests/test_example_names.py
+backend/tests/guards/test_example_names.py
 
 # The real project owner, in notes and instructions to Claude Code (facts about a real person, not an example).
 CLAUDE.md

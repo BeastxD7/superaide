@@ -47,11 +47,11 @@ export const PG_URL = withDatabase(PG_ADMIN_URL, DB_NAME)
 export const DATABASE_URL = PG_URL.replace(/^postgres(ql)?:\/\//, 'postgresql+psycopg://')
 
 export const ASK_LINK = process.env.E2E_ASK_LINK === '1'
-// "Who is this?" (IDENTITY_CLAIM_REVIEW, #93): E2E_CLAIMS=1 switches it on for tests/identity-claims.spec.ts.
+// "Who is this?" (IDENTITY_CLAIM_REVIEW, #93): E2E_CLAIMS=1 switches it on for tests/identity/identity-claims.spec.ts.
 export const CLAIMS = process.env.E2E_CLAIMS === '1'
-// "The Mirror" (MIRROR_ENABLED) is off by default; E2E_MIRROR=1 turns it on for tests/mirror.spec.ts.
+// "The Mirror" (MIRROR_ENABLED) is off by default; E2E_MIRROR=1 turns it on for tests/mirror/mirror.spec.ts.
 export const MIRROR = process.env.E2E_MIRROR === '1'
-// The voice call v2 (ADR 0012) with fake speech services; E2E_VOICE=1 for tests/voice-intro.spec.ts.
+// The voice call v2 (ADR 0012) with fake speech services; E2E_VOICE=1 for tests/voice/voice-intro.spec.ts.
 export const VOICE = process.env.E2E_VOICE === '1'
 
 // The rehearsal room (#58): E2E_REHEARSAL=1 switches it on (it needs E2E_BRAIN=1 for a model to play the other side).
@@ -61,9 +61,9 @@ export const SCHOOL = process.env.E2E_SCHOOL === '1'
 // The Principal Card (#135) is on by default; E2E_CARD=0 runs the stack with the global kill flag off.
 export const CARD_OFF = process.env.E2E_CARD === '0'
 
-// The nightly sleep job (#50) and its conversation summaries: E2E_SLEEP=1 switches it on (tests/episodes.spec.ts).
+// The nightly sleep job (#50) and its conversation summaries: E2E_SLEEP=1 switches it on (tests/app/episodes.spec.ts).
 export const SLEEP = process.env.E2E_SLEEP === '1'
-// The Glass brain share link (BRAIN_SHARE_ENABLED, #55): E2E_BRAIN_SHARE=1 switches it on (tests/brain-share.spec.ts).
+// The Glass brain share link (BRAIN_SHARE_ENABLED, #55): E2E_BRAIN_SHARE=1 switches it on (tests/brainshare/brain-share.spec.ts).
 export const BRAIN_SHARE = process.env.E2E_BRAIN_SHARE === '1'
 
 export const ADMIN_TOKEN = 'e2e-admin-token'
@@ -88,7 +88,7 @@ export function apiEnv(): Record<string, string> {
     LOGIN_FAILURES_PER_IP: '100000',
     // A fixed throwaway vault key, so tests never touch your real keychain.
     SECRETS_MASTER_KEY: Buffer.alloc(32, SLOT + 1).toString('base64'),
-    // The "Ask my Ava" link is off by default; E2E_ASK_LINK=1 turns it on for tests/ask-link.spec.ts.
+    // The "Ask my Ava" link is off by default; E2E_ASK_LINK=1 turns it on for tests/asklink/ask-link.spec.ts.
     ...(BRAIN
       ? {
           FAKE_LLM: 'false',

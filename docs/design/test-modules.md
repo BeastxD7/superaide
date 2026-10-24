@@ -24,9 +24,11 @@ One file, plain data (TOML, read with the standard library). Each `[modules.<nam
 
 Besides the modules there are three lists: `[ignore]` (documentation: runs nothing), `[full]` (paths that run everything: Alembic, every `models.py`, `conftest.py`, `pyproject.toml` and the lockfiles, the OpenAPI snapshot, `.github/**`, `scripts/**`, `ci/**`, the Makefile, `package.json`, shared frontend and e2e files) and `[settings] expansion`.
 
+**Where tests live (ADR 0015 phase 1).** A backend test sits in `backend/tests/<module>/` (HTTP tests in `backend/tests/<module>/api/`, whose `conftest.py` re-exports the shared fixtures of `tests/api_support.py`), and each module's `tests` entry is the glob `backend/tests/<module>/**`, so a new test cannot be mis-mapped: its folder is its owner. `redteam/`, `live/`, `fixtures/` and the shared support modules stay in `backend/tests/`. e2e specs sit in `e2e/tests/<module>/` (the first module that lists them; `journeys/` spans modules). `scripts/codemod_move.py` did the move (idempotent, writes `ci/layout-moves.json` for `scripts/rebase_after_move.py`).
+
 ### Nothing can rot
 
-`backend/tests/test_select_tests.py` fails when:
+`backend/tests/repo/test_select_tests.py` fails when:
 
 - a file under `backend/src/superaide` or `frontend/src` is owned by no module, or by two;
 - a backend test file is owned by no module or by two (a new test can declare itself on its first lines with `# ci-module: memory` instead of editing the map, which avoids merge conflicts on one shared file);
@@ -87,7 +89,7 @@ uv run --project backend python scripts/select_tests.py --module mirror --format
 1. Add `[modules.<name>]` to `ci/modules.toml` with `src`, `tests` and `e2e`. Name backend modules after the package.
 2. Put each test file under exactly one module's `tests` (or start it with `# ci-module: <name>`).
 3. List the e2e specs that exercise it.
-4. Run `uv run pytest tests/test_select_tests.py`; it names whatever is still unmapped.
+4. Run `uv run pytest tests/repo/test_select_tests.py`; it names whatever is still unmapped.
 
 ## What this accepts
 

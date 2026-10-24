@@ -4,7 +4,7 @@ Playwright tests that drive Superaide in a real browser against a real API and P
 
 ```bash
 make e2e                                  # build the frontend, then run everything on slot 0
-cd e2e && npx playwright test tests/smoke.spec.ts --project=desktop   # one file
+cd e2e && npx playwright test tests/web-shell/smoke.spec.ts --project=desktop   # one file
 npx playwright test --ui                  # watch and debug interactively
 npx playwright show-report playwright-report/slot-0
 ```

@@ -152,7 +152,7 @@ A route whose body is a bare JSON array (the chat history, which existing client
 
 - Every paginated list has an index whose columns are the equality filters followed by the sort keys in the sort direction: `(context_id, created_at desc, id desc)`. A leading `agent_id` is added when the route is not already narrowed by an indexed owner column, because the instance scope is always in the `WHERE`.
 - A filter that selects a minority of rows (`valid_to IS NULL`, `removed_at IS NULL`) becomes a partial index with the same condition, so the index stays small as history grows.
-- A test per migrated route runs `EXPLAIN (FORMAT JSON)` on the page query for the first page and a deep page over a seeded table and fails if the plan contains a `Sort` or a `Seq Scan`. `tests/test_pagination.py` does this for the helper's query shape on a probe table with the same index shape; each endpoint PR adds the real table.
+- A test per migrated route runs `EXPLAIN (FORMAT JSON)` on the page query for the first page and a deep page over a seeded table and fails if the plan contains a `Sort` or a `Seq Scan`. `tests/pagination/test_pagination.py` does this for the helper's query shape on a probe table with the same index shape; each endpoint PR adds the real table.
 - Migrations that only add an index are their own PR, one at a time, and use `CREATE INDEX CONCURRENTLY` in production-sized tables.
 
 ### Limits as configuration

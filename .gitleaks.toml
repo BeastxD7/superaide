@@ -6,13 +6,13 @@ useDefault = true
 [[allowlists]]
 description = "Made-up Google credentials planted by the capability e2e spec"
 condition = "AND"
-paths = ['''(^|/)tests/capability-google\.spec\.ts$''']
+paths = ['''(^|/)tests/connectors/capability-google\.spec\.ts$''']
 regexes = ['''^rt-1234567890abcdef$''', '''^GOCSPX-secretsecret$''', '''^abc\.apps\.googleusercontent\.com$''']
 
 [[allowlists]]
 description = "Obviously fake tokens in the connection tests"
 condition = "AND"
-paths = ['''(^|/)tests/test_connections\.py$''']
+paths = ['''(^|/)tests/app/test_connections\.py$''']
 regexes = ['''^xox[bp]-1-abc-[a-z]+$''', '''^xapp-1-abc-[a-z]+$''']
 
 [[allowlists]]
@@ -24,35 +24,35 @@ regexes = ['''^987654321012345678$''']
 [[allowlists]]
 description = "Made-up Slack app token in the API connection tests"
 condition = "AND"
-paths = ['''(^|/)tests/api/test_connections_negative\.py$''']
+paths = ['''(^|/)tests/app/api/test_connections_negative\.py$''']
 regexes = ['''^xapp-1-A111-2222-[a-z]+$''']
 
 [[allowlists]]
 description = "A forged session cookie value in the accounts e2e tests (base64 of plain English)"
 condition = "AND"
-paths = ['''(^|/)e2e/tests/accounts\.spec\.ts$''']
+paths = ['''(^|/)e2e/tests/auth/accounts\.spec\.ts$''']
 regexes = ['''^Q2hlY2tpbmctdGhhdC1hLXJhbmRvbS10b2tlbi1mYWls''']
 
 [[allowlists]]
 description = "A made-up OpenRouter-style key in the provider settings tests"
 condition = "AND"
-paths = ['''(^|/)tests/test_providers_config\.py$''']
+paths = ['''(^|/)tests/brain/test_providers_config\.py$''']
 regexes = ['''^sk-or-v1-test-secret-key-0123456789$''']
 
 [[allowlists]]
 description = "A made-up opaque escalation token in the push payload tests"
 condition = "AND"
-paths = ['''(^|/)tests/test_push\.py$''']
+paths = ['''(^|/)tests/push/test_push\.py$''']
 regexes = ['''^AbCdEfGh1234$''']
 
 [[allowlists]]
 description = "Made-up Slack app token in the Slack owner-link tests"
 condition = "AND"
-paths = ['''(^|/)tests/test_slack_link\.py$''']
+paths = ['''(^|/)tests/channels/test_slack_link\.py$''']
 regexes = ['''^xapp-1-A0APPONE-123456-secretsecret$''']
 
 [[allowlists]]
 description = "Made-up Slack app tokens in the channel-rows tests (a backend and an e2e spec)"
 condition = "AND"
-paths = ['''(^|/)tests/test_channel_rows\.py$''', '''(^|/)tests/channel-rows\.spec\.ts$''']
+paths = ['''(^|/)tests/channels/test_channel_rows\.py$''', '''(^|/)tests/channels/channel-rows\.spec\.ts$''']
 regexes = ['''^xapp-1-A0APPONE-1-secret$''', '''^xapp-1-A0APPONE-123456-secretsecret$''']

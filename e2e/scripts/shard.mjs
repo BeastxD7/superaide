@@ -4,7 +4,7 @@
 //   node scripts/shard.mjs <shard> <of>          print the spec files of shard N (1-based), one per line
 //   node scripts/shard.mjs --update <report.json>  rewrite shard-timings.json from a Playwright JSON report
 //
-// E2E_ONLY (space or newline separated spec paths relative to e2e/, e.g. "tests/hire-path.spec.ts") limits the run
+// E2E_ONLY (space or newline separated spec paths relative to e2e/, e.g. "tests/app/hire-path.spec.ts") limits the run
 // to those specs: scripts/select_tests.py sets it when a pull request only needs some of them. The selected specs
 // are still balanced over the shards, and a shard that gets none prints nothing (the workflow then skips it).
 //

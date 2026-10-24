@@ -13,7 +13,7 @@ policy apply to the owner too, so a test or tool connected as owner (but not
 superuser) can't read across instances by accident.
 
 A new table with `agent_id` must be added here and enabled in its migration
-(`enable(op.get_bind(), ["new_table"])`); tests/test_rls.py fails until it is.
+(`enable(op.get_bind(), ["new_table"])`); tests/tenancy/test_rls.py fails until it is.
 """
 
 from __future__ import annotations

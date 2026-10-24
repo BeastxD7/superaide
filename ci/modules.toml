@@ -48,7 +48,7 @@ src = [
   "backend/src/superaide/contracts/**",
 ]
 tests = [
-  "backend/tests/test_events.py",
+  "backend/tests/contracts/**",
 ]
 e2e = []
 
@@ -60,7 +60,7 @@ src = [
   "backend/src/superaide/__init__.py",
 ]
 tests = [
-  "backend/tests/test_env_example.py",
+  "backend/tests/config/**",
 ]
 e2e = []
 
@@ -71,7 +71,7 @@ src = [
   "backend/src/superaide/db/**",
 ]
 tests = [
-  "backend/tests/test_migration_downgrade.py",
+  "backend/tests/db/**",
 ]
 e2e = []
 
@@ -89,14 +89,11 @@ src = [
   "backend/src/superaide/tenancy/**",
 ]
 tests = [
-  "backend/tests/test_tenancy.py",
-  "backend/tests/test_rls.py",
-  "backend/tests/api/test_many_owners.py",
-  "backend/tests/api/test_operator_access.py",
+  "backend/tests/tenancy/**",
 ]
 e2e = [
-  "e2e/tests/isolation.spec.ts",
-  "e2e/tests/qa-isolation.spec.ts",
+  "e2e/tests/tenancy/isolation.spec.ts",
+  "e2e/tests/tenancy/qa-isolation.spec.ts",
 ]
 
 [modules.actionlog]
@@ -104,10 +101,10 @@ src = [
   "backend/src/superaide/actionlog/**",
 ]
 tests = [
-  "backend/tests/test_actionlog.py",
+  "backend/tests/actionlog/**",
 ]
 e2e = [
-  "e2e/tests/access-log.spec.ts",
+  "e2e/tests/actionlog/access-log.spec.ts",
 ]
 
 [modules.app]
@@ -115,24 +112,16 @@ src = [
   "backend/src/superaide/app/**",
 ]
 tests = [
-  "backend/tests/test_app.py",
-  "backend/tests/test_stream.py",
-  "backend/tests/api/test_connections_negative.py",
-  "backend/tests/api/test_hire_negative.py",
-  "backend/tests/api/test_onboarding_negative.py",
-  "backend/tests/api/test_episodes.py",
-  "backend/tests/api/test_brain_map.py",
-  "backend/tests/test_connections.py",
-  "backend/tests/api/test_stream_tenancy.py",
+  "backend/tests/app/**",
 ]
 e2e = [
-  "e2e/tests/hire-path.spec.ts",
-  "e2e/tests/chat-history.spec.ts",
-  "e2e/tests/fe-chat-streaming.spec.ts",
-  "e2e/tests/glass-brain.spec.ts",
-  "e2e/tests/episodes.spec.ts",
-  "e2e/tests/models.spec.ts",
-  "e2e/tests/qa-models.spec.ts",
+  "e2e/tests/app/hire-path.spec.ts",
+  "e2e/tests/app/chat-history.spec.ts",
+  "e2e/tests/app/fe-chat-streaming.spec.ts",
+  "e2e/tests/app/glass-brain.spec.ts",
+  "e2e/tests/app/episodes.spec.ts",
+  "e2e/tests/app/models.spec.ts",
+  "e2e/tests/app/qa-models.spec.ts",
   "e2e/tests/journeys/live-chat.spec.ts",
   "e2e/tests/journeys/real-life.spec.ts",
   "e2e/tests/journeys/first-day.spec.ts",
@@ -143,10 +132,10 @@ src = [
   "backend/src/superaide/asklink/**",
 ]
 tests = [
-  "backend/tests/api/test_ask_link.py",
+  "backend/tests/asklink/**",
 ]
 e2e = [
-  "e2e/tests/ask-link.spec.ts",
+  "e2e/tests/asklink/ask-link.spec.ts",
 ]
 
 [modules.auth]
@@ -155,19 +144,15 @@ src = [
   "backend/src/superaide/links.py",
 ]
 tests = [
-  "backend/tests/test_auth.py",
-  "backend/tests/api/test_change_email.py",
-  "backend/tests/api/test_email_links.py",
-  "backend/tests/api/test_google_signin.py",
-  "backend/tests/api/test_account_events.py",
+  "backend/tests/auth/**",
 ]
 e2e = [
-  "e2e/tests/accounts.spec.ts",
-  "e2e/tests/accounts.mobile.spec.ts",
-  "e2e/tests/qa-accounts.spec.ts",
-  "e2e/tests/qa-accounts.mobile.spec.ts",
-  "e2e/tests/google-signin.spec.ts",
-  "e2e/tests/session-switch.spec.ts",
+  "e2e/tests/auth/accounts.spec.ts",
+  "e2e/tests/auth/accounts.mobile.spec.ts",
+  "e2e/tests/auth/qa-accounts.spec.ts",
+  "e2e/tests/auth/qa-accounts.mobile.spec.ts",
+  "e2e/tests/auth/google-signin.spec.ts",
+  "e2e/tests/auth/session-switch.spec.ts",
 ]
 
 [modules.mail]
@@ -175,7 +160,7 @@ src = [
   "backend/src/superaide/mail/**",
 ]
 tests = [
-  "backend/tests/test_mail_log.py",
+  "backend/tests/mail/**",
 ]
 e2e = []
 
@@ -184,22 +169,7 @@ src = [
   "backend/src/superaide/brain/**",
 ]
 tests = [
-  "backend/tests/test_capabilities.py",
-  "backend/tests/test_anthropic_wire.py",
-  "backend/tests/test_budget.py",
-  "backend/tests/test_budget_instances.py",
-  "backend/tests/test_pricing.py",
-  "backend/tests/test_providers_base.py",
-  "backend/tests/test_providers_config.py",
-  "backend/tests/test_openai_compat.py",
-  "backend/tests/test_key_rejected.py",
-  "backend/tests/test_outsider_text_in_history.py",
-  "backend/tests/test_pinned_network.py",
-  "backend/tests/test_platform_credits.py",
-  "backend/tests/test_citations_verify.py",
-  "backend/tests/test_reliability.py",
-  "backend/tests/test_second_opinion.py",
-  "backend/tests/api/test_model_drill.py",
+  "backend/tests/brain/**",
   "backend/tests/live/**",
 ]
 e2e = []
@@ -209,10 +179,10 @@ src = [
   "backend/src/superaide/brainshare/**",
 ]
 tests = [
-  "backend/tests/api/test_brain_share.py",
+  "backend/tests/brainshare/**",
 ]
 e2e = [
-  "e2e/tests/brain-share.spec.ts",
+  "e2e/tests/brainshare/brain-share.spec.ts",
 ]
 
 [modules.channels]
@@ -220,21 +190,11 @@ src = [
   "backend/src/superaide/channels/**",
 ]
 tests = [
-  "backend/tests/test_typing_indicators.py",
-  "backend/tests/test_channel_endpoints.py",
-  "backend/tests/test_channel_format.py",
-  "backend/tests/test_channel_health.py",
-  "backend/tests/test_channel_rows.py",
-  "backend/tests/test_channel_runner.py",
-  "backend/tests/test_slack.py",
-  "backend/tests/test_slack_instances.py",
-  "backend/tests/test_slack_link.py",
-  "backend/tests/test_slack_owner_channels.py",
-  "backend/tests/test_telegram.py",
+  "backend/tests/channels/**",
 ]
 e2e = [
-  "e2e/tests/channel-rows.spec.ts",
-  "e2e/tests/slack-link.spec.ts",
+  "e2e/tests/channels/channel-rows.spec.ts",
+  "e2e/tests/channels/slack-link.spec.ts",
 ]
 
 [modules.connectors]
@@ -242,17 +202,11 @@ src = [
   "backend/src/superaide/connectors/**",
 ]
 tests = [
-  "backend/tests/test_gmail_compose.py",
-  "backend/tests/test_recipient_preflight.py",
-  "backend/tests/test_calendar_actions.py",
-  "backend/tests/test_calendar_push.py",
-  "backend/tests/test_gmail.py",
-  "backend/tests/test_connector_facts.py",
-  "backend/tests/gmail_fake.py",
+  "backend/tests/connectors/**",
 ]
 e2e = [
-  "e2e/tests/capability-google.spec.ts",
-  "e2e/tests/gmail-api-disabled.spec.ts",
+  "e2e/tests/connectors/capability-google.spec.ts",
+  "e2e/tests/connectors/gmail-api-disabled.spec.ts",
   "e2e/tests/journeys/calendar-connect.spec.ts",
   "e2e/tests/journeys/approval-automated.spec.ts",
 ]
@@ -262,14 +216,7 @@ src = [
   "backend/src/superaide/context/**",
 ]
 tests = [
-  "backend/tests/test_audience.py",
-  "backend/tests/test_recall.py",
-  "backend/tests/test_embeddings.py",
-  "backend/tests/test_importance.py",
-  "backend/tests/test_instance_filter.py",
-  "backend/tests/test_ltm_inputs.py",
-  "backend/tests/test_cross_channel.py",
-  "backend/tests/api/test_echo_filter.py",
+  "backend/tests/context/**",
 ]
 e2e = []
 
@@ -281,26 +228,15 @@ src = [
   "backend/src/superaide/cli.py",
 ]
 tests = [
-  "backend/tests/test_operator_paging.py",
-  "backend/tests/test_main.py",
-  "backend/tests/test_api.py",
-  "backend/tests/test_cli.py",
-  "backend/tests/test_worker_service.py",
-  "backend/tests/test_dashboard_api.py",
-  "backend/tests/test_db_behind.py",
-  "backend/tests/test_operator_key_e2e.py",
-  "backend/tests/api/test_admin_negative.py",
-  "backend/tests/api/test_console_sync.py",
-  "backend/tests/api/test_operator_visit.py",
-  "backend/tests/api/test_envelope.py",
+  "backend/tests/console/**",
 ]
 e2e = [
-  "e2e/tests/console.spec.ts",
-  "e2e/tests/console-sync.spec.ts",
-  "e2e/tests/operator-visit.spec.ts",
-  "e2e/tests/people-counts.spec.ts",
-  "e2e/tests/people-counts.mobile.spec.ts",
-  "e2e/tests/status-sync.spec.ts",
+  "e2e/tests/console/console.spec.ts",
+  "e2e/tests/console/console-sync.spec.ts",
+  "e2e/tests/console/operator-visit.spec.ts",
+  "e2e/tests/console/people-counts.spec.ts",
+  "e2e/tests/console/people-counts.mobile.spec.ts",
+  "e2e/tests/console/status-sync.spec.ts",
 ]
 
 [modules.dissent]
@@ -308,8 +244,7 @@ src = [
   "backend/src/superaide/dissent/**",
 ]
 tests = [
-  "backend/tests/test_dissent.py",
-  "backend/tests/api/test_dissent_route.py",
+  "backend/tests/dissent/**",
 ]
 e2e = []
 
@@ -326,8 +261,7 @@ src = [
   "backend/src/superaide/evals/**",
 ]
 tests = [
-  "backend/tests/test_evals.py",
-  "backend/tests/test_evals_baseline.py",
+  "backend/tests/evals/**",
 ]
 e2e = []
 
@@ -338,7 +272,7 @@ src = [
   "backend/src/superaide/runtime.py",
 ]
 tests = [
-  "backend/tests/test_factory.py",
+  "backend/tests/factory/**",
 ]
 e2e = []
 
@@ -347,8 +281,7 @@ src = [
   "backend/src/superaide/forknight/**",
 ]
 tests = [
-  "backend/tests/test_fork_night.py",
-  "backend/tests/api/test_fork_night_route.py",
+  "backend/tests/forknight/**",
 ]
 e2e = []
 
@@ -357,13 +290,10 @@ src = [
   "backend/src/superaide/identity/**",
 ]
 tests = [
-  "backend/tests/test_identity.py",
-  "backend/tests/test_relink.py",
-  "backend/tests/test_footprint.py",
-  "backend/tests/test_quote.py",
+  "backend/tests/identity/**",
 ]
 e2e = [
-  "e2e/tests/identity-claims.spec.ts",
+  "e2e/tests/identity/identity-claims.spec.ts",
 ]
 
 [modules.imports]
@@ -371,8 +301,7 @@ src = [
   "backend/src/superaide/imports/**",
 ]
 tests = [
-  "backend/tests/api/test_import_lease.py",
-  "backend/tests/api/test_lobster.py",
+  "backend/tests/imports/**",
 ]
 e2e = []
 
@@ -381,8 +310,7 @@ src = [
   "backend/src/superaide/jobs/**",
 ]
 tests = [
-  "backend/tests/test_jobs.py",
-  "backend/tests/test_jobs_instances.py",
+  "backend/tests/jobs/**",
 ]
 e2e = []
 
@@ -391,11 +319,10 @@ src = [
   "backend/src/superaide/journal/**",
 ]
 tests = [
-  "backend/tests/test_journal_score.py",
-  "backend/tests/api/test_journal.py",
+  "backend/tests/journal/**",
 ]
 e2e = [
-  "e2e/tests/decision-journal.spec.ts",
+  "e2e/tests/journal/decision-journal.spec.ts",
 ]
 
 [modules.knowledge]
@@ -403,27 +330,18 @@ src = [
   "backend/src/superaide/knowledge/**",
 ]
 tests = [
-  "backend/tests/test_extract.py",
-  "backend/tests/test_chunks.py",
-  "backend/tests/test_document_removal_race.py",
-  "backend/tests/test_erase.py",
-  "backend/tests/test_learn.py",
-  "backend/tests/test_profile.py",
-  "backend/tests/test_read_pending.py",
-  "backend/tests/test_intro.py",
-  "backend/tests/test_intro_brain.py",
-  "backend/tests/api/test_intro_negative.py",
+  "backend/tests/knowledge/**",
 ]
 e2e = [
-  "e2e/tests/brain-first.spec.ts",
-  "e2e/tests/doc-loader.spec.ts",
-  "e2e/tests/doc-loader.mobile.spec.ts",
-  "e2e/tests/intro-failures.spec.ts",
-  "e2e/tests/intro-sources.spec.ts",
-  "e2e/tests/intro-sources.mobile.spec.ts",
-  "e2e/tests/introduction.spec.ts",
-  "e2e/tests/introduction.mobile.spec.ts",
-  "e2e/tests/notebook-sync.spec.ts",
+  "e2e/tests/knowledge/brain-first.spec.ts",
+  "e2e/tests/knowledge/doc-loader.spec.ts",
+  "e2e/tests/knowledge/doc-loader.mobile.spec.ts",
+  "e2e/tests/knowledge/intro-failures.spec.ts",
+  "e2e/tests/knowledge/intro-sources.spec.ts",
+  "e2e/tests/knowledge/intro-sources.mobile.spec.ts",
+  "e2e/tests/knowledge/introduction.spec.ts",
+  "e2e/tests/knowledge/introduction.mobile.spec.ts",
+  "e2e/tests/knowledge/notebook-sync.spec.ts",
   "e2e/tests/journeys/sources.spec.ts",
 ]
 
@@ -432,20 +350,16 @@ src = [
   "backend/src/superaide/mandate/**",
 ]
 tests = [
-  "backend/tests/test_mandate.py",
-  "backend/tests/test_mandate_delegation.py",
-  "backend/tests/test_mandate_shadow.py",
-  "backend/tests/test_mandate_skip.py",
-  "backend/tests/api/test_mandates_route.py",
+  "backend/tests/mandate/**",
 ]
-e2e = ["e2e/tests/mandate-skips.spec.ts"]
+e2e = ["e2e/tests/mandate/mandate-skips.spec.ts"]
 
 [modules.mcp]
 src = [
   "backend/src/superaide/mcp/**",
 ]
 tests = [
-  "backend/tests/test_mcp_pin.py",
+  "backend/tests/mcp/**",
 ]
 e2e = []
 
@@ -454,10 +368,7 @@ src = [
   "backend/src/superaide/memory/**",
 ]
 tests = [
-  "backend/tests/test_sleep.py",
-  "backend/tests/test_timeline.py",
-  "backend/tests/test_threads.py",
-  "backend/tests/test_first_message_race.py",
+  "backend/tests/memory/**",
 ]
 e2e = []
 
@@ -466,7 +377,7 @@ src = [
   "backend/src/superaide/memsocket/**",
 ]
 tests = [
-  "backend/tests/api/test_memory_socket.py",
+  "backend/tests/memsocket/**",
 ]
 e2e = []
 
@@ -475,10 +386,10 @@ src = [
   "backend/src/superaide/mirror/**",
 ]
 tests = [
-  "backend/tests/api/test_mirror.py",
+  "backend/tests/mirror/**",
 ]
 e2e = [
-  "e2e/tests/mirror.spec.ts",
+  "e2e/tests/mirror/mirror.spec.ts",
 ]
 
 [modules.pagination]
@@ -487,18 +398,14 @@ src = [
   "backend/src/superaide/envelope.py",
 ]
 tests = [
-  "backend/tests/test_pagination.py",
-  "backend/tests/test_messages_paging.py",
-  "backend/tests/test_notebook_paging.py",
-  "backend/tests/test_log_paging.py",
-  "backend/tests/test_people_paging.py",
+  "backend/tests/pagination/**",
 ]
 e2e = [
-  "e2e/tests/pagination-chat.spec.ts",
-  "e2e/tests/pagination-console.spec.ts",
-  "e2e/tests/pagination-logs.spec.ts",
-  "e2e/tests/pagination-notebook.spec.ts",
-  "e2e/tests/pagination-people.spec.ts",
+  "e2e/tests/pagination/pagination-chat.spec.ts",
+  "e2e/tests/pagination/pagination-console.spec.ts",
+  "e2e/tests/pagination/pagination-logs.spec.ts",
+  "e2e/tests/pagination/pagination-notebook.spec.ts",
+  "e2e/tests/pagination/pagination-people.spec.ts",
 ]
 
 [modules.passport]
@@ -506,10 +413,10 @@ src = [
   "backend/src/superaide/passport/**",
 ]
 tests = [
-  "backend/tests/api/test_passport.py",
+  "backend/tests/passport/**",
 ]
 e2e = [
-  "e2e/tests/memory-passport.spec.ts",
+  "e2e/tests/passport/memory-passport.spec.ts",
 ]
 
 [modules.pipeline]
@@ -517,10 +424,7 @@ src = [
   "backend/src/superaide/pipeline.py",
 ]
 tests = [
-  "backend/tests/test_loop.py",
-  "backend/tests/test_turn_failure.py",
-  "backend/tests/test_cross_channel_scenario.py",
-  "backend/tests/test_remind_via_ava.py",
+  "backend/tests/pipeline/**",
 ]
 e2e = []
 
@@ -529,21 +433,13 @@ src = [
   "backend/src/superaide/policy/**",
 ]
 tests = [
-  "backend/tests/api/test_halt_resume.py",
-  "backend/tests/api/test_halt_resume_concurrency.py",
-  "backend/tests/test_approval_honesty.py",
-  "backend/tests/test_approvals.py",
-  "backend/tests/test_approval_binding.py",
-  "backend/tests/test_approval_binding_all_kinds.py",
-  "backend/tests/test_approval_outcomes.py",
-  "backend/tests/test_breaker.py",
-  "backend/tests/api/test_brake.py",
+  "backend/tests/policy/**",
 ]
 e2e = [
-  "e2e/tests/halt-resume.spec.ts",
+  "e2e/tests/policy/halt-resume.spec.ts",
   "e2e/tests/journeys/approval-honesty.spec.ts",
   "e2e/tests/journeys/approval-recipient.spec.ts",
-  "e2e/tests/approvals-sync.spec.ts",
+  "e2e/tests/policy/approvals-sync.spec.ts",
   "e2e/tests/journeys/approvals.spec.ts",
 ]
 
@@ -552,13 +448,12 @@ src = [
   "backend/src/superaide/principal/**",
 ]
 tests = [
-  "backend/tests/api/test_principal_card.py",
-  "backend/tests/test_principal_card_channels.py",
+  "backend/tests/principal/**",
 ]
 e2e = [
-  "e2e/tests/principal-card.spec.ts",
-  "e2e/tests/approval-sign.spec.ts",
-  "e2e/tests/approval-sign.mobile.spec.ts",
+  "e2e/tests/principal/principal-card.spec.ts",
+  "e2e/tests/principal/approval-sign.spec.ts",
+  "e2e/tests/principal/approval-sign.mobile.spec.ts",
 ]
 
 [modules.privacy]
@@ -566,9 +461,7 @@ src = [
   "backend/src/superaide/privacy/**",
 ]
 tests = [
-  "backend/tests/test_airlock.py",
-  "backend/tests/test_airlock_fixtures.py",
-  "backend/tests/airlock_fixtures.py",
+  "backend/tests/privacy/**",
 ]
 e2e = []
 
@@ -577,8 +470,7 @@ src = [
   "backend/src/superaide/proactive/**",
 ]
 tests = [
-  "backend/tests/test_digest.py",
-  "backend/tests/test_briefing.py",
+  "backend/tests/proactive/**",
 ]
 e2e = []
 
@@ -587,10 +479,10 @@ src = [
   "backend/src/superaide/push/**",
 ]
 tests = [
-  "backend/tests/test_push.py",
+  "backend/tests/push/**",
 ]
 e2e = [
-  "e2e/tests/settings-notifications.spec.ts",
+  "e2e/tests/push/settings-notifications.spec.ts",
 ]
 
 [modules.reception]
@@ -598,8 +490,7 @@ src = [
   "backend/src/superaide/reception/**",
 ]
 tests = [
-  "backend/tests/test_reception.py",
-  "backend/tests/api/test_reception_instances.py",
+  "backend/tests/reception/**",
 ]
 e2e = []
 
@@ -608,12 +499,10 @@ src = [
   "backend/src/superaide/rehearsal/**",
 ]
 tests = [
-  "backend/tests/test_rehearse.py",
-  "backend/tests/api/test_rehearsal.py",
-  "backend/tests/rehearsal_support.py",
+  "backend/tests/rehearsal/**",
 ]
 e2e = [
-  "e2e/tests/rehearsal.spec.ts",
+  "e2e/tests/rehearsal/rehearsal.spec.ts",
 ]
 
 [modules.reminders]
@@ -621,14 +510,12 @@ src = [
   "backend/src/superaide/intentions/**",
 ]
 tests = [
-  "backend/tests/test_reminders.py",
-  "backend/tests/test_reminder_dates.py",
-  "backend/tests/test_reminder_tools.py",
+  "backend/tests/reminders/**",
 ]
 e2e = [
-  "e2e/tests/reminders-sync.spec.ts",
-  "e2e/tests/reminders-pill.spec.ts",
-  "e2e/tests/reminders-pill.mobile.spec.ts",
+  "e2e/tests/reminders/reminders-sync.spec.ts",
+  "e2e/tests/reminders/reminders-pill.spec.ts",
+  "e2e/tests/reminders/reminders-pill.mobile.spec.ts",
   "e2e/tests/journeys/reminders.spec.ts",
 ]
 
@@ -637,7 +524,7 @@ src = [
   "backend/src/superaide/rules/**",
 ]
 tests = [
-  "backend/tests/test_time_travel.py",
+  "backend/tests/rules/**",
 ]
 e2e = []
 
@@ -646,11 +533,10 @@ src = [
   "backend/src/superaide/school/**",
 ]
 tests = [
-  "backend/tests/api/test_school.py",
-  "backend/tests/api/test_school_sharing.py",
+  "backend/tests/school/**",
 ]
 e2e = [
-  "e2e/tests/school.spec.ts",
+  "e2e/tests/school/school.spec.ts",
 ]
 
 [modules.security]
@@ -658,11 +544,10 @@ src = [
   "backend/src/superaide/security/**",
 ]
 tests = [
-  "backend/tests/test_deploy_safety.py",
-  "backend/tests/test_log_redaction.py",
+  "backend/tests/security/**",
 ]
 e2e = [
-  "e2e/tests/hardening.spec.ts",
+  "e2e/tests/security/hardening.spec.ts",
 ]
 
 [modules.skills]
@@ -670,13 +555,7 @@ src = [
   "backend/src/superaide/skills/**",
 ]
 tests = [
-  "backend/tests/test_skills.py",
-  "backend/tests/api/test_skill_payouts.py",
-  "backend/tests/api/test_skill_receipts.py",
-  "backend/tests/api/test_skill_releases.py",
-  "backend/tests/api/test_skill_signals.py",
-  "backend/tests/api/test_audition.py",
-  "backend/tests/api/test_update_preview.py",
+  "backend/tests/skills/**",
 ]
 e2e = [
   "e2e/tests/journeys/skills.spec.ts",
@@ -687,7 +566,7 @@ src = [
   "backend/src/superaide/tools/**",
 ]
 tests = [
-  "backend/tests/test_web_tools.py",
+  "backend/tests/tools/**",
 ]
 e2e = []
 
@@ -696,7 +575,7 @@ src = [
   "backend/src/superaide/tooltrace/**",
 ]
 tests = [
-  "backend/tests/test_tooltrace.py",
+  "backend/tests/tooltrace/**",
 ]
 e2e = []
 
@@ -705,20 +584,7 @@ src = [
   "backend/src/superaide/triage/**",
 ]
 tests = [
-  "backend/tests/test_triage_buttons.py",
-  "backend/tests/test_triage_classify.py",
-  "backend/tests/test_triage_digest.py",
-  "backend/tests/test_triage_escalation.py",
-  "backend/tests/test_triage_knn.py",
-  "backend/tests/test_triage_labels.py",
-  "backend/tests/test_triage_rules.py",
-  "backend/tests/test_triage_schema.py",
-  "backend/tests/test_knn_shadow.py",
-  "backend/tests/test_knn_promotion.py",
-  "backend/tests/test_gmail_triage.py",
-  "backend/tests/api/test_triage_instances.py",
-  "backend/tests/api/test_triage_routes.py",
-  "backend/tests/api/test_tuner.py",
+  "backend/tests/triage/**",
 ]
 e2e = []
 
@@ -727,12 +593,7 @@ src = [
   "backend/src/superaide/trust/**",
 ]
 tests = [
-  "backend/tests/test_trust.py",
-  "backend/tests/api/test_companion.py",
-  "backend/tests/api/test_question.py",
-  "backend/tests/api/test_ratchet.py",
-  "backend/tests/api/test_twin.py",
-  "backend/tests/api/test_replay.py",
+  "backend/tests/trust/**",
 ]
 e2e = []
 
@@ -741,9 +602,7 @@ src = [
   "backend/src/superaide/vault/**",
 ]
 tests = [
-  "backend/tests/test_vault_check.py",
-  "backend/tests/test_credentials_instances.py",
-  "backend/tests/api/test_standing_orders_route.py",
+  "backend/tests/vault/**",
 ]
 e2e = []
 
@@ -752,15 +611,12 @@ src = [
   "backend/src/superaide/voice/**",
 ]
 tests = [
-  "backend/tests/test_voice_gateway.py",
-  "backend/tests/test_voice_provider.py",
-  "backend/tests/api/test_voice_gateway_route.py",
-  "backend/tests/api/test_voice_intro.py",
+  "backend/tests/voice/**",
 ]
 e2e = [
-  "e2e/tests/voice-confirm.spec.ts",
-  "e2e/tests/voice-intro.spec.ts",
-  "e2e/tests/speech-language.spec.ts",
+  "e2e/tests/voice/voice-confirm.spec.ts",
+  "e2e/tests/voice/voice-intro.spec.ts",
+  "e2e/tests/voice/speech-language.spec.ts",
 ]
 
 [modules.guards]
@@ -768,11 +624,7 @@ e2e = [
 always = true
 src = []
 tests = [
-  "backend/tests/test_example_names.py",
-  "backend/tests/api/test_authz.py",
-  "backend/tests/api/test_auth_negative.py",
-  "backend/tests/test_openapi_snapshot.py",
-  "backend/tests/test_surface.py",
+  "backend/tests/guards/**",
   "backend/tests/redteam/**",
 ]
 e2e = []
@@ -787,10 +639,8 @@ src = [
   "frontend/.env.example",
 ]
 tests = [
-  "backend/tests/test_prod_compose.py",
-  "backend/tests/test_tests_required.py",
-  "backend/tests/test_sharding.py",
-  "backend/tests/test_select_tests.py",
+  "backend/tests/repo/**",
+  "backend/tests/api_support.py",
 ]
 e2e = []
 
@@ -830,19 +680,19 @@ tests = [
   "frontend/src/hooks/*.test.ts",
 ]
 e2e = [
-  "e2e/tests/responsive.mobile.spec.ts",
-  "e2e/tests/csp.spec.ts",
-  "e2e/tests/fe-a11y.spec.ts",
-  "e2e/tests/fe-a11y.mobile.spec.ts",
-  "e2e/tests/fe-a11y-pages.spec.ts",
-  "e2e/tests/fe-focus.spec.ts",
-  "e2e/tests/fe-forms-nav.spec.ts",
-  "e2e/tests/fe-links.dev.spec.ts",
-  "e2e/tests/fe-needs-you-keyboard.spec.ts",
-  "e2e/tests/fe-longtext.mobile.spec.ts",
-  "e2e/tests/mobile-nav.mobile.spec.ts",
-  "e2e/tests/proxy.proxy.spec.ts",
-  "e2e/tests/smoke.spec.ts",
+  "e2e/tests/web-shell/responsive.mobile.spec.ts",
+  "e2e/tests/web-shell/csp.spec.ts",
+  "e2e/tests/web-shell/fe-a11y.spec.ts",
+  "e2e/tests/web-shell/fe-a11y.mobile.spec.ts",
+  "e2e/tests/web-shell/fe-a11y-pages.spec.ts",
+  "e2e/tests/web-shell/fe-focus.spec.ts",
+  "e2e/tests/web-shell/fe-forms-nav.spec.ts",
+  "e2e/tests/web-shell/fe-links.dev.spec.ts",
+  "e2e/tests/web-shell/fe-needs-you-keyboard.spec.ts",
+  "e2e/tests/web-shell/fe-longtext.mobile.spec.ts",
+  "e2e/tests/web-shell/mobile-nav.mobile.spec.ts",
+  "e2e/tests/web-shell/proxy.proxy.spec.ts",
+  "e2e/tests/web-shell/smoke.spec.ts",
 ]
 
 [modules.web-dashboard]
@@ -863,49 +713,49 @@ tests = [
   "frontend/src/features/dashboard/*.test.ts",
 ]
 e2e = [
-  "e2e/tests/halt-resume.spec.ts",
-  "e2e/tests/mandate-skips.spec.ts",
-  "e2e/tests/knn-promote.spec.ts",
-  "e2e/tests/chat-empty.mobile.spec.ts",
-  "e2e/tests/citation-marks.mobile.spec.ts",
-  "e2e/tests/citation-marks.spec.ts",
+  "e2e/tests/policy/halt-resume.spec.ts",
+  "e2e/tests/mandate/mandate-skips.spec.ts",
+  "e2e/tests/web-dashboard/knn-promote.spec.ts",
+  "e2e/tests/web-dashboard/chat-empty.mobile.spec.ts",
+  "e2e/tests/web-dashboard/citation-marks.mobile.spec.ts",
+  "e2e/tests/web-dashboard/citation-marks.spec.ts",
   "e2e/tests/journeys/approval-honesty.spec.ts",
   "e2e/tests/journeys/approval-recipient.spec.ts",
-  "e2e/tests/workspace.spec.ts",
-  "e2e/tests/workspace.mobile.spec.ts",
-  "e2e/tests/qa-dashboard.spec.ts",
-  "e2e/tests/qa-dashboard.mobile.spec.ts",
-  "e2e/tests/approvals-sync.spec.ts",
-  "e2e/tests/reminders-pill.spec.ts",
-  "e2e/tests/reminders-pill.mobile.spec.ts",
+  "e2e/tests/web-dashboard/workspace.spec.ts",
+  "e2e/tests/web-dashboard/workspace.mobile.spec.ts",
+  "e2e/tests/web-dashboard/qa-dashboard.spec.ts",
+  "e2e/tests/web-dashboard/qa-dashboard.mobile.spec.ts",
+  "e2e/tests/policy/approvals-sync.spec.ts",
+  "e2e/tests/reminders/reminders-pill.spec.ts",
+  "e2e/tests/reminders/reminders-pill.mobile.spec.ts",
   "e2e/tests/journeys/workspace.spec.ts",
   "e2e/tests/journeys/approvals.spec.ts",
   "e2e/tests/journeys/reminders.spec.ts",
   "e2e/tests/journeys/calendar-connect.spec.ts",
   "e2e/tests/journeys/skills.spec.ts",
-  "e2e/tests/status-sync.spec.ts",
-  "e2e/tests/access-log.spec.ts",
-  "e2e/tests/brain-share.spec.ts",
-  "e2e/tests/chat-history.spec.ts",
-  "e2e/tests/episodes.spec.ts",
-  "e2e/tests/glass-brain.spec.ts",
-  "e2e/tests/mirror.spec.ts",
-  "e2e/tests/memory-passport.spec.ts",
-  "e2e/tests/models.spec.ts",
-  "e2e/tests/qa-models.spec.ts",
-  "e2e/tests/notebook-sync.spec.ts",
-  "e2e/tests/principal-card.spec.ts",
-  "e2e/tests/approval-sign.spec.ts",
-  "e2e/tests/approval-sign.mobile.spec.ts",
-  "e2e/tests/rehearsal.spec.ts",
-  "e2e/tests/reminders-sync.spec.ts",
-  "e2e/tests/school.spec.ts",
-  "e2e/tests/settings-notifications.spec.ts",
-  "e2e/tests/decision-journal.spec.ts",
-  "e2e/tests/capability-google.spec.ts",
-  "e2e/tests/fe-chat-streaming.spec.ts",
-  "e2e/tests/pagination-chat.spec.ts",
-  "e2e/tests/brain-first.spec.ts",
+  "e2e/tests/console/status-sync.spec.ts",
+  "e2e/tests/actionlog/access-log.spec.ts",
+  "e2e/tests/brainshare/brain-share.spec.ts",
+  "e2e/tests/app/chat-history.spec.ts",
+  "e2e/tests/app/episodes.spec.ts",
+  "e2e/tests/app/glass-brain.spec.ts",
+  "e2e/tests/mirror/mirror.spec.ts",
+  "e2e/tests/passport/memory-passport.spec.ts",
+  "e2e/tests/app/models.spec.ts",
+  "e2e/tests/app/qa-models.spec.ts",
+  "e2e/tests/knowledge/notebook-sync.spec.ts",
+  "e2e/tests/principal/principal-card.spec.ts",
+  "e2e/tests/principal/approval-sign.spec.ts",
+  "e2e/tests/principal/approval-sign.mobile.spec.ts",
+  "e2e/tests/rehearsal/rehearsal.spec.ts",
+  "e2e/tests/reminders/reminders-sync.spec.ts",
+  "e2e/tests/school/school.spec.ts",
+  "e2e/tests/push/settings-notifications.spec.ts",
+  "e2e/tests/journal/decision-journal.spec.ts",
+  "e2e/tests/connectors/capability-google.spec.ts",
+  "e2e/tests/app/fe-chat-streaming.spec.ts",
+  "e2e/tests/pagination/pagination-chat.spec.ts",
+  "e2e/tests/knowledge/brain-first.spec.ts",
   "e2e/tests/journeys/live-chat.spec.ts",
 ]
 
@@ -921,14 +771,14 @@ src = [
 ]
 tests = []
 e2e = [
-  "e2e/tests/accounts.spec.ts",
-  "e2e/tests/accounts.mobile.spec.ts",
-  "e2e/tests/qa-accounts.spec.ts",
-  "e2e/tests/qa-accounts.mobile.spec.ts",
-  "e2e/tests/google-signin.spec.ts",
-  "e2e/tests/session-switch.spec.ts",
-  "e2e/tests/identity-claims.spec.ts",
-  "e2e/tests/hire-path.spec.ts",
+  "e2e/tests/auth/accounts.spec.ts",
+  "e2e/tests/auth/accounts.mobile.spec.ts",
+  "e2e/tests/auth/qa-accounts.spec.ts",
+  "e2e/tests/auth/qa-accounts.mobile.spec.ts",
+  "e2e/tests/auth/google-signin.spec.ts",
+  "e2e/tests/auth/session-switch.spec.ts",
+  "e2e/tests/identity/identity-claims.spec.ts",
+  "e2e/tests/app/hire-path.spec.ts",
   "e2e/tests/journeys/first-day.spec.ts",
 ]
 
@@ -941,17 +791,17 @@ tests = [
   "frontend/src/features/onboarding/*.test.ts",
 ]
 e2e = [
-  "e2e/tests/doc-loader.spec.ts",
-  "e2e/tests/doc-loader.mobile.spec.ts",
-  "e2e/tests/fe-a11y-intro.spec.ts",
-  "e2e/tests/intro-failures.spec.ts",
-  "e2e/tests/intro-sources.spec.ts",
-  "e2e/tests/intro-sources.mobile.spec.ts",
-  "e2e/tests/introduction.spec.ts",
-  "e2e/tests/introduction.mobile.spec.ts",
-  "e2e/tests/speech-language.spec.ts",
-  "e2e/tests/voice-confirm.spec.ts",
-  "e2e/tests/voice-intro.spec.ts",
+  "e2e/tests/knowledge/doc-loader.spec.ts",
+  "e2e/tests/knowledge/doc-loader.mobile.spec.ts",
+  "e2e/tests/web-onboarding/fe-a11y-intro.spec.ts",
+  "e2e/tests/knowledge/intro-failures.spec.ts",
+  "e2e/tests/knowledge/intro-sources.spec.ts",
+  "e2e/tests/knowledge/intro-sources.mobile.spec.ts",
+  "e2e/tests/knowledge/introduction.spec.ts",
+  "e2e/tests/knowledge/introduction.mobile.spec.ts",
+  "e2e/tests/voice/speech-language.spec.ts",
+  "e2e/tests/voice/voice-confirm.spec.ts",
+  "e2e/tests/voice/voice-intro.spec.ts",
   "e2e/tests/journeys/sources.spec.ts",
   "e2e/tests/journeys/first-day.spec.ts",
   "e2e/tests/journeys/phone.mobile.spec.ts",
@@ -968,10 +818,10 @@ src = [
 ]
 tests = []
 e2e = [
-  "e2e/tests/hire-path.spec.ts",
-  "e2e/tests/qa-hiring.spec.ts",
-  "e2e/tests/qa-hiring.mobile.spec.ts",
-  "e2e/tests/ask-link.spec.ts",
+  "e2e/tests/app/hire-path.spec.ts",
+  "e2e/tests/web-hire/qa-hiring.spec.ts",
+  "e2e/tests/web-hire/qa-hiring.mobile.spec.ts",
+  "e2e/tests/asklink/ask-link.spec.ts",
   "e2e/tests/journeys/first-day.spec.ts",
 ]
 
@@ -985,14 +835,14 @@ tests = [
   "frontend/src/features/console/*.test.ts",
 ]
 e2e = [
-  "e2e/tests/console-ui.spec.ts",
-  "e2e/tests/console.spec.ts",
-  "e2e/tests/console-sync.spec.ts",
-  "e2e/tests/fe-console-race.spec.ts",
-  "e2e/tests/fe-safety.spec.ts",
-  "e2e/tests/operator-visit.spec.ts",
-  "e2e/tests/people-counts.spec.ts",
-  "e2e/tests/people-counts.mobile.spec.ts",
-  "e2e/tests/channel-rows.spec.ts",
-  "e2e/tests/status-sync.spec.ts",
+  "e2e/tests/web-console/console-ui.spec.ts",
+  "e2e/tests/console/console.spec.ts",
+  "e2e/tests/console/console-sync.spec.ts",
+  "e2e/tests/web-console/fe-console-race.spec.ts",
+  "e2e/tests/web-console/fe-safety.spec.ts",
+  "e2e/tests/console/operator-visit.spec.ts",
+  "e2e/tests/console/people-counts.spec.ts",
+  "e2e/tests/console/people-counts.mobile.spec.ts",
+  "e2e/tests/channels/channel-rows.spec.ts",
+  "e2e/tests/console/status-sync.spec.ts",
 ]
