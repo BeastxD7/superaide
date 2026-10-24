@@ -1,3 +1,4 @@
+# ci-module: channels
 # ruff: noqa: F811
 """SLACK_THREAD_HISTORY_ENABLED: the owner @-mentions Ava in a thread and she reads it (public level, flag off)."""
 
