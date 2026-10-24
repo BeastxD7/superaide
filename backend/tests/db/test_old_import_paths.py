@@ -42,7 +42,7 @@ def test_old_names_are_the_same_module_objects() -> None:
 
 
 def test_the_entry_points_still_import() -> None:
-    from superaide import main as entry
+    from superaide.cli import main as cli_main
     from superaide.main import app
 
-    assert app is not None and callable(entry)
+    assert app is not None and callable(cli_main)  # `uvicorn superaide.main:app` and the `superaide` script
