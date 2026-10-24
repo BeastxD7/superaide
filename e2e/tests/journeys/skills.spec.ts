@@ -40,7 +40,10 @@ test('Gmail asks before it can send, then points to the Google client before con
   await expect(consent.getByText('Send messages or post on your behalf (asks you first)')).toBeVisible()
   await consent.getByRole('button', { name: 'Allow and install' }).click()
   await expect(gmail.getByText('Installed')).toBeVisible()
-  const settings = gmail.getByRole('group', { name: 'Gmail settings' })
+  // Its settings are on its own page now: the card links there.
+  await gmail.getByRole('link', { name: 'Gmail settings' }).click()
+  await expect(page).toHaveURL(/\/dashboard\/capabilities\/gmail$/)
+  const settings = page.getByRole('group', { name: 'Gmail settings' })
   await expect(settings.getByText('Add your Google OAuth client under Connections first')).toBeVisible()
   await expect(settings.getByRole('button', { name: 'Connect Gmail' })).toHaveCount(0)
 })

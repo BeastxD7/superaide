@@ -14,8 +14,8 @@ from superaide.platform.db.session import session_scope
 from tests.pipeline.test_loop import Script, owner_client, tool_use, turn_for  # noqa: F401  (fixtures)
 
 PLAN = {
-    "goal": "Stop the Bluehost renewal before it is charged",
-    "evidence": ["Bluehost mail of 3 Oct: renews 3 Nov", "Their no-reply address is not monitored"],
+    "goal": "Stop the Fernhost renewal before it is charged",
+    "evidence": ["Fernhost mail of 3 Oct: renews 3 Nov", "Their no-reply address is not monitored"],
     "route": "Their support chat, read by a human agent",
     "ability_ok": True,
     "recommendation": "Send them this cancellation note today",
@@ -34,7 +34,7 @@ def approvals(s):
     return s.scalars(select(Approval)).all()
 
 
-def run(script, text="cancel bluehost"):
+def run(script, text="cancel fernhost"):
     with session_scope() as s:
         result = turn_for(s, script, text).run(MSGS)
         return result, approvals(s)
@@ -111,7 +111,7 @@ def test_a_plan_with_nothing_read_is_refused_and_so_is_the_approval(owner_client
 
 def test_read_then_plan_then_approval_shows_the_plan_line_and_keeps_the_plan(owner_client, on):
     script = Script(
-        tool_use("recall", {"query": "bluehost"}, "t0"),
+        tool_use("recall", {"query": "fernhost"}, "t0"),
         tool_use("record_plan", PLAN, "t1"),
         tool_use("propose_action", ACTION, "t2"),
         "I found the renewal mail. I recommend the chat route. Approve the note?",
@@ -119,13 +119,13 @@ def test_read_then_plan_then_approval_shows_the_plan_line_and_keeps_the_plan(own
     result, rows = run(script)
     assert len(rows) == 1
     assert rows[0].payload["plan"]["route"] == PLAN["route"]
-    assert result.text.rstrip().splitlines()[-1].startswith("Plan: Stop the Bluehost renewal")
+    assert result.text.rstrip().splitlines()[-1].startswith("Plan: Stop the Fernhost renewal")
     assert "plan:ok" in result.notes
 
 
 def test_a_plan_that_says_ava_cannot_execute_the_route_creates_no_approval(owner_client, on):
     script = Script(
-        tool_use("recall", {"query": "bluehost"}, "t0"),
+        tool_use("recall", {"query": "fernhost"}, "t0"),
         tool_use("record_plan", {**PLAN, "ability_ok": False}, "t1"),
         tool_use("propose_action", ACTION, "t2"),
         "I can't use their chat myself; here is the text to paste.",
@@ -137,7 +137,7 @@ def test_a_plan_that_says_ava_cannot_execute_the_route_creates_no_approval(owner
 
 def test_a_hedged_reply_still_withdraws_the_approval_and_shows_no_plan_line(owner_client, on):
     script = Script(
-        tool_use("recall", {"query": "bluehost"}, "t0"),
+        tool_use("recall", {"query": "fernhost"}, "t0"),
         tool_use("record_plan", PLAN, "t1"),
         tool_use("propose_action", ACTION, "t2"),
         "Approve? I'm not sure this will reach a person though.",

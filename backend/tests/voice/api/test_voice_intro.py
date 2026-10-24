@@ -232,7 +232,7 @@ def test_facts_are_proposed_at_the_end_and_saved_only_once_confirmed(owner, voic
     assert owner.get("/app/intro/voice").json()["proposed"] == proposed["facts"]
 
     edited = [
-        {"content": "Jordan leads applied AI at PebbleRoad in Singapore.", "category": "work"},
+        {"content": "Jordan leads applied AI at Larkfield in Singapore.", "category": "work"},
         {"content": "Priya, Jordan's wife, can always get through.", "category": "nonsense"},
     ]
     r = owner.post("/app/intro/voice/confirm", json={"facts": edited})
@@ -385,9 +385,9 @@ def test_prices():
 def test_reply_reader_streams_whole_sentences_and_strips_the_tag():
     got: list[str] = []
     r = ReplyReader(got.append)
-    for piece in ["[fol", "low] Twelve years at ", "PebbleRoad is a long time. What ", "keeps you there?"]:
+    for piece in ["[fol", "low] Twelve years at ", "Larkfield is a long time. What ", "keeps you there?"]:
         r.feed(piece)
-    assert got == ["Twelve years at PebbleRoad is a long time."]
+    assert got == ["Twelve years at Larkfield is a long time."]
     r.close()
     assert r.tag == "follow" and got[-1] == "What keeps you there?" and "[" not in r.text
     untagged = ReplyReader(got.append)

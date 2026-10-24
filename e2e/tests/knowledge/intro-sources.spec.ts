@@ -50,7 +50,7 @@ test.describe('files', () => {
   test('a .txt and a .md file each appear in the list, saved and waiting to be read', async ({ page }) => {
     await expect(page.getByRole('button', { name: 'Continue' })).toBeDisabled()
 
-    await chooseFile(page, textFile('about-me.txt', 'I lead applied AI at PebbleRoad in Singapore.\nMost of my week is client work.'))
+    await chooseFile(page, textFile('about-me.txt', 'I lead applied AI at Larkfield in Singapore.\nMost of my week is client work.'))
     await expect(fileRow(page, 'about-me.txt')).toContainText(SAVED)
     await expect(page.getByText("I've saved about-me.txt. I'll read it properly once an AI model is connected.")).toBeVisible()
 
@@ -64,12 +64,12 @@ test.describe('files', () => {
       ['about-me.txt', 'text', 'stored', false],
       ['notes.md', 'text', 'stored', false],
     ])
-    expect(docs[0].text).toContain('applied AI at PebbleRoad')
+    expect(docs[0].text).toContain('applied AI at Larkfield')
     expect(docs[1].text).toContain('Travels to Bengaluru monthly')
   })
 
   test('a text PDF and a Word document are accepted, their text kept, and listed', async ({ page }) => {
-    await chooseFile(page, pdf(['Ananya Menon (applied AI)', 'Leads applied AI at PebbleRoad in Singapore.']))
+    await chooseFile(page, pdf(['Ananya Menon (applied AI)', 'Leads applied AI at Larkfield in Singapore.']))
     await expect(fileRow(page, 'resume.pdf')).toContainText(SAVED)
 
     await chooseFile(page, docx())
@@ -80,14 +80,14 @@ test.describe('files', () => {
       ['resume.pdf', 'pdf'],
       ['resume.docx', 'docx'],
     ])
-    expect(docs[0].text).toContain('Leads applied AI at PebbleRoad in Singapore.')
+    expect(docs[0].text).toContain('Leads applied AI at Larkfield in Singapore.')
     expect(docs[1].text).toContain('Builds document intelligence products.')
   })
 
   test('a file dropped on the drop zone is shared too', async ({ page }) => {
     const dropped = await page.evaluateHandle(() => {
       const data = new DataTransfer()
-      data.items.add(new File(['I lead applied AI at PebbleRoad in Singapore.'], 'dropped.md', { type: 'text/markdown' }))
+      data.items.add(new File(['I lead applied AI at Larkfield in Singapore.'], 'dropped.md', { type: 'text/markdown' }))
       return data
     })
     await page.getByText('Drop your resume or CV here').dispatchEvent('drop', { dataTransfer: dropped })
@@ -96,12 +96,12 @@ test.describe('files', () => {
   })
 
   test('removing a file takes it off the list and its facts out of the notebook', async ({ page, api }) => {
-    await chooseFile(page, textFile('about-me.txt', 'I lead applied AI at PebbleRoad.'))
+    await chooseFile(page, textFile('about-me.txt', 'I lead applied AI at Larkfield.'))
     await expect(fileRow(page, 'about-me.txt')).toBeVisible()
     const [doc] = await documents()
-    await pretendRead(doc.id, 'Ananya leads applied AI at PebbleRoad.')
+    await pretendRead(doc.id, 'Ananya leads applied AI at Larkfield.')
     const before = await api.ok<{ memories: { text: string }[] }>(api.get('/app/notebook'))
-    expect(before.memories.map((m) => m.text)).toContain('Ananya leads applied AI at PebbleRoad.')
+    expect(before.memories.map((m) => m.text)).toContain('Ananya leads applied AI at Larkfield.')
 
     await page.getByRole('button', { name: 'Remove about-me.txt' }).click()
     await expect(fileRow(page, 'about-me.txt')).toHaveCount(0)
@@ -110,7 +110,7 @@ test.describe('files', () => {
     expect((await documents()).map((d) => d.removed)).toEqual([true])
     expect((await facts()).filter((f) => f.document_id === doc.id).map((f) => f.active)).toEqual([false])
     const after = await api.ok<{ memories: { text: string }[] }>(api.get('/app/notebook'))
-    expect(after.memories.map((m) => m.text)).not.toContain('Ananya leads applied AI at PebbleRoad.')
+    expect(after.memories.map((m) => m.text)).not.toContain('Ananya leads applied AI at Larkfield.')
     // …and it stays gone after a reload.
     await page.reload()
     await expect(introTabs(page)).toBeVisible()
@@ -120,10 +120,10 @@ test.describe('files', () => {
 
   test('a file that has been read shows how many facts came from it, in plain English', async ({ page }) => {
     test.fail(true, 'BUG: the file list says "1 facts" for a file with one fact')
-    await chooseFile(page, textFile('about-me.txt', 'I lead applied AI at PebbleRoad.'))
+    await chooseFile(page, textFile('about-me.txt', 'I lead applied AI at Larkfield.'))
     await expect(fileRow(page, 'about-me.txt')).toBeVisible()
     const [doc] = await documents()
-    await pretendRead(doc.id, 'Ananya leads applied AI at PebbleRoad.')
+    await pretendRead(doc.id, 'Ananya leads applied AI at Larkfield.')
     await page.reload()
     const row = fileRow(page, 'about-me.txt')
     await expect(row).toContainText(/\d+ facts?/)
@@ -131,7 +131,7 @@ test.describe('files', () => {
   })
 
   test('coming back later: files are still there, and a removed file can be shared again', async ({ page }) => {
-    await chooseFile(page, textFile('about-me.txt', 'I lead applied AI at PebbleRoad.'))
+    await chooseFile(page, textFile('about-me.txt', 'I lead applied AI at Larkfield.'))
     await expect(fileRow(page, 'about-me.txt')).toBeVisible()
 
     // A reload opens straight on Files & links, because something is already shared.
@@ -141,13 +141,13 @@ test.describe('files', () => {
 
     await page.getByRole('button', { name: 'Remove about-me.txt' }).click()
     await expect(fileRow(page, 'about-me.txt')).toHaveCount(0)
-    await chooseFile(page, textFile('about-me.txt', 'I lead applied AI at PebbleRoad.'))
+    await chooseFile(page, textFile('about-me.txt', 'I lead applied AI at Larkfield.'))
     await expect(fileRow(page, 'about-me.txt')).toBeVisible()
     expect((await documents()).filter((d) => !d.removed).map((d) => d.title)).toEqual(['about-me.txt'])
   })
 
   test('sharing the same file twice says so and keeps one copy', async ({ page }) => {
-    const file = textFile('about-me.txt', 'I lead applied AI at PebbleRoad.')
+    const file = textFile('about-me.txt', 'I lead applied AI at Larkfield.')
     await chooseFile(page, file)
     await expect(fileRow(page, 'about-me.txt')).toBeVisible()
     const lines = (await agentLines()).length
@@ -235,7 +235,7 @@ test.describe('files', () => {
         })
       }
       // The page still works: a good file goes through afterwards and clears the message.
-      await chooseFile(page, textFile('about-me.txt', 'I lead applied AI at PebbleRoad.'))
+      await chooseFile(page, textFile('about-me.txt', 'I lead applied AI at Larkfield.'))
       await expect(fileRow(page, 'about-me.txt')).toBeVisible()
       await expect(page.getByText(refusals[refusals.length - 1].message)).toHaveCount(0)
     })
@@ -243,7 +243,7 @@ test.describe('files', () => {
 
   test('a file name with path characters is cut down to the name alone', async ({ page, api }) => {
     void api
-    await chooseFile(page, textFile('../../etc/passwd.txt', 'I lead applied AI at PebbleRoad.'))
+    await chooseFile(page, textFile('../../etc/passwd.txt', 'I lead applied AI at Larkfield.'))
     await expect(fileRow(page, 'passwd.txt')).toBeVisible()
 
     // Straight at the API, too, with a Windows-style path.
@@ -268,7 +268,7 @@ test.describe('files', () => {
       void d.dismiss()
     })
     const name = '<img src=x onerror=alert(1)>.txt'
-    await chooseFile(page, textFile(name, 'I lead applied AI at PebbleRoad.'))
+    await chooseFile(page, textFile(name, 'I lead applied AI at Larkfield.'))
     await expect(fileRow(page, name)).toBeVisible()
     await expect(fileRow(page, name)).toContainText(name)
     expect(alerted).toBe(false)
@@ -281,7 +281,7 @@ test.describe('files', () => {
       await gate
       await route.continue()
     })
-    await chooseFile(page, textFile('about-me.txt', 'I lead applied AI at PebbleRoad.'))
+    await chooseFile(page, textFile('about-me.txt', 'I lead applied AI at Larkfield.'))
     await expect(page.getByText('Reading about-me.txt…')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Continue' })).toBeDisabled()
     await expect(page.getByRole('button', { name: 'Add' })).toBeDisabled()
@@ -292,7 +292,7 @@ test.describe('files', () => {
 
   test('when the app cannot reach the server, uploading says so and nothing is stored', async ({ page }) => {
     await page.route('**/api/app/intro/files', (route) => route.abort('connectionrefused'))
-    await chooseFile(page, textFile('about-me.txt', 'I lead applied AI at PebbleRoad.'))
+    await chooseFile(page, textFile('about-me.txt', 'I lead applied AI at Larkfield.'))
     await expect(page.getByText(/Can't reach Superaide/)).toBeVisible()
     expect(await documents()).toEqual([])
   })
@@ -302,7 +302,7 @@ test.describe('files', () => {
     await page.route('**/api/app/intro/files', (route) =>
       route.fulfill({ status: 500, contentType: 'text/plain', body: 'Internal Server Error' }),
     )
-    await chooseFile(page, textFile('about-me.txt', 'I lead applied AI at PebbleRoad.'))
+    await chooseFile(page, textFile('about-me.txt', 'I lead applied AI at Larkfield.'))
     await expect(page.getByText('Reading about-me.txt…')).toHaveCount(0)
     await expect(page.getByText(/status code/)).toHaveCount(0, { timeout: 3_000 })
     await expect(page.getByText(/went wrong|try again/i)).toBeVisible({ timeout: 3_000 })
@@ -330,7 +330,7 @@ test.describe('files', () => {
 
   test('removing a file that was already removed elsewhere leaves a sane list', async ({ page, api }) => {
     test.fail(true, 'BUG: removing a file already removed in another tab fails silently (unhandled 404) and the row stays')
-    await chooseFile(page, textFile('about-me.txt', 'I lead applied AI at PebbleRoad.'))
+    await chooseFile(page, textFile('about-me.txt', 'I lead applied AI at Larkfield.'))
     await expect(fileRow(page, 'about-me.txt')).toBeVisible()
     const [doc] = await documents()
     // Another tab removes it first.
@@ -500,7 +500,7 @@ test.describe('access', () => {
 
 test.describe('video call', () => {
   const ANSWERS = [
-    'I lead applied AI at PebbleRoad in Singapore.',
+    'I lead applied AI at Larkfield in Singapore.',
     'Client workshops Monday to Wednesday; I am hardest to reach on Tuesday afternoons.',
     'Priya, my partner, and Arjun from my team.',
     'Never share my home address.',
@@ -575,7 +575,7 @@ test.describe('video call', () => {
     // Question 1: say it, then choose "Done answering".
     await sayAloud(page, 'I lead applied AI', false)
     await expect(dialog.getByText('I lead applied AI', { exact: true })).toBeVisible()
-    await sayAloud(page, 'I lead applied AI at PebbleRoad.')
+    await sayAloud(page, 'I lead applied AI at Larkfield.')
     await dialog.getByRole('button', { name: 'Done answering' }).click()
     await expect(dialog.getByText(CALL_QUESTIONS[1], { exact: true })).toBeVisible()
 
@@ -585,7 +585,7 @@ test.describe('video call', () => {
     await expect(dialog.getByText(CALL_QUESTIONS[2], { exact: true })).toBeVisible()
 
     expect((await facts()).map((f) => f.content)).toEqual([
-      `Asked "${CALL_QUESTIONS[0]}", Ananya Menon said: I lead applied AI at PebbleRoad.`,
+      `Asked "${CALL_QUESTIONS[0]}", Ananya Menon said: I lead applied AI at Larkfield.`,
       `Asked "${CALL_QUESTIONS[1]}", Ananya Menon said: Busy weeks, mostly client work.`,
     ])
     await leaveCall(page, dialog)
@@ -654,7 +654,7 @@ test.describe('video call', () => {
 
   test('finishing the call twice posts one summary, not two', async ({ api }) => {
     test.fail(true, 'BUG: every POST /app/intro/call/finish adds another "Thanks for the call…" line to the conversation')
-    await api.ok(api.post('/app/intro/call/answer', { question_id: 'q1', transcript: 'I lead applied AI at PebbleRoad.' }))
+    await api.ok(api.post('/app/intro/call/answer', { question_id: 'q1', transcript: 'I lead applied AI at Larkfield.' }))
     await api.ok(api.post('/app/intro/call/finish'))
     await api.ok(api.post('/app/intro/call/finish'))
     expect((await agentLines()).filter((l) => l.startsWith('Thanks for the call'))).toHaveLength(1)
@@ -662,7 +662,7 @@ test.describe('video call', () => {
 
   test('after one answer, the summary says "1 thing", not "1 things"', async ({ api }) => {
     test.fail(true, 'BUG: Ava\'s summary says "1 things about you in my notebook"')
-    await api.ok(api.post('/app/intro/call/answer', { question_id: 'q1', transcript: 'I lead applied AI at PebbleRoad.' }))
+    await api.ok(api.post('/app/intro/call/answer', { question_id: 'q1', transcript: 'I lead applied AI at Larkfield.' }))
     await api.ok(api.post('/app/intro/call/finish'))
     const summary = (await agentLines()).find((l) => l.startsWith('Thanks for the call.'))
     expect(summary).toMatch(/Here's where I am: 1 thing about you in my notebook\./)
@@ -773,7 +773,7 @@ test.describe('keyboard', () => {
     await tabTo(page, page.getByRole('button', { name: 'choose a file' }))
     const chooser = page.waitForEvent('filechooser')
     await page.keyboard.press('Enter')
-    await (await chooser).setFiles(textFile('about-me.txt', 'I lead applied AI at PebbleRoad.'))
+    await (await chooser).setFiles(textFile('about-me.txt', 'I lead applied AI at Larkfield.'))
     await expect(fileRow(page, 'about-me.txt')).toBeVisible()
 
     // The link box takes Enter.

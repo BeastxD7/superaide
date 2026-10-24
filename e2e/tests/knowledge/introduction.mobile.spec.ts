@@ -71,7 +71,7 @@ test.describe('the introduction on a phone', () => {
     // About: the composer and Send are on screen
     await expectAboveControls(meet, meet.line(new RegExp(`^${AVA.about}`)), meet.aboutBox())
     await expect(meet.send()).toBeInViewport({ ratio: 1 })
-    await meet.aboutBox().fill('I lead applied AI at PebbleRoad in Singapore.')
+    await meet.aboutBox().fill('I lead applied AI at Larkfield in Singapore.')
     await meet.send().click()
     await meet.expectStep('Your people')
 

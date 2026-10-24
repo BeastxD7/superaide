@@ -203,7 +203,7 @@ def requester_for(manager):
 
 @pytest.mark.parametrize("via", ["telegram", "slack", "voice"])
 def test_a_deepgram_call_cannot_be_confirmed_by_voice_or_chat_only_the_app(monkeypatch, settings, guard, manager, via):
-    monkeypatch.setattr(settings, "voice_two_channel", True)
+    monkeypatch.setattr(settings, "deepgram_api_key", KEY)
 
     def understand(text):
         return TurnOutput(

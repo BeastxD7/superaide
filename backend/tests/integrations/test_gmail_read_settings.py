@@ -13,9 +13,9 @@ from superaide.platform.db.session import session_scope
 from tests.integrations.gmail_fake import connect, gmail_fake_fixture, mail, owner_client_fixture  # noqa: F401
 from tests.pipeline.test_loop import Script, tool_use, turn_for
 
-KOTAK = "Kotak Bank <alerts@kotak.example>"
+MARLIN = "Marlin Bank <alerts@marlin.example>"
 ALERT = (
-    "Payment details: your Kotak Credit Card XX 4111 1111 1111 1111 was used for Rs 4,500.00 at SWIGGY on "
+    "Payment details: your Marlin Credit Card XX 4111 1111 1111 1111 was used for Rs 4,500.00 at TEAHOUSE on "
     "21-Oct-2026. Card number ending 1111, transaction ref 884201937. If this was not you, call us."
 )
 CODE = "Your one-time code is 834201. Do not share it. Password reset requested for your account."
@@ -23,8 +23,8 @@ PASSWORD = "correct horse battery"
 
 
 def _setup(gmail_fake, *, extra=None):
-    gmail_fake.add(mail("p1", thread="tp", sender=KOTAK, subject="Card transaction alert", body=ALERT))
-    gmail_fake.add(mail("c1", thread="tc", sender="Bank <otp@kotak.example>", subject="Your login code", body=CODE))
+    gmail_fake.add(mail("p1", thread="tp", sender=MARLIN, subject="Card transaction alert", body=ALERT))
+    gmail_fake.add(mail("c1", thread="tc", sender="Bank <otp@marlin.example>", subject="Your login code", body=CODE))
     connect(scopes=(api.READONLY, api.COMPOSE), drafts=True)
     if extra:
         put(extra)
@@ -61,22 +61,22 @@ def test_a_missing_or_corrupt_setting_gives_todays_defaults():
 
 def test_the_default_hides_a_payment_preview_blanks_numbers_and_names_the_setting(owner_client, gmail_fake):
     _setup(gmail_fake)
-    found = text_of(run_tool("gmail_search", {"query": "kotak"}))
+    found = text_of(run_tool("gmail_search", {"query": "marlin"}))
     assert "preview withheld" in found and "Payment and transaction emails: previews" in found
     assert "/dashboard/capabilities#gmail" in found and "Capabilities → Gmail" in found
     body = text_of(run_tool("gmail_read_thread", {"thread_id": "tp"}))
     assert "[number]" in body and "4111" not in body and "884201937" not in body
 
 
-# --- the Kotak case ---------------------------------------------------------------------------------
+# --- the Marlin case ---------------------------------------------------------------------------------
 
 
 def test_with_payment_previews_and_amounts_on_the_alert_is_read_and_the_amount_quoted(owner_client, gmail_fake):
     _setup(gmail_fake, extra={"payment_preview": "show", "numbers": "amounts"})
-    found = text_of(run_tool("gmail_search", {"query": "kotak"}))
+    found = text_of(run_tool("gmail_search", {"query": "marlin"}))
     assert "preview withheld" not in found.split("Card transaction alert")[1].split("Your login code")[0]
     body = text_of(run_tool("gmail_read_thread", {"thread_id": "tp"}))
-    assert "Rs 4,500.00" in body and "SWIGGY" in body
+    assert "Rs 4,500.00" in body and "TEAHOUSE" in body
     assert "4111" not in body and "884201937" not in body  # card and reference numbers stay blanked
 
 
@@ -115,11 +115,11 @@ def test_enabling_codes_needs_a_confirmation_and_is_audited(owner_client, gmail_
 
 def test_the_allowlist_never_opens_codes_and_an_email_cannot_change_settings(owner_client, gmail_fake):
     # red team: an allowed sender still cannot expose codes; no Gmail tool can write a setting
-    _setup(gmail_fake, extra={"allowed": ["kotak.example"], "payment_preview": "hide"})
+    _setup(gmail_fake, extra={"allowed": ["marlin.example"], "payment_preview": "hide"})
     assert "834201" not in text_of(run_tool("gmail_read_thread", {"thread_id": "tc"}))
     assert (
         "preview withheld"
-        not in text_of(run_tool("gmail_search", {"query": "kotak"})).split("Card transaction")[1][:300]
+        not in text_of(run_tool("gmail_search", {"query": "marlin"})).split("Card transaction")[1][:300]
     )
     names = {t for t in gmail.TOOLS}
     assert not any("setting" in n for n in names)
@@ -152,7 +152,7 @@ def test_a_blocked_sender_domain_and_label_is_never_read(owner_client, gmail_fak
     gmail_fake.add(
         mail("l1", thread="tl", sender="Ann <ann@x.example>", subject="Tax", body="secret", labels=("Label_9",))
     )
-    put({"blocked": ["@clinic.example", "label:Label_9", "otp@kotak.example"]})
+    put({"blocked": ["@clinic.example", "label:Label_9", "otp@marlin.example"]})
     found = text_of(run_tool("gmail_search", {"query": "all"}))
     assert "Results" not in found and "Tax" not in found and "Your login code" not in found
     assert "Card transaction alert" in found
@@ -202,7 +202,7 @@ def test_a_request_to_change_bank_details_has_its_own_switch_separate_from_trans
     found = text_of(run_tool("gmail_search", {"query": "bank"}))
     assert "asks to change bank or account details" in found and "Bank and account change emails: previews" in found
     assert "Pay to the new account" not in found  # ...but the bank-change mail stays hidden
-    assert "Payment details: your Kotak" in found
+    assert "Payment details: your Marlin" in found
     put({"payment_preview": "show", "bank_change_preview": "show"})
     assert "Pay to the new account" in text_of(run_tool("gmail_search", {"query": "bank"}))
 

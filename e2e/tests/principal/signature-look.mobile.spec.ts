@@ -5,7 +5,7 @@ test.use({ viewport: { width: 390, height: 844 } })
 
 test('the signature look fits a phone and the preview follows the controls', async ({ page, owner }) => {
   void owner
-  await page.goto('/dashboard/principal-card')
+  await page.goto('/dashboard/capabilities/gmail/signature')
   const frame = page.frameLocator('[data-testid="signature-preview"]')
   await expect(frame.getByText('Verify this assistant')).toBeVisible()
   await page.getByLabel('Rose').check()

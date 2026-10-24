@@ -1,5 +1,5 @@
 # ruff: noqa: E501  (prompt text and owner-facing messages)
-"""The human-like task protocol (issue #330), behind TASK_PROTOCOL_ENABLED (off by default).
+"""The human-like task protocol (issue #330), behind TASK_PROTOCOL_ENABLED (on by default).
 
 A good human assistant handed a multi-step errand does not go straight to "may I send this?". She states the
 goal, reads what is already there (the thread, the calendar, her notes), picks a route she can actually
@@ -46,7 +46,7 @@ PLAN_TOOL = {
             "evidence": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "What you found by reading, one short item each (e.g. 'last Bluehost mail: renews 3 Nov')",
+                "description": "What you found by reading, one short item each (e.g. 'last Fernhost mail: renews 3 Nov')",
             },
             "route": {"type": "string", "description": "How it will reach a person who can act, and who that is"},
             "ability_ok": {"type": "boolean", "description": "True only if YOU can execute that route with your tools"},

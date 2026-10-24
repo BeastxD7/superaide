@@ -56,9 +56,7 @@ def raise_(exc: Exception):
 def slack_service(auth: dict | None = None, conn: dict | None = None):
     def handler(request: httpx.Request) -> httpx.Response:
         if "auth.test" in str(request.url):
-            return httpx.Response(
-                200, json=auth or {"ok": True, "team_id": "T123", "team": "PebbleRoad", "user": "ava"}
-            )
+            return httpx.Response(200, json=auth or {"ok": True, "team_id": "T123", "team": "Larkfield", "user": "ava"})
         return httpx.Response(200, json=conn or {"ok": True, "url": "wss://example"})
 
     return handler
@@ -200,7 +198,7 @@ def test_slack_tokens_are_both_checked():
     http, seen = client_for(slack_service())
     checked = check_slack(SLACK_BOT, SLACK_APP, http)
     assert checked.values == {"bot_token": SLACK_BOT, "app_token": SLACK_APP, "team_id": "T123"}
-    assert checked.meta == {"team": "PebbleRoad", "bot_user": "ava"}
+    assert checked.meta == {"team": "Larkfield", "bot_user": "ava"}
     auth, conn = seen
     assert auth.url.path == "/api/auth.test" and auth.headers["Authorization"] == f"Bearer {SLACK_BOT}"
     assert conn.url.path == "/api/apps.connections.open" and conn.headers["Authorization"] == f"Bearer {SLACK_APP}"

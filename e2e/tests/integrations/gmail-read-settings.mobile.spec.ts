@@ -18,7 +18,7 @@ test('the Gmail reading settings fit 390px', async ({ page, api, owner }, info) 
   const cards = await api.ok<{ id: string; permissions: { id: string }[] }[]>(api.get('/app/skills'))
   const gmail = cards.find((c) => c.id === 'superaide/gmail')!
   await api.ok(api.post('/app/skills/superaide/gmail/install', { accepted: gmail.permissions.map((p) => p.id) }))
-  await page.goto('/dashboard/capabilities')
+  await page.goto('/dashboard/capabilities/gmail/reading') // the reading rules live under Gmail now (#441)
   const group = page.getByRole('group', { name: 'What Ava may read in Gmail' })
   await group.scrollIntoViewIfNeeded()
   await expect(group.getByLabel('Search size')).toBeVisible()

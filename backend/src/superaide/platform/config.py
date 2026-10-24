@@ -116,18 +116,20 @@ class Settings(BaseSettings):
     surface_check_on_boot: bool = False
 
     # Mandate cards: a signed, narrowing token lets Ava do a named, limited thing without asking each time
-    # (issue #112). Off by default; never covers send or spend.
-    mandates_enabled: bool = False
+    # (issue #112). On by default (owner decision, #448); no mandate exists until the owner signs one, and a mandate
+    # never covers send or spend.
+    mandates_enabled: bool = True
     # Mandate shadow check (#112). Needs MANDATES_ENABLED. Off: nothing changes. On: each approval records whether a
     # mandate WOULD have covered it (`mandate_shadow` on the approval); the owner is still asked every time. The
     # report (`superaide mandate-shadow-report`) shows how many prompts a mandate could save before it is trusted.
-    mandate_shadow_enabled: bool = False
+    mandate_shadow_enabled: bool = True  # on by default (#448): the shadow clock starts on a fresh install
     # Mandate skip (#112). Needs MANDATES_ENABLED and MANDATE_SHADOW_ENABLED. Off: every own-calendar write asks as
     # before. On: a covering, signed mandate lets Ava create or move an event with no guests at the Child stage and
     # above without a card, but only after the shadow check has been recording for MANDATE_SKIP_MIN_DAYS, never on a
     # turn that read untrusted content, never at the Infant stage, and every skip is audited and shown to the owner.
     # While on, an event with no guests is classed write_external (ADR 0006) so it asks at Infant and Child.
-    mandate_skip_enabled: bool = False
+    # On by default (#448); every safeguard below is unchanged and tested. With no signed mandate nothing is skipped.
+    mandate_skip_enabled: bool = True
     mandate_skip_min_days: int = Field(default=14, ge=0, le=365)
 
     # An MCP tool whose description, schema or annotations differ from what the owner approved is blocked
@@ -379,11 +381,12 @@ class Settings(BaseSettings):
     # Echo Filter (#137, tracking #142). Off: facts are stored as before. On: a fact from a link, Telegram or
     # Slack is stored as hearsay with its root origin; a second independent root, or the owner, makes it a fact.
     echo_filter_enabled: bool = False
-    # Human-like task protocol (#330). Off: nothing changes (same prompt, tools and gates). On: for an errand that ends
+    # Human-like task protocol (#330). On by default (owner decision, #448). Off: nothing changes (same prompt,
+    # tools and gates). On: for an errand that ends
     # in an approval, Ava must first read the relevant mail/calendar/notes and record a plan (goal, evidence, route,
     # ability check, recommendation) that code validates; propose_action is refused without one, and the plan is shown
     # beside the approval. The model proposes, code decides.
-    task_protocol_enabled: bool = False
+    task_protocol_enabled: bool = True
     # One Good Question (#121, tracking #142). Off: /app/question answers 404. On: Ava may ask the owner at most
     # one clarifying question a day (a database rule), chosen in code by uncertainty times impact.
     one_good_question_enabled: bool = False
@@ -395,13 +398,14 @@ class Settings(BaseSettings):
     # Owner Twin (#119, tracking #142). Off: /app/twin answers 404. On: a calibration page scores a small
     # predictor of the owner's approve/reject choices. It reads approvals only and grants nothing.
     owner_twin_enabled: bool = False
-    # Two-channel voice (#125). Off: voice can propose nothing. On: an action heard on a call becomes an approval
-    # marked as voice-origin; it can be approved only by a tap in the Superaide app, never by what is said, and the
-    # call reads it back as a structured proposal and never says it is done. The voice shell holds no tools.
-    voice_two_channel: bool = False
-    # Live voice (#125): which realtime voice provider carries the call. none | fake (scripted, offline) | realtime
-    # (the adapter stub for a real vendor; no vendor is wired yet). Default none: nothing is bought or locked in.
-    voice_provider: str = "none"  # none | fake | realtime (stub) | deepgram (the documented hosted adapter)
+    # Live voice (#125). No on/off flag (#448): voice is available when a provider key is present
+    # (VOICE_PROVIDER_API_KEY or DEEPGRAM_API_KEY) and off, with a hint saying what to add, when there is none.
+    # An action heard on a call becomes an approval marked voice-origin that only a tap in the Superaide app can
+    # approve, never what is said; the call reads it back as a structured proposal and never says it is done.
+    # The voice shell holds no tools.
+    # VOICE_PROVIDER: auto (default: deepgram when a key is present, otherwise none) | none (force off) |
+    # fake (scripted, offline) | realtime (adapter stub, no vendor wired) | deepgram (the documented hosted adapter).
+    voice_provider: str = "auto"
     voice_provider_api_key: str = ""  # saved under the voice_provider connection; never logged
     # Import lease (#133). Off: /app/import-leases/* answer 404. On: the owner can bring in context cards
     # converted on their own machine from a third-party export, under a time-limited lease that erases them.

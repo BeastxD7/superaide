@@ -331,7 +331,11 @@ function ConnectForm({
             ))}
           </ol>
           {VOICE.has(provider) && (
-            <p className="mt-2 text-xs text-muted">Optional. Without it, {"the voice call uses your browser's own speech"}. Audio is never stored.</p>
+            <p className="mt-2 text-xs text-muted" data-testid={`voice-hint-${provider}`}>
+              {provider === 'deepgram'
+                ? `Voice is off until you add this key: actions by voice are not accepted, and the call uses your browser's own speech. Adding it turns voice on. Audio is never stored.`
+                : `Optional. Without it, the voice call uses your browser's own speech. Audio is never stored.`}
+            </p>
           )}
           {guide.url && (
             <a

@@ -21,7 +21,7 @@ async function connectGmail(api: { ok: <T>(p: Promise<unknown>) => Promise<T>; g
 test('the Gmail card shows every reading rule, saves a change, and asks for the password before codes', async ({ page, api, owner }, info) => {
   void owner
   await connectGmail(api as never)
-  await page.goto('/dashboard/capabilities')
+  await page.goto('/dashboard/capabilities/gmail/reading') // the reading rules live under Gmail now (#441)
   const group = page.getByRole('group', { name: 'What Ava may read in Gmail' })
   await expect(group).toBeVisible()
   for (const label of [
