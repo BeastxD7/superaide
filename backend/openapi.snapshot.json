@@ -824,6 +824,36 @@
         "title": "EndpointBody",
         "type": "object"
       },
+      "EvalBody": {
+        "properties": {
+          "spec": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spec"
+          },
+          "yaml": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Yaml"
+          }
+        },
+        "title": "EvalBody",
+        "type": "object"
+      },
       "FactBody": {
         "properties": {
           "category": {
@@ -1309,6 +1339,21 @@
           "lens"
         ],
         "title": "PickBody",
+        "type": "object"
+      },
+      "PlaybookBody": {
+        "properties": {
+          "text": {
+            "maxLength": 1500,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "PlaybookBody",
         "type": "object"
       },
       "PredictionBody": {
@@ -2176,6 +2221,19 @@
           "keys"
         ],
         "title": "SubscribeBody",
+        "type": "object"
+      },
+      "SwitchBody": {
+        "properties": {
+          "on": {
+            "title": "On",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "on"
+        ],
+        "title": "SwitchBody",
         "type": "object"
       },
       "TelegramBody": {
@@ -11551,6 +11609,240 @@
           }
         ],
         "summary": "Agree (or stop agreeing) to share a lesson",
+        "tags": [
+          "Owner: Ava School"
+        ]
+      }
+    },
+    "/app/school/lessons/{lesson_id}/eval": {
+      "put": {
+        "description": "A scenario-shaped turn: what the owner says (`say`) and reply checks (`expect`), as in backend/evals/scenarios. Changing it drops any earlier pass.",
+        "operationId": "put_eval_app_school_lessons__lesson_id__eval_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lesson_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lesson Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvalBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Put Eval App School Lessons  Lesson Id  Eval Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Attach an eval to a lesson",
+        "tags": [
+          "Owner: Ava School"
+        ]
+      }
+    },
+    "/app/school/lessons/{lesson_id}/eval/run": {
+      "post": {
+        "description": "Two short model calls, inside the spend cap: without the playbook and with it. It passes only if the answer with it meets every check and the answer without it does not.",
+        "operationId": "run_eval_app_school_lessons__lesson_id__eval_run_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lesson_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lesson Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Run Eval App School Lessons  Lesson Id  Eval Run Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Run a lesson's eval",
+        "tags": [
+          "Owner: Ava School"
+        ]
+      }
+    },
+    "/app/school/lessons/{lesson_id}/in-prompt": {
+      "post": {
+        "description": "Only after its eval passed on the current text. Off any time.",
+        "operationId": "in_prompt_app_school_lessons__lesson_id__in_prompt_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lesson_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lesson Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SwitchBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response In Prompt App School Lessons  Lesson Id  In Prompt Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Switch a lesson on or off in Ava's prompt",
+        "tags": [
+          "Owner: Ava School"
+        ]
+      }
+    },
+    "/app/school/lessons/{lesson_id}/playbook": {
+      "put": {
+        "description": "Your own words, used only after the lesson's eval passed and you switched it on. Changing the text drops any earlier pass.",
+        "operationId": "put_playbook_app_school_lessons__lesson_id__playbook_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "lesson_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Lesson Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaybookBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Put Playbook App School Lessons  Lesson Id  Playbook Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Write the playbook text for a lesson",
         "tags": [
           "Owner: Ava School"
         ]

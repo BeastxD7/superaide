@@ -15,9 +15,10 @@ from sqlalchemy import select
 from superaide.app.routes import owner_person_id
 from superaide.audit import audit
 from superaide.auth.routes import reject_nul_text, require_csrf_header
+from superaide.brain.budget import AgentFrozen, BudgetExceeded
 from superaide.db.session import session_scope
 from superaide.policy.killswitch import get_state, set_state
-from superaide.school import checks, document, signing
+from superaide.school import checks, document, playbook, signing
 from superaide.school.models import Lesson
 from superaide.tenancy.context import scope_or_default
 
@@ -49,6 +50,19 @@ class ConsentBody(BaseModel):
     consent: bool
 
 
+class PlaybookBody(BaseModel):
+    text: str = Field(min_length=1, max_length=playbook.MAX_PLAYBOOK)
+
+
+class EvalBody(BaseModel):
+    spec: dict[str, Any] | None = None  # {say, expect: [...]} or a one-turn scenario
+    yaml: str | None = Field(default=None, max_length=4000)  # the same, as in evals/scenarios/*.yaml
+
+
+class SwitchBody(BaseModel):
+    on: bool
+
+
 class ImportBody(BaseModel):
     document: dict[str, Any]
 
@@ -63,6 +77,12 @@ def view(row: Lesson) -> dict[str, Any]:
         "consented": row.consented_at is not None,
         "exported": row.exported_at is not None,
         "created_at": row.created_at.isoformat(),
+        "playbook_text": row.playbook_text,
+        "eval_spec": row.eval_spec,
+        "eval_status": row.eval_status,
+        "eval_report": row.eval_report,
+        "eval_at": row.eval_at.isoformat() if row.eval_at else None,
+        "in_prompt": row.in_prompt,
     }
 
 
@@ -125,7 +145,8 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 "format": document.FORMAT,
                 "note": (
                     "Lessons stay on this device. Exporting makes a file you can read first. "
-                    "Nothing is sent anywhere, and Ava does not use a lesson to answer yet."
+                    "Nothing is sent anywhere. Ava reads a lesson only if you wrote playbook text for it, its eval "
+                    "passed and you switched it on."
                 ),
             }
 
@@ -194,6 +215,80 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             set_state(s, SHARE_KEY, cur)
             audit(s, "owner", "school_sharing_set", categories=len(cats), trusted=len(cur["trusted_keys"]))
             return cur
+
+    async def playbook_on(person_id: uuid.UUID = Depends(owner_on)) -> uuid.UUID:
+        if not get_agent().settings.school_playbook_enabled:
+            raise HTTPException(404, "Not Found")
+        return person_id
+
+    @router.put(
+        "/lessons/{lesson_id}/playbook",
+        summary="Write the playbook text for a lesson",
+        description="Your own words, used only after the lesson's eval passed and you switched it on. "
+        "Changing the text drops any earlier pass.",
+    )
+    def put_playbook(
+        lesson_id: uuid.UUID, body: PlaybookBody, person_id: uuid.UUID = Depends(playbook_on)
+    ) -> dict[str, Any]:
+        with session_scope() as s:
+            row = _mine(s, person_id, lesson_id)
+            playbook.set_playbook(row, body.text)
+            audit(s, "owner", "lesson_playbook_set", lesson_id=str(row.id))
+            return view(row)
+
+    @router.put(
+        "/lessons/{lesson_id}/eval",
+        summary="Attach an eval to a lesson",
+        description="A scenario-shaped turn: what the owner says (`say`) and reply checks (`expect`), as in "
+        "backend/evals/scenarios. Changing it drops any earlier pass.",
+    )
+    def put_eval(lesson_id: uuid.UUID, body: EvalBody, person_id: uuid.UUID = Depends(playbook_on)) -> dict[str, Any]:
+        raw = body.spec if body.spec is not None else body.yaml
+        try:
+            spec = playbook.parse_spec(raw)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        with session_scope() as s:
+            row = _mine(s, person_id, lesson_id)
+            playbook.set_spec(row, spec)
+            audit(s, "owner", "lesson_eval_set", lesson_id=str(row.id))
+            return view(row)
+
+    @router.post(
+        "/lessons/{lesson_id}/eval/run",
+        summary="Run a lesson's eval",
+        description="Two short model calls, inside the spend cap: without the playbook and with it. It passes only "
+        "if the answer with it meets every check and the answer without it does not.",
+    )
+    def run_eval(lesson_id: uuid.UUID, person_id: uuid.UUID = Depends(playbook_on)) -> dict[str, Any]:
+        agent = get_agent()
+        with session_scope() as s:
+            row = _mine(s, person_id, lesson_id)
+            try:
+                playbook.run_eval(s, row, llm=agent.llm, model=agent.settings.model_chat, agent_name=agent.name)
+            except ValueError as exc:
+                raise HTTPException(409, str(exc)) from exc
+            except (BudgetExceeded, AgentFrozen) as exc:
+                raise HTTPException(402, "I can't run this right now (spend limit or paused).") from exc
+            audit(s, "owner", "lesson_eval_run", lesson_id=str(row.id), status=row.eval_status)
+            return view(row)
+
+    @router.post(
+        "/lessons/{lesson_id}/in-prompt",
+        summary="Switch a lesson on or off in Ava's prompt",
+        description="Only after its eval passed on the current text. Off any time.",
+    )
+    def in_prompt(
+        lesson_id: uuid.UUID, body: SwitchBody, person_id: uuid.UUID = Depends(playbook_on)
+    ) -> dict[str, Any]:
+        with session_scope() as s:
+            row = _mine(s, person_id, lesson_id)
+            try:
+                playbook.switch(row, body.on)
+            except ValueError as exc:
+                raise HTTPException(409, str(exc)) from exc
+            audit(s, "owner", "lesson_in_prompt", lesson_id=str(row.id), on=body.on)
+            return view(row)
 
     @router.post(
         "/lessons/{lesson_id}/accept",

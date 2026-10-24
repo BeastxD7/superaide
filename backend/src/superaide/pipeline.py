@@ -652,6 +652,11 @@ class Agent:
                 playbook_arm = {"used": use}
                 if use:
                     brief = brief + "\n\n" + text
+        if self.settings.school_enabled and self.settings.school_playbook_enabled and not shared:
+            from superaide.school import playbook as school_playbook
+
+            if lessons := school_playbook.live_text(s, sender.person.id):  # passed their eval, switched on by the owner
+                brief = brief + "\n\n" + lessons
         turn = OwnerTurn(
             llm=self.llm,
             model=self.settings.model_chat,
@@ -751,7 +756,13 @@ class Agent:
     def _think(self, s, sender: Sender, ctx: Context, aud: Audience, msg: InboundMessage) -> tuple[str, list[str]]:
         is_owner = sender.relation == "manager" and aud.person_ids == {sender.person.id} if sender.person else False
         memories = visible_memories(s, aud, limit=30 if is_owner else 5)
-        system = build_system(self.name, sender, aud, memories, brief=owner_brief(s, sender, aud))
+        brief = owner_brief(s, sender, aud)
+        if is_owner and sender.person and self.settings.school_enabled and self.settings.school_playbook_enabled:
+            from superaide.school import playbook as school_playbook
+
+            if lessons := school_playbook.live_text(s, sender.person.id):  # owner's own chat only
+                brief = brief + "\n\n" + lessons if brief else lessons
+        system = build_system(self.name, sender, aud, memories, brief=brief)
         messages = build_messages(recent_events(s, ctx, thread_id=thread_of(msg)), msg.text)
         try:
             result = self.llm.complete(

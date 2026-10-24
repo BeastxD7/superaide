@@ -67,6 +67,7 @@ BUCKETS = {
     "second_opinion": "learning",
     # Learning and trust features (#142)
     "playbook": "learning",
+    "lesson_eval": "learning",  # #57: a lesson's eval, two short calls
     # Learning and trust features (#142)
     "tuner": "learning",
     "replay_turn": "learning",  # #110: rehearsing the owner's recent tasks (replay before update, audition, drill)
