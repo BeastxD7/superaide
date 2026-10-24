@@ -56,3 +56,9 @@ description = "Made-up Slack app tokens in the channel-rows tests (a backend and
 condition = "AND"
 paths = ['''(^|/)tests/channels/test_channel_rows\.py$''', '''(^|/)tests/channels/channel-rows\.spec\.ts$''']
 regexes = ['''^xapp-1-A0APPONE-1-secret$''', '''^xapp-1-A0APPONE-123456-secretsecret$''']
+
+[[allowlists]]
+description = "A made-up Gmail refresh token planted by the Gmail reading-settings e2e specs (an earlier commit used it; the specs now use rt-test-only-placeholder)"
+condition = "AND"
+paths = ['''(^|/)e2e/tests/(connectors|integrations)/gmail-read-settings(\.mobile)?\.spec\.ts$''']
+regexes = ['''^rt-1234567890abcdef$''']
