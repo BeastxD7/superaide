@@ -14,6 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.audit import audit
+from superaide.contracts.events import SkillRemoved, bus
 from superaide.db.models import InstalledSkill
 from superaide.skills import signals
 from superaide.skills.manifest import Skill, load_skill
@@ -96,11 +97,7 @@ def remove(session: Session, skill_id: str) -> None:
         raise SkillUnavailable(409, f"{skill.manifest.title} is part of how Ava works and can't be removed")
     row.enabled, row.removed_at = False, datetime.now(UTC)
     audit(session, "skills", "skill_removed", skill_id=skill_id)
-    for source, owned in (("gmail", "superaide/gmail"), ("calendar", "superaide/google-calendar")):
-        if skill_id == owned:  # taking the source away takes what was read from it
-            from superaide.knowledge.connector_facts import erase_source
-
-            erase_source(session, source)
+    bus.publish(SkillRemoved(session, skill_id))  # knowledge.connector_facts erases what was read from its source
 
 
 def option_on(session: Session, skill_id: str, setting: str) -> bool:

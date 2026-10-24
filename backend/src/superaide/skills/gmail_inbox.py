@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import dataclasses
 import logging
-import re
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -35,6 +34,7 @@ from sqlalchemy.orm import Session
 from superaide.audit import audit
 from superaide.connectors import gmail as api
 from superaide.connectors import google
+from superaide.contracts.events import MailIngested, bus
 from superaide.db.models import ChannelIdentity, Context, Event, Job, Person
 from superaide.identity.trust import Trust
 from superaide.jobs.queue import enqueue, handler
@@ -47,13 +47,6 @@ JOB_KIND = "gmail_poll"
 STATE_KEY = "gmail_sync"
 MAX_PER_POLL = 50
 EXCERPT = 1000  # characters of a message's own text that triage reads
-# Mail the digest never quotes, whatever triage decided (it may be pushed to a chat).
-NEVER_QUOTED = re.compile(
-    r"\b(?:invoice|payment|bank|wire|iban|refund|card|password|passcode|verification|security code|login|"
-    r"sign[- ]in|2fa|otp|lawsuit|legal|subpoena|court|attorney|solicitor|contract|termination|disciplinary|"
-    r"grievance|tax)\b",
-    re.I,
-)
 log = logging.getLogger(__name__)
 
 
@@ -201,9 +194,7 @@ def poll(session: Session, *, llm: Any = None, model: str = "", ready: bool = Fa
         if event is not None and triage(session, owner, event, llm=llm, model=model, ready=ready, now=now):
             done += 1
         if event is not None:
-            from superaide.knowledge import connector_facts
-
-            connector_facts.schedule_gmail(session, event)  # a few short facts, if the owner turned that on
+            bus.publish(MailIngested(session, event))  # knowledge.connector_facts: a few short facts, if turned on
     set_state(session, STATE_KEY, {"history_id": latest, "at": now.isoformat()})
     audit(session, "skills", "gmail_polled", new=len(ids), triaged=done, skipped=max(0, len(ids) - MAX_PER_POLL))
     return done
@@ -224,55 +215,3 @@ def _job(session: Session, job: Job) -> None:
         audit(session, "skills", "gmail_poll_failed", error=type(exc).__name__)
     finally:
         ensure_scheduled(session, max(datetime.now(UTC), job.run_at) + timedelta(seconds=1))
-
-
-# --- the digest ----------------------------------------------------------------------------
-
-
-def quotable(d: TriageDecision, subject: str) -> bool:
-    """Whether an email's subject (or a quote from it) may be shown: never for payment, legal or
-    credential mail, judged by the rules, the classifier or the subject itself."""
-    from superaide.triage.digest import QUOTE_HIDDEN
-
-    return not (
-        set((d.classifier or {}).get("risk_flags") or []) & QUOTE_HIDDEN
-        or any(h.startswith(("R3_risk:", "R3_classifier:")) for h in d.rule_hits or [])
-        or NEVER_QUOTED.search(subject)
-    )
-
-
-def digest_section(session: Session, rows: list[TriageDecision]) -> list[str]:
-    """'3 emails need you; 12 handled; 40 newsletters held', then the top items, never quoting
-    payment, legal or credential mail."""
-    from superaide.triage.routes import bucket
-
-    if not rows:
-        return []
-    events = {e.id: e for e in session.scalars(select(Event).where(Event.id.in_([d.inbound_event_id for d in rows])))}
-    need, handled, newsletters, held = [], 0, 0, 0
-    for d in rows:
-        b = bucket(d, None)
-        if b == "needs_you":
-            need.append(d)
-        elif b == "handled":
-            handled += 1
-        elif "R4_automated" in (d.rule_hits or []):
-            newsletters += 1
-        else:
-            held += 1
-    parts = [f"{len(need)} email{'s' if len(need) != 1 else ''} need{'s' if len(need) == 1 else ''} you"]
-    parts.append(f"{handled} handled")
-    parts.append(f"{newsletters} newsletter{'s' if newsletters != 1 else ''} held")
-    if held:
-        parts.append(f"{held} other{'s' if held != 1 else ''} held")
-    lines = [f"**Email:** {'; '.join(parts)}"]
-    for d in need[:3]:
-        meta = (events[d.inbound_event_id].meta or {}) if d.inbound_event_id in events else {}
-        who = str(meta.get("from_name") or "Someone")
-        subject = str(meta.get("subject") or "(no subject)")
-        risky = not quotable(d, subject)
-        lines.append(f"- {who}: " + ("an email about money or security (not quoted)" if risky
-                                      else f"“{subject[:100]}”"))  # fmt: skip
-    if len(need) > 3:
-        lines.append(f"- and {len(need) - 3} more in Needs you")
-    return lines

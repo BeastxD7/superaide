@@ -19,11 +19,11 @@ from sqlalchemy.orm import Session
 from superaide.audit import audit
 from superaide.db.models import Event, Job, Person
 from superaide.jobs.queue import enqueue, handler
+from superaide.triage.mail_digest import QUOTE_HIDDEN, digest_section
 from superaide.triage.models import Escalation, TriageDecision
 from superaide.triage.types import Decision
 
 JOB_CATCHUP = "triage_catchup"
-QUOTE_HIDDEN = {"payment", "legal_hr", "credentials"}  # the digest may be pushed to a chat: never quote these
 FALLBACKS = ("classifier:bad_quote", "classifier:error", "classifier:budget", "classifier:unparsed")
 MAX_ITEMS = 8
 
@@ -81,8 +81,6 @@ def sections(session: Session, owner: Person, since: datetime, now: datetime) ->
         return []
     email = [d for d in rows if (d.features or {}).get("provider") == "email"]
     rows = [d for d in rows if (d.features or {}).get("provider") != "email"]
-    from superaide.skills.gmail_inbox import digest_section
-
     mail_lines = digest_section(session, email)  # counts and top items; never quotes money, legal or codes
     if not rows:
         return [*mail_lines, _SOONER] if mail_lines else []
