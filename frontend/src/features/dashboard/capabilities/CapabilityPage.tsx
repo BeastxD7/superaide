@@ -11,6 +11,7 @@ import { CapabilityShell } from '@/features/dashboard/capabilities/CapabilityShe
 import { capabilityBySlug, capabilityHref } from '@/features/dashboard/capabilities/registry'
 import { PrincipalCardPage } from '@/features/principal-card/PrincipalCardPage'
 import { GmailPanel } from '@/features/dashboard/GmailPanel'
+import { ConnectorSettings } from '@/features/dashboard/ConnectorSettings'
 import { GmailDrafts } from '@/features/dashboard/GmailDrafts'
 import { GmailReadSettings } from '@/features/dashboard/GmailReadSettings'
 import { SettingRow } from '@/features/dashboard/settings/SettingRow'
@@ -47,6 +48,15 @@ export function CapabilityPage({ slug, page }: { slug: string; page?: string }) 
       ) : !page ? (
         <>
           {slug === 'gmail' && <GmailPanel name={name} />}
+          {slug === 'calendar' && card?.google_connected === false && (
+            <Notice tone="warn">
+              Google isn&apos;t connected, so Ava can&apos;t see your calendar yet.{' '}
+              <Link href="/dashboard/connections" className="font-medium underline">
+                Connect Google under Connections
+              </Link>
+              .
+            </Notice>
+          )}
           <SettingsSection title="Settings in this capability" description="Each group has its own page.">
             {cap.pages.map((p) => (
               <SettingRow
@@ -64,6 +74,8 @@ export function CapabilityPage({ slug, page }: { slug: string; page?: string }) 
             ))}
           </SettingsSection>
         </>
+      ) : page === 'reading' && slug === 'calendar' ? (
+        <ConnectorSettings path="calendar" title={`What ${name} may read in your calendar`} anchor="calendar" />
       ) : page === 'reading' ? (
         <GmailReading name={name} />
       ) : page === 'drafts' ? (

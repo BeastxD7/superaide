@@ -77,3 +77,17 @@ test('the old Principal card address redirects permanently to Gmail > Signature,
   await expect(page.getByLabel('Your first name (optional)')).toBeVisible()
   await expect(page.getByRole('link', { name: 'Principal card' })).toHaveCount(0) // no menu item
 })
+
+test('Google Calendar has its own overview and Reading page, and the #calendar anchor lands there', async ({ page, api, owner }) => {
+  void owner
+  const cards = await api.ok<{ id: string; permissions: { id: string }[] }[]>(api.get('/app/skills'))
+  const cal = cards.find((c) => c.id === 'superaide/google-calendar')!
+  await api.ok(api.post('/app/skills/superaide/google-calendar/install', { accepted: cal.permissions.map((p) => p.id) }))
+  await page.goto('/dashboard/capabilities/calendar')
+  await expect(page.getByRole('heading', { level: 1, name: 'Google Calendar' })).toBeVisible()
+  await expect(page.getByText("Google isn't connected, so Ava can't see your calendar yet.")).toBeVisible()
+  await page.getByRole('navigation', { name: 'Google Calendar settings' }).getByRole('link', { name: 'Reading' }).click()
+  await expect(page).toHaveURL(/\/dashboard\/capabilities\/calendar\/reading$/)
+  await page.goto('/dashboard/capabilities#calendar')
+  await expect(page).toHaveURL(/\/dashboard\/capabilities\/calendar\/reading$/)
+})
