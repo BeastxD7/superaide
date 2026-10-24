@@ -50,6 +50,10 @@ def stored(session: Session, skill_id: str) -> InstalledSkill | None:
 
 
 def load(session: Session, skill_id: str, choices: Mapping[str, Choice]) -> dict[str, Any]:
+    if skill_id.startswith("state:"):  # settings of something that is not a skill (channels, retention)
+        from superaide.policy.killswitch import get_state
+
+        return from_raw(get_state(session, skill_id[6:]).get("read"), choices)
     row = stored(session, skill_id)
     return from_raw(((row.settings if row is not None else None) or {}).get("read"), choices)
 
@@ -118,8 +122,9 @@ def make_router(
     def put_settings(body: body_model, _: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:  # type: ignore[valid-type]
         sent = body.model_dump(exclude_none=True)  # type: ignore[attr-defined]
         with session_scope() as s:
-            row = stored(s, skill_id)
-            if row is None:
+            state = skill_id.startswith("state:")
+            row = None if state else stored(s, skill_id)
+            if row is None and not state:
                 raise HTTPException(409, "Install this capability first.")
             before = load(s, skill_id, choices)
             now = dict(before)
@@ -127,7 +132,13 @@ def make_router(
                 if value not in choices[name].values:
                     raise HTTPException(422, f"{name}: choose one of {list(choices[name].values)}")
                 now[name] = value
-            row.settings = {**(row.settings or {}), "read": now}
+            if state:
+                from superaide.policy.killswitch import get_state, set_state
+
+                set_state(s, skill_id[6:], {**get_state(s, skill_id[6:]), "read": now})
+            else:
+                assert row is not None
+                row.settings = {**(row.settings or {}), "read": now}
             changed = sorted(k for k in now if now[k] != before[k])
             if changed:
                 audit(s, "skills", event, changed=changed, values={k: now[k] for k in changed})
