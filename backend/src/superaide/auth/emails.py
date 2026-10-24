@@ -47,9 +47,9 @@ def _now() -> datetime:
 
 def _link(path: str, token: str, base: str | None = None) -> str:
     """`base`: the allowed origin the person is using (superaide.links); else the server's own address."""
-    settings = get_settings()
-    origin = base or settings.public_base_url or settings.frontend_origin
-    return f"{origin.rstrip('/')}{path}#token={token}"
+    from superaide.links import public_base
+
+    return f"{(base or public_base()).rstrip('/')}{path}#token={token}"
 
 
 def _issued_recently(session: Session, user: UserAccount) -> int:

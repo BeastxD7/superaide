@@ -109,6 +109,7 @@ EXEMPT: dict[str, str] = {
     "memory_socket_client": "which instance a Memory Socket token belongs to: read to route a call; holds no memory",
     "brain_share": "which instance a Glass brain share link belongs to: read to route a visitor; a token hash only",
     "ask_handle": "which instance a public Ask link belongs to: read to route a visitor; holds no content",
+    "card_link": "which instance a short card link belongs to: read to route a recipient; no personal data",
 }
 
 _MATCH = f"agent_id = nullif(current_setting('{SETTING}', true), '')::uuid"
