@@ -129,7 +129,11 @@ def neutral_note(ev: Event) -> str | None:
 
 
 def build_messages(
-    history: list[Event], current_text: str, labels: dict[Any, str] | None = None, tz: Any = None
+    history: list[Event],
+    current_text: str,
+    labels: dict[Any, str] | None = None,
+    tz: Any = None,
+    label_chars: int = LABELLED_CHARS,
 ) -> list[dict[str, Any]]:
     """Map the episodic log to alternating user/assistant turns. `labels` marks turns that
     happened on another channel ("[On Telegram · Wed 19:13] …"). With the owner's `tz`, a turn
@@ -146,8 +150,8 @@ def build_messages(
             content = gap_line(prev, at, tz) + "\n" + content
         prev = at or prev
         if labels and (label := labels.get(ev.id)):
-            if len(content) > LABELLED_CHARS:
-                content = content[: LABELLED_CHARS - 1] + "…"
+            if len(content) > label_chars:
+                content = content[: label_chars - 1] + "…"
             content = f"{label} {content}"
         if turns and turns[-1]["role"] == role:
             turns[-1]["content"] += "\n" + content
