@@ -10,8 +10,8 @@ from superaide.app.deps import _hired_instance
 from superaide.config import get_settings
 from superaide.db.models import MemoryItem, UserAccount
 from superaide.db.session import session_scope
-from superaide.memsocket import service
-from superaide.memsocket.models import MemorySocketClient
+from superaide.features.memsocket import service
+from superaide.features.memsocket.models import MemorySocketClient
 from superaide.tenancy.context import all_instances, use_instance
 from tests.api_support import OTHER, signup
 

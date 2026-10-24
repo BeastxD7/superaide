@@ -64,6 +64,8 @@ core = true
 src = [
   "backend/src/superaide/config.py",
   "backend/src/superaide/__init__.py",
+  "backend/src/superaide/_compat.py",
+  "backend/src/superaide/features/__init__.py",
 ]
 tests = [
   "backend/tests/config/**",
@@ -182,7 +184,7 @@ e2e = []
 
 [modules.brainshare]
 src = [
-  "backend/src/superaide/brainshare/**",
+  "backend/src/superaide/features/brainshare/**",
 ]
 tests = [
   "backend/tests/brainshare/**",
@@ -247,7 +249,7 @@ e2e = [
 
 [modules.dissent]
 src = [
-  "backend/src/superaide/dissent/**",
+  "backend/src/superaide/features/dissent/**",
 ]
 tests = [
   "backend/tests/dissent/**",
@@ -256,7 +258,7 @@ e2e = []
 
 [modules.drills]
 src = [
-  "backend/src/superaide/drills/**",
+  "backend/src/superaide/features/drills/**",
 ]
 tests = []
 e2e = []
@@ -284,7 +286,7 @@ e2e = []
 
 [modules.forknight]
 src = [
-  "backend/src/superaide/forknight/**",
+  "backend/src/superaide/features/forknight/**",
 ]
 tests = [
   "backend/tests/forknight/**",
@@ -304,7 +306,7 @@ e2e = [
 
 [modules.imports]
 src = [
-  "backend/src/superaide/imports/**",
+  "backend/src/superaide/features/imports/**",
 ]
 tests = [
   "backend/tests/imports/**",
@@ -322,7 +324,7 @@ e2e = []
 
 [modules.journal]
 src = [
-  "backend/src/superaide/journal/**",
+  "backend/src/superaide/features/journal/**",
 ]
 tests = [
   "backend/tests/journal/**",
@@ -380,7 +382,7 @@ e2e = []
 
 [modules.memsocket]
 src = [
-  "backend/src/superaide/memsocket/**",
+  "backend/src/superaide/features/memsocket/**",
 ]
 tests = [
   "backend/tests/memsocket/**",
@@ -389,7 +391,7 @@ e2e = []
 
 [modules.mirror]
 src = [
-  "backend/src/superaide/mirror/**",
+  "backend/src/superaide/features/mirror/**",
 ]
 tests = [
   "backend/tests/mirror/**",
@@ -416,7 +418,7 @@ e2e = [
 
 [modules.passport]
 src = [
-  "backend/src/superaide/passport/**",
+  "backend/src/superaide/features/passport/**",
 ]
 tests = [
   "backend/tests/passport/**",
@@ -482,7 +484,7 @@ e2e = []
 
 [modules.push]
 src = [
-  "backend/src/superaide/push/**",
+  "backend/src/superaide/features/push/**",
 ]
 tests = [
   "backend/tests/push/**",
@@ -502,7 +504,7 @@ e2e = []
 
 [modules.rehearsal]
 src = [
-  "backend/src/superaide/rehearsal/**",
+  "backend/src/superaide/features/rehearsal/**",
 ]
 tests = [
   "backend/tests/rehearsal/**",
@@ -536,7 +538,7 @@ e2e = []
 
 [modules.school]
 src = [
-  "backend/src/superaide/school/**",
+  "backend/src/superaide/features/school/**",
 ]
 tests = [
   "backend/tests/school/**",
@@ -614,7 +616,7 @@ e2e = []
 
 [modules.voice]
 src = [
-  "backend/src/superaide/voice/**",
+  "backend/src/superaide/features/voice/**",
 ]
 tests = [
   "backend/tests/voice/**",

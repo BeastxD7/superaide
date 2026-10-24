@@ -12,8 +12,8 @@ from sqlalchemy import func, select
 from superaide.context.audience import Audience, visible_memories
 from superaide.db.models import MemoryItem, Person, UserAccount
 from superaide.db.session import session_scope
-from superaide.imports import convert
-from superaide.imports.models import ImportLease
+from superaide.features.imports import convert
+from superaide.features.imports.models import ImportLease
 from tests.api_support import OWNER
 
 LEASES = "/app/import-leases"
@@ -176,7 +176,7 @@ def test_someone_elses_lease_is_404(on, owner, browser):
         stranger = Person(display_name="Other Owner", relation="manager")
         s.add(stranger)
         s.flush()
-        from superaide.imports import lease as svc
+        from superaide.features.imports import lease as svc
 
         with pytest.raises(svc.LeaseError):
             svc.end_lease(s, stranger, uuid.UUID(lid))

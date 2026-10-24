@@ -251,7 +251,7 @@ def _witness(args: argparse.Namespace) -> None:
 def _push_keys(_: argparse.Namespace) -> None:
     """Show the web push public key, making the pair once if PUSH_ENABLED is on (ADR 0011). Never rotates."""
     from superaide.db.session import session_scope
-    from superaide.push import vapid
+    from superaide.features.push import vapid
 
     with session_scope() as s:
         keys = vapid.ensure(s)
@@ -377,7 +377,7 @@ def _import_cards(args: argparse.Namespace) -> None:
     import json
     from pathlib import Path
 
-    from superaide.imports import convert
+    from superaide.features.imports import convert
 
     text = Path(args.file).read_text(encoding="utf-8", errors="replace")
     batch = convert.convert(args.kind, text, scope=args.scope)
@@ -388,16 +388,16 @@ def _lobster(args: argparse.Namespace) -> None:
     """Lobster Rescue: read an OpenClaw or Hermes workspace folder on this machine. Writes nothing."""
     import json
 
-    from superaide.imports import lobster
+    from superaide.features.imports import lobster
 
     try:
         if args.cmd == "lobster-kit":
-            from superaide.imports import lobster_kit
+            from superaide.features.imports import lobster_kit
 
             lobster_kit.run(args.folder, args.out, assume_yes=args.yes)
             return
         if args.cmd == "lobster-kit-summary":
-            from superaide.imports import lobster_kit
+            from superaide.features.imports import lobster_kit
 
             summary = lobster_kit.summarise(args.files)
             print(json.dumps(summary, indent=2) if args.json else lobster_kit.render_summary(summary))

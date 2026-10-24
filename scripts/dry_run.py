@@ -38,7 +38,11 @@ def main() -> None:
             return total if sel.mode == "full" else len(sel.backend_files)
 
         e2e = "all" if t.mode == "full" else str(len(t.e2e_specs)) if t.e2e_specs else "smoke/none"
-        why = t.reasons[0] if t.mode == "full" else (", ".join(t.changed_modules) or ("tests/specs only" if t.mode == "selected" else "docs only"))
+        why = (
+            t.reasons[0]
+            if t.mode == "full"
+            else (", ".join(t.changed_modules) or ("tests/specs only" if t.mode == "selected" else "docs only"))
+        )
         sums[0] += n(t)
         sums[1] += n(d)
         sums[2] += total

@@ -7,10 +7,10 @@ from sqlalchemy import select
 
 from superaide.db.models import Approval, AuditLog
 from superaide.db.session import session_scope
+from superaide.features.voice import gateway
+from superaide.features.voice.call import VoiceCall
 from superaide.identity.resolver import Sender
 from superaide.policy.actions import ApprovalError, decide, resolve
-from superaide.voice import gateway
-from superaide.voice.call import VoiceCall
 
 
 @pytest.fixture

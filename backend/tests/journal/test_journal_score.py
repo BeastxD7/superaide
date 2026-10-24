@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from superaide.journal import score
-from superaide.journal.extract import Candidate, quoted_by_owner, verify
-from superaide.journal.score import Resolved
+from superaide.features.journal import score
+from superaide.features.journal.extract import Candidate, quoted_by_owner, verify
+from superaide.features.journal.score import Resolved
 
 
 def rows(topic: str, pct: int, hits: int, misses: int) -> list[Resolved]:

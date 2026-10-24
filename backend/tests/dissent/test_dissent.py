@@ -7,7 +7,7 @@ import pytest
 from superaide.brain.budget import BudgetExceeded, bucket_for
 from superaide.brain.llm import FakeLLM
 from superaide.db.session import session_scope
-from superaide.dissent import desk
+from superaide.features.dissent import desk
 
 OPTIONS = ["Send the firm reply", "Wait a day and send a softer one"]
 CAUTION = "Replying angrily tonight risks the client relationship permanently and cannot be unsent afterwards."

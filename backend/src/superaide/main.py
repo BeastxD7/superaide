@@ -166,7 +166,7 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     from superaide.identity.claims_routes import make_router as make_claims_router
 
     app.include_router(make_claims_router())  # 404 everywhere while IDENTITY_CLAIM_REVIEW is off
-    from superaide.school.routes import make_router as make_school_router
+    from superaide.features.school.routes import make_router as make_school_router
 
     app.include_router(make_school_router(get_agent))  # 404 everywhere while SCHOOL_ENABLED is off
     from superaide.reception.routes import make_router as make_reception_router
@@ -183,7 +183,7 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     from superaide.tooltrace.preview_routes import make_router as make_preview_routes_router
 
     app.include_router(make_preview_routes_router(get_agent))  # 404 everywhere while its flag is off
-    from superaide.rehearsal.routes import make_router as make_rehearsal_router
+    from superaide.features.rehearsal.routes import make_router as make_rehearsal_router
 
     app.include_router(make_rehearsal_router(get_agent))  # 404 everywhere while REHEARSAL_ENABLED is off
     from superaide.asklink.routes import make_owner_router as make_ask_owner_router
@@ -196,20 +196,20 @@ def create_app(agent: Agent | None = None) -> FastAPI:
 
     app.include_router(make_card_public_router())  # 404 everywhere while PRINCIPAL_CARD_ENABLED is off
     app.include_router(make_card_owner_router())
-    from superaide.memsocket.routes import make_owner_router as make_socket_owner_router
-    from superaide.memsocket.routes import make_public_router as make_socket_public_router
+    from superaide.features.memsocket.routes import make_owner_router as make_socket_owner_router
+    from superaide.features.memsocket.routes import make_public_router as make_socket_public_router
 
     app.include_router(make_socket_public_router())  # 404 everywhere while MEMORY_SOCKET_ENABLED is off
     app.include_router(make_socket_owner_router())
-    from superaide.brainshare.routes import make_owner_router as make_share_owner_router
-    from superaide.brainshare.routes import make_public_router as make_share_public_router
+    from superaide.features.brainshare.routes import make_owner_router as make_share_owner_router
+    from superaide.features.brainshare.routes import make_public_router as make_share_public_router
 
     app.include_router(make_share_public_router())  # 404 everywhere while BRAIN_SHARE_ENABLED is off
     app.include_router(make_share_owner_router())
-    from superaide.dissent.routes import make_router as make_dissent_router
+    from superaide.features.dissent.routes import make_router as make_dissent_router
 
     app.include_router(make_dissent_router(get_agent))  # 404 unless DISSENT_DESK_ENABLED and three models are set
-    from superaide.forknight.routes import make_router as make_fork_router
+    from superaide.features.forknight.routes import make_router as make_fork_router
 
     app.include_router(make_fork_router(get_agent))  # 404 unless FORK_NIGHT_ENABLED
     from superaide.rules.routes import make_router as make_rules_router
@@ -218,7 +218,7 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     from superaide.mandate.routes import make_router as make_mandate_router
 
     app.include_router(make_mandate_router())  # 404 for the owner unless MANDATES_ENABLED
-    from superaide.push.routes import make_router as make_push_router
+    from superaide.features.push.routes import make_router as make_push_router
 
     app.include_router(make_push_router())  # 404 unless PUSH_ENABLED (ADR 0011)
     from superaide.app.brain_map import make_brain_router
@@ -249,10 +249,10 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     from superaide.app.skill_payouts import make_skill_payouts_router
 
     app.include_router(make_skill_payouts_router(get_agent))  # 404 unless PAYOUTS_ENABLED (#132)
-    from superaide.voice.routes import make_router as make_voice_router
+    from superaide.features.voice.routes import make_router as make_voice_router
 
     app.include_router(make_voice_router(get_agent))  # 404 unless VOICE_INTRO_V2 (ADR 0012)
-    from superaide.imports.routes import make_router as make_import_router
+    from superaide.features.imports.routes import make_router as make_import_router
 
     app.include_router(make_import_router())  # 404 unless IMPORT_LEASE_ENABLED (#133)
 

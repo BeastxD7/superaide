@@ -384,7 +384,7 @@ def test_a_models_file_runs_everything_on_the_real_map(real) -> None:
 
 
 def test_the_real_map_is_selective_for_a_leaf_change(real) -> None:
-    sel = st.select(["backend/src/superaide/mirror/service.py"], real)
+    sel = st.select(["backend/src/superaide/features/mirror/service.py"], real)
     assert sel.mode == "selected"
     assert 0 < len(sel.backend_files) < len(real.backend_tests)
     assert "tests/mirror/api/test_mirror.py" in sel.backend_files
@@ -392,7 +392,7 @@ def test_the_real_map_is_selective_for_a_leaf_change(real) -> None:
 
 
 def test_the_guards_always_run_with_a_backend_selection(real) -> None:
-    sel = st.select(["backend/src/superaide/mirror/service.py"], real)
+    sel = st.select(["backend/src/superaide/features/mirror/service.py"], real)
     assert {"tests/guards/api/test_authz.py", "tests/guards/test_openapi_snapshot.py"} <= set(sel.backend_files)
     assert any(f.startswith("tests/redteam/") for f in sel.backend_files)
 
@@ -459,7 +459,7 @@ def test_without_composition_roots_configured_the_root_is_an_ordinary_dependent(
 def test_the_real_map_names_main_cli_and_plugins_as_roots(real) -> None:
     assert real.mmap.roots == {"main", "cli", "plugins"}
     assert real.mmap.root_smoke == ["backend/tests/console/test_main.py"]
-    sel = st.select(["backend/src/superaide/mirror/service.py"], real)
+    sel = st.select(["backend/src/superaide/features/mirror/service.py"], real)
     assert "tests/console/test_main.py" in sel.backend_files
     assert "tests/console/test_cli.py" not in sel.backend_files  # cli is no longer a dependent of everything
 

@@ -19,7 +19,7 @@ from superaide.audit import audit
 from superaide.auth.routes import reject_nul_text, require_csrf_header
 from superaide.db.models import Prediction
 from superaide.db.session import rows_affected, session_scope
-from superaide.journal import service
+from superaide.features.journal import service
 
 
 class SettingsBody(BaseModel):

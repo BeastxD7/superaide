@@ -24,11 +24,11 @@ from superaide.brain.turn import Prediction, RequestedAction, TurnOutput
 from superaide.config import get_settings
 from superaide.db.models import Approval, ChannelIdentity, Person
 from superaide.db.session import session_scope
+from superaide.features.voice import gateway
+from superaide.features.voice.provider import FakeVoiceProvider, run_call
+from superaide.features.voice.shell import VoiceShell
 from superaide.identity.resolver import Sender
 from superaide.policy.actions import ApprovalError, decide, resolve
-from superaide.voice import gateway
-from superaide.voice.provider import FakeVoiceProvider, run_call
-from superaide.voice.shell import VoiceShell
 
 RESULTS = Path(__file__).resolve().parents[3] / "evals" / "results"
 

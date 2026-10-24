@@ -104,7 +104,9 @@ def plan_e2e(root: Path, st, idx) -> dict[str, str]:
             continue
         moves[rel] = f"e2e/tests/{owners[0]}/{parts[0]}"
     # helpers (non-spec .ts files directly in e2e/tests) follow the first spec that imports them
-    for rel in sorted(p for p in tracked(root) if p.startswith("e2e/tests/") and p.endswith(".ts") and "/" not in p[10:]):
+    for rel in sorted(
+        p for p in tracked(root) if p.startswith("e2e/tests/") and p.endswith(".ts") and "/" not in p[10:]
+    ):
         if rel.endswith(".spec.ts"):
             continue
         stem = Path(rel).name.removesuffix(".ts")
@@ -152,10 +154,20 @@ def deepen_file_paths(text: str, by: int) -> str:
     out = []
     for line in text.splitlines(keepends=True):
         if "Path(__file__)" in line:
-            line = re.sub(r"(Path\(__file__\)[^\n]*?)parents\[(\d+)\]", lambda m: f"{m.group(1)}parents[{int(m.group(2)) + by}]", line)
-            line = re.sub(r"(Path\(__file__\)(?:\.resolve\(\))?)((?:\.parent(?!\w))+)", lambda m: m.group(1) + m.group(2) + ".parent" * by, line)
             line = re.sub(
-                r"Path\(__file__\)\.with_name\((\"[^\"]+\")\)", lambda m: f"Path(__file__).parents[{by}] / {m.group(1)}", line
+                r"(Path\(__file__\)[^\n]*?)parents\[(\d+)\]",
+                lambda m: f"{m.group(1)}parents[{int(m.group(2)) + by}]",
+                line,
+            )
+            line = re.sub(
+                r"(Path\(__file__\)(?:\.resolve\(\))?)((?:\.parent(?!\w))+)",
+                lambda m: m.group(1) + m.group(2) + ".parent" * by,
+                line,
+            )
+            line = re.sub(
+                r"Path\(__file__\)\.with_name\((\"[^\"]+\")\)",
+                lambda m: f"Path(__file__).parents[{by}] / {m.group(1)}",
+                line,
             )
         out.append(line)
     return "".join(out)
@@ -201,7 +213,9 @@ def path_replacer(moves: dict[str, str]):
     return lambda text: pattern.sub(lambda m: forms[m.group(0)], text)
 
 
-def rewrite_module_map(text: str, moved_by_module: dict[str, list[str]], extra: dict[str, list[str]] | None = None) -> str:
+def rewrite_module_map(
+    text: str, moved_by_module: dict[str, list[str]], extra: dict[str, list[str]] | None = None
+) -> str:
     """In ci/modules.toml: each module's explicit backend test entries become one glob (a directory rule)."""
     lines = text.splitlines(keepends=True)
     out: list[str] = []
@@ -285,7 +299,7 @@ def run(root: Path, dry: bool = False) -> dict[str, str]:
         path = root / rel
         try:
             text = path.read_text()
-        except (UnicodeDecodeError, OSError):
+        except UnicodeDecodeError, OSError:
             continue
         orig = text
         if rel.endswith(".py") and rel.startswith("backend/"):

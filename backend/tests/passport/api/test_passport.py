@@ -14,8 +14,8 @@ from sqlalchemy import select
 from superaide.config import get_settings
 from superaide.db.models import Contact, Document, MemoryImport, MemoryItem, Person
 from superaide.db.session import session_scope
+from superaide.features.passport import schema
 from superaide.knowledge.store import add_contact, remember_fact
-from superaide.passport import schema
 from superaide.tenancy.context import InstanceScope, use_instance
 from tests.api_support import OTHER, OWNER, hire, signup
 from tests.tenancy.api.test_many_owners import account, instance_of

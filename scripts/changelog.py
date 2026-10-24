@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Rewrite CHANGELOG.md from the merged pull requests on GitHub (needs the `gh` CLI, logged in).
 
-    python3 scripts/changelog.py [owner/repo]
+python3 scripts/changelog.py [owner/repo]
 """
 
 from __future__ import annotations
@@ -56,7 +56,10 @@ def main() -> None:
         out += [f"### {day}", ""]
         for name, items in groups.items():
             out.append(f"**{name}**")
-            out += [f"- {' '.join(p['title'].split())} ([#{p['number']}](https://github.com/{REPO}/pull/{p['number']}))" for p in items]
+            out += [
+                f"- {' '.join(p['title'].split())} ([#{p['number']}](https://github.com/{REPO}/pull/{p['number']}))"
+                for p in items
+            ]
             out.append("")
     Path(__file__).resolve().parents[1].joinpath("CHANGELOG.md").write_text("\n".join(out) + "\n", encoding="utf-8")
 

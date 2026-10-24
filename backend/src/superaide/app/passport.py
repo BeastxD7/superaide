@@ -19,7 +19,7 @@ from superaide.app.deps import owner_person_id
 from superaide.auth.routes import reject_nul_text, require_csrf_header
 from superaide.db.models import MemoryImport, Person
 from superaide.db.session import require, session_scope
-from superaide.passport import export, importer, schema
+from superaide.features.passport import export, importer, schema
 
 
 def make_passport_router(get_agent: Callable[[], Any]) -> APIRouter:

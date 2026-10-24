@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from superaide.brain.llm import FakeLLM
 from superaide.db.session import session_scope
-from superaide.forknight import night
+from superaide.features.forknight import night
 from tests.api_support import OTHER, signup
 from tests.forknight.test_fork_night import drafts
 

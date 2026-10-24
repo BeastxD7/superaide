@@ -1,5 +1,33 @@
 {
+ "aliases": {
+  "superaide.brainshare": "superaide.features.brainshare",
+  "superaide.dissent": "superaide.features.dissent",
+  "superaide.drills": "superaide.features.drills",
+  "superaide.forknight": "superaide.features.forknight",
+  "superaide.imports": "superaide.features.imports",
+  "superaide.journal": "superaide.features.journal",
+  "superaide.memsocket": "superaide.features.memsocket",
+  "superaide.mirror": "superaide.features.mirror",
+  "superaide.passport": "superaide.features.passport",
+  "superaide.push": "superaide.features.push",
+  "superaide.rehearsal": "superaide.features.rehearsal",
+  "superaide.school": "superaide.features.school",
+  "superaide.voice": "superaide.features.voice"
+ },
  "modules": {
+  "superaide.brainshare": "superaide.features.brainshare",
+  "superaide.dissent": "superaide.features.dissent",
+  "superaide.drills": "superaide.features.drills",
+  "superaide.forknight": "superaide.features.forknight",
+  "superaide.imports": "superaide.features.imports",
+  "superaide.journal": "superaide.features.journal",
+  "superaide.memsocket": "superaide.features.memsocket",
+  "superaide.mirror": "superaide.features.mirror",
+  "superaide.passport": "superaide.features.passport",
+  "superaide.push": "superaide.features.push",
+  "superaide.rehearsal": "superaide.features.rehearsal",
+  "superaide.school": "superaide.features.school",
+  "superaide.voice": "superaide.features.voice",
   "tests.airlock_fixtures": "tests.privacy.airlock_fixtures",
   "tests.api.conftest": "tests.api_support",
   "tests.api.test_account_events": "tests.auth.api.test_account_events",
@@ -527,5 +555,19 @@
   "e2e/tests/workspace.mobile.spec.ts": "e2e/tests/web-dashboard/workspace.mobile.spec.ts",
   "e2e/tests/workspace.spec.ts": "e2e/tests/web-dashboard/workspace.spec.ts"
  },
- "prefixes": {}
+ "prefixes": {
+  "backend/src/superaide/brainshare/": "backend/src/superaide/features/brainshare/",
+  "backend/src/superaide/dissent/": "backend/src/superaide/features/dissent/",
+  "backend/src/superaide/drills/": "backend/src/superaide/features/drills/",
+  "backend/src/superaide/forknight/": "backend/src/superaide/features/forknight/",
+  "backend/src/superaide/imports/": "backend/src/superaide/features/imports/",
+  "backend/src/superaide/journal/": "backend/src/superaide/features/journal/",
+  "backend/src/superaide/memsocket/": "backend/src/superaide/features/memsocket/",
+  "backend/src/superaide/mirror/": "backend/src/superaide/features/mirror/",
+  "backend/src/superaide/passport/": "backend/src/superaide/features/passport/",
+  "backend/src/superaide/push/": "backend/src/superaide/features/push/",
+  "backend/src/superaide/rehearsal/": "backend/src/superaide/features/rehearsal/",
+  "backend/src/superaide/school/": "backend/src/superaide/features/school/",
+  "backend/src/superaide/voice/": "backend/src/superaide/features/voice/"
+ }
 }

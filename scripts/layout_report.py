@@ -34,9 +34,17 @@ def _load_selector():
     return mod
 
 
+# Folders that only group packages (ADR 0015): `features/mirror/x.py` belongs to the package `features.mirror`.
+GROUPS = frozenset({"features", "integrations", "platform"})
+
+
 def package_of(file_id: str) -> str:
-    """app.routes -> app ; config -> config (a top-level file is its own pseudo-package)."""
-    return file_id.split(".")[0]
+    """app.routes -> app ; config -> config (a top-level file is its own pseudo-package) ;
+    features.mirror.service -> features.mirror (a group folder is not itself a package)."""
+    parts = file_id.split(".")
+    if parts[0] in GROUPS and len(parts) > 1:
+        return ".".join(parts[:2])
+    return parts[0]
 
 
 def sccs(nodes: list[str], edges: dict[str, set[str]]) -> list[list[str]]:
@@ -125,7 +133,7 @@ def measure(root: Path = ROOT) -> dict:
     pkgs: dict[str, dict] = {}
     for fid, path in graph.files.items():
         pkg = package_of(fid)
-        entry = pkgs.setdefault(pkg, {"files": 0, "lines": 0, "is_dir": (src / pkg).is_dir()})
+        entry = pkgs.setdefault(pkg, {"files": 0, "lines": 0, "is_dir": (src / pkg.replace(".", "/")).is_dir()})
         entry["files"] += 1
         entry["lines"] += (root / path).read_text().count("\n")
     pedges = package_edges(graph)

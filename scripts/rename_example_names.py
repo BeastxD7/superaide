@@ -88,7 +88,7 @@ def process(path: str, whole: set[str], lines: dict[str, list[re.Pattern[str]]],
     file = ROOT / path
     try:
         text = file.read_text(encoding="utf-8")
-    except (UnicodeDecodeError, OSError):
+    except UnicodeDecodeError, OSError:
         return []
     if not OLD.search(text):
         return []

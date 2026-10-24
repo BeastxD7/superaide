@@ -5,9 +5,9 @@ from __future__ import annotations
 
 def load() -> None:
     import superaide.context.vectors  # noqa: F401  (registers embed_memories)
-    import superaide.forknight.night  # noqa: F401  (registers fork_night)
+    import superaide.features.forknight.night  # noqa: F401  (registers fork_night)
+    import superaide.features.journal.service  # noqa: F401  (registers journal_from_turn)
     import superaide.intentions.service  # noqa: F401  (registers deliver_intention)
-    import superaide.journal.service  # noqa: F401  (registers journal_from_turn)
     import superaide.knowledge.connector_facts  # noqa: F401  (registers connector_facts)
     import superaide.knowledge.learn  # noqa: F401  (registers learn_from_turn)
     import superaide.knowledge.pending  # noqa: F401  (registers read_pending)
