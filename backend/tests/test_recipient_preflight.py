@@ -94,7 +94,7 @@ def test_rejecting_the_card_deletes_the_draft(owner_client, gmail_fake):
     assert not gmail_fake.drafts and sorted(gmail_fake.deleted) == [
         "d1",
         "d2",
-    ]  # the signed and the plain variant (#135)
+    ]  # signed and plain draft (default-on card)
 
 
 def test_unknown_or_missing_reaches_a_person_is_refused_even_for_a_human_address(owner_client, gmail_fake):
