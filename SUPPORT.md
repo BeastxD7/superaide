@@ -2,7 +2,7 @@
 
 | You want to | Go to |
 | --- | --- |
-| Run Superaide on a Mac | [README: Run it](README.md#run-it) (`bash start.command`) |
+| Run Superaide on a Mac | [README: Quick start](README.md#quick-start) (`bash start.command`) |
 | Put it on a server | [deploy/README.md](deploy/README.md) |
 | Understand how it works | [docs/architecture.md](docs/architecture.md) and [docs/decisions/](docs/decisions/) |
 | Report a bug or ask for a feature | [Open an issue](https://github.com/BeastxD7/superaide/issues/new/choose) and pick the form that fits |

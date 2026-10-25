@@ -41,6 +41,28 @@ def test_the_check_fails_when_a_variable_is_missing(tmp_path, monkeypatch):
     assert any("MAX_SPEND_USD" in p for p in found)
 
 
+def test_the_check_fails_when_the_configuration_doc_lacks_a_variable(tmp_path, monkeypatch):
+    mod = _script()
+    fake = tmp_path / "configuration.md"
+    fake.write_text(
+        "\n".join(
+            line for line in mod.CONFIG_DOC.read_text().splitlines() if not line.startswith("| `MAX_SPEND_USD` |")
+        )
+    )
+    monkeypatch.setattr(mod, "CONFIG_DOC", fake)
+    assert any("docs/configuration.md: MAX_SPEND_USD" in p for p in mod.problems())
+
+
+def test_the_configuration_doc_is_generated_from_the_example():
+    spec = importlib.util.spec_from_file_location(
+        "gen_configuration_doc", ROOT / "scripts" / "gen_configuration_doc.py"
+    )
+    assert spec and spec.loader
+    gen = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gen)
+    assert gen.build() == gen.OUT.read_text(), "run: python3 scripts/gen_configuration_doc.py"
+
+
 def test_the_check_fails_on_a_duplicate(tmp_path, monkeypatch):
     mod = _script()
     fake = tmp_path / ".env.example"

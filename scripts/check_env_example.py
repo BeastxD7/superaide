@@ -10,6 +10,8 @@ Sources of truth (read with the standard library only, so this runs anywhere):
 Documented in backend/.env.example means a line `NAME=...` or a commented-out `# NAME=...` (one space after
 the `#`). Each name must appear exactly once. Every boolean Settings field must also be listed in the
 FEATURE FLAGS index at the top of that file (the text before the END FEATURE FLAGS INDEX marker).
+Every backend variable must also appear in docs/configuration.md (generated from the example file by
+scripts/gen_configuration_doc.py), as `NAME` in a table row.
 Frontend variables must appear in frontend/.env.example the same way.
 
 Usage: python3 scripts/check_env_example.py   (exit 1 with a list when something is missing)
@@ -28,6 +30,7 @@ CONFIG = ROOT / "backend/src/superaide/platform/config.py"
 BACKEND_SRC = ROOT / "backend/src/superaide"
 BACKEND_EXAMPLE = ROOT / "backend/.env.example"
 FRONTEND_EXAMPLE = ROOT / "frontend/.env.example"
+CONFIG_DOC = ROOT / "docs/configuration.md"
 INDEX_END = "END FEATURE FLAGS INDEX"
 
 # Settings fields that are filled from the database or never serialised, not read from .env.
@@ -108,6 +111,11 @@ def problems() -> list[str]:
         for name, ann in sorted(fields.items()):
             if ann == "bool" and not re.search(rf"\b{name}\b", index):
                 out.append(f"backend/.env.example: boolean {name} is not in the FEATURE FLAGS index")
+
+    doc = CONFIG_DOC.read_text() if CONFIG_DOC.exists() else ""
+    in_doc = set(re.findall(r"^\| `([A-Z][A-Z0-9_]*)` \|", doc, flags=re.M))
+    for name in sorted(backend_needed - in_doc):
+        out.append(f"docs/configuration.md: {name} is read by the backend but not in the configuration reference")
 
     fe_have = documented(FRONTEND_EXAMPLE)
     for name in sorted(frontend_reads() - set(fe_have)):
