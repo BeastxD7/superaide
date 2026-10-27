@@ -478,7 +478,7 @@ def test_the_eleventh_message_in_an_hour_gets_a_fixed_reply_and_no_model_call(ow
         ava.handle(hello(f"message {i}"))
     assert script.calls == 10
     eleventh = ava.handle(hello("message 10"))
-    assert eleventh.reply == service.LIMIT_REPLY and script.calls == 10
+    assert eleventh.reply is not None and service.LIMIT_MARK in eleventh.reply and script.calls == 10
     twelfth = ava.handle(hello("message 11"))
     assert twelfth.reply is None and twelfth.notes == ["rate_limited"] and script.calls == 10  # once, then quiet
     assert ava.handle(hello("someone else", who="U_ANOTHER_ONE")).reply  # per sender, not per owner
@@ -488,7 +488,8 @@ def test_the_per_day_limit_holds_across_hours(owner_world, ava, script):
     set_reception(per_hour=60, per_day=3)
     for i in range(3):
         ava.handle(hello(f"message {i}"))
-    assert ava.handle(hello("message 3")).reply == service.LIMIT_REPLY and script.calls == 3
+    limited = ava.handle(hello("message 3")).reply
+    assert limited is not None and service.LIMIT_MARK in limited and script.calls == 3
 
 
 def test_when_the_budget_is_spent_the_reply_is_fixed_and_the_message_is_still_passed_on(owner_world, ava, script):
@@ -536,12 +537,15 @@ def test_with_no_model_connected_the_message_is_taken_verbatim_and_no_model_runs
     assert m.source == "code" and m.message == "Tell him the parcel arrived"
 
 
-def test_a_message_over_the_limit_is_not_stored_again(owner_world, ava, script):
+def test_a_message_over_the_limit_is_still_stored_once_and_without_a_model_call(owner_world, ava, script):
     set_reception(per_hour=1)
     script.out = ReceptionTurn(reply="Noted.", take_message=TakenMessage(message="a message"))
     ava.handle(hello("first"))
     ava.handle(hello("second"))
-    assert len(taken()) == 1
+    assert [(m.message, m.source) for m in taken()] == [
+        ("a message", "model"),
+        ("second", "code"),
+    ] and script.calls == 1
 
 
 # --- the identity flow is unchanged ----------------------------------------------------------

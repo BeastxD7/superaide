@@ -33,7 +33,7 @@
   "backend/evals/scenarios/ltm_inputs.yaml": "ae953d72c6d2d7e7dc52a6f3dd5eac6d247d0e309cbcd62092348f7bb36d7f9a",
   "backend/evals/scenarios/privacy.yaml": "6ecd6245666582460ed52ced4f4961b7501e23e7bf7a1c951a524a8a11451930",
   "backend/evals/scenarios/recall.yaml": "457000529976f6130714c6f33f200ac5e52a9930c0916d6259866dc438999b52",
-  "backend/evals/scenarios/receptionist.yaml": "d426cd08de930b6afe1a8a8eb82aaa48e347c0c2c07977a5e1c51abfd8dbf351",
+  "backend/evals/scenarios/receptionist.yaml": "017328506edfcad26a523e2c39ec1a9e80edce799b06d2ce22b6f7f1f648b35c",
   "backend/evals/scenarios/reminders.yaml": "56531d629324faba16676d711849460c5e1800a8e0c35031a54278ea453643d4",
   "backend/evals/scenarios/task_protocol.yaml": "273fa4fc73fe23bccd936ea9f34f23df48adf0a7d8de020e7179ae4e7dcdae69",
   "backend/evals/scenarios/triage.yaml": "a091cb4ea358b6f925aefac7a5c5decda66642383a693661340ebbb1395abd2f",
