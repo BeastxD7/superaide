@@ -473,6 +473,18 @@ tests = [
 ]
 e2e = [
   "e2e/tests/policy/halt-resume.spec.ts",
+]
+
+# What happens to an approval once Ava has asked: bound to its content, quoted, carried out, checked for who it goes to
+# (ADR 0015 phase 6c). `policy` keeps the rules (kinds, registry, actions, brake, breaker, kill switch).
+[modules.approvals]
+src = [
+  "backend/src/superaide/approvals/**",
+]
+tests = [
+  "backend/tests/approvals/**",
+]
+e2e = [
   "e2e/tests/journeys/approval-honesty.spec.ts",
   "e2e/tests/journeys/approval-recipient.spec.ts",
   "e2e/tests/policy/approvals-sync.spec.ts",

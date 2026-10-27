@@ -6,12 +6,12 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
+from superaide.approvals import footprint
 from superaide.identity.resolver import Sender
 from superaide.identity.trust import Trust
 from superaide.platform.config import get_settings
 from superaide.platform.db.models import Approval, AuditLog
 from superaide.platform.db.session import session_scope
-from superaide.policy import footprint
 from superaide.policy.actions import action_kinds, decide
 
 

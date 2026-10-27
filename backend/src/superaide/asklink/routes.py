@@ -26,6 +26,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from superaide.app.deps import owner_person_id
+from superaide.approvals.binding import seal
 from superaide.asklink import handles, service
 from superaide.asklink.models import AskHandle, AskLink, AskRequest
 from superaide.auth.routes import client_of, reject_nul_text, require_csrf_header
@@ -34,7 +35,6 @@ from superaide.platform.config import get_settings
 from superaide.platform.db.models import Approval, Person
 from superaide.platform.db.session import require, session_scope
 from superaide.platform.tenancy.context import scope_or_default, use_instance
-from superaide.policy.binding import seal
 
 MAX_BODY = 8 * 1024
 LIMITS = {"name": 80, "contact": 200, "topic": 140, "why": 1500}

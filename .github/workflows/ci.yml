@@ -442,8 +442,10 @@ jobs:
   e2e:
     name: End-to-end (shard ${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
-    # Shards take 7 to 12 minutes; a hung one should not hold a pull request for 25 (advisory on pull requests, see the gate).
-    timeout-minutes: 15
+    # A green shard takes 9 to 14 minutes (the slowest was 14 on main on 2026-10-27), so a 15 minute limit cancelled
+    # shards on slow runners for time, not for a failure. 25 leaves room and still stops a hung shard
+    # (advisory on pull requests, see the gate). The suite is sharded by measured time (e2e/shard-timings.json).
+    timeout-minutes: 25
     # Runs beside backend, not after it: it builds its own API and web. A frontend failure still stops it,
     # and the CI result gate still requires backend, so main loses no protection (docs/0013).
     needs: [changes, frontend]

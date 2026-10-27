@@ -30,6 +30,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.orm import aliased
 
 from superaide.app.accounts import owner as hired_owner
+from superaide.approvals import binding
 from superaide.brain.spend.budget import BudgetGuard
 from superaide.brain.wiring import brain_ready
 from superaide.identity.linking import operator_link, unlink
@@ -60,7 +61,6 @@ from superaide.platform.pagination import (
 from superaide.platform.tenancy.context import InstanceScope, default_scope, use_instance
 from superaide.platform.tenancy.models import AgentInstance, ChannelEndpoint, Tenant
 from superaide.platform.tenancy.service import active_scopes
-from superaide.policy import binding
 from superaide.policy.killswitch import instance_frozen, is_frozen, set_frozen, set_platform_frozen
 
 admin_bearer = HTTPBearer(scheme_name="Admin token", description="`ADMIN_TOKEN` from `.env`.", auto_error=False)
