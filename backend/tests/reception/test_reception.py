@@ -4,6 +4,7 @@ privacy is what reaches its prompt."""
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -397,7 +398,11 @@ def test_flag_off_the_owner_gets_one_fixed_note_and_a_digest_line(owner_world, a
     with session_scope() as s:
         notes = s.scalars(select(Event).where(Event.meta["kind"].astext == "message_taken")).all()
         assert len(notes) == 1  # a burst makes one note
-        assert notes[0].content == "Message taken from someone new on Slack. Open your dashboard to read it."
+        # the first name the sender gave and the owner's local time (#516), never the message
+        assert re.fullmatch(
+            r"Message taken from Sam, someone new, on Slack at \d\d:\d\d\. Open your dashboard to read it\.",
+            notes[0].content,
+        )
         assert s.scalar(select(func.count()).select_from(TriageDecision)) == 0
         from superaide.proactive import digest
 

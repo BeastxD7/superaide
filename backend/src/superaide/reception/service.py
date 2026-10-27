@@ -358,13 +358,32 @@ def _deadline(session: Session, owner: Person, text: str, now: datetime) -> Any:
     return found[0].date() if found and found[0] > now else None
 
 
-def _reason(row: ReceptionMessage) -> str:
+def _first_name(row: ReceptionMessage) -> str:
+    """The first word of the name the sender gave, letters only. It is their own unverified claim, so the notice
+    shows it as that (`Meera, someone new,`), and nothing else they typed (#516)."""
+    word = (row.name.split() or [""])[0]
+    return "".join(c for c in word if c.isalpha() or c in "'-")[:20].strip("'-")
+
+
+def _local_time(session: Session, owner: Person, row: ReceptionMessage) -> str:
+    from superaide.intentions.when import zone
+    from superaide.memory.knowledge.store import preferences_for
+
+    at = row.created_at or datetime.now(UTC)
+    return at.astimezone(zone(preferences_for(session, owner).timezone)).strftime("%H:%M")
+
+
+def _reason(session: Session, owner: Person, row: ReceptionMessage) -> str:
+    """The owner's notice: who (a first name only if they gave one), where and when. Never any of the message."""
     where = CHANNEL.get(row.provider, row.provider)
+    name = _first_name(row)
+    who = f"{name}, someone new," if name else "someone new"
+    when = f"{where} at {_local_time(session, owner, row)}"
     if row.rank == "unverified":
-        return f"Message from someone new on {where} asks for something risky (money, codes or secrecy)"
+        return f"Message from {who} on {when} asks for something risky (money, codes or secrecy)"
     if row.rank == "urgent":
-        return f"Message from someone new on {where} may be urgent"
-    return f"Message taken from someone new on {where}"
+        return f"Message from {who} on {when} may be urgent"
+    return f"Message taken from {who} on {when}"
 
 
 def _to_triage(session: Session, owner: Person, row: ReceptionMessage, inbound: Event, now: datetime) -> None:
@@ -390,7 +409,7 @@ def _to_triage(session: Session, owner: Person, row: ReceptionMessage, inbound: 
         inbound_event_id=inbound.id, sender_person_id=None, context_id=row.context_id,
         features={"relation": "stranger", "provider": row.provider, "reception_message_id": str(row.id),
                   "escalate": escalate, "maybe_urgent": row.rank == "urgent", "vip": False},
-        rule_hits=["stranger", *row.rule_hits], decision=str(decision), reason=_reason(row),
+        rule_hits=["stranger", *row.rule_hits], decision=str(decision), reason=_reason(session, owner, row),
         stage_at_time=str(current_stage(session)), policy_version=POLICY_VERSION,
     )  # fmt: skip
     session.add(d)
@@ -442,7 +461,7 @@ def _note(session: Session, owner: Person, row: ReceptionMessage, now: datetime)
         quiet = quiet.where(ReceptionMessage.rank.in_(URGENT_RANKS))
     if session.scalar(quiet):
         return
-    text = _reason(row) + ". Open your dashboard to read it."
+    text = _reason(session, owner, row) + ". Open your dashboard to read it."
     notify_owner(session, owner, text, {"kind": "message_taken", "message_id": str(row.id)}, channel="app")
 
 
