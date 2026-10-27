@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 
 from superaide.app.deps import owner_person_id
-from superaide.auth.routes import reject_nul_text, require_csrf_header
+from superaide.identity.auth.routes import reject_nul_text, require_csrf_header
 from superaide.platform.audit import audit
 from superaide.platform.config import get_settings
 from superaide.platform.db.models import Episode

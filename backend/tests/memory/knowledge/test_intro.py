@@ -185,8 +185,8 @@ def test_a_failed_read_is_retried_later_and_never_marked_read(agent, client, bro
 
 def test_connecting_claude_reads_what_was_saved_while_offline(client, monkeypatch):
     from superaide.app import connections
+    from superaide.identity.vault.check import Checked
     from superaide.platform.db.models import Job
-    from superaide.vault.check import Checked
 
     monkeypatch.setattr(connections.check, "check_anthropic", lambda key, http: Checked(values={"api_key": key}))
     upload(client, "resume.txt", b"Jordan Whitfield")

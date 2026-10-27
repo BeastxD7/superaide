@@ -8,13 +8,13 @@ import pytest
 from sqlalchemy import select
 
 from superaide.brain.providers.base import CheckReport
+from superaide.identity.vault.check import Checked
 from superaide.jobs.handlers import load
 from superaide.jobs.queue import run_due
 from superaide.memory.knowledge.facts import Fact, FactList
 from superaide.platform.config import get_settings
 from superaide.platform.db.models import Document, Job, MemoryItem
 from superaide.platform.db.session import session_scope
-from superaide.vault.check import Checked
 from tests.pipeline.test_loop import owner_client  # noqa: F401  (fixture)
 
 load()

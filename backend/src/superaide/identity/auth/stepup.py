@@ -26,7 +26,7 @@ from typing import Any
 from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
-from superaide.auth.passwords import verify_password
+from superaide.identity.auth.passwords import verify_password
 from superaide.platform.audit import account_audit
 from superaide.platform.config import get_settings
 from superaide.platform.db.models import AgentState, UserAccount

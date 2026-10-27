@@ -151,11 +151,11 @@ e2e = [
 
 [modules.auth]
 src = [
-  "backend/src/superaide/auth/**",
+  "backend/src/superaide/identity/auth/**",
   "backend/src/superaide/links.py",
 ]
 tests = [
-  "backend/tests/auth/**",
+  "backend/tests/identity/auth/**",
 ]
 e2e = [
   "e2e/tests/auth/accounts.spec.ts",
@@ -304,12 +304,14 @@ tests = [
 ]
 e2e = []
 
+# identity/ holds four modules (ADR 0015 phase 6d): the top-level files here (resolver, linking, claims, trust, binding)
+# and the sub-packages auth, vault and principal, each its own module so a change to one runs only its own tests.
 [modules.identity]
 src = [
-  "backend/src/superaide/identity/**",
+  "backend/src/superaide/identity/*.py",
 ]
 tests = [
-  "backend/tests/identity/**",
+  "backend/tests/identity/*.py",
 ]
 e2e = [
   "e2e/tests/identity/identity-claims.spec.ts",
@@ -493,10 +495,10 @@ e2e = [
 
 [modules.principal]
 src = [
-  "backend/src/superaide/principal/**",
+  "backend/src/superaide/identity/principal/**",
 ]
 tests = [
-  "backend/tests/principal/**",
+  "backend/tests/identity/principal/**",
 ]
 e2e = [
   "e2e/tests/principal/principal-card.spec.ts",
@@ -648,10 +650,10 @@ e2e = []
 
 [modules.vault]
 src = [
-  "backend/src/superaide/vault/**",
+  "backend/src/superaide/identity/vault/**",
 ]
 tests = [
-  "backend/tests/vault/**",
+  "backend/tests/identity/vault/**",
 ]
 e2e = []
 

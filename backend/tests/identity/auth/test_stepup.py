@@ -9,7 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from superaide.auth import stepup
+from superaide.identity.auth import stepup
 from superaide.platform.config import get_settings
 from superaide.platform.db.models import AgentState, AuditLog, UserAccount
 from superaide.platform.db.session import session_scope

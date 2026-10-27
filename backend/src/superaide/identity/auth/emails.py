@@ -18,9 +18,9 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from superaide.auth.models import EmailToken
-from superaide.auth.passwords import hash_password, password_problem
-from superaide.auth.service import (
+from superaide.identity.auth.models import EmailToken
+from superaide.identity.auth.passwords import hash_password, password_problem
+from superaide.identity.auth.service import (
     AuthError,
     Client,
     _event,

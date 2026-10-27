@@ -20,13 +20,13 @@ from superaide.app import connections
 from superaide.channels import slack
 from superaide.channels.base import InboundMessage
 from superaide.channels.runner import ChannelRunner
+from superaide.identity.vault import crypto, store
 from superaide.main import create_app
 from superaide.platform.config import get_settings
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy import endpoints
 from superaide.platform.tenancy.context import InstanceScope, current_scope, use_instance
 from superaide.platform.tenancy.models import ChannelEndpoint
-from superaide.vault import crypto, store
 
 APP_A = "xapp-1-A0AAAAAAA-1111-" + "a" * 20
 APP_B = "xapp-1-A0BBBBBBB-2222-" + "b" * 20

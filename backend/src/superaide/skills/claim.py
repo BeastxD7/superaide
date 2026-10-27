@@ -31,7 +31,7 @@ EFFECT = "send"
 
 
 def _key() -> bytes:
-    from superaide.vault.crypto import master_key
+    from superaide.identity.vault.crypto import master_key
 
     root, _ = master_key()
     return hmac.new(root, b"skill trust claim signing key v1", hashlib.sha256).digest()

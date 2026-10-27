@@ -129,8 +129,8 @@ def _keep(session: Session, owner: Person, *, source: str, ref: str, facts: list
 def run(session: Session, job: Job) -> None:
     from superaide.app.accounts import owner as instance_owner
     from superaide.brain.wiring import brain_ready, build_llm
+    from superaide.identity.vault.store import runtime_settings
     from superaide.memory.knowledge.facts import extract_facts
-    from superaide.vault.store import runtime_settings
 
     if not enabled():
         return

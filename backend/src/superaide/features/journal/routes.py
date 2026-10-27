@@ -15,8 +15,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import delete
 
 from superaide.app.deps import owner_person_id
-from superaide.auth.routes import reject_nul_text, require_csrf_header
 from superaide.features.journal import service
+from superaide.identity.auth.routes import reject_nul_text, require_csrf_header
 from superaide.platform.audit import audit
 from superaide.platform.db.models import Prediction
 from superaide.platform.db.session import rows_affected, session_scope

@@ -21,9 +21,9 @@ from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from superaide.auth import emails, service
-from superaide.auth import google as google_signin
-from superaide.auth.service import AuthError, Client
+from superaide.identity.auth import emails, service
+from superaide.identity.auth import google as google_signin
+from superaide.identity.auth.service import AuthError, Client
 from superaide.links import request_origin
 from superaide.mail import Mail, MailError, get_mailer
 from superaide.platform.config import get_settings

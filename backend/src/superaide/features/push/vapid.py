@@ -22,11 +22,11 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
+from superaide.identity.vault.crypto import decrypt, encrypt
 from superaide.platform.audit import audit
 from superaide.platform.config import get_settings
 from superaide.platform.db.session import rows_affected
 from superaide.platform.tenancy.models import PlatformState
-from superaide.vault.crypto import decrypt, encrypt
 
 KEY = "vapid"  # the platform_state row
 SLOT = "platform/vapid"  # associated data for the private key: it decrypts nowhere else

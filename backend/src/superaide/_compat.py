@@ -25,6 +25,7 @@ ALIASES: dict[str, str] = {
     "superaide.app.skill_releases": "superaide.skills.releases_routes",
     "superaide.app.skill_signals": "superaide.skills.signals_routes",
     "superaide.audit": "superaide.platform.audit",
+    "superaide.auth": "superaide.identity.auth",
     "superaide.brain.budget": "superaide.brain.spend.budget",
     "superaide.brain.platform_spend": "superaide.brain.spend.platform_spend",
     "superaide.brain.price_tables": "superaide.brain.spend.price_tables",
@@ -71,6 +72,7 @@ ALIASES: dict[str, str] = {
     "superaide.policy.outcomes": "superaide.approvals.outcomes",
     "superaide.policy.quote": "superaide.approvals.quote",
     "superaide.policy.recipients": "superaide.approvals.recipients",
+    "superaide.principal": "superaide.identity.principal",
     "superaide.proactive.calendar_watch": "superaide.integrations.calendar.watch",
     "superaide.push": "superaide.features.push",
     "superaide.rehearsal": "superaide.features.rehearsal",
@@ -80,6 +82,7 @@ ALIASES: dict[str, str] = {
     "superaide.skills.gmail": "superaide.integrations.gmail.skill",
     "superaide.skills.gmail_inbox": "superaide.integrations.gmail.inbox",
     "superaide.tenancy": "superaide.platform.tenancy",
+    "superaide.vault": "superaide.identity.vault",
     "superaide.voice": "superaide.features.voice",
 }
 

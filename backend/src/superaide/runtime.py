@@ -48,7 +48,7 @@ class Runtime:
         if self.fixed is not None:
             return self.fixed
         from superaide.factory import build_agent
-        from superaide.vault.store import runtime_settings, version
+        from superaide.identity.vault.store import runtime_settings, version
 
         key = scope_or_default().agent_id
         with session_scope() as s:

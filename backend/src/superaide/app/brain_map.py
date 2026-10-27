@@ -23,7 +23,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.app.deps import owner_person_id
-from superaide.auth.routes import reject_nul_text, require_csrf_header
+from superaide.identity.auth.routes import reject_nul_text, require_csrf_header
 from superaide.identity.trust import Trust
 from superaide.memory.audience import Audience, memory_filter
 from superaide.memory.knowledge.store import CATEGORIES, remember_fact

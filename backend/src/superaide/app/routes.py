@@ -1,6 +1,6 @@
 """The person-facing app API: marketplace, hiring, onboarding, chat, notebook.
 
-Signed-in requests carry the session cookie set by /auth (see superaide.auth).
+Signed-in requests carry the session cookie set by /auth (see superaide.identity.auth).
 Everything except the marketplace needs an account; everything after hiring
 needs to be the account that hired the agent. The operator console uses the
 separate ADMIN_TOKEN.
@@ -26,10 +26,10 @@ from superaide.app.deps import owner_person_id, slack_connected, telegram_userna
 from superaide.app.onboarding import SHARE_LABELS, Onboarder, documents_view
 from superaide.app.stream import stream_turn
 from superaide.approvals.binding import expired
-from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header
 from superaide.brain.wiring import brain_ready, brain_status
 from superaide.channels import health
 from superaide.features.voice import gateway
+from superaide.identity.auth.routes import current_user_id, reject_nul_text, require_csrf_header
 from superaide.intentions import service as intentions
 from superaide.intentions.when import clean_task, find_moment, zone
 from superaide.memory.knowledge import extract
@@ -151,9 +151,9 @@ class OptionBody(BaseModel):
 
 def skills_view(s: Any) -> list[dict[str, Any]]:
     """The skills list, plus whether Google is connected and still has to grant what calendar actions need."""
+    from superaide.identity.vault.store import find
     from superaide.integrations.calendar import skill as calendar
     from superaide.integrations.gmail import skill as gmail_skill
-    from superaide.vault.store import find
 
     cards = skill_registry.view(s)
     google_on = find(s, "google", "refresh_token") is not None

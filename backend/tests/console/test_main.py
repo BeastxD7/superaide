@@ -358,7 +358,7 @@ def test_agent_is_built_once_and_rebuilt_when_a_connection_changes(configure, sp
     import base64
 
     from superaide.factory import build_agent as real_build
-    from superaide.vault import crypto, store
+    from superaide.identity.vault import crypto, store
 
     monkeypatch.setenv("SECRETS_MASTER_KEY", base64.b64encode(b"k" * 32).decode())
     crypto.master_key.cache_clear()

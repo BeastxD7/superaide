@@ -60,7 +60,7 @@ def brain_became_ready(*, changed: bool = True) -> bool:
     and the sweep catches anything missed."""
     from superaide.brain import keyhealth
     from superaide.brain.wiring import brain_ready
-    from superaide.vault.store import runtime_settings
+    from superaide.identity.vault.store import runtime_settings
 
     try:
         with session_scope() as s:
@@ -103,8 +103,8 @@ def sweep() -> int:
 def read(session: Session, job: Job) -> None:
     from superaide.brain import keyhealth, keynote
     from superaide.brain.wiring import brain_ready, build_llm
+    from superaide.identity.vault.store import runtime_settings
     from superaide.memory.knowledge.ingest import read_documents
-    from superaide.vault.store import runtime_settings
 
     settings = runtime_settings()
     if not brain_ready(settings):

@@ -19,7 +19,7 @@ from typing import Any, Protocol
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey, Ed25519PublicKey
 
-from superaide.vault.crypto import master_key
+from superaide.identity.vault.crypto import master_key
 
 
 class Signer(Protocol):

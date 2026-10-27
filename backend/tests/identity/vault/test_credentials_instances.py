@@ -17,6 +17,8 @@ from sqlalchemy import select, text
 
 from superaide.app import connections
 from superaide.brain.wiring import brain_status
+from superaide.identity.vault import crypto, store
+from superaide.identity.vault.crypto import VaultError
 from superaide.main import create_app
 from superaide.platform.config import get_settings
 from superaide.platform.db.models import IntegrationSecret
@@ -24,8 +26,6 @@ from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import InstanceScope, use_instance
 from superaide.platform.tenancy.models import AgentInstance, InstanceMember
 from superaide.policy.killswitch import is_frozen, set_frozen, set_platform_frozen
-from superaide.vault import crypto, store
-from superaide.vault.crypto import VaultError
 
 A = InstanceScope(tenant_id=uuid.uuid4(), agent_id=uuid.uuid4())
 B = InstanceScope(tenant_id=uuid.uuid4(), agent_id=uuid.uuid4())

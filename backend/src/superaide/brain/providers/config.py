@@ -18,10 +18,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.brain.providers.presets import PRESETS
+from superaide.identity.vault.crypto import mask
 from superaide.platform.audit import audit
 from superaide.platform.db.models import IntegrationSecret, LlmProvider, ModelRole
 from superaide.platform.tenancy.context import mine
-from superaide.vault.crypto import mask
 
 ROLES = ("chat", "triage", "deep")
 ROLE_FIELDS = {"chat": "model_chat", "triage": "model_triage", "deep": "model_deep"}
@@ -48,13 +48,13 @@ def split(model: str) -> tuple[str, str]:
 
 
 def _secret(session: Session, key: str) -> IntegrationSecret | None:
-    from superaide.vault.store import find
+    from superaide.identity.vault.store import find
 
     return find(session, slot_provider(key), "api_key")  # the instance in scope's own key (ADR 0009)
 
 
 def key_for(session: Session, key: str) -> str:
-    from superaide.vault.store import unseal
+    from superaide.identity.vault.store import unseal
 
     row = _secret(session, key)
     return unseal(row) if row else ""
@@ -99,7 +99,7 @@ def save_provider(
             if secret is None:
                 secret = IntegrationSecret(provider=slot_provider(key), name="api_key", ciphertext="")
                 session.add(secret)
-            from superaide.vault.store import seal
+            from superaide.identity.vault.store import seal
 
             seal(secret, api_key)
             secret.hint, secret.meta, secret.set_by_user_id = mask(api_key), {}, user_id

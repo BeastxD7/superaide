@@ -29,7 +29,7 @@ from superaide.app.deps import owner_person_id
 from superaide.approvals.binding import seal
 from superaide.asklink import handles, service
 from superaide.asklink.models import AskHandle, AskLink, AskRequest
-from superaide.auth.routes import client_of, reject_nul_text, require_csrf_header
+from superaide.identity.auth.routes import client_of, reject_nul_text, require_csrf_header
 from superaide.platform.audit import audit
 from superaide.platform.config import get_settings
 from superaide.platform.db.models import Approval, Person

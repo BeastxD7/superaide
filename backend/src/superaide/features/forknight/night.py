@@ -150,7 +150,7 @@ def job(session: Session, job: Job) -> None:
     from types import SimpleNamespace
 
     from superaide.brain.wiring import brain_ready, build_llm
-    from superaide.vault.store import runtime_settings
+    from superaide.identity.vault.store import runtime_settings
 
     settings = runtime_settings()
     if enabled(settings) and brain_ready(settings):

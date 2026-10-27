@@ -883,7 +883,7 @@ class Agent:
         sources = (meta or {}).get("sources") or None
         wire = text
         if to is not None and ctx.provider in {"telegram", "slack"}:
-            from superaide.principal import card
+            from superaide.identity.principal import card
 
             wire = text + card.footer(s, channel=ctx.provider, to=to)
         try:

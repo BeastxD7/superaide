@@ -9,8 +9,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from superaide.app.deps import owner_person_id
-from superaide.auth import stepup
-from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header, session_token
+from superaide.identity.auth import stepup
+from superaide.identity.auth.routes import current_user_id, reject_nul_text, require_csrf_header, session_token
 from superaide.platform.db.models import UserAccount
 from superaide.platform.db.session import session_scope
 

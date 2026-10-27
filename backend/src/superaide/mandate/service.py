@@ -40,7 +40,7 @@ class Caps:
 
 
 def root_key() -> bytes:
-    from superaide.vault.crypto import master_key
+    from superaide.identity.vault.crypto import master_key
 
     return hmac.new(master_key()[0], b"superaide/mandate/v1", hashlib.sha256).digest()
 

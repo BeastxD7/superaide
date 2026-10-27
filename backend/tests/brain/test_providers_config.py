@@ -14,11 +14,11 @@ from sqlalchemy import select
 from superaide.brain.llm import ClaudeLLM, ProviderLLM, RoutedLLM
 from superaide.brain.providers.base import CheckReport
 from superaide.brain.wiring import brain_status, build_llm
+from superaide.identity.vault.store import runtime_settings
 from superaide.main import create_app
 from superaide.platform.db.models import AuditLog, IntegrationSecret, LlmProvider, ModelRole
 from superaide.platform.db.session import session_scope
 from superaide.platform.security.urls import UnsafeURL, check_base_url
-from superaide.vault.store import runtime_settings
 from tests.pipeline.test_loop import owner_client  # noqa: F401  (fixture)
 
 KEY = "sk-or-v1-test-secret-key-0123456789"

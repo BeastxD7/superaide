@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select, update
 
-from superaide.auth import service
+from superaide.identity.auth import service
 from superaide.main import create_app
 from superaide.platform.db.models import AuthEvent, Person, UserAccount, UserSession
 from superaide.platform.db.session import session_scope

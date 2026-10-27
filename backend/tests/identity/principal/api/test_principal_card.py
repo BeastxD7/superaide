@@ -9,10 +9,10 @@ import json
 
 import pytest
 
+from superaide.identity.principal import card
 from superaide.platform.config import get_settings
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import use_instance
-from superaide.principal import card
 from tests.api_support import OTHER, signup
 
 NOT_FOUND = {"detail": "Not Found"}
@@ -20,7 +20,7 @@ NOT_FOUND = {"detail": "Not Found"}
 
 @pytest.fixture(autouse=True)
 def vault_key(monkeypatch):
-    from superaide.vault import crypto
+    from superaide.identity.vault import crypto
 
     monkeypatch.setenv("SECRETS_MASTER_KEY", base64.b64encode(b"k" * 32).decode())
     monkeypatch.delenv("SECRETS_MASTER_KEY_FILE", raising=False)
@@ -351,7 +351,7 @@ def test_the_preview_renders_unsaved_edits_and_changes_nothing(owner, on):
 def test_opening_settings_does_not_issue_a_new_link_each_time(owner, on):
     from sqlalchemy import func, select
 
-    from superaide.principal.models import CardLink
+    from superaide.identity.principal.models import CardLink
 
     first = owner.get("/app/principal-card").json()["preview"]
     for _ in range(3):

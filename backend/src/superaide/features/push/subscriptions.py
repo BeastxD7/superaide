@@ -21,8 +21,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.features.push.models import PushSubscription
+from superaide.identity.vault.crypto import decrypt, encrypt
 from superaide.platform.audit import audit
-from superaide.vault.crypto import decrypt, encrypt
 
 # The browsers' push services. A subscription to any other host is refused.
 PUSH_HOST_SUFFIXES: tuple[str, ...] = (
