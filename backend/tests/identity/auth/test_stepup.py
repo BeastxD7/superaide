@@ -10,8 +10,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from superaide.identity.auth import stepup
+from superaide.identity.auth.models import UserAccount
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import AgentState, AuditLog, UserAccount
+from superaide.platform.db.models import AgentState, AuditLog
 from superaide.platform.db.session import session_scope
 from superaide.policy.killswitch import set_state
 from tests.integrations.gmail_fake import api as gmail_api  # noqa: F401

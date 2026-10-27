@@ -5,9 +5,9 @@ from __future__ import annotations
 
 from sqlalchemy import select
 
+from superaide.approvals.models import Approval
 from superaide.brain.llm import RoutedLLM
 from superaide.integrations.gmail import client as api
-from superaide.platform.db.models import Approval
 from superaide.platform.db.session import session_scope
 from tests.integrations.gmail_fake import connect, gmail_fake_fixture, mail, owner_client_fixture  # noqa: F401
 from tests.pipeline.test_loop import Script, tool_use, turn_for
@@ -103,7 +103,7 @@ def test_the_airlock_placeholder_recipient_round_trips_to_the_real_address(owner
 
 
 def _say(s, ctx_id, person_id, text, direction="in"):
-    from superaide.platform.db.models import Event
+    from superaide.memory.models import Event
 
     s.add(
         Event(
@@ -119,7 +119,7 @@ def _say(s, ctx_id, person_id, text, direction="in"):
 
 
 def _colleague(s):
-    from superaide.platform.db.models import Person
+    from superaide.identity.models import Person
 
     p = Person(display_name="Priya Tan", relation="colleague")
     s.add(p)
@@ -150,7 +150,7 @@ def test_an_address_from_an_earlier_owner_message_in_the_same_thread_is_accepted
 
 
 def test_an_address_the_owner_typed_in_another_context_does_not_count(owner_client, gmail_fake):
-    from superaide.platform.db.models import Context
+    from superaide.memory.models import Context
 
     _connect()
     with session_scope() as s:

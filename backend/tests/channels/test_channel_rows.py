@@ -10,9 +10,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from superaide.brain.llm import FakeLLM
+from superaide.identity.models import ChannelIdentity, Person
 from superaide.main import create_app
 from superaide.pipeline import Agent
-from superaide.platform.db.models import ChannelIdentity, Person
 from superaide.platform.db.session import session_scope
 from tests.conftest import OUR_TEAM
 

@@ -26,8 +26,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.brain.providers.types import SystemBlock
+from superaide.identity.models import Person
 from superaide.memory.audience import Audience, memory_filter
-from superaide.platform.db.models import MemoryItem, OwnerPreference, Person
+from superaide.memory.models import MemoryItem, OwnerPreference
 from superaide.reception.models import ReceptionSettings
 
 PERSONA = Path(__file__).resolve().parents[1] / "brain" / "prompts" / "receptionist.md"

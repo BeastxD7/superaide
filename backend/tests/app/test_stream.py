@@ -10,8 +10,8 @@ from typing import Any
 from superaide.app.stream import sse, stream_turn
 from superaide.brain.loop import narrate, outcome
 from superaide.brain.turn import RequestedAction, build_messages
+from superaide.memory.models import Event
 from superaide.pipeline import HandleResult
-from superaide.platform.db.models import Event
 from superaide.platform.db.session import session_scope
 from tests.pipeline.test_loop import Script, note, owner_client, tool_use, turn_for  # noqa: F401
 

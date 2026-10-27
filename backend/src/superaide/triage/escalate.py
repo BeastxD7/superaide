@@ -28,11 +28,12 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from superaide.identity.models import Person
+from superaide.jobs.models import Job
 from superaide.jobs.queue import cancel, enqueue, handler
 from superaide.memory.knowledge.profile import in_quiet_hours
 from superaide.memory.knowledge.store import preferences_for
 from superaide.platform.audit import audit
-from superaide.platform.db.models import Job, Person
 from superaide.triage.features import next_local
 from superaide.triage.models import Escalation, EscalationAck, EscalationDelivery, TriageDecision
 from superaide.triage.store import settings_for

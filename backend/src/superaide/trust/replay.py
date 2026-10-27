@@ -23,9 +23,10 @@ from sqlalchemy.orm import Session
 
 from superaide.brain.llm import SystemBlock
 from superaide.brain.spend.budget import AgentFrozen, BudgetExceeded
+from superaide.identity.models import Person
 from superaide.memory.audience import Audience, visible_memories
+from superaide.memory.models import Event, MemoryItem
 from superaide.platform.audit import audit
-from superaide.platform.db.models import Event, MemoryItem, Person
 from superaide.trust.models import MemoryInfluence
 
 SAME = 0.9  # answers at least this alike (word overlap) count as unchanged

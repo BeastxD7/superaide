@@ -12,7 +12,8 @@ from sqlalchemy import select
 from superaide.channels import format as fmt
 from superaide.channels.slack import SlackMessenger
 from superaide.channels.telegram import TelegramMessenger
-from superaide.platform.db.models import ChannelIdentity, Context, Event, MemoryItem
+from superaide.identity.models import ChannelIdentity
+from superaide.memory.models import Context, Event, MemoryItem
 from superaide.platform.db.session import session_scope
 
 TOKEN = "123456789:" + "A" * 35

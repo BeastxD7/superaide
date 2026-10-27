@@ -10,10 +10,11 @@ from sqlalchemy import select
 
 from superaide.brain.llm import FakeLLM
 from superaide.features.journal import extract
+from superaide.features.journal.models import Prediction
 from superaide.jobs.handlers import load
+from superaide.jobs.models import Job
 from superaide.jobs.queue import run_due
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import Job, Prediction
 from superaide.platform.db.session import session_scope
 from tests.api_support import OTHER, hire, signup
 
@@ -165,7 +166,8 @@ def test_nobody_else_can_resolve_or_erase_my_predictions(browser, owner):
 
 def test_a_third_partys_message_is_never_read(owner, scripted, agent):
     """The job only reads inbound messages the owner themself sent."""
-    from superaide.platform.db.models import Event, Person
+    from superaide.identity.models import Person
+    from superaide.memory.models import Event
 
     turn_on(owner)
     with session_scope() as s:

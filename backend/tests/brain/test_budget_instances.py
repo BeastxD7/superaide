@@ -11,12 +11,12 @@ import pytest
 from sqlalchemy import select
 
 from superaide.app import accounts
+from superaide.brain.models import SpendEntry
 from superaide.brain.spend import platform_spend
 from superaide.brain.spend.budget import BudgetExceeded, BudgetGuard, Limits
 from superaide.brain.spend.pricing import UsageCounts
 from superaide.identity.auth.service import Client, signup
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import SpendEntry
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import InstanceScope, default_scope, use_instance
 from superaide.platform.tenancy.models import AgentInstance, PlatformSpend

@@ -9,14 +9,16 @@ from sqlalchemy import func, select, text
 
 from superaide.brain import embed
 from superaide.brain.embed import FakeEmbedder, LocalEmbedder, NoEmbedder, VoyageEmbedder, get_embedder
+from superaide.brain.models import SpendEntry
 from superaide.jobs.handlers import load
+from superaide.jobs.models import Job
 from superaide.jobs.queue import run_due
 from superaide.memory.audience import Audience
 from superaide.memory.knowledge.store import remember_fact
+from superaide.memory.models import MemoryItem
 from superaide.memory.recall import vectors
 from superaide.memory.recall.retrieval import recall
 from superaide.platform.config import Settings
-from superaide.platform.db.models import Job, MemoryItem, SpendEntry
 from superaide.platform.db.session import get_engine, session_scope
 
 load()

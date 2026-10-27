@@ -17,8 +17,10 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from superaide.app.accounts import owner as hired_owner
+from superaide.identity.models import Person
+from superaide.jobs.models import Job
 from superaide.jobs.queue import enqueue, handler
-from superaide.platform.db.models import Document, Job, Person
+from superaide.memory.models import Document
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import default_scope, scope_or_default, use_instance
 

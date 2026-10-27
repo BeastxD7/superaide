@@ -12,9 +12,12 @@ from sqlalchemy import select
 
 from superaide.app.accounts import owner as hired_owner
 from superaide.brain.loop import narrate
+from superaide.identity.models import ChannelIdentity, Person
 from superaide.intentions import service as intentions
+from superaide.intentions.models import Intention
+from superaide.jobs.models import Job
 from superaide.jobs.queue import run_due
-from superaide.platform.db.models import ChannelIdentity, Intention, Job, OwnerPreference, Person
+from superaide.memory.models import OwnerPreference
 from superaide.platform.db.session import session_scope
 from tests.pipeline.test_loop import Script, owner_client, tool_use, turn_for  # noqa: F401  (fixture re-export)
 
@@ -391,7 +394,7 @@ def test_a_moved_reminder_is_on_record_with_before_and_after_and_a_short_id():
     from superaide.brain.loop import OWNER_RULES
     from superaide.brain.turn import tools_used
     from superaide.intentions.when import zone
-    from superaide.platform.db.models import Event
+    from superaide.memory.models import Event
 
     with session_scope() as s:
         owner = hired_owner(s)
@@ -417,7 +420,7 @@ def test_a_moved_reminder_is_on_record_with_before_and_after_and_a_short_id():
 
 def test_ava_is_told_plainly_that_telegram_is_linked_with_the_bot_handle():
     # Live eval: asked about Telegram while it was linked, Ava hedged instead of saying "yes, it's linked".
-    from superaide.platform.db.models import IntegrationSecret
+    from superaide.identity.auth.models import IntegrationSecret
 
     with session_scope() as s:
         link(s, "telegram")

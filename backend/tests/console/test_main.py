@@ -18,7 +18,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 
 from superaide.channels.telegram import SECRET_HEADER
-from superaide.platform.db.models import AuditLog, Event
+from superaide.memory.models import Event
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
 from tests.conftest import COLLEAGUE_SLACK, MANAGER_SLACK, MANAGER_TG, OUR_TEAM
 

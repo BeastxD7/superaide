@@ -8,9 +8,9 @@ import pytest
 from sqlalchemy import select
 
 from superaide.approvals import recipients
+from superaide.approvals.models import Approval
 from superaide.brain import capabilities
 from superaide.integrations.gmail import client as api
-from superaide.platform.db.models import Approval
 from superaide.platform.db.session import session_scope
 from tests.integrations.gmail_fake import connect, gmail_fake_fixture, mail, owner_client_fixture  # noqa: F401
 from tests.pipeline.test_loop import Script, tool_use, turn_for
@@ -99,7 +99,7 @@ def test_the_block_says_she_can_email_in_one_step_when_drafts_are_on_and_not_whe
 def test_the_intro_greets_once_even_when_the_brain_step_came_first():
     # #394: "Hi X, I'm Ava, your personal assistant" was said by the brain step and again by the hello step.
     from superaide.app.onboarding import lines_for
-    from superaide.platform.db.models import Person
+    from superaide.identity.models import Person
 
     p = Person(display_name="Ananya Menon", relation="manager")
     brain = lines_for("brain", p, "Ava")

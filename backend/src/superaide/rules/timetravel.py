@@ -27,8 +27,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from superaide.identity.models import Person
+from superaide.memory.models import Context, Event
 from superaide.platform.audit import audit
-from superaide.platform.db.models import Context, Event, Person
 from superaide.policy.killswitch import get_state, set_state
 
 STATE_KEY = "time_travel_rules"

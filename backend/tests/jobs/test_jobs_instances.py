@@ -10,10 +10,11 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select, text
 
 from superaide.jobs import queue
+from superaide.jobs.models import Job
 from superaide.jobs.worker import schedule_recurring
 from superaide.main import create_app
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import AuditLog, Job
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import get_engine, session_scope
 from superaide.platform.tenancy.context import InstanceScope, current_scope, use_instance
 

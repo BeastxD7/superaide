@@ -7,7 +7,8 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from superaide.platform.db.models import AccountAudit, AuditLog
+from superaide.identity.auth.models import AccountAudit
+from superaide.platform.db.models import AuditLog
 
 
 def _jsonable(value: Any) -> Any:

@@ -11,8 +11,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from superaide.app import accounts
+from superaide.identity.models import ChannelIdentity, Person
 from superaide.main import create_app
-from superaide.platform.db.models import ChannelIdentity, Contact, OwnerPreference, Person
+from superaide.memory.models import Contact, OwnerPreference
 from superaide.platform.db.session import session_scope
 from tests.conftest import sl, tg
 
@@ -276,7 +277,7 @@ def test_remember_that_keeps_one_note_and_ignores_an_empty_one():
 def test_saying_the_same_thing_twice_keeps_one_note(agent, manager):
     from sqlalchemy import func, select
 
-    from superaide.platform.db.models import MemoryItem
+    from superaide.memory.models import MemoryItem
     from tests.conftest import MANAGER_TG, tg
 
     agent.handle(tg(MANAGER_TG, "remember that my flight is on Friday"))

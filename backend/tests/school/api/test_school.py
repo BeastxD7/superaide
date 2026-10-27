@@ -17,9 +17,11 @@ from sqlalchemy import func, select
 
 from superaide.features.school import checks, document
 from superaide.features.school.models import Lesson
+from superaide.identity.models import Person
 from superaide.main import create_app
+from superaide.memory.models import Event, MemoryItem
 from superaide.pipeline import Agent
-from superaide.platform.db.models import AuditLog, Event, MemoryItem, Person
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
 from tests.api_support import CSRF, OTHER, hire, signup
 

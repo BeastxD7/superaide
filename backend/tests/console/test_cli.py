@@ -16,12 +16,14 @@ from sqlalchemy import func, inspect, select, text
 
 from superaide import cli
 from superaide.brain.llm import LLMResult
+from superaide.brain.models import SpendEntry
 from superaide.brain.spend.pricing import UsageCounts
 from superaide.identity.auth.service import AuthError, Client, login, signup, user_for_token
+from superaide.identity.models import ChannelIdentity, IdentityLinkEvent, Person
 from superaide.identity.trust import Trust
 from superaide.pipeline import Agent
 from superaide.platform.config import Settings, get_settings
-from superaide.platform.db.models import AuditLog, Base, ChannelIdentity, IdentityLinkEvent, Person, SpendEntry
+from superaide.platform.db.models import AuditLog, Base
 from superaide.platform.db.session import get_engine, session_scope
 from superaide.policy.killswitch import is_frozen
 from tests.conftest import MANAGER_TG, OUR_TEAM

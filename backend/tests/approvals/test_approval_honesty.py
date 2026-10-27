@@ -11,8 +11,8 @@ import pytest
 from sqlalchemy import select
 
 from superaide.approvals.binding import seal
+from superaide.approvals.models import Approval
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import Approval
 from superaide.platform.db.session import session_scope
 from superaide.policy import kinds
 from superaide.policy.actions import CREATION_RULES, EXECUTORS, RULES, TOOL_RULES, resolve

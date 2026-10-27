@@ -29,10 +29,12 @@ from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.orm import Session
 
 from superaide.contracts.events import CalendarEventsRead, MailIngested, SkillRemoved, bus
+from superaide.identity.models import Person
+from superaide.jobs.models import Job
 from superaide.jobs.queue import enqueue, handler
 from superaide.memory.knowledge.store import remember_fact
+from superaide.memory.models import Event, MemoryItem
 from superaide.platform.audit import audit
-from superaide.platform.db.models import Event, Job, MemoryItem, Person
 
 log = logging.getLogger(__name__)
 

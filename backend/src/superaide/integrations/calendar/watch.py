@@ -29,11 +29,12 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from superaide.identity.models import Person
+from superaide.integrations.calendar.models import CalendarWatch
 from superaide.integrations.google import client as google
 from superaide.jobs.queue import enqueue, handler
 from superaide.platform.audit import audit
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import CalendarWatch, Person
 from superaide.platform.tenancy.context import InstanceScope, scope_or_default
 
 log = logging.getLogger(__name__)

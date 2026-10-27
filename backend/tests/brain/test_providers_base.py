@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 
 from superaide.brain.llm import SystemBlock as LegacySystemBlock
+from superaide.brain.models import SpendEntry
 from superaide.brain.providers.base import Priced, metered
 from superaide.brain.providers.fake import FakeProvider
 from superaide.brain.providers.types import (
@@ -28,7 +29,6 @@ from superaide.brain.providers.types import (
 )
 from superaide.brain.spend.budget import BudgetExceeded, BudgetGuard
 from superaide.brain.spend.pricing import UsageCounts
-from superaide.platform.db.models import SpendEntry
 from superaide.platform.db.session import session_scope
 
 

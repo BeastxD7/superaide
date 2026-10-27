@@ -22,8 +22,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from superaide.mcp.models import McpPin
 from superaide.platform.audit import audit
-from superaide.platform.db.models import McpPin
 
 DEFAULT_TTL_MS = 60_000  # when a server does not say (older servers): re-check every minute
 MAX_TTL_MS = 3_600_000  # whatever a server asks, never trust a list for longer than an hour

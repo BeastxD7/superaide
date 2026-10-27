@@ -54,7 +54,7 @@ def token_for(owner) -> str:
 def _user_id(s):
     from sqlalchemy import select
 
-    from superaide.platform.db.models import UserAccount
+    from superaide.identity.auth.models import UserAccount
 
     return s.scalar(select(UserAccount.id).order_by(UserAccount.created_at))
 

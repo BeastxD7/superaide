@@ -14,10 +14,12 @@ from typing import Any
 from sqlalchemy import Float, and_, func, literal, select, update
 from sqlalchemy.orm import Session
 
+from superaide.identity.auth.models import UserAccount
+from superaide.identity.models import Person
 from superaide.memory.consolidation import importance as weigh
 from superaide.memory.knowledge import trust
+from superaide.memory.models import Contact, Document, MemoryItem, OwnerPreference
 from superaide.platform.audit import audit
-from superaide.platform.db.models import Contact, Document, MemoryItem, OwnerPreference, Person, UserAccount
 from superaide.platform.db.session import rows_affected
 
 CATEGORIES = ("about", "work", "person", "preference", "urgency", "availability", "sharing", "other")

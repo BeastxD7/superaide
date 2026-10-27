@@ -15,12 +15,12 @@ from sqlalchemy.orm import Session
 
 from superaide.approvals import footprint, outcomes, quote
 from superaide.approvals.binding import EXPIRED_BY, check, expired, seal
+from superaide.approvals.models import Approval
 from superaide.contracts.events import ApprovalDecided, bus
 from superaide.identity.resolver import Sender
 from superaide.identity.trust import Trust
 from superaide.platform.audit import audit
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import Approval
 from superaide.policy import kinds
 from superaide.policy.breaker import allow
 from superaide.policy.confirmation import check_confirmation

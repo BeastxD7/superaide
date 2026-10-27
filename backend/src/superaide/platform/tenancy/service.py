@@ -13,8 +13,9 @@ from sqlalchemy import Connection, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
+from superaide.identity.auth.models import UserAccount
+from superaide.identity.models import Person
 from superaide.platform.config import DEFAULT_AGENT_ID, DEFAULT_TENANT_ID, get_settings
-from superaide.platform.db.models import Person, UserAccount
 from superaide.platform.tenancy.context import InstanceScope, default_scope, scope_or_default
 from superaide.platform.tenancy.models import AgentInstance, InstanceMember, Tenant
 
@@ -137,7 +138,8 @@ def join_as_owner(session: Session, user: UserAccount, scope: InstanceScope) -> 
 
 
 def _drop_if_unused(session: Session, person: Person) -> None:
-    from superaide.platform.db.models import ChannelIdentity, Onboarding
+    from superaide.identity.models import ChannelIdentity
+    from superaide.memory.models import Onboarding
     from superaide.platform.db.session import rescope
     from superaide.platform.tenancy.context import use_instance
 

@@ -19,9 +19,9 @@ from superaide.memory.knowledge import chunking
 from superaide.memory.knowledge.extract import Extracted
 from superaide.memory.knowledge.facts import MAX_INPUT_CHARS, Fact, FactList
 from superaide.memory.knowledge.ingest import ingest
+from superaide.memory.models import Document, DocumentChunk, MemoryItem
 from superaide.memory.recall.retrieval import recall
 from superaide.memory.store import get_or_create_context
-from superaide.platform.db.models import Document, DocumentChunk, MemoryItem
 from superaide.platform.db.session import session_scope
 
 load()

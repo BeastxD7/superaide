@@ -30,10 +30,10 @@ from superaide.identity.resolver import Sender
 from superaide.intentions import service as intentions
 from superaide.intentions.when import clean_task, find_moment, names_a_day, zone
 from superaide.memory.audience import Audience
+from superaide.memory.models import Event
 from superaide.memory.recall.retrieval import Source, pre_recall, recall
 from superaide.platform.audit import audit
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import Event
 from superaide.policy.actions import action_kinds, decide
 from superaide.proactive.notify import CHANNEL_NAMES, EXTERNAL
 from superaide.skills import registry
@@ -691,7 +691,7 @@ class OwnerTurn:
 
     def _own_reminder(self, raw: Any) -> Any:
         """The owner's open reminder with this id, or None. Never anyone else's."""
-        from superaide.platform.db.models import Intention
+        from superaide.intentions.models import Intention
 
         assert self.sender.person is not None
         try:
@@ -1171,7 +1171,7 @@ class OwnerTurn:
         warning belongs before asking, not inside it. Approvals made this turn are withdrawn."""
         if not recipients.has_hedge(text) or self._pending_before is None:
             return text
-        from superaide.platform.db.models import Approval
+        from superaide.approvals.models import Approval
 
         fresh = self._pending_ids() - self._pending_before
         if not fresh:
@@ -1189,7 +1189,7 @@ class OwnerTurn:
 
     def _origin_channel(self) -> str:
         """Where the owner asked: an approval's outcome is sent back there (telegram or slack), else by preference."""
-        from superaide.platform.db.models import Context
+        from superaide.memory.models import Context
 
         provider = self.s.scalar(select(Context.provider).where(Context.id == self.inbound.context_id))
         return provider if provider in {"telegram", "slack"} else ""
@@ -1199,7 +1199,7 @@ class OwnerTurn:
         context, never another person's in a shared channel or the owner's other contexts): the only place a
         brand-new email's recipient may come from (#339)."""
         assert self.sender.person is not None
-        from superaide.platform.db.models import Event
+        from superaide.memory.models import Event
 
         rows = self.s.scalars(
             select(Event.content)
@@ -1215,7 +1215,7 @@ class OwnerTurn:
         return "\n".join([self.inbound.content or "", *rows])
 
     def _pending_ids(self) -> set[Any]:
-        from superaide.platform.db.models import Approval
+        from superaide.approvals.models import Approval
 
         return set(self.s.scalars(select(Approval.id).where(Approval.status == "pending")).all())
 

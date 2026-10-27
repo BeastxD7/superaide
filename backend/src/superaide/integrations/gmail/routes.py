@@ -25,6 +25,7 @@ from sqlalchemy import select
 from superaide.app.deps import owner_person_id
 from superaide.identity.auth import stepup
 from superaide.identity.auth.routes import current_user_id, reject_nul_text, require_csrf_header, session_token
+from superaide.identity.models import ChannelIdentity
 from superaide.identity.trust import Trust
 from superaide.identity.vault import store
 from superaide.identity.vault.store import runtime_settings
@@ -32,11 +33,12 @@ from superaide.integrations.gmail import client as api
 from superaide.integrations.gmail import settings as gmail_settings
 from superaide.integrations.gmail import skill as gmail
 from superaide.integrations.google import client as google
-from superaide.platform.db.models import ChannelIdentity, Contact, InstalledSkill
+from superaide.memory.models import Contact
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import scope_or_default
 from superaide.platform.tenancy.models import PlatformState
 from superaide.skills.connector_settings import last_changed
+from superaide.skills.models import InstalledSkill
 
 BACK = "/dashboard/capabilities"
 
@@ -237,8 +239,8 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         _: uuid.UUID = Depends(owner_person_id),
         user_id: uuid.UUID = Depends(current_user_id),
     ) -> dict[str, Any]:
+        from superaide.identity.auth.models import UserAccount
         from superaide.platform.audit import audit
-        from superaide.platform.db.models import UserAccount
 
         with session_scope() as s:
             if gmail.installed(s) is None:

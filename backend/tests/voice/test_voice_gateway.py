@@ -5,10 +5,11 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
+from superaide.approvals.models import Approval
 from superaide.features.voice import gateway
 from superaide.features.voice.call import VoiceCall
 from superaide.identity.resolver import Sender
-from superaide.platform.db.models import Approval, AuditLog
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
 from superaide.policy.actions import ApprovalError, decide, resolve
 
@@ -21,7 +22,7 @@ def on(monkeypatch, settings):
 @pytest.fixture
 def owner_sender(manager):
     with session_scope() as s:
-        from superaide.platform.db.models import ChannelIdentity, Person
+        from superaide.identity.models import ChannelIdentity, Person
 
         person = s.get(Person, manager.id)
         identity = s.scalar(select(ChannelIdentity).where(ChannelIdentity.person_id == person.id))

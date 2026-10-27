@@ -31,23 +31,16 @@ from sqlalchemy.orm import aliased
 
 from superaide.app.accounts import owner as hired_owner
 from superaide.approvals import binding
+from superaide.approvals.models import Approval
+from superaide.brain.models import SpendEntry
 from superaide.brain.spend.budget import BudgetGuard
 from superaide.brain.wiring import brain_ready
 from superaide.identity.linking import operator_link, unlink
+from superaide.identity.models import ChannelIdentity, IdentityLinkEvent, Person
+from superaide.memory.models import Context, Event, MemoryItem, Onboarding
 from superaide.platform.audit import audit
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import (
-    Approval,
-    AuditLog,
-    ChannelIdentity,
-    Context,
-    Event,
-    IdentityLinkEvent,
-    MemoryItem,
-    Onboarding,
-    Person,
-    SpendEntry,
-)
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
 from superaide.platform.pagination import (
     Page,

@@ -21,13 +21,14 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from superaide.app.accounts import create_invite, linked_providers, web_message
+from superaide.identity.models import Person
 from superaide.identity.resolver import resolve
 from superaide.memory.audience import Audience
 from superaide.memory.knowledge.facts import extract_facts
 from superaide.memory.knowledge.store import add_contact, contacts_of, preferences_for, remember_fact
+from superaide.memory.models import Document, Event, MemoryItem, Onboarding
 from superaide.memory.store import get_or_create_context, log_event
 from superaide.platform.audit import audit
-from superaide.platform.db.models import Document, Event, MemoryItem, Onboarding, Person
 
 # "brain" comes first, but only for owners who have no AI yet (it is skipped when a model is ready, and when
 # the operator forced offline mode): the owner chooses Superaide AI credits, their own key, or to set it up

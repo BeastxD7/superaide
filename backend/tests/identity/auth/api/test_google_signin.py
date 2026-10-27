@@ -21,9 +21,9 @@ from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from sqlalchemy import func, select
 
 from superaide.identity.auth import google as signin
+from superaide.identity.auth.models import AuthEvent, UserAccount, UserSession
 from superaide.integrations.google import signin as google_signin
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import AuthEvent, UserAccount, UserSession
 from superaide.platform.db.session import session_scope
 from tests.api_support import OWNER, PASSWORD, login, signup
 
@@ -268,7 +268,7 @@ def test_a_token_that_fails_a_check_signs_nobody_in(browser, google, claims, why
     assert reason(sign_in(c, google)) == "failed"
     assert c.get("/auth/me").status_code == 401 and account() is None
     assert events("google_fail") == 1
-    from superaide.platform.db.models import AccountAudit
+    from superaide.identity.auth.models import AccountAudit
 
     with session_scope() as s:  # nobody signed in, so the line is in the platform's account log
         logged = s.scalars(select(AccountAudit).where(AccountAudit.action == "google_signin_refused")).all()

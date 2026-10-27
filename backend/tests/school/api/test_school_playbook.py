@@ -13,9 +13,9 @@ from superaide.brain.llm import FakeLLM
 from superaide.brain.spend.budget import BudgetExceeded
 from superaide.features.school import playbook
 from superaide.features.school.models import Lesson
+from superaide.identity.models import Person
 from superaide.main import create_app
 from superaide.pipeline import Agent
-from superaide.platform.db.models import Person
 from superaide.platform.db.session import session_scope
 from tests.api_support import CSRF, OTHER, hire, signup
 

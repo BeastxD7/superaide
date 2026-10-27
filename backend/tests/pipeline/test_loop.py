@@ -10,13 +10,15 @@ from sqlalchemy import select
 
 from superaide.app.accounts import owner as hired_owner
 from superaide.app.accounts import web_message
+from superaide.approvals.models import Approval
 from superaide.brain.llm import FakeLLM
 from superaide.brain.loop import MAX_STEPS, OwnerTurn, render
 from superaide.identity.resolver import resolve
+from superaide.intentions.models import Intention
 from superaide.main import create_app
 from superaide.memory.audience import audience_for
+from superaide.memory.models import Context, Event, MemoryItem
 from superaide.memory.store import get_or_create_context, log_event
-from superaide.platform.db.models import Approval, Context, Event, Intention, MemoryItem
 from superaide.platform.db.session import session_scope
 
 PASSWORD = "correct horse battery"

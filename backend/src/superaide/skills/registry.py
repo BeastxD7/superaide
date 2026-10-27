@@ -15,9 +15,9 @@ from sqlalchemy.orm import Session
 
 from superaide.contracts.events import SkillRemoved, bus
 from superaide.platform.audit import audit
-from superaide.platform.db.models import InstalledSkill
 from superaide.skills import signals
 from superaide.skills.manifest import Skill, load_skill
+from superaide.skills.models import InstalledSkill
 
 BUILTIN = Path(__file__).with_name("builtin")
 WEB_SEARCHES_PER_STEP = 3

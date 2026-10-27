@@ -16,16 +16,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.channels.base import InboundMessage
+from superaide.identity.auth.models import AgentHire, UserAccount
+from superaide.identity.models import ChannelIdentity, ChannelInvite, IdentityLinkEvent, Person
 from superaide.identity.trust import Trust
 from superaide.platform.audit import audit
-from superaide.platform.db.models import (
-    AgentHire,
-    ChannelIdentity,
-    ChannelInvite,
-    IdentityLinkEvent,
-    Person,
-    UserAccount,
-)
 
 INVITE_TTL_MINUTES = 15
 NOTICE_VERSION = "2026-10-21"

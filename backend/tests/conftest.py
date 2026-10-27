@@ -102,10 +102,11 @@ from superaide.brain.llm import FakeLLM  # noqa: E402
 from superaide.brain.turn import Prediction, RequestedAction, TurnOutput  # noqa: E402
 from superaide.channels.base import FakeMessenger, InboundMessage  # noqa: E402
 from superaide.identity.linking import bootstrap_person  # noqa: E402
+from superaide.identity.models import Person  # noqa: E402
 from superaide.memory.recall.vectors import ensure_vector_store  # noqa: E402
 from superaide.pipeline import Agent  # noqa: E402
 from superaide.platform.config import get_settings  # noqa: E402
-from superaide.platform.db.models import Base, Person  # noqa: E402
+from superaide.platform.db.models import Base  # noqa: E402
 from superaide.platform.db.session import ensure_extensions, get_engine, session_scope  # noqa: E402
 from tests import modules, sharding  # noqa: E402
 

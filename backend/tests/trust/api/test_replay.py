@@ -8,8 +8,10 @@ import pytest
 from sqlalchemy import select
 
 from superaide.brain.spend.budget import BudgetExceeded
+from superaide.identity.auth.models import UserAccount
+from superaide.identity.models import Person
 from superaide.memory.knowledge.store import remember_fact
-from superaide.platform.db.models import Event, Person, UserAccount
+from superaide.memory.models import Event
 from superaide.platform.db.session import session_scope
 from superaide.trust import replay
 

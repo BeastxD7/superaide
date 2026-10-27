@@ -10,10 +10,11 @@ from sqlalchemy import select
 from superaide.brain.providers.base import CheckReport
 from superaide.identity.vault.check import Checked
 from superaide.jobs.handlers import load
+from superaide.jobs.models import Job
 from superaide.jobs.queue import run_due
 from superaide.memory.knowledge.facts import Fact, FactList
+from superaide.memory.models import Document, MemoryItem
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import Document, Job, MemoryItem
 from superaide.platform.db.session import session_scope
 from tests.pipeline.test_loop import owner_client  # noqa: F401  (fixture)
 
@@ -232,7 +233,7 @@ def test_a_read_that_fails_is_retried_and_the_owner_is_not_told_it_was_read(owne
 
 
 def test_the_note_that_a_document_was_read_goes_only_to_the_owner(owner_client, reads, credits, monkeypatch):  # noqa: F811
-    from superaide.platform.db.models import Event
+    from superaide.memory.models import Event
 
     share(owner_client)
     going_live(monkeypatch)

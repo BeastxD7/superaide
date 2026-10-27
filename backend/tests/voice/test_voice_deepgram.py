@@ -12,13 +12,15 @@ import httpx
 import pytest
 from sqlalchemy import select
 
+from superaide.approvals.models import Approval
+from superaide.brain.models import SpendEntry
 from superaide.brain.spend.budget import BudgetExceeded, BudgetGuard, Limits
 from superaide.brain.turn import Prediction, RequestedAction, TurnOutput
 from superaide.features.voice import gateway, provider
 from superaide.features.voice.providers import VoiceError
 from superaide.features.voice.shell import VoiceShell
+from superaide.identity.models import ChannelIdentity, Person
 from superaide.identity.resolver import Sender
-from superaide.platform.db.models import Approval, ChannelIdentity, Person, SpendEntry
 from superaide.platform.db.session import session_scope
 from superaide.policy.actions import ApprovalError, resolve
 

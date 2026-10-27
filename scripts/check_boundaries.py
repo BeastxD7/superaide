@@ -37,7 +37,10 @@ def is_public(target: str) -> bool:
     rest = target[len(pkg) :].lstrip(".")
     # `contracts/` (ports, events) and `platform/` (config, db, tenancy, audit, ...) are what everything may depend on:
     # everything in them is public by definition
-    return rest == "" or pkg == "contracts" or pkg.startswith("platform.") or rest in PUBLIC_NAMES
+    parts = rest.split(".")
+    # a sub-package has the same doors one level down: `identity.auth.models`, `memory.recall.api`
+    door = rest in PUBLIC_NAMES or (len(parts) == 2 and parts[1] in PUBLIC_NAMES)
+    return rest == "" or pkg == "contracts" or pkg.startswith("platform.") or door
 
 
 def violations(graph) -> list[tuple[str, str]]:

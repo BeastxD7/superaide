@@ -17,11 +17,12 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from superaide.identity.models import ChannelIdentity, Person
 from superaide.identity.trust import Trust
 from superaide.intentions.when import find_moment, zone
 from superaide.memory.knowledge.profile import in_quiet_hours
 from superaide.memory.knowledge.store import preferences_for
-from superaide.platform.db.models import ChannelIdentity, Contact, Context, Event, Person
+from superaide.memory.models import Contact, Context, Event
 from superaide.triage.models import EscalationDelivery
 from superaide.triage.store import current_stage, settings_for
 from superaide.triage.types import Stage

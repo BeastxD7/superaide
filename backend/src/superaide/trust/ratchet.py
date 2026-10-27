@@ -24,8 +24,8 @@ from sqlalchemy.orm import Session
 
 from superaide.brain.llm import SystemBlock
 from superaide.brain.spend.budget import AgentFrozen, BudgetExceeded
+from superaide.identity.models import Person
 from superaide.platform.audit import audit
-from superaide.platform.db.models import Person
 from superaide.trust.models import MAX_ACTIVE_PLAYBOOKS, Playbook
 
 PLAYBOOK_TOOLS = frozenset({"lookup_notes", "web_search", "web_fetch", "calendar_read"})  # read-only only

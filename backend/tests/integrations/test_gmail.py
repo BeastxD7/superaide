@@ -12,9 +12,10 @@ import pytest
 from sqlalchemy import select
 
 from superaide.app.accounts import owner as hired_owner
+from superaide.approvals.models import Approval
+from superaide.identity.models import Person
 from superaide.integrations.gmail import client as api
 from superaide.integrations.gmail import skill as gmail
-from superaide.platform.db.models import Approval, Person
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import InstanceScope, use_instance
 from tests.integrations.gmail_fake import (  # noqa: F401  (fixtures)
@@ -296,7 +297,7 @@ def test_a_gmail_sign_in_with_a_stale_state_saves_nothing(owner_client, gmail_fa
 
 
 def test_addresses_attach_only_to_the_owners_own_contacts(owner_client):
-    from superaide.platform.db.models import Contact
+    from superaide.memory.models import Contact
 
     with session_scope() as s:
         owner = hired_owner(s)

@@ -44,10 +44,11 @@ from superaide.features.voice.providers import (
     metered_transcribe,
     voice_id,
 )
+from superaide.identity.models import Person
 from superaide.memory.knowledge.store import CATEGORIES, remember_fact
+from superaide.memory.models import Onboarding
 from superaide.memory.store import log_event
 from superaide.platform.audit import audit
-from superaide.platform.db.models import Onboarding, Person
 from superaide.platform.db.session import require, session_scope
 
 log = logging.getLogger(__name__)

@@ -25,10 +25,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.channels.base import MESSENGER_FACTORIES, PRESS_HANDLERS, Button, InboundAction
+from superaide.identity.models import ChannelIdentity, Person
 from superaide.identity.trust import Trust
+from superaide.jobs.models import Job
 from superaide.jobs.queue import enqueue, handler
 from superaide.platform.audit import audit
-from superaide.platform.db.models import ChannelIdentity, Job, Person
 from superaide.platform.db.session import session_scope
 from superaide.proactive import notify
 from superaide.triage.models import Escalation, EscalationDelivery

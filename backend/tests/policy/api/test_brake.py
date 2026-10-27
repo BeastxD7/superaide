@@ -7,7 +7,8 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy import select
 
-from superaide.platform.db.models import Approval, AuditLog
+from superaide.approvals.models import Approval
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
 from superaide.policy import brake
 

@@ -16,8 +16,8 @@ from sqlalchemy.dialects import postgresql
 from superaide.app.accounts import owner as hired_owner
 from superaide.integrations.gmail import inbox as gmail_inbox
 from superaide.main import create_app
+from superaide.memory.models import Context, Event
 from superaide.memory.store import log_event, touch_context
-from superaide.platform.db.models import Context, Event
 from superaide.platform.db.session import session_scope
 from superaide.platform.pagination import SortKey, bind_for, encode_cursor, page_query
 from tests.integrations.gmail_fake import mail, owner_client_fixture  # noqa: F401  (fixture)
@@ -295,7 +295,7 @@ def event_seq_scan(plan: str) -> bool:
 def test_operator_events_query_on_skewed_data_uses_the_right_index_per_filter():
     """Many conversations and one long one: /api/events?context_id= must stay on the conversation indexes (never the
     instance-wide scan that filters by conversation), and /api/events with no filter uses ix_event_agent_created."""
-    from superaide.platform.db.models import Person
+    from superaide.identity.models import Person
 
     t0 = datetime(2026, 1, 1, tzinfo=UTC)
     with session_scope() as s:
@@ -369,7 +369,7 @@ def walk_page(api, path: str, limit: int = 10) -> list[dict]:
 
 
 def seed_people(n: int, identities_each: int = 1, unlinked: int = 0) -> None:
-    from superaide.platform.db.models import ChannelIdentity, IdentityLinkEvent, Person
+    from superaide.identity.models import ChannelIdentity, IdentityLinkEvent, Person
 
     base = datetime(2026, 1, 1, tzinfo=UTC)
     with session_scope() as s:
@@ -391,7 +391,8 @@ def seed_people(n: int, identities_each: int = 1, unlinked: int = 0) -> None:
 
 
 def test_memories_and_approvals_pages_walk_every_row_once_newest_first(api):
-    from superaide.platform.db.models import Approval, MemoryItem
+    from superaide.approvals.models import Approval
+    from superaide.memory.models import MemoryItem
 
     base = datetime(2026, 1, 1, tzinfo=UTC)
     with session_scope() as s:
@@ -445,7 +446,9 @@ def test_a_cursor_does_not_move_between_operator_lists(api):
 
 
 def test_operator_list_queries_use_their_indexes():
-    from superaide.platform.db.models import Approval, ChannelIdentity, MemoryItem, Person
+    from superaide.approvals.models import Approval
+    from superaide.identity.models import ChannelIdentity, Person
+    from superaide.memory.models import MemoryItem
 
     base = datetime(2026, 1, 1, tzinfo=UTC)
     with session_scope() as s:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from superaide.memory.audience import Audience, visible_memories
-from superaide.platform.db.models import MemoryItem
+from superaide.memory.models import MemoryItem
 from superaide.platform.db.session import session_scope
 
 

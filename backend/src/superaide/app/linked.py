@@ -23,8 +23,8 @@ from superaide.app.deps import owner_person_id, telegram_username
 from superaide.channels.base import bot_id
 from superaide.identity import linking
 from superaide.identity.auth.routes import reject_nul_text, require_csrf_header
+from superaide.identity.models import ChannelIdentity, IdentityLinkEvent, Person
 from superaide.platform.audit import audit
-from superaide.platform.db.models import ChannelIdentity, IdentityLinkEvent, Person
 from superaide.platform.db.session import require, session_scope
 
 

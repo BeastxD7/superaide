@@ -12,27 +12,21 @@ from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 
 from superaide.app.accounts import owner as hired_owner
+from superaide.approvals.models import Approval
 from superaide.brain.llm import FakeLLM
 from superaide.brain.spend.budget import BudgetExceeded
 from superaide.channels.base import FakeMessenger, InboundMessage
+from superaide.identity.models import ChannelIdentity, Person
+from superaide.intentions.models import Intention
 from superaide.jobs.handlers import load
+from superaide.jobs.models import Job
 from superaide.jobs.queue import run_due
 from superaide.main import create_app
 from superaide.memory.knowledge.store import preferences_for
+from superaide.memory.models import Contact, Context, Event, MemoryItem
 from superaide.pipeline import Agent
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import (
-    Approval,
-    AuditLog,
-    ChannelIdentity,
-    Contact,
-    Context,
-    Event,
-    Intention,
-    Job,
-    MemoryItem,
-    Person,
-)
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
 from superaide.reception import service
 from superaide.reception.models import ReceptionMessage

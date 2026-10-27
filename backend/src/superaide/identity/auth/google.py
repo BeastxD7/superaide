@@ -33,13 +33,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.identity.auth import service
+from superaide.identity.auth.models import UserAccount
 from superaide.identity.auth.service import AuthError, Client
 from superaide.integrations.google import signin as google_signin
 from superaide.integrations.google.signin import GoogleIdentity, SignInError
 from superaide.links import allowed_request_origin, same_origin
 from superaide.platform.audit import account_audit
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import UserAccount
 from superaide.platform.tenancy.models import PlatformState
 
 PENDING_TTL = timedelta(minutes=10)

@@ -16,8 +16,8 @@ from superaide.identity.resolver import Sender
 from superaide.memory.audience import Audience
 from superaide.memory.knowledge import trust
 from superaide.memory.knowledge.store import channel_source
+from superaide.memory.models import Context, Event, MemoryItem
 from superaide.platform.audit import audit
-from superaide.platform.db.models import Context, Event, MemoryItem
 
 REMEMBER_RE = re.compile(r"^\s*remember(?:\s+that)?[:,]?\s+(.+)$", re.IGNORECASE | re.DOTALL)
 

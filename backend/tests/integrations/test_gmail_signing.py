@@ -9,10 +9,10 @@ import pytest
 from sqlalchemy import select
 
 from superaide.approvals import binding
+from superaide.approvals.models import Approval
 from superaide.identity.principal import card
 from superaide.integrations.gmail import client as api
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import Approval
 from superaide.platform.db.session import session_scope
 from tests.integrations.gmail_fake import connect, gmail_fake_fixture, owner_client_fixture  # noqa: F401
 from tests.integrations.test_gmail_compose import ARGS, ASK

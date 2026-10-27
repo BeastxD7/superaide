@@ -18,7 +18,8 @@ from superaide.memory.knowledge.extract import Extracted
 from superaide.memory.knowledge.facts import Fact, FactList
 from superaide.memory.knowledge.ingest import ingest
 from superaide.memory.knowledge.store import add_contact
-from superaide.platform.db.models import AuditLog, Contact, Document, DocumentChunk, Event, MemoryItem
+from superaide.memory.models import Contact, Document, DocumentChunk, Event, MemoryItem
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
 
 load()
@@ -180,7 +181,7 @@ def test_a_third_partys_notes_and_messages_can_be_erased(owner, agent):
 
         s.flush()
     with session_scope() as s:
-        from superaide.platform.db.models import Context
+        from superaide.memory.models import Context
 
         ctx = Context(provider="slack", tenant_scope="T", external_id="D1", kind="dm", audience_class="mixed_external")
         s.add(ctx)
@@ -213,7 +214,7 @@ def test_the_owner_cannot_be_erased_this_way(owner):
 def test_old_third_party_messages_roll_off_only_when_asked(owner):
     from datetime import UTC, datetime, timedelta
 
-    from superaide.platform.db.models import Context
+    from superaide.memory.models import Context
 
     with session_scope() as s:
         me = hired_owner(s)

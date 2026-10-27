@@ -15,11 +15,13 @@ from sqlalchemy import select, text
 from superaide.app.accounts import owner as hired_owner
 from superaide.integrations.calendar import skill as calendar
 from superaide.integrations.calendar import watch as cw
+from superaide.integrations.calendar.models import CalendarWatch
 from superaide.integrations.google import client as google
 from superaide.jobs.handlers import load
+from superaide.jobs.models import Job
 from superaide.main import create_app
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import AuditLog, CalendarWatch, Job
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import InstanceScope, use_instance
 from superaide.proactive import prep

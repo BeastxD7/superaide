@@ -15,10 +15,11 @@ from superaide.brain.spend.budget import BudgetGuard
 from superaide.brain.spend.pricing import UsageCounts
 from superaide.identity.vault.check import Checked
 from superaide.jobs import queue
+from superaide.jobs.models import Job
 from superaide.jobs.queue import enqueue, run_due
 from superaide.memory.knowledge.pending import brain_became_ready
+from superaide.memory.models import Document
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import Document, Job
 from superaide.platform.db.session import session_scope
 from superaide.policy.killswitch import set_state
 from tests.memory.knowledge.test_read_pending import FACTS, going_live, read_jobs, share, statuses, told  # noqa: F401

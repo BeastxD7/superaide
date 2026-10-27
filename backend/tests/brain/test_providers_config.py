@@ -12,11 +12,13 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from superaide.brain.llm import ClaudeLLM, ProviderLLM, RoutedLLM
+from superaide.brain.models import LlmProvider, ModelRole
 from superaide.brain.providers.base import CheckReport
 from superaide.brain.wiring import brain_status, build_llm
+from superaide.identity.auth.models import IntegrationSecret
 from superaide.identity.vault.store import runtime_settings
 from superaide.main import create_app
-from superaide.platform.db.models import AuditLog, IntegrationSecret, LlmProvider, ModelRole
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
 from superaide.platform.security.urls import UnsafeURL, check_base_url
 from tests.pipeline.test_loop import owner_client  # noqa: F401  (fixture)
@@ -194,7 +196,7 @@ BRAVE = "BSA-test-brave-key-0123456789"
 
 
 def test_web_search_key_is_tested_charged_stored_masked_and_removable(owner_client, monkeypatch):  # noqa: F811
-    from superaide.platform.db.models import SpendEntry
+    from superaide.brain.models import SpendEntry
     from superaide.tools import web as webtools
 
     calls = []

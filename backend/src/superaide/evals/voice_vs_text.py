@@ -19,14 +19,15 @@ from typing import Any
 
 from sqlalchemy import select
 
+from superaide.approvals.models import Approval
 from superaide.brain.llm import FakeLLM
 from superaide.brain.turn import Prediction, RequestedAction, TurnOutput
 from superaide.features.voice import gateway
 from superaide.features.voice.provider import FakeVoiceProvider, run_call
 from superaide.features.voice.shell import VoiceShell
+from superaide.identity.models import ChannelIdentity, Person
 from superaide.identity.resolver import Sender
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import Approval, ChannelIdentity, Person
 from superaide.platform.db.session import session_scope
 from superaide.policy.actions import ApprovalError, decide, resolve
 

@@ -9,9 +9,12 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy import select
 
+from superaide.brain.models import SpendEntry
 from superaide.features.mirror import patterns, service
+from superaide.features.mirror.models import MirrorNote
+from superaide.intentions.models import Intention
+from superaide.memory.models import Context, Event
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import Context, Event, Intention, MirrorNote, SpendEntry
 from superaide.platform.db.session import session_scope
 from tests.api_support import OTHER, OWNER, hire, signup
 from tests.tenancy.api.test_many_owners import account

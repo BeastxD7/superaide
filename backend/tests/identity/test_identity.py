@@ -6,8 +6,8 @@ import pytest
 from sqlalchemy import select
 
 from superaide.identity.linking import detect_claimed_name, detect_code, unlink
+from superaide.identity.models import ChannelIdentity, IdentityLinkEvent, LinkChallenge
 from superaide.identity.trust import Trust
-from superaide.platform.db.models import ChannelIdentity, IdentityLinkEvent, LinkChallenge
 from superaide.platform.db.session import session_scope
 from tests.conftest import MANAGER_TG, codes_sent, sl, tg
 

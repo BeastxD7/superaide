@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.platform.db.models import Approval
+from superaide.approvals.models import Approval
 
 SHRINK = 2.0  # pseudo-decisions of the overall rate mixed into each kind
 BINS = 5

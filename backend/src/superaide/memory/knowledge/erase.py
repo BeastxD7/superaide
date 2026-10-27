@@ -15,9 +15,10 @@ from typing import Any
 
 from sqlalchemy import delete, or_, select, text, update
 
+from superaide.identity.models import Person
 from superaide.memory.knowledge.store import lock_document
+from superaide.memory.models import Contact, Document, DocumentChunk, Event, MemoryItem
 from superaide.platform.audit import audit
-from superaide.platform.db.models import Contact, Document, DocumentChunk, Event, MemoryItem, Person
 from superaide.platform.db.session import get_engine, rows_affected
 
 log = logging.getLogger(__name__)

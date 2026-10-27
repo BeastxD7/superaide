@@ -10,13 +10,17 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from superaide.app.accounts import owner as hired_owner
+from superaide.approvals.models import Approval
+from superaide.identity.models import Person
 from superaide.integrations.calendar import skill as calendar
 from superaide.integrations.google import client as google
 from superaide.jobs.handlers import load
+from superaide.jobs.models import Job
 from superaide.jobs.queue import run_due
 from superaide.main import create_app
 from superaide.memory.knowledge.store import add_contact, preferences_for
-from superaide.platform.db.models import Approval, AuditLog, Event, Job, MemoryItem, Person
+from superaide.memory.models import Event, MemoryItem
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
 from superaide.proactive import digest, prep
 from superaide.proactive.notify import notify_owner

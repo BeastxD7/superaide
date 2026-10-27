@@ -17,7 +17,8 @@ def on(monkeypatch, settings):
 
 def test_the_web_route_confirms_a_call_proposal_and_shows_the_readback(on, owner):
     with session_scope() as s:
-        from superaide.platform.db.models import Person, UserAccount
+        from superaide.identity.auth.models import UserAccount
+        from superaide.identity.models import Person
 
         person = s.scalar(select(Person).join(UserAccount, UserAccount.person_id == Person.id))
         d = decide(

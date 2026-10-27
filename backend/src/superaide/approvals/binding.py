@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
-    from superaide.platform.db.models import Approval
+    from superaide.approvals.models import Approval
 
 
 def content_hash(*, to: Iterable[str], thread_id: str, subject: str, text: str, html: str = "") -> str:
@@ -82,7 +82,7 @@ def waiting() -> Any:
     """SQL condition for "still waiting for the owner's yes": pending and not past its expiry."""
     from sqlalchemy import and_, func, or_
 
-    from superaide.platform.db.models import Approval
+    from superaide.approvals.models import Approval
 
     return and_(Approval.status == "pending", or_(Approval.expires_at.is_(None), Approval.expires_at > func.now()))
 
@@ -102,8 +102,8 @@ def report(session: Session) -> dict[str, Any]:
     """
     from sqlalchemy import func, select
 
+    from superaide.approvals.models import Approval as Row
     from superaide.platform.config import get_settings
-    from superaide.platform.db.models import Approval as Row
     from superaide.platform.db.models import AuditLog
 
     kinds: dict[str, dict[str, int]] = {}

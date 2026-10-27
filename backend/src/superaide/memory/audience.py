@@ -19,7 +19,7 @@ from sqlalchemy import ColumnElement, and_, or_, select
 from sqlalchemy.orm import Session
 
 from superaide.identity.resolver import Sender
-from superaide.platform.db.models import Context, MemoryItem
+from superaide.memory.models import Context, MemoryItem
 
 
 @dataclass

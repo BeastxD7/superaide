@@ -11,9 +11,9 @@ from sqlalchemy import select, text
 
 from superaide.features.brainshare import service
 from superaide.features.brainshare.models import BrainShare
+from superaide.identity.models import Person
 from superaide.memory.knowledge.store import remember_fact
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import Person
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import InstanceScope, all_instances, use_instance
 from superaide.platform.tenancy.models import AgentInstance, InstanceMember

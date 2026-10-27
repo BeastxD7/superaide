@@ -12,18 +12,20 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from superaide.app.accounts import owner as hired_owner
+from superaide.brain.models import SpendEntry
 from superaide.brain.providers.base import Priced, mark_billable, metered
 from superaide.brain.spend import platform_spend
 from superaide.brain.spend.budget import BudgetGuard
 from superaide.brain.spend.pricing import UsageCounts
 from superaide.intentions import service as intentions
+from superaide.intentions.models import Intention
 from superaide.jobs import queue
 from superaide.jobs.handlers import load
+from superaide.jobs.models import Job
 from superaide.jobs.queue import enqueue, handler, run_due
 from superaide.jobs.worker import JobWorker, schedule_recurring
 from superaide.main import create_app
 from superaide.memory.knowledge.store import preferences_for
-from superaide.platform.db.models import Intention, Job, SpendEntry
 from superaide.platform.db.session import session_scope
 from superaide.proactive import digest, prep
 

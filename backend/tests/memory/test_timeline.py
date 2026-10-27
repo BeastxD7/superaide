@@ -8,8 +8,8 @@ import pytest
 from sqlalchemy import select
 
 from superaide.brain.turn import build_messages
+from superaide.memory.models import Context, Event
 from superaide.memory.store import TIMELINE_CHARS, owner_timeline, strip_label
-from superaide.platform.db.models import Context, Event
 from superaide.platform.db.session import session_scope
 from tests.conftest import COLLEAGUE_SLACK, MANAGER_SLACK, MANAGER_TG, sl, tg
 

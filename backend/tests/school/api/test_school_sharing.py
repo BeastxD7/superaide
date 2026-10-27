@@ -16,9 +16,9 @@ from sqlalchemy import select
 
 from superaide.features.school import document, signing
 from superaide.features.school.models import Lesson
+from superaide.identity.models import Person
 from superaide.main import create_app
 from superaide.pipeline import Agent
-from superaide.platform.db.models import Person
 from superaide.platform.db.session import session_scope
 from tests.api_support import CSRF, hire, signup
 

@@ -17,7 +17,8 @@ from superaide.channels.slack import (
     socket_mode_handler,
     verify_signature,
 )
-from superaide.platform.db.models import ChannelIdentity, Context
+from superaide.identity.models import ChannelIdentity
+from superaide.memory.models import Context
 from tests.conftest import COLLEAGUE_SLACK, OUR_TEAM
 
 SECRET = "test-slack-secret"

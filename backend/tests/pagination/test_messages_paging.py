@@ -136,7 +136,7 @@ def test_messages_page_query_uses_the_conversation_index_on_skewed_data():
     from sqlalchemy import select, text
     from sqlalchemy.dialects import postgresql
 
-    from superaide.platform.db.models import Context, Event
+    from superaide.memory.models import Context, Event
     from superaide.platform.db.session import session_scope
     from superaide.platform.pagination import SortKey, bind_for, encode_cursor, page_query
 

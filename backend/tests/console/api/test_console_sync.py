@@ -5,9 +5,9 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
+from superaide.identity.auth.models import UserAccount
 from superaide.identity.vault import store
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import UserAccount
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import all_instances, use_instance
 from superaide.platform.tenancy.models import AgentInstance, InstanceMember
@@ -82,7 +82,7 @@ def test_signing_in_is_not_an_identity_failure_and_the_finished_introduction_is_
     with all_instances(), session_scope() as s:
         from datetime import UTC, datetime
 
-        from superaide.platform.db.models import Onboarding
+        from superaide.memory.models import Onboarding
 
         for o in s.scalars(select(Onboarding)):
             o.completed_at = datetime.now(UTC)

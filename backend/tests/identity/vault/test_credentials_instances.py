@@ -17,11 +17,11 @@ from sqlalchemy import select, text
 
 from superaide.app import connections
 from superaide.brain.wiring import brain_status
+from superaide.identity.auth.models import IntegrationSecret
 from superaide.identity.vault import crypto, store
 from superaide.identity.vault.crypto import VaultError
 from superaide.main import create_app
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import IntegrationSecret
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import InstanceScope, use_instance
 from superaide.platform.tenancy.models import AgentInstance, InstanceMember

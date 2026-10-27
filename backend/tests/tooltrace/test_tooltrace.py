@@ -5,10 +5,12 @@ from __future__ import annotations
 
 from sqlalchemy import select
 
+from superaide.approvals.models import Approval
+from superaide.intentions.models import Intention
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import Approval, Intention, ToolTrace
 from superaide.platform.db.session import session_scope
 from superaide.tooltrace.effects import effect_of
+from superaide.tooltrace.models import ToolTrace
 from superaide.tooltrace.recorder import Call, calls_of, digest
 from superaide.tooltrace.replay import CANNED, Replayer, diff, drill
 from tests.pipeline.test_loop import Script, owner_client, tool_use, turn_for  # noqa: F401  (fixture)

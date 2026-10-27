@@ -13,8 +13,8 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from superaide.approvals.models import Approval
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import Approval
 
 FAILED_PREFIXES = ("Approved, but", "Not sent", "Held:")
 

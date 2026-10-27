@@ -17,8 +17,8 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import ToolTrace
 from superaide.tooltrace.effects import effect_of
+from superaide.tooltrace.models import ToolTrace
 
 log = logging.getLogger("superaide.tooltrace")
 

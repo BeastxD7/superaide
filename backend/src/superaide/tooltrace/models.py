@@ -6,8 +6,8 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, String
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from superaide.platform.db.models import Base, Scoped
@@ -38,3 +38,20 @@ class UpdatePreview(Scoped, Base):
     status: Mapped[str] = mapped_column(String(10), default="pending")
     decided_by_person_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("person.id"), nullable=True)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ToolTrace(Scoped, Base):
+    """One tool call, as hashes only (issue #110): enough to compare two runs, never the content."""
+
+    __tablename__ = "tool_trace"
+
+    turn_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    seq: Mapped[int] = mapped_column(Integer, default=0)
+    tool: Mapped[str] = mapped_column(String(64))
+    effect: Mapped[str] = mapped_column(String(20))
+    args_hash: Mapped[str] = mapped_column(String(64))
+    result_hash: Mapped[str] = mapped_column(String(64))
+    is_error: Mapped[bool] = mapped_column(Boolean, default=False)
+    model: Mapped[str] = mapped_column(String(80), default="")
+    skills: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)  # skill id -> version in this turn
+    replay: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")

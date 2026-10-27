@@ -30,14 +30,16 @@ from sqlalchemy.orm import Session
 
 from superaide.approvals import recipients
 from superaide.approvals.binding import content_hash, payload_hash, seal
+from superaide.approvals.models import Approval
+from superaide.identity.models import Person
 from superaide.identity.principal import signature
 from superaide.integrations.gmail import client as api
 from superaide.integrations.gmail import settings as gmail_settings
 from superaide.integrations.google import client as google
 from superaide.platform.audit import audit
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import Approval, InstalledSkill, Person
 from superaide.policy.registry import DISCARDERS, EXECUTORS
+from superaide.skills.models import InstalledSkill
 
 SKILL_ID = "superaide/gmail"
 SLOT = ("google", "gmail_refresh_token")

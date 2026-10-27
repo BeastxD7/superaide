@@ -17,8 +17,8 @@ from typing import Any
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
+from superaide.actionlog.models import ActionLog
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import ActionLog
 from superaide.platform.tenancy.context import scope_or_default
 
 GENESIS = "0" * 64

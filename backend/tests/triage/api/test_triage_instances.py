@@ -9,12 +9,16 @@ import pytest
 import time_machine
 from sqlalchemy import select
 
+from superaide.identity.auth.models import UserAccount
+from superaide.identity.models import ChannelIdentity, Person
 from superaide.identity.trust import Trust
 from superaide.jobs.handlers import load
+from superaide.jobs.models import Job
 from superaide.jobs.queue import run_due
 from superaide.memory.knowledge.store import preferences_for
+from superaide.memory.models import Contact, Context, Event
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import AuditLog, ChannelIdentity, Contact, Context, Event, Job, Person, UserAccount
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import InstanceScope, use_instance
 from superaide.triage import digest as tdigest

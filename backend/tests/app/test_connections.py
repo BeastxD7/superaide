@@ -14,10 +14,11 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from superaide.app import connections
+from superaide.identity.auth.models import IntegrationSecret
 from superaide.identity.vault import crypto
 from superaide.identity.vault.store import runtime_settings
 from superaide.main import create_app
-from superaide.platform.db.models import AuditLog, IntegrationSecret
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
 
 PASSWORD = "correct horse battery"

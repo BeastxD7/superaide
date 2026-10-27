@@ -30,10 +30,10 @@ def own_brain_saved(session: Session) -> bool:
     not count, so "I connected my own key" can't be said on their strength."""
     from sqlalchemy import select
 
+    from superaide.brain.models import LlmProvider
     from superaide.brain.providers.config import _secret, mine
     from superaide.brain.providers.presets import PRESETS
     from superaide.identity.vault.store import find
-    from superaide.platform.db.models import LlmProvider
 
     if find(session, "anthropic", "api_key") is not None:
         return True

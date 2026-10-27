@@ -9,8 +9,10 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
+from superaide.identity.auth.models import UserAccount
+from superaide.identity.models import Person
 from superaide.memory.knowledge.store import remember_fact
-from superaide.platform.db.models import MemoryItem, Person, UserAccount
+from superaide.memory.models import MemoryItem
 from superaide.platform.db.session import session_scope
 from superaide.trust import questions
 from superaide.trust.models import OwnerQuestion

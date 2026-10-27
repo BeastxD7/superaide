@@ -6,7 +6,9 @@ import pytest
 from sqlalchemy import func, select
 
 from superaide.app import accounts
-from superaide.platform.db.models import AgentHire, Onboarding, Person, UserAccount
+from superaide.identity.auth.models import AgentHire, UserAccount
+from superaide.identity.models import Person
+from superaide.memory.models import Onboarding
 from superaide.platform.db.session import session_scope
 from tests.api_support import OTHER, OWNER, hire, signup
 

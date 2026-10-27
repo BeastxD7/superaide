@@ -11,8 +11,10 @@ from sqlalchemy import func, select
 
 from superaide.features.imports import convert
 from superaide.features.imports.models import ImportLease
+from superaide.identity.auth.models import UserAccount
+from superaide.identity.models import Person
 from superaide.memory.audience import Audience, visible_memories
-from superaide.platform.db.models import MemoryItem, Person, UserAccount
+from superaide.memory.models import MemoryItem
 from superaide.platform.db.session import session_scope
 from tests.api_support import OWNER
 

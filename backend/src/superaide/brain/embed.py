@@ -172,7 +172,7 @@ class VoyageEmbedder:
     def _spent_this_month(self, s: Any) -> Decimal:
         from sqlalchemy import func, select
 
-        from superaide.platform.db.models import SpendEntry
+        from superaide.brain.models import SpendEntry
 
         since = datetime.now(UTC) - timedelta(days=30)
         total = s.scalar(
@@ -183,8 +183,8 @@ class VoyageEmbedder:
         return Decimal(total or 0)
 
     def embed(self, texts: list[str], *, kind: Kind) -> list[list[float]] | None:
+        from superaide.brain.models import SpendEntry
         from superaide.platform.audit import audit
-        from superaide.platform.db.models import SpendEntry
         from superaide.platform.db.session import session_scope
         from superaide.policy.killswitch import is_frozen
 

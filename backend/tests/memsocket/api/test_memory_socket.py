@@ -9,8 +9,9 @@ from sqlalchemy import select
 from superaide.app.deps import _hired_instance
 from superaide.features.memsocket import service
 from superaide.features.memsocket.models import MemorySocketClient
+from superaide.identity.auth.models import UserAccount
+from superaide.memory.models import MemoryItem
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import MemoryItem, UserAccount
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import all_instances, use_instance
 from tests.api_support import OTHER, signup

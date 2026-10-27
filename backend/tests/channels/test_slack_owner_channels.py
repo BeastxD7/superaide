@@ -15,12 +15,15 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from superaide.app.accounts import owner as hired_owner
+from superaide.approvals.models import Approval
 from superaide.brain.llm import FakeLLM
 from superaide.channels.slack import parse_event
+from superaide.identity.models import ChannelIdentity
 from superaide.identity.resolver import resolve
 from superaide.identity.trust import Trust
 from superaide.main import create_app
-from superaide.platform.db.models import Approval, AuditLog, ChannelIdentity, Event
+from superaide.memory.models import Event
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
 from tests.conftest import COLLEAGUE_SLACK, OUR_TEAM, sl
 

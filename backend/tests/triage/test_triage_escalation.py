@@ -15,13 +15,15 @@ from sqlalchemy import func, select
 from superaide.app.accounts import owner as hired_owner
 from superaide.brain.llm import FakeLLM
 from superaide.channels.base import FakeMessenger
+from superaide.identity.models import ChannelIdentity, Person
 from superaide.identity.trust import Trust
 from superaide.jobs.handlers import load
+from superaide.jobs.models import Job
 from superaide.jobs.queue import run_due
 from superaide.main import create_app
 from superaide.memory.knowledge.store import preferences_for
+from superaide.memory.models import Contact, Event
 from superaide.pipeline import Agent
-from superaide.platform.db.models import ChannelIdentity, Contact, Event, Job, Person
 from superaide.platform.db.session import session_scope
 from superaide.policy.killswitch import set_state
 from superaide.triage import escalate

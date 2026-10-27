@@ -10,11 +10,12 @@ import pytest
 from sqlalchemy import select
 
 from superaide.brain.llm import ClaudeLLM, FakeLLM, RoutedLLM
+from superaide.brain.models import SpendEntry
 from superaide.brain.spend.budget import BudgetExceeded, BudgetGuard, Limits
 from superaide.brain.wiring import brain_status, build_llm, with_credits
 from superaide.identity.vault.store import runtime_settings
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import AuditLog, SpendEntry
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import InstanceScope
 from tests.pipeline.test_loop import owner_client  # noqa: F401  (fixture)

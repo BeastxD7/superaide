@@ -17,8 +17,9 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from superaide.intentions.models import Intention
+from superaide.memory.models import Event
 from superaide.memory.recall.lexicon import normalise
-from superaide.platform.db.models import Event, Intention
 
 LOOKBACK_WEEKS = 8
 REPEAT_MIN = 3  # the same reminder set this many times, in this many different weeks

@@ -17,9 +17,12 @@ from superaide.channels import health
 from superaide.channels.health import DeliveryFailed
 from superaide.channels.slack import SlackMessenger
 from superaide.channels.telegram import TelegramMessenger
+from superaide.identity.models import ChannelIdentity
 from superaide.intentions import service as intentions
+from superaide.intentions.models import Intention
 from superaide.memory.knowledge.store import preferences_for
-from superaide.platform.db.models import AuditLog, ChannelIdentity, Event, Intention
+from superaide.memory.models import Event
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
 from superaide.policy.killswitch import get_state, set_state
 from superaide.proactive import notify
@@ -123,7 +126,7 @@ class SlackRejects:
 
 
 def test_slack_invalid_auth_marks_slack_auth_failed():
-    from superaide.platform.db.models import Context
+    from superaide.memory.models import Context
 
     with pytest.raises(DeliveryFailed):
         SlackMessenger("xoxb-x", SlackRejects("token_revoked")).send_to_context(Context(external_id="C1"), "hi")
@@ -132,7 +135,7 @@ def test_slack_invalid_auth_marks_slack_auth_failed():
 
 
 def test_other_slack_errors_are_not_token_problems():
-    from superaide.platform.db.models import Context
+    from superaide.memory.models import Context
 
     with pytest.raises(SlackRejects.Error):
         SlackMessenger("xoxb-x", SlackRejects("channel_not_found")).send_to_context(Context(external_id="C1"), "hi")

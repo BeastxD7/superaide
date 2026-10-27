@@ -10,8 +10,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.features.mirror import patterns
+from superaide.features.mirror.models import MirrorNote, MirrorSetting
 from superaide.platform.audit import audit
-from superaide.platform.db.models import MirrorNote, MirrorSetting
 
 NOT_USEFUL_LIMIT = 2
 

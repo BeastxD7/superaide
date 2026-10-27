@@ -13,7 +13,8 @@ import pytest
 from sqlalchemy import func, select
 
 from superaide.app import connections
-from superaide.platform.db.models import AuditLog, IntegrationSecret
+from superaide.identity.auth.models import IntegrationSecret
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
 from tests.api_support import app_routes
 from tests.app.test_connections import CLAUDE_KEY, TG_TOKEN, services

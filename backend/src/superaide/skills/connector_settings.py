@@ -20,8 +20,9 @@ from sqlalchemy.orm import Session
 from superaide.app.deps import owner_person_id
 from superaide.identity.auth.routes import reject_nul_text, require_csrf_header
 from superaide.platform.audit import audit
-from superaide.platform.db.models import AuditLog, InstalledSkill
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
+from superaide.skills.models import InstalledSkill
 
 
 @dataclass(frozen=True)

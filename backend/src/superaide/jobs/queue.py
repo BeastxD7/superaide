@@ -24,8 +24,8 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from superaide.brain import keyhealth
+from superaide.jobs.models import Job
 from superaide.platform.audit import audit
-from superaide.platform.db.models import Job
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import InstanceScope, scope_or_default, use_instance
 
