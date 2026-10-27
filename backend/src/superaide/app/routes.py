@@ -25,6 +25,7 @@ from superaide.app.catalog import catalog, find
 from superaide.app.deps import owner_person_id, slack_connected, telegram_username
 from superaide.app.onboarding import SHARE_LABELS, Onboarder, documents_view
 from superaide.app.stream import stream_turn
+from superaide.approvals.binding import expired
 from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header
 from superaide.brain.wiring import brain_ready, brain_status
 from superaide.channels import health
@@ -65,7 +66,6 @@ from superaide.platform.tenancy.context import use_instance
 from superaide.platform.tenancy.endpoints import slack_key
 from superaide.policy import brake, kinds
 from superaide.policy.actions import ApprovalError, resolve
-from superaide.policy.binding import expired
 from superaide.policy.killswitch import instance_frozen, is_frozen, platform_frozen, set_frozen
 from superaide.skills import registry as skill_registry
 

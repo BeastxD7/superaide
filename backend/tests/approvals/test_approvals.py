@@ -111,7 +111,7 @@ def _expire(approval_id: str) -> None:
 
 def test_an_expired_request_is_listed_as_expired_not_waiting(browser, model):
     """#291: a card past its expiry was still `pending`, offered with a Yes and counted as waiting."""
-    from superaide.policy.binding import waiting
+    from superaide.approvals.binding import waiting
 
     owner = hired(browser)
     ask_for(owner, model, "publish_post", "Post: We are hiring")

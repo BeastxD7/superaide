@@ -21,6 +21,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from superaide.approvals import outcomes, recipients
 from superaide.brain import capabilities, taskplan, verify
 from superaide.brain.budget import BudgetExceeded
 from superaide.brain.llm import LLM, StepResult, SystemBlock
@@ -33,7 +34,6 @@ from superaide.memory.recall.retrieval import Source, pre_recall, recall
 from superaide.platform.audit import audit
 from superaide.platform.config import get_settings
 from superaide.platform.db.models import Event
-from superaide.policy import outcomes, recipients
 from superaide.policy.actions import action_kinds, decide
 from superaide.proactive.notify import CHANNEL_NAMES, EXTERNAL
 from superaide.skills import registry

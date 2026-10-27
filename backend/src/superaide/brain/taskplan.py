@@ -17,7 +17,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, ValidationError
 
-from superaide.policy import recipients
+from superaide.approvals import recipients
 
 # Tools whose success means she looked before proposing (mail, calendar, her own notes, the web).
 CONTEXT_TOOLS = frozenset(

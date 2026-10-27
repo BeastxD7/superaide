@@ -11,6 +11,7 @@
 /backend/src/superaide/platform/security/           @BeastxD7
 /backend/src/superaide/platform/tenancy/            @BeastxD7
 /backend/src/superaide/policy/             @BeastxD7
+/backend/src/superaide/approvals/          @BeastxD7
 /backend/src/superaide/platform/db/rls.py           @BeastxD7
 /backend/src/superaide/brain/budget.py     @BeastxD7
 /backend/src/superaide/brain/pricing.py    @BeastxD7

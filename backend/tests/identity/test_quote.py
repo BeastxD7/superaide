@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import pytest
 
+from superaide.approvals import quote
+from superaide.approvals.binding import seal
 from superaide.identity.resolver import Sender
 from superaide.identity.trust import Trust
 from superaide.platform.config import get_settings
 from superaide.platform.db.models import Approval, Person
 from superaide.platform.db.session import session_scope
-from superaide.policy import actions, quote
-from superaide.policy.binding import seal
+from superaide.policy import actions
 
 
 @pytest.fixture

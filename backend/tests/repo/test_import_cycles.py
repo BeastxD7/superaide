@@ -42,7 +42,7 @@ FORBIDDEN: dict[str, set[str]] = {
         "features.voice.gateway",
     },
     "policy.kinds": {"policy.actions"},
-    "policy.footprint": {"policy.actions"},
+    "approvals.footprint": {"policy.actions"},
     "evals.checks": {"evals.harness"},
     # technique 3: notifications find the channel adapters through channels.base registries
     "proactive.notify": {"channels.telegram", "channels.slack"},

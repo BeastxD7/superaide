@@ -158,10 +158,10 @@ def _spend(_: argparse.Namespace) -> None:
 
 def _approval_report(_: argparse.Namespace) -> None:
     """Would `APPROVAL_BINDING=strict` have refused anything the owner really approved? (issue #111)"""
+    from superaide.approvals.binding import report
     from superaide.platform.db.session import rescope, session_scope
     from superaide.platform.tenancy.context import default_scope, use_instance
     from superaide.platform.tenancy.service import active_scopes
-    from superaide.policy.binding import report
 
     with session_scope() as s:
         scopes = active_scopes(s) or [default_scope()]

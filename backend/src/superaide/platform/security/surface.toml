@@ -25,6 +25,7 @@ paths = [
   "backend/src/superaide/triage/policy.py",
   "backend/src/superaide/triage/store.py",
   "backend/src/superaide/policy/**",
+  "backend/src/superaide/approvals/**",
   "backend/src/superaide/skills/manifest.py",
   "backend/src/superaide/skills/manifest.schema.json",
   "backend/src/superaide/tooltrace/effects.py",

@@ -10,7 +10,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from superaide.policy.binding import APPROVAL_TTL_CHOICES
+from superaide.approvals.binding import APPROVAL_TTL_CHOICES
 from superaide.policy.killswitch import get_state
 from superaide.skills.connector_settings import Choice
 from superaide.skills.connector_settings import load as load_raw
