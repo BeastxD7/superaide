@@ -61,7 +61,9 @@ test('the introduction works from the keyboard alone: answer, move between the t
   await expect(chat).toBeFocused()
   await expect(chat).toHaveAttribute('aria-selected', 'true')
   // The tab panel is reachable by Tab, and a message can be written and sent with the keyboard.
-  const box = page.getByRole('tabpanel').getByRole('textbox')
+  // Name the panel: while the old one animates out (AnimatePresence waits 0.2 s) it is still in the page, and an
+  // unnamed `tabpanel` locator can pick the Files & links panel and type the sentence into its link box (a 422).
+  const box = page.getByRole('tabpanel', { name: 'Tell me here' }).getByRole('textbox')
   await box.focus()
   await page.keyboard.type('I lead applied AI in Singapore.')
   await page.keyboard.press('Enter')
