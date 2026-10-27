@@ -145,7 +145,8 @@ def test_owner_channel_turn_offers_only_public_safe_tools(agent, owner_linked, r
     # The recorder doesn't keep tool names, so read them off the fake model's last call.
     llm_calls = agent.llm.calls[-1]["tools"]
     names = {t["name"] for t in llm_calls}
-    assert names <= {"recall", "create_reminder", "propose_action", "web_search", "web_fetch"}
+    # answer_in_dm takes no input: it only sends the owner's own words to their DM (#509), no private tool runs here
+    assert names <= {"recall", "create_reminder", "propose_action", "web_search", "web_fetch", "answer_in_dm"}
     assert "list_approvals" not in names
     assert not names & {"gmail_search", "gmail_send", "calendar_events", "list_reminders", "cancel_reminder"}
 
