@@ -146,6 +146,47 @@ def block(session: Session, *, tz: str, web: bool) -> str:
     return "\n".join(lines) + ("\n\n" + stand if stand else "")
 
 
+CHANNEL_POLICY = (
+    "I don't open your email, calendar or reminder list in a channel, because other people can read it. "
+    "Ask me in a direct message and I'll answer there."
+)
+
+
+def shared_block(session: Session, *, web: bool) -> str:
+    """The shared-conversation twin of block(): what exists, what is on, and why some of it is not used HERE (#509).
+
+    Names and on/off state only, never a count, a subject or any other data, so it is safe where others can read
+    the reply. Without it Ava was told to answer "what can you do?" from a block that was missing, and then said she
+    had no Gmail and no capabilities list when the truth was a privacy rule."""
+    from superaide.integrations.calendar import skill as calendar
+    from superaide.integrations.gmail import skill as gmail
+
+    st = gmail.status(session)
+    mail = (
+        "connected" + (", drafts on" if gmail.can_draft(session) else ", read-only")
+        if st["connected"]
+        else "not connected"
+        if st["installed"]
+        else "not added"
+    )
+    cal = "connected" if calendar.enabled(session) and calendar.connected() else "not connected"
+    return "\n".join(
+        [
+            "What you can do right now in this shared conversation (from the app's own state, authoritative; "
+            "answer 'what can you do?' from it):",
+            "- Here, where others can read: recall what is fine for everyone, set a reminder the owner just asked "
+            "for, search the web (" + ("on" if web else "off") + "), and queue something for the owner's approval "
+            "in the app.",
+            f"- Only in a direct message with the owner (never in a channel): Gmail ({mail}), Google Calendar "
+            f"({cal}), the reminder list, and the status of approvals. These tools EXIST and may be set up; they "
+            "are not used in this room because other people can read your reply.",
+            "- When asked about any of them: say it is a channel privacy rule, not a missing connection, and offer "
+            "to answer in a direct message. Never say you have no access, no email tool or no capabilities list, "
+            "and never suggest the owner's setup is wrong.",
+        ]
+    )
+
+
 # --- action claims --------------------------------------------------------------------------------
 
 _CLAIMS: list[tuple[re.Pattern[str], set[str], str]] = [
@@ -211,3 +252,32 @@ def strip_claims(text: str, ok_tools: set[str], can_send: bool = False) -> tuple
     if len(undone) < len(set(removed)):
         note = ("Correction: I can email people for you; every send waits for your approval. " + note).strip()
     return "\n".join([*kept, note]), removed
+
+
+_DENIAL = re.compile(
+    r"\b(don't|do not|doesn't|cannot|can't|can not|no|not|isn't|unable)\b[^.\n]{0,60}"
+    r"\b(access|have|see|tool|connected|set up|source|list|capabilit\w*)\b",
+    re.IGNORECASE,
+)
+_BLAMES_SETUP = re.compile(r"\bwho(?:ever)? manages your\b|\bask your (?:admin|administrator)\b", re.IGNORECASE)
+_PRIVATE_THING = re.compile(r"\b(gmail|e-?mails?|inbox|calendar|capabilit\w*|reminders?)\b", re.IGNORECASE)
+_POLICY_ALREADY = re.compile(r"\b(channel|other people|others can|direct message|\bDM\b)\b", re.IGNORECASE)
+
+
+def strip_false_denials(text: str, *, private_on: bool) -> tuple[str, int]:
+    """In a shared conversation, replace "I don't have your Gmail / an email tool / a capabilities list" with the
+    real reason (#509). Those words are false there: the owner's mail and calendar exist, they are just not opened
+    in a room others can read. Sentences that already give the channel reason are kept. `private_on` is whether
+    Gmail or Calendar is actually connected; when neither is, "Gmail isn't connected" is true and stays."""
+    kept: list[str] = []
+    removed = 0
+    for sentence in re.split(r"(?<=[.!?])\s+|\n+", text or ""):
+        capability_list = re.search(r"capabilit", sentence, re.IGNORECASE) is not None
+        denial = _DENIAL.search(sentence) and _PRIVATE_THING.search(sentence) and not _POLICY_ALREADY.search(sentence)
+        if _BLAMES_SETUP.search(sentence) or (denial and (private_on or capability_list)):
+            removed += 1
+        elif sentence.strip():
+            kept.append(sentence.strip())
+    if not removed:
+        return text, 0
+    return "\n".join([*kept, CHANNEL_POLICY]), removed
