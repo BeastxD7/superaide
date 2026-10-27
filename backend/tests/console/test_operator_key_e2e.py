@@ -46,7 +46,7 @@ def test_the_operators_web_chat_is_not_offline(hosted_operator, monkeypatch):
 
 def test_the_operators_chat_stream_answers_with_the_server_key(hosted_operator, monkeypatch):
     from superaide.brain.llm import ClaudeLLM, StepResult
-    from superaide.brain.pricing import UsageCounts
+    from superaide.brain.spend.pricing import UsageCounts
 
     keys = []
 

@@ -21,9 +21,9 @@ from typing import Any
 import pytest
 from sqlalchemy import select
 
-from superaide.brain.budget import BudgetGuard
 from superaide.brain.llm import FakeLLM
-from superaide.brain.pricing import UsageCounts
+from superaide.brain.spend.budget import BudgetGuard
+from superaide.brain.spend.pricing import UsageCounts
 from superaide.channels.base import FakeMessenger
 from superaide.main import create_app
 from superaide.pipeline import Agent

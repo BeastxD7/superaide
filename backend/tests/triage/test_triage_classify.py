@@ -7,8 +7,8 @@ from decimal import Decimal
 
 import pytest
 
-from superaide.brain.budget import BudgetExceeded, BudgetGuard, Limits, bucket_for
 from superaide.brain.llm import FakeLLM
+from superaide.brain.spend.budget import BudgetExceeded, BudgetGuard, Limits, bucket_for
 from superaide.triage import classify
 from superaide.triage.features import Features
 from superaide.triage.types import TriageOutput

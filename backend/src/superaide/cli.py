@@ -147,7 +147,7 @@ def _freeze(args: argparse.Namespace) -> None:
 
 
 def _spend(_: argparse.Namespace) -> None:
-    from superaide.brain.budget import BudgetGuard
+    from superaide.brain.spend.budget import BudgetGuard
 
     summary = BudgetGuard.for_instance(get_settings()).summary()
     print(
@@ -280,8 +280,8 @@ def _unlink(args: argparse.Namespace) -> None:
 
 def _hello(_: argparse.Namespace) -> None:
     """One tiny real Claude call (Haiku, ~40 output tokens) to check the key and the ledger."""
-    from superaide.brain.budget import BudgetGuard
     from superaide.brain.llm import ClaudeLLM, SystemBlock
+    from superaide.brain.spend.budget import BudgetGuard
 
     settings = get_settings()
     llm = ClaudeLLM(BudgetGuard(settings.max_spend_usd), api_key=settings.anthropic_api_key)

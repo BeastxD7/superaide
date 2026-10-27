@@ -21,8 +21,8 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.brain.budget import AgentFrozen, BudgetExceeded
 from superaide.brain.llm import SystemBlock
+from superaide.brain.spend.budget import AgentFrozen, BudgetExceeded
 from superaide.memory.audience import Audience, visible_memories
 from superaide.platform.audit import audit
 from superaide.platform.db.models import Event, MemoryItem, Person

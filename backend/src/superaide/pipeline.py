@@ -20,9 +20,9 @@ from typing import cast
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
-from superaide.brain.budget import AgentFrozen, BudgetExceeded
 from superaide.brain.llm import LLM
 from superaide.brain.llm import OnEvent as Emit
+from superaide.brain.spend.budget import AgentFrozen, BudgetExceeded
 from superaide.brain.turn import TurnOutput, build_messages, build_system
 from superaide.channels.base import InboundMessage, Messenger
 from superaide.channels.format import strip_citations

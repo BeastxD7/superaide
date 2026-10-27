@@ -12,8 +12,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 
 from superaide.app.accounts import owner as hired_owner
-from superaide.brain.budget import BudgetExceeded
 from superaide.brain.llm import FakeLLM
+from superaide.brain.spend.budget import BudgetExceeded
 from superaide.channels.base import FakeMessenger, InboundMessage
 from superaide.jobs.handlers import load
 from superaide.jobs.queue import run_due
@@ -510,7 +510,7 @@ def test_when_the_budget_is_spent_the_reply_is_fixed_and_the_message_is_still_pa
 def test_the_receptionist_has_its_own_daily_bucket_per_instance(settings):
     from decimal import Decimal
 
-    from superaide.brain.budget import BudgetGuard, Limits, bucket_for
+    from superaide.brain.spend.budget import BudgetGuard, Limits, bucket_for
 
     assert bucket_for("receptionist") == "receptionist" and settings.budget_daily_by_bucket["receptionist"] == 0.10
     guard = BudgetGuard(10, limits=Limits(daily_by_bucket={"receptionist": Decimal("0.001")}))

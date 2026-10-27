@@ -23,7 +23,7 @@ from typing import Any
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
-from superaide.brain import platform_spend
+from superaide.brain.spend import platform_spend
 from superaide.platform.audit import audit
 from superaide.platform.config import Settings, get_settings
 from superaide.platform.db.models import SpendEntry

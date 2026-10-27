@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from decimal import Decimal
 
-from superaide.brain.pricing import ModelPrice
+from superaide.brain.spend.pricing import ModelPrice
 
 
 def _p(inp: str, cached: str | None, out: str, *, long: tuple[int, str, str] | None = None) -> ModelPrice:

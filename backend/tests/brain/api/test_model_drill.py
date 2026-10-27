@@ -104,7 +104,7 @@ def test_the_number_of_tasks_is_capped(owner, on, agent, monkeypatch, settings):
 
 
 def test_a_refused_call_returns_what_was_done(owner, on, agent):
-    from superaide.brain.budget import BudgetExceeded
+    from superaide.brain.spend.budget import BudgetExceeded
 
     calls = {"n": 0}
 

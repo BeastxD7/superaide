@@ -292,7 +292,7 @@ class VoiceCall:
         return work
 
     def _guard(self, key_source: str) -> Any:
-        from superaide.brain.budget import BudgetGuard
+        from superaide.brain.spend.budget import BudgetGuard
 
         return BudgetGuard.for_instance(self.settings, key_source=key_source)
 

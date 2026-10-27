@@ -16,7 +16,7 @@ from sqlalchemy import delete, select
 
 from superaide.app.deps import owner_person_id
 from superaide.auth.routes import reject_nul_text, require_csrf_header
-from superaide.brain.budget import AgentFrozen, BudgetExceeded
+from superaide.brain.spend.budget import AgentFrozen, BudgetExceeded
 from superaide.features.rehearsal import service
 from superaide.features.rehearsal.models import RehearsalSession
 from superaide.platform.audit import audit

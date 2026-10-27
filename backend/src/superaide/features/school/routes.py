@@ -14,7 +14,7 @@ from sqlalchemy import select
 
 from superaide.app.deps import owner_person_id
 from superaide.auth.routes import reject_nul_text, require_csrf_header
-from superaide.brain.budget import AgentFrozen, BudgetExceeded
+from superaide.brain.spend.budget import AgentFrozen, BudgetExceeded
 from superaide.features.school import checks, document, playbook, signing
 from superaide.features.school.models import Lesson
 from superaide.platform.audit import audit

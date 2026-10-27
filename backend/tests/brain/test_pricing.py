@@ -9,8 +9,8 @@ from decimal import Decimal
 import pytest
 from sqlalchemy import select
 
-from superaide.brain.budget import BudgetGuard
-from superaide.brain.pricing import (
+from superaide.brain.spend.budget import BudgetGuard
+from superaide.brain.spend.pricing import (
     FREE,
     PriceRegistry,
     UnknownModelPrice,
@@ -125,7 +125,7 @@ def test_an_owner_price_for_a_new_claude_model_still_counts_cache_writes_and_sea
 def test_built_in_tables_price_openai_xai_and_gemini_and_unknown_models_still_ask():
     from datetime import date
 
-    from superaide.brain.price_tables import GEMINI, Scheduled
+    from superaide.brain.spend.price_tables import GEMINI, Scheduled
 
     registry = PriceRegistry()
     assert cost_usd("gpt-5.4-mini", UsageCounts(input_tokens=1_000_000, output_tokens=1_000_000), provider="openai",

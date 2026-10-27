@@ -6,7 +6,7 @@ from __future__ import annotations
 from sqlalchemy import func, select
 
 from superaide.app.accounts import owner as hired_owner
-from superaide.brain.budget import BudgetExceeded
+from superaide.brain.spend.budget import BudgetExceeded
 from superaide.platform.db.models import Intention, Person, ToolTrace
 from superaide.platform.db.session import session_scope
 from superaide.tooltrace import rehearse
@@ -146,7 +146,7 @@ def test_a_refused_model_call_ends_the_run_with_what_was_done(agent, owner_clien
 
 
 def test_replay_calls_are_charged_to_the_small_learning_bucket(agent, owner_client):
-    from superaide.brain.budget import bucket_for
+    from superaide.brain.spend.budget import bucket_for
 
     llm = switch(agent, two_step)
     with session_scope() as s:

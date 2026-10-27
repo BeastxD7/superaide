@@ -106,7 +106,7 @@ These come from the architecture and are checked in review:
 - **The audience gate filters memories in SQL** before the prompt is built. Never put something in a non-owner prompt and then tell the model not to say it.
 - **Instances are isolated.** New per-instance tables carry `tenant_id` and `agent_id`, are listed in `backend/src/superaide/platform/db/rls.py`, and enable row-level security in their migration (ADR 0009).
 - **Side effects need approval.** `write_external`, `send` and `spend` end in an approval card at the Infant and Child stages. Untrusted content (web pages, emails, files) taints the turn.
-- **Spend cap.** Every model call reserves its worst-case cost against `MAX_SPEND_USD`. A model without a price in `brain/pricing.py` is refused.
+- **Spend cap.** Every model call reserves its worst-case cost against `MAX_SPEND_USD`. A model without a price in `brain/spend/pricing.py` is refused.
 - Strangers get a fixed reply and no model call. People are recognised by immutable platform IDs, never names.
 - **Decided and tested features ship on by default** (owner decision, #448). A flag is for risky, costly or experimental work only, and then it has a named owner and a remove-by date (the flag registry, #402); a flag that is not finished or not decided stays **off** until the owner decides. Anything that needs an external key (a voice vendor, a mail provider) turns on when the key is present and says in the app what to add when it is not, instead of hiding behind a second switch. A feature that needs a permission (a Slack scope, a Google API, a file or OS permission) checks it at startup or on connect and tells the owner what is missing. Turning a feature on by default ships with its safeguards unchanged and tested, flag off and on.
 

@@ -23,8 +23,8 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
-from superaide.brain.budget import AgentFrozen, BudgetExceeded
 from superaide.brain.providers.types import SystemBlock
+from superaide.brain.spend.budget import AgentFrozen, BudgetExceeded
 from superaide.intentions.when import find_moment, zone
 from superaide.triage import policy
 from superaide.triage.features import Features

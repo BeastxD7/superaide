@@ -8,7 +8,7 @@ from types import SimpleNamespace
 
 from sqlalchemy import select
 
-from superaide.brain.budget import BudgetExceeded
+from superaide.brain.spend.budget import BudgetExceeded
 from superaide.jobs.queue import run_due
 from superaide.memory.consolidation import sleep
 from superaide.memory.knowledge.store import remember_fact

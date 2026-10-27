@@ -23,8 +23,8 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
-from superaide.brain.budget import AgentFrozen, BudgetExceeded
 from superaide.brain.llm import SystemBlock
+from superaide.brain.spend.budget import AgentFrozen, BudgetExceeded
 from superaide.jobs.queue import enqueue, handler
 from superaide.platform.audit import audit
 from superaide.platform.db.models import Job, Person

@@ -14,10 +14,8 @@ import pytest
 from pydantic import BaseModel
 from sqlalchemy import select
 
-from superaide.brain.budget import BudgetGuard
 from superaide.brain.citations import extract
 from superaide.brain.llm import ProviderLLM
-from superaide.brain.pricing import ModelPrice, PriceRegistry, UnknownModelPrice
 from superaide.brain.providers.openai_compat import OpenAICompatProvider, strict_schema
 from superaide.brain.providers.presets import PRESETS
 from superaide.brain.providers.types import (
@@ -32,6 +30,8 @@ from superaide.brain.providers.types import (
     ToolResult,
     ToolSpec,
 )
+from superaide.brain.spend.budget import BudgetGuard
+from superaide.brain.spend.pricing import ModelPrice, PriceRegistry, UnknownModelPrice
 from superaide.platform.db.models import AuditLog, SpendEntry
 from superaide.platform.db.session import session_scope
 from tests.pipeline.test_loop import note, owner_client, turn_for  # noqa: F401  (owner_client is a fixture)

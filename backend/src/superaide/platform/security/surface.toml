@@ -7,7 +7,7 @@
 # makes a human review any change to a protected path. Paths are repo-relative globs.
 
 [writable]
-prompts = ["backend/src/superaide/brain/charter.md"]
+prompts = ["backend/src/superaide/brain/prompts/charter.md"]
 skills = ["backend/src/superaide/skills/builtin/*/SKILL.md"]
 tables = ["memory_item", "memory_embedding", "triage_rule", "owner_preference", "intention"]  # with provenance/diff/rollback
 
@@ -30,8 +30,8 @@ paths = [
   "backend/src/superaide/tooltrace/effects.py",
   # the gateway's own log and its witness, the spend cap, security helpers
   "backend/src/superaide/actionlog/**",
-  "backend/src/superaide/brain/budget.py",
-  "backend/src/superaide/brain/pricing.py",
+  "backend/src/superaide/brain/spend/budget.py",
+  "backend/src/superaide/brain/spend/pricing.py",
   "backend/src/superaide/platform/security/**",
 ]
 tables = ["approval", "audit_log", "action_log", "tool_trace", "spend_ledger", "person", "channel_identity",

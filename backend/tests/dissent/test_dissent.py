@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from superaide.brain.budget import BudgetExceeded, bucket_for
 from superaide.brain.llm import FakeLLM
+from superaide.brain.spend.budget import BudgetExceeded, bucket_for
 from superaide.features.dissent import desk
 from superaide.platform.db.session import session_scope
 

@@ -12,8 +12,8 @@
 /backend/src/superaide/platform/tenancy/            @BeastxD7
 /backend/src/superaide/policy/             @BeastxD7
 /backend/src/superaide/platform/db/rls.py           @BeastxD7
-/backend/src/superaide/brain/budget.py     @BeastxD7
-/backend/src/superaide/brain/pricing.py    @BeastxD7
+/backend/src/superaide/brain/spend/budget.py @BeastxD7
+/backend/src/superaide/brain/spend/pricing.py @BeastxD7
 /backend/src/superaide/skills/             @BeastxD7
 # The editable-surface manifest (#114): what judges, gates or limits anything that learns
 /backend/src/superaide/evals/              @BeastxD7
