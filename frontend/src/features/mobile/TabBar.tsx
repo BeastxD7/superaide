@@ -4,8 +4,8 @@ import { AlarmClock, Bell, Menu, MessageCircle, ShieldQuestion } from 'lucide-re
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSidebar } from '@/components/ui/sidebar'
-import { useApprovals } from '@/features/dashboard/useApprovals'
-import { useReminders } from '@/features/dashboard/useReminders'
+import { useApprovals } from '@/features/dashboard/approvals/useApprovals'
+import { useReminders } from '@/features/dashboard/reminders/useReminders'
 import { useNeedsYou } from '@/features/needs-you/useNeedsYou'
 
 type Tab = { href: string; label: string; icon: typeof Bell; triage?: boolean; approvals?: boolean; reminders?: boolean }

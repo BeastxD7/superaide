@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { useReminders } from '@/features/dashboard/useReminders'
+import { useReminders } from '@/features/dashboard/reminders/useReminders'
 import { call } from '@/lib/api'
 import { announceRemindersChanged } from '@/lib/reminders-sync'
 import { toast } from '@/lib/toast'

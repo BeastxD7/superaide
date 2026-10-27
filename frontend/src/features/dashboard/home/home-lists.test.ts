@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { comingUp, firstOf } from '@/features/dashboard/home-lists'
+import { comingUp, firstOf } from '@/features/dashboard/home/home-lists'
 import type { Reminder } from '@/lib/api'
 
 const r = (text: string, delivered_at: string | null = null) => ({ id: text, text, delivered_at }) as Reminder

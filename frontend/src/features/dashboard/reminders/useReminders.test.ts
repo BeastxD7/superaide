@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Reminder } from '@/lib/api'
-import { dueNow } from '@/features/dashboard/useReminders'
+import { dueNow } from '@/features/dashboard/reminders/useReminders'
 
 const r = (id: string, due_at: string, status: Reminder['status'] = 'open'): Reminder => ({
   id,

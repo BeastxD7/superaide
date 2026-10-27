@@ -1,6 +1,6 @@
 'use client'
 
-import { ConnectorSettings } from '@/features/dashboard/ConnectorSettings'
+import { ConnectorSettings } from '@/features/dashboard/connections/ConnectorSettings'
 import { useState, type FormEvent } from 'react'
 import { Loadable } from '@/components/load-state'
 import { ConfirmAction } from '@/components/confirm-action'
@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { AskLinkCard } from '@/features/ask/AskLinkCard'
-import { AccessLogCard } from '@/features/dashboard/AccessLogCard'
+import { AccessLogCard } from '@/features/dashboard/settings/AccessLogCard'
 import { CHANNEL_LABEL, DIGEST_LABEL, useAppData } from '@/features/dashboard/data'
 import { ReceptionistCard } from '@/features/reception/ReceptionistCard'
 import { AppError, auth, type Preferences } from '@/lib/api'

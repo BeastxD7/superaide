@@ -114,6 +114,14 @@ Whole packages moved: `auth/` (accounts, sign-in, step-up), `vault/` (credential
 
 **What this does not do for CI.** `ci/modules.toml` still runs everything when any `models.py` changes (`[full]`), because a model change can change the schema every test builds. The point of the split is ownership and readability; narrowing that rule is a separate decision (it is the kind of rule the selection audit, #520, can judge).
 
+### Phase 8 (2026-10-27): `features/dashboard` grouped by page
+
+41 of the 49 flat files in `frontend/src/features/dashboard/` moved into `shell/`, `home/`, `chat/`, `approvals/`, `reminders/`, `notebook/`, `people/`, `connections/`, `settings/`, `skills/` and `learning/` (next to the existing `capabilities/` and `settings/`). `data.ts`, the shared fetch layer imported by 18 files, stays at the top. `scripts/codemod_dashboard.py` does the `git mv` and rewrites the one import shape that exists (`@/features/dashboard/<name>`); there was no relative import to fix except `ChatPage` to `ChatSkeleton`, which moved together.
+
+Guards: `tsc`, `oxlint`, `vitest` (24 files, 185 tests, same count as before), and `next build` all pass; `ci/modules.toml` `web-dashboard` tests are now `features/dashboard/**/*.test.ts`, so the three moved unit tests are still selected. No behaviour changed.
+
+The other features (`console` 31 files, `onboarding` 10) were already organised or small and are left as they are. The `components/hooks/api/types/tests` split inside every feature from the plan is NOT done: it would add a folder level to features of one to four files for no selection or readability gain. E2E specs are not moved deeper (relative imports in `e2e/tests`).
+
 ## Decision
 
 Organise the backend as a modular monolith, package by feature (Django apps, NestJS modules, bulletproof-react features). One folder per feature or integration owns everything about it: code, its types, its routes, its models, its tests. Four rules:

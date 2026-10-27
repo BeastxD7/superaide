@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lastChangedText } from '@/features/dashboard/settings-audit'
+import { lastChangedText } from '@/features/dashboard/settings/settings-audit'
 
 const now = new Date(2026, 9, 24, 12, 0)
 

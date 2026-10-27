@@ -7,7 +7,7 @@ import { SettingsSection } from '@/features/dashboard/settings/SettingsSection'
 import { Button } from '@/components/ui/button'
 import { call, type GmailReadSettings as Settings, type GmailReadView } from '@/lib/api'
 import { errorMessage } from '@/lib/action'
-import { StepUpDialog } from '@/features/dashboard/StepUpDialog'
+import { StepUpDialog } from '@/features/dashboard/approvals/StepUpDialog'
 
 // What each choice means, in the owner's words (the backend sends the label and one-line help).
 const VALUE_LABEL: Record<string, string> = {

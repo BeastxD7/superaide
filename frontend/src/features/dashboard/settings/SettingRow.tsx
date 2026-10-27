@@ -2,7 +2,7 @@
 
 import { useId, type ReactNode } from 'react'
 import { Badge } from '@/components/ui/badge'
-import { lastChangedText, type Audit } from '@/features/dashboard/settings-audit'
+import { lastChangedText, type Audit } from '@/features/dashboard/settings/settings-audit'
 
 // What a control needs to be labelled and described by the row it sits in.
 export type ControlIds = { id: string; labelId: string; describedBy: string }
