@@ -32,6 +32,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: read # the filter lists the PR's files through the API
+      actions: read # the impact map shadow step downloads the latest map (an artifact of a main run)
     outputs:
       backend: ${{ steps.out.outputs.backend }}
       frontend: ${{ steps.out.outputs.frontend }}
@@ -116,6 +117,25 @@ jobs:
             printf '%s\n' 'mode=full' 'backend_run=true' 'selection={"mode":"full","reasons":["selector failed"],"modules":[],"changed_modules":[],"backend":{"mode":"all","run":true,"files":[]},"e2e":{"mode":"all","specs":[]},"vitest":{"mode":"all","files":[]},"counts":{}}' > select.out
           fi
           cat select.out >> "$GITHUB_OUTPUT"
+
+      # SHADOW MODE (issue #520, docs/decisions/0015). What would this PR run if the backend tests were picked by what
+      # they really execute? scripts/impact_map.py compares that with the real selection above and prints it in the
+      # job summary. Nothing reads its result and it cannot fail the build: every step is allowed to fail and the
+      # script itself always exits 0. The map is the `test-impact` artifact of the latest main or Full run.
+      - name: Impact map (shadow)
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set +e
+          mkdir -p impact
+          run=$(gh api "repos/$REPO/actions/artifacts?name=test-impact&per_page=10" --jq '[.artifacts[] | select(.expired == false)][0].workflow_run.id')
+          if [ -n "$run" ] && [ "$run" != "null" ]; then gh run download "$run" --repo "$REPO" -n test-impact -D impact; fi
+          uv run --python 3.14 --no-project python scripts/impact_map.py shadow --map impact/impact.json \
+            --base HEAD^1 --head HEAD --summary-file "$GITHUB_STEP_SUMMARY"
+          exit 0
 
       - name: Resolve what to run
         id: out
@@ -310,11 +330,72 @@ jobs:
           set +e
           case "$EVENT" in
             pull_request|merge_group) uv run pytest -n auto --shard "$SHARD" --durations=25 $FILES ;;
-            *) uv run pytest -n auto --shard "$SHARD" --durations=25 --cov --cov-report=term-missing:skip-covered ;;
+            *) uv run pytest -n auto --shard "$SHARD" --durations=25 --cov --cov-context=test --cov-report=term-missing:skip-covered ;;
           esac
           rc=$?
           if [ "$rc" -eq 5 ] && [ -n "$FILES" ]; then echo "None of the selected test files fell on this shard."; rc=0; fi
           exit $rc
+
+      # The impact map (issue #520): which test files ran which source files, from this shard's coverage (one context
+      # per test). Shadow mode only; a failure here never fails the shard.
+      - name: Impact map of this shard
+        if: success() && github.event_name != 'pull_request' && github.event_name != 'merge_group'
+        continue-on-error: true
+        run: uv run python ../scripts/impact_map.py build --data .coverage --out impact-shard.json --commit "$GITHUB_SHA"
+
+      - name: Keep the shard's impact map
+        if: success() && github.event_name != 'pull_request' && github.event_name != 'merge_group'
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-impact-shard-${{ matrix.shard }}
+          path: backend/impact-shard.json
+          retention-days: 3
+          if-no-files-found: ignore
+
+  # Joins the shards' maps into `test-impact`, the artifact pull requests read in shadow mode, and reports what this
+  # run learned that the previous map did not know (drift: how stale a map can get before it misses something).
+  impact-map:
+    name: Impact map (shadow)
+    needs: [backend-tests]
+    if: github.event_name != 'pull_request' && github.event_name != 'merge_group' && needs.backend-tests.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    continue-on-error: true
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.11.32"
+
+      - name: Join the shards and report drift
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set +e
+          mkdir -p parts previous
+          gh run download "$GITHUB_RUN_ID" --repo "$REPO" -p 'test-impact-shard-*' -D parts
+          uv run --python 3.14 --no-project python scripts/impact_map.py merge parts/*/impact-shard.json --out impact.json
+          run=$(gh api "repos/$REPO/actions/artifacts?name=test-impact&per_page=10" --jq '[.artifacts[] | select(.expired == false)][0].workflow_run.id')
+          if [ -n "$run" ] && [ "$run" != "null" ]; then gh run download "$run" --repo "$REPO" -n test-impact -D previous; fi
+          uv run --python 3.14 --no-project python scripts/impact_map.py drift --map previous/impact.json --fresh impact.json \
+            --summary-file "$GITHUB_STEP_SUMMARY"
+          exit 0
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: test-impact
+          path: impact.json
+          retention-days: 14
+          if-no-files-found: ignore
 
   frontend:
     name: Frontend (lint, types, build)
