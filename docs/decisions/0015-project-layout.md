@@ -81,6 +81,20 @@ Backend tests selected of 236, `select_tests.py --changed <file>`:
 
 `knowledge/connector_facts.py` and `knowledge/trust.py` moved with the package (to `memory/knowledge/`); leaving the group for `integrations/gmail/` and `trust/` needs edits to what they import, so it is a separate change.
 
+### Selection audit (2026-10-27): is the selector safe to narrow?
+
+`scripts/selection_audit.py` compares, for every source file F, the tests that really ran F's code (a full backend run with `--cov --cov-context=test`: 3,902 tests, 267 files, 1,591 file/test pairs) with the tests `select_tests.py --changed F` would run. A *miss* is a test that ran F and was not selected.
+
+| Rule | mean tests selected per changed file (of 236) | misses |
+| --- | --- | --- |
+| today: every test of every dependent module | 112 | **180** pairs in 68 files |
+| narrowed: only dependents' tests that import the changed code (followed through test helpers) | 106 | **201** pairs in 84 files |
+| what tests really run a file (the ground truth) | 6 | 0 |
+
+**Findings.** (1) The selector is over-inclusive (112 selected where about 6 tests actually execute the file) **and** it still misses 11 percent of the real dependencies. The misses are almost all tests that boot the app through `main` (a composition root, excluded since phase 2b) and call a route: `app/routes.py` alone has 32 such tests that no change to it selects; the others are `platform/envelope.py` (11), `runtime.py` (10), `app/onboarding.py`, `logredact.py`, `dbcheck.py` and the route files of `api`, `principal` and `triage`. (2) Narrowing by static imports does not fix that, it makes it slightly worse, so **the module rule must not be narrowed on import analysis alone.** (3) The ground truth is small, so it can be used: select the tests of the changed module, plus the tests recorded as running the changed files, plus the always-run guards and the composition smoke. On this data that is **22 tests on average (median 21) instead of 112 (median 142)**, with no recorded miss by construction. What it needs: the file-to-tests map from a full run (the scheduled Full run already runs with coverage), kept as a build artifact, and a fail-safe: a test or source file the map has not seen, or a map older than a week, selects the old, wide set. That is a separate change; this PR only adds the audit and the numbers.
+
+Run it again after any change to the selector or the module map: `uv run --python 3.14 --no-project --with coverage python scripts/selection_audit.py --data .coverage`.
+
 ## Decision
 
 Organise the backend as a modular monolith, package by feature (Django apps, NestJS modules, bulletproof-react features). One folder per feature or integration owns everything about it: code, its types, its routes, its models, its tests. Four rules:
