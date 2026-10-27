@@ -2,7 +2,7 @@
 owner made public (ADR 0010 TR5).
 
 What reaches the prompt, and nothing else:
-- the persona (brain/receptionist.md), with the owner's first name only if they allowed it;
+- the persona (brain/prompts/receptionist.md), with the owner's first name only if they allowed it;
 - the owner's public profile text;
 - memories the owner marked public, for this instance only (the audience gate, in SQL);
 - what the owner may share, as labels (the values must come from the two above);
@@ -30,7 +30,7 @@ from superaide.memory.audience import Audience, memory_filter
 from superaide.platform.db.models import MemoryItem, OwnerPreference, Person
 from superaide.reception.models import ReceptionSettings
 
-PERSONA = Path(__file__).resolve().parents[1] / "brain" / "receptionist.md"
+PERSONA = Path(__file__).resolve().parents[1] / "brain" / "prompts" / "receptionist.md"
 PURPOSE = "receptionist"  # brain/budget.py BUCKETS: its own daily bucket
 MAX_TOKENS = 400
 EFFORT = "low"  # Claude Haiku 5.5 thinks by default and thinking counts against max_tokens

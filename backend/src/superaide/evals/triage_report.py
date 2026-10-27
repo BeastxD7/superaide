@@ -229,8 +229,8 @@ def run(
     llm: Any = None
     model = ""
     if live:
-        from superaide.brain.budget import BudgetGuard
         from superaide.brain.llm import ClaudeLLM
+        from superaide.brain.spend.budget import BudgetGuard
         from superaide.evals.harness import reset_db
         from superaide.platform.config import get_settings
 

@@ -18,11 +18,11 @@ from pydantic import BaseModel, Field
 from superaide.app.deps import owner_person_id
 from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header
 from superaide.brain import keyhealth
-from superaide.brain.pricing import PRICES, UnknownModelPrice, set_owner_price
 from superaide.brain.providers import config
 from superaide.brain.providers.base import CheckReport
 from superaide.brain.providers.presets import PRESETS, Preset
 from superaide.brain.providers.types import Capabilities
+from superaide.brain.spend.pricing import PRICES, UnknownModelPrice, set_owner_price
 from superaide.memory.knowledge.pending import brain_became_ready
 from superaide.platform.db.session import session_scope
 from superaide.platform.security import urls
@@ -71,8 +71,8 @@ def preset_view(p: Preset) -> dict[str, Any]:
 
 def build_provider(preset: str, api_key: str, base_url: str) -> Any:
     """A provider for testing a connection; replaced in tests with one that doesn't touch the network."""
-    from superaide.brain.budget import BudgetGuard
     from superaide.brain.providers.openai_compat import OpenAICompatProvider
+    from superaide.brain.spend.budget import BudgetGuard
 
     return OpenAICompatProvider(BudgetGuard(0), PRESETS[preset], api_key=api_key, base_url=base_url)
 
@@ -269,7 +269,7 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], Any]) -> APIRo
         """One real search, charged against the cap like any other."""
         from decimal import Decimal
 
-        from superaide.brain.budget import BudgetExceeded, BudgetGuard
+        from superaide.brain.spend.budget import BudgetExceeded, BudgetGuard
         from superaide.tools.web import WebTools
 
         settings = runtime_settings()

@@ -10,7 +10,6 @@ from typing import Protocol
 
 from pydantic import BaseModel
 
-from superaide.brain.pricing import UsageCounts
 from superaide.brain.providers.types import (
     Capabilities,
     Completion,
@@ -21,6 +20,7 @@ from superaide.brain.providers.types import (
     SystemBlock,
     Tool,
 )
+from superaide.brain.spend.pricing import UsageCounts
 
 
 class Guard(Protocol):

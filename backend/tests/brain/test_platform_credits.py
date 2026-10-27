@@ -9,8 +9,8 @@ from decimal import Decimal
 import pytest
 from sqlalchemy import select
 
-from superaide.brain.budget import BudgetExceeded, BudgetGuard, Limits
 from superaide.brain.llm import ClaudeLLM, FakeLLM, RoutedLLM
+from superaide.brain.spend.budget import BudgetExceeded, BudgetGuard, Limits
 from superaide.brain.wiring import brain_status, build_llm, with_credits
 from superaide.platform.config import get_settings
 from superaide.platform.db.models import AuditLog, SpendEntry
@@ -195,7 +195,7 @@ SERVER_KEY = "sk-ant-server-env-key-111111111111111"
 def test_the_operators_own_ava_uses_the_server_key_as_its_own(owner_client, credits, monkeypatch, listed, own):  # noqa: F811
     from decimal import Decimal
 
-    from superaide.brain import platform_spend
+    from superaide.brain.spend import platform_spend
     from superaide.platform.tenancy.context import use_instance
 
     monkeypatch.setattr(credits, "platform_ai_enabled", False)
@@ -264,7 +264,7 @@ def test_no_limit_is_sent_as_null_never_as_zero(owner_client, credits, monkeypat
 
 
 def test_an_owner_price_of_zero_cannot_make_credit_paid_calls_free(owner_client, credits):  # noqa: F811
-    from superaide.brain.pricing import PriceRegistry, worst_case_cost
+    from superaide.brain.spend.pricing import PriceRegistry, worst_case_cost
 
     owner_client.post("/app/providers/credits", json={"on": True})
     priced = owner_client.post(

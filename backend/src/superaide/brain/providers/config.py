@@ -175,7 +175,7 @@ def listed_prices(session: Session) -> dict[tuple[str, str], Any]:
     """Prices providers listed for their models when they were connected (OpenRouter)."""
     from decimal import Decimal
 
-    from superaide.brain.pricing import ModelPrice
+    from superaide.brain.spend.pricing import ModelPrice
 
     out: dict[tuple[str, str], Any] = {}
     for row in session.scalars(select(LlmProvider)):

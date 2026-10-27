@@ -81,6 +81,10 @@ Backend tests selected of 236, `select_tests.py --changed <file>`:
 
 `knowledge/connector_facts.py` and `knowledge/trust.py` moved with the package (to `memory/knowledge/`); leaving the group for `integrations/gmail/` and `trust/` needs edits to what they import, so it is a separate change.
 
+### Phase 6b (2026-10-27): brain gets `spend/` and `prompts/`
+
+`brain/{budget,pricing,price_tables,platform_spend}.py` moved to `brain/spend/` and the two prompt files (`charter.md`, `receptionist.md`) to `brain/prompts/` (`providers/` already was a folder). Both prompt files are data read by path, so their two readers (`brain/turn.py`, `reception/turn.py`) were edited by hand; the charter is a protected prompt, so `surface.toml` follows and its hash is unchanged. Test selection is unchanged by construction (one `brain` module, same tests); the point is that the cost code, which every model call goes through, now has a folder of its own.
+
 ## Decision
 
 Organise the backend as a modular monolith, package by feature (Django apps, NestJS modules, bulletproof-react features). One folder per feature or integration owns everything about it: code, its types, its routes, its models, its tests. Four rules:

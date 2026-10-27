@@ -18,7 +18,6 @@ from typing import Any
 from pydantic import BaseModel, ValidationError
 
 from superaide.brain import citations
-from superaide.brain.pricing import PriceRegistry, UsageCounts, worst_case_cost
 from superaide.brain.providers.base import CheckReport, Guard, Priced, mark_billable, metered
 from superaide.brain.providers.presets import Preset
 from superaide.brain.providers.types import (
@@ -45,6 +44,7 @@ from superaide.brain.providers.types import (
     Usage,
     sources_in,
 )
+from superaide.brain.spend.pricing import PriceRegistry, UsageCounts, worst_case_cost
 
 log = logging.getLogger(__name__)
 KEY = "openai"

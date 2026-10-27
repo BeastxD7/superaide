@@ -31,7 +31,7 @@ from typing import Any, Protocol
 
 import httpx
 
-from superaide.brain.budget import BudgetExceeded
+from superaide.brain.spend.budget import BudgetExceeded
 from superaide.features.voice import providers
 from superaide.features.voice.providers import VoiceError
 from superaide.platform.config import Settings, get_settings

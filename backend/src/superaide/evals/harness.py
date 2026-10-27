@@ -140,7 +140,7 @@ class OfflineModel:
 
         if output_model is TriageOutput:
             if fake.triage == "budget":
-                from superaide.brain.budget import BudgetExceeded
+                from superaide.brain.spend.budget import BudgetExceeded
 
                 raise BudgetExceeded("today's triage limit would be passed", "bucket")
             if fake.triage is None:

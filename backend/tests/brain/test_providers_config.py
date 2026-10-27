@@ -180,7 +180,7 @@ def test_hosted_mode_refuses_every_internal_address_even_for_local_servers(url):
 
 
 def test_hosted_mode_refuses_a_local_server_in_the_app_and_never_prices_it_free(owner_client, service, monkeypatch):  # noqa: F811
-    from superaide.brain.pricing import PriceRegistry, UnknownModelPrice
+    from superaide.brain.spend.pricing import PriceRegistry, UnknownModelPrice
     from superaide.platform.config import get_settings
 
     monkeypatch.setattr(get_settings(), "deploy_mode", "hosted")

@@ -127,7 +127,7 @@ class PriceRegistry:
 
     def price_for(self, model: str, provider: str = "anthropic", *, base_url: str | None = None) -> ModelPrice:
         """The owner's price first, then the provider's listed price, then the built-in tables."""
-        from superaide.brain.price_tables import lookup
+        from superaide.brain.spend.price_tables import lookup
 
         base_url = base_url or self.base_urls.get(provider)
         key = (provider, model)

@@ -24,7 +24,7 @@ from typing import Any, cast
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
-from superaide.brain.budget import AgentFrozen, BudgetExceeded
+from superaide.brain.spend.budget import AgentFrozen, BudgetExceeded
 from superaide.identity.resolver import Sender
 from superaide.identity.trust import Trust
 from superaide.memory.audience import Audience

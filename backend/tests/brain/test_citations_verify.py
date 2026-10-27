@@ -12,8 +12,8 @@ from sqlalchemy import select
 
 from superaide.app.accounts import owner as hired_owner
 from superaide.brain import verify
-from superaide.brain.budget import BudgetExceeded, BudgetGuard
 from superaide.brain.llm import ClaudeLLM
+from superaide.brain.spend.budget import BudgetExceeded, BudgetGuard
 from superaide.platform.db.models import AuditLog, SpendEntry
 from superaide.platform.db.session import session_scope
 from tests.pipeline import test_loop

@@ -96,8 +96,8 @@ def describe(spec: RuleSpec) -> str:
 
 def compile_text(agent: Any, text: str) -> RuleSpec | None:
     """A proposed spec from the owner's words, or None if the call is refused or the answer is unusable."""
-    from superaide.brain.budget import AgentFrozen, BudgetExceeded
     from superaide.brain.llm import SystemBlock
+    from superaide.brain.spend.budget import AgentFrozen, BudgetExceeded
 
     try:
         got = agent.llm.complete(

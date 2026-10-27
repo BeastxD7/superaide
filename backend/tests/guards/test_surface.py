@@ -62,7 +62,7 @@ def test_writable_and_protected_never_overlap_and_tables_exist():
 
 
 def test_prompts_and_skills_are_editable_and_graders_are_not():
-    assert surface.check_edit(["backend/src/superaide/brain/charter.md"]) == []
+    assert surface.check_edit(["backend/src/superaide/brain/prompts/charter.md"]) == []
     assert surface.check_edit(["backend/src/superaide/skills/builtin/memory/SKILL.md"]) == []
     for bad in [
         "backend/src/superaide/memory/audience.py",
@@ -72,7 +72,7 @@ def test_prompts_and_skills_are_editable_and_graders_are_not():
         "backend/src/superaide/policy/actions.py",
         "backend/src/superaide/platform/security/surface.toml",
         "backend/src/superaide/platform/security/surface.lock.json",
-        "backend/src/superaide/brain/budget.py",
+        "backend/src/superaide/brain/spend/budget.py",
         "backend/src/superaide/evals/harness.py",
     ]:
         assert surface.check_edit([bad]), bad
@@ -84,9 +84,9 @@ def test_traversal_and_lookalike_paths_are_refused():
     for bad in [
         "backend/src/superaide/brain/../policy/actions.py",
         "../backend/src/superaide/policy/actions.py",
-        "/backend/src/superaide/brain/charter.md",
-        "~/backend/src/superaide/brain/charter.md",
-        "backend/src/superaide/brain/charter.md.bak",
+        "/backend/src/superaide/brain/prompts/charter.md",
+        "~/backend/src/superaide/brain/prompts/charter.md",
+        "backend/src/superaide/brain/prompts/charter.md.bak",
         "backend/src/superaide/policy",
         "backend\\src\\superaide\\policy\\actions.py",
     ]:
@@ -98,7 +98,7 @@ def test_100_synthetic_self_edits_none_merge_into_a_protected_path():
     rng = random.Random(114)
     sf = surface.load()
     pool = surface.protected_files() + [
-        "backend/src/superaide/brain/charter.md",
+        "backend/src/superaide/brain/prompts/charter.md",
         "backend/src/superaide/skills/builtin/memory/SKILL.md",
         "backend/src/superaide/brain/turn.py",
         "backend/src/superaide/memory/knowledge/store.py",

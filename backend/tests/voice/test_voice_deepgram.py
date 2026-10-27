@@ -12,7 +12,7 @@ import httpx
 import pytest
 from sqlalchemy import select
 
-from superaide.brain.budget import BudgetExceeded, BudgetGuard, Limits
+from superaide.brain.spend.budget import BudgetExceeded, BudgetGuard, Limits
 from superaide.brain.turn import Prediction, RequestedAction, TurnOutput
 from superaide.features.voice import gateway, provider
 from superaide.features.voice.providers import VoiceError
@@ -139,7 +139,7 @@ def test_the_overall_cap_still_wins_over_a_roomy_voice_cap(settings):
 
 
 def test_an_instance_can_tighten_its_own_voice_cap():
-    from superaide.brain.budget import _override
+    from superaide.brain.spend.budget import _override
 
     cap, limits = _override(Decimal(10), Limits(monthly_by_bucket={"voice_call": Decimal(5)}),
                             {"monthly_by_bucket": {"voice_call": 1, "junk": "x", "neg": -3}})  # fmt: skip
@@ -153,7 +153,7 @@ def test_the_kill_switch_stops_a_call(settings, guard):
         set_frozen(s, True, actor="test")
     dg = FakeDeepgram(["hello"])
     p, _ = make(settings, guard, dg)
-    from superaide.brain.budget import AgentFrozen
+    from superaide.brain.spend.budget import AgentFrozen
 
     with pytest.raises(AgentFrozen):
         provider.run_call(p, lambda t: "ok")

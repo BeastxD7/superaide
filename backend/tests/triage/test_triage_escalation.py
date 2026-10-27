@@ -397,7 +397,7 @@ def test_a_fake_quote_is_discarded_and_held(world, on, classifier):
 
 
 def test_a_budget_refusal_holds_and_is_audited(world, on, classifier):
-    from superaide.brain.budget import BudgetExceeded
+    from superaide.brain.spend.budget import BudgetExceeded
     from superaide.platform.db.models import AuditLog
 
     classifier.append(BudgetExceeded("today's triage limit", "bucket"))

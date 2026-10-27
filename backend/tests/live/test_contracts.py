@@ -22,8 +22,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from superaide.brain.budget import BudgetGuard
 from superaide.brain.llm import ClaudeLLM, LLMResult
+from superaide.brain.spend.budget import BudgetGuard
 from superaide.brain.turn import TurnOutput
 from superaide.main import create_app
 from superaide.memory.knowledge.facts import FactList, extract_facts
