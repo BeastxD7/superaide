@@ -8,15 +8,15 @@ import re
 
 import pytest
 
+from superaide.identity.principal import card
 from superaide.platform.config import get_settings
 from superaide.platform.db.session import session_scope
-from superaide.principal import card
 from tests.conftest import COLLEAGUE_SLACK, MANAGER_TG, sl, tg
 
 
 @pytest.fixture(autouse=True)
 def vault_key(monkeypatch):
-    from superaide.vault import crypto
+    from superaide.identity.vault import crypto
 
     monkeypatch.setenv("SECRETS_MASTER_KEY", base64.b64encode(b"k" * 32).decode())
     monkeypatch.delenv("SECRETS_MASTER_KEY_FILE", raising=False)

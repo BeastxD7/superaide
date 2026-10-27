@@ -7,8 +7,8 @@ from html.parser import HTMLParser
 
 import pytest
 
-from superaide.principal import signature
-from superaide.principal.signature import ACCENTS, Signature, body_html, document_html, signature_html
+from superaide.identity.principal import signature
+from superaide.identity.principal.signature import ACCENTS, Signature, body_html, document_html, signature_html
 
 SIG = Signature(
     agent="Ava",
@@ -147,9 +147,9 @@ def test_the_brand_images_exist_are_small_and_the_right_size():
     import struct
     from pathlib import Path
 
-    from superaide.principal import card
+    from superaide.identity.principal import card
 
-    public = Path(__file__).resolve().parents[3] / "frontend" / "public"
+    public = Path(__file__).resolve().parents[4] / "frontend" / "public"
     for path, side in ((card.AVATAR_PATH, 96), (card.MARK_PATH, 28)):
         data = (public / path.lstrip("/")).read_bytes()
         assert len(data) <= 20_000, path  # under 20 KB each

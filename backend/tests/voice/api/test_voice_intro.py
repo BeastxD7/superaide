@@ -364,7 +364,7 @@ def test_choosing_providers_owner_key_then_credits_then_browser(monkeypatch, set
 
 
 def test_platform_voice_keys_never_enter_an_owners_settings(monkeypatch):
-    from superaide.vault.store import runtime_settings
+    from superaide.identity.vault.store import runtime_settings
 
     env = get_settings()
     monkeypatch.setattr(env, "platform_deepgram_api_key", "platform-secret-dg")
@@ -404,7 +404,7 @@ def test_reply_reader_streams_whole_sentences_and_strips_the_tag():
 
 @pytest.fixture
 def vault_key(monkeypatch):
-    from superaide.vault import crypto
+    from superaide.identity.vault import crypto
 
     monkeypatch.setenv("SECRETS_MASTER_KEY", base64.b64encode(b"v" * 32).decode())
     monkeypatch.delenv("SECRETS_MASTER_KEY_FILE", raising=False)

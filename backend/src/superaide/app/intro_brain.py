@@ -32,8 +32,8 @@ def own_brain_saved(session: Session) -> bool:
 
     from superaide.brain.providers.config import _secret, mine
     from superaide.brain.providers.presets import PRESETS
+    from superaide.identity.vault.store import find
     from superaide.platform.db.models import LlmProvider
-    from superaide.vault.store import find
 
     if find(session, "anthropic", "api_key") is not None:
         return True

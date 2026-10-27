@@ -8,7 +8,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy import func, select, update
 
-from superaide.auth import service
+from superaide.identity.auth import service
 from superaide.platform.config import get_settings
 from superaide.platform.db.models import AuthEvent, Person, UserAccount, UserSession
 from superaide.platform.db.session import session_scope

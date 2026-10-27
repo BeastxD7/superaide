@@ -99,7 +99,7 @@ def decide(
         c = classify.classify(llm, model=model, f=f, earlier=_earlier(session, event), ready=ready, system=system)
     out = c.output if c is not None else None
     features = f.snapshot()
-    from superaide.vault.store import runtime_settings
+    from superaide.identity.vault.store import runtime_settings
 
     shadow = None
     raise_urgent = False
@@ -175,7 +175,7 @@ def _app_note(session: Session, owner: Person, row: TriageDecision) -> None:
 @handler(JOB_KIND)
 def _job(session: Session, job: Job) -> None:
     from superaide.brain.wiring import brain_ready, build_llm
-    from superaide.vault.store import runtime_settings
+    from superaide.identity.vault.store import runtime_settings
 
     settings = runtime_settings()
     ready = brain_ready(settings)

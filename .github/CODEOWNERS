@@ -6,8 +6,8 @@
 *                                          @BeastxD7
 
 # Security-critical backend code
-/backend/src/superaide/auth/               @BeastxD7
-/backend/src/superaide/vault/              @BeastxD7
+/backend/src/superaide/identity/auth/               @BeastxD7
+/backend/src/superaide/identity/vault/              @BeastxD7
 /backend/src/superaide/platform/security/           @BeastxD7
 /backend/src/superaide/platform/tenancy/            @BeastxD7
 /backend/src/superaide/policy/             @BeastxD7

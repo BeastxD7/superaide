@@ -127,7 +127,7 @@ def listed_owner_emails(raw: str) -> frozenset[str]:
     """The addresses in PLATFORM_KEY_OWNER_EMAILS (separated by commas, semicolons or spaces).
     An entry that isn't a valid address is skipped with a warning: one typo in .env must not make
     every agent build and every background job fail."""
-    from superaide.auth.service import AuthError, normalize_email
+    from superaide.identity.auth.service import AuthError, normalize_email
 
     found: set[str] = set()
     for entry in re.split(r"[,;\s]+", raw):

@@ -37,8 +37,8 @@ def _since(at: datetime | None, tz: str) -> str:
 
 
 def gmail_line(session: Session, tz: str) -> str:
+    from superaide.identity.vault.store import stored
     from superaide.integrations.gmail import skill as gmail
-    from superaide.vault.store import stored
 
     st = gmail.status(session)
     if not st["installed"]:

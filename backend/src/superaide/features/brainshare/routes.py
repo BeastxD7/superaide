@@ -16,9 +16,9 @@ from sqlalchemy import update
 
 from superaide.app.brain_map import share_counts, share_svg
 from superaide.app.deps import owner_person_id
-from superaide.auth.routes import reject_nul_text, require_csrf_header
 from superaide.features.brainshare import service
 from superaide.features.brainshare.models import BrainShare
+from superaide.identity.auth.routes import reject_nul_text, require_csrf_header
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import all_instances, use_instance
 

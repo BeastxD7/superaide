@@ -43,6 +43,9 @@ SKIP_PREFIX = ("backend/alembic/versions/",)  # applied revisions are never rewr
 # a real one-line re-export is written at the old place. `superaide.platform.db.rls`: 37 revisions import it.
 PERMANENT = {"db": ["rls"]}
 PHASES = {
+    # Phase 6d: who is asking. `auth` (accounts, sign-in, step-up), `vault` (credentials) and `principal` (the
+    # AI-disclosure card and signature) become sub-packages of `identity/`, next to resolver, linking and claims.
+    64: {"auth": "identity/auth", "vault": "identity/vault", "principal": "identity/principal"},
     3: {name: f"platform/{name}" for name in "config db audit tenancy pagination envelope security".split()},
     4: {
         name: f"features/{name}"
@@ -344,7 +347,16 @@ FILE_PHASES = {
         "test_dirs": {"context": "memory/recall", "knowledge": "memory/knowledge"},
         "e2e_dirs": {"knowledge": "memory"},
         "module_renames": {},  # three modules become one: ci/modules.toml is merged by hand in the same change
-    },    # Phase 6c: what happens to an approval (bound to its content, quoted, carried out, checked for who it goes to)
+    },    64: {
+        "files": {},
+        "data": {},
+        # backend tests follow their package; e2e specs stay where they are (a deeper folder would break their
+        # relative imports of `../src/fixtures`)
+        "test_dirs": {"auth": "identity/auth", "vault": "identity/vault", "principal": "identity/principal"},
+        "e2e_dirs": {},
+        "module_renames": {},
+    },
+    # Phase 6c: what happens to an approval (bound to its content, quoted, carried out, checked for who it goes to)
     # leaves `policy/` for `approvals/`. `policy/` keeps the rules: kinds, registry, actions, brake, breaker, kill switch.
     63: {
         "files": {f"policy.{m}": f"approvals/{m}.py" for m in ("binding", "quote", "outcomes", "recipients", "footprint")},
@@ -418,6 +430,10 @@ def run_files(root: Path, plan: dict, dry: bool = False) -> dict[str, str]:
     for o, n in tdirs.items():
         git(root, "mv", f"backend/tests/{o}", f"backend/tests/{n}")
         path_map[f"backend/tests/{o}/"] = f"backend/tests/{n}/"
+        deeper = len(Path(n).parts) - len(Path(o).parts)
+        if deeper:  # tests that find files with Path(__file__).parents[n] must reach one folder further up
+            for f in (root / "backend/tests" / n).rglob("*.py"):
+                moved_py[f.relative_to(root).as_posix()] = deeper
     for o, n in edirs.items():
         git(root, "mv", f"e2e/tests/{o}", f"e2e/tests/{n}")
         path_map[f"e2e/tests/{o}/"] = f"e2e/tests/{n}/"

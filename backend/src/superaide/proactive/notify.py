@@ -59,7 +59,7 @@ def rejected_channels(session: Session) -> list[str]:
 
 def messenger_for(provider: str) -> Any:
     """A sender for Telegram or Slack with the bot token saved in the app, or None without one."""
-    from superaide.vault.store import runtime_settings
+    from superaide.identity.vault.store import runtime_settings
 
     settings = runtime_settings()
     if provider == "telegram" and settings.telegram_bot_token:
@@ -74,7 +74,7 @@ def confirmed_here(provider: str, identity: ChannelIdentity) -> bool:
     if provider != "telegram":
         return True
     from superaide.identity.resolver import endpoint_confirmed
-    from superaide.vault.store import runtime_settings
+    from superaide.identity.vault.store import runtime_settings
 
     return endpoint_confirmed(identity, bot_id(runtime_settings().telegram_bot_token))
 

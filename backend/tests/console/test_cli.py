@@ -15,9 +15,9 @@ import uvicorn
 from sqlalchemy import func, inspect, select, text
 
 from superaide import cli
-from superaide.auth.service import AuthError, Client, login, signup, user_for_token
 from superaide.brain.llm import LLMResult
 from superaide.brain.spend.pricing import UsageCounts
+from superaide.identity.auth.service import AuthError, Client, login, signup, user_for_token
 from superaide.identity.trust import Trust
 from superaide.pipeline import Agent
 from superaide.platform.config import Settings, get_settings

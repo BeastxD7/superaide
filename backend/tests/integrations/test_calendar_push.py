@@ -87,7 +87,7 @@ def make_owner(app, name: str, email: str) -> InstanceScope:
             {"e": email},
         ).one()  # fmt: skip
     scope = InstanceScope(tenant_id=row[0], agent_id=row[1])
-    from superaide.vault import store
+    from superaide.identity.vault import store
 
     with use_instance(scope), session_scope() as s:
         store.save(s, "google", {"client_id": "1-x.apps.googleusercontent.com", "client_secret": "sec-ret-1234",
@@ -235,7 +235,7 @@ def test_the_scan_starts_the_watch_and_disconnecting_forgets_it(a, fake):
         owner = hired_owner(s)
         prep.scan(s, Job(kind=prep.SCAN_KIND, payload={"owner_id": str(owner.id)}, run_at=datetime.now(UTC)))
     assert len(fake.watches) == 1
-    from superaide.vault import store
+    from superaide.identity.vault import store
 
     with use_instance(a), session_scope() as s:
         store.remove(s, "google", user_id=None)

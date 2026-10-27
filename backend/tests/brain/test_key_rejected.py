@@ -13,6 +13,7 @@ from superaide.brain import keyhealth, keynote
 from superaide.brain.providers.base import Priced, metered
 from superaide.brain.spend.budget import BudgetGuard
 from superaide.brain.spend.pricing import UsageCounts
+from superaide.identity.vault.check import Checked
 from superaide.jobs import queue
 from superaide.jobs.queue import enqueue, run_due
 from superaide.memory.knowledge.pending import brain_became_ready
@@ -20,7 +21,6 @@ from superaide.platform.config import get_settings
 from superaide.platform.db.models import Document, Job
 from superaide.platform.db.session import session_scope
 from superaide.policy.killswitch import set_state
-from superaide.vault.check import Checked
 from tests.memory.knowledge.test_read_pending import FACTS, going_live, read_jobs, share, statuses, told  # noqa: F401
 from tests.pipeline.test_loop import owner_client  # noqa: F401  (fixture)
 

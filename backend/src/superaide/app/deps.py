@@ -17,7 +17,7 @@ from fastapi import Depends, HTTPException
 from fastapi.concurrency import run_in_threadpool
 
 from superaide.app import accounts
-from superaide.auth.routes import current_user_id
+from superaide.identity.auth.routes import current_user_id
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import InstanceScope, use_instance
 

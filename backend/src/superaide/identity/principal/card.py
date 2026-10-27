@@ -30,11 +30,11 @@ from typing import Any
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from superaide.identity.principal import signature
+from superaide.identity.vault.crypto import master_key
 from superaide.platform.config import get_settings
 from superaide.platform.tenancy.context import InstanceScope, scope_or_default
 from superaide.policy.killswitch import get_state, set_state
-from superaide.principal import signature
-from superaide.vault.crypto import master_key
 
 STATE_KEY = "principal_card"
 STATS_KEY = "principal_card_stats"
@@ -298,8 +298,8 @@ def scope_of(token: str) -> InstanceScope | None:
         return None
     from sqlalchemy import select
 
+    from superaide.identity.principal.models import CardLink
     from superaide.platform.db.session import session_scope
-    from superaide.principal.models import CardLink
 
     with session_scope() as s:
         row = s.scalar(select(CardLink).where(CardLink.code == token))
@@ -359,7 +359,7 @@ def verify(session: Session, token: str, *, now: float | None = None, record: bo
         return None
     from sqlalchemy import select
 
-    from superaide.principal.models import CardLink
+    from superaide.identity.principal.models import CardLink
 
     row = session.scalar(select(CardLink).where(CardLink.code == token))
     if row is None or row.expires_at.timestamp() < t:
@@ -392,8 +392,8 @@ def issue_link(session: Session) -> dict[str, Any] | None:
     The link holds no personal data; the page reads the owner's current settings."""
     if not enabled() or not owner_name(session):
         return None
+    from superaide.identity.principal.models import CardLink
     from superaide.links import public_url
-    from superaide.principal.models import CardLink
 
     cur = settings_of(session)
     scope = scope_or_default()
