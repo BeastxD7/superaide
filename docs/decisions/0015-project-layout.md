@@ -88,6 +88,17 @@ Backend tests selected of 236, `select_tests.py --changed <file>`:
 ### Phase 6c (2026-10-27): `approvals/` leaves `policy/`
 
 `policy/{binding,quote,outcomes,recipients,footprint}.py` (what happens to an approval after Ava asked: bound to its content, quoted, carried out, checked for who it goes to, the footprint guard) moved to a new `approvals/` package, with their five tests under `tests/approvals/`. `policy/` keeps the rules (`kinds`, `registry`, `actions`, `brake`, `breaker`, `killswitch`, `confirmation`). Two things had to follow by hand because the tool cannot see them: `approvals/**` was added to the protected paths in `surface.toml` and to `CODEOWNERS` (otherwise the approval-binding code would have lost its protection when it left `policy/**`), and `ci/modules.toml` gets an `approvals` module (its four e2e specs moved over from `policy`). Selection is within two tests of before (`policy/actions.py` 122 to 120, `binding` 159 to 160). Six boundary edges between the two packages used to be internal to `policy/` and are now cross-package, so they are in the warn-only baseline.
+### Impact map, shadow mode (2026-10-27, #520)
+
+What is built (all in CI, none of it chooses what runs):
+
+1. **The map.** The backend shards of every non-PR run (push to main, the two-hourly Full run) now run with `--cov-context=test` and `scripts/impact_map.py build` writes, per shard, which test files ran which source files. A job `impact-map` joins the shards into the artifact `test-impact` (kept 14 days) and prints **drift**: how many (file, test) pairs of this run the previous map did not know.
+2. **The shadow.** On every pull request the `changes` job downloads the latest `test-impact` and prints in the job summary what the PR would run under the map next to what it runs now, plus any test the map adds that the real rule would skip. The step can fail without failing the build and the script always exits 0.
+3. **Fail safe, in the script.** It proposes the real selection (never anything narrower) when: there is no map or it is older than 7 days; a changed source file is not in the map (new or never executed); a test helper or a non-Python file under `backend/` changed; the real selector already runs everything or nothing. Otherwise it proposes: every test of the module(s) that were changed, the tests the map lists for each changed file, the always-run guards and the composition smoke.
+
+On the audit data (commit `32044a1`): `memory/store.py` 157 tests now, 32 under the map and 6 tests added that the real rule skips; `consolidation/sleep.py` 44 to 17; `knowledge/learn.py` 73 to 31; `policy/actions.py` 122 to 36; `app/routes.py` 22 to 63 (the map adds the 41 route tests the current rule never selects).
+
+**Promotion rule (the owner's call, not automatic).** Switch a PR's selection to the map only after two weeks of shadow in which: no test failed on a main or Full run that the map would not have selected for the commits that introduced it; drift stays small (new pairs are a few percent of all pairs); the fallback rate is understood. To switch off, delete the three CI steps; nothing else reads them.
 
 ### Phase 6d (2026-10-27): `auth`, `vault` and `principal` move under `identity/`
 
