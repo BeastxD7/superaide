@@ -344,8 +344,33 @@ def _reset_password(args: argparse.Namespace) -> None:
     print(f"Password changed for {name}. They've been signed out everywhere; log in again at the app.")
 
 
+# What the migrations leave behind when the tables go (#517): functions and types in `public` that no extension owns
+# (pgvector's functions and types are owned by the `vector` extension, so they are not listed and not touched).
+_LEFTOVER_FUNCTIONS = """
+SELECT p.oid::regprocedure::text FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public' AND p.prokind IN ('f', 'p')
+  AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.objid = p.oid AND d.deptype = 'e')
+"""
+_LEFTOVER_TYPES = """
+SELECT t.oid::regtype::text FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace
+LEFT JOIN pg_class c ON c.oid = t.typrelid
+WHERE n.nspname = 'public' AND (t.typtype IN ('e', 'd') OR (t.typtype = 'c' AND c.relkind = 'c'))
+  AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.objid = t.oid AND d.deptype = 'e')
+"""
+
+
+def _drop_leftovers(conn) -> None:
+    """Drop the app's own functions, then its types, from `public`. Names come from the catalog, already quoted."""
+    from sqlalchemy import text
+
+    for (signature,) in conn.execute(text(_LEFTOVER_FUNCTIONS)).all():
+        conn.execute(text(f"DROP FUNCTION IF EXISTS {signature} CASCADE"))
+    for (name,) in conn.execute(text(_LEFTOVER_TYPES)).all():
+        conn.execute(text(f"DROP TYPE IF EXISTS {name} CASCADE"))
+
+
 def _reset_db(args: argparse.Namespace) -> None:
-    """Delete every table. Run `alembic upgrade head` afterwards."""
+    """Delete every table, function and type of the app. Run `alembic upgrade head` afterwards."""
     from sqlalchemy import text
 
     from superaide.platform.db.models import Base
@@ -369,6 +394,7 @@ def _reset_db(args: argparse.Namespace) -> None:
     Base.metadata.drop_all(engine)
     with engine.begin() as conn:
         conn.execute(text("DROP TABLE IF EXISTS alembic_version"))
+        _drop_leftovers(conn)
     print("Database wiped.")
 
 
