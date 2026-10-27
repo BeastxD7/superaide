@@ -31,7 +31,7 @@ from sqlalchemy.orm import aliased
 
 from superaide.app.accounts import owner as hired_owner
 from superaide.approvals import binding
-from superaide.brain.budget import BudgetGuard
+from superaide.brain.spend.budget import BudgetGuard
 from superaide.brain.wiring import brain_ready
 from superaide.identity.linking import operator_link, unlink
 from superaide.platform.audit import audit

@@ -13,9 +13,9 @@ from typing import Any, Protocol, TypeVar
 
 from pydantic import BaseModel
 
-from superaide.brain.budget import BudgetGuard
-from superaide.brain.pricing import UsageCounts
 from superaide.brain.providers.types import SystemBlock
+from superaide.brain.spend.budget import BudgetGuard
+from superaide.brain.spend.pricing import UsageCounts
 
 T = TypeVar("T", bound=BaseModel)
 

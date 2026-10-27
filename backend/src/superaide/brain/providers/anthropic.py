@@ -21,7 +21,6 @@ from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
-from superaide.brain.pricing import PriceRegistry, UsageCounts, tool_fee, worst_case_cost
 from superaide.brain.providers.base import CheckReport, Guard, Priced, mark_billable, metered
 from superaide.brain.providers.types import (
     Capabilities,
@@ -53,6 +52,7 @@ from superaide.brain.providers.types import (
     Usage,
     source_kind,
 )
+from superaide.brain.spend.pricing import PriceRegistry, UsageCounts, tool_fee, worst_case_cost
 
 log = logging.getLogger(__name__)
 KEY = "anthropic"  # the provider_data key for this adapter's raw blocks

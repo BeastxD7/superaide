@@ -9,8 +9,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import select, text
 
-from superaide.brain.budget import BudgetExceeded
 from superaide.brain.llm import FakeLLM
+from superaide.brain.spend.budget import BudgetExceeded
 from superaide.features.school import playbook
 from superaide.features.school.models import Lesson
 from superaide.main import create_app

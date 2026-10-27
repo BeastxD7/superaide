@@ -89,7 +89,7 @@ def test_web_fetch_refuses_a_rebinding_name_and_internal_redirects(monkeypatch, 
 
 
 def test_an_openai_compatible_provider_uses_the_checked_client(monkeypatch, local_server):
-    from superaide.brain.budget import BudgetGuard
+    from superaide.brain.spend.budget import BudgetGuard
 
     p = OpenAICompatProvider(
         BudgetGuard(0), PRESETS["openai"], api_key="sk-x", base_url=f"http://127.0.0.1:{local_server}/v1"

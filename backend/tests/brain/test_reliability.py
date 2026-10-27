@@ -12,10 +12,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from superaide.app.accounts import owner as hired_owner
-from superaide.brain import platform_spend
-from superaide.brain.budget import BudgetGuard
-from superaide.brain.pricing import UsageCounts
 from superaide.brain.providers.base import Priced, mark_billable, metered
+from superaide.brain.spend import platform_spend
+from superaide.brain.spend.budget import BudgetGuard
+from superaide.brain.spend.pricing import UsageCounts
 from superaide.intentions import service as intentions
 from superaide.jobs import queue
 from superaide.jobs.handlers import load
@@ -270,7 +270,7 @@ def test_an_orphaned_platform_reservation_gives_back_the_platform_allowance(monk
     monkeypatch.setattr(get_settings(), "platform_owner_monthly_usd", 0)
     # Everything reserved so far counts as stale. (Aging the row by an hour moved it into yesterday just after
     # midnight UTC, and the platform allowance is given back to the day the reservation was made.)
-    monkeypatch.setattr("superaide.brain.budget.STALE_RESERVATION", timedelta(seconds=-1))
+    monkeypatch.setattr("superaide.brain.spend.budget.STALE_RESERVATION", timedelta(seconds=-1))
     guard = BudgetGuard(10, key_source="platform")
     old = guard.reserve(purpose="chat", model="claude-haiku-5-5", worst_case_usd=Decimal("1"))
     with session_scope() as s:

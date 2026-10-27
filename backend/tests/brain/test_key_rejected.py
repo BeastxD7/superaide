@@ -10,9 +10,9 @@ import pytest
 from sqlalchemy import select
 
 from superaide.brain import keyhealth, keynote
-from superaide.brain.budget import BudgetGuard
-from superaide.brain.pricing import UsageCounts
 from superaide.brain.providers.base import Priced, metered
+from superaide.brain.spend.budget import BudgetGuard
+from superaide.brain.spend.pricing import UsageCounts
 from superaide.jobs import queue
 from superaide.jobs.queue import enqueue, run_due
 from superaide.memory.knowledge.pending import brain_became_ready

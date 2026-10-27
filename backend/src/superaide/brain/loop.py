@@ -23,8 +23,8 @@ from sqlalchemy.orm import Session
 
 from superaide.approvals import outcomes, recipients
 from superaide.brain import capabilities, taskplan, verify
-from superaide.brain.budget import BudgetExceeded
 from superaide.brain.llm import LLM, StepResult, SystemBlock
+from superaide.brain.spend.budget import BudgetExceeded
 from superaide.brain.turn import load_charter
 from superaide.identity.resolver import Sender
 from superaide.intentions import service as intentions

@@ -353,6 +353,16 @@ FILE_PHASES = {
         "e2e_dirs": {},
         "module_renames": {},
     },
+    # Phase 6b: brain/ gets `spend/` (what a model call may cost and what it did cost) and `prompts/` (the charter and
+    # the receptionist persona, which are data files). `providers/` was already a folder. The code that reads the two
+    # prompt files builds its path from parts, so those two lines are edited by hand in the same change.
+    62: {
+        "files": {f"brain.{m}": f"brain/spend/{m}.py" for m in ("budget", "pricing", "price_tables", "platform_spend")},
+        "data": {"brain/charter.md": "brain/prompts/charter.md", "brain/receptionist.md": "brain/prompts/receptionist.md"},
+        "test_dirs": {},
+        "e2e_dirs": {},
+        "module_renames": {},
+    },
 }
 
 

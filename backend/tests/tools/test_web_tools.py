@@ -9,9 +9,9 @@ import httpx
 import pytest
 from sqlalchemy import select
 
-from superaide.brain.budget import BudgetGuard
 from superaide.brain.llm import ProviderLLM
-from superaide.brain.pricing import PriceRegistry
+from superaide.brain.spend.budget import BudgetGuard
+from superaide.brain.spend.pricing import PriceRegistry
 from superaide.platform.db.models import SpendEntry
 from superaide.platform.db.session import session_scope
 from superaide.skills.manifest import Tool
@@ -90,7 +90,7 @@ def test_a_search_is_charged_its_flat_price_before_it_runs(net):
 
 
 def test_a_search_past_the_cap_is_refused_without_calling_the_service(net):
-    from superaide.brain.budget import BudgetExceeded
+    from superaide.brain.spend.budget import BudgetExceeded
 
     tools = web.WebTools(BudgetGuard(0.001), search_key="k", search_usd=Decimal("0.01"))
     with pytest.raises(BudgetExceeded):

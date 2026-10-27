@@ -125,8 +125,8 @@ def main(argv: list[str] | None = None) -> int:
 def run(args: argparse.Namespace, key: str) -> int:
     from decimal import Decimal
 
-    from superaide.brain.budget import BudgetGuard
     from superaide.brain.llm import LLM, ClaudeLLM
+    from superaide.brain.spend.budget import BudgetGuard
     from superaide.evals import report
     from superaide.evals.harness import Judge, Run, ledger_total, make_judge, reset_db, run_scenario
     from superaide.evals.scenario import load_all

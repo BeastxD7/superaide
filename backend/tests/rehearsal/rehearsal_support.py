@@ -7,7 +7,7 @@ from collections.abc import Callable
 from typing import Any
 
 from superaide.brain.llm import StepResult
-from superaide.brain.pricing import UsageCounts
+from superaide.brain.spend.pricing import UsageCounts
 from tests.pipeline.test_loop import Script, tool_use, turn_for
 
 Responder = Callable[[str, str, list[dict[str, Any]]], Any]  # (model, system text, messages) -> text or blocks

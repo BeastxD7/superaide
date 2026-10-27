@@ -31,8 +31,8 @@ from typing import Any
 
 from sqlalchemy import case, func, select, text
 
-from superaide.brain import platform_spend as platform
-from superaide.brain.pricing import DEFAULT_PRICES, PriceRegistry, UsageCounts, cost_usd
+from superaide.brain.spend import platform_spend as platform
+from superaide.brain.spend.pricing import DEFAULT_PRICES, PriceRegistry, UsageCounts, cost_usd
 from superaide.platform.audit import audit
 from superaide.platform.db.models import SpendEntry
 from superaide.platform.db.session import session_scope

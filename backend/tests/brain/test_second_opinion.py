@@ -7,8 +7,8 @@ from datetime import UTC, datetime
 import pytest
 from sqlalchemy import select
 
-from superaide.brain.budget import BudgetExceeded
 from superaide.brain.llm import FakeLLM
+from superaide.brain.spend.budget import BudgetExceeded
 from superaide.memory.knowledge.store import remember_fact
 from superaide.platform.db.models import Person
 from superaide.platform.db.session import session_scope

@@ -14,8 +14,8 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select, update
 
-from superaide.brain.budget import BudgetExceeded
 from superaide.brain.llm import FakeLLM
+from superaide.brain.spend.budget import BudgetExceeded
 from superaide.features.rehearsal.models import RehearsalSession
 from superaide.features.rehearsal.service import DebriefOutput, DebriefPoint
 from superaide.main import create_app

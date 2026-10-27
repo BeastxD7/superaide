@@ -23,8 +23,8 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
-from superaide.brain.budget import AgentFrozen, BudgetExceeded
 from superaide.brain.llm import SystemBlock
+from superaide.brain.spend.budget import AgentFrozen, BudgetExceeded
 from superaide.platform.audit import audit
 
 log = logging.getLogger(__name__)

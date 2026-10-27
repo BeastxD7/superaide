@@ -7,8 +7,8 @@ from datetime import UTC, datetime
 import pytest
 from sqlalchemy import select
 
-from superaide.brain.budget import BudgetExceeded, bucket_for
 from superaide.brain.llm import FakeLLM
+from superaide.brain.spend.budget import BudgetExceeded, bucket_for
 from superaide.features.forknight import night
 from superaide.platform.db.models import Job, Person
 from superaide.platform.db.session import session_scope

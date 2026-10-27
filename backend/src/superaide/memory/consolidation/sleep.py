@@ -33,7 +33,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from superaide.brain.budget import BudgetExceeded
+from superaide.brain.spend.budget import BudgetExceeded
 from superaide.identity.trust import Trust
 from superaide.intentions.service import owner_zone
 from superaide.intentions.when import zone
