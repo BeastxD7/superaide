@@ -11,11 +11,13 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from superaide.app.accounts import owner as hired_owner
+from superaide.identity.models import Person
 from superaide.jobs.handlers import load
+from superaide.jobs.models import Job
 from superaide.jobs.queue import run_due
 from superaide.main import create_app
+from superaide.memory.models import Context, Event
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import Context, Event, Job, Person
 from superaide.platform.db.session import session_scope
 from superaide.proactive import digest
 from superaide.triage import digest as tdigest

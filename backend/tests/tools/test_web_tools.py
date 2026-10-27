@@ -10,9 +10,9 @@ import pytest
 from sqlalchemy import select
 
 from superaide.brain.llm import ProviderLLM
+from superaide.brain.models import SpendEntry
 from superaide.brain.spend.budget import BudgetGuard
 from superaide.brain.spend.pricing import PriceRegistry
-from superaide.platform.db.models import SpendEntry
 from superaide.platform.db.session import session_scope
 from superaide.skills.manifest import Tool
 from superaide.tools import web

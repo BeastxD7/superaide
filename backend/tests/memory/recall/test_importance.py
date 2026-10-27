@@ -7,11 +7,12 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy import select
 
+from superaide.identity.models import Person
 from superaide.memory.audience import Audience
 from superaide.memory.consolidation import importance, recheck
 from superaide.memory.knowledge.store import remember_fact
+from superaide.memory.models import MemoryItem
 from superaide.memory.recall.retrieval import recall_memories
-from superaide.platform.db.models import MemoryItem, Person
 from superaide.platform.db.session import session_scope
 from superaide.proactive import digest
 

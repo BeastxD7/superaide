@@ -19,8 +19,8 @@ from urllib.parse import parse_qsl, urlencode, urlsplit
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from superaide.memory.models import MemoryItem
 from superaide.platform.audit import audit
-from superaide.platform.db.models import MemoryItem
 from superaide.platform.db.session import rows_affected
 
 HEARSAY_SOURCES = frozenset({"link", "telegram", "slack", "gmail"})

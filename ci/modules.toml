@@ -373,6 +373,7 @@ e2e = []
 src = [
   "backend/src/superaide/memory/__init__.py",
   "backend/src/superaide/memory/store.py",
+  "backend/src/superaide/memory/models.py",
   "backend/src/superaide/memory/consolidation/**",
 ]
 tests = [

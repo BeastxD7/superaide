@@ -10,9 +10,10 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy import select
 
+from superaide.approvals.models import Approval
 from superaide.mandate import service
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import Approval, AuditLog
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import use_instance
 from superaide.policy.killswitch import set_state
@@ -53,8 +54,6 @@ def stage(name):
 def sign(**over):
     base = dict(tools=["create_event", "move_event"], expires=datetime.now(UTC) + timedelta(days=2), max_uses=5)
     with use_instance(scope_of(EMAIL)), session_scope() as s:
-        from superaide.platform.db.models import Person  # noqa: F401
-
         return service.create(s, scope_of(EMAIL).agent_id, **{**base, **over}).id
 
 
@@ -191,7 +190,7 @@ def test_mandates_off_overrides_skip(owner, fake, monkeypatch):
 def test_an_expired_mandate_still_asks(ready, fake):
     sign(expires=datetime.now(UTC) + timedelta(seconds=1))
     with use_instance(scope_of(EMAIL)), session_scope() as s:
-        from superaide.platform.db.models import Mandate
+        from superaide.mandate.models import Mandate
 
         for m in s.scalars(select(Mandate)):
             m.expires_at = datetime.now(UTC) - timedelta(minutes=1)
@@ -207,7 +206,7 @@ def test_a_narrowed_mandate_cannot_borrow_the_parents_reach(ready, fake):
     parent = sign(tools=["create_event", "move_event"])
     with use_instance(scope_of(EMAIL)), session_scope() as s:
         service.delegate(s, parent, label="helper", tools=["move_event"])
-        from superaide.platform.db.models import Mandate
+        from superaide.mandate.models import Mandate
 
         row = s.get(Mandate, parent)
         row.status = "revoked"  # the owner revokes the parent: the child goes with the chain
@@ -263,7 +262,7 @@ def test_a_child_that_narrowed_the_tools_cannot_create_events(ready, fake):
     parent = sign()
     with use_instance(scope_of(EMAIL)), session_scope() as s:
         service.delegate(s, parent, label="move only", tools=["move_event"])
-        from superaide.platform.db.models import Mandate
+        from superaide.mandate.models import Mandate
 
         s.get(Mandate, parent).status = "revoked"  # only the child could cover it, and it names move_event alone
     assert "Waiting" in run(EMAIL, "create_event", GYM)[0] and skipped() == 0

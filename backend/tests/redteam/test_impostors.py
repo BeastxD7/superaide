@@ -13,8 +13,10 @@ from __future__ import annotations
 
 from sqlalchemy import func, select
 
+from superaide.approvals.models import Approval
 from superaide.brain.turn import RequestedAction
-from superaide.platform.db.models import Approval, AuditLog, ChannelIdentity
+from superaide.identity.models import ChannelIdentity
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
 from tests.conftest import COLLEAGUE_SLACK, MANAGER_SLACK, MANAGER_TG, codes_sent, sl, tg
 

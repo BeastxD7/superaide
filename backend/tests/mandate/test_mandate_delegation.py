@@ -12,9 +12,9 @@ import pytest
 
 from superaide.mandate import service
 from superaide.mandate import token as tk
+from superaide.mandate.models import Mandate
 from superaide.mandate.service import Caps
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import Mandate
 from superaide.platform.db.session import session_scope
 
 KEY = b"k" * 32

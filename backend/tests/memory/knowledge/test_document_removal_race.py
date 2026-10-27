@@ -8,12 +8,13 @@ import time
 import pytest
 from sqlalchemy import select
 
+from superaide.identity.models import Person
 from superaide.memory.knowledge import ingest as ingest_module
 from superaide.memory.knowledge import store
 from superaide.memory.knowledge.extract import Extracted
 from superaide.memory.knowledge.facts import Fact
 from superaide.memory.knowledge.ingest import ingest, read_documents
-from superaide.platform.db.models import Document, MemoryItem, Person
+from superaide.memory.models import Document, MemoryItem
 from superaide.platform.db.session import session_scope
 
 FACTS = [Fact(content="Jordan leads applied AI at Larkfield.", category="work", confidence=1)]

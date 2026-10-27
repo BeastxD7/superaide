@@ -18,11 +18,12 @@ from sqlalchemy import select, text
 
 from superaide.app import connections
 from superaide.app.accounts import owner as hired_owner
+from superaide.approvals.models import Approval
 from superaide.brain.loop import narrate
 from superaide.integrations.calendar import skill as calendar
 from superaide.integrations.google import client as google
 from superaide.main import create_app
-from superaide.platform.db.models import Approval, AuditLog
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import InstanceScope, use_instance
 from superaide.policy.killswitch import set_state

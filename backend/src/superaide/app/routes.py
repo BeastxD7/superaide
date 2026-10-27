@@ -26,32 +26,24 @@ from superaide.app.deps import owner_person_id, slack_connected, telegram_userna
 from superaide.app.onboarding import SHARE_LABELS, Onboarder, documents_view
 from superaide.app.stream import stream_turn
 from superaide.approvals.binding import expired
+from superaide.approvals.models import Approval
 from superaide.brain.wiring import brain_ready, brain_status
 from superaide.channels import health
 from superaide.features.voice import gateway
+from superaide.identity.auth.models import UserAccount
 from superaide.identity.auth.routes import current_user_id, reject_nul_text, require_csrf_header
+from superaide.identity.models import ChannelIdentity, Person
 from superaide.intentions import service as intentions
+from superaide.intentions.models import Intention
 from superaide.intentions.when import clean_task, find_moment, zone
 from superaide.memory.knowledge import extract
 from superaide.memory.knowledge.erase import erase_document, erase_person
 from superaide.memory.knowledge.erase import vacuum as erase_vacuum
 from superaide.memory.knowledge.ingest import ingest
 from superaide.memory.knowledge.store import conflicts_of, preferences_for, resolve_conflict, retire_document
+from superaide.memory.models import Contact, Context, Document, DocumentChunk, Event, MemoryItem
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import (
-    Approval,
-    AuditLog,
-    ChannelIdentity,
-    Contact,
-    Context,
-    Document,
-    DocumentChunk,
-    Event,
-    Intention,
-    MemoryItem,
-    Person,
-    UserAccount,
-)
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import require, rescope, session_scope
 from superaide.platform.pagination import (
     SortKey,

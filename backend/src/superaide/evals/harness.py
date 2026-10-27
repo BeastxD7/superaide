@@ -30,13 +30,18 @@ from sqlalchemy import func, select, text
 
 import superaide.plugins  # noqa: F401  (registers the approval executors and event subscribers)
 from superaide.brain.llm import LLM, FakeLLM, LLMResult, StepResult
+from superaide.brain.models import SpendEntry
 from superaide.brain.turn import Prediction, RequestedAction, TurnOutput
 from superaide.channels.base import FakeMessenger, InboundMessage
 from superaide.evals import checks
 from superaide.evals.scenario import FakeTurn, Scenario, Share, Turn
+from superaide.identity.auth.models import UserAccount
+from superaide.identity.models import ChannelIdentity, Person
 from superaide.identity.trust import Trust
+from superaide.intentions.models import Intention
+from superaide.memory.models import Event
 from superaide.platform.config import Settings, get_settings
-from superaide.platform.db.models import Base, ChannelIdentity, Event, Intention, Person, SpendEntry, UserAccount
+from superaide.platform.db.models import Base
 from superaide.platform.db.safety import assert_disposable_database
 from superaide.platform.db.session import ensure_extensions, get_engine, session_scope
 
@@ -393,7 +398,7 @@ def _triage_world(s: Any, sc: Scenario, owner: Person, start: datetime) -> None:
     """Two more linked people (a VIP contact and a plain contact) and the owner's triage settings."""
     from superaide.identity.linking import bootstrap_person
     from superaide.memory.knowledge.store import preferences_for
-    from superaide.platform.db.models import Contact
+    from superaide.memory.models import Contact
     from superaide.policy.killswitch import set_state
     from superaide.triage.store import settings_for
 

@@ -10,13 +10,14 @@ from superaide.app.accounts import owner as hired_owner
 from superaide.brain.llm import FakeLLM
 from superaide.integrations.calendar import skill as calendar
 from superaide.jobs.handlers import load
+from superaide.jobs.models import Job
 from superaide.jobs.queue import run_due
 from superaide.main import create_app
 from superaide.memory.audience import Audience
 from superaide.memory.knowledge import connector_facts as cf
 from superaide.memory.knowledge.facts import Fact, FactList
+from superaide.memory.models import Context, Event, MemoryItem
 from superaide.memory.recall.retrieval import recall
-from superaide.platform.db.models import Context, Event, Job, MemoryItem
 from superaide.platform.db.session import session_scope
 
 load()

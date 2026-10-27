@@ -13,8 +13,9 @@ from sqlalchemy import select
 from superaide.app.accounts import owner as hired_owner
 from superaide.brain import verify
 from superaide.brain.llm import ClaudeLLM
+from superaide.brain.models import SpendEntry
 from superaide.brain.spend.budget import BudgetExceeded, BudgetGuard
-from superaide.platform.db.models import AuditLog, SpendEntry
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
 from tests.pipeline import test_loop
 from tests.pipeline.test_loop import Script, note, tool_use, turn_for
@@ -310,7 +311,7 @@ def test_a_turn_drops_the_unbacked_marks_and_logs_it():
 
 
 def test_an_action_report_cites_the_approval_record_list_approvals_returned():
-    from superaide.platform.db.models import Approval
+    from superaide.approvals.models import Approval
 
     with session_scope() as s:
         person = hired_owner(s)

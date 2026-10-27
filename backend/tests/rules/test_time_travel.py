@@ -9,8 +9,10 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy import select
 
+from superaide.approvals.models import Approval
 from superaide.brain.llm import FakeLLM
-from superaide.platform.db.models import Approval, Context, Event, Person
+from superaide.identity.models import Person
+from superaide.memory.models import Context, Event
 from superaide.platform.db.session import session_scope
 from superaide.rules import timetravel as tt
 from tests.conftest import tg

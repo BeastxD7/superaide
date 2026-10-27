@@ -22,8 +22,8 @@ from pydantic import BaseModel, Field
 from superaide.app.deps import owner_person_id
 from superaide.features.voice.call import Turn, VoiceCall, stream
 from superaide.identity.auth.routes import reject_nul_text, require_csrf_header
+from superaide.identity.models import Person
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import Person
 from superaide.platform.db.session import require, session_scope
 
 MAX_AUDIO_BYTES = 2_500_000  # about a minute of 16 kHz, 16-bit mono WAV

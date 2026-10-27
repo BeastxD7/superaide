@@ -9,9 +9,10 @@ from pydantic import BaseModel
 from sqlalchemy import select, update
 
 from superaide.brain.llm import ClaudeLLM, SystemBlock
+from superaide.brain.models import SpendEntry
 from superaide.brain.spend.budget import AgentFrozen, BudgetExceeded, BudgetGuard, Limits
 from superaide.brain.spend.pricing import UnknownModelPrice, UsageCounts, cost_usd
-from superaide.platform.db.models import AuditLog, SpendEntry
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
 from superaide.policy.killswitch import set_frozen
 

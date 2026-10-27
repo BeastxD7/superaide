@@ -45,7 +45,7 @@ def _scope(owner):
     from sqlalchemy import select as sel
 
     from superaide.app.deps import _hired_instance
-    from superaide.platform.db.models import UserAccount
+    from superaide.identity.auth.models import UserAccount
 
     with session_scope() as s:
         scope, _ = _hired_instance(s.scalar(sel(UserAccount.id).order_by(UserAccount.created_at)))

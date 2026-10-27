@@ -10,7 +10,8 @@ import pytest
 from sqlalchemy import select
 
 from superaide.features.drills import poison, sparring
-from superaide.platform.db.models import MemoryItem, Person
+from superaide.identity.models import Person
+from superaide.memory.models import MemoryItem
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import InstanceScope, use_instance
 from tests.conftest import sl, tg

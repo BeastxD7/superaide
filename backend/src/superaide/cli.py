@@ -263,7 +263,7 @@ def _push_keys(_: argparse.Namespace) -> None:
 
 def _unlink(args: argparse.Namespace) -> None:
     from superaide.identity.linking import unlink
-    from superaide.platform.db.models import ChannelIdentity
+    from superaide.identity.models import ChannelIdentity
     from superaide.platform.db.session import session_scope
 
     try:
@@ -304,7 +304,7 @@ def _seed_demo(_: argparse.Namespace) -> None:
     from sqlalchemy import func, select
 
     from superaide.identity.linking import bootstrap_person
-    from superaide.platform.db.models import Person
+    from superaide.identity.models import Person
     from superaide.platform.db.session import session_scope
 
     team = get_settings().slack_team_id or "T_DEMO"

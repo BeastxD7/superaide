@@ -23,10 +23,10 @@ from typing import Any
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
+from superaide.brain.models import SpendEntry
 from superaide.brain.spend import platform_spend
 from superaide.platform.audit import audit
 from superaide.platform.config import Settings, get_settings
-from superaide.platform.db.models import SpendEntry
 from superaide.platform.tenancy.context import scope_or_default
 
 log = logging.getLogger(__name__)
@@ -143,7 +143,7 @@ def listed_owner_emails(raw: str) -> frozenset[str]:
 def server_key_is_own(session: Session) -> bool:
     """The instance in scope belongs to an account listed in PLATFORM_KEY_OWNER_EMAILS (the operator's
     own Ava): it uses the server's ANTHROPIC_API_KEY as its own key."""
-    from superaide.platform.db.models import UserAccount
+    from superaide.identity.auth.models import UserAccount
     from superaide.platform.tenancy.models import AgentInstance, InstanceMember
 
     listed = listed_owner_emails(get_settings().platform_key_owner_emails)

@@ -7,16 +7,17 @@ import pytest
 from sqlalchemy import select
 
 from superaide.approvals import footprint
+from superaide.approvals.models import Approval
 from superaide.identity.resolver import Sender
 from superaide.identity.trust import Trust
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import Approval, AuditLog
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
 from superaide.policy.actions import action_kinds, decide
 
 
 def owner_sender(name="Jordan") -> Sender:
-    from superaide.platform.db.models import Person
+    from superaide.identity.models import Person
 
     with session_scope() as s:
         p = Person(display_name=name, relation="manager")
@@ -63,7 +64,7 @@ def test_a_post_naming_someone_outside_the_contacts_is_flagged(on):
 
 def test_a_known_contact_is_not_flagged(on):
     with session_scope() as s:
-        from superaide.platform.db.models import Person
+        from superaide.identity.models import Person
 
         s.add(Person(display_name="Priya Tan", relation="colleague"))
     _, payload = ask("message_someone_else", "Tell Priya Tan the meeting moved.")
@@ -76,7 +77,7 @@ def test_nothing_is_added_when_off():
 
 
 def test_a_non_manager_cannot_create(on):
-    from superaide.platform.db.models import Person
+    from superaide.identity.models import Person
 
     with session_scope() as s:
         p = Person(display_name="Eve", relation="colleague")

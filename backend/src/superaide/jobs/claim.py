@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from sqlalchemy import DDL, Connection, event
 
-from superaide.platform.db.models import Job
+from superaide.jobs.models import Job
 
 CREATE = """
 CREATE OR REPLACE FUNCTION claim_due_jobs(p_now timestamptz, p_limit integer, p_per_instance integer,

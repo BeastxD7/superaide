@@ -94,8 +94,8 @@ def standing(session: Session, tz: str) -> str:
 
     from sqlalchemy import select
 
+    from superaide.approvals.models import Approval
     from superaide.intentions.when import zone
-    from superaide.platform.db.models import Approval
 
     now = datetime.now(UTC)
     rows = list(session.scalars(select(Approval).order_by(Approval.created_at.desc()).limit(40)).all())

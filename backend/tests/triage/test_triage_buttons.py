@@ -14,7 +14,9 @@ from sqlalchemy import func, select
 
 from superaide.channels import telegram
 from superaide.channels.base import InboundAction
-from superaide.platform.db.models import AuditLog, ChannelIdentity, Job
+from superaide.identity.models import ChannelIdentity
+from superaide.jobs.models import Job
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
 from superaide.triage import buttons, escalate
 from superaide.triage.models import EscalationAck, EscalationDelivery
@@ -121,7 +123,7 @@ def test_not_urgent_from_the_button_records_feedback(escalated):
 
 
 def test_an_ack_in_the_app_also_removes_the_telegram_buttons(escalated, world):
-    from superaide.platform.db.models import Person
+    from superaide.identity.models import Person
 
     with session_scope() as s:
         escalate.ack(s, the_escalation().id, source="app", external_id="req-1", verb="ack",

@@ -25,8 +25,8 @@ from sqlalchemy.orm import Session
 
 from superaide.platform.audit import audit
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import SkillRelease, SkillTombstone
 from superaide.skills.manifest import Effect
+from superaide.skills.models import SkillRelease, SkillTombstone
 
 # Weakest first. A release's effect class is the strongest one it can use.
 EFFECT_ORDER: tuple[str, ...] = ("read_public", "read_private", "write_own", "write_external", "send", "spend")

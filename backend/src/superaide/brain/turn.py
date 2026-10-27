@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict, field_validator
 from superaide.brain.llm import SystemBlock
 from superaide.identity.resolver import Sender
 from superaide.memory.audience import Audience
-from superaide.platform.db.models import Event, MemoryItem
+from superaide.memory.models import Event, MemoryItem
 
 CHARTER_PATH = Path(__file__).parent / "prompts" / "charter.md"
 

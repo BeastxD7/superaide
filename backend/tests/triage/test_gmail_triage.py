@@ -11,13 +11,15 @@ import pytest
 from sqlalchemy import select
 
 from superaide.app.accounts import owner as hired_owner
+from superaide.identity.models import ChannelIdentity, Person
 from superaide.identity.trust import Trust
 from superaide.integrations.gmail import client as api
 from superaide.integrations.gmail import inbox as gmail_inbox
 from superaide.integrations.gmail import skill as gmail
+from superaide.jobs.models import Job
 from superaide.jobs.queue import run_due
+from superaide.memory.models import Contact, Event
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import ChannelIdentity, Contact, Event, Job, Person
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import InstanceScope, use_instance
 from superaide.triage import digest as triage_digest

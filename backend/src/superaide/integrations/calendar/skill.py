@@ -9,13 +9,13 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from superaide.contracts.events import CalendarEventsRead, bus
+from superaide.identity.models import Person
 from superaide.identity.vault.store import runtime_settings
 from superaide.integrations.calendar import settings as cal_settings
 from superaide.integrations.google import client as google
 from superaide.intentions.service import owner_zone
 from superaide.intentions.when import find_moment, zone
 from superaide.platform.audit import audit
-from superaide.platform.db.models import Person
 from superaide.policy.actions import EXECUTORS, TOOL_RULES, decide
 from superaide.skills.registry import active
 

@@ -27,7 +27,7 @@ from typing import Any
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from superaide.platform.db.models import Event
+from superaide.memory.models import Event
 from superaide.platform.tenancy.context import scope_or_default
 from superaide.triage.models import TriageDecision, TriageLabelVector
 from superaide.triage.types import Feedback

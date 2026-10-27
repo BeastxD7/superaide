@@ -11,29 +11,19 @@ Rules baked into the schema:
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, date, datetime
-from decimal import Decimal
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import (
-    Boolean,
-    CheckConstraint,
-    Date,
     DateTime,
-    Float,
-    ForeignKey,
     Index,
-    Integer,
-    Numeric,
     String,
-    Text,
-    UniqueConstraint,
     event,
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, validates
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
 def _tenant() -> uuid.UUID:
@@ -83,470 +73,16 @@ class Scoped:
 # --- Identity -----------------------------------------------------------------
 
 
-class Person(Scoped, Base):
-    __tablename__ = "person"
-    __table_args__ = (Index("ix_person_agent_created", "agent_id", "created_at", "id"),)  # operator paging (ADR 0014)
-
-    display_name: Mapped[str] = mapped_column(String(200))
-    kind: Mapped[str] = mapped_column(String(20), default="human")  # human | agent
-    # Authority comes from here (set by the operator), never from what a message claims.
-    relation: Mapped[str] = mapped_column(String(20), default="unknown")  # manager | colleague | external | unknown
-    status: Mapped[str] = mapped_column(String(20), default="active")  # active | merged | erased
-    merged_into: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
-    channel_prefs: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
-    notice_basis: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
-
-
-class ChannelIdentity(Scoped, Base):
-    __tablename__ = "channel_identity"
-    __table_args__ = (
-        UniqueConstraint("agent_id", "provider", "tenant_scope", "stable_key", name="uq_identity_key"),
-        # Accounts nobody has claimed yet, paged by the operator console (ADR 0014); the partial index stays small.
-        Index(
-            "ix_identity_unlinked",
-            "agent_id",
-            "created_at",
-            "id",
-            postgresql_where=text("person_id IS NULL"),
-        ),
-    )
-
-    person_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("person.id"), nullable=True, index=True)
-    provider: Mapped[str] = mapped_column(String(20))  # telegram | slack | email | ...
-    tenant_scope: Mapped[str] = mapped_column(String(100), default="")  # e.g. Slack team ID
-    stable_key: Mapped[str] = mapped_column(String(200))  # immutable platform user ID
-    # Display only, never used for authorisation.
-    aux_handles: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
-    trust_level: Mapped[int] = mapped_column(Integer, default=1)
-    verification: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
-    lifecycle: Mapped[str] = mapped_column(String(20), default="active")  # active | superseded | revoked
-    risk_flags: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
-    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    # The endpoint (Telegram bot id, Slack app) this link was confirmed on. A message from the same
-    # account through any other endpoint is not trusted until the owner confirms it in the app.
-    # Same meaning as channel_endpoint.external_key (ADR 0009); "" = not bound yet.
-    endpoint_key: Mapped[str] = mapped_column(String(200), default="", server_default="")
-
-
-class IdentityLinkEvent(Scoped, Base):
-    __tablename__ = "identity_link_event"
-
-    identity_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("channel_identity.id"), index=True)
-    person_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("person.id"), nullable=True)
-    action: Mapped[str] = mapped_column(String(20))  # link | unlink | supersede | merge | split
-    method: Mapped[str] = mapped_column(String(50))
-    actor: Mapped[str] = mapped_column(String(100))
-    evidence: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
-
-
-class LinkChallenge(Scoped, Base):
-    __tablename__ = "link_challenge"
-
-    identity_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("channel_identity.id"), index=True)
-    person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"))
-    via_identity_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("channel_identity.id"))
-    code_hash: Mapped[str] = mapped_column(String(128))
-    salt: Mapped[str] = mapped_column(String(64))
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    attempts: Mapped[int] = mapped_column(Integer, default=0)
-    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | verified | expired | locked
-
-
 # --- Conversations ---------------------------------------------------------------
-
-
-class Context(Scoped, Base):
-    __tablename__ = "context"
-    __table_args__ = (
-        UniqueConstraint("agent_id", "provider", "tenant_scope", "external_id", name="uq_context_key"),
-        Index("ix_context_activity", "agent_id", text("last_event_at DESC"), text("id DESC")),
-    )
-
-    provider: Mapped[str] = mapped_column(String(20))
-    tenant_scope: Mapped[str] = mapped_column(String(100), default="")
-    external_id: Mapped[str] = mapped_column(String(200))
-    kind: Mapped[str] = mapped_column(String(20))  # dm | group | thread | meeting
-    audience_class: Mapped[str] = mapped_column(String(30))  # private_1to1 | team | mixed_external
-    title: Mapped[str] = mapped_column(String(200), default="")
-    # When the newest event landed (or the context was made, while it has none). Maintained in one place,
-    # memory.store.touch_context, so the console pages conversations by activity without a GROUP BY (ADR 0014).
-    last_event_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now()
-    )
-
-
-class Event(Scoped, Base):
-    """Every message in and out: the raw episodic log. Append-only."""
-
-    __tablename__ = "event"
-    __table_args__ = (
-        Index(
-            "uq_event_inbound_external_id",
-            "context_id",
-            "external_id",
-            unique=True,
-            postgresql_where=text("direction = 'in' AND external_id IS NOT NULL"),
-        ),
-        Index("ix_event_context_thread", "context_id", "thread_id"),
-        # Keyset paging of a conversation, newest first (ADR 0014): the order /app/messages and /api/events sort by.
-        Index("ix_event_context_created", "context_id", text("created_at DESC"), text("id DESC")),
-        Index("ix_event_agent_created", "agent_id", text("created_at DESC"), text("id DESC")),
-        Index("ix_event_fts", text("to_tsvector('english', content)"), postgresql_using="gin"),  # recall
-    )
-
-    context_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("context.id"), index=True)
-    direction: Mapped[str] = mapped_column(String(10))  # in | out
-    sender_identity_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("channel_identity.id"), nullable=True)
-    resolved_person_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("person.id"), nullable=True)
-    trust_at_time: Mapped[int] = mapped_column(Integer, default=0)
-    audience_person_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(UUID(as_uuid=True)), default=list)
-    audience_has_unknown: Mapped[bool] = mapped_column(Boolean, default=False)
-    content: Mapped[str] = mapped_column(Text)
-    meta: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
-    webhook_verified: Mapped[bool] = mapped_column(Boolean, default=False)
-    # The platform's own ids: a redelivered message (Slack retry, Telegram re-poll)
-    # hits the unique index below and is dropped; threads keep their own history.
-    external_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
-    thread_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
 
 
 # --- Memory ------------------------------------------------------------------------
 
 
-class MemoryItem(Scoped, Base):
-    """A remembered fact, tagged with the audience it may be shown to."""
-
-    __tablename__ = "memory_item"
-    __table_args__ = (
-        Index("ix_memory_item_fts", text("to_tsvector('english', content)"), postgresql_using="gin"),
-        # Operator paging of every memory, newest first (ADR 0014).
-        Index("ix_memory_item_agent_created", "agent_id", text("created_at DESC"), text("id DESC")),
-        # The owner's notebook: only live, undisputed notes, so forgotten and superseded history does not bloat it.
-        Index(
-            "ix_memory_item_live_created",
-            "agent_id",
-            text("created_at DESC"),
-            text("id DESC"),
-            postgresql_where=text("valid_to IS NULL AND conflict_status = 'none'"),
-        ),
-    )
-
-    content: Mapped[str] = mapped_column(Text)
-    subject_person_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(UUID(as_uuid=True)), default=list)
-    source_event_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(UUID(as_uuid=True)), default=list)
-    origin_context_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("context.id"), nullable=True)
-    # persons: only the listed people · org: any known internal person · public: anyone
-    allowed_kind: Mapped[str] = mapped_column(String(20), default="persons")
-    allowed_person_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(UUID(as_uuid=True)), default=list)
-    min_trust: Mapped[int] = mapped_column(Integer, default=2)
-    valid_from: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    valid_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    # What kind of fact this is, where it came from, and how sure we are.
-    # category: about | work | person | preference | urgency | availability | sharing | other
-    category: Mapped[str] = mapped_column(String(30), default="other", server_default="other", index=True)
-    # source: chat | intro_chat | intro_call | document | link | telegram | slack | owner_edit
-    source: Mapped[str] = mapped_column(String(30), default="chat", server_default="chat")
-    document_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("document.id"), nullable=True, index=True)
-    # Further documents that say the same thing: erasing one keeps the fact while another still supports it.
-    source_document_ids: Mapped[list[uuid.UUID]] = mapped_column(
-        ARRAY(UUID(as_uuid=True)), default=list, server_default="{}"
-    )
-    confidence: Mapped[float] = mapped_column(Float, default=1.0, server_default="1")
-    # The import lease this card came in under (imports/lease.py, #133); ending the lease deletes the row.
-    lease_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("import_lease.id"), nullable=True, index=True)
-    # fact | hearsay (#137): hearsay came from outside the owner and has fewer than two independent roots.
-    belief_state: Mapped[str] = mapped_column(String(10), default="fact", server_default="fact")
-    # Set when the fact came in with a memory passport: erasing that import deletes it (passport/importer.py).
-    import_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("memory_import.id", ondelete="SET NULL"), nullable=True, index=True
-    )
-
-    # How much the fact matters (0..1), set in code at extraction. Ranks it in recall; and facts that
-    # matter and last are re-checked with the owner now and then (knowledge/recheck.py).
-    importance: Mapped[float] = mapped_column(Float, default=0.5, server_default="0.5")
-    # Availability, plans, events: true means the fact fades as it ages. Everything else never decays.
-    time_bound: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
-    # Spaced "is this still true?": when the owner last confirmed it, how many times, and when we last asked.
-    last_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    verify_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
-    recheck_asked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    # Who wins when facts disagree (knowledge/trust.py): 1 = owner on a verified channel … 5 = other web.
-    trust_rank: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
-    author_person_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("person.id"), nullable=True)
-    superseded_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("memory_item.id"), nullable=True)
-    # The owner locked this fact (Glass brain, #55): nothing automatic retires, merges or fades it. Only the owner can
-    # change it (correct, forget, unlock); a newer claim against it waits as a conflict for the owner to decide.
-    locked: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
-    # none | pending (a weaker claim against a stronger fact) | review (a link fact outside about/work) | resolved
-    conflict_status: Mapped[str] = mapped_column(String(10), default="none", server_default="none")
-    conflicts_with_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("memory_item.id"), nullable=True)
-    # The calendar event or email a fact was read from ("calendar:<id>", "gmail:<id>"); only its id, never its text.
-    source_ref: Mapped[str | None] = mapped_column(String(200), nullable=True, index=True)
-    # The passage of the document this fact was read from (the owner can click through to it).
-    chunk_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("document_chunk.id", ondelete="SET NULL"), nullable=True
-    )
-
-
-class MemoryOrigin(Scoped, Base):
-    """One root origin of a belief (#137). Repeats of the same root are one row, so they count once."""
-
-    __tablename__ = "memory_origin"
-    __table_args__ = (UniqueConstraint("memory_id", "origin_root", name="uq_memory_origin_root"),)
-
-    memory_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("memory_item.id", ondelete="CASCADE"), index=True)
-    origin_root: Mapped[str] = mapped_column(String(64))
-
-
-class Episode(Scoped, Base):
-    """A stretch of one conversation about one thing (#50). A pointer into the event log, which stays the
-    source of truth: the summary helps find it, it never replaces it. Written only by the sleep job."""
-
-    __tablename__ = "episode"
-
-    owner_person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), index=True)
-    context_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("context.id"), index=True)
-    channel: Mapped[str] = mapped_column(String(20), default="")
-    participant_person_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(UUID(as_uuid=True)), default=list)
-    # Who may ever be shown this episode: the people in every one of its messages' audiences.
-    audience_person_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(UUID(as_uuid=True)), default=list)
-    audience_has_unknown: Mapped[bool] = mapped_column(Boolean, default=False)
-    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    ended_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    event_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(UUID(as_uuid=True)), default=list)
-    summary: Mapped[str] = mapped_column(Text, default="")
-    summary_by: Mapped[str] = mapped_column(String(20), default="extract")  # extract (code) | model
-    hints: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)  # words to find it by
-    importance: Mapped[float] = mapped_column(Float, default=0.5)
-
-
-class ConsolidationRun(Scoped, Base):
-    """One night's consolidation for one owner (#50): what it retired, saved first so it can be put back."""
-
-    __tablename__ = "consolidation_run"
-
-    owner_person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), index=True)
-    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    status: Mapped[str] = mapped_column(String(20), default="running")  # running | done | skipped
-    degraded: Mapped[bool] = mapped_column(Boolean, default=False)  # money ran out: only the cheap steps ran
-    episodes_made: Mapped[int] = mapped_column(Integer, default=0)
-    entries_before: Mapped[int] = mapped_column(Integer, default=0)
-    retired_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(UUID(as_uuid=True)), default=list)
-    # The pre-image, written before anything is retired: [{id, content, valid_to}] for every retired entry.
-    snapshot: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list)
-    cost_usd: Mapped[Decimal] = mapped_column(Numeric(12, 6), default=Decimal(0))
-    notes: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
-    restored_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-
-
-class MemoryImport(Scoped, Base):
-    """One memory passport the owner imported: what came in, so it can be previewed and erased as a set."""
-
-    __tablename__ = "memory_import"
-
-    owner_person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), index=True)
-    label: Mapped[str] = mapped_column(String(200), default="")  # the file name the owner chose
-    assistant: Mapped[str] = mapped_column(String(100), default="")  # what made the passport, from its manifest
-    schema_version: Mapped[int] = mapped_column(Integer, default=1)
-    fact_count: Mapped[int] = mapped_column(Integer, default=0)
-    source_count: Mapped[int] = mapped_column(Integer, default=0)
-    people_count: Mapped[int] = mapped_column(Integer, default=0)
-    erased_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-
-
-class Document(Scoped, Base):
-    """Something the owner shared for the agent to read: a file or a link.
-
-    The extracted text is kept so facts can be traced back to it; the original
-    file bytes are not stored. Removing a document also retires its facts.
-    """
-
-    __tablename__ = "document"
-    __table_args__ = (UniqueConstraint("owner_person_id", "sha256", name="uq_document_owner_sha"),)
-
-    owner_person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), index=True)
-    kind: Mapped[str] = mapped_column(String(20))  # pdf | docx | text | web | github
-    title: Mapped[str] = mapped_column(String(300), default="")
-    source: Mapped[str] = mapped_column(Text, default="")  # file name or URL
-    sha256: Mapped[str] = mapped_column(String(64))
-    size_bytes: Mapped[int] = mapped_column(Integer, default=0)
-    text: Mapped[str] = mapped_column(Text, default="")
-    # stored: text kept, facts not read yet (no model) · read: facts extracted · failed
-    status: Mapped[str] = mapped_column(String(20), default="stored")
-    warnings: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
-    removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    import_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("memory_import.id", ondelete="SET NULL"), nullable=True, index=True
-    )
-
-
-class DocumentChunk(Scoped, Base):
-    """One passage of a Document's text. Visible only to whoever may see the document (its owner):
-    the gate joins through `document`, so a chunk can't drift from its document's visibility."""
-
-    __tablename__ = "document_chunk"
-    __table_args__ = (
-        UniqueConstraint("document_id", "ordinal", name="uq_document_chunk_ordinal"),
-        Index("ix_document_chunk_fts", text("to_tsvector('english', text)"), postgresql_using="gin"),
-    )
-
-    document_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("document.id", ondelete="CASCADE"), index=True)
-    ordinal: Mapped[int] = mapped_column(Integer)
-    text: Mapped[str] = mapped_column(Text)
-
-
 # --- The owner's people and preferences ----------------------------------------------
 
 
-class Contact(Scoped, Base):
-    """Someone who matters to the owner. They are a Person too, so the agent can
-    recognise them once their Telegram, Slack or email is linked."""
-
-    __tablename__ = "contact"
-    __table_args__ = (
-        UniqueConstraint("owner_person_id", "person_id", name="uq_contact_owner_person"),
-        # The owner's people list (VIPs first), only the contacts still kept (ADR 0014).
-        Index(
-            "ix_contact_owner_active",
-            "owner_person_id",
-            text("vip DESC"),
-            postgresql_where=text("removed_at IS NULL"),
-        ),
-    )
-
-    owner_person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), index=True)
-    person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"))
-    relationship: Mapped[str] = mapped_column(String(30), default="other")  # family | partner | boss | team | ...
-    vip: Mapped[bool] = mapped_column(Boolean, default=False)  # can always get through, even in quiet hours
-    notes: Mapped[str] = mapped_column(Text, default="")
-    removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    import_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("memory_import.id", ondelete="SET NULL"), nullable=True, index=True
-    )
-
-
-class OwnerPreference(Scoped, Base):
-    """How the owner wants the assistant to triage, interrupt and share. One row per owner."""
-
-    __tablename__ = "owner_preference"
-
-    person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), unique=True)
-    urgent_topics: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
-    digest: Mapped[str] = mapped_column(String(20), default="evening")  # morning | evening | both | none
-    interrupt_channel: Mapped[str] = mapped_column(String(20), default="app")  # app | telegram | slack
-    quiet_start: Mapped[str] = mapped_column(String(5), default="22:00")  # HH:MM, owner's timezone
-    quiet_end: Mapped[str] = mapped_column(String(5), default="07:00")
-    vip_breaks_quiet: Mapped[bool] = mapped_column(Boolean, default=True)
-    timezone: Mapped[str] = mapped_column(String(64), default="UTC")  # set from the browser at sign-up
-    shareable: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)  # what may be told to others
-    never_share: Mapped[str] = mapped_column(Text, default="")
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
-    )
-
-
 # --- Governance ----------------------------------------------------------------
-
-
-class Approval(Scoped, Base):
-    __tablename__ = "approval"
-    __table_args__ = (Index("ix_approval_agent_created", "agent_id", text("created_at DESC"), text("id DESC")),)
-
-    kind: Mapped[str] = mapped_column(String(40))
-    payload: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
-    requested_by_person_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("person.id"), nullable=True)
-    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | approved | rejected
-    decided_by: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    # Issue #111: the hash of kind + payload when the request was opened (policy/binding.py), and when the
-    # request stops being answerable (empty = never).
-    bound_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-
-
-class ToolTrace(Scoped, Base):
-    """One tool call, as hashes only (issue #110): enough to compare two runs, never the content."""
-
-    __tablename__ = "tool_trace"
-
-    turn_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
-    seq: Mapped[int] = mapped_column(Integer, default=0)
-    tool: Mapped[str] = mapped_column(String(64))
-    effect: Mapped[str] = mapped_column(String(20))
-    args_hash: Mapped[str] = mapped_column(String(64))
-    result_hash: Mapped[str] = mapped_column(String(64))
-    is_error: Mapped[bool] = mapped_column(Boolean, default=False)
-    model: Mapped[str] = mapped_column(String(80), default="")
-    skills: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)  # skill id -> version in this turn
-    replay: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
-
-
-class ActionLog(Scoped, Base):
-    """Append-only, hash-chained (actionlog/chain.py, issue #113). Hashes and names only, never content."""
-
-    __tablename__ = "action_log"
-    __table_args__ = (UniqueConstraint("agent_id", "seq", name="uq_action_log_seq"),)
-
-    seq: Mapped[int] = mapped_column(Integer)
-    prev_hash: Mapped[str] = mapped_column(String(64))
-    entry_hash: Mapped[str] = mapped_column(String(64))
-    kind: Mapped[str] = mapped_column(String(12))  # call | executed
-    tool: Mapped[str] = mapped_column(String(64))
-    effect: Mapped[str] = mapped_column(String(20))
-    args_hash: Mapped[str] = mapped_column(String(64), default="")
-    result_hash: Mapped[str] = mapped_column(String(64), default="")
-    approval_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
-    turn_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
-    at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-
-
-class Mandate(Scoped, Base):
-    """A mandate card the owner signed (issue #112): the token, the card text, and how often it was used."""
-
-    __tablename__ = "mandate"
-
-    token: Mapped[str] = mapped_column(Text)
-    card: Mapped[str] = mapped_column(Text)
-    status: Mapped[str] = mapped_column(String(12), default="active")  # active | revoked
-    uses: Mapped[int] = mapped_column(Integer, default=0)
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    # Delegation (#112): a child is its parent's token with more restrictions added. Revoking a parent revokes
-    # its children, and a child runs only while every ancestor is active, unexpired and not used up.
-    parent_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("mandate.id"), nullable=True, index=True)
-    label: Mapped[str] = mapped_column(String(120), default="", server_default="")
-
-
-class McpPin(Scoped, Base):
-    """The hash and text of one MCP tool as the owner approved it (issue #116)."""
-
-    __tablename__ = "mcp_pin"
-    __table_args__ = (UniqueConstraint("agent_id", "skill_id", "server", "tool", name="uq_mcp_pin"),)
-
-    skill_id: Mapped[str] = mapped_column(String(120))
-    server: Mapped[str] = mapped_column(String(300))
-    tool: Mapped[str] = mapped_column(String(64))
-    hash: Mapped[str] = mapped_column(String(64))
-    snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
-    approved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-
-
-class IdentityClaim(Scoped, Base):
-    """An unknown account whose name is a known person's name, and the owner's answer (issue #93)."""
-
-    __tablename__ = "identity_claim"
-    __table_args__ = (UniqueConstraint("agent_id", "identity_id", name="uq_identity_claim_identity"),)
-
-    identity_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("channel_identity.id", ondelete="CASCADE"), index=True)
-    matched_person_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("person.id"), nullable=True)
-    claimed_name: Mapped[str] = mapped_column(String(80), default="")
-    # What the platform told us and the first message (display name, channel, user id, handle, phone if
-    # supplied, time, excerpt). Never model output.
-    facts: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
-    status: Mapped[str] = mapped_column(String(12), default="open")  # open | linked | new_person | stranger | blocked
-    asks: Mapped[int] = mapped_column(Integer, default=1)
-    notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    decided_by: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
 
 class AuditLog(Scoped, Base):
@@ -571,81 +107,6 @@ class AuditLog(Scoped, Base):
     detail: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
 
 
-class SpendEntry(Scoped, Base):
-    """One model call: reserved before the call, settled after it."""
-
-    __tablename__ = "spend_ledger"
-
-    provider: Mapped[str] = mapped_column(String(40), default="anthropic", server_default="anthropic")
-    # Who paid for the model: the owner's own key, or the platform's (ADR 0009 T6).
-    key_source: Mapped[str] = mapped_column(String(20), default="owner", server_default="owner")
-    purpose: Mapped[str] = mapped_column(String(40))
-    model: Mapped[str] = mapped_column(String(60))
-    status: Mapped[str] = mapped_column(String(20), default="reserved")  # reserved | settled | failed
-    reserved_usd: Mapped[Decimal] = mapped_column(Numeric(12, 6), default=Decimal(0))
-    cost_usd: Mapped[Decimal] = mapped_column(Numeric(12, 6), default=Decimal(0))
-    input_tokens: Mapped[int] = mapped_column(Integer, default=0)
-    output_tokens: Mapped[int] = mapped_column(Integer, default=0)
-    cache_read_tokens: Mapped[int] = mapped_column(Integer, default=0)
-    cache_write_tokens: Mapped[int] = mapped_column(Integer, default=0)
-    request_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    settled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-
-
-class OwnerModelPrice(Scoped, Base):
-    """A price the owner set for a model Superaide has no built-in price for (US$ per million tokens)."""
-
-    __tablename__ = "owner_model_price"
-    __table_args__ = (UniqueConstraint("agent_id", "provider", "model", name="uq_owner_model_price"),)
-
-    provider: Mapped[str] = mapped_column(String(40))
-    model: Mapped[str] = mapped_column(String(120))
-    input_usd_per_mtok: Mapped[Decimal] = mapped_column(Numeric(12, 6), default=Decimal(0))
-    output_usd_per_mtok: Mapped[Decimal] = mapped_column(Numeric(12, 6), default=Decimal(0))
-    cache_read_mult: Mapped[Decimal] = mapped_column(Numeric(8, 4), default=Decimal(1))
-    set_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user_account.id"), nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
-    )
-
-
-class LlmProvider(Scoped, Base):
-    """A model provider the owner connected for this Ava (ADR 0007). Its key is in the vault
-    (integration_secret, provider "llm:<key>"), never here."""
-
-    __tablename__ = "llm_provider"
-    __table_args__ = (UniqueConstraint("agent_id", "key", name="uq_llm_provider_key"),)
-
-    # This endpoint's own name: the preset for the first one, e.g. "custom-2" for another. Roles,
-    # prices, the ledger and the vault slot (llm:<key>) all use it.
-    key: Mapped[str] = mapped_column(String(24))
-    preset: Mapped[str] = mapped_column(
-        String(20)
-    )  # openai | azure | openrouter | xai | gemini | ollama | vllm | custom
-    base_url: Mapped[str] = mapped_column(String(300), default="")
-    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
-    meta: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)  # e.g. models seen at the last check
-    set_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user_account.id"), nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
-    )
-
-
-class ModelRole(Scoped, Base):
-    """Which provider and model this Ava uses for a kind of work: chat, triage or deep."""
-
-    __tablename__ = "model_role"
-    __table_args__ = (UniqueConstraint("agent_id", "role", name="uq_model_role"),)
-
-    role: Mapped[str] = mapped_column(String(10))  # chat | triage | deep
-    provider: Mapped[str] = mapped_column(String(20))  # anthropic, or an llm_provider preset
-    model: Mapped[str] = mapped_column(String(120))
-    set_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user_account.id"), nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
-    )
-
-
 # --- User accounts and sessions ----------------------------------------------------
 
 
@@ -662,173 +123,7 @@ class TenantScoped:
 EMAIL_MATCH_SQL = "octet_length(email) <> char_length(email) OR email_normalized = lower(btrim(email))"
 
 
-class UserAccount(TenantScoped, Base):
-    """Someone who can sign in to the app. Passwords are stored only as Argon2id hashes.
-
-    Each account is tied to one Person: the same human as seen by the agents, so
-    the app, Telegram and Slack all resolve to one record.
-    """
-
-    __tablename__ = "user_account"
-    # Accounts are platform-wide: one sign-in for every agent the person hires (ADR 0009).
-    __table_args__ = (
-        UniqueConstraint("email_normalized", name="uq_user_email"),
-        UniqueConstraint("google_sub", name="uq_user_google_sub"),
-        # The two email columns can't drift apart (a hand edit of one once broke a sign-in rule): for
-        # plain ASCII addresses, which is nearly all of them, the normalized one must be the address
-        # lower-cased. Non-ASCII addresses are normalized in code (auth/service.normalize_email).
-        CheckConstraint(EMAIL_MATCH_SQL, name="ck_user_email_normalized"),
-    )
-
-    email: Mapped[str] = mapped_column(String(320))
-    email_normalized: Mapped[str] = mapped_column(String(320))
-    password_hash: Mapped[str] = mapped_column(String(255))  # "" when the account signs in with Google only
-    # Google's stable account id ("sub"), once the account has signed in with Google. The account is
-    # found by this, never by email alone: a Google account's address can change or be reused.
-    google_sub: Mapped[str | None] = mapped_column(String(255), nullable=True)
-
-    @validates("email")
-    def _keep_normalized(self, _key: str, value: str) -> str:
-        """Setting the address always sets its normalized form too."""
-        from superaide.identity.auth.service import AuthError, normalize_email
-
-        try:
-            self.email_normalized = normalize_email(value)
-        except AuthError:
-            self.email_normalized = value.strip().lower()
-        return value
-
-    display_name: Mapped[str] = mapped_column(String(120))
-    # The account's own Person inside the Ava it hired; none until it hires (a Person belongs to one
-    # agent instance, and an account that has not hired belongs to none).
-    person_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("person.id"), unique=True, nullable=True)
-    role: Mapped[str] = mapped_column(String(20), default="user")  # user | admin
-    status: Mapped[str] = mapped_column(String(20), default="active")  # active | disabled
-    timezone: Mapped[str] = mapped_column(String(64), default="UTC")  # set from the browser at sign-up
-    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    failed_logins: Mapped[int] = mapped_column(Integer, default=0)
-    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    password_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
-    )
-
-
-class UserSession(TenantScoped, Base):
-    """One signed-in browser. The cookie holds a random token; only its SHA-256 is stored."""
-
-    __tablename__ = "user_session"
-
-    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("user_account.id"), index=True)
-    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    user_agent: Mapped[str] = mapped_column(String(300), default="")
-    ip: Mapped[str] = mapped_column(String(64), default="")
-
-
-class AuthEvent(TenantScoped, Base):
-    """Append-only record of sign-ups, logins, failures and logouts (rate limits read it)."""
-
-    __tablename__ = "auth_event"
-
-    kind: Mapped[str] = mapped_column(String(30), index=True)  # signup | login_ok | login_fail | logout | ...
-    user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user_account.id"), nullable=True)
-    email_normalized: Mapped[str] = mapped_column(String(320), default="", index=True)
-    ip: Mapped[str] = mapped_column(String(64), default="", index=True)
-    user_agent: Mapped[str] = mapped_column(String(300), default="")
-
-
-class AccountAudit(Base):
-    """Append-only record of events about an account that belongs to no Ava (yet): sign-up, e-mail checks,
-    password changes before the first hire. Platform-level, so it has no agent_id and no isolation policy;
-    once the account hires, the same kind of line goes to its own Ava's audit_log (superaide.platform.audit)."""
-
-    __tablename__ = "account_audit"
-
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
-    actor: Mapped[str] = mapped_column(String(100))
-    action: Mapped[str] = mapped_column(String(60), index=True)
-    detail: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now()
-    )
-
-
-class AgentHire(TenantScoped, Base):
-    """Which account hired which agent, and the notice they agreed to. One active hire per agent."""
-
-    __tablename__ = "agent_hire"
-    __table_args__ = (
-        Index(
-            "uq_agent_hire_active", "tenant_id", "agent_slug", unique=True, postgresql_where=text("status = 'active'")
-        ),
-    )
-
-    agent_slug: Mapped[str] = mapped_column(String(40))
-    owner_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("user_account.id"), index=True)
-    status: Mapped[str] = mapped_column(String(20), default="active")  # active | ended
-    notice: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
-    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-
-
 # --- Connections (encrypted third-party credentials) --------------------------------
-
-
-class IntegrationSecret(TenantScoped, Base):
-    """One credential for a connected service, encrypted (see superaide.identity.vault).
-    The plaintext never leaves the server; the app only ever shows `hint`.
-    Each hired Ava has its own (ADR 0009 T3): the instance is part of the encryption's
-    associated data, so a ciphertext copied to another instance won't decrypt."""
-
-    __tablename__ = "integration_secret"
-    __table_args__ = (UniqueConstraint("agent_id", "provider", "name", name="uq_integration_secret_slot"),)
-
-    agent_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), default=_agent, index=True)
-    # "instance": sealed with the instance in its associated data; "legacy": sealed before that (resealed on use).
-    aad: Mapped[str] = mapped_column(String(10), default="instance", server_default="instance")
-
-    provider: Mapped[str] = mapped_column(String(30))  # anthropic | telegram | slack
-    name: Mapped[str] = mapped_column(String(40))  # api_key | bot_token | app_token | team_id
-    ciphertext: Mapped[str] = mapped_column(Text)
-    hint: Mapped[str] = mapped_column(String(40), default="")  # masked, e.g. sk-ant-…4f2a
-    meta: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)  # e.g. the bot's @username
-    set_by_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("user_account.id"), nullable=True)
-    validated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
-    )
-
-
-class Onboarding(Scoped, Base):
-    """Where the person is in the agent's onboarding conversation."""
-
-    __tablename__ = "onboarding"
-
-    person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), unique=True)
-    step: Mapped[str] = mapped_column(String(30), default="hello")
-    answers: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-
-
-class ChannelInvite(Scoped, Base):
-    """A one-time link made in the signed-in app, opened in Telegram to connect it."""
-
-    __tablename__ = "channel_invite"
-
-    person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"))
-    provider: Mapped[str] = mapped_column(String(20))
-    code_hash: Mapped[str] = mapped_column(String(64), unique=True)
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    used_by_identity_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("channel_identity.id"), nullable=True)
-    # The bot it was made for: opened through any other bot, it is refused. "" = any (older invites).
-    endpoint_key: Mapped[str] = mapped_column(String(200), default="", server_default="")
-    # A confirm-this-bot invite works only for the account that was waiting to be confirmed.
-    for_identity_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("channel_identity.id"), nullable=True)
 
 
 class AgentState(Base):
@@ -845,191 +140,89 @@ class AgentState(Base):
     )
 
 
-class Job(Scoped, Base):
-    """Background work: reminders, follow-ups, digests, the nightly memory job.
-
-    Workers claim due rows with FOR UPDATE SKIP LOCKED, so two workers never run the
-    same job, and `dedupe_key` makes enqueueing the same thing twice a no-op.
-    """
-
-    __tablename__ = "job"
-    __table_args__ = (
-        Index("ix_job_due", "status", "run_at"),
-        UniqueConstraint("agent_id", "dedupe_key", name="uq_job_dedupe"),
-    )
-
-    kind: Mapped[str] = mapped_column(String(40), index=True)
-    payload: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
-    run_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    # queued | running | done | failed | cancelled
-    status: Mapped[str] = mapped_column(String(12), default="queued")
-    attempts: Mapped[int] = mapped_column(Integer, default=0)
-    max_attempts: Mapped[int] = mapped_column(Integer, default=5)
-    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
-    locked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    dedupe_key: Mapped[str | None] = mapped_column(String(200), nullable=True)  # unique per instance
-
-
-class Intention(Scoped, Base):
-    """Something the owner wants to remember to do: a reminder or a follow-up.
-
-    Prospective memory: it comes back at the right moment (a time today; later also
-    a cue, such as the person messaging). Delivery runs as a job keyed on the
-    intention and its due time, so it is sent once even if scheduled twice.
-    """
-
-    __tablename__ = "intention"
-    __table_args__ = (Index("ix_intention_owner_status_due", "owner_person_id", "status", "due_at"),)
-
-    owner_person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"))
-    kind: Mapped[str] = mapped_column(String(20), default="reminder")  # reminder | follow_up
-    text: Mapped[str] = mapped_column(Text)
-    due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    timezone: Mapped[str] = mapped_column(String(64), default="UTC")
-    status: Mapped[str] = mapped_column(String(12), default="open")  # open | done | cancelled
-    source: Mapped[str] = mapped_column(String(20), default="chat")  # chat | dashboard
-    source_event_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("event.id"), nullable=True)
-    # Where it is delivered besides the app: default (the owner's interruption choice) | app | telegram | slack
-    channel: Mapped[str] = mapped_column(String(12), default="default", server_default="default")
-    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    delivered_via: Mapped[list[str]] = mapped_column(ARRAY(String(20)), default=list)
-    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-
-
-class JournalSetting(Scoped, Base):
-    """Whether this owner keeps a decision journal ("Ava keeps score"). Off until the owner turns it on."""
-
-    __tablename__ = "journal_setting"
-
-    owner_person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), unique=True)
-    enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
-    enabled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-
-
-class Prediction(Scoped, Base):
-    """Something the owner said they expect, with how sure they were, so it can be checked later.
-
-    Always the owner's own words (`quote` is verified against their message in code). Private to the owner;
-    scoring is arithmetic over these rows (journal/score.py), never a model's opinion."""
-
-    __tablename__ = "prediction"
-    __table_args__ = (Index("ix_prediction_owner_status", "owner_person_id", "status"),)
-
-    owner_person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"))
-    statement: Mapped[str] = mapped_column(Text)
-    quote: Mapped[str] = mapped_column(Text, default="")  # the owner's own words that this came from
-    reason: Mapped[str] = mapped_column(Text, default="")
-    topic: Mapped[str] = mapped_column(String(20), default="other")  # timeline | people | money | work | other
-    confidence_pct: Mapped[int] = mapped_column(Integer)  # 50..99: how sure the owner was
-    confidence_inferred: Mapped[bool] = mapped_column(Boolean, default=False)  # from hedging words, not a number
-    due_on: Mapped[date | None] = mapped_column(Date, nullable=True)
-    source: Mapped[str] = mapped_column(String(12), default="manual")  # chat | manual
-    source_event_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("event.id", ondelete="SET NULL"), nullable=True
-    )
-    status: Mapped[str] = mapped_column(String(10), default="open")  # open | resolved
-    came_true: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
-    resolution_note: Mapped[str] = mapped_column(Text, default="")
-    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-
-
-class MirrorSetting(Scoped, Base):
-    """Whether this owner gets "The Mirror" (a weekly note of patterns with receipts), and what they muted."""
-
-    __tablename__ = "mirror_setting"
-
-    owner_person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), unique=True)
-    enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
-    # "Don't mention this again": exact patterns the owner muted (a pattern key names the thing, not the week).
-    muted_patterns: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
-    # "Not useful" taps per kind of pattern; a kind with two stops being shown.
-    not_useful: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
-
-
-class MirrorNote(Scoped, Base):
-    """One week's note: up to three findings, each with the rows it was counted from."""
-
-    __tablename__ = "mirror_note"
-    __table_args__ = (UniqueConstraint("owner_person_id", "week_start", name="uq_mirror_note_week"),)
-
-    owner_person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), index=True)
-    week_start: Mapped[date] = mapped_column(Date)
-    findings: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list)
-
-
-class InstalledSkill(Scoped, Base):
-    """A skill the owner installed, with the permissions they agreed to. A newer version that
-    asks for more must be agreed to again; until then the old grant is what's enforced."""
-
-    __tablename__ = "installed_skill"
-    __table_args__ = (UniqueConstraint("agent_id", "skill_id", name="uq_installed_skill"),)
-
-    skill_id: Mapped[str] = mapped_column(String(120))
-    version: Mapped[str] = mapped_column(String(40))
-    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
-    granted: Mapped[list[str]] = mapped_column(ARRAY(String(30)), default=list)
-    settings: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
-    removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-
-
-class SkillRelease(Scoped, Base):
-    """When one version of a skill was released and how risky it is (issue #129). The cooldown counts from
-    `released_at`, which is set once and never moves; `effect_class` is the highest effect the version can have."""
-
-    __tablename__ = "skill_release"
-    __table_args__ = (UniqueConstraint("agent_id", "skill_id", "version", name="uq_skill_release"),)
-
-    skill_id: Mapped[str] = mapped_column(String(120), index=True)
-    version: Mapped[str] = mapped_column(String(40))
-    effect_class: Mapped[str] = mapped_column(String(20))
-    earned_tier: Mapped[str] = mapped_column(String(12), default="none")  # none | reviewed: shortens the wait
-    released_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    patch_signature: Mapped[str | None] = mapped_column(
-        String(64), nullable=True
-    )  # reviewer HMAC; see skills/cooldown.py
-
-
-class SkillTombstone(Scoped, Base):
-    """A retired skill name. It is never issued again, to anyone (issue #129)."""
-
-    __tablename__ = "skill_tombstone"
-    __table_args__ = (UniqueConstraint("agent_id", "skill_id", name="uq_skill_tombstone"),)
-
-    skill_id: Mapped[str] = mapped_column(String(120))
-    reason: Mapped[str] = mapped_column(String(200), default="")
-    retired_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-
-
-class CalendarWatch(Scoped, Base):
-    """One Google Calendar push channel (events.watch) on an owner's primary calendar. Google calls
-    the webhook with the channel's token when events change; see proactive/calendar_watch.py."""
-
-    __tablename__ = "calendar_watch"
-    __table_args__ = (UniqueConstraint("channel_id", name="uq_calendar_watch_channel"),)
-
-    owner_person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), index=True)
-    channel_id: Mapped[str] = mapped_column(String(64))  # starts with the instance id; see calendar_watch.py
-    resource_id: Mapped[str] = mapped_column(String(200), default="")
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    status: Mapped[str] = mapped_column(String(10), default="active")  # active | stopped | expired
-
-
 # Tables defined in their own modules, imported here so every user of Base (Alembic,
 # the tests' create_all) sees them.
+from superaide.actionlog import models as _actionlog_models  # noqa: E402, F401
+from superaide.approvals import models as _approvals_models  # noqa: E402, F401
 from superaide.asklink import models as _asklink_models  # noqa: E402, F401
+from superaide.brain import models as _brain_models  # noqa: E402, F401
 from superaide.features.brainshare import models as _brainshare_models  # noqa: E402, F401
 from superaide.features.imports import models as _imports_models  # noqa: E402, F401
+from superaide.features.journal import models as _features_journal_models  # noqa: E402, F401
 from superaide.features.memsocket import models as _memsocket_models  # noqa: E402, F401
+from superaide.features.mirror import models as _features_mirror_models  # noqa: E402, F401
 from superaide.features.push import models as _push_models  # noqa: E402, F401
 from superaide.features.rehearsal import models as _rehearsal_models  # noqa: E402, F401
 from superaide.features.school import models as _school_models  # noqa: E402, F401
+from superaide.identity import models as _identity_models  # noqa: E402, F401
 from superaide.identity.auth import models as _auth_models  # noqa: E402, F401
 from superaide.identity.principal import models as _principal_models  # noqa: E402, F401
-from superaide.jobs import claim as _job_claim  # noqa: E402, F401  (the claim function, made after the job table)
+from superaide.integrations.calendar import models as _integrations_calendar_models  # noqa: E402, F401
+from superaide.intentions import models as _intentions_models  # noqa: E402, F401
+from superaide.jobs import models as _jobs_models  # noqa: E402, F401
+from superaide.mandate import models as _mandate_models  # noqa: E402, F401
+from superaide.mcp import models as _mcp_models  # noqa: E402, F401
+from superaide.memory import models as _memory_models  # noqa: E402, F401
 from superaide.platform.tenancy import models as _tenancy_models  # noqa: E402, F401
 from superaide.reception import models as _reception_models  # noqa: E402, F401
 from superaide.skills import models as _skills_models  # noqa: E402, F401
 from superaide.tooltrace import models as _tooltrace_models  # noqa: E402, F401
 from superaide.triage import models as _triage_models  # noqa: E402, F401
 from superaide.trust import models as _trust_models  # noqa: E402, F401
+
+# Where each table class lives now (ADR 0015 phase 7). `from superaide.platform.db.models import Person` keeps
+# working for one release through this lazy lookup; new code imports from the owning module.
+_MOVED = {
+    "AccountAudit": "superaide.identity.auth.models",
+    "ActionLog": "superaide.actionlog.models",
+    "AgentHire": "superaide.identity.auth.models",
+    "Approval": "superaide.approvals.models",
+    "AuthEvent": "superaide.identity.auth.models",
+    "CalendarWatch": "superaide.integrations.calendar.models",
+    "ChannelIdentity": "superaide.identity.models",
+    "ChannelInvite": "superaide.identity.models",
+    "ConsolidationRun": "superaide.memory.models",
+    "Contact": "superaide.memory.models",
+    "Context": "superaide.memory.models",
+    "Document": "superaide.memory.models",
+    "DocumentChunk": "superaide.memory.models",
+    "Episode": "superaide.memory.models",
+    "Event": "superaide.memory.models",
+    "IdentityClaim": "superaide.identity.models",
+    "IdentityLinkEvent": "superaide.identity.models",
+    "InstalledSkill": "superaide.skills.models",
+    "IntegrationSecret": "superaide.identity.auth.models",
+    "Intention": "superaide.intentions.models",
+    "Job": "superaide.jobs.models",
+    "JournalSetting": "superaide.features.journal.models",
+    "LinkChallenge": "superaide.identity.models",
+    "LlmProvider": "superaide.brain.models",
+    "Mandate": "superaide.mandate.models",
+    "McpPin": "superaide.mcp.models",
+    "MemoryImport": "superaide.memory.models",
+    "MemoryItem": "superaide.memory.models",
+    "MemoryOrigin": "superaide.memory.models",
+    "MirrorNote": "superaide.features.mirror.models",
+    "MirrorSetting": "superaide.features.mirror.models",
+    "ModelRole": "superaide.brain.models",
+    "Onboarding": "superaide.memory.models",
+    "OwnerModelPrice": "superaide.brain.models",
+    "OwnerPreference": "superaide.memory.models",
+    "Person": "superaide.identity.models",
+    "Prediction": "superaide.features.journal.models",
+    "SkillRelease": "superaide.skills.models",
+    "SkillTombstone": "superaide.skills.models",
+    "SpendEntry": "superaide.brain.models",
+    "ToolTrace": "superaide.tooltrace.models",
+    "UserAccount": "superaide.identity.auth.models",
+    "UserSession": "superaide.identity.auth.models",
+}
+
+
+def __getattr__(name: str) -> Any:
+    home = _MOVED.get(name)
+    if home is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    import importlib
+
+    return getattr(importlib.import_module(home), name)

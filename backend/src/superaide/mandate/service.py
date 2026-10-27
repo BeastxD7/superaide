@@ -18,9 +18,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.mandate import token as tk
+from superaide.mandate.models import Mandate
 from superaide.platform.audit import audit
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import Mandate
 from superaide.platform.tenancy.context import scope_or_default
 
 NEVER_UNSUPERVISED = {"send", "spend"}
@@ -240,7 +240,7 @@ def shadow_report(session: Session, *, days: int = 30) -> dict[str, Any]:
     """Of the approvals asked in the last `days`, how many a mandate would have covered (the prompts saved)."""
     from datetime import timedelta
 
-    from superaide.platform.db.models import Approval
+    from superaide.approvals.models import Approval
 
     since = datetime.now(UTC) - timedelta(days=days)
     total = covered = measured = 0
@@ -291,7 +291,7 @@ def shadow_days(session: Session, *, now: datetime | None = None) -> int:
     """How many whole days ago the shadow check first recorded an approval (0 when it never has)."""
     from sqlalchemy import func
 
-    from superaide.platform.db.models import Approval
+    from superaide.approvals.models import Approval
 
     first = session.scalar(select(func.min(Approval.created_at)).where(Approval.payload.has_key("mandate_shadow")))
     if first is None:

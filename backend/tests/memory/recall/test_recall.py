@@ -5,9 +5,9 @@ from __future__ import annotations
 import pytest
 
 from superaide.memory.audience import Audience
+from superaide.memory.models import Context, Event, MemoryItem
 from superaide.memory.recall import lexicon
 from superaide.memory.recall.retrieval import pre_recall, recall
-from superaide.platform.db.models import Context, Event, MemoryItem
 from superaide.platform.db.session import session_scope
 
 

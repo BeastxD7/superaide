@@ -12,8 +12,9 @@ from sqlalchemy import event, select, text
 from sqlalchemy.dialects import postgresql
 
 from superaide.app.accounts import owner as hired_owner
+from superaide.identity.models import ChannelIdentity, Person
 from superaide.main import create_app
-from superaide.platform.db.models import ChannelIdentity, Contact, Person
+from superaide.memory.models import Contact
 from superaide.platform.db.session import get_engine, session_scope
 from superaide.platform.pagination import SortKey, bind_for, encode_cursor, page_query
 

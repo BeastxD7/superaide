@@ -22,13 +22,16 @@ import pytest
 from sqlalchemy import select
 
 from superaide.brain.llm import FakeLLM
+from superaide.brain.models import SpendEntry
 from superaide.brain.spend.budget import BudgetGuard
 from superaide.brain.spend.pricing import UsageCounts
 from superaide.channels.base import FakeMessenger
+from superaide.identity.models import Person
 from superaide.main import create_app
+from superaide.memory.models import Event, MemoryItem
 from superaide.pipeline import Agent
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import Base, Event, MemoryItem, Person, Scoped, SpendEntry
+from superaide.platform.db.models import Base, Scoped
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import all_instances, scope_or_default
 from tests.api_support import OTHER, OWNER, hire, signup

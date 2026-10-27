@@ -13,7 +13,7 @@ from sqlalchemy.dialects import postgresql
 
 from superaide.app.accounts import owner as hired_owner
 from superaide.main import create_app
-from superaide.platform.db.models import MemoryItem
+from superaide.memory.models import MemoryItem
 from superaide.platform.db.session import session_scope
 from superaide.platform.pagination import SortKey, bind_for, encode_cursor, page_query
 

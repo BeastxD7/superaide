@@ -93,6 +93,16 @@ Backend tests selected of 236, `select_tests.py --changed <file>`:
 
 Whole packages moved: `auth/` (accounts, sign-in, step-up), `vault/` (credentials) and `principal/` (the AI-disclosure card and signature) are now `identity/auth`, `identity/vault` and `identity/principal`, beside the resolver, linking and claims; their backend tests followed (`tests/identity/{auth,vault,principal}`). `ci/modules.toml` keeps four modules (`identity` for the top-level files, plus `auth`, `vault` and `principal`) so selection is identical to before (resolver 185, principal card 116, passwords 223, vault store 190 of 236). e2e specs did not move: a deeper folder would break their relative imports. `CODEOWNERS` follows for `auth/` and `vault/` (the tool cannot see the leading slash). `alembic upgrade head && alembic check` on a fresh database is clean, so no model or migration is affected.
 
+### Phase 7 (2026-10-27): `platform/db/models.py` split per module
+
+43 of the 48 table classes moved out of the 1,035-line `platform/db/models.py` to the `models.py` of the module that owns them (`identity`, `memory`, `approvals`, `mandate`, `tooltrace`, `actionlog`, `mcp`, `brain`, `identity/auth`, `jobs`, `intentions`, `features/journal`, `features/mirror`, `skills`, `integrations/calendar`). `platform/db/models.py` keeps `Base`, `Scoped`, `TenantScoped`, the instance-scope listener, `AuditLog` (every module audits) and `AgentState`, and imports every home so the metadata still sees every table. About 320 files had their `from superaide.platform.db.models import ...` rewritten to one import per home (`scripts/codemod_models.py`, idempotent, with tests).
+
+**Proof that nothing about the schema changed:** the PostgreSQL DDL of every table and index (330 statements, 87 tables) is byte-for-byte identical before and after (`CreateTable` and `CreateIndex` compiled for the postgresql dialect and compared), and `alembic upgrade head && alembic check` on a fresh database reports no new upgrade operations. No migration is expected or included.
+
+**Compatibility for one release:** `from superaide.platform.db.models import Person` and `from superaide.platform.db import Person` still work, through a module `__getattr__` that looks the name up in the table of homes. `platform/db/__init__.py` no longer imports the tables at import time (it did, and with the tables spread over modules that is an import cycle: the first import of any home module must never depend on another home being finished). Every `models` module, imported first in a fresh interpreter, imports cleanly (30 entry points tested).
+
+**What this does not do for CI.** `ci/modules.toml` still runs everything when any `models.py` changes (`[full]`), because a model change can change the schema every test builds. The point of the split is ownership and readability; narrowing that rule is a separate decision (it is the kind of rule the selection audit, #520, can judge).
+
 ## Decision
 
 Organise the backend as a modular monolith, package by feature (Django apps, NestJS modules, bulletproof-react features). One folder per feature or integration owns everything about it: code, its types, its routes, its models, its tests. Four rules:

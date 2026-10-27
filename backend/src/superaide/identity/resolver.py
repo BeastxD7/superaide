@@ -10,9 +10,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from superaide.channels.base import InboundMessage
+from superaide.identity.models import ChannelIdentity, Person
 from superaide.identity.trust import Trust
 from superaide.platform.audit import audit
-from superaide.platform.db.models import ChannelIdentity, Person
 
 # Channels whose links are bound to the endpoint (bot or app) that confirmed them.
 BOUND_PROVIDERS = ("telegram", "slack")

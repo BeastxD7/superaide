@@ -17,7 +17,7 @@ import pytest
 from sqlalchemy import func, select
 
 from superaide.memory.knowledge import extract
-from superaide.platform.db.models import Document, Event, MemoryItem
+from superaide.memory.models import Document, Event, MemoryItem
 from superaide.platform.db.session import session_scope
 from tests.memory.knowledge.test_extract import PUBLIC_IP, encrypt_pdf, html_response, make_pdf, save_docx
 

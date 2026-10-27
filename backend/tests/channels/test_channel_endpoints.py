@@ -21,8 +21,8 @@ from superaide.channels import runner as runner_mod
 from superaide.channels import telegram
 from superaide.identity.vault import crypto, store
 from superaide.main import create_app
+from superaide.memory.models import Event
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import Event
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy import endpoints
 from superaide.platform.tenancy.context import InstanceScope, current_scope, use_instance

@@ -9,6 +9,7 @@ from decimal import Decimal
 import pytest
 from sqlalchemy import select
 
+from superaide.brain.models import SpendEntry
 from superaide.brain.spend.budget import BudgetGuard
 from superaide.brain.spend.pricing import (
     FREE,
@@ -21,7 +22,7 @@ from superaide.brain.spend.pricing import (
     set_owner_price,
     worst_case_cost,
 )
-from superaide.platform.db.models import AuditLog, SpendEntry
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
 
 

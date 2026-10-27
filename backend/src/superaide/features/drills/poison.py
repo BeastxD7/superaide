@@ -17,10 +17,11 @@ from dataclasses import dataclass, field
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
+from superaide.identity.models import Person
 from superaide.memory.audience import Audience
 from superaide.memory.knowledge.store import remember_fact
+from superaide.memory.models import MemoryItem
 from superaide.memory.recall.retrieval import Source, recall_memories
-from superaide.platform.db.models import MemoryItem, Person
 
 PREFIX = "HT"  # every honeytoken starts HT-<drill>-
 # channel -> the memory `source` a fact from it would carry today

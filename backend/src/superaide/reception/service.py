@@ -28,9 +28,10 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from superaide.channels.base import InboundMessage
+from superaide.identity.models import Person
 from superaide.identity.resolver import Sender
+from superaide.memory.models import Context, Event
 from superaide.platform.audit import audit
-from superaide.platform.db.models import Context, Event, Person
 from superaide.reception import turn as rturn
 from superaide.reception.models import ReceptionMessage, ReceptionSettings
 

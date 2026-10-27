@@ -8,11 +8,13 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
+from superaide.approvals.models import Approval
+from superaide.identity.models import Person
 from superaide.identity.resolver import Sender
 from superaide.identity.trust import Trust
 from superaide.mandate import service
+from superaide.mandate.models import Mandate
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import Approval, Mandate, Person
 from superaide.platform.db.session import session_scope
 from superaide.policy import actions
 from superaide.policy.actions import TOOL_RULES

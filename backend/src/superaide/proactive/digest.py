@@ -22,15 +22,19 @@ from sqlalchemy.orm import Session
 
 from superaide.app.accounts import owner as hired_owner
 from superaide.approvals.binding import waiting as waiting_clause
+from superaide.approvals.models import Approval
+from superaide.identity.models import Person
 from superaide.integrations.calendar import skill as calendar
 from superaide.integrations.google.client import event_text
+from superaide.intentions.models import Intention
 from superaide.intentions.service import owner_zone
 from superaide.intentions.when import zone
+from superaide.jobs.models import Job
 from superaide.jobs.queue import enqueue, handler
 from superaide.memory.audience import Audience, memory_filter
 from superaide.memory.knowledge.store import preferences_for
+from superaide.memory.models import MemoryItem
 from superaide.platform.audit import audit
-from superaide.platform.db.models import Approval, Intention, Job, MemoryItem, Person
 from superaide.platform.db.session import require, session_scope
 from superaide.proactive import prep
 from superaide.proactive.notify import notify_owner

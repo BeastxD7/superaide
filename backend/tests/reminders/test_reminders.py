@@ -9,11 +9,14 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
+from superaide.identity.models import ChannelIdentity, Person
+from superaide.intentions.models import Intention
 from superaide.intentions.when import parse_reminder, zone
 from superaide.jobs.handlers import load
+from superaide.jobs.models import Job
 from superaide.jobs.queue import run_due
 from superaide.main import create_app
-from superaide.platform.db.models import ChannelIdentity, Event, Intention, Job, OwnerPreference, Person
+from superaide.memory.models import Event, OwnerPreference
 from superaide.platform.db.session import session_scope
 
 PASSWORD = "correct horse battery"
@@ -257,7 +260,7 @@ def test_the_code_only_reader_cleans_the_task(text: str, task: str, minutes: int
 def test_a_reminder_set_without_the_model_is_on_record_for_the_next_turn(owner):
     # Live eval: after the code-only reader set a reminder, the model saw no tool record and doubted it.
     from superaide.brain.turn import tools_used
-    from superaide.platform.db.models import Event
+    from superaide.memory.models import Event
 
     owner.post("/app/chat", json={"text": "remind me to stretch at 5pm"})
     with session_scope() as s:

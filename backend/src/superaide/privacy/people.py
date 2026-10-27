@@ -8,7 +8,7 @@ import logging
 
 from sqlalchemy import select
 
-from superaide.platform.db.models import Person
+from superaide.identity.models import Person
 
 log = logging.getLogger(__name__)
 

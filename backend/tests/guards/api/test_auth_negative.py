@@ -9,8 +9,9 @@ import pytest
 from sqlalchemy import func, select, update
 
 from superaide.identity.auth import service
+from superaide.identity.auth.models import AuthEvent, UserAccount, UserSession
+from superaide.identity.models import Person
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import AuthEvent, Person, UserAccount, UserSession
 from superaide.platform.db.session import session_scope
 from tests.api_support import OTHER, OWNER, PASSWORD, app_routes, fill_path, login, signup
 

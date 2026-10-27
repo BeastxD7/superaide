@@ -26,10 +26,11 @@ from typing import Any
 from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
+from superaide.identity.auth.models import UserAccount
 from superaide.identity.auth.passwords import verify_password
 from superaide.platform.audit import account_audit
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import AgentState, UserAccount
+from superaide.platform.db.models import AgentState
 from superaide.platform.tenancy.context import scope_or_default
 from superaide.policy.killswitch import set_state
 

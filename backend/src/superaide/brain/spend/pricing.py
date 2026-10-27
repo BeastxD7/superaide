@@ -249,7 +249,7 @@ def owner_prices(session: Any) -> PriceRegistry:
     """A registry with the prices the owner set in the app."""
     from sqlalchemy import select
 
-    from superaide.platform.db.models import OwnerModelPrice
+    from superaide.brain.models import OwnerModelPrice
     from superaide.platform.tenancy.context import mine
 
     rows = session.scalars(select(OwnerModelPrice).where(mine(OwnerModelPrice))).all()
@@ -276,8 +276,8 @@ def set_owner_price(
     """Record the owner's price for a model. Negative prices are refused; 0 means the owner says it's free."""
     from sqlalchemy import select
 
+    from superaide.brain.models import OwnerModelPrice
     from superaide.platform.audit import audit
-    from superaide.platform.db.models import OwnerModelPrice
     from superaide.platform.tenancy.context import mine
 
     if min(input_usd_per_mtok, output_usd_per_mtok, cache_read_mult) < 0:

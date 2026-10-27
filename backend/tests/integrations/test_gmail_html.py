@@ -9,8 +9,8 @@ from email import policy as email_policy
 
 from sqlalchemy import select
 
+from superaide.approvals.models import Approval
 from superaide.integrations.gmail import client as api
-from superaide.platform.db.models import Approval
 from superaide.platform.db.session import session_scope
 from tests.integrations.gmail_fake import connect, gmail_fake_fixture, mail, owner_client_fixture  # noqa: F401
 from tests.integrations.test_gmail_compose import ARGS, ASK

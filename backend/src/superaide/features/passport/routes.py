@@ -18,7 +18,8 @@ from fastapi.responses import Response
 from superaide.app.deps import owner_person_id
 from superaide.features.passport import export, importer, schema
 from superaide.identity.auth.routes import reject_nul_text, require_csrf_header
-from superaide.platform.db.models import MemoryImport, Person
+from superaide.identity.models import Person
+from superaide.memory.models import MemoryImport
 from superaide.platform.db.session import require, session_scope
 
 

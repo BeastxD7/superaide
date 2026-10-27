@@ -7,8 +7,9 @@ from sqlalchemy import select
 
 from superaide.app.accounts import owner as hired_owner
 from superaide.approvals.binding import seal
+from superaide.approvals.models import Approval
 from superaide.memory.knowledge.store import preferences_for
-from superaide.platform.db.models import Approval, Event
+from superaide.memory.models import Event
 from superaide.platform.db.session import session_scope
 from superaide.policy.actions import resolve
 from tests.channels.test_channel_health import FakeBot, bot, link_telegram  # noqa: F401

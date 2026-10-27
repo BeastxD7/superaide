@@ -17,11 +17,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.brain import keyhealth
+from superaide.identity.models import Person
+from superaide.jobs.models import Job
 from superaide.jobs.queue import enqueue, handler
 from superaide.memory.knowledge.facts import extract_facts
 from superaide.memory.knowledge.store import channel_source, find_same_fact, remember_fact, supersede
+from superaide.memory.models import Context, Event, MemoryItem
 from superaide.platform.audit import audit
-from superaide.platform.db.models import Context, Event, Job, MemoryItem, Person
 
 log = logging.getLogger(__name__)
 

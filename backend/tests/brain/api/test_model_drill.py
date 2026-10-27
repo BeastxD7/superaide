@@ -5,8 +5,9 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import func, select
 
-from superaide.platform.db.models import Intention, ToolTrace
+from superaide.intentions.models import Intention
 from superaide.platform.db.session import session_scope
+from superaide.tooltrace.models import ToolTrace
 from tests.rehearsal.rehearsal_support import live_history, results_seen, switch
 
 OLD, NEW = "claude-haiku-5-5", "claude-sonnet-5-5"

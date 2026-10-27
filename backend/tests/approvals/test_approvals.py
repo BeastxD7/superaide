@@ -6,9 +6,10 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
+from superaide.approvals.models import Approval
 from superaide.brain.turn import RequestedAction
 from superaide.main import create_app
-from superaide.platform.db.models import Approval, AuditLog
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
 from tests.conftest import MANAGER_TG, tg
 

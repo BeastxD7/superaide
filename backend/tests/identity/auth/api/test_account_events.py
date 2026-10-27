@@ -11,7 +11,9 @@ import uuid
 
 from sqlalchemy import select, text
 
-from superaide.platform.db.models import AccountAudit, AuditLog, Person, UserAccount
+from superaide.identity.auth.models import AccountAudit, UserAccount
+from superaide.identity.models import Person
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import get_engine, session_scope
 from superaide.platform.tenancy.models import AgentInstance, InstanceMember
 from superaide.platform.tenancy.service import move_stray_account_data

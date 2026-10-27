@@ -12,8 +12,9 @@ import json
 import pytest
 from sqlalchemy import select
 
+from superaide.identity.auth.models import UserAccount
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import AuditLog, UserAccount
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import all_instances
 from superaide.platform.tenancy.models import InstanceMember

@@ -116,7 +116,7 @@ def test_flag_off_writes_nothing(monkeypatch):
 
 
 def test_an_approval_decision_writes_a_receipt(owner):
-    from superaide.platform.db.models import Approval
+    from superaide.approvals.models import Approval
     from superaide.policy.actions import resolve
 
     with session_scope() as s:

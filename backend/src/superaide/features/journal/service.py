@@ -12,10 +12,13 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from superaide.features.journal import extract, score
+from superaide.features.journal.models import JournalSetting, Prediction
+from superaide.identity.models import Person
+from superaide.jobs.models import Job
 from superaide.jobs.queue import enqueue, handler
+from superaide.memory.models import Event
 from superaide.memory.recall.lexicon import normalise
 from superaide.platform.audit import audit
-from superaide.platform.db.models import Event, Job, JournalSetting, Person, Prediction
 from superaide.platform.db.session import rows_affected
 
 log = logging.getLogger(__name__)

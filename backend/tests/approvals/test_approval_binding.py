@@ -10,10 +10,11 @@ from sqlalchemy import select
 
 from superaide.app.accounts import owner as hired_owner
 from superaide.approvals.binding import content_hash
+from superaide.approvals.models import Approval
 from superaide.integrations.gmail import client as api
 from superaide.integrations.gmail import skill as gmail
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import Approval, AuditLog
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
 from tests.integrations.gmail_fake import connect, gmail_fake_fixture, mail, owner_client_fixture  # noqa: F401  (fixtures)
 

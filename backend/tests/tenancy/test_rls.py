@@ -20,8 +20,12 @@ from sqlalchemy import Connection, select, text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session
 
+from superaide.brain.models import SpendEntry
+from superaide.identity.models import Person
+from superaide.jobs.models import Job
+from superaide.memory.models import MemoryItem
 from superaide.platform.db import rls
-from superaide.platform.db.models import AgentState, AuditLog, Base, Job, MemoryItem, Person, SpendEntry
+from superaide.platform.db.models import AgentState, AuditLog, Base
 from superaide.platform.db.roles import RoleError, ensure_app_role
 from superaide.platform.db.session import get_engine
 from superaide.platform.tenancy.context import InstanceScope, use_instance

@@ -13,9 +13,11 @@ import uuid
 import pytest
 from sqlalchemy import select
 
+from superaide.identity.auth.models import UserAccount
+from superaide.identity.models import Person
 from superaide.memory.knowledge.store import remember_fact
+from superaide.memory.models import Document, MemoryItem
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import Document, MemoryItem, Person, UserAccount
 from superaide.platform.db.session import session_scope
 from tests.api_support import OWNER, app_routes, fill_path, signup
 

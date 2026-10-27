@@ -34,13 +34,14 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from superaide.brain.spend.budget import BudgetExceeded
+from superaide.identity.models import Person
 from superaide.identity.trust import Trust
 from superaide.intentions.service import owner_zone
 from superaide.intentions.when import zone
 from superaide.jobs.queue import enqueue, handler
+from superaide.memory.models import ConsolidationRun, Context, Episode, Event, MemoryItem
 from superaide.platform.audit import audit
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import ConsolidationRun, Context, Episode, Event, MemoryItem, Person
 
 JOB_KIND = "sleep_consolidate"
 GAP = timedelta(hours=6)

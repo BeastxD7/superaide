@@ -84,7 +84,7 @@ def rejected(session: Session) -> list[str]:
 def _extra(session: Session) -> list[str]:
     from sqlalchemy import select
 
-    from superaide.platform.db.models import LlmProvider
+    from superaide.brain.models import LlmProvider
 
     try:
         return [str(p) for p in session.scalars(select(LlmProvider.key))]

@@ -21,10 +21,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from superaide.features.passport.schema import Passport
+from superaide.identity.models import Person
 from superaide.memory.knowledge.store import find_same_fact
+from superaide.memory.models import Contact, Document, MemoryImport, MemoryItem
 from superaide.memory.recall.lexicon import normalise
 from superaide.platform.audit import audit
-from superaide.platform.db.models import Contact, Document, MemoryImport, MemoryItem, Person
 from superaide.platform.db.session import rows_affected
 
 

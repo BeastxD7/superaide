@@ -21,7 +21,7 @@ from sqlalchemy import select
 
 from superaide.evals.checks import _found, _list, _recalled
 from superaide.evals.scenario import Scenario
-from superaide.platform.db.models import MemoryItem
+from superaide.memory.models import MemoryItem
 from superaide.platform.db.session import session_scope
 
 

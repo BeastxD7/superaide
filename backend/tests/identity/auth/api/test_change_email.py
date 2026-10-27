@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 
-from superaide.platform.db.models import UserAccount
+from superaide.identity.auth.models import UserAccount
 from superaide.platform.db.session import session_scope
 from tests.api_support import OTHER, OWNER, PASSWORD, login, signup
 from tests.identity.auth.api.test_email_links import outbox, token_in  # noqa: F401  (outbox is an autouse fixture)

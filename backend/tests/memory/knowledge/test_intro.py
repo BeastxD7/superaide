@@ -9,7 +9,7 @@ from sqlalchemy import select
 from superaide.main import create_app
 from superaide.memory.knowledge import extract
 from superaide.memory.knowledge.facts import Fact, FactList
-from superaide.platform.db.models import Document, MemoryItem
+from superaide.memory.models import Document, MemoryItem
 from superaide.platform.db.session import session_scope
 
 PASSWORD = "correct horse battery"
@@ -186,7 +186,7 @@ def test_a_failed_read_is_retried_later_and_never_marked_read(agent, client, bro
 def test_connecting_claude_reads_what_was_saved_while_offline(client, monkeypatch):
     from superaide.app import connections
     from superaide.identity.vault.check import Checked
-    from superaide.platform.db.models import Job
+    from superaide.jobs.models import Job
 
     monkeypatch.setattr(connections.check, "check_anthropic", lambda key, http: Checked(values={"api_key": key}))
     upload(client, "resume.txt", b"Jordan Whitfield")

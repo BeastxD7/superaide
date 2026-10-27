@@ -12,9 +12,9 @@ import pytest
 from sqlalchemy import select, update
 
 from superaide import mail
-from superaide.identity.auth.models import EmailToken
+from superaide.identity.auth.models import EmailToken, UserAccount
+from superaide.memory.models import OwnerPreference
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import OwnerPreference, UserAccount
 from superaide.platform.db.session import session_scope
 from tests.api_support import OWNER, PASSWORD, hire, login, signup
 

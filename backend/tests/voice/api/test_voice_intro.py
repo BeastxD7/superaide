@@ -12,12 +12,14 @@ import httpx
 import pytest
 from sqlalchemy import select
 
+from superaide.brain.models import SpendEntry
 from superaide.features.voice import providers
 from superaide.features.voice.interview import TOPICS, ReplyReader, split_sentences
 from superaide.features.voice.prices import asr_cost, per_minute, tts_cost
 from superaide.memory.knowledge.facts import Fact, FactList
+from superaide.memory.models import MemoryItem, Onboarding
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import AuditLog, MemoryItem, Onboarding, SpendEntry
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
 from tests.api_support import OTHER, hire, signup
 

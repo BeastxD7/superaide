@@ -7,7 +7,8 @@ import uuid
 import pytest
 from sqlalchemy import func, select
 
-from superaide.platform.db.models import ChannelIdentity, Event, Person
+from superaide.identity.models import ChannelIdentity, Person
+from superaide.memory.models import Event
 from superaide.platform.db.session import session_scope
 from superaide.policy.killswitch import is_frozen
 from tests.api_support import app_routes, fill_path

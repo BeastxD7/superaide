@@ -29,9 +29,10 @@ from superaide.features.imports.cards import (
     has_contact_details,
 )
 from superaide.features.imports.models import ImportLease
+from superaide.identity.models import Person
 from superaide.memory.knowledge.store import find_same_fact
+from superaide.memory.models import MemoryItem
 from superaide.platform.audit import audit
-from superaide.platform.db.models import MemoryItem, Person
 from superaide.platform.db.session import rows_affected
 
 

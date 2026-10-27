@@ -9,8 +9,8 @@ from sqlalchemy import select
 
 from superaide.brain.llm import FakeLLM
 from superaide.brain.spend.budget import BudgetExceeded
+from superaide.identity.models import Person
 from superaide.memory.knowledge.store import remember_fact
-from superaide.platform.db.models import Person
 from superaide.platform.db.session import session_scope
 from superaide.proactive.digest import compose
 from superaide.trust import second_opinion as so

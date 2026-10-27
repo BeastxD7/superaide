@@ -12,7 +12,7 @@ import pytest
 from sqlalchemy import select
 
 from superaide.features.imports import lobster
-from superaide.platform.db.models import MemoryItem
+from superaide.memory.models import MemoryItem
 from superaide.platform.db.session import session_scope
 
 LEASES = "/app/import-leases"

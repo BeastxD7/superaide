@@ -21,10 +21,10 @@ from sqlalchemy.orm import Session
 
 from superaide.channels.base import Messenger
 from superaide.channels.health import DeliveryFailed
+from superaide.identity.models import ChannelIdentity, IdentityLinkEvent, LinkChallenge, Person
 from superaide.identity.trust import Trust
 from superaide.platform.audit import audit
 from superaide.platform.config import Settings
-from superaide.platform.db.models import ChannelIdentity, IdentityLinkEvent, LinkChallenge, Person
 
 CODE_RE = re.compile(r"^\s*(\d{6})\s*$")
 CLAIM_RE = re.compile(

@@ -32,9 +32,9 @@ from superaide.memory.audience import audience_for
 from superaide.memory.knowledge.facts import Fact, FactList
 from superaide.memory.knowledge.learn import worth_reading
 from superaide.memory.knowledge.profile import owner_brief
+from superaide.memory.models import MemoryItem
 from superaide.memory.recall.retrieval import recall
 from superaide.memory.store import get_or_create_context
-from superaide.platform.db.models import MemoryItem
 from superaide.platform.db.session import session_scope
 from tests.conftest import tg
 

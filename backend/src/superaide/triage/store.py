@@ -5,7 +5,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.platform.db.models import Person
+from superaide.identity.models import Person
 from superaide.policy.killswitch import get_state
 from superaide.triage.models import TriageSettings
 from superaide.triage.types import Stage

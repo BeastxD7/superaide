@@ -17,7 +17,9 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 
-from superaide.platform.db.models import Approval, Document, DocumentChunk, Event, Intention, MemoryItem
+from superaide.approvals.models import Approval
+from superaide.intentions.models import Intention
+from superaide.memory.models import Document, DocumentChunk, Event, MemoryItem
 from superaide.platform.db.session import session_scope
 
 # Hedges that were wrong in real use: Ava can remember, keeps notes and manages reminders.
@@ -195,9 +197,9 @@ def prompt_includes(ctx: Ctx, value: Any) -> tuple[bool, str]:
 
 def _audience(who: str) -> Any:
     """The audience of a private DM with the owner, the colleague (Priya Tan), or of a group."""
+    from superaide.identity.models import Person
     from superaide.identity.trust import Trust
     from superaide.memory.audience import Audience
-    from superaide.platform.db.models import Person
 
     with session_scope() as s:
         if who == "owner":

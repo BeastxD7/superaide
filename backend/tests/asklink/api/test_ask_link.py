@@ -15,8 +15,11 @@ from sqlalchemy import func, inspect, select
 
 from superaide.asklink import handles, service
 from superaide.asklink.models import AskHandle, AskRate, AskRequest, AskStat
+from superaide.brain.models import SpendEntry
+from superaide.identity.auth.models import UserAccount
+from superaide.identity.models import Person
+from superaide.memory.models import Event, OwnerPreference
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import Event, OwnerPreference, Person, SpendEntry, UserAccount
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import all_instances
 from tests.api_support import OTHER, OWNER, hire, signup

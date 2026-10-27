@@ -10,8 +10,8 @@ import pytest
 from sqlalchemy import select
 
 from superaide.approvals import recipients
+from superaide.approvals.models import Approval
 from superaide.integrations.gmail import client as api
-from superaide.platform.db.models import Approval
 from superaide.platform.db.session import session_scope
 from tests.integrations.gmail_fake import connect, gmail_fake_fixture, mail, owner_client_fixture  # noqa: F401
 from tests.pipeline.test_loop import Script, tool_use, turn_for

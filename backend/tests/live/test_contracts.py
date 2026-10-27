@@ -27,9 +27,9 @@ from superaide.brain.spend.budget import BudgetGuard
 from superaide.brain.turn import TurnOutput
 from superaide.main import create_app
 from superaide.memory.knowledge.facts import FactList, extract_facts
+from superaide.memory.models import MemoryItem
 from superaide.pipeline import Agent
 from superaide.platform.config import Settings
-from superaide.platform.db.models import MemoryItem
 from superaide.platform.db.session import session_scope
 from tests.conftest import MANAGER_TG, tg
 

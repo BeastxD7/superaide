@@ -11,7 +11,8 @@ from typing import Any
 import pytest
 from sqlalchemy import func, select
 
-from superaide.platform.db.models import Contact, Event, MemoryItem, OwnerPreference, Person
+from superaide.identity.models import Person
+from superaide.memory.models import Contact, Event, MemoryItem, OwnerPreference
 from superaide.platform.db.session import session_scope
 
 VALID: dict[str, dict[str, Any]] = {

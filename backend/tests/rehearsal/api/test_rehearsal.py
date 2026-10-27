@@ -19,8 +19,9 @@ from superaide.brain.spend.budget import BudgetExceeded
 from superaide.features.rehearsal.models import RehearsalSession
 from superaide.features.rehearsal.service import DebriefOutput, DebriefPoint
 from superaide.main import create_app
+from superaide.memory.models import Event, MemoryItem
 from superaide.pipeline import Agent
-from superaide.platform.db.models import AuditLog, Event, MemoryItem
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
 from tests.api_support import CSRF, OTHER, hire, signup
 

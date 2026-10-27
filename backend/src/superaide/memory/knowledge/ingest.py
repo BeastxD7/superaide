@@ -16,13 +16,14 @@ from typing import Any
 from sqlalchemy import delete, select
 
 from superaide.brain import keyhealth
+from superaide.identity.models import Person
 from superaide.memory.knowledge import chunking
 from superaide.memory.knowledge.extract import Extracted
 from superaide.memory.knowledge.facts import extract_from_chunks
 from superaide.memory.knowledge.learn import neighbours
 from superaide.memory.knowledge.store import find_same_fact, lock_document, remember_fact, supersede
+from superaide.memory.models import Document, DocumentChunk, MemoryItem
 from superaide.platform.audit import audit
-from superaide.platform.db.models import Document, DocumentChunk, MemoryItem, Person
 from superaide.platform.db.session import require, session_scope
 from superaide.proactive.notify import notify_owner
 

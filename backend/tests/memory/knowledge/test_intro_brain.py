@@ -10,9 +10,10 @@ from sqlalchemy import select
 from superaide.app.intro_brain import brain_ready_for_intro, intro_needs_brain_step
 from superaide.identity.vault import store
 from superaide.identity.vault.store import runtime_settings
+from superaide.jobs.models import Job
 from superaide.main import create_app
+from superaide.memory.models import Document, Event
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import Document, Event, Job
 from superaide.platform.db.session import session_scope
 
 PLATFORM_KEY = "sk-ant-platform-secret-key-000000000000"

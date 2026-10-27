@@ -5,8 +5,10 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import func, select
 
+from superaide.identity.auth.models import UserAccount
+from superaide.identity.models import Person
 from superaide.memory.knowledge.store import add_contact
-from superaide.platform.db.models import AuditLog, Person, UserAccount
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
 from superaide.trust import companion
 from superaide.trust.models import EmotionalUse

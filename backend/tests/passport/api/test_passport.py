@@ -12,9 +12,10 @@ import pytest
 from sqlalchemy import select
 
 from superaide.features.passport import schema
+from superaide.identity.models import Person
 from superaide.memory.knowledge.store import add_contact, remember_fact
+from superaide.memory.models import Contact, Document, MemoryImport, MemoryItem
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import Contact, Document, MemoryImport, MemoryItem, Person
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import InstanceScope, use_instance
 from tests.api_support import OTHER, OWNER, hire, signup

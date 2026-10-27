@@ -28,11 +28,13 @@ from superaide.channels.base import InboundMessage, Messenger
 from superaide.channels.format import strip_citations
 from superaide.channels.health import DeliveryFailed
 from superaide.identity import linking
+from superaide.identity.models import Person
 from superaide.identity.resolver import Sender, resolve
 from superaide.intentions.when import is_reminder_request
 from superaide.memory.audience import Audience, audience_for, visible_memories
 from superaide.memory.knowledge import trust
 from superaide.memory.knowledge.profile import owner_brief
+from superaide.memory.models import Context
 from superaide.memory.store import (
     Timeline,
     get_or_create_context,
@@ -46,7 +48,7 @@ from superaide.memory.store import (
 )
 from superaide.platform.audit import audit
 from superaide.platform.config import Settings, get_settings
-from superaide.platform.db.models import AuditLog, Context, Person
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
 from superaide.policy.actions import decide
 from superaide.policy.killswitch import is_frozen

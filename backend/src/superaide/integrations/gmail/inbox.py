@@ -32,15 +32,17 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.contracts.events import MailIngested, bus
+from superaide.identity.models import ChannelIdentity, Person
 from superaide.identity.trust import Trust
 from superaide.integrations.gmail import client as api
 from superaide.integrations.gmail import settings as gmail_settings
 from superaide.integrations.gmail import skill as gmail
 from superaide.integrations.google import client as google
+from superaide.jobs.models import Job
 from superaide.jobs.queue import enqueue, handler
+from superaide.memory.models import Context, Event
 from superaide.memory.store import touch_context
 from superaide.platform.audit import audit
-from superaide.platform.db.models import ChannelIdentity, Context, Event, Job, Person
 from superaide.policy.killswitch import get_state, set_state
 from superaide.triage.models import TriageDecision
 

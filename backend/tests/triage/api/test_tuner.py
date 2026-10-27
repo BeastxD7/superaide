@@ -8,7 +8,9 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy import select
 
-from superaide.platform.db.models import Context, Event, MemoryItem, Person, UserAccount
+from superaide.identity.auth.models import UserAccount
+from superaide.identity.models import Person
+from superaide.memory.models import Context, Event, MemoryItem
 from superaide.platform.db.session import session_scope
 from superaide.triage import classify
 from superaide.triage.models import TriageDecision

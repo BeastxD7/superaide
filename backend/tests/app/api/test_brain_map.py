@@ -8,9 +8,10 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy import select
 
+from superaide.identity.models import Person
 from superaide.memory.knowledge.store import add_contact, remember_fact
+from superaide.memory.models import Document, MemoryItem
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import Document, MemoryItem, Person
 from superaide.platform.db.session import session_scope
 from tests.api_support import OTHER, OWNER, hire, signup
 from tests.tenancy.api.test_many_owners import account

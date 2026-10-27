@@ -6,8 +6,8 @@ from __future__ import annotations
 from sqlalchemy import select
 
 from superaide.brain.llm import FakeLLM
+from superaide.intentions.models import Intention
 from superaide.pipeline import Agent
-from superaide.platform.db.models import Intention
 from superaide.platform.db.session import session_scope
 from tests.pipeline.test_loop import Script, owner_client, tool_use  # noqa: F401
 

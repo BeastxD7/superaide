@@ -17,15 +17,18 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select, text
 
 from superaide.app import accounts
+from superaide.approvals.models import Approval
 from superaide.brain.llm import FakeLLM
 from superaide.brain.turn import RequestedAction
 from superaide.channels.base import InboundMessage
 from superaide.channels.slack import parse_event
 from superaide.channels.telegram import parse_update
 from superaide.identity.binding import bind_unbound_telegram
+from superaide.identity.models import ChannelIdentity, ChannelInvite, Person
 from superaide.main import create_app
+from superaide.memory.models import Event, MemoryItem
 from superaide.pipeline import Agent
-from superaide.platform.db.models import Approval, AuditLog, ChannelIdentity, ChannelInvite, Event, MemoryItem, Person
+from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import get_engine, session_scope
 
 PASSWORD = "correct horse battery"

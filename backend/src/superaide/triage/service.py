@@ -17,9 +17,11 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from superaide.identity.models import Person
+from superaide.jobs.models import Job
 from superaide.jobs.queue import enqueue, handler
+from superaide.memory.models import Event
 from superaide.platform.audit import audit
-from superaide.platform.db.models import Event, Job, Person
 from superaide.triage import classify, policy, rules
 from superaide.triage.escalate import open_escalation
 from superaide.triage.features import gather

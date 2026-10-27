@@ -36,9 +36,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy.types import UserDefinedType
 
 from superaide.brain.embed import Embedder, LocalEmbedder, get_embedder
+from superaide.jobs.models import Job
 from superaide.jobs.queue import enqueue, handler
+from superaide.memory.models import DocumentChunk, MemoryItem
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import DocumentChunk, Job, MemoryItem
 from superaide.platform.tenancy.context import scope_or_default
 
 log = logging.getLogger(__name__)
@@ -254,7 +255,7 @@ def embed_missing(session: Session, max_rounds: int = 20) -> int:
 
 
 def _embed_missing_chunks(session: Session, emb: Embedder) -> int:
-    from superaide.platform.db.models import Document
+    from superaide.memory.models import Document
 
     if not session.scalar(text(f"SELECT to_regclass('{CHUNK_TABLE}') IS NOT NULL")):
         return 0

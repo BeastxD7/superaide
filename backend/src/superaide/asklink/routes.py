@@ -27,12 +27,13 @@ from sqlalchemy.exc import IntegrityError
 
 from superaide.app.deps import owner_person_id
 from superaide.approvals.binding import seal
+from superaide.approvals.models import Approval
 from superaide.asklink import handles, service
 from superaide.asklink.models import AskHandle, AskLink, AskRequest
 from superaide.identity.auth.routes import client_of, reject_nul_text, require_csrf_header
+from superaide.identity.models import Person
 from superaide.platform.audit import audit
 from superaide.platform.config import get_settings
-from superaide.platform.db.models import Approval, Person
 from superaide.platform.db.session import require, session_scope
 from superaide.platform.tenancy.context import scope_or_default, use_instance
 

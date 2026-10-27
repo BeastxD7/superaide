@@ -16,9 +16,11 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from superaide.identity.models import Person
+from superaide.jobs.models import Job
 from superaide.jobs.queue import enqueue, handler
+from superaide.memory.models import Event
 from superaide.platform.audit import audit
-from superaide.platform.db.models import Event, Job, Person
 from superaide.triage.mail_digest import QUOTE_HIDDEN, digest_section
 from superaide.triage.models import Escalation, TriageDecision
 from superaide.triage.types import Decision

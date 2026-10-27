@@ -5,8 +5,9 @@ from __future__ import annotations
 from sqlalchemy import func, select
 
 from superaide.identity import resolver
+from superaide.identity.models import ChannelIdentity
 from superaide.memory import store
-from superaide.platform.db.models import ChannelIdentity, Context
+from superaide.memory.models import Context
 from superaide.platform.db.session import session_scope
 from tests.conftest import tg
 
