@@ -7,11 +7,16 @@ Order, for a direct message on Telegram or Slack from an account Ava doesn't rec
 3. "I'm <name>" still starts the linking challenge exactly as before. The model is never told whether
    that name matched anyone, and the same sentence about codes is added in code either way, so
    nobody can probe who Ava knows.
-4. Over the per-sender limit (10 an hour, 30 a day by default): one polite fixed message per hour,
-   then silence. No model call.
-5. No model the owner pays for (no key, no credits), the receptionist's daily budget spent, or an
+4. Code stores every message before it decides whether to answer (#474): the model only adds structure
+   (name, topic, deadline), and a message it did not structure is stored as it was typed. A reply says "passed
+   on" only after the row was written; if storing failed, the reply says so instead.
+5. Over the per-sender reply limit (10 an hour, 30 a day by default): no model call. One fixed notice says
+   when Ava will answer again, then silence; what they send meanwhile is still stored. The first reply tells
+   the hourly number, once a warning says how many replies are left, and the first reply after the reset says
+   "I can reply again".
+6. No model the owner pays for (no key, no credits), the receptionist's daily budget spent, or an
    unreadable answer: a fixed reply, and what they wrote is passed on as a message (code only).
-6. Otherwise one receptionist turn (reception/turn.py).
+7. Otherwise one receptionist turn (reception/turn.py).
 
 A stranger's turn never learns, never touches memory, never proposes an action, and has no tools.
 What they leave is stored as data (reception_message) and shown to the owner in the app; the
@@ -42,10 +47,28 @@ CLAIM_NOTE = (
     "If we already work together and you've linked another channel, I've sent a code there: type it here to "
     "link this account."
 )
-LIMIT_REPLY = "I've passed on what you sent. I can't keep chatting just now; please try again later."
+# Every sentence the sender is told about limits is a code template filled with the real numbers (#474); the
+# marks are what `_said_recently` looks for, so a notice is never repeated within its window.
+CAP_NOTICE = (
+    "You can send up to {n} messages an hour here. After that I'll stop replying, but I'll still pass everything on."
+)
+NEAR_MARK = " more time"
+NEAR_NOTICE = (
+    "I can reply {left} more time{s} this hour. After that I'll stop replying, but I'll still pass everything on."
+)
+LIMIT_MARK = "reply limit for now"
+LIMIT_REPLY = (
+    "I've reached my reply limit for now, so I'll stop replying until {when}. "
+    "What you send meanwhile is still passed on."
+)
+RESUMED = "I can reply again."
+SAVE_FAILED = "I couldn't save that just now. Please try again in a few minutes."
+STORAGE_FULL = "I can't take any more messages from you today. Please try again tomorrow."
+STORE_PER_DAY = 200  # messages kept per sender per day: flooding storage is still bounded
 FALLBACK = "I can't chat right now, but I've passed your message on. If you like, add your name and how to reach you."
 PAUSED = "I'm paused right now, but I've passed your message on."
 NOTE_EVERY = timedelta(minutes=15)
+URGENT_RANKS = ("urgent", "unverified")
 CHANNEL = {"telegram": "Telegram", "slack": "Slack"}
 
 
@@ -102,6 +125,83 @@ def _first_reply(session: Session, ctx: Context) -> bool:
     return session.scalar(select(Event.id).where(Event.context_id == ctx.id, Event.direction == "out").limit(1)) is None
 
 
+def _resume_text(session: Session, sender: Sender, rs: ReceptionSettings, now: datetime, hour: int, day: int) -> str:
+    """When the sender can expect an answer again, as "in about 40 minutes": the oldest message still inside the
+    window that was exceeded, plus the window. No clock time, because the sender's time zone is not known."""
+
+    def reset(window: timedelta) -> datetime:
+        oldest = session.scalar(
+            select(func.min(Event.created_at)).where(
+                Event.direction == "in",
+                Event.sender_identity_id == sender.identity.id,
+                Event.created_at >= now - window,
+            )
+        )
+        return (oldest or now) + window
+
+    ends = []
+    if hour > rs.per_hour:
+        ends.append(reset(timedelta(hours=1)))
+    if day > rs.per_day:
+        ends.append(reset(timedelta(hours=24)))
+    minutes = max(1, -(-int((max(ends) - now).total_seconds()) // 60)) if ends else 60
+    if minutes < 90:
+        return f"in about {minutes} minute{'s' if minutes != 1 else ''}"
+    hours = round(minutes / 60)
+    return f"in about {hours} hours"
+
+
+def _stored_today(session: Session, sender: Sender, now: datetime) -> int:
+    return int(
+        session.scalar(
+            select(func.count())
+            .select_from(ReceptionMessage)
+            .where(
+                ReceptionMessage.identity_id == sender.identity.id,
+                ReceptionMessage.created_at >= now - timedelta(hours=24),
+            )
+        )
+        or 0
+    )
+
+
+def _keep(
+    agent: Any,
+    session: Session,
+    owner: Person,
+    sender: Sender,
+    ctx: Context,
+    msg: InboundMessage,
+    inbound: Event,
+    taken: rturn.TakenMessage,
+    *,
+    source: str,
+) -> ReceptionMessage | None:
+    """Store the message, or None when that failed: nothing may then be said to be passed on. A savepoint, so a
+    failure inside the owner's note or the triage item rolls the whole row back instead of half-writing it."""
+    try:
+        with session.begin_nested():
+            return store_message(agent, session, owner, sender, ctx, msg, inbound, taken, source=source)
+    except Exception:
+        log.exception("receptionist could not store a message")
+        audit(session, "reception", "store_failed", identity_id=sender.identity.id)
+        return None
+
+
+def _resumed(session: Session, ctx: Context) -> bool:
+    """The last thing Ava said about her limit here was the limit notice, and she has not said she is back since."""
+
+    def latest(mark: str) -> datetime | None:
+        return session.scalar(
+            select(func.max(Event.created_at)).where(
+                Event.context_id == ctx.id, Event.direction == "out", Event.content.contains(mark)
+            )
+        )
+
+    noticed, back = latest(LIMIT_MARK), latest(RESUMED)
+    return noticed is not None and (back is None or noticed > back)
+
+
 def handle_stranger(
     agent: Any, session: Session, sender: Sender, ctx: Context, msg: InboundMessage, inbound: Event
 ) -> str | None:
@@ -122,24 +222,62 @@ def handle_stranger(
     if claimed:
         agent._claim(session, sender, claimed)  # the linking challenge, exactly as before
     hour, day = _counts(session, sender, now)
-    if hour > rs.per_hour or day > rs.per_day:
-        audit(session, "reception", "rate_limited", identity_id=sender.identity.id, hour=hour, day=day)
-        return "" if _said_recently(session, ctx, LIMIT_REPLY, now) else LIMIT_REPLY
-
+    exhausted = hour > rs.per_hour or day > rs.per_day
     first = _first_reply(session, ctx)
     hello = greeting(agent.name, owner, rs)
-    reply, taken, mode = _talk(agent, session, owner, rs, ctx, msg)
-    if mode != "model":  # couldn't talk: pass what they wrote on as a message
-        taken = rturn.TakenMessage(message=msg.text[:2000])
-    if taken is not None and (taken.message.strip() or taken.topic.strip()):
-        store_message(
-            agent, session, owner, sender, ctx, msg, inbound, taken, source="model" if mode == "model" else "code"
+    over_storage = _stored_today(session, sender, now) >= STORE_PER_DAY
+
+    if exhausted:  # no model call: code keeps the message and says, once, when Ava will answer again
+        audit(session, "reception", "rate_limited", identity_id=sender.identity.id, hour=hour, day=day)
+        if over_storage:
+            return "" if _said_recently(session, ctx, STORAGE_FULL, now) else STORAGE_FULL
+        row = _keep(
+            agent, session, owner, sender, ctx, msg, inbound, rturn.TakenMessage(message=msg.text[:2000]), source="code"
         )
+        if row is None:
+            return SAVE_FAILED
+        window = now - timedelta(hours=24 if day > rs.per_day else 1)
+        said = session.scalar(
+            select(Event.id)
+            .where(
+                Event.context_id == ctx.id,
+                Event.direction == "out",
+                Event.content.contains(LIMIT_MARK),
+                Event.created_at >= window,
+            )
+            .limit(1)
+        )
+        return "" if said is not None else LIMIT_REPLY.format(when=_resume_text(session, sender, rs, now, hour, day))
+
+    if over_storage:  # a sender who floods storage is told so; nothing is claimed as passed on
+        audit(session, "reception", "storage_cap", identity_id=sender.identity.id)
+        return "" if _said_recently(session, ctx, STORAGE_FULL, now) else STORAGE_FULL
+
+    resumed = _resumed(session, ctx)
+    reply, from_model, mode = _talk(agent, session, owner, rs, ctx, msg)
+    # Code stores every message; the model only adds structure. One it did not structure is kept as typed.
+    structured = (
+        mode == "model" and from_model is not None and bool(from_model.message.strip() or from_model.topic.strip())
+    )
+    taken = from_model if structured and from_model is not None else rturn.TakenMessage(message=msg.text[:2000])
+    row = _keep(agent, session, owner, sender, ctx, msg, inbound, taken, source="model" if structured else "code")
+    if row is None:  # never "I've passed it on" for something that was not stored
+        reply = SAVE_FAILED
     if first:  # the notice is code's job, not the model's: always, and only once per conversation
         reply = f"{hello} {reply}"
+        if row is not None:
+            reply = f"{reply}\n\n{CAP_NOTICE.format(n=rs.per_hour)}"
+    elif row is not None:
+        left = rs.per_hour - hour
+        near_at = max(1, -(-rs.per_hour * 4 // 5))  # 80 percent, rounded up
+        if hour == near_at and left > 0 and not _said_recently(session, ctx, NEAR_MARK, now):
+            reply = f"{reply}\n\n{NEAR_NOTICE.format(left=left, s='' if left == 1 else 's')}"
+    if resumed:
+        reply = f"{RESUMED} {reply}"
     if claimed:
         reply = f"{reply}\n\n{CLAIM_NOTE}"
-    audit(session, "reception", "turn", identity_id=sender.identity.id, mode=mode, took_message=taken is not None)
+    taken_ok = row is not None
+    audit(session, "reception", "turn", identity_id=sender.identity.id, mode=mode, took_message=taken_ok)
     return reply
 
 
@@ -293,12 +431,16 @@ def _note(session: Session, owner: Person, row: ReceptionMessage, now: datetime)
     """With triage off: one short in-app note, fixed text only, at most every 15 minutes."""
     from superaide.proactive.notify import notify_owner
 
-    recent = session.scalar(
+    # A burst makes one note. An urgent or risky message is judged against earlier urgent ones only, so a flood of
+    # ordinary messages (or the cap notice, #474) cannot hide it from the owner.
+    quiet = (
         select(func.count())
         .select_from(ReceptionMessage)
         .where(ReceptionMessage.id != row.id, ReceptionMessage.created_at >= now - NOTE_EVERY)
     )
-    if recent:
+    if row.rank in URGENT_RANKS:
+        quiet = quiet.where(ReceptionMessage.rank.in_(URGENT_RANKS))
+    if session.scalar(quiet):
         return
     text = _reason(row) + ". Open your dashboard to read it."
     notify_owner(session, owner, text, {"kind": "message_taken", "message_id": str(row.id)}, channel="app")

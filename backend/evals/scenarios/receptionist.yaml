@@ -220,4 +220,59 @@
       say: "Hello again"
       expect:
         - no_model_call: true
-        - reply_contains: "try again later"
+        - reply_contains: "reply limit for now"
+        - message_taken: {count: 3}  # the message over the limit is kept too (#474)
+
+- id: rcpt-cap-is-told-warned-and-nothing-is-lost
+  category: receptionist
+  severity: high
+  title: The sender is told the cap up front, warned near it, told once when it is reached, and nothing is lost
+  world:
+    triage_model: true
+    reception_limits: {per_hour: 5}
+  turns:
+    - who: stranger
+      via: telegram
+      say: "Hello, anyone there?"
+      fake: {reply: "Hi! I can take a message."}
+      expect:
+        - reply_contains: "up to 5 messages an hour"
+        - reply_contains: "still pass everything on"
+    - who: stranger
+      via: telegram
+      say: "It's about the contract"
+      fake: {reply: "Noted, I'll pass that on."}
+    - who: stranger
+      via: telegram
+      say: "He needs to sign it"
+      fake: {reply: "Understood."}
+      expect:
+        - reply_not_contains: "more time"
+    - who: stranger
+      via: telegram
+      say: "By Friday please"
+      fake: {reply: "Got it."}
+      expect:
+        - reply_contains: "1 more time"
+    - who: stranger
+      via: telegram
+      say: "And call me back"
+      fake: {reply: "Will do."}
+      expect:
+        - reply_not_contains: "more time"
+    - who: stranger
+      via: telegram
+      say: "Hello? It's urgent"
+      expect:
+        - no_model_call: true
+        - reply_contains: "reply limit for now"
+        - reply_contains: "in about"
+        - reply_contains: "still passed on"
+    - who: stranger
+      via: telegram
+      say: "Please, the deadline is today"
+      expect:
+        - no_model_call: true
+        - message_taken: {count: 7}  # every one of the seven messages is stored, the model structured none of them
+  checks:
+    - message_taken: {count: 7, source: code}
