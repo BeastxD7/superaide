@@ -122,6 +122,14 @@ Guards: `tsc`, `oxlint`, `vitest` (24 files, 185 tests, same count as before), a
 
 The other features (`console` 31 files, `onboarding` 10) were already organised or small and are left as they are. The `components/hooks/api/types/tests` split inside every feature from the plan is NOT done: it would add a folder level to features of one to four files for no selection or readability gain. E2E specs are not moved deeper (relative imports in `e2e/tests`).
 
+### Phase 9 (2026-10-27): the boundary check is a ratchet
+
+`scripts/check_boundaries.py` now runs in CI with `--strict`, and the job no longer has `continue-on-error`. The 28 violations that had crept in on main since the baseline was written (while the check only warned) are added to `ci/boundary-baseline.json`, so the count is 647 and the new-violation count is 0. From now on a PR that adds a cross-package import which bypasses a package's public door fails `Backend (lint, types, migrations)`; the fix is to import through `api.py` or the package `__init__`, or, when it is deliberate, to regenerate the baseline with `--write-baseline` and say why in the PR.
+
+**Not done, and why.**
+- *Error with an empty baseline.* 647 imports still bypass a door (worst: `app` 79, `main` 49, `evals` 48, `brain` 43, `memory` 39). Burning them down is feature work per module, not a move; the ratchet only stops it growing, and a fixed import leaves the baseline the next time it is regenerated.
+- *Removing the `_compat` alias shim.* The plan says one release. Branches opened before the moves still import the old paths, and removing the shim breaks them silently at import time. Remove it when no open branch uses an old path (`scripts/rebase_after_move.py` rewrites a branch), as its own PR.
+
 ## Decision
 
 Organise the backend as a modular monolith, package by feature (Django apps, NestJS modules, bulletproof-react features). One folder per feature or integration owns everything about it: code, its types, its routes, its models, its tests. Four rules:

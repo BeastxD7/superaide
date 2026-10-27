@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Import-boundary check (docs/decisions/0015-project-layout.md). WARN-ONLY until the owner turns it on.
+"""Import-boundary check (docs/decisions/0015-project-layout.md). A ratchet in CI: a violation that is not in
+ci/boundary-baseline.json fails the build.
 
 Rule: a package talks to another package only through its public entry point: the package itself
 (`superaide.memory`), `superaide.memory.api`, or `superaide.memory.schemas` / `models` (types). Importing
 `superaide.memory.consolidation.sleep` from outside `memory/` is a violation. Tests are not checked.
 
-    check_boundaries.py                 # prints a summary and GitHub warnings, exits 0
+    check_boundaries.py                 # prints a summary and GitHub warnings, exits 0 (no --strict)
     check_boundaries.py --strict        # exit 1 when there is a violation not in the baseline
     check_boundaries.py --write-baseline ci/boundary-baseline.json
     check_boundaries.py --baseline ci/boundary-baseline.json --strict   # ratchet: no NEW violations

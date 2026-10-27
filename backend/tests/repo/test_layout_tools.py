@@ -1,4 +1,4 @@
-"""scripts/layout_report.py and scripts/check_boundaries.py (ADR 0015): the measurements and the warn-only check."""
+"""scripts/layout_report.py and scripts/check_boundaries.py (ADR 0015): the measurements and the boundary ratchet."""
 
 from __future__ import annotations
 
@@ -131,3 +131,11 @@ def test_replay_merges_a_branch_into_the_moved_tree(tmp_path) -> None:
     assert rb.replay(moves, "base", "feature", tmp_path) == []
     assert (tmp_path / "src/new/a.py").read_text() == "ONE\ntwo\nthree\nfrom pkg.new.a import x\nfeature\n"
     assert (tmp_path / "src/new/b.py").read_text() == "new file\n"
+
+
+def test_ci_runs_the_boundary_check_as_a_ratchet() -> None:
+    """Phase 9: the step must pass --strict and must not be allowed to fail, or the baseline guards nothing."""
+    ci = (Path(__file__).resolve().parents[3] / ".github" / "workflows" / "ci.yml").read_text()
+    step = ci[ci.index("Import boundaries") :].split("\n      - name:", 1)[0]
+    assert "check_boundaries.py" in step and "--strict" in step and "--baseline" in step
+    assert "continue-on-error" not in step
