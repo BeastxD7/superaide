@@ -9,6 +9,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from superaide.contracts.events import CalendarEventsRead, bus
+from superaide.identity.vault.store import runtime_settings
 from superaide.integrations.calendar import settings as cal_settings
 from superaide.integrations.google import client as google
 from superaide.intentions.service import owner_zone
@@ -17,7 +18,6 @@ from superaide.platform.audit import audit
 from superaide.platform.db.models import Person
 from superaide.policy.actions import EXECUTORS, TOOL_RULES, decide
 from superaide.skills.registry import active
-from superaide.vault.store import runtime_settings
 
 SKILL_ID = "superaide/google-calendar"
 log = logging.getLogger(__name__)
@@ -129,7 +129,7 @@ def actions_on(session: Session) -> bool:
 
 def can_write(session: Session) -> bool:
     """Google granted calendar.events to the stored sign-in."""
-    from superaide.vault.store import find
+    from superaide.identity.vault.store import find
 
     row = find(session, "google", "refresh_token")
     return row is not None and google.EVENTS_SCOPE in ((row.meta or {}).get("scopes") or [])

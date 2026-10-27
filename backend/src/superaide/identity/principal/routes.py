@@ -14,12 +14,12 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Request
 from pydantic import BaseModel, ConfigDict, Field
 
 from superaide.app.deps import owner_person_id
-from superaide.auth.routes import client_of, reject_nul_text, require_csrf_header
+from superaide.identity.auth.routes import client_of, reject_nul_text, require_csrf_header
+from superaide.identity.principal import card, signature
 from superaide.links import is_local, public_base, public_url
 from superaide.platform.audit import audit
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import use_instance
-from superaide.principal import card, signature
 
 
 def _not_found() -> HTTPException:

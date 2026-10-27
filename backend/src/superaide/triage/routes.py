@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from superaide.app.deps import owner_person_id
-from superaide.auth.routes import reject_nul_text, require_csrf_header
+from superaide.identity.auth.routes import reject_nul_text, require_csrf_header
 from superaide.platform.db.models import Person
 from superaide.platform.db.session import require, session_scope
 from superaide.platform.tenancy.context import scope_or_default
@@ -274,7 +274,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
     def get_settings_(person_id: uuid.UUID = Depends(owner_on)) -> dict[str, Any]:
         with session_scope() as s:
             view = settings_view(settings_for(s, require(s, Person, person_id)))
-            from superaide.vault.store import runtime_settings
+            from superaide.identity.vault.store import runtime_settings
 
             status = knn.shadow_status(s, enabled=runtime_settings().triage_knn_enabled)
             if status["enabled"]:
@@ -283,7 +283,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             return {**view, "knn_shadow": status if status["enabled"] else None}
 
     def _knn_on() -> None:
-        from superaide.vault.store import runtime_settings
+        from superaide.identity.vault.store import runtime_settings
 
         if not runtime_settings().triage_knn_enabled:
             raise HTTPException(404, "Not Found")

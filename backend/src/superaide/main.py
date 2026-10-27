@@ -16,9 +16,9 @@ import superaide.plugins  # noqa: F401  (registers the approval executors and ev
 from superaide import docs
 from superaide.api.admin import require_admin
 from superaide.api.admin import router as admin_router
-from superaide.auth.routes import make_router as make_auth_router
 from superaide.channels import slack, telegram
 from superaide.channels.base import FakeMessenger, InboundMessage
+from superaide.identity.auth.routes import make_router as make_auth_router
 from superaide.jobs.worker import JobWorker
 from superaide.pipeline import Agent
 from superaide.platform import envelope
@@ -177,7 +177,7 @@ def create_app(agent: Agent | None = None) -> FastAPI:
             event="calendar_read_settings",
         )
     )
-    from superaide.auth.stepup_routes import make_router as make_stepup_router
+    from superaide.identity.auth.stepup_routes import make_router as make_stepup_router
 
     app.include_router(make_stepup_router())
     from superaide.channels import settings as channel_settings
@@ -247,8 +247,8 @@ def create_app(agent: Agent | None = None) -> FastAPI:
 
     app.include_router(make_ask_public_router())  # 404 everywhere while ASK_LINK_ENABLED is off
     app.include_router(make_ask_owner_router())
-    from superaide.principal.routes import make_owner_router as make_card_owner_router
-    from superaide.principal.routes import make_public_router as make_card_public_router
+    from superaide.identity.principal.routes import make_owner_router as make_card_owner_router
+    from superaide.identity.principal.routes import make_public_router as make_card_public_router
 
     app.include_router(make_card_public_router())  # 404 everywhere while PRINCIPAL_CARD_ENABLED is off
     app.include_router(make_card_owner_router())
@@ -402,7 +402,7 @@ def create_app(agent: Agent | None = None) -> FastAPI:
         elif (press := telegram.parse_callback(update, verified=True, bot=bot)) is not None:
 
             def press_in_scope(p: Any = press, sc: Any = scope) -> None:  # escalation buttons (ADR 0010)
-                from superaide.vault.store import runtime_settings
+                from superaide.identity.vault.store import runtime_settings
 
                 with use_instance(sc):
                     telegram._handle_press(runtime_settings().telegram_bot_token, p)

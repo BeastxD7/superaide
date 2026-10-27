@@ -44,8 +44,8 @@ def current_bots(conn: Connection) -> list[tuple[uuid.UUID | None, str]]:
     ).all()
     for tenant, ciphertext in rows:
         try:
-            from superaide.vault.crypto import decrypt
-            from superaide.vault.store import slot
+            from superaide.identity.vault.crypto import decrypt
+            from superaide.identity.vault.store import slot
 
             found.append((tenant, bot_id(decrypt(ciphertext, slot("telegram", "bot_token")))))
         except Exception:  # no master key here: the resolver binds on the next message instead

@@ -41,7 +41,7 @@ def rules() -> tier_rules.Rules:
 def owner_ref(skill_id: str) -> str:
     """A salted, per-skill pseudonym for this owner. The salt comes from the vault master key and the skill id, so
     the reference is stable inside one skill's log and can't be matched across skills or reversed."""
-    from superaide.vault.crypto import master_key
+    from superaide.identity.vault.crypto import master_key
 
     root, _ = master_key()
     salt = hmac.new(root, b"skill receipt salt v1|" + skill_id.encode(), hashlib.sha256).digest()

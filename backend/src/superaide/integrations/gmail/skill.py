@@ -30,6 +30,7 @@ from sqlalchemy.orm import Session
 
 from superaide.approvals import recipients
 from superaide.approvals.binding import content_hash, payload_hash, seal
+from superaide.identity.principal import signature
 from superaide.integrations.gmail import client as api
 from superaide.integrations.gmail import settings as gmail_settings
 from superaide.integrations.google import client as google
@@ -37,7 +38,6 @@ from superaide.platform.audit import audit
 from superaide.platform.config import get_settings
 from superaide.platform.db.models import Approval, InstalledSkill, Person
 from superaide.policy.registry import DISCARDERS, EXECUTORS
-from superaide.principal import signature
 
 SKILL_ID = "superaide/gmail"
 SLOT = ("google", "gmail_refresh_token")
@@ -56,14 +56,14 @@ class NotReady(Exception):
 
 
 def _row(session: Session) -> Any:
-    from superaide.vault.store import stored
+    from superaide.identity.vault.store import stored
 
     return stored(session).get(SLOT)
 
 
 def granted(session: Session) -> set[str]:
     """Scopes the owner granted Gmail, for the OAuth client saved now (a new client means sign in again)."""
-    from superaide.vault.store import runtime_settings
+    from superaide.identity.vault.store import runtime_settings
 
     row = _row(session)
     if row is None:
@@ -102,7 +102,7 @@ def can_draft(session: Session) -> bool:
 
 def status(session: Session) -> dict[str, Any]:
     """What the Capabilities card shows. Never a token."""
-    from superaide.vault.store import runtime_settings
+    from superaide.identity.vault.store import runtime_settings
 
     s = runtime_settings()
     scopes = granted(session)
@@ -117,7 +117,7 @@ def status(session: Session) -> dict[str, Any]:
 
 
 def token(session: Session) -> str:
-    from superaide.vault.store import runtime_settings, unseal
+    from superaide.identity.vault.store import runtime_settings, unseal
 
     s = runtime_settings()
     row = _row(session)
@@ -389,7 +389,7 @@ def _draft(
             else:
                 audit(session, "policy", "action_refused", kind="gmail_send", reason="would not reach a person")
                 raise NotReady(refusal(signals, alternatives, reaches, str(args.get("evidence") or "")))
-    from superaide.principal import card
+    from superaide.identity.principal import card
 
     sig = card.email_signature(session)
     signed = sig is not None and card.settings_of(session)["sign_default"]
@@ -558,7 +558,7 @@ def compose(
             raise NotReady("Gmail isn't connected yet. Ask the owner to connect it under Capabilities → Gmail.")
         if not can_draft(session):
             raise NotReady("Drafting in Gmail is off. Ask the owner to turn on drafts under Capabilities → Gmail.")
-        from superaide.principal import card
+        from superaide.identity.principal import card
         from superaide.triage.store import current_stage
 
         client, tok = api.http_client(), token(session)
@@ -687,7 +687,7 @@ def send_approved(session: Session, approval: Approval) -> str:
         except (NotReady, google.GoogleError) as exc:
             log.warning("couldn't delete the unused variant of a sent email: %s", exc)
     if p.get("sign_as_ava") and p.get("signature_id"):
-        from superaide.principal import card
+        from superaide.identity.principal import card
 
         card.record_sent(session, str(p["signature_id"]), channel="gmail", to=", ".join(p.get("to") or []))
     return "Sent from your Gmail."

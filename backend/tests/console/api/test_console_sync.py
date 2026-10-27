@@ -5,12 +5,12 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
+from superaide.identity.vault import store
 from superaide.platform.config import get_settings
 from superaide.platform.db.models import UserAccount
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import all_instances, use_instance
 from superaide.platform.tenancy.models import AgentInstance, InstanceMember
-from superaide.vault import store
 from tests.api_support import hire, signup
 
 ADMIN = {"Authorization": "Bearer test-admin-token"}

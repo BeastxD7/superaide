@@ -1,6 +1,6 @@
 """Hiring the agent, and connecting the owner's other channels.
 
-Hiring needs a signed-in account (see superaide.auth). The account's Person
+Hiring needs a signed-in account (see superaide.identity.auth). The account's Person
 becomes the agent's manager. The in-app chat is a channel like Telegram or
 Slack, keyed on the person's own ID, which only the server can mint.
 """

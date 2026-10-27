@@ -40,7 +40,7 @@ def webhook_secret(endpoint_id: uuid.UUID) -> str:
     """The secret Telegram sends with each update for this endpoint (X-Telegram-Bot-Api-Secret-Token).
     Derived from the vault's master key, so nothing secret is stored and a stolen database alone
     can't forge it."""
-    from superaide.vault.crypto import master_key
+    from superaide.identity.vault.crypto import master_key
 
     key, _ = master_key()
     return hmac.new(key, f"telegram-webhook:{endpoint_id}".encode(), hashlib.sha256).hexdigest()
@@ -127,10 +127,10 @@ def sync_telegram() -> dict[str, InstanceScope]:
     A bot saved in two instances (possible before endpoints existed) keeps the first; the
     other instance's copy is ignored and logged until its owner connects another bot.
     """
+    from superaide.identity.vault.store import runtime_settings
     from superaide.platform.db.session import session_scope
     from superaide.platform.tenancy.context import default_scope
     from superaide.platform.tenancy.service import active_scopes
-    from superaide.vault.store import runtime_settings
 
     with session_scope() as s:
         scopes = active_scopes(s) or [default_scope()]  # before anyone hires: the server's own bot, if any
@@ -158,10 +158,10 @@ def sync_telegram() -> dict[str, InstanceScope]:
 def sync_slack() -> dict[str, tuple[InstanceScope, str, str]]:
     """Every active instance's own Slack app: app token -> (instance, bot token, team id),
     registering endpoints as needed. An app saved in two instances keeps the first."""
+    from superaide.identity.vault.store import runtime_settings
     from superaide.platform.db.session import session_scope
     from superaide.platform.tenancy.context import default_scope
     from superaide.platform.tenancy.service import active_scopes
-    from superaide.vault.store import runtime_settings
 
     with session_scope() as s:
         scopes = active_scopes(s) or [default_scope()]

@@ -54,7 +54,7 @@ def push_on() -> bool:
 
 
 def channel_token(channel_id: str) -> str:
-    from superaide.vault.crypto import master_key
+    from superaide.identity.vault.crypto import master_key
 
     key, _ = master_key()
     return hmac.new(key, f"google-calendar-watch:{channel_id}".encode(), hashlib.sha256).hexdigest()
@@ -86,7 +86,7 @@ def active(session: Session, owner: Person) -> CalendarWatch | None:
 
 
 def _token() -> str:
-    from superaide.vault.store import runtime_settings
+    from superaide.identity.vault.store import runtime_settings
 
     s = runtime_settings()
     return google.access_token(s.google_client_id, s.google_client_secret, s.google_refresh_token)

@@ -23,6 +23,8 @@ from sqlalchemy import func, select
 
 from superaide.features.push import payload, send, subscriptions, vapid
 from superaide.features.push.models import PushSend, PushSubscription
+from superaide.identity.vault import crypto
+from superaide.identity.vault.crypto import VaultError
 from superaide.main import create_app
 from superaide.platform.config import get_settings
 from superaide.platform.db import rls
@@ -30,8 +32,6 @@ from superaide.platform.db.models import AuditLog, Base, IntegrationSecret, Pers
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import InstanceScope, use_instance
 from superaide.platform.tenancy.models import PlatformState
-from superaide.vault import crypto
-from superaide.vault.crypto import VaultError
 
 PASSWORD = "correct horse battery"
 APPLE = "https://web.push.apple.com/QGuQyavXutnMH6m2"

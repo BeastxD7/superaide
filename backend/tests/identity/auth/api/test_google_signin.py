@@ -20,7 +20,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from sqlalchemy import func, select
 
-from superaide.auth import google as signin
+from superaide.identity.auth import google as signin
 from superaide.integrations.google import signin as google_signin
 from superaide.platform.config import get_settings
 from superaide.platform.db.models import AuthEvent, UserAccount, UserSession

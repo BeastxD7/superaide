@@ -167,8 +167,8 @@ def _live_memories() -> Any:
 def _runtime_live() -> dict[str, bool]:
     """What is connected on this server, as the app sees it: the server's .env plus the credentials each hired Ava
     saved in the app (the vault), not .env alone (issues #277, #278). Metadata only."""
+    from superaide.identity.vault.store import runtime_settings
     from superaide.platform.tenancy.service import active_scopes
-    from superaide.vault.store import runtime_settings
 
     env = get_settings()
     live = {

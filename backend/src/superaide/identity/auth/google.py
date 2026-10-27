@@ -32,8 +32,8 @@ from fastapi import Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.auth import service
-from superaide.auth.service import AuthError, Client
+from superaide.identity.auth import service
+from superaide.identity.auth.service import AuthError, Client
 from superaide.integrations.google import signin as google_signin
 from superaide.integrations.google.signin import GoogleIdentity, SignInError
 from superaide.links import allowed_request_origin, same_origin

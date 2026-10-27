@@ -69,7 +69,7 @@ SECRET_NOTE = "Project Bluebird is my secret side project"
 @pytest.fixture(autouse=True)
 def push_on(monkeypatch):
     """Web push (ADR 0011) answers 404 while off; switched on here so its routes are checked too."""
-    from superaide.vault import crypto
+    from superaide.identity.vault import crypto
 
     monkeypatch.setenv("SECRETS_MASTER_KEY", base64.b64encode(b"a" * 32).decode())
     monkeypatch.delenv("SECRETS_MASTER_KEY_FILE", raising=False)

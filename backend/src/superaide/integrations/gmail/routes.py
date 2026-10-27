@@ -23,9 +23,11 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 
 from superaide.app.deps import owner_person_id
-from superaide.auth import stepup
-from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header, session_token
+from superaide.identity.auth import stepup
+from superaide.identity.auth.routes import current_user_id, reject_nul_text, require_csrf_header, session_token
 from superaide.identity.trust import Trust
+from superaide.identity.vault import store
+from superaide.identity.vault.store import runtime_settings
 from superaide.integrations.gmail import client as api
 from superaide.integrations.gmail import settings as gmail_settings
 from superaide.integrations.gmail import skill as gmail
@@ -35,8 +37,6 @@ from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import scope_or_default
 from superaide.platform.tenancy.models import PlatformState
 from superaide.skills.connector_settings import last_changed
-from superaide.vault import store
-from superaide.vault.store import runtime_settings
 
 BACK = "/dashboard/capabilities"
 

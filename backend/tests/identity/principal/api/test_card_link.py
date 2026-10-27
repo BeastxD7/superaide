@@ -13,18 +13,18 @@ import pytest
 from sqlalchemy import select
 
 from superaide import links
+from superaide.identity.principal import card
+from superaide.identity.principal.models import CardLink
 from superaide.platform.config import get_settings
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import use_instance
-from superaide.principal import card
-from superaide.principal.models import CardLink
 
 NOT_FOUND = {"detail": "Not Found"}
 
 
 @pytest.fixture(autouse=True)
 def vault_key(monkeypatch):
-    from superaide.vault import crypto
+    from superaide.identity.vault import crypto
 
     monkeypatch.setenv("SECRETS_MASTER_KEY", base64.b64encode(b"k" * 32).decode())
     monkeypatch.delenv("SECRETS_MASTER_KEY_FILE", raising=False)
@@ -89,7 +89,7 @@ def test_a_short_link_opens_the_card_from_the_current_settings(owner, browser, p
 
 
 def test_an_old_long_token_still_opens_until_it_expires(owner, browser, public):
-    from superaide.principal.card import issue
+    from superaide.identity.principal.card import issue
 
     with use_instance(_scope(owner)), session_scope() as s:
         old = issue(s)
@@ -178,14 +178,14 @@ ALLOWED_FRONTEND_ORIGIN = {
     "links.py": "the helper, and the allow-list of origins a request may use",
     "main.py": "CORS origins and the status page",
     "app/connections.py": "OAuth redirect URIs, which must match what is registered with the provider",
-    "auth/google.py": "Google sign-in redirects and its allow-list",
-    "auth/routes.py": "where the browser goes back to after sign-in (a redirect, not a message)",
+    "identity/auth/google.py": "Google sign-in redirects and its allow-list",
+    "identity/auth/routes.py": "where the browser goes back to after sign-in (a redirect, not a message)",
     "platform/security/deploy.py": "decides whether the deployment looks public",
 }
 
 
 def test_no_link_building_code_reads_frontend_origin():
-    root = Path(__file__).resolve().parents[3] / "src" / "superaide"
+    root = Path(__file__).resolve().parents[4] / "src" / "superaide"
     users = {str(p.relative_to(root)) for p in root.rglob("*.py") if "frontend_origin" in p.read_text()}
     unexpected = users - set(ALLOWED_FRONTEND_ORIGIN)
     assert not unexpected, (

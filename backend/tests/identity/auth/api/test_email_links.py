@@ -12,7 +12,7 @@ import pytest
 from sqlalchemy import select, update
 
 from superaide import mail
-from superaide.auth.models import EmailToken
+from superaide.identity.auth.models import EmailToken
 from superaide.platform.config import get_settings
 from superaide.platform.db.models import OwnerPreference, UserAccount
 from superaide.platform.db.session import session_scope
@@ -161,7 +161,7 @@ def test_a_mail_server_failure_never_breaks_sign_up(browser, monkeypatch):
         def send(self, m: mail.Mail) -> None:
             raise mail.MailError("down")
 
-    monkeypatch.setattr("superaide.auth.routes.get_mailer", lambda: Broken())
+    monkeypatch.setattr("superaide.identity.auth.routes.get_mailer", lambda: Broken())
     assert signup(browser()).status_code == 200
 
 

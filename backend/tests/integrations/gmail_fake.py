@@ -13,12 +13,12 @@ from urllib.parse import parse_qs
 import httpx
 import pytest
 
+from superaide.identity.vault import store
 from superaide.integrations.gmail import client as api
 from superaide.integrations.gmail import skill as gmail
 from superaide.integrations.google import client as google
 from superaide.platform.db.session import session_scope
 from superaide.skills import registry
-from superaide.vault import store
 
 OWNER_ADDR = "jordan@example.com"
 CLIENT_ID = "1234-abc.apps.googleusercontent.com"
@@ -196,7 +196,7 @@ class FakeGoogle:
 
 @pytest.fixture(name="gmail_fake")
 def gmail_fake_fixture(monkeypatch) -> Iterator[FakeGoogle]:
-    from superaide.vault import crypto
+    from superaide.identity.vault import crypto
 
     monkeypatch.setenv("SECRETS_MASTER_KEY", base64.b64encode(b"g" * 32).decode())
     monkeypatch.delenv("SECRETS_MASTER_KEY_FILE", raising=False)

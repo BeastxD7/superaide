@@ -13,8 +13,8 @@ import stat
 import httpx
 import pytest
 
-from superaide.vault import crypto
-from superaide.vault.check import CheckFailed, check_anthropic, check_slack, check_telegram
+from superaide.identity.vault import crypto
+from superaide.identity.vault.check import CheckFailed, check_anthropic, check_slack, check_telegram
 
 CLAUDE_KEY = "sk-ant-api03-" + "x" * 80 + "4f2a"
 TG_TOKEN = "123456789:" + "A" * 35

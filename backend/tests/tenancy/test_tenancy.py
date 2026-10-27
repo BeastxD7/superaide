@@ -9,7 +9,7 @@ import pytest
 from sqlalchemy import delete, select, text
 
 from superaide.app import accounts
-from superaide.auth.service import Client, signup
+from superaide.identity.auth.service import Client, signup
 from superaide.platform.config import DEFAULT_AGENT_ID, DEFAULT_TENANT_ID
 from superaide.platform.db.models import Person, UserAccount
 from superaide.platform.db.session import get_engine, session_scope

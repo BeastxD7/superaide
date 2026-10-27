@@ -329,7 +329,7 @@ def _reset_password(args: argparse.Namespace) -> None:
     """Set a new password for an account from the terminal (there's no email reset yet)."""
     import getpass
 
-    from superaide.auth.service import AuthError, reset_password
+    from superaide.identity.auth.service import AuthError, reset_password
     from superaide.platform.db.session import session_scope
 
     first = getpass.getpass("New password (10+ characters): ")

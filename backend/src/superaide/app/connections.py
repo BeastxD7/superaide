@@ -24,18 +24,18 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from superaide.app.deps import owner_person_id, telegram_username
-from superaide.auth import google as google_auth
-from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header
 from superaide.channels import health
+from superaide.identity.auth import google as google_auth
+from superaide.identity.auth.routes import current_user_id, reject_nul_text, require_csrf_header
+from superaide.identity.vault import check, store
+from superaide.identity.vault.crypto import master_key
+from superaide.identity.vault.store import runtime_settings
 from superaide.integrations.google import client as google
 from superaide.platform.config import get_settings
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy import endpoints
 from superaide.platform.tenancy.context import InstanceScope, scope_or_default, use_instance
 from superaide.platform.tenancy.models import PlatformState
-from superaide.vault import check, store
-from superaide.vault.crypto import master_key
-from superaide.vault.store import runtime_settings
 
 log = logging.getLogger(__name__)
 

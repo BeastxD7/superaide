@@ -20,12 +20,12 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from superaide.identity.vault.crypto import decrypt, encrypt, mask
 from superaide.platform.audit import audit
 from superaide.platform.config import Settings, get_settings
 from superaide.platform.db.models import IntegrationSecret
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import scope_or_default
-from superaide.vault.crypto import decrypt, encrypt, mask
 
 # Which stored credential fills which setting.
 FIELDS: dict[tuple[str, str], str] = {

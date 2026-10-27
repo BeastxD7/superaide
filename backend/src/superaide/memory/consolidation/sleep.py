@@ -345,7 +345,7 @@ def sleep(session: Session, job: Any) -> None:
     if owner is None:
         return
     from superaide.brain.wiring import brain_ready, build_llm
-    from superaide.vault.store import runtime_settings
+    from superaide.identity.vault.store import runtime_settings
 
     settings = runtime_settings()
     llm = build_llm(settings) if brain_ready(settings) else None

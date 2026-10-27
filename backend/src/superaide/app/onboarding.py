@@ -193,7 +193,7 @@ class Onboarder:
     def input_for(self, session: Session, person: Person, step: str, answers: dict[str, Any]) -> dict[str, Any]:
         if step == "brain":
             from superaide.app.intro_brain import brain_choices
-            from superaide.vault.store import runtime_settings
+            from superaide.identity.vault.store import runtime_settings
 
             return brain_choices(session, runtime_settings())
         if step == "hello":
@@ -315,7 +315,7 @@ class Onboarder:
                 answers["brain"] = "credits"
             elif choice == "own":
                 from superaide.app.intro_brain import brain_ready_for_intro, own_brain_saved
-                from superaide.vault.store import runtime_settings
+                from superaide.identity.vault.store import runtime_settings
 
                 if not own_brain_saved(session) or not brain_ready_for_intro(runtime_settings()):
                     return self.view(

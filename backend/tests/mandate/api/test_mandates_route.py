@@ -13,7 +13,7 @@ from tests.api_support import OTHER, signup
 
 @pytest.fixture(autouse=True)
 def vault_key(monkeypatch):
-    from superaide.vault import crypto
+    from superaide.identity.vault import crypto
 
     monkeypatch.setenv("SECRETS_MASTER_KEY", base64.b64encode(b"m" * 32).decode())
     monkeypatch.delenv("SECRETS_MASTER_KEY_FILE", raising=False)

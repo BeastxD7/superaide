@@ -24,11 +24,11 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
 from superaide.app.deps import owner_person_id
-from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header, session_token
-from superaide.auth.service import token_hash
 from superaide.features.push import payload, send, vapid
 from superaide.features.push.models import PushSend, PushSubscription
 from superaide.features.push.subscriptions import BadSubscription, Secret, remove, upsert
+from superaide.identity.auth.routes import current_user_id, reject_nul_text, require_csrf_header, session_token
+from superaide.identity.auth.service import token_hash
 from superaide.platform.config import get_settings
 from superaide.platform.db.models import UserSession
 from superaide.platform.db.session import session_scope

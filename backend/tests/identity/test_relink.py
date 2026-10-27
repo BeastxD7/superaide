@@ -286,8 +286,8 @@ def test_in_a_group_an_unconfirmed_owner_gets_no_reply(bots, model):
 
 
 def test_reminders_are_not_pushed_through_an_unconfirmed_bot(bots, monkeypatch):
+    from superaide.identity.vault import store
     from superaide.proactive import notify
-    from superaide.vault import store
 
     old, new = bots
     owner_app(new)

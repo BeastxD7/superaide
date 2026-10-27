@@ -100,6 +100,10 @@ On the audit data (commit `32044a1`): `memory/store.py` 157 tests now, 32 under 
 
 **Promotion rule (the owner's call, not automatic).** Switch a PR's selection to the map only after two weeks of shadow in which: no test failed on a main or Full run that the map would not have selected for the commits that introduced it; drift stays small (new pairs are a few percent of all pairs); the fallback rate is understood. To switch off, delete the three CI steps; nothing else reads them.
 
+### Phase 6d (2026-10-27): `auth`, `vault` and `principal` move under `identity/`
+
+Whole packages moved: `auth/` (accounts, sign-in, step-up), `vault/` (credentials) and `principal/` (the AI-disclosure card and signature) are now `identity/auth`, `identity/vault` and `identity/principal`, beside the resolver, linking and claims; their backend tests followed (`tests/identity/{auth,vault,principal}`). `ci/modules.toml` keeps four modules (`identity` for the top-level files, plus `auth`, `vault` and `principal`) so selection is identical to before (resolver 185, principal card 116, passwords 223, vault store 190 of 236). e2e specs did not move: a deeper folder would break their relative imports. `CODEOWNERS` follows for `auth/` and `vault/` (the tool cannot see the leading slash). `alembic upgrade head && alembic check` on a fresh database is clean, so no model or migration is affected.
+
 ## Decision
 
 Organise the backend as a modular monolith, package by feature (Django apps, NestJS modules, bulletproof-react features). One folder per feature or integration owns everything about it: code, its types, its routes, its models, its tests. Four rules:

@@ -43,7 +43,7 @@ def is_promoted(session: Session) -> bool:
 
 
 def raise_enabled() -> bool:
-    from superaide.vault.store import runtime_settings
+    from superaide.identity.vault.store import runtime_settings
 
     s = runtime_settings()
     return bool(s.triage_enabled and s.triage_knn_enabled and s.triage_knn_raise_enabled)

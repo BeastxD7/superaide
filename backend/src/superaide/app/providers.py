@@ -16,18 +16,18 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from superaide.app.deps import owner_person_id
-from superaide.auth.routes import current_user_id, reject_nul_text, require_csrf_header
 from superaide.brain import keyhealth
 from superaide.brain.providers import config
 from superaide.brain.providers.base import CheckReport
 from superaide.brain.providers.presets import PRESETS, Preset
 from superaide.brain.providers.types import Capabilities
 from superaide.brain.spend.pricing import PRICES, UnknownModelPrice, set_owner_price
+from superaide.identity.auth.routes import current_user_id, reject_nul_text, require_csrf_header
+from superaide.identity.vault import check, store
+from superaide.identity.vault.store import runtime_settings
 from superaide.memory.knowledge.pending import brain_became_ready
 from superaide.platform.db.session import session_scope
 from superaide.platform.security import urls
-from superaide.vault import check, store
-from superaide.vault.store import runtime_settings
 
 ANTHROPIC = {
     "id": "anthropic",

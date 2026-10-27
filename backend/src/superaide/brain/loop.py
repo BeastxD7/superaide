@@ -331,7 +331,7 @@ def _bot_handle(session: Session, provider: str) -> str:
     """ " (bot @ava_helper_bot)" from the details saved when the token was checked, or ""."""
     if provider != "telegram":
         return ""
-    from superaide.vault.store import stored
+    from superaide.identity.vault.store import stored
 
     row = stored(session).get(("telegram", "bot_token"))
     name = str(((row.meta if row is not None else None) or {}).get("username") or "")
