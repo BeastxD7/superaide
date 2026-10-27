@@ -16,7 +16,7 @@ import { isSendKey } from '@/lib/keys'
 import { useSession } from '@/lib/session-context'
 import { errorMessage } from '@/lib/action'
 import { announceReminderSteps } from '@/lib/reminder-toast'
-import { ResumeButton } from '@/features/dashboard/ResumeButton'
+import { ResumeButton } from '@/features/dashboard/chat/ResumeButton'
 
 const QUICK = [
   { icon: Lightbulb, label: 'How would you handle…', prefill: 'If someone messages you saying ' },

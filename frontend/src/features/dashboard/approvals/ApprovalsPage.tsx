@@ -1,8 +1,8 @@
 'use client'
 
-import { ApprovalsCard } from '@/features/dashboard/Approvals'
-import { MandatesCard } from '@/features/dashboard/MandatesCard'
-import { TwinCard } from '@/features/dashboard/TwinCard'
+import { ApprovalsCard } from '@/features/dashboard/approvals/Approvals'
+import { MandatesCard } from '@/features/dashboard/approvals/MandatesCard'
+import { TwinCard } from '@/features/dashboard/approvals/TwinCard'
 import { useSession } from '@/lib/session-context'
 
 // Approvals on their own page (ADR 0011 section 2), for the phone's tab bar. The same card

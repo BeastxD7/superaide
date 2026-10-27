@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { EpisodesPage } from '@/features/dashboard/EpisodesPage'
+import { EpisodesPage } from '@/features/dashboard/notebook/EpisodesPage'
 
 export const metadata: Metadata = { title: 'Conversations' }
 

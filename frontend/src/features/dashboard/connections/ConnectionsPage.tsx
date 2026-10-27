@@ -1,6 +1,6 @@
 'use client'
 
-import { ConnectorSettings } from '@/features/dashboard/ConnectorSettings'
+import { ConnectorSettings } from '@/features/dashboard/connections/ConnectorSettings'
 import { HowThisWorks } from '@/features/dashboard/settings/HowThisWorks'
 import { Connections } from '@/features/workspace/Connections'
 import { useSession } from '@/lib/session-context'

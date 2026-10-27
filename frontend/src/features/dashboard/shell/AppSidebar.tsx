@@ -29,13 +29,13 @@ import {
   SidebarRail,
   useSidebar,
 } from '@/components/ui/sidebar'
-import { useApprovals } from '@/features/dashboard/useApprovals'
-import { useReminders } from '@/features/dashboard/useReminders'
+import { useApprovals } from '@/features/dashboard/approvals/useApprovals'
+import { useReminders } from '@/features/dashboard/reminders/useReminders'
 import { useNeedsYou } from '@/features/needs-you/useNeedsYou'
 import { useRehearsalEnabled } from '@/features/rehearsal/useRehearsal'
 import { useSchoolEnabled } from '@/features/school/useSchool'
 import type { Me } from '@/lib/api'
-import { agentStatus, navItemFor, NAV } from '@/features/dashboard/nav'
+import { agentStatus, navItemFor, NAV } from '@/features/dashboard/shell/nav'
 import type { Session } from '@/lib/session-context'
 
 export function AppSidebar({ session, me }: { session: Session; me: Me }) {

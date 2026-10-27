@@ -762,7 +762,7 @@ src = [
   "frontend/src/app/(site)/s/**",
 ]
 tests = [
-  "frontend/src/features/dashboard/*.test.ts",
+  "frontend/src/features/dashboard/**/*.test.ts",
 ]
 e2e = [
   "e2e/tests/policy/halt-resume.spec.ts",

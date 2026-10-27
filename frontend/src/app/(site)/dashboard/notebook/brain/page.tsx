@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { BrainPage } from '@/features/dashboard/BrainPage'
+import { BrainPage } from '@/features/dashboard/notebook/BrainPage'
 
 export const metadata: Metadata = { title: 'Glass brain' }
 

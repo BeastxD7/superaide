@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { JournalPage } from '@/features/dashboard/JournalPage'
+import { JournalPage } from '@/features/dashboard/notebook/JournalPage'
 
 export const metadata: Metadata = { title: 'Decision journal' }
 
