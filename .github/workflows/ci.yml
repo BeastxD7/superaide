@@ -251,11 +251,12 @@ jobs:
       - name: Type check
         run: uv run mypy
 
-      # ADR 0015: warn-only for now (never fails the job); the baseline ratchet is turned on by the owner.
-      - name: Import boundaries (warn-only)
-        continue-on-error: true
+      # ADR 0015: a ratchet. Violations already in ci/boundary-baseline.json are tolerated; a new one fails the job.
+      # Fix it by going through the package's api.py, or (when it is deliberate) regenerate the baseline with
+      # `check_boundaries.py --write-baseline ci/boundary-baseline.json` and say why in the PR.
+      - name: Import boundaries (ratchet)
         working-directory: .
-        run: uv run --python 3.14 --no-project python scripts/check_boundaries.py --baseline ci/boundary-baseline.json --annotations 20
+        run: uv run --python 3.14 --no-project python scripts/check_boundaries.py --baseline ci/boundary-baseline.json --strict --annotations 20
 
       - name: Migrations apply, match the models, and roll back
         run: |
