@@ -69,8 +69,13 @@ def parse_event(payload: dict[str, Any], *, our_team_id: str, verified: bool) ->
     etype = event.get("type")
     if etype not in ("message", "app_mention"):
         return None
-    if event.get("bot_id") or event.get("subtype"):
-        return None  # bot messages, edits, joins and other subtypes are ignored
+    subtype = str(event.get("subtype") or "")
+    if event.get("bot_id") or subtype:
+        # Bot messages, edits, joins and other subtypes are ignored. Say which kind, so "Ava did not answer my file"
+        # can be told from a bug (#513); the bot's own echoes are not logged, they would be one line per reply.
+        if subtype and subtype != "bot_message":
+            log.info("slack: event ignored: subtype=%s channel_type=%s", subtype[:40], event.get("channel_type", ""))
+        return None
     user = event.get("user")
     text = event.get("text")
     if not user or not isinstance(text, str) or not text.strip():
