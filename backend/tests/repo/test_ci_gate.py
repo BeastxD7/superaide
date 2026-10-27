@@ -80,8 +80,10 @@ def test_gate_job_keeps_its_name_and_needs():
         "secrets",
         "tests-required",
     } == set(jobs["result"]["needs"])
-    for j in ("e2e", "e2e-smoke"):  # still run on every event
-        assert jobs[j]["timeout-minutes"] <= 15
+    # A hung e2e job must not hold a pull request for long, but a green shard takes 9 to 14 minutes, so the limit has to
+    # leave room above that: 25 for the shards, 15 for the short smoke set.
+    assert jobs["e2e"]["timeout-minutes"] <= 25
+    assert jobs["e2e-smoke"]["timeout-minutes"] <= 15
 
 
 def test_gate_script_wires_label_and_everything_else_stays_blocking():
