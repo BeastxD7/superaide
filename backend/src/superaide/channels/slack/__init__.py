@@ -228,9 +228,12 @@ class SlackMessenger:
                     self._discard(channel, pending.ts)
         return True
 
+    def open_dm(self, identity: ChannelIdentity) -> str:
+        """The id of the direct message with this Slack user, opened if it was not yet."""
+        return str(self._call("conversations_open", users=identity.stable_key)["channel"]["id"])
+
     def send_dm(self, identity: ChannelIdentity, text: str) -> bool:
-        opened = self._call("conversations_open", users=identity.stable_key)
-        return self._post(opened["channel"]["id"], text)
+        return self._post(self.open_dm(identity), text)
 
     def thread_history(self, channel: str, thread_ts: str, limit: int = THREAD_MESSAGES) -> list[dict[str, Any]]:
         """The messages of one thread, oldest first: [{"user", "text", "ts", "bot"}]. [] when Slack refuses

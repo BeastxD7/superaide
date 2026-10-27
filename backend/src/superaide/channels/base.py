@@ -120,6 +120,10 @@ class FakeMessenger:
     def send_dm(self, identity: ChannelIdentity, text: str) -> None:
         self.sent.append({"to_identity": str(identity.id), "stable_key": identity.stable_key, "text": text})
 
+    def open_dm(self, identity: ChannelIdentity) -> str:
+        """The id of the one-to-one chat with this person (Slack: conversations.open). Same shape as the tests' DMs."""
+        return f"D_{identity.stable_key}"
+
     def send_to_context(self, context: Context, text: str, thread_id: str = "", sources: Sources | None = None) -> None:
         sent: dict[str, Any] = {"to_context": context.external_id, "text": text, "thread_id": thread_id}
         if sources:
