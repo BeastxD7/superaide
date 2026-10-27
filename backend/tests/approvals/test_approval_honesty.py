@@ -10,12 +10,12 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
+from superaide.approvals.binding import seal
 from superaide.platform.config import get_settings
 from superaide.platform.db.models import Approval
 from superaide.platform.db.session import session_scope
 from superaide.policy import kinds
 from superaide.policy.actions import CREATION_RULES, EXECUTORS, RULES, TOOL_RULES, resolve
-from superaide.policy.binding import seal
 from tests.pipeline.test_loop import Script, owner_client, tool_use, turn_for  # noqa: F401, F811  (fixtures)
 
 

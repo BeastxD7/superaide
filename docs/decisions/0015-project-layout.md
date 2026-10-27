@@ -85,6 +85,10 @@ Backend tests selected of 236, `select_tests.py --changed <file>`:
 
 `brain/{budget,pricing,price_tables,platform_spend}.py` moved to `brain/spend/` and the two prompt files (`charter.md`, `receptionist.md`) to `brain/prompts/` (`providers/` already was a folder). Both prompt files are data read by path, so their two readers (`brain/turn.py`, `reception/turn.py`) were edited by hand; the charter is a protected prompt, so `surface.toml` follows and its hash is unchanged. Test selection is unchanged by construction (one `brain` module, same tests); the point is that the cost code, which every model call goes through, now has a folder of its own.
 
+### Phase 6c (2026-10-27): `approvals/` leaves `policy/`
+
+`policy/{binding,quote,outcomes,recipients,footprint}.py` (what happens to an approval after Ava asked: bound to its content, quoted, carried out, checked for who it goes to, the footprint guard) moved to a new `approvals/` package, with their five tests under `tests/approvals/`. `policy/` keeps the rules (`kinds`, `registry`, `actions`, `brake`, `breaker`, `killswitch`, `confirmation`). Two things had to follow by hand because the tool cannot see them: `approvals/**` was added to the protected paths in `surface.toml` and to `CODEOWNERS` (otherwise the approval-binding code would have lost its protection when it left `policy/**`), and `ci/modules.toml` gets an `approvals` module (its four e2e specs moved over from `policy`). Selection is within two tests of before (`policy/actions.py` 122 to 120, `binding` 159 to 160). Six boundary edges between the two packages used to be internal to `policy/` and are now cross-package, so they are in the warn-only baseline.
+
 ## Decision
 
 Organise the backend as a modular monolith, package by feature (Django apps, NestJS modules, bulletproof-react features). One folder per feature or integration owns everything about it: code, its types, its routes, its models, its tests. Four rules:

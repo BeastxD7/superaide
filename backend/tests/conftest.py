@@ -76,7 +76,7 @@ os.environ.update(
         "SLACK_TEAM_ID": "T_OURS",
         "ADMIN_TOKEN": "test-admin-token",
         "ENABLE_SIMULATOR": "true",
-        "APPROVAL_REQUIRE_EXECUTOR": "false",  # tests opt in (tests/policy/test_approval_honesty.py)
+        "APPROVAL_REQUIRE_EXECUTOR": "false",  # tests opt in (tests/approvals/test_approval_honesty.py)
         "MANDATES_ENABLED": "false",  # on by default (#448); pinned off here, tests opt in (tests/mandate)
         "MANDATE_SHADOW_ENABLED": "false",
         "MANDATE_SKIP_ENABLED": "false",

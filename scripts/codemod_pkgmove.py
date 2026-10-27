@@ -344,6 +344,14 @@ FILE_PHASES = {
         "test_dirs": {"context": "memory/recall", "knowledge": "memory/knowledge"},
         "e2e_dirs": {"knowledge": "memory"},
         "module_renames": {},  # three modules become one: ci/modules.toml is merged by hand in the same change
+    },    # Phase 6c: what happens to an approval (bound to its content, quoted, carried out, checked for who it goes to)
+    # leaves `policy/` for `approvals/`. `policy/` keeps the rules: kinds, registry, actions, brake, breaker, kill switch.
+    63: {
+        "files": {f"policy.{m}": f"approvals/{m}.py" for m in ("binding", "quote", "outcomes", "recipients", "footprint")},
+        "data": {},
+        "test_dirs": {},
+        "e2e_dirs": {},
+        "module_renames": {},
     },
     # Phase 6b: brain/ gets `spend/` (what a model call may cost and what it did cost) and `prompts/` (the charter and
     # the receptionist persona, which are data files). `providers/` was already a folder. The code that reads the two

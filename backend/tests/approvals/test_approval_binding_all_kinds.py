@@ -10,12 +10,12 @@ from typing import Any
 import pytest
 from sqlalchemy import select
 
+from superaide.approvals.binding import check, payload_hash, report, seal
 from superaide.platform.config import get_settings
 from superaide.platform.db.models import Approval, AuditLog
 from superaide.platform.db.session import session_scope
 from superaide.policy import actions
 from superaide.policy.actions import ApprovalError, resolve
-from superaide.policy.binding import check, payload_hash, report, seal
 
 KINDS = ["calendar_create_event", "calendar_move_event", "calendar_decline_event", "ask_reply", "gmail_send",
          "publish_post"]  # fmt: skip

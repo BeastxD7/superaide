@@ -8,11 +8,11 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import select
 
 from superaide.app.accounts import owner as hired_owner
+from superaide.approvals.binding import seal
 from superaide.intentions import service as intentions
 from superaide.platform.config import get_settings
 from superaide.platform.db.models import Approval, AuditLog, Intention
 from superaide.platform.db.session import session_scope
-from superaide.policy.binding import seal
 from superaide.skills import retention_settings as retention
 from tests.integrations.gmail_fake import owner_client_fixture  # noqa: F401
 

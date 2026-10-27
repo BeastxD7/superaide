@@ -21,6 +21,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from superaide.app.accounts import owner as hired_owner
+from superaide.approvals.binding import waiting as waiting_clause
 from superaide.integrations.calendar import skill as calendar
 from superaide.integrations.google.client import event_text
 from superaide.intentions.service import owner_zone
@@ -31,7 +32,6 @@ from superaide.memory.knowledge.store import preferences_for
 from superaide.platform.audit import audit
 from superaide.platform.db.models import Approval, Intention, Job, MemoryItem, Person
 from superaide.platform.db.session import require, session_scope
-from superaide.policy.binding import waiting as waiting_clause
 from superaide.proactive import prep
 from superaide.proactive.notify import notify_owner
 
