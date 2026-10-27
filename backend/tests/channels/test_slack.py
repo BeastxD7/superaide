@@ -115,6 +115,23 @@ def test_plain_channel_messages_are_ignored_unless_the_agent_is_mentioned():
         assert parse_event(event("chatter", channel_type=kind), our_team_id=OUR_TEAM, verified=True) is None
 
 
+def test_a_dropped_subtype_is_logged_without_the_message_text(caplog):
+    """#513: a file_share (a message with an upload) is dropped; the log says which kind, never what was written."""
+    payload = event("secret quarterly numbers", subtype="file_share", channel_type="im")
+    with caplog.at_level("INFO", logger="superaide.channels.slack"):
+        assert parse_event(payload, our_team_id=OUR_TEAM, verified=True) is None
+    lines = [r.getMessage() for r in caplog.records if r.name == "superaide.channels.slack"]
+    assert lines == ["slack: event ignored: subtype=file_share channel_type=im"]
+    assert "secret" not in caplog.text and COLLEAGUE_SLACK not in caplog.text
+
+
+def test_ava_s_own_echo_is_dropped_silently(caplog):
+    with caplog.at_level("INFO", logger="superaide.channels.slack"):
+        assert parse_event(event("my reply", bot_id="B1"), our_team_id=OUR_TEAM, verified=True) is None
+        assert parse_event(event("x", subtype="bot_message"), our_team_id=OUR_TEAM, verified=True) is None
+    assert "ignored" not in caplog.text
+
+
 def test_a_mention_in_a_channel_is_a_group_message():
     payload = event("<@UAVA> can you help?", etype="app_mention", channel_type=None, channel="C42")
     msg = parse_event(payload, our_team_id=OUR_TEAM, verified=True)
