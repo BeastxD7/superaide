@@ -1,4 +1,4 @@
-"""scripts/layout_report.py and scripts/check_boundaries.py (ADR 0015): the measurements and the check (a ratchet in CI since phase 9)."""
+"""scripts/layout_report.py and scripts/check_boundaries.py (ADR 0015): the measurements and the boundary ratchet."""
 
 from __future__ import annotations
 
