@@ -239,15 +239,6 @@ e2e = [
   "e2e/tests/journeys/approval-automated.spec.ts",
 ]
 
-[modules.context]
-src = [
-  "backend/src/superaide/context/**",
-]
-tests = [
-  "backend/tests/context/**",
-]
-e2e = []
-
 [modules.console]
 src = [
   "backend/src/superaide/api/**",
@@ -353,26 +344,6 @@ e2e = [
   "e2e/tests/journal/decision-journal.spec.ts",
 ]
 
-[modules.knowledge]
-src = [
-  "backend/src/superaide/knowledge/**",
-]
-tests = [
-  "backend/tests/knowledge/**",
-]
-e2e = [
-  "e2e/tests/knowledge/brain-first.spec.ts",
-  "e2e/tests/knowledge/doc-loader.spec.ts",
-  "e2e/tests/knowledge/doc-loader.mobile.spec.ts",
-  "e2e/tests/knowledge/intro-failures.spec.ts",
-  "e2e/tests/knowledge/intro-sources.spec.ts",
-  "e2e/tests/knowledge/intro-sources.mobile.spec.ts",
-  "e2e/tests/knowledge/introduction.spec.ts",
-  "e2e/tests/knowledge/introduction.mobile.spec.ts",
-  "e2e/tests/knowledge/notebook-sync.spec.ts",
-  "e2e/tests/journeys/sources.spec.ts",
-]
-
 [modules.mandate]
 src = [
   "backend/src/superaide/mandate/**",
@@ -391,14 +362,51 @@ tests = [
 ]
 e2e = []
 
+# The memory package (ADR 0015 phase 6a) has three modules, one per sub-package, so a change to one still runs only
+# its own tests and its dependents' (one module for all of memory/ would run all three suites for any change there):
+#   memory            store, consolidation (sleep, merge, recheck, importance, echo)   tests/memory/*.py
+#   memory-recall     the audience gate and retrieval (was `context`)                  tests/memory/recall/**
+#   memory-knowledge  what is learned from files and chats (was `knowledge`)           tests/memory/knowledge/**
 [modules.memory]
 src = [
-  "backend/src/superaide/memory/**",
+  "backend/src/superaide/memory/__init__.py",
+  "backend/src/superaide/memory/store.py",
+  "backend/src/superaide/memory/consolidation/**",
 ]
 tests = [
-  "backend/tests/memory/**",
+  "backend/tests/memory/*.py",
 ]
 e2e = []
+
+[modules.memory-recall]
+src = [
+  "backend/src/superaide/memory/audience.py",
+  "backend/src/superaide/memory/recall/**",
+]
+tests = [
+  "backend/tests/memory/recall/**",
+]
+e2e = []
+
+[modules.memory-knowledge]
+src = [
+  "backend/src/superaide/memory/knowledge/**",
+]
+tests = [
+  "backend/tests/memory/knowledge/**",
+]
+e2e = [
+  "e2e/tests/memory/brain-first.spec.ts",
+  "e2e/tests/memory/doc-loader.spec.ts",
+  "e2e/tests/memory/doc-loader.mobile.spec.ts",
+  "e2e/tests/memory/intro-failures.spec.ts",
+  "e2e/tests/memory/intro-sources.spec.ts",
+  "e2e/tests/memory/intro-sources.mobile.spec.ts",
+  "e2e/tests/memory/introduction.spec.ts",
+  "e2e/tests/memory/introduction.mobile.spec.ts",
+  "e2e/tests/memory/notebook-sync.spec.ts",
+  "e2e/tests/journeys/sources.spec.ts",
+]
 
 [modules.memsocket]
 src = [
@@ -772,7 +780,7 @@ e2e = [
   "e2e/tests/passport/memory-passport.spec.ts",
   "e2e/tests/app/models.spec.ts",
   "e2e/tests/app/qa-models.spec.ts",
-  "e2e/tests/knowledge/notebook-sync.spec.ts",
+  "e2e/tests/memory/notebook-sync.spec.ts",
   "e2e/tests/principal/principal-card.spec.ts",
   "e2e/tests/principal/approval-sign.spec.ts",
   "e2e/tests/principal/approval-sign.mobile.spec.ts",
@@ -785,7 +793,7 @@ e2e = [
   "e2e/tests/integrations/capability-google.spec.ts",
   "e2e/tests/app/fe-chat-streaming.spec.ts",
   "e2e/tests/pagination/pagination-chat.spec.ts",
-  "e2e/tests/knowledge/brain-first.spec.ts",
+  "e2e/tests/memory/brain-first.spec.ts",
   "e2e/tests/journeys/live-chat.spec.ts",
 ]
 
@@ -821,14 +829,14 @@ tests = [
   "frontend/src/features/onboarding/*.test.ts",
 ]
 e2e = [
-  "e2e/tests/knowledge/doc-loader.spec.ts",
-  "e2e/tests/knowledge/doc-loader.mobile.spec.ts",
+  "e2e/tests/memory/doc-loader.spec.ts",
+  "e2e/tests/memory/doc-loader.mobile.spec.ts",
   "e2e/tests/web-onboarding/fe-a11y-intro.spec.ts",
-  "e2e/tests/knowledge/intro-failures.spec.ts",
-  "e2e/tests/knowledge/intro-sources.spec.ts",
-  "e2e/tests/knowledge/intro-sources.mobile.spec.ts",
-  "e2e/tests/knowledge/introduction.spec.ts",
-  "e2e/tests/knowledge/introduction.mobile.spec.ts",
+  "e2e/tests/memory/intro-failures.spec.ts",
+  "e2e/tests/memory/intro-sources.spec.ts",
+  "e2e/tests/memory/intro-sources.mobile.spec.ts",
+  "e2e/tests/memory/introduction.spec.ts",
+  "e2e/tests/memory/introduction.mobile.spec.ts",
   "e2e/tests/voice/speech-language.spec.ts",
   "e2e/tests/voice/voice-confirm.spec.ts",
   "e2e/tests/voice/voice-intro.spec.ts",

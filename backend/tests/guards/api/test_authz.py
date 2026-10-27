@@ -13,7 +13,7 @@ import uuid
 import pytest
 from sqlalchemy import select
 
-from superaide.knowledge.store import remember_fact
+from superaide.memory.knowledge.store import remember_fact
 from superaide.platform.config import get_settings
 from superaide.platform.db.models import Document, MemoryItem, Person, UserAccount
 from superaide.platform.db.session import session_scope

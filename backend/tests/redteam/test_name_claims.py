@@ -11,8 +11,8 @@ from sqlalchemy import select
 from superaide.app.accounts import owner
 from superaide.identity import claims
 from superaide.identity.linking import operator_link
-from superaide.knowledge.store import add_contact, remember_fact
 from superaide.main import create_app
+from superaide.memory.knowledge.store import add_contact, remember_fact
 from superaide.platform.config import get_settings
 from superaide.platform.db.models import ChannelIdentity, Event, IdentityClaim, IdentityLinkEvent, Person
 from superaide.platform.db.session import session_scope

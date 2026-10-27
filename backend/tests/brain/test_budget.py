@@ -199,7 +199,7 @@ def test_an_answer_that_does_not_match_the_schema_is_not_parsed_but_is_still_bil
 
 
 def test_extraction_leaves_room_for_thinking(agent, monkeypatch):
-    from superaide.knowledge import facts
+    from superaide.memory.knowledge import facts
 
     monkeypatch.setattr("superaide.brain.wiring.brain_ready", lambda settings: True)
     seen: dict = {}

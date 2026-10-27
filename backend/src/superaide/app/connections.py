@@ -457,7 +457,7 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
         with session_scope() as s:
             store.remove(s, provider, user_id=user_id)
             if provider == "google":  # the mail and calendar are gone: so are the short facts read from them
-                from superaide.knowledge.connector_facts import erase_source
+                from superaide.memory.knowledge.connector_facts import erase_source
 
                 for source in ("gmail", "calendar"):
                     erase_source(s, source)

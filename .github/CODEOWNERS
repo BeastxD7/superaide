@@ -19,7 +19,7 @@
 /backend/src/superaide/evals/              @BeastxD7
 /backend/evals/                            @BeastxD7
 /backend/tests/redteam/                    @BeastxD7
-/backend/src/superaide/context/audience.py @BeastxD7
+/backend/src/superaide/memory/audience.py  @BeastxD7
 /backend/src/superaide/triage/policy.py    @BeastxD7
 /backend/src/superaide/triage/store.py     @BeastxD7
 /backend/src/superaide/tooltrace/effects.py @BeastxD7

@@ -73,7 +73,7 @@ def test_three_branches_each_with_unknowns_and_confidence(on, settings):
 
 
 def test_branches_see_only_the_question_and_complete_has_no_tools_argument(on, settings):
-    from superaide.knowledge.store import remember_fact
+    from superaide.memory.knowledge.store import remember_fact
 
     with session_scope() as s:
         o = Person(display_name="Jordan", relation="manager")

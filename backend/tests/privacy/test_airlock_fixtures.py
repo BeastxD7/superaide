@@ -215,8 +215,8 @@ def test_known_people_come_from_the_database_and_the_owner_stays(monkeypatch, ag
     from fastapi.testclient import TestClient
 
     from superaide.app.accounts import owner
-    from superaide.knowledge.store import add_contact
     from superaide.main import create_app
+    from superaide.memory.knowledge.store import add_contact
     from superaide.platform.db.session import session_scope
 
     monkeypatch.setattr(get_settings(), "airlock_enabled", True)

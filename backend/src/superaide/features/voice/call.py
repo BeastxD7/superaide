@@ -44,7 +44,7 @@ from superaide.features.voice.providers import (
     metered_transcribe,
     voice_id,
 )
-from superaide.knowledge.store import CATEGORIES, remember_fact
+from superaide.memory.knowledge.store import CATEGORIES, remember_fact
 from superaide.memory.store import log_event
 from superaide.platform.audit import audit
 from superaide.platform.db.models import Onboarding, Person
@@ -385,7 +385,7 @@ class VoiceCall:
 
     def finish(self, session: Session, person: Person) -> dict[str, Any]:
         """Read the call for facts and propose them. Nothing is saved until the owner confirms."""
-        from superaide.knowledge.facts import extract_facts
+        from superaide.memory.knowledge.facts import extract_facts
 
         row = self._row(session, person, lock=True)
         call = self._call(row)

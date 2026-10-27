@@ -20,9 +20,9 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from superaide.context.lexicon import normalise
 from superaide.features.passport.schema import Passport
-from superaide.knowledge.store import find_same_fact
+from superaide.memory.knowledge.store import find_same_fact
+from superaide.memory.recall.lexicon import normalise
 from superaide.platform.audit import audit
 from superaide.platform.db.models import Contact, Document, MemoryImport, MemoryItem, Person
 from superaide.platform.db.session import rows_affected
@@ -101,7 +101,7 @@ def preview(plan_: Plan, passport: Passport) -> dict[str, Any]:
 
 def apply(session: Session, owner: Person, passport: Passport, *, label: str) -> MemoryImport:
     """Write the import. The caller is inside one transaction, so a failure leaves nothing behind."""
-    from superaide.context import vectors
+    from superaide.memory.recall import vectors
 
     p = plan(session, owner, passport)
     record = MemoryImport(

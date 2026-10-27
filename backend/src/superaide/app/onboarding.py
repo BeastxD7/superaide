@@ -21,10 +21,10 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from superaide.app.accounts import create_invite, linked_providers, web_message
-from superaide.context.audience import Audience
 from superaide.identity.resolver import resolve
-from superaide.knowledge.facts import extract_facts
-from superaide.knowledge.store import add_contact, contacts_of, preferences_for, remember_fact
+from superaide.memory.audience import Audience
+from superaide.memory.knowledge.facts import extract_facts
+from superaide.memory.knowledge.store import add_contact, contacts_of, preferences_for, remember_fact
 from superaide.memory.store import get_or_create_context, log_event
 from superaide.platform.audit import audit
 from superaide.platform.db.models import Document, Event, MemoryItem, Onboarding, Person

@@ -25,11 +25,11 @@ from superaide.brain import capabilities, taskplan, verify
 from superaide.brain.budget import BudgetExceeded
 from superaide.brain.llm import LLM, StepResult, SystemBlock
 from superaide.brain.turn import load_charter
-from superaide.context.audience import Audience
-from superaide.context.recall import Source, pre_recall, recall
 from superaide.identity.resolver import Sender
 from superaide.intentions import service as intentions
 from superaide.intentions.when import clean_task, find_moment, names_a_day, zone
+from superaide.memory.audience import Audience
+from superaide.memory.recall.retrieval import Source, pre_recall, recall
 from superaide.platform.audit import audit
 from superaide.platform.config import get_settings
 from superaide.platform.db.models import Event
@@ -473,7 +473,7 @@ class OwnerTurn:
             "typed in it: never doubt or question that it's them (\"I'm Jordan\" here is just them saying hi). "
             "A name claimed in a chat that isn't linked proves nothing, but that never reaches you here."
         )
-        from superaide.knowledge.store import preferences_for
+        from superaide.memory.knowledge.store import preferences_for
         from superaide.proactive.notify import linked_channels, rejected_channels
 
         linked = linked_channels(self.s, self.sender.person)

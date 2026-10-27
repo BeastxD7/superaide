@@ -91,10 +91,28 @@ class _Alias(importlib.abc.Loader):
         return None
 
 
+def _is_old_parent(fullname: str) -> bool:
+    """`superaide.context` when only `superaide.context.audience` was listed: the old package folder is gone, so
+    the name is made an empty package whose children are found through the aliases."""
+    return any(old.startswith(fullname + ".") for old in ALIASES) and importlib.machinery.PathFinder.find_spec(
+        fullname, getattr(sys.modules.get(fullname.rpartition(".")[0]), "__path__", None)
+    ) is None
+
+
+class _Empty(importlib.abc.Loader):
+    def create_module(self, spec: importlib.machinery.ModuleSpec) -> ModuleType | None:
+        return None
+
+    def exec_module(self, module: ModuleType) -> None:
+        return None
+
+
 class _Finder(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname: str, path: Any = None, target: Any = None) -> importlib.machinery.ModuleSpec | None:
         real = _target(fullname)
         if real is None:
+            if fullname.startswith("superaide.") and _is_old_parent(fullname):
+                return importlib.util.spec_from_loader(fullname, _Empty(), is_package=True)
             return None
         if importlib.util.find_spec(real) is None:
             return None
@@ -298,7 +316,35 @@ FILE_PHASES = {
         "test_dirs": {"connectors": "integrations"},  # backend/tests/<old> -> backend/tests/<new>
         "e2e_dirs": {"connectors": "integrations"},  # e2e/tests/<old> -> e2e/tests/<new>
         "module_renames": {"connectors": "integrations"},  # ci/modules.toml [modules.<old>]
-    }
+    },
+    # Phase 6a: the memory group (ADR 0015 "Worked example 2"): `context/` (the audience gate and recall),
+    # `knowledge/` (what is learned from files and chats) and `memory/` become one package. Files only move; not a
+    # query changes (the redteam suite is the proof). `knowledge/connector_facts.py` and `knowledge/trust.py` move
+    # with it for now; leaving the group (to integrations/gmail and trust/) needs edits to what they import, so it
+    # is a later, separate change.
+    61: {
+        "files": {
+            **{f"context.{m}": f for m, f in {
+                "audience": "memory/audience.py",
+                "recall": "memory/recall/retrieval.py",
+                "vectors": "memory/recall/vectors.py",
+                "lexicon": "memory/recall/lexicon.py",
+            }.items()},
+            **{f"memory.{m}": f"memory/consolidation/{m}.py" for m in ("sleep", "merge", "recheck", "importance", "echo")},
+            "knowledge": "memory/knowledge/__init__.py",
+            **{
+                f"knowledge.{m}": f"memory/knowledge/{m}.py"
+                for m in (
+                    "chunking connector_facts erase extract facts ingest learn pending profile store trust"
+                ).split()
+            },
+        },
+        "data": {},
+        # `context` and `knowledge` test folders go under memory/ (the folder `tests/memory` already exists).
+        "test_dirs": {"context": "memory/recall", "knowledge": "memory/knowledge"},
+        "e2e_dirs": {"knowledge": "memory"},
+        "module_renames": {},  # three modules become one: ci/modules.toml is merged by hand in the same change
+    },
 }
 
 
@@ -371,7 +417,11 @@ def run_files(root: Path, plan: dict, dry: bool = False) -> dict[str, str]:
     pair_forms: dict[str, str] = {}
     for old, new in path_pairs:
         pair_forms[old] = new
-        if old.startswith("backend/"):
+        # `tests/<dir>/` alone is ambiguous (backend/tests and e2e/tests both have one), so only the e2e form
+        # (e2e/shard-timings.json keys) is shortened for test folders, never the backend one.
+        if old.startswith("e2e/tests/"):
+            pair_forms[old.removeprefix("e2e/")] = new.removeprefix("e2e/")
+        elif old.startswith("backend/") and not old.startswith("backend/tests/"):
             pair_forms[old.removeprefix("backend/")] = new.removeprefix("backend/")
         if old.startswith(SRC + "/"):
             pair_forms[old.removeprefix("backend/src/")] = new.removeprefix("backend/src/")
@@ -437,7 +487,7 @@ def run_files(root: Path, plan: dict, dry: bool = False) -> dict[str, str]:
         text = from_re.sub(from_sub, text)
         text = dotted_re.sub(sub_dotted, text)
         if tdir_re:
-            text = tdir_re.sub(lambda m: f"tests.{tdirs[m.group(1)]}", text)
+            text = tdir_re.sub(lambda m: "tests." + tdirs[m.group(1)].replace("/", "."), text)
         if path_re:
             text = path_re.sub(lambda m: pair_forms[m.group(0)], text)
         if id_files.match(rel) and changed:

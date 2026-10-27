@@ -163,8 +163,8 @@ def test_ltm_gate_fails_when_the_audience_gate_is_loosened(monkeypatch: pytest.M
     """The canary scenarios exist to catch exactly this: a search that stops filtering by audience."""
     from sqlalchemy import true
 
-    from superaide.context import recall
     from superaide.evals.gate import compare, load_baseline
+    from superaide.memory.recall import retrieval as recall
 
     monkeypatch.setattr(recall, "memory_filter", lambda aud, now=None: true())
     regressions, _ = compare(_ltm_results(), load_baseline())
@@ -173,7 +173,7 @@ def test_ltm_gate_fails_when_the_audience_gate_is_loosened(monkeypatch: pytest.M
 
 def test_ltm_gate_fails_when_a_correction_no_longer_retires_the_old_fact(monkeypatch: pytest.MonkeyPatch):
     from superaide.evals.gate import compare, load_baseline
-    from superaide.knowledge import learn
+    from superaide.memory.knowledge import learn
 
     # Learning ignores `replaces`: the old fact stays current and is served next to the new one.
     real = learn.extract_facts
@@ -213,7 +213,7 @@ def test_ingest_scenarios_drive_the_real_pipeline_and_pass():
 
 
 def test_the_ingest_gate_fails_when_ingest_stops_linking_facts_to_the_file(monkeypatch: pytest.MonkeyPatch):
-    from superaide.knowledge import ingest
+    from superaide.memory.knowledge import ingest
 
     monkeypatch.setattr(ingest, "save_facts", lambda *a, **k: 0)  # the file is stored but nothing is kept
     runs = _ingest_runs()
@@ -224,7 +224,7 @@ def test_the_ingest_gate_fails_when_ingest_stops_linking_facts_to_the_file(monke
 def test_the_ingest_canary_fails_when_a_files_facts_leak_to_a_colleague(monkeypatch: pytest.MonkeyPatch):
     from sqlalchemy import true
 
-    from superaide.context import recall
+    from superaide.memory.recall import retrieval as recall
 
     monkeypatch.setattr(recall, "memory_filter", lambda aud, now=None: true())
     assert not _ingest_runs()["ltm-ingest-file-fact-never-reaches-a-colleague"].passed

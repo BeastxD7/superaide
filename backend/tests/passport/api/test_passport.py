@@ -12,7 +12,7 @@ import pytest
 from sqlalchemy import select
 
 from superaide.features.passport import schema
-from superaide.knowledge.store import add_contact, remember_fact
+from superaide.memory.knowledge.store import add_contact, remember_fact
 from superaide.platform.config import get_settings
 from superaide.platform.db.models import Contact, Document, MemoryImport, MemoryItem, Person
 from superaide.platform.db.session import session_scope
@@ -282,7 +282,7 @@ def test_a_file_cannot_name_the_audience_or_the_subject(browser):
 
 def test_imported_facts_never_reach_a_stranger_prompt(browser):
     """The audience gate sees an import as private to the owner: a public-audience query finds none of it."""
-    from superaide.context.audience import Audience, visible_memories
+    from superaide.memory.audience import Audience, visible_memories
 
     a, b = owners(browser)
     forged = {"content": "Imported private detail", "allowed_kind": "public", "shareable": True}

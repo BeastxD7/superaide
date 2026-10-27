@@ -39,7 +39,7 @@ def make_context(s, external: str) -> Context:
 
 
 def add_event(s, ctx: Context, when: datetime) -> Event:
-    from superaide.context.audience import Audience
+    from superaide.memory.audience import Audience
 
     e = log_event(s, context=ctx, direction="in", content="hi", audience=Audience(person_ids=set()))
     e.created_at = when

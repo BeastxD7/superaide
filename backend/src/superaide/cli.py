@@ -13,7 +13,7 @@ from superaide.platform.config import get_settings
 
 def _init_db(_: argparse.Namespace) -> None:
     """Create tables directly (quick start). For real deployments use `alembic upgrade head`."""
-    from superaide.context.vectors import ensure_vector_store
+    from superaide.memory.recall.vectors import ensure_vector_store
     from superaide.platform.db.models import Base
     from superaide.platform.db.session import ensure_extensions, get_engine
 
@@ -91,7 +91,7 @@ def _worker(args: argparse.Namespace) -> None:
     runtime = Runtime(settings)
     jobs = JobWorker()
     try:
-        from superaide.context import vectors
+        from superaide.memory.recall import vectors
 
         with session_scope() as s:
             vectors.start(s)  # the local embedder, in the background

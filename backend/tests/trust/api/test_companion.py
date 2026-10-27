@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import func, select
 
-from superaide.knowledge.store import add_contact
+from superaide.memory.knowledge.store import add_contact
 from superaide.platform.db.models import AuditLog, Person, UserAccount
 from superaide.platform.db.session import session_scope
 from superaide.trust import companion

@@ -102,7 +102,7 @@ def test_a_verified_contact_is_known_and_an_unverified_from_line_is_not(owner_cl
 
 def test_an_urgent_email_from_a_verified_vip_interrupts(owner_client, gmail_fake, flags):
     with session_scope() as s:
-        from superaide.knowledge.store import preferences_for
+        from superaide.memory.knowledge.store import preferences_for
 
         prefs = preferences_for(s, hired_owner(s))
         prefs.urgent_topics = ["server down"]
@@ -200,8 +200,8 @@ def test_an_expired_history_starts_again_from_now(owner_client, gmail_fake, flag
 
 
 def test_an_email_never_reaches_recall(owner_client, gmail_fake, flags):
-    from superaide.context.audience import Audience
-    from superaide.context.recall import recall
+    from superaide.memory.audience import Audience
+    from superaide.memory.recall.retrieval import recall
 
     connect()
     poll()

@@ -101,8 +101,8 @@ import superaide.plugins  # noqa: E402, F401  (registers the approval executors 
 from superaide.brain.llm import FakeLLM  # noqa: E402
 from superaide.brain.turn import Prediction, RequestedAction, TurnOutput  # noqa: E402
 from superaide.channels.base import FakeMessenger, InboundMessage  # noqa: E402
-from superaide.context.vectors import ensure_vector_store  # noqa: E402
 from superaide.identity.linking import bootstrap_person  # noqa: E402
+from superaide.memory.recall.vectors import ensure_vector_store  # noqa: E402
 from superaide.pipeline import Agent  # noqa: E402
 from superaide.platform.config import get_settings  # noqa: E402
 from superaide.platform.db.models import Base, Person  # noqa: E402

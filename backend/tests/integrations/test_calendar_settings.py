@@ -90,7 +90,7 @@ def test_bad_values_are_refused_unknown_fields_too_and_changes_are_audited(owner
 
 
 def test_the_facts_job_reads_as_many_events_as_the_setting_allows(owner_client, cal, monkeypatch):
-    from superaide.knowledge import connector_facts
+    from superaide.memory.knowledge import connector_facts
 
     monkeypatch.setattr(connector_facts, "enabled", lambda: True)
     queued = []

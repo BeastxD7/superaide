@@ -30,6 +30,10 @@ ALIASES: dict[str, str] = {
     "superaide.connectors.gmail": "superaide.integrations.gmail.client",
     "superaide.connectors.google": "superaide.integrations.google.client",
     "superaide.connectors.google_signin": "superaide.integrations.google.signin",
+    "superaide.context.audience": "superaide.memory.audience",
+    "superaide.context.lexicon": "superaide.memory.recall.lexicon",
+    "superaide.context.recall": "superaide.memory.recall.retrieval",
+    "superaide.context.vectors": "superaide.memory.recall.vectors",
     "superaide.db": "superaide.platform.db",
     "superaide.dissent": "superaide.features.dissent",
     "superaide.drills": "superaide.features.drills",
@@ -37,6 +41,23 @@ ALIASES: dict[str, str] = {
     "superaide.forknight": "superaide.features.forknight",
     "superaide.imports": "superaide.features.imports",
     "superaide.journal": "superaide.features.journal",
+    "superaide.knowledge": "superaide.memory.knowledge",
+    "superaide.knowledge.chunking": "superaide.memory.knowledge.chunking",
+    "superaide.knowledge.connector_facts": "superaide.memory.knowledge.connector_facts",
+    "superaide.knowledge.erase": "superaide.memory.knowledge.erase",
+    "superaide.knowledge.extract": "superaide.memory.knowledge.extract",
+    "superaide.knowledge.facts": "superaide.memory.knowledge.facts",
+    "superaide.knowledge.ingest": "superaide.memory.knowledge.ingest",
+    "superaide.knowledge.learn": "superaide.memory.knowledge.learn",
+    "superaide.knowledge.pending": "superaide.memory.knowledge.pending",
+    "superaide.knowledge.profile": "superaide.memory.knowledge.profile",
+    "superaide.knowledge.store": "superaide.memory.knowledge.store",
+    "superaide.knowledge.trust": "superaide.memory.knowledge.trust",
+    "superaide.memory.echo": "superaide.memory.consolidation.echo",
+    "superaide.memory.importance": "superaide.memory.consolidation.importance",
+    "superaide.memory.merge": "superaide.memory.consolidation.merge",
+    "superaide.memory.recheck": "superaide.memory.consolidation.recheck",
+    "superaide.memory.sleep": "superaide.memory.consolidation.sleep",
     "superaide.memsocket": "superaide.features.memsocket",
     "superaide.mirror": "superaide.features.mirror",
     "superaide.pagination": "superaide.platform.pagination",
@@ -72,10 +93,32 @@ class _Alias(importlib.abc.Loader):
         return None
 
 
+def _is_old_parent(fullname: str) -> bool:
+    """`superaide.context` when only `superaide.context.audience` was listed: the old package folder is gone, so
+    the name is made an empty package whose children are found through the aliases."""
+    return (
+        any(old.startswith(fullname + ".") for old in ALIASES)
+        and importlib.machinery.PathFinder.find_spec(
+            fullname, getattr(sys.modules.get(fullname.rpartition(".")[0]), "__path__", None)
+        )
+        is None
+    )
+
+
+class _Empty(importlib.abc.Loader):
+    def create_module(self, spec: importlib.machinery.ModuleSpec) -> ModuleType | None:
+        return None
+
+    def exec_module(self, module: ModuleType) -> None:
+        return None
+
+
 class _Finder(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname: str, path: Any = None, target: Any = None) -> importlib.machinery.ModuleSpec | None:
         real = _target(fullname)
         if real is None:
+            if fullname.startswith("superaide.") and _is_old_parent(fullname):
+                return importlib.util.spec_from_loader(fullname, _Empty(), is_package=True)
             return None
         if importlib.util.find_spec(real) is None:
             return None

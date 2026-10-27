@@ -27,12 +27,12 @@ from superaide.brain.turn import TurnOutput, build_messages, build_system
 from superaide.channels.base import InboundMessage, Messenger
 from superaide.channels.format import strip_citations
 from superaide.channels.health import DeliveryFailed
-from superaide.context.audience import Audience, audience_for, visible_memories
 from superaide.identity import linking
 from superaide.identity.resolver import Sender, resolve
 from superaide.intentions.when import is_reminder_request
-from superaide.knowledge import trust
-from superaide.knowledge.profile import owner_brief
+from superaide.memory.audience import Audience, audience_for, visible_memories
+from superaide.memory.knowledge import trust
+from superaide.memory.knowledge.profile import owner_brief
 from superaide.memory.store import (
     Timeline,
     get_or_create_context,
@@ -313,7 +313,7 @@ class Agent:
                     self._reply(s, ctx, aud, reply, thread, meta=meta)
                 if shared:
                     return HandleResult("known", reply, [*notes, "shared_context"])  # nothing is learned from a room
-                from superaide.knowledge import learn
+                from superaide.memory.knowledge import learn
 
                 learn.schedule(s, inbound)  # after the reply: learn anything worth keeping
                 from superaide.features.journal import service as journal

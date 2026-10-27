@@ -12,7 +12,7 @@ from sqlalchemy import select
 from superaide.identity.trust import Trust
 from superaide.jobs.handlers import load
 from superaide.jobs.queue import run_due
-from superaide.knowledge.store import preferences_for
+from superaide.memory.knowledge.store import preferences_for
 from superaide.platform.config import get_settings
 from superaide.platform.db.models import AuditLog, ChannelIdentity, Contact, Context, Event, Job, Person, UserAccount
 from superaide.platform.db.session import session_scope

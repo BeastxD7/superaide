@@ -12,10 +12,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from superaide.channels.base import InboundMessage
-from superaide.context.audience import Audience
 from superaide.identity.resolver import Sender
-from superaide.knowledge import trust
-from superaide.knowledge.store import channel_source
+from superaide.memory.audience import Audience
+from superaide.memory.knowledge import trust
+from superaide.memory.knowledge.store import channel_source
 from superaide.platform.audit import audit
 from superaide.platform.db.models import Context, Event, MemoryItem
 
@@ -222,7 +222,7 @@ def parse_remember(text: str) -> str | None:
 
 
 def _same_fact(text: str) -> str:
-    from superaide.context.lexicon import normalise  # one normaliser for every fact writer
+    from superaide.memory.recall.lexicon import normalise  # one normaliser for every fact writer
 
     return normalise(text)
 
@@ -266,7 +266,7 @@ def remember(
     )
     session.add(item)
     session.flush()
-    from superaide.context import vectors
+    from superaide.memory.recall import vectors
 
     vectors.schedule(session, item)
     audit(session, "memory", "remembered", memory_id=item.id, audience=[str(i) for i in audience.person_ids])

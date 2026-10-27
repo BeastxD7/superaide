@@ -62,12 +62,31 @@ What was done, per technique of the list above: (1) `factory` was split instead 
 
 Left: the 7-file `audit`/`auth`/`db`/`jobs`/`tenancy` cycle (all `core`, a change there runs everything anyway; phase 3 and 7) and four pairs (`triage.buttons`/`escalate`, `app.connections`/`gmail`, `brain.pricing`/`price_tables`, `brain.providers.config`/`vault.store`). The leaf `mirror/service.py` stays at 80 tests: `main` (the composition root) imports it and every test that imports `main`, `cli` or `app` is selected with it. Excluding composition roots from the dependents closure in `select_tests.py` was the next lever and is done in the last row (`[settings] composition_roots` in `ci/modules.toml`; `composition_smoke` keeps `tests/console/test_main.py` in every backend selection that changes code; a change in `plugins.py` runs everything; a change in `main`/`cli` still selects the console module and the smoke specs). Not done: routers of the leaf features are still registered from `main` one by one rather than by an `api` composer; that belongs with the file moves of phase 5.
 
+### Phase 6a, measured (2026-10-27)
+
+The memory group moved: `context/` (audience gate, recall), `knowledge/` and `memory/` are now one package with three sub-packages (`memory/recall`, `memory/consolidation`, `memory/knowledge`), 21 files moved with `git mv`, the test folders `tests/context` and `tests/knowledge` went under `tests/memory/`, and `e2e/tests/knowledge` became `e2e/tests/memory`. No query changed; the redteam suite is unchanged. Old import names keep working for one release through `_compat.py` (a new rule there: the vanished parent packages `superaide.context` and `superaide.knowledge` import as empty packages whose children are aliased).
+
+Backend tests selected of 236, `select_tests.py --changed <file>`:
+
+| File | before | one module for all of memory/ | three modules (what was merged) |
+| --- | --- | --- | --- |
+| audience gate | 183 | 183 | 183 |
+| recall (retrieval) | 173 | 173 | 173 |
+| memory/store.py | 156 | 160 | 156 |
+| consolidation/sleep.py | 43 | 54 | 43 |
+| knowledge/learn.py | 72 | 80 | 72 |
+| knowledge/erase.py | 35 | 47 | 35 |
+
+**What this showed.** (1) Moving files does not make selection smaller; the number is decided by who imports the changed file, not by where the file lives. (2) The module is the unit of selection, so one `memory` module would run all three suites for a change in any of them (the middle column is worse than before). `ci/modules.toml` therefore keeps three modules, one per sub-package, and the folder grouping is for people, not for CI. (3) The privacy-critical gate (`memory/audience.py`) is imported by 11 modules, so 183 tests is correct, not a flaw. The lever that would shrink every row is in the selector, not in the layout: a dependent module's whole suite runs today when only one of its files is affected. Selecting only the tests whose imports reach an affected file (the second rule in `select()`, which already exists) and dropping the "all tests of every affected module" rule gives 138, 107, 51, 126 and 29 for the five rows above, a 25 to 45 percent cut, at the price of missing a test that reaches the code without importing it. That is a safety decision for the owner, not part of a move.
+
+`knowledge/connector_facts.py` and `knowledge/trust.py` moved with the package (to `memory/knowledge/`); leaving the group for `integrations/gmail/` and `trust/` needs edits to what they import, so it is a separate change.
+
 ## Decision
 
 Organise the backend as a modular monolith, package by feature (Django apps, NestJS modules, bulletproof-react features). One folder per feature or integration owns everything about it: code, its types, its routes, its models, its tests. Four rules:
 
 1. **Nest by domain group only when the graph supports it** (below), and never create a folder for one file.
-2. **Public door.** A module is used only through its public entry: the package `__init__` (re-exporting its use-case functions), `api.py` for a larger surface, `schemas.py` for its types. Nobody imports `superaide.memory.sleep` from outside `memory/`. Enforced by `scripts/check_boundaries.py` (already in this PR, warn-only, baseline `ci/boundary-baseline.json` of 840 existing violations). Phase 9 turns it into a ratchet (no new violation) and finally an error. Why a home-grown check and not import-linter or tach: it reuses the same graph as the test selector (one definition of "imports"), needs no new dependency or Rust/Python 3.14 compatibility check, and CI already runs it with `uv run --python 3.14 --no-project`. import-linter (contracts for layers and forbidden imports) is the fallback if the owner prefers a maintained tool; the baseline file converts to its `ignore_imports` list.
+2. **Public door.** A module is used only through its public entry: the package `__init__` (re-exporting its use-case functions), `api.py` for a larger surface, `schemas.py` for its types. Nobody imports `superaide.memory.consolidation.sleep` from outside `memory/`. Enforced by `scripts/check_boundaries.py` (already in this PR, warn-only, baseline `ci/boundary-baseline.json` of 840 existing violations). Phase 9 turns it into a ratchet (no new violation) and finally an error. Why a home-grown check and not import-linter or tach: it reuses the same graph as the test selector (one definition of "imports"), needs no new dependency or Rust/Python 3.14 compatibility check, and CI already runs it with `uv run --python 3.14 --no-project`. import-linter (contracts for layers and forbidden imports) is the fallback if the owner prefers a maintained tool; the baseline file converts to its `ignore_imports` list.
 3. **Dependencies point one way.** `platform/` and `contracts/` import nothing from feature modules; features import `platform/`, `contracts/` and lower groups; nobody imports `api/` or `main`. Cycles are removed by ports, not tolerated.
 4. **Types are easy to find.** Each module has `schemas.py` (pydantic request/response and domain types; a `schemas/` folder only when it exceeds about 300 lines) and `models.py` (its tables). Types used by two or more modules live in ONE place, `contracts/`, together with the ports (Protocols) that break cycles. Rule of thumb: a type moves to `contracts/` only when a second module needs it, never preemptively.
 

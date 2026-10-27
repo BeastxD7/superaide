@@ -31,11 +31,11 @@ from superaide.channels import health
 from superaide.features.voice import gateway
 from superaide.intentions import service as intentions
 from superaide.intentions.when import clean_task, find_moment, zone
-from superaide.knowledge import extract
-from superaide.knowledge.erase import erase_document, erase_person
-from superaide.knowledge.erase import vacuum as erase_vacuum
-from superaide.knowledge.ingest import ingest
-from superaide.knowledge.store import conflicts_of, preferences_for, resolve_conflict, retire_document
+from superaide.memory.knowledge import extract
+from superaide.memory.knowledge.erase import erase_document, erase_person
+from superaide.memory.knowledge.erase import vacuum as erase_vacuum
+from superaide.memory.knowledge.ingest import ingest
+from superaide.memory.knowledge.store import conflicts_of, preferences_for, resolve_conflict, retire_document
 from superaide.platform.config import get_settings
 from superaide.platform.db.models import (
     Approval,
@@ -359,7 +359,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         with session_scope() as s:
             view = ob.answer(s, require(s, Person, person_id), body.step, body.answer).as_dict()
         if body.step == "brain":
-            from superaide.knowledge.pending import brain_became_ready
+            from superaide.memory.knowledge.pending import brain_became_ready
 
             brain_became_ready()  # after the commit: read anything already shared (issue #12)
         return view
@@ -452,7 +452,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         description="For one that failed to be read: reads it again now and says how it went.",
     )
     def retry_document_route(document_id: uuid.UUID, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
-        from superaide.knowledge.ingest import retry_document
+        from superaide.memory.knowledge.ingest import retry_document
 
         result = retry_document(get_agent(), person_id, document_id)
         if result is None:
@@ -743,7 +743,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
     def erase_connector_facts_route(source: str, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         if source not in ("gmail", "calendar"):
             raise HTTPException(404, "Not found")
-        from superaide.knowledge.connector_facts import erase_source
+        from superaide.memory.knowledge.connector_facts import erase_source
 
         with session_scope() as s:
             return {"status": "erased", "facts_deleted": erase_source(s, source)}
@@ -930,7 +930,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             m = s.get(MemoryItem, memory_id)
             if m is None or person_id not in (m.subject_person_ids or []) or m.valid_to is not None:
                 raise HTTPException(404, "Not found in your notebook")
-            from superaide.memory import echo
+            from superaide.memory.consolidation import echo
 
             echo.confirm(s, m)
         return {"status": "fact"}
@@ -1202,7 +1202,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
     def recheck(
         memory_id: uuid.UUID, body: RecheckBody, person_id: uuid.UUID = Depends(owner_person_id)
     ) -> dict[str, Any]:
-        from superaide.memory import recheck as recheck_mod
+        from superaide.memory.consolidation import recheck as recheck_mod
 
         with session_scope() as s:
             owner = s.get(Person, person_id)

@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 
 from superaide.brain.budget import AgentFrozen, BudgetExceeded
 from superaide.brain.llm import SystemBlock
-from superaide.context.audience import Audience, visible_memories
+from superaide.memory.audience import Audience, visible_memories
 from superaide.platform.audit import audit
 from superaide.platform.db.models import Event, MemoryItem, Person
 from superaide.trust.models import MemoryInfluence

@@ -18,8 +18,8 @@ from superaide.channels.base import FakeMessenger
 from superaide.identity.trust import Trust
 from superaide.jobs.handlers import load
 from superaide.jobs.queue import run_due
-from superaide.knowledge.store import preferences_for
 from superaide.main import create_app
+from superaide.memory.knowledge.store import preferences_for
 from superaide.pipeline import Agent
 from superaide.platform.db.models import ChannelIdentity, Contact, Event, Job, Person
 from superaide.platform.db.session import session_scope

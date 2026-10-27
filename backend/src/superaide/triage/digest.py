@@ -164,7 +164,7 @@ def schedule_catchup(session: Session, owner: Person, quiet_end: datetime) -> No
 
 @handler(JOB_CATCHUP)
 def _catchup(session: Session, job: Job) -> None:
-    from superaide.knowledge.store import preferences_for
+    from superaide.memory.knowledge.store import preferences_for
     from superaide.proactive.notify import notify_owner
     from superaide.triage.features import next_local
 

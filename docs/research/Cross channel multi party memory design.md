@@ -101,7 +101,7 @@ File references are relative to `backend/src/superaide/` and come from the audit
 <a id="adr"></a>
 ## ADR 0008 decided "never into a group". The new design keeps part of it and reverses part
 
-ADR 0008 ("one Ava across channels", accepted and built 2026-10-22) says the unit of memory is the person, not the channel, and that privacy stays in code and SQL before the model. It builds a cross-channel timeline for the owner's private DM only, uses an exact-equality event-audience test, sends nothing from it into a group, and dedupes merged facts by audience **intersection**, never union. `tests/context/test_cross_channel.py` pins that a group sees nothing from a DM.
+ADR 0008 ("one Ava across channels", accepted and built 2026-10-22) says the unit of memory is the person, not the channel, and that privacy stays in code and SQL before the model. It builds a cross-channel timeline for the owner's private DM only, uses an exact-equality event-audience test, sends nothing from it into a group, and dedupes merged facts by audience **intersection**, never union. `tests/memory/recall/test_cross_channel.py` pins that a group sees nothing from a DM.
 
 **This is an OWNER DECISION, and the recommendation is a narrow partial reversal.**
 

@@ -14,8 +14,8 @@ from superaide.intentions import service as intentions
 from superaide.intentions.when import zone
 from superaide.jobs.handlers import load
 from superaide.jobs.queue import run_due
-from superaide.knowledge.store import preferences_for
 from superaide.main import create_app
+from superaide.memory.knowledge.store import preferences_for
 from superaide.platform.db.models import Approval, Event, Job, MemoryItem
 from superaide.platform.db.session import session_scope
 from superaide.proactive import digest

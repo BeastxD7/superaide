@@ -75,7 +75,7 @@ def list_text(session: Session, args: dict[str, Any]) -> str:
 def list_sources(session: Session, args: dict[str, Any]) -> list[Any]:
     """The same rows as `list_text`, as citable sources (`ava://approval/<id>`): an action report is
     backed by its approval record, never by a note."""
-    from superaide.context.recall import Source
+    from superaide.memory.recall.retrieval import Source
 
     rows = _rows(session, args)
     return [

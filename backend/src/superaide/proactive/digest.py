@@ -21,13 +21,13 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from superaide.app.accounts import owner as hired_owner
-from superaide.context.audience import Audience, memory_filter
 from superaide.integrations.calendar import skill as calendar
 from superaide.integrations.google.client import event_text
 from superaide.intentions.service import owner_zone
 from superaide.intentions.when import zone
 from superaide.jobs.queue import enqueue, handler
-from superaide.knowledge.store import preferences_for
+from superaide.memory.audience import Audience, memory_filter
+from superaide.memory.knowledge.store import preferences_for
 from superaide.platform.audit import audit
 from superaide.platform.db.models import Approval, Intention, Job, MemoryItem, Person
 from superaide.platform.db.session import require, session_scope
@@ -205,7 +205,9 @@ def compose(
     from superaide.asklink.service import digest_lines as ask_lines  # [] while ASK_LINK_ENABLED is off
 
     lines += ask_lines(session, owner, now)
-    from superaide.memory.recheck import digest_lines as recheck_lines  # [] while MEMORY_RECHECK_ENABLED is off
+    from superaide.memory.consolidation.recheck import (
+        digest_lines as recheck_lines,  # [] while MEMORY_RECHECK_ENABLED is off
+    )
 
     lines += recheck_lines(session, owner, now)
     if not lines:

@@ -3,7 +3,7 @@
 
 Rule: a package talks to another package only through its public entry point: the package itself
 (`superaide.memory`), `superaide.memory.api`, or `superaide.memory.schemas` / `models` (types). Importing
-`superaide.memory.sleep` from outside `memory/` is a violation. Tests are not checked.
+`superaide.memory.consolidation.sleep` from outside `memory/` is a violation. Tests are not checked.
 
     check_boundaries.py                 # prints a summary and GitHub warnings, exits 0
     check_boundaries.py --strict        # exit 1 when there is a violation not in the baseline

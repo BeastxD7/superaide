@@ -11,7 +11,7 @@ from sqlalchemy import select, text
 
 from superaide.features.brainshare import service
 from superaide.features.brainshare.models import BrainShare
-from superaide.knowledge.store import remember_fact
+from superaide.memory.knowledge.store import remember_fact
 from superaide.platform.config import get_settings
 from superaide.platform.db.models import Person
 from superaide.platform.db.session import session_scope

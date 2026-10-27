@@ -18,7 +18,7 @@ from superaide.channels.health import DeliveryFailed
 from superaide.channels.slack import SlackMessenger
 from superaide.channels.telegram import TelegramMessenger
 from superaide.intentions import service as intentions
-from superaide.knowledge.store import preferences_for
+from superaide.memory.knowledge.store import preferences_for
 from superaide.platform.db.models import AuditLog, ChannelIdentity, Event, Intention
 from superaide.platform.db.session import session_scope
 from superaide.policy.killswitch import get_state, set_state
