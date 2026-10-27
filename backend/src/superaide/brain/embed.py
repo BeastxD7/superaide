@@ -80,7 +80,7 @@ class FakeEmbedder:
         return None
 
     def embed(self, texts: list[str], *, kind: Kind) -> list[list[float]] | None:
-        from superaide.context import lexicon
+        from superaide.memory.recall import lexicon
 
         out = []
         for t in texts:

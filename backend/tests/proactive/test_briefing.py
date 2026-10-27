@@ -14,8 +14,8 @@ from superaide.integrations.calendar import skill as calendar
 from superaide.integrations.google import client as google
 from superaide.jobs.handlers import load
 from superaide.jobs.queue import run_due
-from superaide.knowledge.store import add_contact, preferences_for
 from superaide.main import create_app
+from superaide.memory.knowledge.store import add_contact, preferences_for
 from superaide.platform.db.models import Approval, AuditLog, Event, Job, MemoryItem, Person
 from superaide.platform.db.session import session_scope
 from superaide.proactive import digest, prep

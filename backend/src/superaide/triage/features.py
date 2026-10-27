@@ -19,8 +19,8 @@ from sqlalchemy.orm import Session
 
 from superaide.identity.trust import Trust
 from superaide.intentions.when import find_moment, zone
-from superaide.knowledge.profile import in_quiet_hours
-from superaide.knowledge.store import preferences_for
+from superaide.memory.knowledge.profile import in_quiet_hours
+from superaide.memory.knowledge.store import preferences_for
 from superaide.platform.db.models import ChannelIdentity, Contact, Context, Event, Person
 from superaide.triage.models import EscalationDelivery
 from superaide.triage.store import current_stage, settings_for

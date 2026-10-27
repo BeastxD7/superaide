@@ -21,7 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.features.passport.schema import FORMAT, SCHEMA_VERSION
-from superaide.knowledge.store import preferences_for
+from superaide.memory.knowledge.store import preferences_for
 from superaide.platform.audit import audit
 from superaide.platform.db.models import Contact, Document, MemoryItem, Person
 

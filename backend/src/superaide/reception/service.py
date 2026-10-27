@@ -211,7 +211,7 @@ def store_message(
 
 def _deadline(session: Session, owner: Person, text: str, now: datetime) -> Any:
     from superaide.intentions.when import find_moment, zone
-    from superaide.knowledge.store import preferences_for
+    from superaide.memory.knowledge.store import preferences_for
 
     if not text.strip():
         return None
@@ -231,8 +231,8 @@ def _reason(row: ReceptionMessage) -> str:
 def _to_triage(session: Session, owner: Person, row: ReceptionMessage, inbound: Event, now: datetime) -> None:
     """With triage on: a Needs-you item. Never `interrupt` (a stranger isn't verified): at most an
     unverified request that escalates, when it matches one of the owner's urgent topics."""
-    from superaide.knowledge.profile import in_quiet_hours
-    from superaide.knowledge.store import preferences_for
+    from superaide.memory.knowledge.profile import in_quiet_hours
+    from superaide.memory.knowledge.store import preferences_for
     from superaide.triage.escalate import open_escalation
     from superaide.triage.features import next_local
     from superaide.triage.models import TriageDecision

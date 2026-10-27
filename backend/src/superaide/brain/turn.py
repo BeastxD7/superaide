@@ -10,8 +10,8 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from superaide.brain.llm import SystemBlock
-from superaide.context.audience import Audience
 from superaide.identity.resolver import Sender
+from superaide.memory.audience import Audience
 from superaide.platform.db.models import Event, MemoryItem
 
 CHARTER_PATH = Path(__file__).with_name("charter.md")

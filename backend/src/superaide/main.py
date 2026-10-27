@@ -137,7 +137,7 @@ def create_app(agent: Agent | None = None) -> FastAPI:
                 log.exception("couldn't start channel listeners")
         if fixed is None and settings.run_jobs_in_api:
             try:
-                from superaide.context import vectors
+                from superaide.memory.recall import vectors
 
                 with session_scope() as s:
                     vectors.start(s)  # load the local embedder in the background; backfill once per model

@@ -133,7 +133,7 @@ class OfflineModel:
         self.turn: FakeTurn | None = None
 
     def __call__(self, purpose: str, system: Any, messages: list[dict[str, Any]], output_model: Any) -> Any:
-        from superaide.knowledge.facts import FactList
+        from superaide.memory.knowledge.facts import FactList
 
         fake = self.turn or FakeTurn()
         from superaide.triage.types import TriageOutput
@@ -294,7 +294,7 @@ def build_world(sc: Scenario, start: datetime, run: Run | None = None) -> uuid.U
     from superaide.app.accounts import hire
     from superaide.identity.linking import bootstrap_person
     from superaide.intentions import service as intentions
-    from superaide.knowledge.store import add_contact, preferences_for, remember_fact
+    from superaide.memory.knowledge.store import add_contact, preferences_for, remember_fact
 
     w = sc.world
     with session_scope() as s:
@@ -380,7 +380,7 @@ FILLER_TOPICS = [
 
 def _filler(s: Any, owner: Person, start: datetime, n: int) -> None:
     """`n` unrelated, owner-only notes, all newer than the world's own notes."""
-    from superaide.knowledge.store import remember_fact
+    from superaide.memory.knowledge.store import remember_fact
 
     for i in range(n):
         topic = FILLER_TOPICS[i % len(FILLER_TOPICS)] + ("" if i < len(FILLER_TOPICS) else f" (note {i})")
@@ -392,7 +392,7 @@ def _filler(s: Any, owner: Person, start: datetime, n: int) -> None:
 def _triage_world(s: Any, sc: Scenario, owner: Person, start: datetime) -> None:
     """Two more linked people (a VIP contact and a plain contact) and the owner's triage settings."""
     from superaide.identity.linking import bootstrap_person
-    from superaide.knowledge.store import preferences_for
+    from superaide.memory.knowledge.store import preferences_for
     from superaide.platform.db.models import Contact
     from superaide.policy.killswitch import set_state
     from superaide.triage.store import settings_for
@@ -677,8 +677,8 @@ def run_scenario(sc: Scenario, *, inner: LLM | None = None, judge: Judge | None 
 def _share(agent: Any, owner_id: uuid.UUID, share: Share) -> str:
     """The owner shares a file or link: the real ingest pipeline runs (document saved, chunked, facts read and
     kept); returns the message the owner is shown."""
-    from superaide.knowledge.extract import Extracted
-    from superaide.knowledge.ingest import ingest
+    from superaide.memory.knowledge.extract import Extracted
+    from superaide.memory.knowledge.ingest import ingest
 
     extracted = Extracted(
         text=share.text, title=share.title, kind="text" if share.kind == "file" else "web",
@@ -743,8 +743,8 @@ def _many_owners(on: bool) -> Iterator[None]:
 
 def _seed_messages(agent: Any, sc: Scenario, owner_id: uuid.UUID) -> None:
     """Earlier messages, logged as the pipeline logs them, without a reply or model call."""
-    from superaide.context.audience import audience_for
     from superaide.identity.resolver import resolve
+    from superaide.memory.audience import audience_for
     from superaide.memory.store import get_or_create_context, log_event
 
     for m in sc.world.messages:

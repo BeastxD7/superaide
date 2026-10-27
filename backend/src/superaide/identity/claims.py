@@ -192,7 +192,7 @@ def answer(
     session: Session, row: IdentityClaim, *, choice: str, decided_by: Person, relation: str = "contact"
 ) -> IdentityClaim:
     """The owner's explicit answer. The only way a claim links an account."""
-    from superaide.knowledge.store import add_contact
+    from superaide.memory.knowledge.store import add_contact
 
     if row.status != "open":
         raise ClaimError(409, f"This was already answered ({row.status}).")

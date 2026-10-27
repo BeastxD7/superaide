@@ -46,3 +46,19 @@ def test_the_entry_points_still_import() -> None:
     from superaide.main import app
 
     assert app is not None and callable(cli_main)  # `uvicorn superaide.main:app` and the `superaide` script
+
+
+def test_the_memory_group_keeps_its_old_names_for_one_release() -> None:
+    """ADR 0015 phase 6a: `context/` and `knowledge/` folded into `memory/`. The old folders are gone, so their names
+    must still import (as empty packages whose children are aliased), and be the very same module objects."""
+    import superaide.context.audience as old_audience
+    import superaide.context.recall as old_recall
+    import superaide.knowledge.learn as old_learn
+    import superaide.memory.sleep as old_sleep
+
+    import superaide.memory.audience as audience
+    import superaide.memory.consolidation.sleep as sleep
+    import superaide.memory.knowledge.learn as learn
+    import superaide.memory.recall.retrieval as retrieval
+
+    assert old_audience is audience and old_recall is retrieval and old_learn is learn and old_sleep is sleep

@@ -115,7 +115,7 @@ These came with their fixes, in 152 test functions (457 cases):
 
 Still open: re-sharing a file after it was removed and its facts were read causes a 500. `ingest()` deletes the old Document while retired facts still point at it.
 - Fix: before the delete, `update(MemoryItem).where(MemoryItem.document_id == old.id).values(document_id=None)`.
-- Test: `backend/tests/knowledge/api/test_intro_negative.py::test_a_removed_file_can_be_shared_again_once_facts_were_read_from_it`, marked xfail.
+- Test: `backend/tests/memory/knowledge/api/test_intro_negative.py::test_a_removed_file_can_be_shared_again_once_facts_were_read_from_it`, marked xfail.
 
 Still open: the marketplace and agent page show "Works for <first name>" to everyone. Decide whether the public should see who hired an agent.
 

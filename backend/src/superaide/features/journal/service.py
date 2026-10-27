@@ -11,9 +11,9 @@ from typing import Any
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from superaide.context.lexicon import normalise
 from superaide.features.journal import extract, score
 from superaide.jobs.queue import enqueue, handler
+from superaide.memory.recall.lexicon import normalise
 from superaide.platform.audit import audit
 from superaide.platform.db.models import Event, Job, JournalSetting, Person, Prediction
 from superaide.platform.db.session import rows_affected

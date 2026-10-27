@@ -13,8 +13,8 @@ from fastapi.testclient import TestClient
 
 from superaide.app.accounts import owner
 from superaide.identity.trust import Trust
-from superaide.knowledge.store import add_contact, preferences_for, remember_fact
 from superaide.main import create_app
+from superaide.memory.knowledge.store import add_contact, preferences_for, remember_fact
 from superaide.platform.db.models import ChannelIdentity, Document, DocumentChunk
 from superaide.platform.db.session import session_scope
 from tests.conftest import sl, tg

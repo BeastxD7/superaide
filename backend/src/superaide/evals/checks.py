@@ -195,8 +195,8 @@ def prompt_includes(ctx: Ctx, value: Any) -> tuple[bool, str]:
 
 def _audience(who: str) -> Any:
     """The audience of a private DM with the owner, the colleague (Priya Tan), or of a group."""
-    from superaide.context.audience import Audience
     from superaide.identity.trust import Trust
+    from superaide.memory.audience import Audience
     from superaide.platform.db.models import Person
 
     with session_scope() as s:
@@ -210,7 +210,7 @@ def _audience(who: str) -> Any:
 
 
 def _recalled(value: dict[str, Any]) -> list[str]:
-    from superaide.context.recall import recall_memories
+    from superaide.memory.recall.retrieval import recall_memories
 
     aud = _audience(str(value.get("as", "owner")))
     with session_scope() as s:

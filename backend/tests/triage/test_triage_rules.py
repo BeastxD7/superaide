@@ -233,7 +233,7 @@ def _pref(start: str, end: str, tz: str) -> OwnerPreference:
 
 
 def test_quiet_hours_wrap_past_midnight():
-    from superaide.knowledge.profile import in_quiet_hours
+    from superaide.memory.knowledge.profile import in_quiet_hours
 
     kol = ZoneInfo("Asia/Kolkata")
     p = _pref("22:00", "07:00", "Asia/Kolkata")

@@ -76,7 +76,7 @@ def test_the_worker_runs_jobs_and_keeps_the_listeners_in_step(monkeypatch):
     monkeypatch.setattr("superaide.runtime.Runtime.stop", lambda self: calls.__setitem__("runtime_stop", 1))
     monkeypatch.setattr("superaide.jobs.worker.JobWorker.start", lambda self: calls.__setitem__("start", 1))
     monkeypatch.setattr("superaide.jobs.worker.JobWorker.stop", lambda self: calls.__setitem__("stop", 1))
-    monkeypatch.setattr("superaide.context.vectors.start", lambda s: None)
+    monkeypatch.setattr("superaide.memory.recall.vectors.start", lambda s: None)
     args = argparse.Namespace(refresh=0.01, no_jobs=False, no_listeners=False)
     with pytest.raises(KeyboardInterrupt):
         cli._worker(args)
@@ -90,7 +90,7 @@ def test_the_worker_can_run_jobs_only_and_stops_on_sigterm(monkeypatch):
     handlers: dict[int, object] = {}
     monkeypatch.setattr("superaide.runtime.Runtime.apply_connections", lambda self, *, listen: applied.append(listen))
     monkeypatch.setattr("superaide.jobs.worker.JobWorker.start", lambda self: None)
-    monkeypatch.setattr("superaide.context.vectors.start", lambda s: None)
+    monkeypatch.setattr("superaide.memory.recall.vectors.start", lambda s: None)
     monkeypatch.setattr(signal, "signal", lambda sig, fn: handlers.__setitem__(sig, fn))
     # Docker stops a container with SIGTERM: deliver it (through the handler the worker installed) shortly.
     threading.Timer(0.2, lambda: handlers[signal.SIGTERM](signal.SIGTERM, None)).start()  # type: ignore[operator]

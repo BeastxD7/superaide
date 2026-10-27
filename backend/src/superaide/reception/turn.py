@@ -26,7 +26,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.brain.providers.types import SystemBlock
-from superaide.context.audience import Audience, memory_filter
+from superaide.memory.audience import Audience, memory_filter
 from superaide.platform.db.models import MemoryItem, OwnerPreference, Person
 from superaide.reception.models import ReceptionSettings
 
@@ -73,7 +73,7 @@ def public_facts(session: Session, owner: Person) -> list[str]:
 
 
 def system_prompt(session: Session, owner: Person, rs: ReceptionSettings, agent_name: str) -> list[SystemBlock]:
-    from superaide.knowledge.profile import SHARE_LABELS
+    from superaide.memory.knowledge.profile import SHARE_LABELS
 
     owner_ref = f"{first_name(owner)}" if rs.show_first_name and first_name(owner) else "the person you work for"
     persona = PERSONA.read_text(encoding="utf-8").replace("{agent_name}", agent_name).replace("{owner_ref}", owner_ref)

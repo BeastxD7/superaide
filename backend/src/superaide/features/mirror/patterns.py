@@ -17,7 +17,7 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from superaide.context.lexicon import normalise
+from superaide.memory.recall.lexicon import normalise
 from superaide.platform.db.models import Event, Intention
 
 LOOKBACK_WEEKS = 8

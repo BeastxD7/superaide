@@ -65,7 +65,7 @@ def test_prompts_and_skills_are_editable_and_graders_are_not():
     assert surface.check_edit(["backend/src/superaide/brain/charter.md"]) == []
     assert surface.check_edit(["backend/src/superaide/skills/builtin/memory/SKILL.md"]) == []
     for bad in [
-        "backend/src/superaide/context/audience.py",
+        "backend/src/superaide/memory/audience.py",
         "backend/src/superaide/platform/db/rls.py",
         "backend/evals/scenarios/x.yaml",
         "backend/tests/redteam/test_canaries.py",
@@ -101,7 +101,7 @@ def test_100_synthetic_self_edits_none_merge_into_a_protected_path():
         "backend/src/superaide/brain/charter.md",
         "backend/src/superaide/skills/builtin/memory/SKILL.md",
         "backend/src/superaide/brain/turn.py",
-        "backend/src/superaide/knowledge/store.py",
+        "backend/src/superaide/memory/knowledge/store.py",
         "frontend/src/proxy.ts",
     ]
     merged_protected = refused = 0

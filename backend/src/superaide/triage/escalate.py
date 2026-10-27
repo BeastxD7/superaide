@@ -29,8 +29,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from superaide.jobs.queue import cancel, enqueue, handler
-from superaide.knowledge.profile import in_quiet_hours
-from superaide.knowledge.store import preferences_for
+from superaide.memory.knowledge.profile import in_quiet_hours
+from superaide.memory.knowledge.store import preferences_for
 from superaide.platform.audit import audit
 from superaide.platform.db.models import Job, Person
 from superaide.triage.features import next_local

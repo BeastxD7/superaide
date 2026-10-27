@@ -49,9 +49,9 @@ FORBIDDEN: dict[str, set[str]] = {
     "channels.telegram": {"triage.buttons"},
     "brain.keyhealth": {"proactive.notify"},
     # technique 4: reactions to "a source was read / removed" are event subscribers, not calls from the skills
-    "skills.registry": {"knowledge.connector_facts"},
-    "integrations.calendar.skill": {"knowledge.connector_facts"},
-    "integrations.gmail.inbox": {"knowledge.connector_facts", "triage.digest", "triage.routes"},
+    "skills.registry": {"memory.knowledge.connector_facts"},
+    "integrations.calendar.skill": {"memory.knowledge.connector_facts"},
+    "integrations.gmail.inbox": {"memory.knowledge.connector_facts", "triage.digest", "triage.routes"},
     "triage.digest": {"integrations.gmail.inbox"},
     "triage.routes": {"integrations.gmail.inbox"},
 }

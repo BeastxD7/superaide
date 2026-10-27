@@ -241,7 +241,7 @@ def rank_request(
 ) -> Rank:
     """The triage rules over a stranger's request. Never `interrupt`: a stranger isn't verified."""
     from superaide.intentions.when import zone
-    from superaide.knowledge.store import preferences_for
+    from superaide.memory.knowledge.store import preferences_for
     from superaide.triage import rules
     from superaide.triage.features import Features
     from superaide.triage.models import TriageSettings

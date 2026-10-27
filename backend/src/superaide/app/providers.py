@@ -23,7 +23,7 @@ from superaide.brain.providers import config
 from superaide.brain.providers.base import CheckReport
 from superaide.brain.providers.presets import PRESETS, Preset
 from superaide.brain.providers.types import Capabilities
-from superaide.knowledge.pending import brain_became_ready
+from superaide.memory.knowledge.pending import brain_became_ready
 from superaide.platform.db.session import session_scope
 from superaide.platform.security import urls
 from superaide.vault import check, store

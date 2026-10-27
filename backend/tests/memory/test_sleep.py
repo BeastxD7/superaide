@@ -10,8 +10,8 @@ from sqlalchemy import select
 
 from superaide.brain.budget import BudgetExceeded
 from superaide.jobs.queue import run_due
-from superaide.knowledge.store import remember_fact
-from superaide.memory import sleep
+from superaide.memory.consolidation import sleep
+from superaide.memory.knowledge.store import remember_fact
 from superaide.platform.db.models import ConsolidationRun, Context, Episode, Event, MemoryItem, Person
 from superaide.platform.db.session import session_scope
 
@@ -231,7 +231,7 @@ class Judge:
         self.verdicts, self.fail, self.prompts = verdicts, fail, []
 
     def complete(self, **kw):
-        from superaide.memory.merge import PairVerdict, Verdicts
+        from superaide.memory.consolidation.merge import PairVerdict, Verdicts
 
         self.prompts.append(kw["messages"][0]["content"])
         if self.fail:

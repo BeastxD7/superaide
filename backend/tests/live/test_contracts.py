@@ -25,8 +25,8 @@ from sqlalchemy import select
 from superaide.brain.budget import BudgetGuard
 from superaide.brain.llm import ClaudeLLM, LLMResult
 from superaide.brain.turn import TurnOutput
-from superaide.knowledge.facts import FactList, extract_facts
 from superaide.main import create_app
+from superaide.memory.knowledge.facts import FactList, extract_facts
 from superaide.pipeline import Agent
 from superaide.platform.config import Settings
 from superaide.platform.db.models import MemoryItem

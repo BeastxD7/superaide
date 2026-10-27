@@ -68,7 +68,7 @@ it. Ava failed to find it.
   inside the API process.
 - **Recall was called:** it was, and with a plausible query. The search failed.
 
-`backend/tests/context/test_cross_channel.py` reproduces all of this with `FakeLLM`. Three tests pass and
+`backend/tests/memory/recall/test_cross_channel.py` reproduces all of this with `FakeLLM`. Three tests pass and
 pin what works: learning from Telegram, the web audience seeing the fact, and a group seeing
 nothing from the DM. Eleven tests are strict `xfail`, one or more per gap, and flip when their work
 package lands.
@@ -260,7 +260,7 @@ the Letta core block and the research's "core profile". Non-owner briefs are unc
 
 ## Work packages
 
-Each work package owns its files, flips named xfails in `tests/context/test_cross_channel.py`, and keeps
+Each work package owns its files, flips named xfails in `tests/memory/recall/test_cross_channel.py`, and keeps
 the full suite green.
 
 | WP | What | Owns | Flips / adds tests |
@@ -271,7 +271,7 @@ the full suite green.
 | **WP3** Pinned core facts | `owner_brief` "What you know about them" section | `knowledge/profile.py` | flips `test_a_learned_preference_is_pinned…`; adds: never in a non-owner brief or a group; cap at 15 / about 400 tokens; retired facts drop out |
 | **WP4** Pre-recall, honesty, learning, cues | pre-recall `search_result` blocks in `OwnerTurn.run`; learning-on line in `OwnerTurn.system`; continuity rule; `worth_reading` stance heuristic; note titles with channel | `brain/loop.py`, `knowledge/learn.py`, `context/recall.py` (titles only; land after WP2a) | flips `test_the_owner_turn_tells_ava…` and 3× `test_a_short_statement…`; adds: pre-recall hit is cited; offline mode has no learning claim; "ok"/"thanks"/short questions still skipped |
 | **WP5** Dedupe and reconcile | shared normaliser; trigram backstop in `remember_fact` and `remember`; extractor gets neighbours and returns the relation; `contradicts` supersedes; audience intersection | `knowledge/store.py`, `knowledge/facts.py`, `knowledge/learn.py` (after WP4), `memory/store.py` (`remember` only; after WP1) | flips `test_the_same_preference_said_again…`; adds: contradiction supersedes; intersection of audiences; source_event_ids appended |
-| **WP6** Evaluation | Scripted multi-channel scenario (below) as an offline test and an opt-in live eval in `tests/live/` against real Haiku (a few cents, inside the cap) | `tests/context/test_cross_channel.py`, `tests/live/test_cross_channel_live.py` | the whole scenario passes offline; the live one reports a score |
+| **WP6** Evaluation | Scripted multi-channel scenario (below) as an offline test and an opt-in live eval in `tests/live/` against real Haiku (a few cents, inside the cap) | `tests/memory/recall/test_cross_channel.py`, `tests/live/test_cross_channel_live.py` | the whole scenario passes offline; the live one reports a score |
 
 Order: **WP2a and WP4 first** (the free fixes for causes 1, 3 and 5), then WP1, WP3, WP5, and
 WP2b last. Migrations `0010`/`0011` may collide with other branches (the latest on main is
@@ -299,7 +299,7 @@ correct channel attribution at step 2; and the "I can't remember" false-claim ra
 
 ## As built (2026-10-22)
 
-All work packages are on main. Every xfail in `backend/tests/context/test_cross_channel.py` now passes.
+All work packages are on main. Every xfail in `backend/tests/memory/recall/test_cross_channel.py` now passes.
 The scenario is `backend/tests/pipeline/test_cross_channel_scenario.py`.
 
 Changes from the design above:

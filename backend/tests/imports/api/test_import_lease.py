@@ -9,9 +9,9 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy import func, select
 
-from superaide.context.audience import Audience, visible_memories
 from superaide.features.imports import convert
 from superaide.features.imports.models import ImportLease
+from superaide.memory.audience import Audience, visible_memories
 from superaide.platform.db.models import MemoryItem, Person, UserAccount
 from superaide.platform.db.session import session_scope
 from tests.api_support import OWNER
@@ -110,7 +110,7 @@ def test_cards_outside_the_scopes_with_contact_details_or_known_already_are_left
     lid = open_lease(owner, scopes=("chat",))
     owner.post("/app/onboarding", json={"step": "hello", "answer": {"choice": "Nice to meet you"}})
     with session_scope() as s:
-        from superaide.knowledge.store import remember_fact
+        from superaide.memory.knowledge.store import remember_fact
 
         remember_fact(s, owner=s.get(Person, owner_person()), content="I live in Singapore", category="about")
     r = owner.post(
@@ -141,7 +141,7 @@ def test_ending_the_lease_erases_every_card_and_nothing_else(on, owner):
     owner.post(f"{LEASES}/{keep}/cards", json={"cards": [card("Keep this one")]})
     owner.post(f"{LEASES}/{lid}/cards", json={"cards": [card("First card"), card("Second card")]})
     with session_scope() as s:
-        from superaide.knowledge.store import remember_fact
+        from superaide.memory.knowledge.store import remember_fact
 
         remember_fact(s, owner=s.get(Person, owner_person()), content="Told directly to Ava", category="about")
     r = owner.delete(f"{LEASES}/{lid}")

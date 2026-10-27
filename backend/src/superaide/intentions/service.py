@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from superaide.channels import health
 from superaide.intentions.when import zone
 from superaide.jobs.queue import cancel, enqueue, handler
-from superaide.knowledge.store import preferences_for
+from superaide.memory.knowledge.store import preferences_for
 from superaide.platform.audit import audit
 from superaide.platform.config import get_settings
 from superaide.platform.db.models import Intention, Job, Person

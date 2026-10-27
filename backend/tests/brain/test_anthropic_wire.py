@@ -346,7 +346,7 @@ def test_claude_blocks_become_neutral_parts_with_citations_sources_and_taint() -
         ToolResult,
         tainted,
     )
-    from superaide.context.recall import Source
+    from superaide.memory.recall.retrieval import Source
 
     msgs = messages_from_wire(HISTORY)
     thinking, said, recall, propose, search, found = msgs[3].parts

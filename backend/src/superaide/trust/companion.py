@@ -23,7 +23,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
-from superaide.knowledge.store import contacts_of
+from superaide.memory.knowledge.store import contacts_of
 from superaide.platform.audit import audit
 from superaide.platform.db.models import AgentState, Person
 from superaide.platform.tenancy.context import scope_or_default

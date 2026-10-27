@@ -29,7 +29,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from superaide.intentions.when import find_moment, zone
-from superaide.knowledge.profile import in_quiet_hours
+from superaide.memory.knowledge.profile import in_quiet_hours
 from superaide.platform.db.models import OwnerPreference
 from superaide.triage import classify, policy, rules
 from superaide.triage.features import Features, next_local

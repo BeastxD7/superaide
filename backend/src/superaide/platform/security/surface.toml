@@ -19,7 +19,7 @@ paths = [
   "backend/tests/redteam/**",
   "backend/src/superaide/features/drills/**",
   # the audience gate and row-level security
-  "backend/src/superaide/context/audience.py",
+  "backend/src/superaide/memory/audience.py",
   "backend/src/superaide/platform/db/rls.py",
   # stage promotion, tool effect classes, the approval ladder and the tool manifest
   "backend/src/superaide/triage/policy.py",

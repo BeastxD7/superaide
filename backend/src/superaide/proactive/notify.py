@@ -15,8 +15,8 @@ from sqlalchemy.orm import Session
 from superaide.app.accounts import web_message
 from superaide.channels import health
 from superaide.channels.base import MESSENGER_FACTORIES, bot_id
-from superaide.context.audience import Audience
-from superaide.knowledge.store import preferences_for
+from superaide.memory.audience import Audience
+from superaide.memory.knowledge.store import preferences_for
 from superaide.memory.store import get_or_create_context, log_event
 from superaide.platform.audit import audit
 from superaide.platform.db.models import ChannelIdentity, Person

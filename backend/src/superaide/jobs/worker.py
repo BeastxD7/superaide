@@ -36,7 +36,7 @@ def schedule_recurring() -> None:
 
                 gmail_inbox.ensure_scheduled(s)  # nothing unless Gmail triage is on and connected
             with use_instance(scope), session_scope() as s:
-                from superaide.memory import sleep
+                from superaide.memory.consolidation import sleep
 
                 sleep.ensure_scheduled(s)  # nothing unless SLEEP_JOB_ENABLED
         except Exception:
@@ -44,7 +44,7 @@ def schedule_recurring() -> None:
         try:
             from superaide.app.accounts import owner as hired_owner
             from superaide.channels import settings as channel_settings
-            from superaide.knowledge.erase import roll_off_third_party_messages
+            from superaide.memory.knowledge.erase import roll_off_third_party_messages
             from superaide.platform.config import get_settings
 
             with use_instance(scope), session_scope() as s:
@@ -60,7 +60,7 @@ def schedule_recurring() -> None:
                 auto_close_delivered(s)
         except Exception:
             log.exception("couldn't check the reminders of instance %s", scope.agent_id)
-    from superaide.knowledge.pending import sweep
+    from superaide.memory.knowledge.pending import sweep
 
     try:
         sweep()  # documents shared while no AI was connected, for any brain that is ready now (issue #12)
@@ -99,7 +99,7 @@ class JobWorker:
     def sweep_if_due(self, now: float | None = None) -> bool:
         """The safety net for issue #12: every `sweep_every` seconds, queue reading for any instance whose
         brain is ready while documents still wait. Returns whether it swept."""
-        from superaide.knowledge.pending import sweep
+        from superaide.memory.knowledge.pending import sweep
 
         now = time.monotonic() if now is None else now
         if self._last_sweep is not None and now - self._last_sweep < self.sweep_every:

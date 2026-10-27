@@ -21,7 +21,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from superaide.intentions.when import zone
-from superaide.knowledge.store import preferences_for, remember_fact
+from superaide.memory.knowledge.store import preferences_for, remember_fact
 from superaide.platform.audit import audit
 from superaide.platform.db.models import Intention, MemoryItem, Person
 from superaide.trust.models import NeverAskTopic, OwnerQuestion
