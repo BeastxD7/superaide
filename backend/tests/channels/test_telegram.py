@@ -42,6 +42,35 @@ def update(
 # --- secret token -----------------------------------------------------------------
 
 
+@pytest.mark.parametrize(
+    "extra, kind",
+    [
+        ({"photo": [{"file_id": "SECRET_FILE"}], "caption": "private caption"}, "photo"),
+        ({"document": {"file_id": "SECRET_FILE", "file_name": "salary.pdf"}}, "document"),
+        ({"voice": {"file_id": "SECRET_FILE"}}, "voice"),
+        ({"sticker": {"file_id": "SECRET_FILE"}}, "sticker"),
+        ({"new_chat_title": "x"}, "other"),
+    ],
+)
+def test_an_update_without_text_is_logged_by_kind_only(extra, kind, caplog):
+    """#514: photos, files, voice notes and stickers are ignored; the log names the kind and nothing else."""
+    payload = update(None)
+    payload["message"].update(extra)
+    with caplog.at_level("INFO", logger="superaide.channels.telegram"):
+        assert parse_update(payload, verified=True) is None
+    lines = [r.getMessage() for r in caplog.records if r.name == "superaide.channels.telegram"]
+    assert lines == [f"telegram: update ignored: no text (kind={kind})"]
+    for secret in ("SECRET_FILE", "private caption", "salary", "Jordan", "1001"):
+        assert secret not in caplog.text
+
+
+def test_a_bot_s_message_is_not_logged_as_ignored_content(caplog):
+    payload = update(None, sender={"id": 9, "is_bot": True})
+    with caplog.at_level("INFO", logger="superaide.channels.telegram"):
+        assert parse_update(payload, verified=True) is None
+    assert "ignored" not in caplog.text
+
+
 def test_an_empty_header_does_not_match_a_configured_secret():
     assert not verify_secret("", "test-telegram-secret")
     assert not verify_secret("anything", "")  # no secret configured: nothing verifies
