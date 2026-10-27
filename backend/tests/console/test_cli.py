@@ -99,6 +99,39 @@ def test_reset_db_with_yes_drops_every_table_and_the_alembic_version(monkeypatch
     assert count(Person) == 0
 
 
+def test_reset_db_also_drops_leftover_functions_and_types_but_not_the_extension(monkeypatch, capsys):
+    """#517: after a reset the next `alembic upgrade head` starts from an empty schema, like a clean install."""
+    engine = get_engine()
+    with engine.begin() as conn:
+        conn.execute(
+            text("CREATE OR REPLACE FUNCTION leftover_from_a_migration() RETURNS int AS 'SELECT 1' LANGUAGE sql")
+        )
+        conn.execute(text("DROP TYPE IF EXISTS leftover_kind"))
+        conn.execute(text("CREATE TYPE leftover_kind AS ENUM ('a', 'b')"))
+        vector_before = conn.execute(text("SELECT count(*) FROM pg_proc WHERE proname = 'cosine_distance'")).scalar()
+
+    def names(sql: str) -> set[str]:
+        with engine.connect() as conn:
+            return {row[0] for row in conn.execute(text(sql))}
+
+    fn = "SELECT proname FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'public'"
+    ty = "SELECT typname FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace WHERE n.nspname = 'public'"
+    assert "leftover_from_a_migration" in names(fn) and "leftover_kind" in names(ty)
+    try:
+        assert run(monkeypatch, capsys, "reset-db", "--yes").strip() == "Database wiped."
+        assert "leftover_from_a_migration" not in names(fn) and "leftover_kind" not in names(ty)
+        assert "claim_due_jobs" not in names(fn)  # the app's own functions go with the tables
+        with engine.connect() as conn:  # an extension's own functions stay
+            assert conn.execute(text("SELECT count(*) FROM pg_proc WHERE proname = 'cosine_distance'")).scalar() == (
+                vector_before
+            )
+    finally:
+        Base.metadata.create_all(
+            engine
+        )  # the other tests share this schema; its table listeners recreate the functions
+    assert "claim_due_jobs" in names(fn)
+
+
 # --- add-manager / add-colleague ------------------------------------------------------
 
 
