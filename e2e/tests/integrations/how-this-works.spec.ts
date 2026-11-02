@@ -26,4 +26,8 @@ test('Gmail, Calendar and Connections explain their fixed rules', async ({ page,
   await expect(page.getByRole('region', { name: 'How this works' })).toContainText('never instructions')
   await page.goto('/dashboard/connections')
   await expect(page.getByRole('region', { name: 'How this works' })).toContainText('never treated as you')
+  const how = page.getByRole('region', { name: 'How this works' })
+  await expect(how).toContainText('In a channel or thread other people can read')
+  await expect(how).toContainText('sends the answer to your direct message')
+  await expect(how).toContainText('Other people in a thread have none of your authority')
 })
