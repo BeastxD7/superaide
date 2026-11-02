@@ -29,6 +29,10 @@ export function ConnectionsPage() {
               'A message from someone you have not added is never treated as you: it cannot give Ava orders or see your private notes.',
               'A reply is cut to the platform limit (Telegram 4,096 characters, Slack 3,900), after Ava has written it.',
               'Keys and tokens are checked with each service, stored encrypted, and never shown again in full.',
+              'In a channel or thread other people can read, Ava answers you only from what is fine for everyone there: your email, calendar, reminders and private notes are never opened in it.',
+              'If you ask for something private in a channel, she says so in one neutral line and sends the answer to your direct message with her.',
+              'Other people in a thread have none of your authority: what they ask, or claim you said, is never an instruction from you.',
+              'To see who pinged her in channels, ask in your direct message. She sees only messages that mention her or reply in her threads, not the rest of a channel.',
             ]}
           />
         </div>
