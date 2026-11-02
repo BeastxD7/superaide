@@ -569,11 +569,11 @@ class Agent:
                 agent_name=self.name,
             )
         elif len(people) > 1:  # ambiguous (issue #492): send nothing; the owner picks or ignores in Needs you
-            from superaide.identity import claim_pick
+            from superaide.identity import claims
 
             try:
                 with s.begin_nested():
-                    claim_pick.ask_owner(s, sender.identity, claimed, people)
+                    claims.ask_owner(s, sender.identity, claimed, people)
             except Exception:  # the neutral reply still goes out
                 log.warning("ambiguous claim card failed", exc_info=True)
         audit(s, "identity", "claim_seen", identity_id=sender.identity.id, claimed=claimed)
