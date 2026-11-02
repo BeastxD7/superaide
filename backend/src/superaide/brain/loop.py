@@ -26,7 +26,7 @@ from superaide.brain import capabilities, taskplan, verify
 from superaide.brain.llm import LLM, StepResult, SystemBlock
 from superaide.brain.spend.budget import BudgetExceeded
 from superaide.brain.turn import load_charter
-from superaide.channels.activity import CHANNEL_ACTIVITY_TOOL
+from superaide.channels.api import CHANNEL_ACTIVITY_TOOL, channel_activity_report
 from superaide.identity.resolver import Sender
 from superaide.intentions import service as intentions
 from superaide.intentions.when import clean_task, find_moment, names_a_day, zone
@@ -652,12 +652,10 @@ class OwnerTurn:
         if name == "record_plan" and self._protocol():
             return self._record_plan(args)
         if name == "channel_activity":
-            from superaide.channels import activity
-
             assert self.sender.person is not None
             self.notes.append("channel_activity")
             self.tainted = True  # other people's words: information, never instructions
-            return activity.report(self.s, self.sender.person.id, args), False
+            return channel_activity_report(self.s, self.sender.person.id, args), False
         if name == "list_approvals":
             self.notes.append("approvals")
             found_rows = outcomes.list_sources(self.s, args)
