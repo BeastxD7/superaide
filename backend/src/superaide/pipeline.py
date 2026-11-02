@@ -12,7 +12,7 @@ import re
 import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 from typing import cast
@@ -131,6 +131,14 @@ class HandleResult:
     mode: str  # dropped | duplicate | frozen | halted | stranger | unconfirmed | known
     reply: str | None = None
     notes: list[str] = field(default_factory=list)
+    # A second inbound message to run after this turn's session has closed: the owner's own words, asked in a channel,
+    # to be answered in their direct message (#509).
+    followup: InboundMessage | None = field(default=None, repr=False)
+
+
+HANDOFF_REPLY = "Sending that to your direct message."
+HANDOFF_FAILED = "I couldn't open a direct message with you just now. Ask me there and I'll answer."
+_MENTION = re.compile(r"<@[A-Z0-9]+(?:\|[^>]*)?>")
 
 
 class Agent:
@@ -149,7 +157,10 @@ class Agent:
         turn and the spend guard takes a second one for every model call, so more turns than connections
         would all wait for each other until the pool timed out (issue #84)."""
         with _turn_slots():
-            return self._handle(msg, emit)
+            result = self._handle(msg, emit)
+            if result.followup is not None:  # the channel turn's session is closed; this one has its own
+                self._handle(result.followup)
+            return result
 
     def _handle(self, msg: InboundMessage, emit: Emit | None = None) -> HandleResult:
         if not msg.verified:
@@ -311,10 +322,13 @@ class Agent:
                             )
                     except Exception as exc:
                         reply, notes, meta = self._turn_failed(s, exc, msg), ["failed"], {"failed": type(exc).__name__}
+                    followup = None
+                    if shared and "handoff" in notes:  # code decides where the answer goes, never the model
+                        reply, followup = self._hand_off(s, sender, msg)
                     reply = self._steady(s, reply)
                     self._reply(s, ctx, aud, reply, thread, meta=meta)
-                if shared:
-                    return HandleResult("known", reply, [*notes, "shared_context"])  # nothing is learned from a room
+                if shared:  # nothing is learned from a room
+                    return HandleResult("known", reply, [*notes, "shared_context"], followup=followup)
                 from superaide.memory.knowledge import learn
 
                 learn.schedule(s, inbound)  # after the reply: learn anything worth keeping
@@ -335,6 +349,28 @@ class Agent:
                 outsider = sender.relation != "manager" and not self._is_owner(s, sender)  # the owner gets no card
                 self._reply(s, ctx, aud, reply, thread, to=(sender.name if sender.known else "") if outsider else None)
             return HandleResult("known", reply, notes)
+
+    def _hand_off(self, s, sender: Sender, msg: InboundMessage) -> tuple[str, InboundMessage | None]:
+        """The owner asked, in a channel, for something that needs their private data (#509). The channel gets one
+        fixed line; the owner's own words (never anything the model or a colleague wrote) are answered as a normal
+        message in their direct message with Ava. Returns (channel reply, the DM message to run afterwards)."""
+        identity = sender.identity
+        opener = getattr(self.messengers.get(msg.provider), "open_dm", None)
+        question = _MENTION.sub("", msg.text).strip()
+        if opener is None or identity is None or not question:
+            audit(s, "pipeline", "dm_handoff_unavailable", provider=msg.provider)
+            return HANDOFF_FAILED, None
+        try:
+            dm_channel = opener(identity)
+        except Exception as exc:
+            audit(s, "pipeline", "dm_handoff_failed", provider=msg.provider, error=type(exc).__name__)
+            return HANDOFF_FAILED, None
+        audit(s, "pipeline", "dm_handoff", provider=msg.provider, identity_id=identity.id)
+        dm = replace(
+            msg, chat_id=dm_channel, chat_kind="dm", thread_id="", text=question,
+            message_id=f"handoff:{msg.message_id}" if msg.message_id else "",
+        )  # fmt: skip
+        return HANDOFF_REPLY, dm
 
     def _slack_link_code(self, s, sender: Sender, ctx: Context, msg: InboundMessage, inbound) -> str | None:
         """ "link <code>" on Slack. Only a direct message can link an account; the same words in a channel
