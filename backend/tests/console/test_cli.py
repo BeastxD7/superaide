@@ -21,6 +21,7 @@ from superaide.brain.spend.pricing import UsageCounts
 from superaide.identity.auth.service import AuthError, Client, login, signup, user_for_token
 from superaide.identity.models import ChannelIdentity, IdentityLinkEvent, Person
 from superaide.identity.trust import Trust
+from superaide.memory.recall.vectors import ensure_vector_store
 from superaide.pipeline import Agent
 from superaide.platform.config import Settings, get_settings
 from superaide.platform.db.models import AuditLog, Base
@@ -95,6 +96,7 @@ def test_reset_db_with_yes_drops_every_table_and_the_alembic_version(monkeypatch
     finally:
         # The other tests share this schema; put it back.
         Base.metadata.create_all(engine)
+        ensure_vector_store(engine)  # reset-db drops the tables outside the ORM metadata too (#517)
     assert run(monkeypatch, capsys, "init-db").strip() == "Tables created."
     assert count(Person) == 0
 
@@ -129,6 +131,7 @@ def test_reset_db_also_drops_leftover_functions_and_types_but_not_the_extension(
         Base.metadata.create_all(
             engine
         )  # the other tests share this schema; its table listeners recreate the functions
+        ensure_vector_store(engine)  # the vector tables sit outside the ORM metadata
     assert "claim_due_jobs" in names(fn)
 
 
