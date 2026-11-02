@@ -238,9 +238,18 @@ class Rank:
 
 
 def rank_request(
-    session: Session, owner: Person, *, topic: str, why: str, deadline: date | None, now: datetime
+    session: Session,
+    owner: Person,
+    *,
+    topic: str,
+    why: str,
+    deadline: date | None,
+    now: datetime,
+    deadline_at: datetime | None = None,
 ) -> Rank:
-    """The triage rules over a stranger's request. Never `interrupt`: a stranger isn't verified."""
+    """The triage rules over a stranger's request. Never `interrupt`: a stranger isn't verified.
+    A deadline is a date (the Ask form) or an exact moment (`deadline_at`, from a message: "within 5 minutes"
+    stays five minutes, not the end of the day)."""
     from superaide.intentions.when import zone
     from superaide.memory.knowledge.store import preferences_for
     from superaide.triage import rules
@@ -249,8 +258,7 @@ def rank_request(
 
     pref = preferences_for(session, owner)
     ts = session.scalar(select(TriageSettings).where(TriageSettings.person_id == owner.id))
-    deadline_at = None
-    if deadline is not None:
+    if deadline_at is None and deadline is not None:
         end = datetime.combine(deadline, datetime.max.time()).replace(tzinfo=zone(pref.timezone))
         deadline_at = end.astimezone(UTC)
     f = Features(

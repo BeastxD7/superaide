@@ -54,6 +54,10 @@ class ReceptionMessage(Scoped, Base):
     topic: Mapped[str] = mapped_column(String(200), default="")
     message: Mapped[str] = mapped_column(Text, default="")
     deadline_text: Mapped[str] = mapped_column(String(120), default="")
+    # The moment `deadline_text` names, read in code in the owner's time zone and anchored on when the message
+    # arrived. NULL with deadline_parse "unknown" (no time found: the owner reads the words) or "past".
+    deadline_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deadline_parse: Mapped[str] = mapped_column(String(10), default="")  # "" (none given) | ok | unknown | past
     claimed_urgency: Mapped[str] = mapped_column(String(10), default="normal")  # their claim, never evidence
     rank: Mapped[str] = mapped_column(String(12), default="normal")  # unverified | urgent | normal | low (code)
     rule_hits: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)

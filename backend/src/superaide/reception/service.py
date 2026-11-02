@@ -328,14 +328,18 @@ def store_message(
     from superaide.asklink.service import rank_request
 
     now = datetime.now(UTC)
-    deadline = _deadline(session, owner, taken.deadline_text, now)
-    r = rank_request(session, owner, topic=taken.topic, why=taken.message, deadline=deadline, now=now)
+    arrived = inbound.created_at or now  # "within 5 minutes" counts from when they wrote it, not from now
+    deadline_at, parse = _deadline(session, owner, taken.deadline_text, arrived)
+    r = rank_request(
+        session, owner, topic=taken.topic, why=taken.message, deadline=None, deadline_at=deadline_at, now=arrived
+    )
     handle = f"@{msg.sender_username}" if msg.sender_username else msg.sender_display
     row = ReceptionMessage(
         identity_id=sender.identity.id, context_id=ctx.id, inbound_event_id=inbound.id, provider=msg.provider,
         handle=handle[:200], name=taken.name[:120], contact=taken.contact[:200], topic=taken.topic[:200],
         message=taken.message[:4000], deadline_text=taken.deadline_text[:120], claimed_urgency=taken.urgency,
-        rank=r.rank, rule_hits=[h for h in r.hits if h != "source:ask_link"] + [f"source:{msg.provider}"],
+        deadline_at=deadline_at, deadline_parse=parse, rank=r.rank,
+        rule_hits=[h for h in r.hits if h != "source:ask_link"] + [f"source:{msg.provider}"],
         source=source,
     )  # fmt: skip
     session.add(row)
@@ -348,14 +352,20 @@ def store_message(
     return row
 
 
-def _deadline(session: Session, owner: Person, text: str, now: datetime) -> Any:
+def _deadline(session: Session, owner: Person, text: str, arrived: datetime) -> tuple[datetime | None, str]:
+    """(the moment, how it was read): the full datetime in UTC, anchored on `arrived`, the time the message came.
+    "" when no deadline was given; "unknown" when the words hold no time code can read (the owner still sees the
+    words); "past" when the time is already gone."""
     from superaide.intentions.when import find_moment, zone
     from superaide.memory.knowledge.store import preferences_for
 
     if not text.strip():
-        return None
-    found = find_moment(text, now.astimezone(zone(preferences_for(session, owner).timezone)))
-    return found[0].date() if found and found[0] > now else None
+        return None, ""
+    found = find_moment(text, arrived.astimezone(zone(preferences_for(session, owner).timezone)))
+    if found is None:
+        return None, "unknown"
+    moment = found[0].astimezone(UTC)
+    return (moment, "ok") if moment > arrived else (None, "past")
 
 
 def _first_name(row: ReceptionMessage) -> str:
@@ -419,8 +429,8 @@ def _to_triage(session: Session, owner: Person, row: ReceptionMessage, inbound: 
     if escalate:
         pref = preferences_for(session, owner)
         quiet_end = next_local(now, pref.timezone, pref.quiet_end) if in_quiet_hours(pref, now) else None
-        open_escalation(session, d, owner, max_step=1, breaks_quiet=False, defer_until=quiet_end, deadline_at=None,
-                        now=now)  # fmt: skip
+        open_escalation(session, d, owner, max_step=1, breaks_quiet=False, defer_until=quiet_end,
+                        deadline_at=row.deadline_at, now=now)  # fmt: skip
 
 
 def _may_escalate(session: Session, owner: Person, row: ReceptionMessage, now: datetime) -> bool:

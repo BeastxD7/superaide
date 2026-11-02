@@ -106,7 +106,8 @@ def _stranger_view(s: Any, d: TriageDecision) -> tuple[str, dict[str, Any] | Non
     who = m.name or m.handle or "Someone new"
     where = f" on {m.provider}" + (f", {m.handle}" if m.handle and m.name else "")
     taken = {"name": m.name, "contact": m.contact, "topic": m.topic, "message": m.message,
-             "deadline_text": m.deadline_text, "claimed_urgency": m.claimed_urgency}  # fmt: skip
+             "deadline_text": m.deadline_text, "claimed_urgency": m.claimed_urgency,
+             "deadline_at": m.deadline_at.isoformat() if m.deadline_at else None}  # fmt: skip
     return f"{who} (unverified{where})", taken
 
 
