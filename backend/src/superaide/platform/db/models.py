@@ -164,6 +164,7 @@ from superaide.mandate import models as _mandate_models  # noqa: E402, F401
 from superaide.mcp import models as _mcp_models  # noqa: E402, F401
 from superaide.memory import models as _memory_models  # noqa: E402, F401
 from superaide.platform.tenancy import models as _tenancy_models  # noqa: E402, F401
+from superaide.proactive import models as _proactive_models  # noqa: E402, F401
 from superaide.reception import models as _reception_models  # noqa: E402, F401
 from superaide.skills import models as _skills_models  # noqa: E402, F401
 from superaide.tooltrace import models as _tooltrace_models  # noqa: E402, F401

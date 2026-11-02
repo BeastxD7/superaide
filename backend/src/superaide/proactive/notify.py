@@ -6,6 +6,7 @@ preference ("default"). Messages only ever go to the owner's own linked accounts
 from __future__ import annotations
 
 import logging
+import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -16,11 +17,14 @@ from superaide.app.accounts import web_message
 from superaide.channels import health
 from superaide.channels.base import MESSENGER_FACTORIES, bot_id
 from superaide.identity.models import ChannelIdentity, Person
+from superaide.jobs import queue as jobs
+from superaide.jobs.models import Job
 from superaide.memory.audience import Audience
 from superaide.memory.knowledge.store import preferences_for
 from superaide.memory.store import get_or_create_context, log_event
 from superaide.platform.audit import audit
 from superaide.policy.killswitch import get_state, set_state
+from superaide.proactive.models import NotificationDelivery
 
 log = logging.getLogger(__name__)
 
@@ -134,13 +138,123 @@ def _note_failure(session: Session, owner: Person, ctx: Any, provider: str, why:
     audit(session, "notify", "delivery_failure_noted", provider=provider)
 
 
+RETRY_DELAYS = (timedelta(minutes=1), timedelta(minutes=5), timedelta(minutes=15))  # after the 1st, 2nd, 3rd failure
+NOTES_PER_DAY = 5  # "couldn't send" notes per channel per day; after that one summary line instead
+RETRY_JOB = "notify_retry"
+LISTED_FOR = timedelta(days=7)
+
+
+def _leave_note(
+    session: Session, owner: Person, ctx: Any, provider: str, text: str, kind: str, meta: dict[str, Any]
+) -> None:
+    """A line in the owner's app chat about a push. At most NOTES_PER_DAY a day per channel (a flood guard);
+    past that, one summary line a day saying how many are waiting. Never silent: the rows stay in the list."""
+    today = datetime.now(UTC).date().isoformat()
+    key = f"notify_notes:{provider}"
+    state = get_state(session, key)
+    count = state.get("count", 0) if state.get("day") == today else 0
+    if count < NOTES_PER_DAY:
+        set_state(session, key, {"day": today, "count": count + 1})
+        line, note_kind = text, kind
+    elif state.get("summary_day") != today:
+        set_state(session, key, {"day": today, "count": count, "summary_day": today})
+        waiting = len(undelivered(session, provider))
+        line = f"{waiting} notifications are waiting for {CHANNEL_NAMES[provider]}. I'll keep trying."
+        note_kind = "delivery_summary"
+    else:
+        return
+    log_event(
+        session, context=ctx, direction="out", content=line, audience=Audience(person_ids={owner.id}),
+        meta={**meta, "kind": note_kind, "channel": provider},
+    )  # fmt: skip
+    audit(session, "notify", "delivery_failure_noted", provider=provider)
+
+
+def undelivered(session: Session, provider: str | None = None) -> list[NotificationDelivery]:
+    """Pushes still waiting for a retry, or given up on, in the last week: what the app lists as not delivered."""
+    q = select(NotificationDelivery).where(
+        NotificationDelivery.state.in_(("queued", "failed")),
+        NotificationDelivery.created_at >= datetime.now(UTC) - LISTED_FOR,
+    )
+    if provider:
+        q = q.where(NotificationDelivery.channel == provider)
+    return list(session.scalars(q.order_by(NotificationDelivery.created_at.desc())))
+
+
+def _attempt(session: Session, owner: Person, ctx: Any, d: NotificationDelivery, identity: ChannelIdentity) -> bool:
+    """One try at pushing `d`. Records the outcome on the row; books the next try or gives up. True when sent."""
+    provider = d.channel
+    d.attempts += 1
+    sent, why = _push(provider, identity, d.text)
+    now = datetime.now(UTC)
+    if sent:
+        d.state, d.sent_at, d.next_attempt_at, d.last_error = "sent", now, None, ""
+        if d.attempts > 1:
+            log_event(
+                session, context=ctx, direction="out", audience=Audience(person_ids={owner.id}),
+                content=f"I sent that on {CHANNEL_NAMES[provider]} after a delay.",
+                meta={"kind": "delivery_recovered", "channel": provider},
+            )  # fmt: skip
+        return True
+    d.last_error = why
+    meta = {"delivery_id": str(d.id)}
+    audit(session, "notify", "delivery_failed", provider=provider, reason=why, kind=(d.meta or {}).get("kind"))
+    if d.attempts <= len(RETRY_DELAYS):
+        delay = RETRY_DELAYS[d.attempts - 1]
+        d.state, d.next_attempt_at = "queued", now + delay
+        jobs.enqueue(
+            session, RETRY_JOB, {"delivery_id": str(d.id)}, run_at=d.next_attempt_at,
+            dedupe_key=f"{RETRY_JOB}:{d.id}:{d.attempts}", max_attempts=1,
+        )  # fmt: skip
+        minutes = int(delay.total_seconds() // 60)
+        _leave_note(
+            session, owner, ctx, provider,
+            f"I couldn't send this on {CHANNEL_NAMES[provider]}: {why} I'll try again in {minutes} minute"
+            f"{'' if minutes == 1 else 's'}.",
+            "delivery_failed", meta,
+        )  # fmt: skip
+    else:
+        d.state, d.next_attempt_at = "failed", None
+        _leave_note(
+            session, owner, ctx, provider,
+            f"I couldn't send this on {CHANNEL_NAMES[provider]} after {d.attempts} tries: {why} "
+            "It is in the app, and listed as not delivered.",
+            "delivery_failed", {**meta, "final": True},
+        )  # fmt: skip
+    return False
+
+
+@jobs.handler(RETRY_JOB)
+def retry_delivery(session: Session, job: Job) -> None:
+    """Try a waiting push again. A row already sent (or given up) is left alone, so a recovered channel never
+    gets the message twice. Never raises for a failed push: the row books its own next try."""
+    try:
+        delivery_id = uuid.UUID(str(job.payload.get("delivery_id")))
+    except ValueError:
+        return
+    d = session.scalar(select(NotificationDelivery).where(NotificationDelivery.id == delivery_id).with_for_update())
+    if d is None or d.state != "queued":
+        return
+    from superaide.app.accounts import owner as hired_owner
+
+    owner = hired_owner(session)
+    identity = identity_for(session, owner, d.channel) if owner is not None else None
+    if owner is None or identity is None:
+        d.state, d.next_attempt_at = "failed", None
+        d.last_error = f"your {CHANNEL_NAMES[d.channel]} account isn't linked"
+        return
+    ctx = get_or_create_context(session, web_message(owner, ""))
+    _attempt(session, owner, ctx, d, identity)
+
+
 def notify_owner(
     session: Session, owner: Person, text: str, meta: dict[str, Any] | None = None, *, channel: str = "default"
 ) -> list[str]:
     """Returns where it went, e.g. ["app"] or ["app", "telegram"]. `channel` "app" keeps it in
     the app; "telegram"/"slack" also sends it there when linked; "default" follows the owner's
-    interruption preference. When the other channel can't take it, the owner gets a note in the app
-    saying so (rate-limited), so a failed delivery is never silent."""
+    interruption preference. A push that fails is retried by a job (1, 5, then 15 minutes) and the
+    owner is told in the app; one that never gets through stays listed as not delivered, so a failed
+    delivery is never silent."""
     ctx = get_or_create_context(session, web_message(owner, ""))
     log_event(
         session, context=ctx, direction="out", content=text, audience=Audience(person_ids={owner.id}), meta=meta or {}
@@ -149,15 +263,20 @@ def notify_owner(
     if channel == "default":
         channel = "telegram" if preferences_for(session, owner).interrupt_channel == "telegram" else "app"
     if channel in EXTERNAL:
+        d = NotificationDelivery(channel=channel, text=text, meta=meta or {}, state="queued")
+        session.add(d)
+        session.flush()
         identity = identity_for(session, owner, channel)
         if identity is None:
             why = f"your {CHANNEL_NAMES[channel]} account isn't linked. Link it under Connections."
-            _note_failure(session, owner, ctx, channel, why, meta or {})
+            d.state, d.last_error = "failed", why  # nothing to retry: it can't work until the owner links it
+            audit(session, "notify", "delivery_failed", provider=channel, reason=why, kind=(meta or {}).get("kind"))
+            _leave_note(
+                session, owner, ctx, channel, f"I couldn't send this on {CHANNEL_NAMES[channel]}: {why}",
+                "delivery_failed", {"delivery_id": str(d.id), "final": True},
+            )  # fmt: skip
             return via
         # Try even when the channel is marked unhealthy: a send that works is what heals it.
-        sent, why = _push(channel, identity, text)
-        if sent:
+        if _attempt(session, owner, ctx, d, identity):
             via.append(channel)
-        else:
-            _note_failure(session, owner, ctx, channel, why, meta or {})
     return via

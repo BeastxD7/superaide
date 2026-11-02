@@ -20,3 +20,4 @@ def load() -> None:
     import superaide.triage.digest  # noqa: F401  (registers triage_catchup)
     import superaide.triage.escalate  # noqa: F401  (registers escalation_step)
     import superaide.triage.service  # noqa: F401  (registers triage_inbound)
+    from superaide.proactive import notify  # noqa: F401  (registers notify_retry)
