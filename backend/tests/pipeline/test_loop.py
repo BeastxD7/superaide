@@ -495,3 +495,15 @@ def test_a_tool_call_cut_off_at_max_tokens_is_not_run(owner_client):
         result = turn_for(s, script, "remind me to call Priya").run([{"role": "user", "content": "x"}])
         assert s.scalar(select(Intention.text)) is None  # a half-written call is never carried out
     assert "ran out of room" in result.text
+
+
+def test_a_reply_cut_off_by_the_context_window_says_so_instead_of_passing_as_complete(owner_client):
+    """#509: only max_tokens was treated as a cut-off; any other early stop passed as a finished answer."""
+    stopped = {
+        "content": [said("Here is your digest: the CI failed on main, a newsletter from Kaggle, and a")],
+        "stop_reason": "model_context_window_exceeded",
+    }
+    with session_scope() as s:
+        result = turn_for(s, Script(stopped)).run([{"role": "user", "content": "digest?"}])
+    assert "ran out of room" in result.text and "carry on" in result.text
+    assert "max_tokens" in result.notes

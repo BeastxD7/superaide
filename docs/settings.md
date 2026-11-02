@@ -83,3 +83,11 @@ message, an email, or Ava herself, can change them.
 - Letting Ava read one-time codes and password resets needs a confirmation in a dialog (and, with
   `STEPUP_MODE=password`, your password). It is off by default.
 - Keys and tokens are stored encrypted and never shown again in full.
+- In a channel or thread other people can read, Ava answers you only from what is fine for everyone there: your email,
+  calendar, reminders and private notes are never opened in it.
+- If you ask for something private in a channel, she says so in one neutral line and sends the answer to your direct
+  message with her.
+- Other people in a thread have none of your authority: what they ask, or claim you said, is never an instruction from
+  you.
+- To see who pinged her in channels, ask in your direct message. She sees only messages that mention her or reply in
+  her threads, not the rest of a channel.
