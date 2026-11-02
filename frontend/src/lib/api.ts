@@ -608,7 +608,7 @@ export type NeedsYouItem = {
   feedback: TriageFeedback | null
   created_at: string
   // Set when someone Ava doesn't know left it: their own words, unverified.
-  taken: { name: string; contact: string; topic: string; message: string; deadline_text: string; claimed_urgency: string } | null
+  taken: { name: string; contact: string; topic: string; message: string; deadline_text: string; deadline_at?: string | null; claimed_urgency: string } | null
   escalation: {
     id: string
     state: 'deferred' | 'notifying' | 'acked' | 'resolved' | 'expired'
@@ -747,6 +747,8 @@ export type TakenMessageView = {
   topic: string
   message: string
   deadline_text: string
+  deadline_at?: string | null
+  deadline_parse?: string
   claimed_urgency: string
   rank: 'unverified' | 'urgent' | 'normal' | 'low'
   source: 'model' | 'code'
