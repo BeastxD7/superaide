@@ -965,7 +965,7 @@ class OwnerTurn:
                 last = self._more_room(system, tools, msgs, last)
             if any(b.get("type") in {"web_search_tool_result", "web_fetch_tool_result"} for b in last.content):
                 self.tainted = True
-            if last.stop_reason == "max_tokens":
+            if last.stop_reason in {"max_tokens", "model_context_window_exceeded"}:
                 return self._cut_off(system, tools, msgs, last, step + 1)
             if last.stop_reason == "pause_turn":  # a server tool hit its own limit: carry on
                 self._narrated()
