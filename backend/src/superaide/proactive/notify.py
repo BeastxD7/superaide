@@ -17,8 +17,8 @@ from superaide.app.accounts import web_message
 from superaide.channels import health
 from superaide.channels.base import MESSENGER_FACTORIES, bot_id
 from superaide.identity.models import ChannelIdentity, Person
+from superaide.jobs import queue as jobs
 from superaide.jobs.models import Job
-from superaide.jobs.queue import enqueue, handler
 from superaide.memory.audience import Audience
 from superaide.memory.knowledge.store import preferences_for
 from superaide.memory.store import get_or_create_context, log_event
@@ -202,7 +202,7 @@ def _attempt(session: Session, owner: Person, ctx: Any, d: NotificationDelivery,
     if d.attempts <= len(RETRY_DELAYS):
         delay = RETRY_DELAYS[d.attempts - 1]
         d.state, d.next_attempt_at = "queued", now + delay
-        enqueue(
+        jobs.enqueue(
             session, RETRY_JOB, {"delivery_id": str(d.id)}, run_at=d.next_attempt_at,
             dedupe_key=f"{RETRY_JOB}:{d.id}:{d.attempts}", max_attempts=1,
         )  # fmt: skip
@@ -224,7 +224,7 @@ def _attempt(session: Session, owner: Person, ctx: Any, d: NotificationDelivery,
     return False
 
 
-@handler(RETRY_JOB)
+@jobs.handler(RETRY_JOB)
 def retry_delivery(session: Session, job: Job) -> None:
     """Try a waiting push again. A row already sent (or given up) is left alone, so a recovered channel never
     gets the message twice. Never raises for a failed push: the row books its own next try."""

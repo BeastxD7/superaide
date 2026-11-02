@@ -1307,18 +1307,18 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         "list of the ones that did not also arrive where the owner asked.",
     )
     def undelivered_notifications(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
-        from superaide.proactive.notify import CHANNEL_NAMES, undelivered
+        from superaide.proactive import notify
 
         with session_scope() as s:
             require(s, Person, person_id)
-            rows = undelivered(s)
+            rows = notify.undelivered(s)
             return {
                 "count": len(rows),
                 "items": [
                     {
                         "id": str(d.id),
                         "channel": d.channel,
-                        "channel_name": CHANNEL_NAMES.get(d.channel, d.channel),
+                        "channel_name": notify.CHANNEL_NAMES.get(d.channel, d.channel),
                         "text": d.text[:300],
                         "state": d.state,
                         "attempts": d.attempts,
