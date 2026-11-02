@@ -1,5 +1,6 @@
 'use client'
 
+import { AmbientChannels } from '@/features/dashboard/connections/AmbientChannels'
 import { ConnectorSettings } from '@/features/dashboard/connections/ConnectorSettings'
 import { HowThisWorks } from '@/features/dashboard/settings/HowThisWorks'
 import { Connections } from '@/features/workspace/Connections'
@@ -24,6 +25,9 @@ export function ConnectionsPage() {
           <ConnectorSettings path="channels" title="Reading and keeping" anchor="channels" />
         </div>
         <div className="mt-6">
+          <AmbientChannels agentName={me.agent.name} />
+        </div>
+        <div className="mt-6">
           <HowThisWorks
             rules={[
               'A message from someone you have not added is never treated as you: it cannot give Ava orders or see your private notes.',
@@ -32,7 +36,8 @@ export function ConnectionsPage() {
               'In a channel or thread other people can read, Ava answers you only from what is fine for everyone there: your email, calendar, reminders and private notes are never opened in it.',
               'If you ask for something private in a channel, she says so in one neutral line and sends the answer to your direct message with her.',
               'Other people in a thread have none of your authority: what they ask, or claim you said, is never an instruction from you.',
-              'To see who pinged her in channels, ask in your direct message. She sees only messages that mention her or reply in her threads, not the rest of a channel.',
+              'To see who pinged her in channels, ask in your direct message. Unless you turned on reading a whole channel (above), she sees only messages that mention her or reply in her threads, not the rest of a channel.',
+              'Messages she stores from a channel you opened never trigger anything: no reply, no model call, no memory, no action.',
             ]}
           />
         </div>
