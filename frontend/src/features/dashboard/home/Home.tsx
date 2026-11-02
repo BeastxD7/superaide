@@ -9,6 +9,7 @@ import { Orb } from '@/components/Orb'
 import { AskRequests } from '@/features/ask/AskRequests'
 import { ApprovalsCard } from '@/features/dashboard/approvals/Approvals'
 import { QuestionCard } from '@/features/dashboard/home/QuestionCard'
+import { UndeliveredCard } from '@/features/dashboard/home/UndeliveredCard'
 import { STAGES } from '@/components/stages'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -68,6 +69,7 @@ export function DashboardHome() {
         )}
 
         <ApprovalsCard name={name} />
+        <UndeliveredCard name={name} />
         <QuestionCard name={name} />
 
         <AskRequests className="mt-6" />

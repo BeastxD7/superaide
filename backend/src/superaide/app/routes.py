@@ -1299,6 +1299,38 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         }
 
     @router.get(
+        "/notifications/undelivered",
+        tags=["Owner: reminders"],
+        summary="Notifications that did not reach Telegram or Slack",
+        description="Pushes to the owner's own Telegram or Slack that are waiting for a retry (`queued`) or were "
+        "given up on (`failed`), newest first, from the last 7 days. The in-app copy is always there; this is the "
+        "list of the ones that did not also arrive where the owner asked.",
+    )
+    def undelivered_notifications(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        from superaide.proactive.notify import CHANNEL_NAMES, undelivered
+
+        with session_scope() as s:
+            require(s, Person, person_id)
+            rows = undelivered(s)
+            return {
+                "count": len(rows),
+                "items": [
+                    {
+                        "id": str(d.id),
+                        "channel": d.channel,
+                        "channel_name": CHANNEL_NAMES.get(d.channel, d.channel),
+                        "text": d.text[:300],
+                        "state": d.state,
+                        "attempts": d.attempts,
+                        "next_attempt_at": d.next_attempt_at.isoformat() if d.next_attempt_at else None,
+                        "reason": d.last_error[:300],
+                        "at": d.created_at.isoformat(),
+                    }
+                    for d in rows[:50]
+                ],
+            }
+
+    @router.get(
         "/reminders",
         tags=["Owner: reminders"],
         summary="Reminders",

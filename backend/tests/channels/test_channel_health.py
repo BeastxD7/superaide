@@ -5,7 +5,6 @@ No real Telegram or Slack: sends go through httpx.MockTransport or fake Slack cl
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -24,7 +23,6 @@ from superaide.memory.knowledge.store import preferences_for
 from superaide.memory.models import Event
 from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
-from superaide.policy.killswitch import get_state, set_state
 from superaide.proactive import notify
 from superaide.proactive.notify import notify_owner
 from tests.pipeline.test_loop import Script, owner_client, tool_use, turn_for  # noqa: F401  (fixture re-export)
@@ -34,6 +32,7 @@ pytestmark = pytest.mark.usefixtures("owner_client")  # a signed-up owner who hi
 TOKEN = "123456789:" + "B" * 35
 ASK = [{"role": "user", "content": "x"}]
 NOTE = "I couldn't send this on Telegram: the bot token was rejected. Reconnect Telegram under Connections."
+RETRY_NOTE = NOTE + " I'll try again in 1 minute."
 
 
 class FakeBot:
@@ -146,7 +145,8 @@ def test_other_slack_errors_are_not_token_problems():
 # --- delivery is never silent ---------------------------------------------------------------
 
 
-def test_a_failed_telegram_delivery_leaves_one_note_in_the_app_then_is_rate_limited(bot):
+def test_each_failed_telegram_delivery_leaves_its_own_note_and_a_retry(bot):
+    """Two failures close together both leave a trace (#491); the old once-per-3-hours window hid the second."""
     bot.status = 401
     with session_scope() as s:
         link_telegram(s)
@@ -154,14 +154,9 @@ def test_a_failed_telegram_delivery_leaves_one_note_in_the_app_then_is_rate_limi
         assert owner is not None
         assert notify_owner(s, owner, "⏰ Reminder: Gym", {"kind": "reminder"}, channel="telegram") == ["app"]
         assert notify_owner(s, owner, "⏰ Reminder: Stretch", {"kind": "reminder"}, channel="telegram") == ["app"]
-        assert notes(s) == [NOTE]  # one note, not one per message
-        assert actions(s, "delivery_failed") == 2 and actions(s, "delivery_failure_noted") == 1
+        assert notes(s) == [RETRY_NOTE, RETRY_NOTE]
+        assert actions(s, "delivery_failed") == 2 and actions(s, "delivery_failure_noted") == 2
         assert health.rejected(s, "telegram")
-        # A few hours later it says so again.
-        earlier = (datetime.now(UTC) - notify.NOTE_EVERY - timedelta(minutes=1)).isoformat()
-        set_state(s, "channel_failure_noted:telegram", {"at": earlier})
-        notify_owner(s, owner, "⏰ Reminder: Water", {"kind": "reminder"}, channel="telegram")
-        assert notes(s) == [NOTE, NOTE]
 
 
 def test_the_owners_telegram_preference_counts_as_asking_for_telegram(bot):
@@ -172,7 +167,7 @@ def test_the_owners_telegram_preference_counts_as_asking_for_telegram(bot):
         assert owner is not None
         preferences_for(s, owner).interrupt_channel = "telegram"
         assert notify_owner(s, owner, "Your briefing", {"kind": "digest"}) == ["app"]
-        assert notes(s) == [NOTE]
+        assert notes(s) == [RETRY_NOTE]
 
 
 def test_a_delivered_message_leaves_no_note_and_heals_the_channel(bot):
@@ -186,7 +181,6 @@ def test_a_delivered_message_leaves_no_note_and_heals_the_channel(bot):
         assert owner is not None
         assert notify_owner(s, owner, "⏰ Reminder: Gym", channel="telegram") == ["app", "telegram"]
         assert notes(s) == [] and not health.rejected(s, "telegram")
-        assert get_state(s, "channel_failure_noted:telegram") == {}
 
 
 def test_an_app_only_message_never_touches_telegram(bot):
