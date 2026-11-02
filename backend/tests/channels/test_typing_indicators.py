@@ -15,7 +15,7 @@ import pytest
 
 from superaide.channels import health, slack
 from superaide.channels.base import FakeMessenger
-from superaide.channels.slack import SlackMessenger
+from superaide.channels.slack import UNFINISHED, SlackMessenger
 from superaide.channels.telegram import TelegramMessenger
 from tests.conftest import COLLEAGUE_SLACK, MANAGER_SLACK, MANAGER_TG, sl, tg
 
@@ -408,3 +408,47 @@ def test_slack_another_messenger_never_takes_the_placeholder():
     messenger(other).send_to_context(type("C", (), {"external_id": "D1"})(), "x", "")  # type: ignore[arg-type]
     assert other.names() == ["chat_postMessage"]
     handle.close()
+
+
+# ---------------------------------------------------------------- a long reply is never left half-delivered (#509)
+
+
+class RateLimitedSecondPost(SlackClient):
+    """Slack answers the second post of a long reply with `ratelimited` the first `limited` times."""
+
+    def __init__(self, limited: int) -> None:
+        super().__init__()
+        self.limited, self.posts = limited, 0
+
+    def chat_postMessage(self, **kwargs: Any) -> dict[str, Any]:  # noqa: N802 - slack_sdk's name
+        self.posts += 1
+        self.calls.append(("chat_postMessage", kwargs))
+        if self.posts >= 2 and self.limited > 0:
+            self.limited -= 1
+            err = Exception("ratelimited")
+
+            class Response(dict):
+                headers = {"Retry-After": "0"}
+
+            err.response = Response(error="ratelimited")  # type: ignore[attr-defined]
+            raise err
+        return {"ok": True, "ts": "1700.1", "channel": kwargs.get("channel", "")}
+
+
+LONG_REPLY = "\n\n".join(f"Paragraph {n}. " + "word " * 300 for n in range(6))
+
+
+def test_a_rate_limited_part_of_a_long_reply_is_retried_so_the_thread_does_not_end_mid_sentence():
+    client = RateLimitedSecondPost(limited=1)
+    messenger(client)._post("C1", LONG_REPLY, "1700.0")
+    posted = [kw["text"] for n, kw in client.calls if n == "chat_postMessage" and kw["text"] != UNFINISHED]
+    assert "Paragraph 5." in "".join(posted)  # the last paragraph arrived
+    assert not any(kw["text"] == UNFINISHED for n, kw in client.calls)
+
+
+def test_when_a_later_part_cannot_be_delivered_the_thread_says_the_reply_stopped_short():
+    client = RateLimitedSecondPost(limited=3)
+    with pytest.raises(Exception, match="ratelimited"):
+        messenger(client)._post("C1", LONG_REPLY, "1700.0")
+    last = [kw for n, kw in client.calls if n == "chat_postMessage"][-1]
+    assert last["text"] == UNFINISHED and last["thread_ts"] == "1700.0"
