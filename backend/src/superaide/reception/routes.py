@@ -14,6 +14,7 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from superaide.app.deps import owner_person_id
 from superaide.identity.auth.routes import reject_nul_text, require_csrf_header
@@ -23,6 +24,7 @@ from superaide.platform.db.session import require, session_scope
 from superaide.platform.tenancy.context import scope_or_default
 from superaide.reception.models import ReceptionMessage, ReceptionSettings
 from superaide.reception.service import greeting, settings_for
+from superaide.reception.turn import has_card
 
 WINDOW = timedelta(days=30)
 
@@ -39,14 +41,16 @@ class StatusBody(BaseModel):
     status: Literal["new", "done", "dismissed", "spam"]
 
 
-def view(rs: ReceptionSettings, owner: Person, agent_name: str) -> dict[str, Any]:
+def view(s: Session, rs: ReceptionSettings, owner: Person, agent_name: str) -> dict[str, Any]:
     return {
         "enabled": rs.enabled,
         "show_first_name": rs.show_first_name,
         "public_profile": rs.public_profile,
         "per_hour": rs.per_hour,
         "per_day": rs.per_day,
-        "greeting": greeting(agent_name, owner, rs),  # what a stranger's first reply starts with
+        "greeting": greeting(
+            agent_name, owner, rs, has_card=has_card(s, owner, rs)
+        ),  # what a stranger's first reply starts with
     }
 
 
@@ -75,7 +79,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
     def get_receptionist(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         with session_scope() as s:
             owner = require(s, Person, person_id)
-            return view(settings_for(s, owner), owner, get_agent().name)
+            return view(s, settings_for(s, owner), owner, get_agent().name)
 
     @router.put("/receptionist", summary="Change receptionist settings", description="Only the fields sent change.")
     def put_receptionist(body: SettingsBody, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
@@ -88,7 +92,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             for k, v in changes.items():
                 setattr(rs, k, v)
             audit(s, "reception", "settings_changed", fields=sorted(changes))
-            return view(rs, owner, get_agent().name)
+            return view(s, rs, owner, get_agent().name)
 
     @router.get(
         "/receptionist/messages",

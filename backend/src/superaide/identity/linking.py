@@ -25,6 +25,7 @@ from superaide.identity.models import ChannelIdentity, IdentityLinkEvent, LinkCh
 from superaide.identity.trust import Trust
 from superaide.platform.audit import audit
 from superaide.platform.config import Settings
+from superaide.platform.tenancy.context import mine
 
 CODE_RE = re.compile(r"^\s*(\d{6})\s*$")
 CLAIM_RE = re.compile(
@@ -81,25 +82,28 @@ def trusted_identities(session: Session, person: Person) -> list[ChannelIdentity
     return [r for r in rows if "external" not in (r.risk_flags or [])]
 
 
-def find_person_by_name(session: Session, name: str, *, exact: bool = False) -> Person | None:
-    """Match a claimed name to a person who has at least one trusted channel.
+def find_person_by_name(session: Session, name: str, *, exact: bool = True) -> Person | None:
+    """Match a claimed name to the one person with that full name who has at least one trusted channel.
 
-    Matches the full display name or the first name, case-insensitively; with `exact` only the full name
-    (IDENTITY_CLAIM_REVIEW, issue #93). The result is only used to decide where to send a code, never to
-    grant access.
+    A claim is only a hint (issue #492). The full display name must match, case-insensitively and with
+    spaces collapsed; a first name alone never matches, and when two people share the full name nothing
+    matches, so a code is never sent to someone the sender did not clearly name. The result is only used to
+    decide where to send a code, never to grant access. `exact` is kept for callers and must stay True:
+    loosening it changes who may be sent a security message, which is the owner's decision.
     """
-    wanted = name.casefold().strip()
+    if not exact:
+        raise ValueError("first-name matching is disabled (issue #492)")
+    wanted = " ".join(name.casefold().split())
     if not wanted:
         return None
-    people = session.scalars(select(Person).where(Person.status == "active")).all()
-    for p in people:
-        full = p.display_name.casefold().strip()
-        if not full:
-            continue
-        if wanted == full or (not exact and (wanted == full.split()[0] or wanted.split()[0] == full.split()[0])):
-            if trusted_identities(session, p):
-                return p
-    return None
+    # CLAIM_RE takes up to two words, so "it's Jordan on my phone" arrives as "jordan on": a contact whose
+    # whole name is "Jordan" still matches, because the first word alone equals their full name.
+    options = {wanted, wanted.split()[0]}
+    found: list[Person] = []
+    for p in session.scalars(select(Person).where(Person.status == "active", mine(Person))).all():
+        if " ".join(p.display_name.casefold().split()) in options and trusted_identities(session, p):
+            found.append(p)
+    return found[0] if len(found) == 1 else None
 
 
 def start_challenge(

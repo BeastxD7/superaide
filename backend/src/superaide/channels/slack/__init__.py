@@ -122,6 +122,22 @@ def _error_code(exc: BaseException) -> str:
         return ""
 
 
+UNFINISHED = "(Part of my reply could not be delivered. Ask me to carry on and I will send the rest.)"
+MAX_RETRY_WAIT = 10.0
+
+
+def _retry_after(exc: BaseException) -> float | None:
+    """Seconds Slack asks us to wait when it rate-limited the call, else None (any other error is final)."""
+    response = getattr(exc, "response", None)
+    try:
+        if response is None or str(response.get("error") or "") != "ratelimited":
+            return None
+        headers = getattr(response, "headers", None) or {}
+        return min(MAX_RETRY_WAIT, max(0.0, float(headers.get("Retry-After", 1))))
+    except Exception:
+        return None
+
+
 class SlackWorking:
     """Either an assistant-thread status (cleared by Slack when the reply is posted) or a "Working on it…"
     placeholder message. The reply is posted as a new message (an edit would not notify) and the placeholder is deleted
@@ -220,11 +236,13 @@ class SlackMessenger:
         ):
             active = None
         pending = active if active is not None and active.ts else None  # a status has no ts
-        for mrkdwn, _ in messages:
-            if thread_id:
-                self._call("chat_postMessage", channel=channel, text=mrkdwn, thread_ts=thread_id)
-            else:
-                self._call("chat_postMessage", channel=channel, text=mrkdwn)
+        for number, (mrkdwn, _) in enumerate(messages):
+            try:
+                self._post_part(channel, mrkdwn, thread_id)
+            except Exception:
+                if number:  # earlier parts are already out: never leave the reader at a half sentence unannounced
+                    self._tell_unfinished(channel, thread_id)
+                raise
             if active is not None and not active.consumed:
                 active.consumed = True  # a status is cleared by Slack once a message is posted
                 if pending is not None:
@@ -232,6 +250,28 @@ class SlackMessenger:
                     # (best-effort: if the delete fails it stays, the reply is never lost).
                     self._discard(channel, pending.ts)
         return True
+
+    def _post_part(self, channel: str, text: str, thread_id: str) -> None:
+        """One message of a reply. A long reply is several messages sent one after the other, and Slack answers a
+        quick second post with `ratelimited` (Retry-After): wait that long once instead of dropping the rest of the
+        reply, which left the thread ending mid-sentence (#509)."""
+        kwargs: dict[str, Any] = {"channel": channel, "text": text}
+        if thread_id:
+            kwargs["thread_ts"] = thread_id
+        try:
+            self._call("chat_postMessage", **kwargs)
+        except Exception as exc:
+            wait = _retry_after(exc)
+            if wait is None:
+                raise
+            time.sleep(wait)
+            self._call("chat_postMessage", **kwargs)
+
+    def _tell_unfinished(self, channel: str, thread_id: str) -> None:
+        try:
+            self._post_part(channel, UNFINISHED, thread_id)
+        except Exception:
+            log.warning("slack: couldn't say the reply stopped short")
 
     def open_dm(self, identity: ChannelIdentity) -> str:
         """The id of the direct message with this Slack user, opened if it was not yet."""

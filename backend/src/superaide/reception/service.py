@@ -81,10 +81,13 @@ def settings_for(session: Session, owner: Person) -> ReceptionSettings:
     return row
 
 
-def greeting(agent_name: str, owner: Person, rs: ReceptionSettings) -> str:
-    """The EU AI Act notice: who they're talking to. The owner's first name only if they allowed it."""
+def greeting(agent_name: str, owner: Person, rs: ReceptionSettings, *, has_card: bool = False) -> str:
+    """The EU AI Act notice: who they're talking to, and what she can really do (issue #475). The owner's first
+    name only if they allowed it. Built in code from what is configured, never from the model."""
     name = rturn.first_name(owner) if rs.show_first_name else ""
-    return f"Hi, I'm {agent_name}, {name}'s AI assistant." if name else f"Hi, I'm {agent_name}, an AI assistant."
+    who = f"Hi, I'm {agent_name}, {name}'s AI assistant." if name else f"Hi, I'm {agent_name}, an AI assistant."
+    can = "I can share what's been made public and take a message." if has_card else "I can take a message."
+    return f"{who} {can}"
 
 
 def _counts(session: Session, sender: Sender, now: datetime) -> tuple[int, int]:
@@ -224,7 +227,7 @@ def handle_stranger(
     hour, day = _counts(session, sender, now)
     exhausted = hour > rs.per_hour or day > rs.per_day
     first = _first_reply(session, ctx)
-    hello = greeting(agent.name, owner, rs)
+    hello = greeting(agent.name, owner, rs, has_card=rturn.has_card(session, owner, rs))
     over_storage = _stored_today(session, sender, now) >= STORE_PER_DAY
 
     if exhausted:  # no model call: code keeps the message and says, once, when Ava will answer again
