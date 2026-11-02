@@ -99,6 +99,40 @@ def log_event(
     return event
 
 
+def log_room_event(
+    session: Session,
+    *,
+    context: Context,
+    content: str,
+    identity_id: uuid.UUID | None,
+    person_id: uuid.UUID | None,
+    external_id: str,
+    thread_id: str,
+    verified: bool,
+    meta: dict,
+) -> Event:
+    """A channel message stored by "read the whole channel" (#509). Same table, same `touch_context`, but built here
+    without a resolved sender: the audience is the room's (anyone who can read it) and the trust is 0."""
+    event = Event(
+        external_id=external_id or None,
+        thread_id=thread_id or None,
+        context_id=context.id,
+        direction="in",
+        sender_identity_id=identity_id,
+        resolved_person_id=person_id,
+        trust_at_time=0,
+        audience_person_ids=[person_id] if person_id else [],
+        audience_has_unknown=True,
+        content=content,
+        meta=meta,
+        webhook_verified=verified,
+    )
+    session.add(event)
+    session.flush()
+    touch_context(session, event)
+    return event
+
+
 def touch_context(session: Session, event: Event) -> None:
     """Move the conversation's `last_event_at` forward to this event. The ONE place that maintains it: every code
     path that inserts an Event calls this (log_event, the Gmail intake). GREATEST means an event that arrives out of
@@ -132,9 +166,10 @@ def recent_events(session: Session, context: Context, limit: int = 12, thread_id
         if thread_id
         else Event.thread_id.is_(None)
     )
+    # Room messages stored by "read the whole channel" (#509) are not conversation: they never become user turns.
     rows = session.scalars(
         select(Event)
-        .where(Event.context_id == context.id, in_thread)
+        .where(Event.context_id == context.id, in_thread, ~Event.meta.has_key("ambient"))
         .order_by(Event.created_at.desc(), Event.id)
         .limit(limit)
     ).all()

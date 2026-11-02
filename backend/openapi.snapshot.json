@@ -507,9 +507,67 @@
         "title": "CardBody",
         "type": "object"
       },
+      "ChannelBody": {
+        "additionalProperties": false,
+        "properties": {
+          "channel_id": {
+            "maxLength": 60,
+            "minLength": 2,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Channel Id",
+            "type": "string"
+          },
+          "confirmed": {
+            "default": false,
+            "title": "Confirmed",
+            "type": "boolean"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "erase": {
+            "default": false,
+            "title": "Erase",
+            "type": "boolean"
+          },
+          "provider": {
+            "default": "slack",
+            "maxLength": 20,
+            "title": "Provider",
+            "type": "string"
+          },
+          "retention_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retention Days"
+          },
+          "title": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "channel_id",
+          "enabled"
+        ],
+        "title": "ChannelBody",
+        "type": "object"
+      },
       "ChannelsSettingsBody": {
         "additionalProperties": false,
         "properties": {
+          "ambient_messages_per_hour": {
+            "title": "Ambient Messages Per Hour"
+          },
           "cross_channel_chars": {
             "title": "Cross Channel Chars"
           },
@@ -4544,6 +4602,132 @@
         "summary": "List agents",
         "tags": [
           "Marketplace & hiring"
+        ]
+      }
+    },
+    "/app/ambient/channels": {
+      "get": {
+        "description": "The Slack channels Ava is in, each with its switch (off unless you turned it on), how long messages are kept, and how many are stored.",
+        "operationId": "list_channels_app_ambient_channels_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Channels App Ambient Channels Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Reading whole channels: your channels and their switches",
+        "tags": [
+          "Owner: Connections"
+        ]
+      },
+      "put": {
+        "description": "Turning a channel on needs `confirmed: true`. Turning it off can also erase what was stored.",
+        "operationId": "put_channel_app_ambient_channels_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChannelBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Put Channel App Ambient Channels Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Reading whole channels: turn one channel on or off",
+        "tags": [
+          "Owner: Connections"
+        ]
+      }
+    },
+    "/app/ambient/channels/{channel_id}/messages": {
+      "delete": {
+        "description": "Deletes every message stored from this channel by reading it whole. Messages that mentioned Ava are not touched.",
+        "operationId": "erase_channel_app_ambient_channels__channel_id__messages_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "channel_id",
+            "required": true,
+            "schema": {
+              "title": "Channel Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Erase Channel App Ambient Channels  Channel Id  Messages Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Reading whole channels: erase what was stored from one channel",
+        "tags": [
+          "Owner: Connections"
         ]
       }
     },

@@ -146,6 +146,7 @@ from superaide.actionlog import models as _actionlog_models  # noqa: E402, F401
 from superaide.approvals import models as _approvals_models  # noqa: E402, F401
 from superaide.asklink import models as _asklink_models  # noqa: E402, F401
 from superaide.brain import models as _brain_models  # noqa: E402, F401
+from superaide.channels import models as _channel_models  # noqa: E402, F401
 from superaide.features.brainshare import models as _brainshare_models  # noqa: E402, F401
 from superaide.features.imports import models as _imports_models  # noqa: E402, F401
 from superaide.features.journal import models as _features_journal_models  # noqa: E402, F401

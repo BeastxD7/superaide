@@ -181,7 +181,7 @@ def replay(session: Session, rule_id: str, days: int, *, now: datetime | None = 
         select(Event, Context.provider, Person.display_name)
         .join(Context, Context.id == Event.context_id)
         .outerjoin(Person, Person.id == Event.resolved_person_id)
-        .where(Event.direction == "in", Event.created_at >= since)
+        .where(Event.direction == "in", Event.created_at >= since, ~Event.meta.has_key("ambient"))
         .order_by(Event.created_at.desc())
     ).all()
     fired, scanned = 0, 0

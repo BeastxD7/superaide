@@ -25,6 +25,8 @@ class InboundMessage:
     thread_id: str = ""  # Slack thread_ts or Telegram topic; "" for the main conversation
     external_sender: bool = False  # e.g. Slack Connect user from another company
     chat_title: str = ""
+    # A room message that does not mention Ava (#509): stored only if the owner turned reading on for that channel.
+    ambient: bool = False
     # Which of our endpoints received it: the Telegram bot id, or the Slack app ("team/app id").
     # "" for the web app. Links are bound to the endpoint that confirmed them (identity/resolver.py).
     endpoint: str = ""

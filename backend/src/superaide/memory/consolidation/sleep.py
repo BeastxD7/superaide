@@ -129,6 +129,7 @@ def make_episodes(
     watermark = session.scalar(select(func.max(Episode.ended_at)).where(Episode.owner_person_id == owner.id))
     q = select(Event).where(
         Event.audience_person_ids.contains([owner.id]),
+        ~Event.meta.has_key("ambient"),  # room messages are stored, never summarised (#509)
         Event.webhook_verified.is_(True),
         Event.created_at <= now - GAP,  # only conversations that have gone quiet
         (Event.direction == "out") | (Event.trust_at_time >= int(Trust.LINKED)),  # the taint gate

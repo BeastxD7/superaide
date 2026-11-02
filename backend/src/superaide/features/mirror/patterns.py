@@ -130,6 +130,7 @@ def activity_shift(session: Session, owner_id: uuid.UUID, now: datetime) -> list
                 .where(
                     Event.resolved_person_id == owner_id,
                     Event.direction == "in",
+                    ~Event.meta.has_key("ambient"),
                     Event.created_at >= a,
                     Event.created_at < b,
                 )

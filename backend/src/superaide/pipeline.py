@@ -128,7 +128,7 @@ def _turn_slots() -> threading.BoundedSemaphore:
 
 @dataclass
 class HandleResult:
-    mode: str  # dropped | duplicate | frozen | halted | stranger | unconfirmed | known
+    mode: str  # ambient | dropped | duplicate | frozen | halted | stranger | unconfirmed | known
     reply: str | None = None
     notes: list[str] = field(default_factory=list)
     # A second inbound message to run after this turn's session has closed: the owner's own words, asked in a channel,
@@ -156,11 +156,30 @@ class Agent:
         Only `max_concurrent_turns()` turns run at once: each holds a database connection for the whole
         turn and the spend guard takes a second one for every model call, so more turns than connections
         would all wait for each other until the pool timed out (issue #84)."""
+        if msg.ambient:  # a room message nobody addressed to Ava: stored or dropped, never a turn (#509)
+            return self._ambient(msg)
         with _turn_slots():
             result = self._handle(msg, emit)
             if result.followup is not None:  # the channel turn's session is closed; this one has its own
                 self._handle(result.followup)
             return result
+
+    def _ambient(self, msg: InboundMessage) -> HandleResult:
+        """No turn slot, no model, no reply: one insert for a channel the owner opened, nothing for any other."""
+        if not msg.verified:
+            with session_scope() as s:
+                audit(s, "pipeline", "dropped_unverified", provider=msg.provider)
+            return HandleResult("dropped")
+        from superaide.channels import ambient
+        from superaide.channels import settings as channel_settings
+
+        with session_scope() as s:
+            if not ambient.any_enabled(s):
+                return HandleResult("dropped", None, ["ambient:off"])  # the usual case: one cheap lookup
+            if is_frozen(s):  # halted: nothing new is taken in either
+                return HandleResult("dropped", None, ["frozen"])
+            outcome = ambient.ingest(s, msg, per_hour=channel_settings.ambient_per_hour(s))
+        return HandleResult("ambient" if outcome == "stored" else "dropped", None, [f"ambient:{outcome}"])
 
     def _handle(self, msg: InboundMessage, emit: Emit | None = None) -> HandleResult:
         if not msg.verified:
@@ -172,6 +191,10 @@ class Agent:
             sender = resolve(s, msg, reconfirm_after_days=self.settings.link_reconfirm_after_days)
             ctx = get_or_create_context(s, msg)
             aud = audience_for(ctx, sender)
+            if msg.provider == "slack" and ctx.kind == "group":
+                from superaide.channels import ambient
+
+                ambient.adopt(s, ctx, msg)  # the plain copy of this mention, if it came first, is not a redelivery
             if seen_before(s, ctx, msg.message_id):
                 audit(s, "pipeline", "duplicate_dropped", provider=msg.provider, message_id=msg.message_id[:120])
                 return HandleResult("duplicate")

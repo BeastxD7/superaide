@@ -100,6 +100,7 @@ TABLES: tuple[str, ...] = (
     "ask_link",  # the "Ask my Ava" link
     "ask_request",
     "ask_stat",
+    "ambient_channel",  # channels the owner let Ava read in full (#509)
     "notification_delivery",  # pushes to the owner's Telegram or Slack and how they went (#491)
 )
 

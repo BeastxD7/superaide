@@ -215,13 +215,23 @@ def recall_chunks(session: Session, aud: Audience, query: str, limit: int = 4) -
     ]
 
 
+ROOM_TITLE = "Room message"  # a message stored from a channel Ava reads whole: other people's words (#509)
+
+
 def _message_gate(aud: Audience) -> ColumnElement[bool]:
     return Event.audience_person_ids.contains(sorted(aud.person_ids))
 
 
 def recall_messages(
-    session: Session, aud: Audience, query: str, limit: int = 6, channel: str | None = None
+    session: Session,
+    aud: Audience,
+    query: str,
+    limit: int = 6,
+    channel: str | None = None,
+    rooms: bool = False,
 ) -> list[Source]:
+    """`rooms`: also the messages stored from channels the owner let Ava read whole (#509). Only the owner's own
+    private chat passes it; for anyone else those messages do not exist, even the reader's own."""
     if aud.has_unknown or not aud.person_ids:
         return []  # only for a known audience, and only what they all saw
 
@@ -229,7 +239,10 @@ def recall_messages(
         # Only what people said. Ava's own past replies are never evidence: an outdated hedge
         # ("I may not keep this…") cited back to her becomes a "fact". They reach her only as the
         # conversation's history.
-        stmt = select(Event).where(_message_gate(aud), Event.content != "", Event.direction == "in")
+        gate = _message_gate(aud) & ~Event.meta.has_key("ambient")
+        if rooms:
+            gate = gate | Event.meta.has_key("ambient")
+        stmt = select(Event).where(gate, Event.content != "", Event.direction == "in")
         if channel:
             stmt = stmt.join(Context, Context.id == Event.context_id).where(Context.provider == channel)
         return stmt
@@ -244,7 +257,7 @@ def recall_messages(
     out = []
     for e in found:
         provider = contexts[e.context_id].provider if e.context_id in contexts else ""
-        who = "You" if e.direction == "in" else "Ava"
+        who = ROOM_TITLE if e.meta.get("ambient") else "You" if e.direction == "in" else "Ava"
         out.append(
             Source(
                 uri=f"ava://msg/{provider}/{e.id}",
@@ -277,8 +290,9 @@ def recall(
     limit: int = 8,
     exclude_event: uuid.UUID | None = None,
     channel: str | None = None,
+    rooms: bool = False,
 ) -> list[Source]:
-    """Notes and messages fused into one list; never more than `limit`."""
+    """Notes and messages fused into one list; never more than `limit`. `rooms`: see `recall_messages`."""
     query = " ".join(query.split())[:300]
     picked = CHANNELS.get((channel or "").strip().lower())
     if picked is None:
@@ -288,7 +302,7 @@ def recall(
     notes = recall_memories(session, aud, query, limit=limit, channel=picked) if lexicon.words(query) else []
     msgs = [
         m
-        for m in recall_messages(session, aud, query, limit=limit, channel=picked)
+        for m in recall_messages(session, aud, query, limit=limit, channel=picked, rooms=rooms)
         if not m.uri.endswith(str(exclude_event))
     ]
     passages = recall_chunks(session, aud, query, limit=limit) if lexicon.words(query) and not picked else []
