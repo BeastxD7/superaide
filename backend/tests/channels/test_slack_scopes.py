@@ -128,4 +128,11 @@ def test_connecting_with_a_missing_scope_shows_the_notice_on_connections(agent, 
 def test_the_manifest_lists_exactly_the_scopes_the_check_wants(path):
     manifest = Path(scopes.__file__).parent / path
     listed = yaml.safe_load(manifest.read_text())["oauth_config"]["scopes"]["bot"]
-    assert sorted(listed) == sorted(scopes.REQUIRED_SCOPES)
+    assert sorted(listed) == sorted([*scopes.REQUIRED_SCOPES, *scopes.AMBIENT_SCOPES])
+
+
+def test_the_manifest_subscribes_to_the_room_message_events():
+    events = yaml.safe_load((Path(scopes.__file__).parent / "manifest.yml").read_text())["settings"][
+        "event_subscriptions"
+    ]
+    assert {"app_mention", "message.im", "message.channels", "message.groups"} <= set(events["bot_events"])

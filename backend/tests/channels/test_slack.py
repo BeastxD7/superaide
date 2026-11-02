@@ -309,8 +309,11 @@ def test_socket_mode_drops_bot_messages_and_edits_without_calling_the_handler(fa
     handler = socket_mode_handler("xoxb-bot", "xapp-app", OUR_TEAM, got.append)
     handler.app.listeners["message"](event("echo", bot_id="B_AVA"))
     handler.app.listeners["message"](event("edit", subtype="message_changed"))
-    handler.app.listeners["message"](event("chatter", channel_type="channel"))
     assert got == []
+    # A channel message nobody mentioned Ava in is handed over only as an ambient one (#509): the pipeline stores it
+    # if the owner opened that channel and drops it otherwise; it is never a turn.
+    handler.app.listeners["message"](event("chatter", channel_type="channel"))
+    assert [(m.text, m.ambient) for m in got] == [("chatter", True)]
 
 
 def test_run_socket_mode_starts_the_handler(fake_bolt, monkeypatch):
