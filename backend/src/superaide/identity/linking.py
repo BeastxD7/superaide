@@ -82,20 +82,18 @@ def trusted_identities(session: Session, person: Person) -> list[ChannelIdentity
     return [r for r in rows if "external" not in (r.risk_flags or [])]
 
 
-def find_person_by_name(session: Session, name: str, *, exact: bool = True) -> Person | None:
-    """Match a claimed name to the one person with that full name who has at least one trusted channel.
+def find_people_by_name(session: Session, name: str, *, exact: bool = True) -> list[Person]:
+    """Every person with exactly this full name who has at least one trusted channel (issue #492).
 
-    A claim is only a hint (issue #492). The full display name must match, case-insensitively and with
-    spaces collapsed; a first name alone never matches, and when two people share the full name nothing
-    matches, so a code is never sent to someone the sender did not clearly name. The result is only used to
-    decide where to send a code, never to grant access. `exact` is kept for callers and must stay True:
-    loosening it changes who may be sent a security message, which is the owner's decision.
+    A claim is only a hint. The full display name must match, case-insensitively and with spaces collapsed; a
+    first name alone never matches. `exact` is kept for callers and must stay True: loosening it changes who may
+    be sent a security message, which is the owner's decision.
     """
     if not exact:
         raise ValueError("first-name matching is disabled (issue #492)")
     wanted = " ".join(name.casefold().split())
     if not wanted:
-        return None
+        return []
     # CLAIM_RE takes up to two words, so "it's Jordan on my phone" arrives as "jordan on": a contact whose
     # whole name is "Jordan" still matches, because the first word alone equals their full name.
     options = {wanted, wanted.split()[0]}
@@ -103,6 +101,13 @@ def find_person_by_name(session: Session, name: str, *, exact: bool = True) -> P
     for p in session.scalars(select(Person).where(Person.status == "active", mine(Person))).all():
         if " ".join(p.display_name.casefold().split()) in options and trusted_identities(session, p):
             found.append(p)
+    return found
+
+
+def find_person_by_name(session: Session, name: str, *, exact: bool = True) -> Person | None:
+    """The one person with that full name, or None for no match AND for two or more (a code is never sent to
+    someone the sender did not clearly name; `claim_pick` asks the owner about the ambiguous case)."""
+    found = find_people_by_name(session, name, exact=exact)
     return found[0] if len(found) == 1 else None
 
 

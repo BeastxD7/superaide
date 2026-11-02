@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AskRequests } from '@/features/ask/AskRequests'
+import { AmbiguousClaims } from '@/features/identity/AmbiguousClaims'
 import { IdentityClaims } from '@/features/identity/IdentityClaims'
 import { CHANNEL_LABEL } from '@/features/dashboard/data'
 import { useNeedsYou } from '@/features/needs-you/useNeedsYou'
@@ -87,6 +88,7 @@ export function NeedsYouPage() {
           <h1 className="text-3xl font-medium text-ink tight">Needs you</h1>
           <p className="mt-2 text-body">This isn&rsquo;t turned on yet.</p>
           <IdentityClaims className="mt-6" />
+          <AmbiguousClaims className="mt-6" />
         </div>
       </div>
     )
@@ -104,6 +106,7 @@ export function NeedsYouPage() {
         </p>
 
         <IdentityClaims className="mt-6" />
+        <AmbiguousClaims className="mt-6" />
         <AskRequests className="mt-6" />
 
         <div role="group" aria-label="Lists" className="mt-6 flex flex-wrap gap-1.5">

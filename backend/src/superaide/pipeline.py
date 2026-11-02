@@ -558,16 +558,24 @@ class Agent:
     def _claim(self, s, sender: Sender, claimed: str) -> None:
         """Someone unknown said a name: if it's someone we know, send a code to their linked channel.
         Whatever the answer, the caller replies the same way, so nobody can probe who Ava knows."""
-        person = linking.find_person_by_name(s, claimed)
-        if person is not None:
+        people = linking.find_people_by_name(s, claimed)
+        if len(people) == 1:
             linking.start_challenge(
                 s,
                 new_identity=sender.identity,
-                person=person,
+                person=people[0],
                 messengers=self.messengers,
                 settings=self.settings,
                 agent_name=self.name,
             )
+        elif len(people) > 1:  # ambiguous (issue #492): send nothing; the owner picks or ignores in Needs you
+            from superaide.identity import claims
+
+            try:
+                with s.begin_nested():
+                    claims.ask_owner(s, sender.identity, claimed, people)
+            except Exception:  # the neutral reply still goes out
+                log.warning("ambiguous claim card failed", exc_info=True)
         audit(s, "identity", "claim_seen", identity_id=sender.identity.id, claimed=claimed)
 
     def _stranger(self, s, sender: Sender, msg: InboundMessage) -> str:

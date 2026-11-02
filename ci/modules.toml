@@ -315,6 +315,7 @@ tests = [
 ]
 e2e = [
   "e2e/tests/identity/identity-claims.spec.ts",
+  "e2e/tests/identity/ambiguous-claims.spec.ts",
 ]
 
 [modules.imports]
