@@ -306,6 +306,16 @@ class OwnerPreference(Scoped, Base):
     timezone: Mapped[str] = mapped_column(String(64), default="UTC")  # set from the browser at sign-up
     shareable: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)  # what may be told to others
     never_share: Mapped[str] = mapped_column(Text, default="")
+    # The share card (issue #475): what a stranger may be told about the owner. Each value has its own switch,
+    # off by default, and only a value whose switch is on and that is not empty ever reaches the receptionist.
+    card_company: Mapped[str] = mapped_column(String(120), default="")
+    card_role: Mapped[str] = mapped_column(String(120), default="")
+    card_city: Mapped[str] = mapped_column(String(120), default="")
+    card_email: Mapped[str] = mapped_column(String(200), default="")
+    card_company_public: Mapped[bool] = mapped_column(Boolean, default=False)
+    card_role_public: Mapped[bool] = mapped_column(Boolean, default=False)
+    card_city_public: Mapped[bool] = mapped_column(Boolean, default=False)
+    card_email_public: Mapped[bool] = mapped_column(Boolean, default=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
     )

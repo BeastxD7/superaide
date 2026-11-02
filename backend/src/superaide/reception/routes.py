@@ -12,7 +12,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -22,14 +22,31 @@ from superaide.identity.models import Person
 from superaide.platform.audit import audit
 from superaide.platform.db.session import require, session_scope
 from superaide.platform.tenancy.context import scope_or_default
+from superaide.reception import card
 from superaide.reception.models import ReceptionMessage, ReceptionSettings
-from superaide.reception.service import greeting, settings_for
+from superaide.reception.service import card_preferences, greeting, settings_for
 from superaide.reception.turn import has_card
 
 WINDOW = timedelta(days=30)
 
 
+class CardBody(BaseModel):
+    """The share card (#475): a value and its own switch, each optional; only what is sent changes."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    company: str | None = Field(default=None, max_length=120)
+    role: str | None = Field(default=None, max_length=120)
+    city: str | None = Field(default=None, max_length=120)
+    email: str | None = Field(default=None, max_length=200)
+    company_public: bool | None = None
+    role_public: bool | None = None
+    city_public: bool | None = None
+    email_public: bool | None = None
+
+
 class SettingsBody(BaseModel):
+    card: CardBody | None = None
     enabled: bool | None = None
     show_first_name: bool | None = None
     public_profile: str | None = Field(default=None, max_length=2000)
@@ -42,7 +59,16 @@ class StatusBody(BaseModel):
 
 
 def view(s: Session, rs: ReceptionSettings, owner: Person, agent_name: str) -> dict[str, Any]:
+    pref = card.preference(s, owner)
     return {
+        # The share card: each value with its own switch (off by default), exactly what she is told (`told`), and
+        # whether she has anything at all to share (`empty`).
+        "card": {
+            "fields": card.view(pref),
+            "told": card.lines(pref),
+            "empty": not has_card(s, owner, rs),
+            "place": card.PLACE,
+        },
         "enabled": rs.enabled,
         "show_first_name": rs.show_first_name,
         "public_profile": rs.public_profile,
@@ -86,7 +112,19 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         with session_scope() as s:
             owner = require(s, Person, person_id)
             rs = settings_for(s, owner)
-            changes = body.model_dump(exclude_none=True)
+            changes = body.model_dump(exclude_none=True, exclude={"card"})
+            if body.card is not None:
+                pref = card_preferences(s, owner)
+                edits = body.card.model_dump(exclude_none=True)
+                try:
+                    for key, v in edits.items():
+                        if key.endswith("_public"):
+                            setattr(pref, f"card_{key}", bool(v))
+                        else:
+                            setattr(pref, f"card_{key}", card.clean(key, v))
+                except ValueError as exc:
+                    raise HTTPException(422, str(exc)) from exc
+                audit(s, "reception", "card_changed", fields=sorted(edits))  # names only, never the values
             if "public_profile" in changes:
                 changes["public_profile"] = changes["public_profile"].strip()
             for k, v in changes.items():

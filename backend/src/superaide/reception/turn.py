@@ -82,9 +82,16 @@ CAPABILITY_EMPTY = (
 
 
 def has_card(session: Session, owner: Person, rs: ReceptionSettings) -> bool:
-    """Whether the owner has given anything real to share: public profile text or a public note. Ticked
-    share options without values do not count, so the greeting never promises what Ava cannot say."""
-    return bool(rs.public_profile.strip()) or bool(public_facts(session, owner))
+    """Whether the owner has given anything real to share: public profile text, a public note, or a card value
+    switched on. Ticked share options without values do not count, so the greeting never promises what Ava
+    cannot say."""
+    from superaide.reception import card
+
+    return (
+        bool(rs.public_profile.strip())
+        or bool(public_facts(session, owner))
+        or bool(card.lines(card.preference(session, owner)))
+    )
 
 
 def system_prompt(session: Session, owner: Person, rs: ReceptionSettings, agent_name: str) -> list[SystemBlock]:
@@ -101,10 +108,15 @@ def system_prompt(session: Session, owner: Person, rs: ReceptionSettings, agent_
     parts = ["Public information (all you may share):"]
     if rs.public_profile.strip():
         parts.append(f"From their public profile:\n{rs.public_profile.strip()[:2000]}")
+    pref = session.scalar(select(OwnerPreference).where(OwnerPreference.person_id == owner.id))
+    from superaide.reception import card
+
+    on_card = card.lines(pref)
+    if on_card:
+        parts.append("Their card (the owner chose to share these):\n- " + "\n- ".join(on_card))
     facts = public_facts(session, owner)
     if facts:
         parts.append("Public notes:\n- " + "\n- ".join(f[:300] for f in facts))
-    pref = session.scalar(select(OwnerPreference).where(OwnerPreference.person_id == owner.id))
     labels = [SHARE_LABELS.get(v, v) for v in (pref.shareable if pref else []) if v in SHARE_LABELS]
     if labels:
         parts.append("Kinds of things you may share, but only if they appear above: " + "; ".join(labels) + ".")

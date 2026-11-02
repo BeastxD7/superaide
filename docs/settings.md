@@ -57,6 +57,17 @@ Where: Connections → Reading and keeping
 | Most room messages stored per hour, per channel | Only for channels where you turned on reading the whole channel. Past this many messages in an hour, Ava stops storing that channel until the hour is over. It protects your storage in a very busy room. | 60 messages, 300 messages, 1000 messages | 300 messages |
 | Keep other people's messages for | Messages other people sent Ava are deleted after this many days. 0 keeps them until you delete them. A shorter limit set by the server operator still applies. | 0 days, 30 days, 90 days, 365 days | 0 days |
 
+## Your share card
+
+Where: Settings → People you don't know → Your share card
+
+| Setting | What it does | Choices | Default |
+| --- | --- | --- | --- |
+| Company: tell people Ava doesn't know | Lets Ava tell someone she doesn't know where you work. Example: 'Larkfield'. | off, on | off |
+| Role: tell people Ava doesn't know | Lets Ava tell someone she doesn't know what you do. Example: 'Designer'. | off, on | off |
+| City: tell people Ava doesn't know | Lets Ava tell someone she doesn't know which city you are based in. Not where you are right now. | off, on | off |
+| Public email: tell people Ava doesn't know | Lets Ava give someone she doesn't know an email address you chose for this, one you don't mind sharing. | off, on | off |
+
 ## Reminders and approvals
 
 Where: Settings → Reminders and approvals
@@ -108,6 +119,9 @@ message, an email, or Ava herself, can change them.
   message with her.
 - Other people in a thread have none of your authority: what they ask, or claim you said, is never an instruction from
   you.
+- People Ava doesn't know are told only the share-card values you switched on (every switch starts off), and your
+  first name only if you chose it. Nothing is guessed from your notes, email or calendar, and Ava cannot change the
+  card herself: asked in chat, she sends you to the page.
 - To see who pinged her in channels, ask in your direct message. Unless you turned on reading a whole channel
   (see "Reading whole channels"), she sees only messages that mention her or reply in her threads, not the rest of
   a channel.
