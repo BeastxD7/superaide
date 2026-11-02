@@ -24,7 +24,7 @@ from superaide.jobs.models import Job
 from superaide.jobs.queue import run_due
 from superaide.main import create_app
 from superaide.memory.knowledge.store import preferences_for
-from superaide.memory.models import Contact, Context, Event, MemoryItem
+from superaide.memory.models import Contact, Context, Event, MemoryItem, OwnerPreference
 from superaide.pipeline import Agent
 from superaide.platform.config import get_settings
 from superaide.platform.db.models import AuditLog
@@ -468,9 +468,12 @@ def test_settings_default_on_with_the_name_hidden_and_can_be_changed(owner_world
     c = owner_world["client"]
     s = c.get("/app/receptionist").json()
     assert s["enabled"] is True and s["show_first_name"] is False and s["per_hour"] == 10 and s["per_day"] == 30
-    assert s["greeting"] == "Hi, I'm Ava, an AI assistant."
+    assert s["greeting"] == "Hi, I'm Ava, an AI assistant. I can take a message."
     r = c.put("/app/receptionist", json={"show_first_name": True, "public_profile": "  Designer.  "}).json()
-    assert r["greeting"] == "Hi, I'm Ava, Jordan's AI assistant." and r["public_profile"] == "Designer."
+    assert (
+        r["greeting"] == "Hi, I'm Ava, Jordan's AI assistant. I can share what's been made public and take a message."
+    )
+    assert r["public_profile"] == "Designer."
     assert c.put("/app/receptionist", json={"per_hour": 0}).status_code == 422
     assert c.put("/app/receptionist", json={"public_profile": "x" * 2001}).status_code == 422
 
@@ -612,3 +615,43 @@ def drain(at: datetime | None = None) -> None:
     for _ in range(20):
         if run_due(at) == 0:
             return
+
+
+# --- a greeting that tells the truth about what she can do (issue #475) -----------------------------------
+
+
+def test_with_nothing_to_share_the_greeting_and_prompt_say_only_a_message_can_be_taken(owner_world, ava, script):
+    script.out = ReceptionTurn(reply="Sure.")
+    r = ava.handle(hello("Who do you work for?"))
+    assert r.reply is not None
+    assert r.reply.startswith("Hi, I'm Ava, an AI assistant. I can take a message.")
+    assert "public" not in r.reply.split("Sure.")[0].lower()
+    system = script.systems[0]
+    assert "never say or imply you can answer from public information" in system
+    assert "only take a message" in system
+    assert "answer from the public information below" not in system
+    assert "remember anything for later" not in system and "never say you don't keep memories" in system
+
+
+def test_ticked_share_options_without_values_are_not_a_card(owner_world, ava, script):
+    with session_scope() as s:
+        owner = hired_owner(s)
+        pref = s.scalar(select(OwnerPreference).where(OwnerPreference.person_id == owner.id))
+        if pref is None:
+            pref = OwnerPreference(person_id=owner.id)
+            s.add(pref)
+        pref.shareable = ["company_role", "office_city"]
+    r = ava.handle(hello("What does he do?"))
+    assert r.reply is not None and "I can take a message." in r.reply and "made public" not in r.reply
+
+
+def test_with_a_public_profile_the_greeting_and_prompt_offer_what_is_public(owner_world, ava, script):
+    set_reception(public_profile="I'm a designer at Larkfield.", show_first_name=True)
+    r = ava.handle(hello("What does he do?"))
+    assert r.reply is not None
+    assert r.reply.startswith(
+        "Hi, I'm Ava, Jordan's AI assistant. I can share what's been made public and take a message."
+    )
+    system = script.systems[0]
+    assert "answer from the public information below" in system and "I'm a designer at Larkfield." in system
+    assert "never say or imply" not in system
