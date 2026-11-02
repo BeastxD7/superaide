@@ -196,7 +196,13 @@ function Item({
           {item.taken.topic && <p className="mt-1 font-medium [overflow-wrap:anywhere] text-ink">{item.taken.topic}</p>}
           {item.taken.message && <p className="mt-1 [overflow-wrap:anywhere] text-body">{item.taken.message}</p>}
           {item.taken.contact && <p className="mt-1 text-muted">Contact they gave: {item.taken.contact}</p>}
-          {item.taken.deadline_text && <p className="text-muted">Deadline they mentioned: {item.taken.deadline_text}</p>}
+          {item.taken.deadline_text && (
+            <p className="text-muted">
+              Deadline they mentioned: {item.taken.deadline_text}
+              {item.taken.deadline_at &&
+                ` (${new Date(item.taken.deadline_at).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })})`}
+            </p>
+          )}
         </div>
       )}
       {item.quotes.map((q) => (

@@ -58,6 +58,7 @@ def message_view(m: ReceptionMessage) -> dict[str, Any]:
     return {
         "id": str(m.id), "provider": m.provider, "handle": m.handle, "name": m.name, "contact": m.contact,
         "topic": m.topic, "message": m.message, "deadline_text": m.deadline_text,
+        "deadline_at": m.deadline_at.isoformat() if m.deadline_at else None, "deadline_parse": m.deadline_parse,
         "claimed_urgency": m.claimed_urgency, "rank": m.rank, "source": m.source, "status": m.status,
         "created_at": m.created_at.isoformat(),
     }  # fmt: skip
