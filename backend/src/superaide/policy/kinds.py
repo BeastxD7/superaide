@@ -46,6 +46,12 @@ KINDS: dict[str, KindInfo] = {
         "Marks the request answered and gives you the text; you send it yourself (Superaide cannot send it).",
         True,
     ),
+    "identity_claim_pick": KindInfo(
+        "Is this the contact? (someone claims a shared name)",
+        "Sends a one-time code to that contact's own linked channel. The stranger is linked only if they type it "
+        "there. Say no on every card to ignore the claim.",
+        True,
+    ),
     "message_someone_else": KindInfo(
         "Message someone for you",
         "Nothing: Superaide cannot send messages to other people yet (no web forms, contact pages or chat DMs).",
