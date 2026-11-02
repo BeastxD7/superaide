@@ -558,9 +558,7 @@ class Agent:
     def _claim(self, s, sender: Sender, claimed: str) -> None:
         """Someone unknown said a name: if it's someone we know, send a code to their linked channel.
         Whatever the answer, the caller replies the same way, so nobody can probe who Ava knows."""
-        from superaide.identity import claims
-
-        person = linking.find_person_by_name(s, claimed, exact=claims.enabled())
+        person = linking.find_person_by_name(s, claimed)
         if person is not None:
             linking.start_challenge(
                 s,
