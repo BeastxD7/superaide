@@ -73,11 +73,31 @@ def public_facts(session: Session, owner: Person) -> list[str]:
     return [r for r in rows if r]
 
 
+CAPABILITY_WITH_CARD = "You can chat, answer from the public information below, and take a message."
+CAPABILITY_EMPTY = (
+    "You can chat and take a message. You have no public information about {owner_ref} to share, so never say "
+    "or imply you can answer from public information. If asked who they are, who they work for or what they do, "
+    "say plainly that you can only take a message."
+)
+
+
+def has_card(session: Session, owner: Person, rs: ReceptionSettings) -> bool:
+    """Whether the owner has given anything real to share: public profile text or a public note. Ticked
+    share options without values do not count, so the greeting never promises what Ava cannot say."""
+    return bool(rs.public_profile.strip()) or bool(public_facts(session, owner))
+
+
 def system_prompt(session: Session, owner: Person, rs: ReceptionSettings, agent_name: str) -> list[SystemBlock]:
     from superaide.memory.knowledge.profile import SHARE_LABELS
 
     owner_ref = f"{first_name(owner)}" if rs.show_first_name and first_name(owner) else "the person you work for"
-    persona = PERSONA.read_text(encoding="utf-8").replace("{agent_name}", agent_name).replace("{owner_ref}", owner_ref)
+    capability = CAPABILITY_WITH_CARD if has_card(session, owner, rs) else CAPABILITY_EMPTY
+    persona = (
+        PERSONA.read_text(encoding="utf-8")
+        .replace("{capability}", capability)
+        .replace("{agent_name}", agent_name)
+        .replace("{owner_ref}", owner_ref)
+    )
     parts = ["Public information (all you may share):"]
     if rs.public_profile.strip():
         parts.append(f"From their public profile:\n{rs.public_profile.strip()[:2000]}")
