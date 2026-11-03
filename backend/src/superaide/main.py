@@ -177,6 +177,9 @@ def create_app(agent: Agent | None = None) -> FastAPI:
             event="calendar_read_settings",
         )
     )
+    from superaide.channels.ambient_routes import make_router as make_ambient_router
+
+    app.include_router(make_ambient_router())
     from superaide.identity.auth.stepup_routes import make_router as make_stepup_router
 
     app.include_router(make_stepup_router())
@@ -462,7 +465,7 @@ def create_app(agent: Agent | None = None) -> FastAPI:
         payload = json.loads(body)
         if payload.get("type") == "url_verification":
             return {"challenge": payload.get("challenge")}
-        msg = slack.parse_event(payload, our_team_id=settings.slack_team_id, verified=True)
+        msg = slack.parse_event(payload, our_team_id=settings.slack_team_id, verified=True, ambient=True)
         if msg is not None:
             background.add_task(handle_on_server_channels, msg)
         return {"ok": True}

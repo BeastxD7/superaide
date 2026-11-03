@@ -64,7 +64,11 @@ def endpoint_of(payload: dict[str, Any]) -> str:
     return f"{team}/{app}" if app else team
 
 
-def parse_event(payload: dict[str, Any], *, our_team_id: str, verified: bool) -> InboundMessage | None:
+def parse_event(
+    payload: dict[str, Any], *, our_team_id: str, verified: bool, ambient: bool = False
+) -> InboundMessage | None:
+    """`ambient`: also return a channel message that does not mention Ava, marked `ambient` (#509). The pipeline stores
+    it only if the owner turned reading on for that channel, and drops it otherwise."""
     event = payload.get("event") or {}
     etype = event.get("type")
     if etype not in ("message", "app_mention"):
@@ -85,8 +89,11 @@ def parse_event(payload: dict[str, Any], *, our_team_id: str, verified: bool) ->
     external = bool(our_team_id) and user_team != our_team_id
     channel_type = event.get("channel_type", "")
     chat_kind = "dm" if channel_type == "im" else "group"
+    is_ambient = False
     if etype == "message" and chat_kind == "group":
-        return None  # in channels the agent only reacts when @-mentioned
+        if not ambient or channel_type not in ("channel", "group"):
+            return None  # in channels the agent only reacts when @-mentioned
+        is_ambient = True
     return InboundMessage(
         provider="slack",
         tenant_scope=user_team,
@@ -100,6 +107,7 @@ def parse_event(payload: dict[str, Any], *, our_team_id: str, verified: bool) ->
         external_sender=external,
         endpoint=endpoint_of(payload),
         raw=payload,
+        ambient=is_ambient,
     )
 
 
@@ -316,7 +324,7 @@ def socket_mode_handler(bot_token: str, app_token: str, our_team_id: str, handle
 
     def _dispatch(body: dict[str, Any]) -> None:
         # Socket Mode connections are authenticated with the app-level token.
-        msg = parse_event(body, our_team_id=our_team_id, verified=True)
+        msg = parse_event(body, our_team_id=our_team_id, verified=True, ambient=True)
         if msg is not None:
             handle(msg)
 

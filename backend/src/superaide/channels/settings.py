@@ -33,6 +33,14 @@ CHOICES: dict[str, Choice] = {
         "How much of each earlier message from another channel (Telegram, Slack, the app) Ava is shown as context.",
         "characters",
     ),
+    "ambient_messages_per_hour": Choice(
+        (60, 300, 1000),
+        300,
+        "Most room messages stored per hour, per channel",
+        "Only for channels where you turned on reading the whole channel. Past this many messages in an hour, Ava "
+        "stops storing that channel until the hour is over. It protects your storage in a very busy room.",
+        "messages",
+    ),
     "third_party_retention_days": Choice(
         (0, 30, 90, 365),
         0,
@@ -46,6 +54,10 @@ CHOICES: dict[str, Choice] = {
 
 def load(session: Session) -> dict[str, Any]:
     return load_raw(session, SKILL_ID, CHOICES)
+
+
+def ambient_per_hour(session: Session) -> int:
+    return int(load(session)["ambient_messages_per_hour"])
 
 
 def retention_days(session: Session, operator_days: int) -> int:

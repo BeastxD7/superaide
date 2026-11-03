@@ -42,8 +42,49 @@ message, an email, or Ava herself, can change them.
   message with her.
 - Other people in a thread have none of your authority: what they ask, or claim you said, is never an instruction from
   you.
-- To see who pinged her in channels, ask in your direct message. She sees only messages that mention her or reply in
-  her threads, not the rest of a channel.
+- To see who pinged her in channels, ask in your direct message. Unless you turned on reading a whole channel
+  (see "Reading whole channels"), she sees only messages that mention her or reply in her threads, not the rest of
+  a channel.
+- Room messages she stores never trigger anything: no reply, no model call, no memory, no reminder, no action.
+  They are quoted as other people's words when you read them back, and a turn that used them cannot propose an
+  action or write an email on them.
+"""
+
+
+AMBIENT_ROWS = [
+    (
+        "Read the whole channel",
+        "Ava stores every message of that channel in her log, with the audience of the room (everyone who can "
+        "read the channel), so it never reaches a conversation with anyone else. Nothing happens when a message "
+        "arrives: no reply, no model call, no memory, no reminder, no action. You read it back in your direct "
+        "message by asking what was said in the channels.",
+        "on, off",
+        "off",
+    ),
+    (
+        "Keep room messages for",
+        "How long the messages stored from that channel are kept before they are deleted.",
+        "7 days, 30 days, 90 days, 365 days",
+        "30 days",
+    ),
+]
+
+AMBIENT = """## Reading whole channels
+
+Where: Connections → Reading whole channels
+
+By default Ava reads a channel message only when it mentions her or replies in a thread she is in. For each Slack
+channel she is in you can turn on reading the whole channel. It is **off for every channel** until you turn it on, and
+each one is its own switch with its own confirmation.
+
+| Setting | What it does | Choices | Default |
+| --- | --- | --- | --- |
+{TABLE}
+
+Turning a channel off stops storing at once; you can also delete everything stored from it. Slack needs the
+`channels:history`, `groups:history`, `channels:read` and `groups:read` permissions and the `message.channels` and
+`message.groups` event subscriptions, which the manifest in the connect guide includes; the app names any missing
+permission. Messages that mention Ava are conversations, not room messages, and are not touched by this switch.
 """
 
 
@@ -84,6 +125,8 @@ def render() -> str:
             shown = ", ".join(f"{v} {unit}".strip() for v in values)
             out.append(f"| {_cell(label)} | {_cell(help_)} | {_cell(shown)} | {_cell(f'{default} {unit}'.strip())} |")
         out.append("")
+    table = "\n".join(f"| {a} | {b} | {c} | {d} |" for a, b, c, d in AMBIENT_ROWS)
+    out.append(AMBIENT.replace("{TABLE}", table))
     out.append("The Gmail card also has two lists, **Never read these senders, domains or labels** and **Always allow")
     out.append("these senders** (an address, `@domain` or `label:name`; both are empty by default).\n")
     out.append(FIXED)

@@ -24,6 +24,7 @@ def test_defaults_are_todays_behaviour(owner_client):
         assert channel_settings.load(s) == {
             "slack_thread_depth": 25,
             "cross_channel_chars": 600,
+            "ambient_messages_per_hour": 300,
             "third_party_retention_days": 0,
         }
     out = owner_client.get(URL).json()

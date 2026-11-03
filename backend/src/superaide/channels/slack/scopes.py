@@ -29,6 +29,13 @@ REQUIRED_SCOPES: dict[str, str] = {
     "groups:history": "reading a thread in a private channel",
 }
 
+# Only needed to list the channels Ava is in on the "Reading whole channels" card (#509). Reading itself needs
+# channels:history and groups:history, which are required above. Reported only once a channel is switched on.
+AMBIENT_SCOPES: dict[str, str] = {
+    "channels:read": "listing the public channels Ava is in",
+    "groups:read": "listing the private channels Ava is in",
+}
+
 OK, MISSING, REJECTED, UNREACHABLE, UNKNOWN = "ok", "missing", "rejected", "unreachable", "unknown"
 AUTH_TEST_URL = "https://slack.com/api/auth.test"
 
@@ -39,6 +46,7 @@ class ScopeCheck:
     granted: list[str] = field(default_factory=list)
     missing: list[str] = field(default_factory=list)
     error: str = ""
+    ambient_missing: list[str] = field(default_factory=list)  # AMBIENT_SCOPES not granted
 
 
 def check_scopes(bot_token: str, client: httpx.Client | None = None) -> ScopeCheck:
@@ -57,7 +65,8 @@ def check_scopes(bot_token: str, client: httpx.Client | None = None) -> ScopeChe
         return ScopeCheck(UNKNOWN)  # Slack didn't say: don't guess a problem
     granted = sorted({x.strip() for x in header.split(",") if x.strip()})
     missing = [s for s in REQUIRED_SCOPES if s not in granted]
-    return ScopeCheck(MISSING if missing else OK, granted, missing)
+    ambient_missing = [s for s in AMBIENT_SCOPES if s not in granted]
+    return ScopeCheck(MISSING if missing else OK, granted, missing, ambient_missing=ambient_missing)
 
 
 def missing_message(missing: list[str]) -> str:
@@ -69,13 +78,31 @@ def missing_message(missing: list[str]) -> str:
     )
 
 
-def validate_and_record(bot_token: str, client: httpx.Client | None = None) -> ScopeCheck:
-    """Run the check for a configured token, log the verdict, and record it for the app. No token: no check."""
+def ambient_on() -> bool:
+    from superaide.channels import ambient
+    from superaide.platform.db.session import session_scope
+
+    try:
+        with session_scope() as s:
+            return ambient.any_enabled(s)
+    except Exception:
+        return False
+
+
+def validate_and_record(
+    bot_token: str, client: httpx.Client | None = None, *, ambient: bool | None = None
+) -> ScopeCheck:
+    """Run the check for a configured token, log the verdict, and record it for the app. No token: no check.
+    `ambient`: whether a channel is switched on for whole-channel reading (looked up when not given); then the
+    listing scopes count as required too, so a missing one is an ERROR and a notice, never a crash."""
     if not bot_token:
         return ScopeCheck(UNKNOWN)
     from superaide.channels import health
 
     result = check_scopes(bot_token, client)
+    if result.status in (OK, MISSING) and result.ambient_missing and (ambient_on() if ambient is None else ambient):
+        result.missing = [*result.missing, *result.ambient_missing]
+        result.status = MISSING
     if result.status == MISSING:
         log.error("slack: %s", missing_message(result.missing))
     elif result.status == REJECTED:

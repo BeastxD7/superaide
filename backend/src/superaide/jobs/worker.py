@@ -55,6 +55,13 @@ def schedule_recurring() -> None:
         except Exception:
             log.exception("couldn't roll off old messages of instance %s", scope.agent_id)
         try:
+            from superaide.channels import ambient
+
+            with use_instance(scope), session_scope() as s:
+                ambient.roll_off(s)  # room messages age out by their own channel's retention (#509)
+        except Exception:
+            log.exception("couldn't roll off old room messages of instance %s", scope.agent_id)
+        try:
             with use_instance(scope), session_scope() as s:
                 reconcile_reminders(s)
                 auto_close_delivered(s)
