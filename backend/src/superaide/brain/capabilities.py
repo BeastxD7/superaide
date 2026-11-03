@@ -74,6 +74,25 @@ def calendar_line(session: Session) -> str:
     return "Calendar: connected: you can read events and free time, and ask the owner to approve changes."
 
 
+def card_line(session: Session) -> str:
+    """The share card, from the database (#475): what strangers are told about the owner, and the one honest answer
+    to "share my name" / "tell people where I work": she cannot change it in chat, here is where."""
+    from superaide.reception.api import PLACE, SETTINGS_PATH, share_card_state
+
+    state = share_card_state(session)
+    if state is None:
+        return ""
+    first_name_shared, told = state
+    name = "your first name is shared" if first_name_shared else "your name is NOT shared"
+    shared = "; ".join(told) if told else "nothing else (the card is empty)"
+    return (
+        f"Share card (what people you don't know are told about the owner): {name}; {shared}. You CANNOT change "
+        "it from chat, and you must not say you did. When the owner asks you to share their name, company, role, "
+        f"city or email, or to tell people about them, say so plainly and send them to {PLACE} with this link: "
+        f"[Open the share card]({SETTINGS_PATH}). Each item there has its own switch, off until they turn it on."
+    )
+
+
 def approvals_line() -> str:
     from superaide.policy.kinds import KINDS
 
@@ -130,6 +149,7 @@ def block(session: Session, *, tz: str, web: bool) -> str:
         "- " + calendar_line(session),
         "- Web search: " + ("on." if web else "off (the Web skill is not added)."),
         "- Reminders: always available (create, list, move, cancel).",
+        *(["- " + shared] if (shared := card_line(session)) else []),
         "- " + approvals_line() + ". Anything else cannot be queued; say so and offer text the owner can send.",
         CHANGED_RULE,
     ]

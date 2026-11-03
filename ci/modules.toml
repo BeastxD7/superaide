@@ -546,7 +546,9 @@ src = [
 tests = [
   "backend/tests/reception/**",
 ]
-e2e = []
+e2e = [
+  "e2e/tests/reception/share-card.spec.ts",
+]
 
 [modules.rehearsal]
 src = [

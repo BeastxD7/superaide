@@ -379,134 +379,6 @@
         "title": "CardBatch",
         "type": "object"
       },
-      "CardBody": {
-        "properties": {
-          "accent": {
-            "anyOf": [
-              {
-                "maxLength": 20,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Accent"
-          },
-          "avatar": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Avatar"
-          },
-          "can": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "maxItems": 8,
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Can"
-          },
-          "cannot": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "maxItems": 8,
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cannot"
-          },
-          "channels": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Channels"
-          },
-          "first_name": {
-            "default": "",
-            "maxLength": 40,
-            "title": "First Name",
-            "type": "string"
-          },
-          "initial": {
-            "default": "",
-            "maxLength": 2,
-            "title": "Initial",
-            "type": "string"
-          },
-          "mark": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Mark"
-          },
-          "sign_default": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sign Default"
-          },
-          "title": {
-            "anyOf": [
-              {
-                "maxLength": 60,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Title"
-          },
-          "wording": {
-            "anyOf": [
-              {
-                "maxLength": 200,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Wording"
-          }
-        },
-        "title": "CardBody",
-        "type": "object"
-      },
       "ChannelBody": {
         "additionalProperties": false,
         "properties": {
@@ -2996,6 +2868,134 @@
         "title": "AnswerBody",
         "type": "object"
       },
+      "superaide__identity__principal__routes__CardBody": {
+        "properties": {
+          "accent": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accent"
+          },
+          "avatar": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar"
+          },
+          "can": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 8,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Can"
+          },
+          "cannot": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 8,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cannot"
+          },
+          "channels": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channels"
+          },
+          "first_name": {
+            "default": "",
+            "maxLength": 40,
+            "title": "First Name",
+            "type": "string"
+          },
+          "initial": {
+            "default": "",
+            "maxLength": 2,
+            "title": "Initial",
+            "type": "string"
+          },
+          "mark": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mark"
+          },
+          "sign_default": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sign Default"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 60,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "wording": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wording"
+          }
+        },
+        "title": "CardBody",
+        "type": "object"
+      },
       "superaide__identity__principal__routes__PreviewBody": {
         "properties": {
           "accent": {
@@ -3171,8 +3171,118 @@
         "title": "CreateBody",
         "type": "object"
       },
+      "superaide__reception__routes__CardBody": {
+        "additionalProperties": false,
+        "description": "The share card (#475): a value and its own switch, each optional; only what is sent changes.",
+        "properties": {
+          "city": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "city_public": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City Public"
+          },
+          "company": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company"
+          },
+          "company_public": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company Public"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "email_public": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Public"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "role_public": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role Public"
+          }
+        },
+        "title": "CardBody",
+        "type": "object"
+      },
       "superaide__reception__routes__SettingsBody": {
         "properties": {
+          "card": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/superaide__reception__routes__CardBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "enabled": {
             "anyOf": [
               {
@@ -10218,7 +10328,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CardBody"
+                "$ref": "#/components/schemas/superaide__identity__principal__routes__CardBody"
               }
             }
           },

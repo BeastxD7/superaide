@@ -37,6 +37,7 @@ from superaide.identity.models import Person
 from superaide.identity.resolver import Sender
 from superaide.memory.models import Context, Event
 from superaide.platform.audit import audit
+from superaide.reception import card
 from superaide.reception import turn as rturn
 from superaide.reception.models import ReceptionMessage, ReceptionSettings
 
@@ -266,6 +267,12 @@ def handle_stranger(
     row = _keep(agent, session, owner, sender, ctx, msg, inbound, taken, source="model" if structured else "code")
     if row is None:  # never "I've passed it on" for something that was not stored
         reply = SAVE_FAILED
+    if first and not rturn.has_card(session, owner, rs):  # she could only take a message: say so to the owner (#475)
+        try:
+            with session.begin_nested():
+                nudge_owner(session, owner)
+        except Exception:
+            log.warning("empty card notice failed", exc_info=True)
     if first:  # the notice is code's job, not the model's: always, and only once per conversation
         reply = f"{hello} {reply}"
         if row is not None:
@@ -492,3 +499,49 @@ def digest_lines(session: Session, owner: Person, since: datetime, now: datetime
     urgent = sum(1 for r in rows if r in ("urgent", "unverified"))
     extra = f", {urgent} may be urgent or risky" if urgent else ""
     return [f"**Messages taken:** {len(rows)} from people I don't know{extra}. Read them in your dashboard."]
+
+
+# --- the share card (issue #475) -------------------------------------------------------------------------------
+
+
+def card_preferences(session: Session, owner: Person) -> Any:
+    """The owner's preference row, which holds the card values (created on first use)."""
+    from superaide.memory.knowledge.store import preferences_for
+
+    return preferences_for(session, owner)
+
+
+def share_card_state(session: Session) -> tuple[bool, list[str]] | None:
+    """(is the first name shared, the card lines she may say) for the owner of this instance, or None without one.
+    Read by the owner chat's capability block, so what Ava says about the card is what the database holds."""
+    from superaide.app.accounts import owner as instance_owner
+
+    boss = instance_owner(session)
+    if boss is None:
+        return None
+    rs = settings_for(session, boss)
+    return bool(rs.show_first_name and rturn.first_name(boss)), card.lines(card.preference(session, boss))
+
+
+def nudge_owner(session: Session, owner: Person) -> bool:
+    """A stranger wrote and the card is empty, so Ava could only take a message: tell the owner once a day, in the
+    app, with no word of what the stranger said (the owner's chat history is read by the model)."""
+    from superaide.platform.db.models import AuditLog
+    from superaide.proactive.notify import notify_owner
+
+    since = datetime.now(UTC) - card.NUDGE_EVERY
+    recent = session.scalar(
+        select(AuditLog.id).where(AuditLog.action == "card_empty_nudge", AuditLog.created_at > since).limit(1)
+    )
+    if recent is not None:
+        return False
+    audit(session, "reception", "card_empty_nudge")
+    notify_owner(
+        session,
+        owner,
+        "Someone I don't know wrote to me and asked about you. Your share card is empty, so all I could do was take "
+        f"a message. To let me say something (your company, role or city), fill it in under {card.PLACE}.",
+        {"kind": "card_empty", "path": card.SETTINGS_PATH},
+        channel="app",
+    )
+    return True

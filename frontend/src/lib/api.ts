@@ -729,7 +729,12 @@ export type AskRequestCard = {
 }
 
 // Receptionist mode (ADR 0010 TR5): Ava talks with people she doesn't know, on the owner's behalf.
+export type ShareCardField = { key: 'company' | 'role' | 'city' | 'email'; label: string; value: string; public: boolean }
+export type ShareCard = { fields: ShareCardField[]; told: string[]; empty: boolean; place: string }
+export type ShareCardEdit = Partial<Record<ShareCardField['key'], string> & Record<`${ShareCardField['key']}_public`, boolean>>
+
 export type ReceptionistSettings = {
+  card: ShareCard
   enabled: boolean
   show_first_name: boolean
   public_profile: string

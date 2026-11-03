@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { useAppData } from '@/features/dashboard/data'
-import { call, type ReceptionistSettings } from '@/lib/api'
+import { call, type ReceptionistSettings, type ShareCardEdit } from '@/lib/api'
+import { ShareCardSection } from '@/features/reception/ShareCardSection'
 import { errorMessage } from '@/lib/action'
 
 // Settings → "People you don't know": whether Ava talks with them for you, what she may say, and whether
@@ -19,7 +20,7 @@ export function ReceptionistCard({ agentName }: { agentName: string }) {
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<{ tone: 'info' | 'error'; text: string } | null>(null)
 
-  async function save(body: Partial<ReceptionistSettings>, done: string) {
+  async function save(body: Partial<ReceptionistSettings>, done: string): Promise<boolean> {
     setBusy(true)
     setResult(null)
     try {
@@ -27,11 +28,17 @@ export function ReceptionistCard({ agentName }: { agentName: string }) {
       await reload()
       setProfile(null)
       setResult({ tone: 'info', text: done })
+      return true
     } catch (e) {
       setResult({ tone: 'error', text: errorMessage(e) })
+      return false
     } finally {
       setBusy(false)
     }
+  }
+
+  async function saveCard(edit: ShareCardEdit, done: string) {
+    return save({ card: edit } as unknown as Partial<ReceptionistSettings>, done)
   }
 
   function saveProfile(e: FormEvent) {
@@ -105,6 +112,7 @@ export function ReceptionistCard({ agentName }: { agentName: string }) {
                     Save
                   </Button>
                 </form>
+                <ShareCardSection data={data} agentName={agentName} busy={busy} onSave={saveCard} />
                 <p className="text-xs text-muted">
                   Limits per person: {data.per_hour} messages an hour, {data.per_day} a day. Messages she takes show up under Needs
                   you (or in your notifications).

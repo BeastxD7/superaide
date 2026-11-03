@@ -42,6 +42,9 @@ message, an email, or Ava herself, can change them.
   message with her.
 - Other people in a thread have none of your authority: what they ask, or claim you said, is never an instruction from
   you.
+- People Ava doesn't know are told only the share-card values you switched on (every switch starts off), and your
+  first name only if you chose it. Nothing is guessed from your notes, email or calendar, and Ava cannot change the
+  card herself: asked in chat, she sends you to the page.
 - To see who pinged her in channels, ask in your direct message. Unless you turned on reading a whole channel
   (see "Reading whole channels"), she sees only messages that mention her or reply in her threads, not the rest of
   a channel.
@@ -101,13 +104,18 @@ def _simple_rows(choices: Mapping[str, Any]) -> list[tuple[str, Any, str, str, s
 def sections() -> list[tuple[str, str, list[tuple[str, Any, str, str, str]]]]:
     from superaide.channels import settings as channels
     from superaide.integrations.calendar import settings as calendar
+    from superaide.reception import api as card
     from superaide.skills import retention_settings, web_settings
 
+    card_rows = [
+        (f"{f.label}: tell people Ava doesn't know", ["off", "on"], "off", card.HELP[f.key], "") for f in card.FIELDS
+    ]
     return [
         ("Gmail", "Capabilities → Gmail → Reading", _gmail_rows()),
         ("Google Calendar", "Capabilities → Google Calendar → Reading", _simple_rows(calendar.CHOICES)),
         ("Web research", "Capabilities → Web research → Searching", _simple_rows(web_settings.CHOICES)),
         ("Channels and messages", "Connections → Reading and keeping", _simple_rows(channels.CHOICES)),
+        ("Your share card", card.PLACE, card_rows),
         ("Reminders and approvals", "Settings → Reminders and approvals", _simple_rows(retention_settings.CHOICES)),
     ]
 
