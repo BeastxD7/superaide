@@ -46,9 +46,13 @@ def test_safe_or_acknowledged_setups_start(kw, caplog):
         deploy.check(settings(**kw))
 
 
-def test_hosted_with_the_default_origin_and_no_public_address_refuses_to_start():
-    """#434: links in emails would point at localhost."""
-    with pytest.raises(deploy.UnsafeDeployment, match="PUBLIC_BASE_URL"):
+def test_hosted_with_the_default_origin_and_no_public_address_logs_an_error_and_still_starts(caplog):
+    """#434: links in emails would point at localhost; startup checks never crash the app."""
+    with caplog.at_level(logging.ERROR):
         deploy.check(settings(deploy_mode="hosted"))
-    deploy.check(settings(deploy_mode="hosted", public_base_url="https://ava.example.com"))
-    deploy.check(settings(deploy_mode="hosted", frontend_origin="https://ava.example.com"))
+    assert "PUBLIC_BASE_URL is empty" in caplog.text
+    caplog.clear()
+    with caplog.at_level(logging.ERROR):
+        deploy.check(settings(deploy_mode="hosted", public_base_url="https://ava.example.com"))
+        deploy.check(settings(deploy_mode="hosted", frontend_origin="https://ava.example.com"))
+    assert "PUBLIC_BASE_URL is empty" not in caplog.text

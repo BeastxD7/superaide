@@ -56,9 +56,11 @@ def check(settings: Settings | None = None) -> None:
     """Warn on a development machine; refuse to start when the address looks public."""
     s = settings or get_settings()
     if s.deploy_mode == "hosted" and not s.public_base_url.strip() and _is_default_origin(s):
-        raise UnsafeDeployment(
+        # Never crash the app for this (owner rule): log loudly. Emails go out without the card link, the approval
+        # card shows a warning chip and Settings, Principal card shows the local address (#434).
+        log.error(
             "DEPLOY_MODE is hosted but PUBLIC_BASE_URL is empty and FRONTEND_ORIGIN is still the development "
-            "default, so links in emails would point at localhost. Set PUBLIC_BASE_URL (and FRONTEND_ORIGIN) to the "
+            "default, so emails go out without the card link. Set PUBLIC_BASE_URL (and FRONTEND_ORIGIN) to the "
             "address people reach Superaide at, for example https://ava.example.com."
         )
     msg = problem(s)
