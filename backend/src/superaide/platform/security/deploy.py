@@ -37,6 +37,11 @@ def _public(s: Settings) -> bool:
     return False
 
 
+def _is_default_origin(s: Settings) -> bool:
+    host = (urlsplit(s.frontend_origin).hostname or "").lower()
+    return host in _LOCAL_HOSTS or host.endswith(".local")
+
+
 def problem(s: Settings) -> str | None:
     if s.deploy_mode == "hosted" or not s.allow_many_owners or not _server_credentials(s):
         return None
@@ -50,6 +55,14 @@ def problem(s: Settings) -> str | None:
 def check(settings: Settings | None = None) -> None:
     """Warn on a development machine; refuse to start when the address looks public."""
     s = settings or get_settings()
+    if s.deploy_mode == "hosted" and not s.public_base_url.strip() and _is_default_origin(s):
+        # Never crash the app for this (owner rule): log loudly. Emails go out without the card link, the approval
+        # card shows a warning chip and Settings, Principal card shows the local address (#434).
+        log.error(
+            "DEPLOY_MODE is hosted but PUBLIC_BASE_URL is empty and FRONTEND_ORIGIN is still the development "
+            "default, so emails go out without the card link. Set PUBLIC_BASE_URL (and FRONTEND_ORIGIN) to the "
+            "address people reach Superaide at, for example https://ava.example.com."
+        )
     msg = problem(s)
     if msg is None:
         return

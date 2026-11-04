@@ -237,3 +237,20 @@ def test_the_flag_off_answers_404_before_any_counting(owner, browser, public, mo
     monkeypatch.setattr(get_settings(), "principal_card_enabled", False)
     g = browser(ip="10.0.0.14")
     assert all(g.get(f"/p/card/Ww{i}aaaaa").status_code == 404 for i in range(40))
+
+
+def test_a_link_that_would_point_at_localhost_is_refused_when_others_can_reach_the_deployment():
+    base = get_settings().model_copy(update={"public_base_url": "", "frontend_origin": "http://localhost:3000"})
+    assert links.outward_link_unusable(base) is False  # a development machine: localhost is fine
+    for reachable in ({"deploy_mode": "hosted"}, {"session_cookie_secure": True}):
+        assert links.outward_link_unusable(base.model_copy(update=reachable)) is True
+    ok = base.model_copy(update={"deploy_mode": "hosted", "public_base_url": "https://example.test"})
+    assert links.outward_link_unusable(ok) is False
+
+
+def test_the_signature_has_no_button_without_a_link():
+    from superaide.identity.principal import signature
+
+    sig = signature.Signature(agent="Ava", owner="Ananya", title="Assistant", disclosure="Ava is an AI.", verify_url="")
+    html = signature.signature_html(sig)
+    assert "<a " not in html and "Ava is an AI." in html
