@@ -93,6 +93,7 @@ select = ["E", "F", "I", "B", "UP"]
 "src/superaide/brain/turn.py" = ["E501"]  # prompt text
 "src/superaide/brain/loop.py" = ["E501"]  # prompt text
 "src/superaide/docs.py" = ["E501"]  # a Markdown table
+"src/superaide/doctor.py" = ["E501"]  # one-sentence causes and exact fix commands
 
 [tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = ["fastapi.Depends", "fastapi.Security", "fastapi.Header", "fastapi.Query", "fastapi.File"]

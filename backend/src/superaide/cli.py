@@ -443,6 +443,15 @@ def _lobster(args: argparse.Namespace) -> None:
         sys.exit(str(exc))
 
 
+def _doctor(args: argparse.Namespace) -> None:
+    """Check the install and print the fix for each problem. Read-only; never prints a secret."""
+    from pathlib import Path
+
+    from superaide import doctor
+
+    sys.exit(doctor.run(Path(args.env_file), args.port))
+
+
 def main() -> None:
     from superaide.platform.security import logredact
 
@@ -537,6 +546,10 @@ def main() -> None:
     p = sub.add_parser("lobster-cards", help="turn a workspace's memory files into context cards (prints JSON)")
     p.add_argument("folder")
     p.set_defaults(func=_lobster)
+    p = sub.add_parser("doctor", help="check the install and print the exact fix for each problem (read-only)")
+    p.add_argument("--env-file", default=".env", help="the settings file to check (default: .env here)")
+    p.add_argument("--port", type=int, default=8000, help="the API port to check (default 8000)")
+    p.set_defaults(func=_doctor)
     sub.add_parser("hello", help="one tiny real Claude call to test the key").set_defaults(func=_hello)
     sub.add_parser("seed-demo", help="add demo people if none exist").set_defaults(func=_seed_demo)
     p = sub.add_parser("reset-password", help="set a new password for an app account")

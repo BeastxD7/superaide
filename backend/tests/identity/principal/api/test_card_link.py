@@ -181,6 +181,7 @@ ALLOWED_FRONTEND_ORIGIN = {
     "identity/auth/google.py": "Google sign-in redirects and its allow-list",
     "identity/auth/routes.py": "where the browser goes back to after sign-in (a redirect, not a message)",
     "platform/security/deploy.py": "decides whether the deployment looks public",
+    "doctor.py": "`superaide doctor` reads the address to check its port; it builds no link",
 }
 
 
