@@ -44,3 +44,11 @@ def test_a_development_machine_only_gets_a_warning(caplog):
 def test_safe_or_acknowledged_setups_start(kw, caplog):
     with caplog.at_level(logging.ERROR):
         deploy.check(settings(**kw))
+
+
+def test_hosted_with_the_default_origin_and_no_public_address_refuses_to_start():
+    """#434: links in emails would point at localhost."""
+    with pytest.raises(deploy.UnsafeDeployment, match="PUBLIC_BASE_URL"):
+        deploy.check(settings(deploy_mode="hosted"))
+    deploy.check(settings(deploy_mode="hosted", public_base_url="https://ava.example.com"))
+    deploy.check(settings(deploy_mode="hosted", frontend_origin="https://ava.example.com"))

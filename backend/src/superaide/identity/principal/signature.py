@@ -81,6 +81,13 @@ def signature_html(sig: Signature) -> str:
             f'<img src="{escape(sig.mark_url, quote=True)}" width="{MARK_W}" height="{MARK_H}" alt="" '
             f'style="vertical-align:middle;border:0"> Superaide</div>'
         )
+    button = ""
+    if sig.verify_url:  # none when no usable public address is set (#434)
+        button = (
+            f'<a href="{escape(sig.verify_url, quote=True)}" style="display:inline-block;margin-top:8px;'
+            f"padding:6px 12px;background-color:{escape(sig.accent)};color:#ffffff;font-size:12px;line-height:16px;"
+            f'font-weight:bold;text-decoration:none;border-radius:4px">{VERIFY_LABEL}</a>'
+        )
     return (
         f'<table role="presentation" class="sg-rule" cellpadding="0" cellspacing="0" border="0" width="100%" '
         f'style="max-width:{MAX_WIDTH}px;margin-top:20px;border-top:1px solid #e5e7eb"><tr>'
@@ -91,9 +98,7 @@ def signature_html(sig: Signature) -> str:
         f'<div class="sg-muted" style="color:#6b7280">{escape(sig.title)}</div>'
         f'<div class="sg-muted" style="margin-top:6px;font-size:12px;line-height:16px;color:#6b7280">'
         f"{escape(sig.disclosure)}</div>"
-        f'<a href="{escape(sig.verify_url, quote=True)}" style="display:inline-block;margin-top:8px;padding:6px 12px;'
-        f"background-color:{escape(sig.accent)};color:#ffffff;font-size:12px;line-height:16px;font-weight:bold;"
-        f'text-decoration:none;border-radius:4px">{VERIFY_LABEL}</a>'
+        f"{button}"
         f"{mark}</td></tr></table></td></tr></table>"
     )
 

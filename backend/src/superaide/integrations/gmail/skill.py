@@ -419,7 +419,15 @@ def _sign_state(sig: dict[str, str] | None, signed: bool, alt: dict[str, Any] | 
     return {
         "signature_available": True, "sign_as_ava": signed, "signature_id": sig["id"], "alt": alt,
         "signature_text": sig["text"].strip(), "signature_label": sig["label"],
+        "no_link": bool(sig.get("no_link")),
     }  # fmt: skip
+
+
+def _link_chips(sign: dict[str, Any]) -> list[str]:
+    """A chip on the card when the sign-off could not carry its link because no public address is set (#434)."""
+    from superaide.links import LOCAL_LINK_NOTE
+
+    return [LOCAL_LINK_NOTE] if sign.get("no_link") else []
 
 
 def _sign_payload(sign: dict[str, Any], alt_hash: str) -> dict[str, Any]:
@@ -480,7 +488,10 @@ def send(
         payload={
             "summary": f"To: {name + ' ' if name else ''}<{to}> · Subject: {_reply_subject(original)} · {text}",
             "subject": _reply_subject(original),
-            "warnings": _chips(ctx["notes"], new=not seen_before(session, ctx["found"], to)),
+            "warnings": [
+                *_chips(ctx["notes"], new=not seen_before(session, ctx["found"], to)),
+                *_link_chips(ctx.get("sign") or {}),
+            ],
             "reaches_a_person": ctx["reaches"],
             "evidence": ctx["evidence"],
             "channel": channel,
@@ -601,7 +612,11 @@ def compose(
             "to": [to],
             "subject": subject,
             "compose": True,
-            "warnings": [*strong, *(["New recipient: not seen before in your mail."] if new else [])],
+            "warnings": [
+                *strong,
+                *(["New recipient: not seen before in your mail."] if new else []),
+                *_link_chips(sign),
+            ],
             "reaches_a_person": reaches,
             "evidence": evidence,
             "channel": channel,
