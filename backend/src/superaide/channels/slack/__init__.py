@@ -74,7 +74,10 @@ def parse_event(
     if etype not in ("message", "app_mention"):
         return None
     subtype = str(event.get("subtype") or "")
-    if event.get("bot_id") or subtype:
+    files = event.get("files")
+    # A message with an upload arrives as subtype file_share: it is a real message from a person, never dropped (#511).
+    has_files = subtype == "file_share" and isinstance(files, list) and bool(files)
+    if event.get("bot_id") or (subtype and not has_files):
         # Bot messages, edits, joins and other subtypes are ignored. Say which kind, so "Ava did not answer my file"
         # can be told from a bug (#513); the bot's own echoes are not logged, they would be one line per reply.
         if subtype and subtype != "bot_message":
@@ -82,7 +85,11 @@ def parse_event(
         return None
     user = event.get("user")
     text = event.get("text")
-    if not user or not isinstance(text, str) or not text.strip():
+    if has_files:
+        text = text if isinstance(text, str) else ""
+    elif not isinstance(text, str) or not text.strip():
+        return None
+    if not user:
         return None
     # The sender's own team: differs from ours for Slack Connect users.
     user_team = event.get("user_team") or payload.get("team_id") or ""
@@ -94,6 +101,8 @@ def parse_event(
         if not ambient or channel_type not in ("channel", "group"):
             return None  # in channels the agent only reacts when @-mentioned
         is_ambient = True
+        if has_files and not text.strip():
+            return None  # nothing to store from a room message that is only a file
     return InboundMessage(
         provider="slack",
         tenant_scope=user_team,
@@ -108,6 +117,7 @@ def parse_event(
         endpoint=endpoint_of(payload),
         raw=payload,
         ambient=is_ambient,
+        attachments=["file"] * min(len(files), 10) if has_files and isinstance(files, list) else [],
     )
 
 

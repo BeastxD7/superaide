@@ -116,13 +116,38 @@ def test_plain_channel_messages_are_ignored_unless_the_agent_is_mentioned():
 
 
 def test_a_dropped_subtype_is_logged_without_the_message_text(caplog):
-    """#513: a file_share (a message with an upload) is dropped; the log says which kind, never what was written."""
-    payload = event("secret quarterly numbers", subtype="file_share", channel_type="im")
+    """#513: other subtypes are dropped; the log says which kind, never what was written."""
+    payload = event("secret quarterly numbers", subtype="channel_topic", channel_type="im")
     with caplog.at_level("INFO", logger="superaide.channels.slack"):
         assert parse_event(payload, our_team_id=OUR_TEAM, verified=True) is None
     lines = [r.getMessage() for r in caplog.records if r.name == "superaide.channels.slack"]
-    assert lines == ["slack: event ignored: subtype=file_share channel_type=im"]
+    assert lines == ["slack: event ignored: subtype=channel_topic channel_type=im"]
     assert "secret" not in caplog.text and COLLEAGUE_SLACK not in caplog.text
+
+
+def test_a_file_share_is_a_message_with_attachments_not_a_drop():
+    """#511: an upload is a real message from a person; it reaches the pipeline, which answers it."""
+    files = [{"id": "F1", "name": "../../etc/passwd", "mimetype": "application/x-evil"}]
+    msg = parse_event(event("see attached", subtype="file_share", files=files), our_team_id=OUR_TEAM, verified=True)
+    assert msg is not None and msg.attachments == ["file"] and msg.text == "see attached"
+    only_file = parse_event(event(None, subtype="file_share", files=files), our_team_id=OUR_TEAM, verified=True)
+    assert only_file is not None and only_file.text == "" and only_file.attachments == ["file"]
+    assert "passwd" not in repr(only_file.attachments)
+
+
+def test_a_file_share_from_a_bot_or_without_files_is_still_dropped():
+    files = [{"id": "F1"}]
+    assert (
+        parse_event(event("x", subtype="file_share", files=files, bot_id="B1"), our_team_id=OUR_TEAM, verified=True)
+        is None
+    )
+    assert parse_event(event("x", subtype="file_share"), our_team_id=OUR_TEAM, verified=True) is None
+    assert parse_event(event("x", subtype="file_share", files=[]), our_team_id=OUR_TEAM, verified=True) is None
+
+
+def test_a_file_alone_in_a_room_is_not_stored_as_ambient():
+    payload = event(None, subtype="file_share", files=[{"id": "F1"}], channel_type="channel")
+    assert parse_event(payload, our_team_id=OUR_TEAM, verified=True, ambient=True) is None
 
 
 def test_ava_s_own_echo_is_dropped_silently(caplog):

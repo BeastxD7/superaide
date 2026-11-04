@@ -45,9 +45,6 @@ def update(
 @pytest.mark.parametrize(
     "extra, kind",
     [
-        ({"photo": [{"file_id": "SECRET_FILE"}], "caption": "private caption"}, "photo"),
-        ({"document": {"file_id": "SECRET_FILE", "file_name": "salary.pdf"}}, "document"),
-        ({"voice": {"file_id": "SECRET_FILE"}}, "voice"),
         ({"sticker": {"file_id": "SECRET_FILE"}}, "sticker"),
         ({"new_chat_title": "x"}, "other"),
     ],
@@ -111,6 +108,20 @@ def test_any_non_private_chat_is_a_group_and_keeps_its_title(kind):
 def test_a_display_name_without_a_last_name_has_no_trailing_space():
     msg = parse_update(update(sender={"id": 5, "first_name": "Priya"}), verified=True)
     assert msg is not None and msg.sender_display == "Priya" and msg.sender_username == ""
+
+
+@pytest.mark.parametrize("kind", ["photo", "document", "voice", "audio", "video", "video_note", "animation"])
+def test_a_file_message_reaches_the_pipeline_with_its_kind_only(kind):
+    """#511: a photo or document is a message from a person; only its kind and caption travel, never file ids."""
+    payload = update(None)
+    payload["message"][kind] = [{"file_id": "SECRET_FILE"}] if kind == "photo" else {"file_id": "SECRET_FILE"}
+    payload["message"]["caption"] = "look at this"
+    msg = parse_update(payload, verified=True)
+    assert msg is not None and msg.attachments == [kind] and msg.text == "look at this"
+    assert "SECRET_FILE" not in repr((msg.text, msg.attachments))
+    payload["message"].pop("caption")
+    bare = parse_update(payload, verified=True)
+    assert bare is not None and bare.text == ""
 
 
 def test_edited_messages_are_ignored():

@@ -30,6 +30,9 @@ class InboundMessage:
     # Which of our endpoints received it: the Telegram bot id, or the Slack app ("team/app id").
     # "" for the web app. Links are bound to the endpoint that confirmed them (identity/resolver.py).
     endpoint: str = ""
+    # Kinds of file the message carries ("photo", "document", "file"...), from the platform's own structure and never
+    # from a client-supplied name or MIME type. Nothing is downloaded or read (#511): the pipeline tells the sender.
+    attachments: list[str] = field(default_factory=list)
     raw: dict[str, Any] = field(default_factory=dict)
 
 
