@@ -193,6 +193,39 @@ def test_compare_flags_new_missing_failing_and_improved_scenarios():
     assert improvements == ["b: a known gap that passes now (run with --update to record it)"]
 
 
+def test_time_scoped_gate_fails_when_recall_ignores_the_end_date(monkeypatch: pytest.MonkeyPatch):
+    """The ltm_time scenarios exist to catch a search that serves a note after its end date (#414)."""
+    from datetime import UTC, datetime
+
+    from superaide.evals.gate import compare, load_baseline
+    from superaide.memory.recall import retrieval as recall
+
+    real = recall.memory_filter
+    long_ago = datetime(2000, 1, 1, tzinfo=UTC)  # "now" far in the past: every end date is still ahead
+    monkeypatch.setattr(recall, "memory_filter", lambda aud, now=None: real(aud, long_ago))
+    regressions, _ = compare(_ltm_results(), load_baseline())
+    assert any("ltm-time-not-served-after-the-end" in r for r in regressions), regressions
+
+
+def test_pass_rate_threshold_for_a_category():
+    from superaide.evals.gate import MIN_PASS_RATE, below_threshold
+
+    ids = {f"s{i}": "ltm_time" for i in range(10)}
+    ok = {sid: i < 8 for i, sid in enumerate(ids)}  # 80%
+    bad = {sid: i < 5 for i, sid in enumerate(ids)}  # 50%
+    assert below_threshold(ok, ids) == []
+    assert len(below_threshold(bad, ids)) == 1 and "ltm_time" in below_threshold(bad, ids)[0]
+    assert 0 < MIN_PASS_RATE["ltm_time"] < 1
+
+
+def test_the_time_scoped_category_has_at_least_fifteen_scenarios_with_gaps_tracked():
+    from superaide.evals.gate import ltm_scenarios
+
+    mine = [s for s in ltm_scenarios() if s.category == "ltm_time"]
+    assert len(mine) >= 15
+    assert all(s.known_gap for s in mine if s.id.endswith(("not-yet-started", "is-not-a-duplicate")))
+
+
 # --- end-to-end ingestion scenarios (#51) -------------------------------------------------------
 
 
