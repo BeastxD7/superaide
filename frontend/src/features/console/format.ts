@@ -129,3 +129,6 @@ export function describeAudit(row: AuditRow): { kind: AuditKind; text: string } 
       return { kind: 'control', text: row.action.replaceAll('_', ' ') }
   }
 }
+
+// A duration in milliseconds as the console shows it: "340 ms", "1.20 s", and a dash when there is none.
+export const ms = (v: number | null | undefined) => (v === null || v === undefined ? '–' : v >= 1000 ? `${(v / 1000).toFixed(2)} s` : `${Math.round(v)} ms`)

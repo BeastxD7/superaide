@@ -46,6 +46,8 @@ from superaide.memory.store import (
     seen_before,
     strip_label,
 )
+from superaide.observability import store as timing_store
+from superaide.observability import timing
 from superaide.platform.audit import audit
 from superaide.platform.config import Settings, get_settings
 from superaide.platform.db.models import AuditLog
@@ -159,10 +161,19 @@ class Agent:
         if msg.ambient:  # a room message nobody addressed to Ava: stored or dropped, never a turn (#509)
             return self._ambient(msg)
         with _turn_slots():
-            result = self._handle(msg, emit)
+            result = self._timed(msg, emit)
             if result.followup is not None:  # the channel turn's session is closed; this one has its own
-                self._handle(result.followup)
+                self._timed(result.followup)
             return result
+
+    def _timed(self, msg: InboundMessage, emit: Emit | None = None) -> HandleResult:
+        """One turn with its stage timings (#412): numbers only, written after the turn's own session has closed."""
+        if not self.settings.pipeline_timing_enabled:
+            return self._handle(msg, emit)
+        with timing.open_turn() as timer:
+            result = self._handle(msg, emit)
+        timing_store.record(timer, provider=msg.provider, mode=result.mode)
+        return result
 
     def _ambient(self, msg: InboundMessage) -> HandleResult:
         """No turn slot, no model, no reply: one insert for a channel the owner opened, nothing for any other."""
@@ -182,20 +193,26 @@ class Agent:
         return HandleResult("ambient" if outcome == "stored" else "dropped", None, [f"ambient:{outcome}"])
 
     def _handle(self, msg: InboundMessage, emit: Emit | None = None) -> HandleResult:
-        if not msg.verified:
+        with timing.span("verify"):  # the adapter checked the signature; this is the pipeline's own gate on it
+            verified = msg.verified
+        if not verified:
             with session_scope() as s:
                 audit(s, "pipeline", "dropped_unverified", provider=msg.provider)
             return HandleResult("dropped")
 
         with session_scope() as s:
-            sender = resolve(s, msg, reconfirm_after_days=self.settings.link_reconfirm_after_days)
-            ctx = get_or_create_context(s, msg)
-            aud = audience_for(ctx, sender)
+            with timing.span("identity"):
+                sender = resolve(s, msg, reconfirm_after_days=self.settings.link_reconfirm_after_days)
+                ctx = get_or_create_context(s, msg)
+            with timing.span("gate"):
+                aud = audience_for(ctx, sender)
             if msg.provider == "slack" and ctx.kind == "group":
                 from superaide.channels import ambient
 
                 ambient.adopt(s, ctx, msg)  # the plain copy of this mention, if it came first, is not a redelivery
-            if seen_before(s, ctx, msg.message_id):
+            with timing.span("gate"):
+                dup = seen_before(s, ctx, msg.message_id)
+            if dup:
                 audit(s, "pipeline", "duplicate_dropped", provider=msg.provider, message_id=msg.message_id[:120])
                 return HandleResult("duplicate")
             thread = thread_of(msg)
@@ -703,13 +720,14 @@ class Agent:
 
         assert sender.person is not None
         owner_tz = zone(owner_zone(s, sender.person))
-        if shared:
-            # This conversation only: never the owner's other-channel DM turns (owner_timeline is for a private DM).
-            timeline = Timeline(recent_events(s, ctx, thread_id=thread_of(msg)), {})
-            brief = f"You work for {sender.name} (your owner)."
-        else:
-            timeline = owner_timeline(s, sender.person.id, ctx, thread_id=thread_of(msg), tz=owner_tz)
-            brief = owner_brief(s, sender, aud)
+        with timing.span("retrieval"):
+            if shared:
+                # This conversation only: never the owner's other-channel DM turns (owner_timeline is for a private DM).
+                timeline = Timeline(recent_events(s, ctx, thread_id=thread_of(msg)), {})
+                brief = f"You work for {sender.name} (your owner)."
+            else:
+                timeline = owner_timeline(s, sender.person.id, ctx, thread_id=thread_of(msg), tz=owner_tz)
+                brief = owner_brief(s, sender, aud)
         playbook_arm: dict | None = None
         if self.settings.skill_ratchet_enabled and not shared:
             from superaide.trust import ratchet
@@ -725,7 +743,7 @@ class Agent:
             if lessons := school_playbook.live_text(s, sender.person.id):  # passed their eval, switched on by the owner
                 brief = brief + "\n\n" + lessons
         turn = OwnerTurn(
-            llm=self.llm,
+            llm=timing.timed_llm(self.llm),
             model=self.settings.model_chat,
             agent_name=self.name,
             session=s,
@@ -840,17 +858,19 @@ class Agent:
 
     def _think(self, s, sender: Sender, ctx: Context, aud: Audience, msg: InboundMessage) -> tuple[str, list[str]]:
         is_owner = sender.relation == "manager" and aud.person_ids == {sender.person.id} if sender.person else False
-        memories = visible_memories(s, aud, limit=30 if is_owner else 5)
-        brief = owner_brief(s, sender, aud)
+        with timing.span("retrieval"):
+            memories = visible_memories(s, aud, limit=30 if is_owner else 5)
+            brief = owner_brief(s, sender, aud)
         if is_owner and sender.person and self.settings.school_enabled and self.settings.school_playbook_enabled:
             from superaide.features.school import playbook as school_playbook
 
             if lessons := school_playbook.live_text(s, sender.person.id):  # owner's own chat only
                 brief = brief + "\n\n" + lessons if brief else lessons
         system = build_system(self.name, sender, aud, memories, brief=brief)
-        messages = build_messages(recent_events(s, ctx, thread_id=thread_of(msg)), msg.text)
+        with timing.span("retrieval"):
+            messages = build_messages(recent_events(s, ctx, thread_id=thread_of(msg)), msg.text)
         try:
-            result = self.llm.complete(
+            result = timing.timed_llm(self.llm).complete(
                 purpose="chat_turn",
                 model=self.settings.model_chat,
                 system=system,
@@ -936,6 +956,20 @@ class Agent:
         *,
         to: str | None = None,
     ) -> None:
+        with timing.span("reply"):
+            self._reply_inner(s, ctx, aud, text, thread, meta, to=to)
+
+    def _reply_inner(
+        self,
+        s,
+        ctx: Context,
+        aud: Audience,
+        text: str,
+        thread: str = "",
+        meta: dict | None = None,
+        *,
+        to: str | None = None,
+    ) -> None:
         """`to` is set only for a model-written reply to someone who isn't the owner: on Telegram and Slack it
         then ends with the Principal Card line (PRINCIPAL_CARD_ENABLED), as Gmail replies do (#135)."""
         messenger = self.messengers.get(ctx.provider)
@@ -954,10 +988,11 @@ class Agent:
 
             wire = text + card.footer(s, channel=ctx.provider, to=to)
         try:
-            if sources and ctx.kind == "dm":
-                messenger.send_to_context(ctx, wire, thread, sources=sources)
-            else:
-                messenger.send_to_context(ctx, strip_citations(wire), thread)
+            with timing.span("send"):
+                if sources and ctx.kind == "dm":
+                    messenger.send_to_context(ctx, wire, thread, sources=sources)
+                else:
+                    messenger.send_to_context(ctx, strip_citations(wire), thread)
         except DeliveryFailed as exc:  # health is recorded by the messenger; keep the turn and its record
             log.warning("reply not delivered on %s: %s", ctx.provider, exc.kind)
             audit(s, "pipeline", "reply_not_delivered", provider=ctx.provider, reason=exc.kind)

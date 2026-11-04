@@ -22,7 +22,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.parse import unquote
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, Security
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, Security
 from fastapi.concurrency import run_in_threadpool
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
@@ -802,6 +802,37 @@ def spend() -> dict[str, Any]:
                 for e in entries
             ],
         }
+
+
+LATENCY_MAX_HOURS = 24 * 30
+
+
+@router.get(
+    "/latency",
+    summary="Latency per stage",
+    description=(
+        "How long each stage of a message turn takes (identity, audience gate, retrieval, Airlock, model, policy, "
+        "reply, channel send), as p50 and p95 in milliseconds, for all turns and per channel, over the last "
+        "`hours` (1 to 720, default 24). Numbers only: no message text, no names, so it needs no reason. "
+        "Reads one instance: the one named by `X-Operator-Instance`, else the default one."
+    ),
+)
+def latency(request: Request, hours: int = Query(24, ge=1, le=LATENCY_MAX_HOURS)) -> dict[str, Any]:
+    from superaide.observability import store as timing_store
+
+    wanted = request.headers.get("x-operator-instance") or ""
+    scope = default_scope()
+    if wanted:
+        with session_scope() as s:
+            try:
+                instance = s.get(AgentInstance, uuid.UUID(wanted))
+            except ValueError:
+                instance = None
+            if instance is None:
+                raise HTTPException(404, "No such instance")
+            scope = InstanceScope(tenant_id=instance.tenant_id, agent_id=instance.id)
+    with use_instance(scope), session_scope() as s:
+        return timing_store.summary(s, hours=hours)
 
 
 class KillBody(BaseModel):

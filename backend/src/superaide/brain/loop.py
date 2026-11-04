@@ -33,6 +33,7 @@ from superaide.intentions.when import clean_task, find_moment, names_a_day, zone
 from superaide.memory.audience import Audience
 from superaide.memory.models import Event
 from superaide.memory.recall.retrieval import ROOM_TITLE, Source, pre_recall, recall
+from superaide.observability import timing
 from superaide.platform.audit import audit
 from superaide.platform.config import get_settings
 from superaide.policy.actions import action_kinds, decide
@@ -425,6 +426,7 @@ class OwnerTurn:
 
     def on_model_event(self, kind: str, data: dict[str, Any]) -> None:
         if kind == "text":
+            timing.first_token()  # #412: time to the first word of the turn
             self._said += str(data.get("delta", ""))
             self.emit("text", data)
         elif kind == "thinking":

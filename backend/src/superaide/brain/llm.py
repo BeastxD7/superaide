@@ -294,11 +294,13 @@ def _through_airlock(kwargs: dict[str, Any]) -> tuple[dict[str, Any], dict[str, 
 
     if not get_settings().airlock_enabled or "messages" not in kwargs:
         return kwargs, {}
+    from superaide.observability import timing
     from superaide.privacy.airlock import redact_messages
     from superaide.privacy.people import known_people
 
-    names, keep = known_people()
-    messages, r = redact_messages(kwargs["messages"], names=names, keep=keep)
+    with timing.span("airlock"):
+        names, keep = known_people()
+        messages, r = redact_messages(kwargs["messages"], names=names, keep=keep)
     out = {**kwargs, "messages": messages}
     if r.mapping and kwargs.get("system") is not None:
         out["system"] = [*kwargs["system"], SystemBlock(placeholder_note(r.mapping))]

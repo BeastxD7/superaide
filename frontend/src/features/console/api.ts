@@ -87,6 +87,15 @@ export type EventRow = {
 
 export type AuditRow = { id: string; actor: string; action: string; detail: Record<string, unknown>; at: string }
 
+export type StageStat = { n: number; p50: number | null; p95: number | null }
+export type LatencyScope = { turns: number; stages: Record<string, StageStat> }
+export type Latency = {
+  window_hours: number
+  stage_order: string[]
+  overall: LatencyScope
+  channels: (LatencyScope & { provider: string })[]
+}
+
 export type SpendEntry = {
   id: string
   purpose: string
