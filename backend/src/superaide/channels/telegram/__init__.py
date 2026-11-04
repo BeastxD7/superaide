@@ -67,6 +67,9 @@ def _content_kind(message: dict[str, Any]) -> str:
     return next((k for k in CONTENT_KINDS if k in message), "other")
 
 
+ATTACHMENT_KINDS = ("photo", "document", "voice", "audio", "video", "video_note", "animation")
+
+
 def parse_update(update: dict[str, Any], *, verified: bool, bot: str = "") -> InboundMessage | None:
     message = update.get("message")
     if not isinstance(message, dict):
@@ -75,7 +78,11 @@ def parse_update(update: dict[str, Any], *, verified: bool, bot: str = "") -> In
     if not sender or sender.get("is_bot"):
         return None  # channel posts and bots are ignored
     text = message.get("text")
-    if not isinstance(text, str) or not text.strip():
+    attachments = [k for k in ATTACHMENT_KINDS if message.get(k)]
+    if attachments:
+        caption = message.get("caption")
+        text = caption if isinstance(caption, str) else ""
+    elif not isinstance(text, str) or not text.strip():
         # Say what kind of content was dropped, so "Ava did not answer my photo" can be told from a bug (#514):
         # the kind only, never the caption, the file or who sent it.
         log.info("telegram: update ignored: no text (kind=%s)", _content_kind(message))
@@ -98,6 +105,7 @@ def parse_update(update: dict[str, Any], *, verified: bool, bot: str = "") -> In
         thread_id=str(message.get("message_thread_id") or "") if message.get("is_topic_message") else "",
         chat_title=chat.get("title", ""),
         endpoint=bot,
+        attachments=attachments,
         raw=update,
     )
 
