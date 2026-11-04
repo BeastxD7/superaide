@@ -102,6 +102,7 @@ TABLES: tuple[str, ...] = (
     "ask_stat",
     "ambient_channel",  # channels the owner let Ava read in full (#509)
     "notification_delivery",  # pushes to the owner's Telegram or Slack and how they went (#491)
+    "turn_timing",  # per-stage milliseconds of each message turn (#412)
 )
 
 # Tables that have agent_id but are read before an instance is known, to find it.

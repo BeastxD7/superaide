@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from superaide.observability.models import TurnTiming
 from superaide.observability.timing import STAGES, TurnTimer, log_line
 from superaide.platform.db.session import session_scope
+from superaide.platform.tenancy.context import scope_or_default
 
 log = logging.getLogger("superaide.timing")
 
@@ -69,7 +70,8 @@ def summary(s: Session, *, hours: int) -> dict[str, Any]:
 
     Bounded by the (agent_id, created_at) index; at most one row per channel comes back."""
     since = func.now() - func.make_interval(0, 0, 0, 0, hours)
-    where = [TurnTiming.created_at > since]
+    # The instance is named in the query as well as by row-level security, so the (agent_id, created_at) index leads.
+    where = [TurnTiming.agent_id == scope_or_default().agent_id, TurnTiming.created_at > since]
     [overall] = _row(s, where, None)
     return {
         "window_hours": hours,

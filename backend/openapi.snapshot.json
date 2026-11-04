@@ -4223,6 +4223,59 @@
         ]
       }
     },
+    "/api/latency": {
+      "get": {
+        "description": "How long each stage of a message turn takes (identity, audience gate, retrieval, Airlock, model, policy, reply, channel send), as p50 and p95 in milliseconds, for all turns and per channel, over the last `hours` (1 to 720, default 24). Numbers only: no message text, no names, so it needs no reason. Reads one instance: the one named by `X-Operator-Instance`, else the default one.",
+        "operationId": "latency_api_latency_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "hours",
+            "required": false,
+            "schema": {
+              "default": 24,
+              "maximum": 720,
+              "minimum": 1,
+              "title": "Hours",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Latency Api Latency Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "Admin token": []
+          }
+        ],
+        "summary": "Latency per stage",
+        "tags": [
+          "Operator console"
+        ]
+      }
+    },
     "/api/memories": {
       "get": {
         "description": "Stored memories and who may see each one.",

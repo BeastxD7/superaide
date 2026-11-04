@@ -245,3 +245,37 @@ def test_latency_with_nothing_recorded_is_empty_not_an_error(client):
     data = client.get("/api/latency", headers=ADMIN).json()
     data = data.get("data", data)
     assert data["overall"]["turns"] == 0 and data["channels"] == []
+
+
+def test_the_summary_statement_reads_by_index_at_scale():
+    """5,000 turns over two years, a one day window: EXPLAIN must show the (agent_id, created_at) index."""
+    from datetime import UTC, datetime, timedelta
+
+    from sqlalchemy import func, text
+
+    from superaide.platform.tenancy.context import default_scope
+
+    scope = default_scope()
+    with session_scope() as s:
+        s.execute(
+            text(
+                """
+                INSERT INTO turn_timing (id, tenant_id, agent_id, created_at, provider, mode, total_ms, model_calls)
+                SELECT gen_random_uuid(), CAST(:t AS uuid), CAST(:a AS uuid), now() - g * interval '3 hours',
+                       'web', 'known', 100, 1
+                FROM generate_series(1, 5000) g
+                """
+            ),
+            {"t": str(scope.tenant_id), "a": str(scope.agent_id)},
+        )
+        s.execute(text("ANALYZE turn_timing"))
+        since = datetime.now(UTC) - timedelta(days=1)
+        stmt = select(func.count()).where(TurnTiming.agent_id == scope.agent_id, TurnTiming.created_at > since)
+        plan = "\n".join(
+            r[0]
+            for r in s.execute(
+                text("EXPLAIN " + str(stmt.compile(s.get_bind(), compile_kwargs={"literal_binds": True})))
+            )
+        )
+    assert "ix_turn_timing_agent_created" in plan, plan
+    assert "Seq Scan on turn_timing" not in plan, plan
