@@ -246,9 +246,11 @@ src = [
   "backend/src/superaide/docs.py",
   "backend/src/superaide/main.py",
   "backend/src/superaide/cli.py",
+  "backend/src/superaide/doctor.py",
 ]
 tests = [
   "backend/tests/console/**",
+  "backend/tests/test_doctor.py",
 ]
 e2e = [
   "e2e/tests/console/console.spec.ts",
