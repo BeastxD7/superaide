@@ -6,7 +6,7 @@ import { expect, test } from '../../src/fixtures'
 import { ADMIN_TOKEN } from '../../src/env'
 import { Admin } from '../../src/helpers/workspace'
 
-const TABS = ['Overview', 'People', 'Conversations', 'Safety log', 'Spend', 'Try an impostor']
+const TABS = ['Overview', 'People', 'Conversations', 'Safety log', 'Spend', 'Latency', 'Try an impostor']
 const nav = (page: Page) => page.getByRole('navigation', { name: 'Sections' })
 
 async function openConsole(page: Page): Promise<void> {
@@ -173,11 +173,11 @@ test.describe('console design: one grid, every width', () => {
     await openConsole(page)
     await nav(page).getByRole('button', { name: 'Overview' }).focus()
     const order: string[] = []
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < 10; i++) {
       order.push((await page.evaluate(() => (document.activeElement as HTMLElement | null)?.innerText?.trim() || document.activeElement?.getAttribute('aria-label') || '')) || '')
       await page.keyboard.press('Tab')
     }
-    expect(order).toEqual(['Overview', 'Spend', 'People', 'Conversations', 'Safety log', 'Try an impostor', 'Disconnect', 'Toggle Sidebar', 'Pause Ava'])
+    expect(order).toEqual(['Overview', 'Spend', 'Latency', 'People', 'Conversations', 'Safety log', 'Try an impostor', 'Disconnect', 'Toggle Sidebar', 'Pause Ava'])
     await nav(page).getByRole('button', { name: 'People' }).focus()
     // The shared sidebar draws its focus ring as a 2px box-shadow ring (outline stays off).
     const ring = await nav(page).getByRole('button', { name: 'People' }).evaluate((el) => {
