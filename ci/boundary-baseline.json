@@ -179,6 +179,7 @@
  "evals.harness -> brain.spend.budget",
  "evals.harness -> brain.turn",
  "evals.harness -> channels.base",
+ "evals.harness -> channels.health",
  "evals.harness -> identity.linking",
  "evals.harness -> identity.resolver",
  "evals.harness -> identity.trust",
