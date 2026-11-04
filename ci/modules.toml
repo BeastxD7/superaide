@@ -462,6 +462,17 @@ e2e = [
   "e2e/tests/passport/memory-passport.spec.ts",
 ]
 
+[modules.observability]
+src = [
+  "backend/src/superaide/observability/**",
+]
+tests = [
+  "backend/tests/observability/**",
+]
+e2e = [
+  "e2e/tests/console/latency.spec.ts",
+]
+
 [modules.pipeline]
 src = [
   "backend/src/superaide/pipeline.py",
