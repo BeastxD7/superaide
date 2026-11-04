@@ -3,6 +3,7 @@
 Thanks for helping. This guide covers setting up, the conventions we follow, and what a pull request needs before it can merge. By taking part you agree to the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 - [Set up](#set-up)
+- [Run one test, one spec, the linters](#run-one-test-one-spec-the-linters)
 - [Branches and commits](#branches-and-commits)
 - [The gate](#the-gate)
 - [Pull requests](#pull-requests)
@@ -30,6 +31,32 @@ make web                            # terminal 2: Next.js on :3000
 ```
 
 `make` lists every command. To run everything at once the way the owner does, use `bash start.command` (`--reset` wipes the data, `--no-docker` uses an embedded Postgres). Without a Claude key Ava runs offline and spends nothing.
+
+## Run one test, one spec, the linters
+
+After `make setup` and `make db` (see above; the README covers what Superaide is), this gets you a green local run:
+
+```bash
+# one backend test file, or one test, against a throwaway database (the tests wipe it, so never use your app's)
+docker compose exec db psql -U agent -d postgres -c "CREATE DATABASE agent_test_mine"
+docker compose exec db psql -U agent -d agent_test_mine -c "CREATE EXTENSION IF NOT EXISTS vector"
+export TEST_DATABASE_URL=postgresql+psycopg://agent:agent@127.0.0.1:5432/agent_test_mine
+cd backend
+uv run pytest tests/identity/test_footprint.py              # a file
+uv run pytest tests/identity/test_footprint.py -k name      # one test, by part of its name
+cd ..
+make test MODULE=identity                                    # a whole module plus what depends on it (ci/modules.toml)
+python3 scripts/select_tests.py --base origin/main --head HEAD   # what CI will run for your branch
+
+# one Playwright spec (needs `make build` once, and the same Postgres; starts its own API and web on slot 0)
+cd e2e && npx playwright test tests/web-shell/smoke.spec.ts --project=desktop
+# a second stack at the same time: E2E_SLOT=3 npx playwright test ...  (see e2e/README.md)
+
+# lint
+make lint                                                    # ruff check, ruff format --check, frontend lint
+```
+
+If your Postgres is not the compose one on port 5432, put its URL in `TEST_DATABASE_URL` and `E2E_PG_ADMIN_URL` (for example `postgresql://agent:agent@localhost:5544/postgres`). The test database name must contain `test`; see "Never wipe a database" below.
 
 ## Branches and commits
 
