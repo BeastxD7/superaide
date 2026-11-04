@@ -253,8 +253,6 @@ def pgvector(ctx: Context) -> list[Result]:
 
 @check("Master key")
 def master_key(ctx: Context) -> list[Result]:
-    from superaide.identity.vault import crypto
-
     name = "Master key (vault)"
     env = ctx.env()
     inline = env.get("SECRETS_MASTER_KEY", "").strip()
@@ -268,7 +266,7 @@ def master_key(ctx: Context) -> list[Result]:
             key = base64.b64decode(Path(file_).read_text().strip(), validate=True)
             where = "SECRETS_MASTER_KEY_FILE"
         else:
-            path = crypto._key_file()
+            path = Path(env.get("SUPERAIDE_KEY_FILE") or Path.home() / ".config" / "superaide" / "master.key")
             if path.exists():
                 if stat.S_IMODE(path.stat().st_mode) & 0o077:
                     return [
@@ -337,7 +335,7 @@ def ports(ctx: Context) -> list[Result]:
 
 @check("Telegram")
 def telegram(ctx: Context) -> list[Result]:
-    from superaide.identity.vault.check import CheckFailed, check_telegram
+    from superaide.identity.vault.api import CheckFailed, check_telegram
 
     name = "Telegram bot token"
     if not ctx.settings.telegram_bot_token:
@@ -358,7 +356,7 @@ def telegram(ctx: Context) -> list[Result]:
 
 @check("Slack")
 def slack(ctx: Context) -> list[Result]:
-    from superaide.identity.vault.check import CheckFailed, check_slack
+    from superaide.identity.vault.api import CheckFailed, check_slack
 
     name = "Slack tokens and Socket Mode"
     s = ctx.settings

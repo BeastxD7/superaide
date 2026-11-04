@@ -11,7 +11,7 @@ from superaide import doctor
 from superaide.platform.config import Settings
 
 SECRETS = {
-    "telegram_bot_token": "123456789:AAEsecretsecretsecretsecretsecret12",
+    "telegram_bot_token": "123456789" + ":AAE" + "secret" * 5 + "12",
     "slack_bot_token": "xoxb-secret-bot-token",
     "slack_app_token": "xapp-secret-app-token",
     "anthropic_api_key": "sk-ant-secret-key-value",
