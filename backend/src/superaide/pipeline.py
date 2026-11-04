@@ -142,6 +142,17 @@ HANDOFF_FAILED = "I couldn't open a direct message with you just now. Ask me the
 _MENTION = re.compile(r"<@[A-Z0-9]+(?:\|[^>]*)?>")
 
 
+ATTACHMENT_NOTICE = (
+    "I got your attachment, but I can't read files, photos or voice notes yet. "
+    "Paste the part that matters as text and I'll take it from there."
+)
+
+
+def _attachment_marker(msg: InboundMessage) -> str:
+    """What the conversation log holds for a message that is only a file: the kind, never the name or contents."""
+    return "[attachment not read: " + ", ".join(sorted(set(msg.attachments))) + "]"
+
+
 class Agent:
     def __init__(self, *, llm: LLM, messengers: dict[str, Messenger], settings: Settings) -> None:
         self.llm = llm
@@ -218,8 +229,8 @@ class Agent:
             try:
                 with s.begin_nested():  # two deliveries racing: the unique index lets only one through
                     inbound = log_event(
-                        s, context=ctx, direction="in", content=msg.text, audience=aud, sender=sender,
-                        external_id=msg.message_id, thread_id=msg.thread_id,
+                        s, context=ctx, direction="in", content=msg.text or _attachment_marker(msg),
+                        audience=aud, sender=sender, external_id=msg.message_id, thread_id=msg.thread_id,
                     )  # fmt: skip
             except IntegrityError:
                 return HandleResult("duplicate")
@@ -306,7 +317,12 @@ class Agent:
 
                 try:
                     with s.begin_nested():
-                        received = handle_stranger(self, s, sender, ctx, msg, inbound)
+                        # A file alone from a stranger is not a conversation: the fixed reply, no model.
+                        received = (
+                            None
+                            if msg.attachments and not msg.text.strip()
+                            else handle_stranger(self, s, sender, ctx, msg, inbound)
+                        )
                 except Exception as exc:  # the fixed reply still goes out (issue #83)
                     self._turn_failed(s, exc, msg)
                     received = None
@@ -315,6 +331,13 @@ class Agent:
                 reply = received if received is not None else self._ai_notice(self._stranger(s, sender, msg))
                 self._reply(s, ctx, aud, reply, thread)
                 return HandleResult("stranger", reply, ["receptionist"] if received is not None else [])
+
+            if msg.attachments:
+                # Files are not read yet (#511). Said in the same conversation, never silence; fixed text, no model,
+                # nothing from the file or its name is stored or shown, and no action can come from it.
+                reply = ATTACHMENT_NOTICE
+                self._reply(s, ctx, aud, reply, thread)
+                return HandleResult("known", reply, ["attachment_unread"])
 
             # With a model connected, Ava handles reminders herself (her create_reminder tool), so
             # she understands typos and phrasing and you can watch her reason. The code-only

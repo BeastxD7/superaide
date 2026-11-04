@@ -46,6 +46,8 @@ The full tour, with ten more diagrams and code pointers, is in [ARCHITECTURE.md]
 
 **Share it from your Mac:** `bash share.sh` (needs `brew install cloudflared`) opens a free Cloudflare quick tunnel and prints a public link. See `bash share.sh --help` for a fixed hostname and Google sign-in.
 
+**Something not working?** `cd backend && uv run superaide doctor` checks your settings file, database, migrations, pgvector, master key, ports, Telegram and Slack tokens, Google redirect addresses, public address and spend cap, and prints the exact fix for each problem. It only reads, never changes anything, and never prints a secret.
+
 **For development** (uv, Node 24 and Docker):
 
 ```bash

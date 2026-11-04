@@ -62,7 +62,7 @@ CODE_ONLY = {
     "prompt_excludes", "no_model_call", "outbound_excludes", "mode",
     "triage_decision", "escalation_state", "escalation_pushed", "escalation_acks", "interrupt_count",
     "audit_logged", "triage_feedback", "message_taken", "prompt_includes", "recall_top", "recall_none",
-    "memory_count", "memory_from_document", "documents", "memory_retired",
+    "memory_count", "memory_from_document", "documents", "memory_retired", "delivery", "pushed",
 }  # fmt: skip
 
 
@@ -603,6 +603,33 @@ def message_taken(ctx: Ctx, value: Any) -> tuple[bool, str]:
             q = q.where(ReceptionMessage.source == value["source"])
         n = len(list(s.scalars(q)))
     return n == int(value["count"]), f"{n} messages taken, expected {value['count']}"
+
+
+@check("delivery")
+def delivery(ctx: Ctx, value: Any) -> tuple[bool, str]:
+    """{channel, state, count}: this many pushes to the owner are on that channel in that state
+    (queued | sent | failed | rerouted | acked)."""
+    from superaide.proactive.models import NotificationDelivery
+
+    with session_scope() as s:
+        rows = [(d.channel, d.state) for d in s.scalars(select(NotificationDelivery))]
+    n = sum(1 for c, st in rows if c == value["channel"] and st == value["state"])
+    return n == int(
+        value["count"]
+    ), f"{n} on {value['channel']} in state {value['state']}, expected {value['count']}: {rows}"
+
+
+@check("pushed")
+def pushed(ctx: Ctx, value: Any) -> tuple[bool, str]:
+    """{via, count, contains?, absent?}: the owner was pushed this many messages on that channel (each one is a
+    message the channel accepted), optionally of which this many mention `contains`, none `absent`."""
+    sent = [m for m in ctx.run.outbox[value["via"]].sent if m.get("stable_key") in {"7001", "U_OWNER"}]
+    texts = [str(m.get("text", "")) for m in sent]
+    n = len([t for t in texts if all(_found(p, t) for p in _list(value.get("contains") or []))])
+    leaked = [t for t in texts if any(_found(p, t) for p in _list(value.get("absent") or []))]
+    return n == int(
+        value["count"]
+    ) and not leaked, f"{n} pushes on {value['via']} (expected {value['count']}), leaked {leaked}; {texts}"
 
 
 @check("audit_logged")

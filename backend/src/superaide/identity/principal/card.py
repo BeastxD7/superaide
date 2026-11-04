@@ -380,9 +380,11 @@ def verify(session: Session, token: str, *, now: float | None = None, record: bo
 def _block(session: Session, url: str, *, wording: str | None = None, name: str | None = None) -> str:
     name = name or owner_name(session)
     agent = get_settings().agent_name
+    head = f"\n\n--\n{render_wording(wording or settings_of(session)['wording'], agent=agent, name=name)}\n\n"
+    if not url:  # no usable address (#434): the AI disclosure stays, the link does not
+        return f"{head}{agent} is an AI assistant acting for {name}."
     return (
-        f"\n\n--\n{render_wording(wording or settings_of(session)['wording'], agent=agent, name=name)}\n\n"
-        f"{agent} is an AI assistant acting for {name}. "
+        f"{head}{agent} is an AI assistant acting for {name}. "
         f"What she may and may not agree to, and how to report a problem: {url}"
     )
 
@@ -421,8 +423,9 @@ def signature_spec(
     session: Session, verify_url: str, *, settings: dict[str, Any] | None = None, name: str | None = None
 ) -> signature.Signature:
     """The signature block for this owner. `settings` lets the Settings preview try values before they are saved."""
-    from superaide.links import public_url
+    from superaide.links import outward_link_unusable, public_url
 
+    no_images = outward_link_unusable()  # #434: the avatar and mark are links to this server too
     cur = settings or settings_of(session)
     name = name or owner_name(session)
     agent = get_settings().agent_name
@@ -434,8 +437,8 @@ def signature_spec(
         disclosure=f"{agent} is an AI assistant acting for {name}.",
         verify_url=verify_url,
         accent=signature.accent_hex(str(cur.get("accent"))),
-        avatar_url=public_url(AVATAR_PATH) if cur.get("avatar", True) else "",
-        mark_url=public_url(MARK_PATH) if cur.get("mark") else "",
+        avatar_url=public_url(AVATAR_PATH) if cur.get("avatar", True) and not no_images else "",
+        mark_url=public_url(MARK_PATH) if cur.get("mark") and not no_images else "",
         text=_block(session, verify_url, wording=cur.get("wording"), name=name).strip("\n"),
     )
 
@@ -472,10 +475,23 @@ def preview_link(session: Session) -> dict[str, Any] | None:
 def email_signature(session: Session) -> dict[str, Any] | None:
     """The sign-off for an email: {"text", "id", "token", "label", "url"}, or None when the card is off globally or
     no name is known. Nothing is counted here: the card counts as shown when the email is actually sent."""
+    from superaide.links import outward_link_unusable
+
+    name = owner_name(session)
+    if enabled() and name and outward_link_unusable():
+        # #434: never write a localhost link into mail other people read. Keep the disclosure, drop the link.
+        return {
+            "text": _block(session, ""),
+            "id": "",
+            "token": "",
+            "url": "",
+            "no_link": True,
+            "label": f"Sign as {get_settings().agent_name}, personal assistant of {name}",
+            "spec": signature_spec(session, ""),
+        }
     link = issue_link(session)
     if link is None:
         return None
-    name = owner_name(session)
     return {
         "text": _block(session, link["url"]),
         "id": str(link["id"]),
@@ -511,7 +527,8 @@ def footer(session: Session, *, channel: str = "", to: str = "") -> str:
     sig = email_signature(session)
     if sig is None:
         return ""
-    record_sent(session, sig["id"], channel=channel, to=to)
+    if sig["id"]:
+        record_sent(session, sig["id"], channel=channel, to=to)
     return sig["text"]
 
 

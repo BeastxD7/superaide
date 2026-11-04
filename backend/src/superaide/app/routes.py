@@ -1331,6 +1331,23 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 ],
             }
 
+    @router.post(
+        "/notifications/{delivery_id}/ack",
+        tags=["Owner: reminders"],
+        summary="Mark a notification as seen",
+        description="The owner saw this notification: it is no longer retried and leaves the not-delivered list. "
+        "Safe to repeat.",
+    )
+    def ack_notification(delivery_id: uuid.UUID, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        from superaide.proactive import notify
+
+        with session_scope() as s:
+            require(s, Person, person_id)
+            d = notify.acknowledge(s, delivery_id)
+            if d is None:
+                raise HTTPException(404, "No such notification.")
+            return {"id": str(d.id), "state": d.state}
+
     @router.get(
         "/reminders",
         tags=["Owner: reminders"],

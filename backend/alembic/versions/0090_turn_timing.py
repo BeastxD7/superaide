@@ -1,7 +1,7 @@
 """turn_timing: per-stage milliseconds of every message turn, numbers only (#412)
 
-Revision ID: 0089
-Revises: 0088
+Revision ID: 0090
+Revises: 0089
 Create Date: 2026-11-04 21:45:00.000000
 
 """
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0089"
-down_revision: str | Sequence[str] | None = "0088"
+revision: str = "0090"
+down_revision: str | Sequence[str] | None = "0089"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

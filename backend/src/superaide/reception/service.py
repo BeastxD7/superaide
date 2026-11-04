@@ -482,7 +482,12 @@ def _note(session: Session, owner: Person, row: ReceptionMessage, now: datetime)
     if session.scalar(quiet):
         return
     text = _reason(session, owner, row) + ". Open your dashboard to read it."
-    notify_owner(session, owner, text, {"kind": "message_taken", "message_id": str(row.id)}, channel="app")
+    # The note is fixed text (a reason, never the stranger's words), so it may follow the owner's interrupt preference
+    # like any other notification: someone who asked for Telegram is not left with an unread in-app line (#491).
+    from superaide.platform.config import get_settings
+
+    channel = "default" if get_settings().notify_failover else "app"
+    notify_owner(session, owner, text, {"kind": "message_taken", "message_id": str(row.id)}, channel=channel)
 
 
 def digest_lines(session: Session, owner: Person, since: datetime, now: datetime) -> list[str]:
