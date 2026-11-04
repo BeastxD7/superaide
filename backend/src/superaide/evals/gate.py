@@ -11,12 +11,16 @@ is recorded on purpose). A known gap that starts to pass is reported, and `--upd
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from pathlib import Path
 
 from superaide.evals.scenario import CATEGORIES, Scenario, load_all
 
 BASELINE = Path(__file__).resolve().parents[3] / "evals" / "ltm-baseline.json"
 LTM = tuple(c for c in CATEGORIES if c.startswith("ltm_"))
+# The lowest share of a category's scenarios that may pass, known gaps counted as failures. The per-scenario
+# baseline stops a regression; this stops the category from being "fixed" by recording ever more known gaps.
+MIN_PASS_RATE = {"ltm_time": 0.65}
 
 
 def ltm_scenarios() -> list[Scenario]:
@@ -40,6 +44,16 @@ def compare(results: dict[str, bool], baseline: dict[str, str]) -> tuple[list[st
             improvements.append(f"{sid}: a known gap that passes now (run with --update to record it)")
     regressions += [f"{sid}: in the baseline but no longer a scenario" for sid in sorted(set(baseline) - set(results))]
     return regressions, improvements
+
+
+def below_threshold(results: Mapping[str, bool], by_category: Mapping[str, str]) -> list[str]:
+    """A line for each category whose pass rate (known gaps count as failures) is under its minimum."""
+    out = []
+    for category, minimum in MIN_PASS_RATE.items():
+        mine = [ok for sid, ok in results.items() if by_category.get(sid) == category]
+        if mine and sum(mine) / len(mine) < minimum:
+            out.append(f"{category}: {sum(mine)}/{len(mine)} pass, below the {minimum:.0%} minimum")
+    return out
 
 
 def run_gate(update: bool = False) -> int:
@@ -67,9 +81,14 @@ def run_gate(update: bool = False) -> int:
     regressions, improvements = compare(results, load_baseline())
     for c in LTM:
         mine = [sid for sid, sc in by_id.items() if sc.category == c and sid in results]
-        print(f"{c:18} {sum(results[i] for i in mine)}/{len(mine)} pass")
+        floor = f" (minimum {MIN_PASS_RATE[c]:.0%})" if c in MIN_PASS_RATE else ""
+        print(f"{c:18} {sum(results[i] for i in mine)}/{len(mine)} pass{floor}")
+    by_category = {sid: sc.category for sid, sc in by_id.items()}
+    low = below_threshold(results, by_category)
     for line in improvements:
         print("improved:", line)
+    for line in low:
+        print("BELOW THRESHOLD:", line)
     for line in regressions:
         print("REGRESSION:", line)
-    return 1 if regressions else 0
+    return 1 if regressions or low else 0

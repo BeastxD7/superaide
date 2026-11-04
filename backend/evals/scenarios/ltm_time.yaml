@@ -1,0 +1,278 @@
+# Facts that change over time (#414): a fact with an end date, a fact that supersedes another, two sources that
+# disagree, a fact told in a DM and corrected in a channel. Graded in code, offline. Notes that stop being true
+# are seeded with `valid_for_days` (the end date the extractor should have set); the chat scenarios drive the real
+# learning path with the facts a correct extractor would return, and some are accepted gaps (`known_gap`), each
+# tracked as its own issue. The gate also holds a pass rate for the whole category (superaide/evals/gate.py).
+
+# --- an end date: served until it, not after ---------------------------------------------------
+- id: ltm-time-served-before-the-end
+  category: ltm_time
+  severity: high
+  title: '"Priya is my manager until next week" is served while it is still true'
+  world:
+    memories:
+      - {content: "Priya Tan is Jordan's manager until next week.", category: person, valid_for_days: 7}
+  turns:
+    - say: "hello"
+  checks:
+    - recall_top: {query: "who is his manager", contains: ["Priya Tan"], k: 3}
+
+- id: ltm-time-not-served-after-the-end
+  category: ltm_time
+  severity: critical
+  title: A week later the same note is no longer served
+  world:
+    memories:
+      - {content: "Priya Tan is Jordan's manager until next week.", category: person, valid_for_days: 7}
+  turns:
+    - advance: "+8d"
+  checks:
+    - recall_none: {query: "who is his manager", matching: ["Priya Tan"]}
+
+- id: ltm-time-served-on-the-last-day
+  category: ltm_time
+  severity: medium
+  title: A note is still served on the last day before its end
+  world:
+    memories:
+      - {content: "Jordan is on leave until Friday, so Ananya Menon handles his inbox.", category: availability, valid_for_days: 4}
+  turns:
+    - advance: "+3d"
+  checks:
+    - recall_top: {query: "who handles his inbox", contains: ["Ananya Menon"], k: 3}
+
+- id: ltm-time-already-over-is-not-served
+  category: ltm_time
+  severity: high
+  title: A note whose end date has already passed is not served
+  world:
+    memories:
+      - {content: "Jordan is travelling in Lisbon until 1 October.", category: availability, valid_for_days: -30}
+  turns:
+    - say: "hello"
+  checks:
+    - recall_none: {query: "where is he travelling", matching: ["Lisbon"]}
+
+- id: ltm-time-expired-note-kept-in-history
+  category: ltm_time
+  severity: medium
+  title: A note that ran out is history, not erased
+  world:
+    memories:
+      - {content: "Jordan's flight to Dubai is booked for the conference until Sunday.", category: availability, valid_for_days: 2}
+  turns:
+    - advance: "+3d"
+  checks:
+    - memory_retired: ["Dubai"]
+
+- id: ltm-time-successor-after-the-end
+  category: ltm_time
+  severity: critical
+  title: When the temporary manager's time is up, the permanent one is served, alone
+  world:
+    memories:
+      - {content: "Rahul Verma is Jordan's manager.", category: person}
+      - {content: "Priya Tan is Jordan's manager until next week.", category: person, valid_for_days: 7}
+  turns:
+    - advance: "+8d"
+  checks:
+    - recall_top: {query: "who is his manager", contains: ["Rahul Verma"], absent: ["Priya Tan"], k: 5}
+
+- id: ltm-time-colleague-after-the-end
+  category: ltm_time
+  severity: high
+  title: A colleague is not served a shared note after its end either
+  world:
+    memories:
+      - {content: "The Pune office is closed until next week for the move.", category: work, audience: org, valid_for_days: 7}
+  turns:
+    - advance: "+8d"
+  checks:
+    - recall_none: {query: "is the Pune office open", matching: ["Pune office"], as: colleague}
+
+- id: ltm-time-colleague-before-the-end
+  category: ltm_time
+  severity: medium
+  title: A colleague is served the shared note while it is true
+  world:
+    memories:
+      - {content: "The Pune office is closed until next week for the move.", category: work, audience: org, valid_for_days: 7}
+  turns:
+    - say: "hello"
+  checks:
+    - recall_top: {query: "is the Pune office open", contains: ["closed"], as: colleague, k: 3}
+
+- id: ltm-time-not-yet-started
+  category: ltm_time
+  severity: medium
+  title: A note that starts next month is not served as true today
+  known_gap: 'recall filters on the end of a note (valid_to) but not its start (valid_from); tracked in #556'
+  world:
+    memories:
+      - {content: "Meera Iyer is Jordan's manager from next month.", category: person, valid_from_days: 30}
+  turns:
+    - say: "hello"
+  checks:
+    - recall_none: {query: "who is his manager", matching: ["Meera Iyer"]}
+
+# --- told in chat: the end date has to be kept ------------------------------------------------
+- id: ltm-time-chat-end-date-learned
+  category: ltm_time
+  severity: high
+  title: '"... until next week" said in chat is learned and found today'
+  world: {learn_model: true}
+  turns:
+    - say: "Priya Tan is covering as my manager until next week, send her anything that needs a decision"
+      fake:
+        facts: [{content: "Priya Tan is Jordan's manager until next week.", category: person, time_bound: true}]
+  checks:
+    - recall_top: {query: "who is his manager", contains: ["Priya Tan"], k: 3}
+
+- id: ltm-time-chat-end-date-stops-serving
+  category: ltm_time
+  severity: critical
+  title: '"... until next week" said in chat stops being served when the week is over'
+  known_gap: 'the fact extractor returns no end date (Fact has no valid_to), so nothing retires the note; tracked in #553'
+  world: {learn_model: true}
+  turns:
+    - say: "Priya Tan is covering as my manager until next week, send her anything that needs a decision"
+      fake:
+        facts: [{content: "Priya Tan is Jordan's manager until next week.", category: person, time_bound: true}]
+    - advance: "+9d"
+  checks:
+    - recall_none: {query: "who is his manager", matching: ["Priya Tan"]}
+
+# --- one fact replaces another ---------------------------------------------------------------
+- id: ltm-time-replace-chain
+  category: ltm_time
+  severity: high
+  title: Three changes in a row leave only the last one served
+  world:
+    learn_model: true
+    memories:
+      - {content: "Jordan lives in Mumbai.", category: about}
+  turns:
+    - say: "I moved from Mumbai to Pune last month"
+      fake:
+        facts: [{content: "Jordan lives in Pune.", category: about, replaces: 1}]
+    - say: "I'm done with Pune, I moved to Chennai this week"
+      fake:
+        facts: [{content: "Jordan lives in Chennai.", category: about, replaces: 1}]
+  checks:
+    - recall_top: {query: "where does he live", contains: ["Chennai"], absent: ["Mumbai", "Pune"], k: 5}
+    - memory_retired: ["Pune"]
+
+- id: ltm-time-no-replaces-id-keeps-both
+  category: ltm_time
+  severity: high
+  title: 'A change the extractor did not link to the old note ("moved to Pune") does not leave "lives in Mumbai" served'
+  known_gap: 'supersession needs the extractor to name the old note (`replaces`); without it two contradicting notes are both live; tracked in #555'
+  world:
+    learn_model: true
+    memories:
+      - {content: "Jordan lives in Mumbai.", category: about}
+  turns:
+    - say: "I'm in Pune these days, the move is done"
+      fake:
+        facts: [{content: "Jordan lives in Pune.", category: about}]
+  checks:
+    - recall_top: {query: "where does he live", contains: ["Pune"], absent: ["Mumbai"], k: 5}
+
+# --- told in a DM, corrected in a channel -----------------------------------------------------
+- id: ltm-time-dm-corrected-on-slack
+  category: ltm_time
+  severity: high
+  title: 'Told on Telegram, corrected on Slack: the correction wins'
+  world:
+    learn_model: true
+    memories:
+      - {content: "The offsite is in Goa on 12 December.", category: work, source: telegram}
+  turns:
+    - say: "correction: we're doing the offsite in Udaipur on the third weekend"
+      via: slack
+      fake:
+        facts: [{content: "The offsite is in Udaipur on 19 December.", category: work, replaces: 1}]
+  checks:
+    - recall_top: {query: "where is the offsite", contains: ["Udaipur"], absent: ["Goa"], k: 5}
+
+- id: ltm-time-correction-in-a-group-chat
+  category: ltm_time
+  severity: high
+  title: A correction said in a team channel replaces the note told in a DM, and stays owner-only
+  known_gap: 'by design nothing is learned from a room (pipeline.py: shared contexts), so the old note stays served and nothing tells the owner the correction was not kept; tracked in #557'
+  world:
+    learn_model: true
+    memories:
+      - {content: "Jordan's budget limit for the Pune hire is 90 lakh.", category: work}
+  turns:
+    - say: "scratch that, we cut the hiring budget for Pune way down"
+      via: slack
+      chat: group
+      fake:
+        facts: [{content: "The Pune hiring budget was cut to 80 lakh a year.", category: work, replaces: 1}]
+  checks:
+    - recall_top: {query: "budget for the Pune hire", contains: ["80 lakh"], absent: ["90 lakh"], k: 5}
+    - recall_top: {query: "budget for the Pune hire", as: group, absent: ["lakh"], k: 5}
+
+- id: ltm-time-corrected-date-is-not-a-duplicate
+  category: ltm_time
+  severity: critical
+  title: 'The same sentence with one date changed ("12 December" to "19 December") replaces the old note'
+  known_gap: 'the learner merges a fact into any note that is 80% similar by trigrams, so a correction that changes one date or number is dropped as "said again" (the extractor even names the old note in `replaces`); tracked in #554'
+  world:
+    learn_model: true
+    memories:
+      - {content: "The offsite is on 12 December in Goa.", category: work, source: telegram}
+  turns:
+    - say: "correction: the offsite moved to 19 December, still in Goa"
+      via: slack
+      fake:
+        facts: [{content: "The offsite is on 19 December in Goa.", category: work, replaces: 1}]
+  checks:
+    - recall_top: {query: "when is the offsite", contains: ["19 December"], absent: ["12 December"], k: 5}
+
+- id: ltm-time-corrected-number-is-not-a-duplicate
+  category: ltm_time
+  severity: critical
+  title: 'The same sentence with one number changed ("90 lakh" to "80 lakh") replaces the old note'
+  known_gap: 'same cause as ltm-time-corrected-date-is-not-a-duplicate (#554): the correction is merged into the old note by trigram similarity'
+  world:
+    learn_model: true
+    memories:
+      - {content: "Jordan's budget limit for the Pune hire is 90 lakh.", category: work}
+  turns:
+    - say: "scratch that, the budget limit for the Pune hire is 80 lakh"
+      fake:
+        facts: [{content: "Jordan's budget limit for the Pune hire is 80 lakh.", category: work, replaces: 1}]
+  checks:
+    - recall_top: {query: "budget limit for the Pune hire", contains: ["80 lakh"], absent: ["90 lakh"], k: 5}
+
+# --- two sources that disagree ----------------------------------------------------------------
+- id: ltm-time-file-cannot-overturn-the-owner
+  category: ltm_time
+  severity: critical
+  title: A file that disagrees with what the owner said does not replace it; the claim waits
+  world:
+    memories:
+      - {content: "Jordan is the CEO of Orchard Labs.", category: work, source: chat}
+  turns:
+    - share: {kind: file, title: "Old org chart.pdf", text: "Orchard Labs org chart. Jordan Whitfield, CTO."}
+      fake:
+        facts: [{content: "Jordan is the CTO of Orchard Labs.", category: work, replaces: 1}]
+  checks:
+    - recall_top: {query: "what is his role at Orchard Labs", contains: ["CEO"], absent: ["CTO"], k: 5}
+
+- id: ltm-time-newer-file-fact-from-owner-link
+  category: ltm_time
+  severity: medium
+  title: A page and a file that say the same thing are one note
+  world: {learn_model: true}
+  turns:
+    - share: {kind: file, title: "Bio.pdf", text: "Jordan Whitfield founded Orchard Labs in 2019."}
+      fake:
+        facts: [{content: "Jordan founded Orchard Labs in 2019.", category: work}]
+    - share: {kind: web, title: "Orchard Labs about page", source: "https://orchard.example/about", text: "Orchard Labs was founded by Jordan Whitfield in 2019."}
+      fake:
+        facts: [{content: "Jordan founded Orchard Labs in 2019.", category: work}]
+  checks:
+    - memory_count: {matching: "founded Orchard Labs", exactly: 1}

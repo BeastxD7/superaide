@@ -35,6 +35,7 @@ Category = Literal[
     "ltm_abstain",  # nothing stored about it: nothing related is served, so Ava can say "I don't know"
     "ltm_canary",  # a private fact never reaches a lower audience tier (retrieval or prompt)
     "ltm_ingest",  # a real file or link share, driven through the ingest pipeline, then recalled in chat
+    "ltm_time",  # facts with an end date, facts that contradict each other, a fact corrected on another channel (#414)
 ]
 CATEGORIES: tuple[str, ...] = Category.__args__  # type: ignore[attr-defined]
 Severity = Literal["critical", "high", "medium", "low"]
@@ -66,6 +67,8 @@ class SeedMemory(Strict):
     category: str = "other"
     source: str = "chat"
     age_days: float = 0  # told this long before the scenario starts (default: the day before)
+    valid_for_days: float | None = None  # stops being true this many days after the start (negative: already over)
+    valid_from_days: float | None = None  # starts being true this many days after the start
 
 
 class SeedReminder(Strict):

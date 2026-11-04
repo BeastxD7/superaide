@@ -329,6 +329,10 @@ def build_world(sc: Scenario, start: datetime, run: Run | None = None) -> uuid.U
             item = remember_fact(s, owner=person, content=content, category=m.category, source=m.source)
             if item is not None and m.age_days:
                 item.created_at = item.valid_from = start - timedelta(days=m.age_days)
+            if item is not None and m.valid_for_days is not None:
+                item.valid_to = start + timedelta(days=m.valid_for_days)
+            if item is not None and m.valid_from_days is not None:
+                item.valid_from = start + timedelta(days=m.valid_from_days)
             if item is not None and m.audience == "org":
                 item.allowed_kind, item.allowed_person_ids, item.min_trust = "org", [], 2
             elif item is not None and m.audience == "public":
