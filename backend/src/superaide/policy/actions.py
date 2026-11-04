@@ -19,7 +19,7 @@ from superaide.approvals.models import Approval
 from superaide.contracts.events import ApprovalDecided, bus
 from superaide.identity.resolver import Sender
 from superaide.identity.trust import Trust
-from superaide.observability import timing
+from superaide.observability import api as timing
 from superaide.platform.audit import audit
 from superaide.platform.config import get_settings
 from superaide.policy import kinds

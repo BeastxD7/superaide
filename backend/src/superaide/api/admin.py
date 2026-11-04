@@ -818,7 +818,7 @@ LATENCY_MAX_HOURS = 24 * 30
     ),
 )
 def latency(request: Request, hours: int = Query(24, ge=1, le=LATENCY_MAX_HOURS)) -> dict[str, Any]:
-    from superaide.observability import store as timing_store
+    from superaide.observability import api as timing
 
     wanted = request.headers.get("x-operator-instance") or ""
     scope = default_scope()
@@ -832,7 +832,7 @@ def latency(request: Request, hours: int = Query(24, ge=1, le=LATENCY_MAX_HOURS)
                 raise HTTPException(404, "No such instance")
             scope = InstanceScope(tenant_id=instance.tenant_id, agent_id=instance.id)
     with use_instance(scope), session_scope() as s:
-        return timing_store.summary(s, hours=hours)
+        return timing.summary(s, hours=hours)
 
 
 class KillBody(BaseModel):

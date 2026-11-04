@@ -46,8 +46,7 @@ from superaide.memory.store import (
     seen_before,
     strip_label,
 )
-from superaide.observability import store as timing_store
-from superaide.observability import timing
+from superaide.observability import api as timing
 from superaide.platform.audit import audit
 from superaide.platform.config import Settings, get_settings
 from superaide.platform.db.models import AuditLog
@@ -172,7 +171,7 @@ class Agent:
             return self._handle(msg, emit)
         with timing.open_turn() as timer:
             result = self._handle(msg, emit)
-        timing_store.record(timer, provider=msg.provider, mode=result.mode)
+        timing.record(timer, provider=msg.provider, mode=result.mode)
         return result
 
     def _ambient(self, msg: InboundMessage) -> HandleResult:

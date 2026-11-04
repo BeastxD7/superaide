@@ -294,7 +294,7 @@ def _through_airlock(kwargs: dict[str, Any]) -> tuple[dict[str, Any], dict[str, 
 
     if not get_settings().airlock_enabled or "messages" not in kwargs:
         return kwargs, {}
-    from superaide.observability import timing
+    from superaide.observability import api as timing
     from superaide.privacy.airlock import redact_messages
     from superaide.privacy.people import known_people
 
