@@ -87,6 +87,29 @@ export type EventRow = {
 
 export type AuditRow = { id: string; actor: string; action: string; detail: Record<string, unknown>; at: string }
 
+export type ApprovalWeek = {
+  week: string
+  requested: Record<string, number>
+  requested_total: number
+  expired: number
+  decided: number
+  approved: number
+  rejected: number
+  quick: number
+  unopened: number
+  brake_held: number
+  median_s: number | null
+  p90_s: number | null
+  rubber_stamp_share: number | null
+  reject_rate: number | null
+}
+export type ApprovalMetrics = {
+  window_weeks: number
+  quick_ms: number
+  weeks: ApprovalWeek[]
+  totals: Omit<ApprovalWeek, 'week' | 'requested'> & { requested_by_kind: Record<string, number>; per_week: number }
+}
+
 export type StageStat = { n: number; p50: number | null; p95: number | null }
 export type LatencyScope = { turns: number; stages: Record<string, StageStat> }
 export type Latency = {

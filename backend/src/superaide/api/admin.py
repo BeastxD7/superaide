@@ -807,6 +807,21 @@ def spend() -> dict[str, Any]:
 LATENCY_MAX_HOURS = 24 * 30
 
 
+def _numbers_scope(request: Request) -> InstanceScope:
+    """The instance a numbers-only route reads: the one in `X-Operator-Instance`, else the default one."""
+    wanted = request.headers.get("x-operator-instance") or ""
+    if not wanted:
+        return default_scope()
+    with session_scope() as s:
+        try:
+            instance = s.get(AgentInstance, uuid.UUID(wanted))
+        except ValueError:
+            instance = None
+        if instance is None:
+            raise HTTPException(404, "No such instance")
+        return InstanceScope(tenant_id=instance.tenant_id, agent_id=instance.id)
+
+
 @router.get(
     "/latency",
     summary="Latency per stage",
@@ -820,19 +835,27 @@ LATENCY_MAX_HOURS = 24 * 30
 def latency(request: Request, hours: int = Query(24, ge=1, le=LATENCY_MAX_HOURS)) -> dict[str, Any]:
     from superaide.observability import api as timing
 
-    wanted = request.headers.get("x-operator-instance") or ""
-    scope = default_scope()
-    if wanted:
-        with session_scope() as s:
-            try:
-                instance = s.get(AgentInstance, uuid.UUID(wanted))
-            except ValueError:
-                instance = None
-            if instance is None:
-                raise HTTPException(404, "No such instance")
-            scope = InstanceScope(tenant_id=instance.tenant_id, agent_id=instance.id)
-    with use_instance(scope), session_scope() as s:
+    with use_instance(_numbers_scope(request)), session_scope() as s:
         return timing.summary(s, hours=hours)
+
+
+@router.get(
+    "/approval-metrics",
+    summary="Approval fatigue",
+    description=(
+        "How much the owner is asked and how they answer (#407), per week: requests by kind, median and p90 time to "
+        "decide, the share decided unopened or within 2 seconds, yes and no counts, times the Rubber-Stamp Brake held "
+        "a card, expired requests. Counts and timings only: no card text, recipient or name, so no reason is needed. "
+        "Reads one instance: the one named by `X-Operator-Instance`, else the default one. `weeks` 1 to 26."
+    ),
+)
+def approval_metrics(request: Request, weeks: int = Query(8, ge=1, le=26)) -> dict[str, Any]:
+    from superaide.approvals.api import burden
+
+    if not get_settings().approval_metrics_enabled:
+        raise HTTPException(404, "Not found")
+    with use_instance(_numbers_scope(request)), session_scope() as s:
+        return burden.summary(s, weeks=weeks)
 
 
 class KillBody(BaseModel):

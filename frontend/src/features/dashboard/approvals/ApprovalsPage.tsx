@@ -1,6 +1,7 @@
 'use client'
 
 import { ApprovalsCard } from '@/features/dashboard/approvals/Approvals'
+import { BurdenCard } from '@/features/dashboard/approvals/BurdenCard'
 import { MandatesCard } from '@/features/dashboard/approvals/MandatesCard'
 import { TwinCard } from '@/features/dashboard/approvals/TwinCard'
 import { useSession } from '@/lib/session-context'
@@ -24,6 +25,7 @@ export function ApprovalsPage() {
             </p>
           }
         />
+        <BurdenCard />
         <MandatesCard name={name} />
         <TwinCard name={name} />
       </div>

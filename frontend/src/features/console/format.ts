@@ -132,3 +132,7 @@ export function describeAudit(row: AuditRow): { kind: AuditKind; text: string } 
 
 // A duration in milliseconds as the console shows it: "340 ms", "1.20 s", and a dash when there is none.
 export const ms = (v: number | null | undefined) => (v === null || v === undefined ? '–' : v >= 1000 ? `${(v / 1000).toFixed(2)} s` : `${Math.round(v)} ms`)
+
+// A wait in seconds as the console shows it: "12 s", "5 min", "2.0 h", and a dash when there is none.
+export const wait = (s: number | null | undefined) =>
+  s === null || s === undefined ? '–' : s < 60 ? `${s} s` : s < 3600 ? `${Math.round(s / 60)} min` : `${(s / 3600).toFixed(1)} h`

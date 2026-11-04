@@ -506,6 +506,7 @@ e2e = [
   "e2e/tests/journeys/approval-honesty.spec.ts",
   "e2e/tests/journeys/approval-recipient.spec.ts",
   "e2e/tests/policy/approvals-sync.spec.ts",
+  "e2e/tests/policy/approval-burden.spec.ts",
   "e2e/tests/journeys/approvals.spec.ts",
 ]
 

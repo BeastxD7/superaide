@@ -14,6 +14,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from superaide.approvals import footprint, outcomes, quote
+from superaide.approvals.api import burden
 from superaide.approvals.binding import EXPIRED_BY, check, expired, seal
 from superaide.approvals.models import Approval
 from superaide.contracts.events import ApprovalDecided, bus
@@ -202,6 +203,13 @@ def resolve(session: Session, approval: Approval, *, approve: bool, decided_by: 
     was_pending = approval.status == "pending"
     done = _resolve(session, approval, approve=approve, decided_by=decided_by, via=via)
     if was_pending and done.status != "pending":
+        if get_settings().approval_metrics_enabled:  # #407: counts and timings only
+            burden.record_decided(
+                session,
+                done,
+                verdict="expired" if done.decided_by == EXPIRED_BY else ("approve" if approve else "reject"),
+                via=via,
+            )
         outcomes.announce(session, done)
     return done
 

@@ -3653,6 +3653,59 @@
         ]
       }
     },
+    "/api/approval-metrics": {
+      "get": {
+        "description": "How much the owner is asked and how they answer (#407), per week: requests by kind, median and p90 time to decide, the share decided unopened or within 2 seconds, yes and no counts, times the Rubber-Stamp Brake held a card, expired requests. Counts and timings only: no card text, recipient or name, so no reason is needed. Reads one instance: the one named by `X-Operator-Instance`, else the default one. `weeks` 1 to 26.",
+        "operationId": "approval_metrics_api_approval_metrics_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "weeks",
+            "required": false,
+            "schema": {
+              "default": 8,
+              "maximum": 26,
+              "minimum": 1,
+              "title": "Weeks",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Approval Metrics Api Approval Metrics Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "Admin token": []
+          }
+        ],
+        "summary": "Approval fatigue",
+        "tags": [
+          "Operator console"
+        ]
+      }
+    },
     "/api/approvals": {
       "get": {
         "description": "Actions waiting for the owner's yes.",
@@ -4950,6 +5003,112 @@
           }
         ],
         "summary": "How fast you have been approving",
+        "tags": [
+          "Owner: approvals"
+        ]
+      }
+    },
+    "/app/approvals/burden": {
+      "get": {
+        "description": "Approval fatigue in numbers (APPROVAL_METRICS_ENABLED, on by default; 404 while off): requests per week by kind, median and 90th-percentile time to decide, the share decided without opening the card or within 2 seconds of opening it, yes and no rates, times the Rubber-Stamp Brake held a card, and requests that expired. Counts and timings only: no card text, recipient or name. `weeks` 1 to 26 (default 8).",
+        "operationId": "approval_burden_app_approvals_burden_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "weeks",
+            "required": false,
+            "schema": {
+              "default": 8,
+              "maximum": 26,
+              "minimum": 1,
+              "title": "Weeks",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Approval Burden App Approvals Burden Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "How much am I being asked?",
+        "tags": [
+          "Owner: approvals"
+        ]
+      }
+    },
+    "/app/approvals/{approval_id}/opened": {
+      "post": {
+        "description": "Sent by the app once a card has been on screen for a moment. Recorded once per card, only while it is still waiting, as a time and nothing else. 404 while APPROVAL_METRICS_ENABLED is off.",
+        "operationId": "approval_opened_app_approvals__approval_id__opened_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "approval_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Approval Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Approval Opened App Approvals  Approval Id  Opened Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "The owner looked at this card",
         "tags": [
           "Owner: approvals"
         ]

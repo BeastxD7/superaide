@@ -421,6 +421,10 @@ class Settings(BaseSettings):
     # Per-stage timing of every message turn (#412): numbers only, kept in `turn_timing` and logged as one line per
     # turn, shown as p50/p95 in the operator console. Off: nothing is timed or stored.
     pipeline_timing_enabled: bool = True
+    # Approval fatigue metrics (#407): counts and timings of approval cards (requested, opened, decided, how fast,
+    # held by the brake, expired), shown to the owner as "How much am I being asked?" and to the operator as a
+    # weekly trend. No card text, recipient or name is kept. Off: nothing is recorded and the routes answer 404.
+    approval_metrics_enabled: bool = True
     gmail_poll_minutes: int = 5
     # Rehearsal room (#58): the owner practises a hard conversation with Ava playing the other side. Off:
     # /app/rehearsal/* answer 404. On: text role-play, nothing is sent to anyone, and a session is

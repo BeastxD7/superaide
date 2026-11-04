@@ -25,6 +25,7 @@ from superaide.app.catalog import catalog, find
 from superaide.app.deps import owner_person_id, slack_connected, telegram_username
 from superaide.app.onboarding import SHARE_LABELS, Onboarder, documents_view
 from superaide.app.stream import stream_turn
+from superaide.approvals.api import burden
 from superaide.approvals.binding import expired
 from superaide.approvals.models import Approval
 from superaide.brain.wiring import brain_ready, brain_status
@@ -1437,6 +1438,8 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 waiting = [a for a in reversed(rows) if a.status == "pending"][: brake.PENDING_CAP]
                 keep = {a.id for a in waiting}
                 rows = [a for a in rows if a.status != "pending" or a.id in keep]
+            if get_settings().approval_metrics_enabled:  # #407: a card counts as shown the first time it is listed
+                burden.record_shown(s, [a for a in rows if a.status == "pending" and not expired(a)])
             return [
                 {
                     "id": str(a.id),
@@ -1502,6 +1505,46 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
 
         with session_scope() as s:
             return asdict(owner_twin.calibration(s))
+
+    @router.get(
+        "/approvals/burden",
+        tags=["Owner: approvals"],
+        summary="How much am I being asked?",
+        description=(
+            "Approval fatigue in numbers (APPROVAL_METRICS_ENABLED, on by default; 404 while off): requests per week "
+            "by kind, median and 90th-percentile time to decide, the share decided without opening the card or within "
+            "2 seconds of opening it, yes and no rates, times the Rubber-Stamp Brake held a card, and requests that "
+            "expired. Counts and timings only: no card text, recipient or name. `weeks` 1 to 26 (default 8)."
+        ),
+    )
+    def approval_burden(
+        person_id: uuid.UUID = Depends(owner_person_id),
+        weeks: int = Query(burden.DEFAULT_WEEKS, ge=1, le=burden.MAX_WEEKS),
+    ) -> dict[str, Any]:
+        if not get_settings().approval_metrics_enabled:
+            raise HTTPException(404, "Not found")
+        with session_scope() as s:
+            return {**burden.summary(s, weeks=weeks), "brake_enabled": get_settings().rubber_stamp_brake_enabled}
+
+    @router.post(
+        "/approvals/{approval_id}/opened",
+        tags=["Owner: approvals"],
+        summary="The owner looked at this card",
+        description=(
+            "Sent by the app once a card has been on screen for a moment. Recorded once per card, only while it is "
+            "still waiting, as a time and nothing else. 404 while APPROVAL_METRICS_ENABLED is off."
+        ),
+    )
+    def approval_opened(approval_id: uuid.UUID, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, bool]:
+        if not get_settings().approval_metrics_enabled:
+            raise HTTPException(404, "Not found")
+        with session_scope() as s:
+            approval = s.get(Approval, approval_id)
+            if approval is None:
+                raise HTTPException(404, "No such approval")
+            if approval.status != "pending" or expired(approval):
+                return {"recorded": False}  # a decided card cannot have been opened "before" its decision
+            return {"recorded": burden.record_opened(s, approval)}
 
     @router.post(
         "/approvals/{approval_id}/signature",
