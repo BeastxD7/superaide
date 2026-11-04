@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { seenBeacon } from '@/features/dashboard/approvals/seen'
 import { useApprovals } from '@/features/dashboard/approvals/useApprovals'
 import { call, type ApprovalItem } from '@/lib/api'
 import { announceApprovalsChanged } from '@/lib/approvals-sync'
@@ -122,7 +123,11 @@ export function ApprovalsCard({ name, empty = null, showExpired = false }: { nam
         )}
         <ul className="space-y-2">
           {pending.map((a) => (
-            <li key={a.id} className="flex flex-col gap-3 rounded-xl border border-line bg-white p-3 sm:flex-row sm:items-center">
+            <li
+              key={a.id}
+              ref={seenBeacon(a.id)}
+              className="flex flex-col gap-3 rounded-xl border border-line bg-white p-3 sm:flex-row sm:items-center"
+            >
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-ink">{KIND_LABEL[a.kind] ?? a.kind}</p>
                 {a.fields && a.fields.length > 0 ? (

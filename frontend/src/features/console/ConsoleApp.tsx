@@ -5,6 +5,7 @@ import { BrandMark } from '@/components/BrandMark'
 import { api, defaultBase, loadConnection, saveConnection, type Access, type Connection, type Overview as OverviewData } from '@/features/console/api'
 import { BreakGlass } from '@/features/console/components/BreakGlass'
 import { Conversations } from '@/features/console/pages/Conversations'
+import { ApprovalMetricsPage } from '@/features/console/pages/ApprovalMetricsPage'
 import { LatencyPage } from '@/features/console/pages/LatencyPage'
 import { Overview } from '@/features/console/pages/Overview'
 import { People } from '@/features/console/pages/People'
@@ -182,6 +183,7 @@ function Dashboard({ conn, onDisconnect }: { conn: Connection; onDisconnect: () 
               {tab === 'log' && access && <SafetyLog conn={opened} />}
               {tab === 'spend' && <SpendPage conn={conn} />}
               {tab === 'latency' && <LatencyPage conn={conn} />}
+              {tab === 'approvals' && <ApprovalMetricsPage conn={conn} />}
               {tab === 'simulator' && access && <Simulator conn={opened} enabled={data?.simulator ?? false} agentName={data?.agent_name ?? 'The agent'} />}
             </div>
           </main>

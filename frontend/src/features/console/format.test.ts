@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AuditRow } from '@/features/console/api'
-import { ago, describeAudit, ms, usd } from '@/features/console/format'
+import { ago, describeAudit, ms, usd, wait } from '@/features/console/format'
 
 const row = (action: string, detail: Record<string, unknown> = {}, actor = 'owner'): AuditRow => ({
   id: '1',
@@ -83,5 +83,14 @@ describe('ms', () => {
     expect(ms(null)).toBe('–')
     expect(ms(undefined)).toBe('–')
     expect(ms(0)).toBe('0 ms')
+  })
+})
+
+describe('wait', () => {
+  it('shows seconds, minutes and hours, and a dash for nothing', () => {
+    expect(wait(12.4)).toBe('12.4 s')
+    expect(wait(300)).toBe('5 min')
+    expect(wait(7200)).toBe('2.0 h')
+    expect(wait(null)).toBe('–')
   })
 })

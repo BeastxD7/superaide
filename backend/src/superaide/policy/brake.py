@@ -16,8 +16,10 @@ from statistics import median
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from superaide.approvals.api import burden
 from superaide.approvals.models import Approval
 from superaide.platform.audit import audit
+from superaide.platform.config import get_settings
 
 WINDOW = 20  # the most recent decided approvals that count
 MIN_DECISIONS = 8  # fewer than this and there is nothing to judge
@@ -98,6 +100,8 @@ def check(session: Session, approval: Approval, *, approve: bool, reason: str | 
     if len((reason or "").strip()) >= MIN_REASON_CHARS:
         return None
     audit(session, "policy", "brake_held_approval", kind=approval.kind, approval_id=approval.id)
+    if get_settings().approval_metrics_enabled:  # #407: how often the brake fires
+        burden.record_brake_held(session, approval)
     return (
         "You have been approving very quickly. For this one, type a short reason (at least "
         f"{MIN_REASON_CHARS} characters) so we know you read it."
