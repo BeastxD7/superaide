@@ -189,7 +189,14 @@ def _attempt(session: Session, owner: Person, ctx: Any, d: NotificationDelivery,
     now = datetime.now(UTC)
     if sent:
         d.state, d.sent_at, d.next_attempt_at, d.last_error = "sent", now, None, ""
-        if d.attempts > 1:
+        failed_from = (d.meta or {}).get("failover_of")
+        if failed_from:
+            log_event(
+                session, context=ctx, direction="out", audience=Audience(person_ids={owner.id}),
+                content=f"I sent that on {CHANNEL_NAMES[provider]} instead.",
+                meta={"kind": "delivery_failover", "channel": provider},
+            )  # fmt: skip
+        elif d.attempts > 1:
             log_event(
                 session, context=ctx, direction="out", audience=Audience(person_ids={owner.id}),
                 content=f"I sent that on {CHANNEL_NAMES[provider]} after a delay.",
@@ -215,13 +222,72 @@ def _attempt(session: Session, owner: Person, ctx: Any, d: NotificationDelivery,
         )  # fmt: skip
     else:
         d.state, d.next_attempt_at = "failed", None
+        _give_up(session, owner, ctx, d, f"after {d.attempts} tries: {why}", {**meta, "final": True})
+    return False
+
+
+def _give_up(
+    session: Session, owner: Person, ctx: Any, d: NotificationDelivery, why: str, meta: dict[str, Any]
+) -> None:
+    """The push can no longer work on its channel: send it on another linked one when there is one, else leave it
+    listed as not delivered. Either way the owner is told in the app."""
+    provider = d.channel
+    target = _failover(session, owner, ctx, d)
+    if target is not None:
         _leave_note(
             session, owner, ctx, provider,
-            f"I couldn't send this on {CHANNEL_NAMES[provider]} after {d.attempts} tries: {why} "
-            "It is in the app, and listed as not delivered.",
-            "delivery_failed", {**meta, "final": True},
+            f"I couldn't send this on {CHANNEL_NAMES[provider]} {why} "
+            f"I'm sending it on {CHANNEL_NAMES[target]} instead.",
+            "delivery_failed", meta,
         )  # fmt: skip
-    return False
+        return
+    _leave_note(
+        session, owner, ctx, provider,
+        f"I couldn't send this on {CHANNEL_NAMES[provider]} {why} It is in the app, and listed as not delivered.",
+        "delivery_failed", meta,
+    )  # fmt: skip
+
+
+def _failover(session: Session, owner: Person, ctx: Any, d: NotificationDelivery) -> str | None:
+    """Hand a push that failed for good to the next channel the owner linked (Telegram to Slack or back), once.
+    The new row carries the message (with a line saying why it came here) and its own retries; the old row is
+    `rerouted`, so the list shows one open push, not two. Returns the new channel, or None when there is none."""
+    from superaide.platform.config import get_settings
+
+    meta = d.meta or {}
+    if not get_settings().notify_failover or meta.get("failover_of"):
+        return None  # one hop only: a failover that fails stays listed on its own channel
+    already = session.scalar(
+        select(NotificationDelivery).where(NotificationDelivery.meta["failover_of"].astext == str(d.id)).limit(1)
+    )
+    if already is not None:  # a second pass over the same row never sends twice
+        d.state = "rerouted"
+        return already.channel
+    rejected = set(rejected_channels(session))
+    for provider in EXTERNAL:
+        identity = identity_for(session, owner, provider)
+        if provider == d.channel or identity is None or provider in rejected:
+            continue
+        text = f"I couldn't reach you on {CHANNEL_NAMES[d.channel]}, so I'm sending this here: {d.text}"
+        nd = NotificationDelivery(channel=provider, text=text, meta={**meta, "failover_of": str(d.id)}, state="queued")
+        session.add(nd)
+        session.flush()
+        d.state, d.next_attempt_at = "rerouted", None
+        audit(session, "notify", "delivery_failover", from_provider=d.channel, to_provider=provider)
+        _attempt(session, owner, ctx, nd, identity)
+        return provider
+    return None
+
+
+def acknowledge(session: Session, delivery_id: uuid.UUID) -> NotificationDelivery | None:
+    """The owner saw it: stop retrying and drop it from the not-delivered list. Idempotent."""
+    d = session.scalar(select(NotificationDelivery).where(NotificationDelivery.id == delivery_id).with_for_update())
+    if d is None:
+        return None
+    if d.state != "acked":
+        d.state, d.acked_at, d.next_attempt_at = "acked", datetime.now(UTC), None
+        audit(session, "notify", "delivery_acked", delivery_id=d.id, provider=d.channel)
+    return d
 
 
 @jobs.handler(RETRY_JOB)
@@ -239,11 +305,15 @@ def retry_delivery(session: Session, job: Job) -> None:
 
     owner = hired_owner(session)
     identity = identity_for(session, owner, d.channel) if owner is not None else None
-    if owner is None or identity is None:
+    if owner is None:
         d.state, d.next_attempt_at = "failed", None
-        d.last_error = f"your {CHANNEL_NAMES[d.channel]} account isn't linked"
         return
     ctx = get_or_create_context(session, web_message(owner, ""))
+    if identity is None:
+        d.state, d.next_attempt_at = "failed", None
+        d.last_error = f"your {CHANNEL_NAMES[d.channel]} account isn't linked"
+        _give_up(session, owner, ctx, d, f"because {d.last_error}.", {"delivery_id": str(d.id), "final": True})
+        return
     _attempt(session, owner, ctx, d, identity)
 
 
@@ -271,12 +341,21 @@ def notify_owner(
             why = f"your {CHANNEL_NAMES[channel]} account isn't linked. Link it under Connections."
             d.state, d.last_error = "failed", why  # nothing to retry: it can't work until the owner links it
             audit(session, "notify", "delivery_failed", provider=channel, reason=why, kind=(meta or {}).get("kind"))
-            _leave_note(
-                session, owner, ctx, channel, f"I couldn't send this on {CHANNEL_NAMES[channel]}: {why}",
-                "delivery_failed", {"delivery_id": str(d.id), "final": True},
-            )  # fmt: skip
+            _give_up(session, owner, ctx, d, f"because {why}", {"delivery_id": str(d.id), "final": True})
+            if d.state == "rerouted":
+                via += [r.channel for r in _sent_failover(session, d)]
             return via
         # Try even when the channel is marked unhealthy: a send that works is what heals it.
         if _attempt(session, owner, ctx, d, identity):
             via.append(channel)
     return via
+
+
+def _sent_failover(session: Session, d: NotificationDelivery) -> list[NotificationDelivery]:
+    return list(
+        session.scalars(
+            select(NotificationDelivery).where(
+                NotificationDelivery.meta["failover_of"].astext == str(d.id), NotificationDelivery.state == "sent"
+            )
+        )
+    )

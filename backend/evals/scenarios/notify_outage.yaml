@@ -1,0 +1,84 @@
+# The owner asked for Telegram. Someone new writes in while Telegram is down (#491). Graded in code, offline:
+# the push is retried and arrives once when the channel heals, goes to the owner's other linked channel when it
+# never does, stays listed when nothing works, and never carries the stranger's words (the note is fixed text).
+
+- id: notify-outage-recovers-and-arrives-once
+  category: notify
+  severity: critical
+  title: Telegram is down for three minutes; the note arrives once when it is back, and not again
+  world:
+    interrupt_channel: telegram
+    outage: {telegram: 3}
+  turns:
+    - who: stranger
+      via: slack
+      say: "Hi, it's Meera. Please have him call me back within 5 minutes, my account number is 4111."
+    - advance: "+2m"
+    - advance: "+6m"
+    - advance: "+30m"
+  checks:
+    - delivery: {channel: telegram, state: sent, count: 1}
+    - pushed: {via: telegram, count: 1, contains: ["Message"], absent: ["4111", "Meera"]}
+    - pushed: {via: slack, count: 0}
+
+- id: notify-outage-fails-over-to-the-other-channel
+  category: notify
+  severity: critical
+  title: Telegram stays down through every retry; the note goes to Slack once, and says why
+  world:
+    interrupt_channel: telegram
+    outage: {telegram: 100000}
+  turns:
+    - who: stranger
+      via: slack
+      say: "Hi, it's Meera. Please have him call me back within 5 minutes."
+    - advance: "+2m"
+    - advance: "+6m"
+    - advance: "+16m"
+    - advance: "+60m"
+  checks:
+    - delivery: {channel: telegram, state: rerouted, count: 1}
+    - delivery: {channel: slack, state: sent, count: 1}
+    - pushed: {via: slack, count: 1, contains: ["couldn't reach you on Telegram"]}
+    - pushed: {via: telegram, count: 0}
+
+- id: notify-outage-both-channels-down-stays-listed
+  category: notify
+  severity: high
+  title: Both channels are down for good; the one open push is listed as not delivered, nothing is lost or repeated
+  world:
+    interrupt_channel: telegram
+    outage: {telegram: 100000, slack: 100000}
+  turns:
+    - who: stranger
+      via: slack
+      say: "Hi, it's Meera. Please have him call me back within 5 minutes."
+    - advance: "+2m"
+    - advance: "+6m"
+    - advance: "+16m"
+    - advance: "+2m"
+    - advance: "+6m"
+    - advance: "+16m"
+    - advance: "+60m"
+  checks:
+    - delivery: {channel: telegram, state: rerouted, count: 1}
+    - delivery: {channel: slack, state: failed, count: 1}
+    - pushed: {via: telegram, count: 0}
+    - pushed: {via: slack, count: 0}
+
+- id: notify-outage-app-preference-sends-nothing-out
+  category: notify
+  severity: medium
+  title: An owner who chose the app is not pushed anywhere, and nothing is queued
+  world:
+    interrupt_channel: app
+    outage: {telegram: 3}
+  turns:
+    - who: stranger
+      via: slack
+      say: "Hi, it's Meera. Please have him call me back."
+    - advance: "+10m"
+  checks:
+    - delivery: {channel: telegram, state: queued, count: 0}
+    - delivery: {channel: telegram, state: sent, count: 0}
+    - pushed: {via: telegram, count: 0}

@@ -9644,6 +9644,57 @@
         ]
       }
     },
+    "/app/notifications/{delivery_id}/ack": {
+      "post": {
+        "description": "The owner saw this notification: it is no longer retried and leaves the not-delivered list. Safe to repeat.",
+        "operationId": "ack_notification_app_notifications__delivery_id__ack_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "delivery_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Delivery Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Ack Notification App Notifications  Delivery Id  Ack Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Mark a notification as seen",
+        "tags": [
+          "Owner: reminders"
+        ]
+      }
+    },
     "/app/onboarding": {
       "get": {
         "description": "Where the owner is in the eight steps, the conversation so far and the controls for the step.",

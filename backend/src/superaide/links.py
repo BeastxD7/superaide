@@ -104,23 +104,39 @@ def is_local(url: str) -> bool:
     return not host or host in LOCAL_HOSTS or host.endswith(".local")
 
 
+def _reachable_from_outside(s: Settings) -> bool:
+    """The deployment looks like one other people can reach: hosted mode, HTTPS-only cookies, or a non-local
+    address configured somewhere."""
+    return (
+        s.deploy_mode == "hosted"
+        or s.session_cookie_secure
+        or any(u and not is_local(u) for u in (s.public_base_url, s.link_origins.split(",")[0].replace("*.", "")))
+    )
+
+
+def outward_link_unusable(settings: Settings | None = None) -> bool:
+    """True when a link in outgoing mail would point at this machine although other people read the mail (#434).
+    Such a link must not be put in a message: the recipient would be sent to their own computer."""
+    s = settings or get_settings()
+    return is_local(public_base(s)) and _reachable_from_outside(s)
+
+
+LOCAL_LINK_NOTE = "Set PUBLIC_BASE_URL so the card link works: this email's sign-off has no link until you do."
+
+
 def warn_if_local(settings: Settings | None = None) -> bool:
     """Log a warning when the outward address is localhost but the deployment looks reachable from outside
-    (HTTPS-only cookies or a non-local FRONTEND_ORIGIN/PUBLIC_BASE_URL elsewhere). True when it warned."""
+    (hosted mode, HTTPS-only cookies or a non-local FRONTEND_ORIGIN/PUBLIC_BASE_URL elsewhere). True when it warned."""
     s = settings or get_settings()
-    base = public_base(s)
-    if not is_local(base):
+    if not outward_link_unusable(s):
         return False
-    outside = s.session_cookie_secure or any(
-        u and not is_local(u) for u in (s.public_base_url, s.link_origins.split(",")[0].replace("*.", ""))
+    log.warning(
+        "Links in emails and messages point at %s, which only works on this machine, so emails go out without "
+        "the card link. Set PUBLIC_BASE_URL to the address people reach Superaide at (for example "
+        "https://example.org).",
+        public_base(s),
     )
-    if outside:
-        log.warning(
-            "Links in emails and messages point at %s, which only works on this machine. Set PUBLIC_BASE_URL to the "
-            "address people reach Superaide at (for example https://example.org).",
-            base,
-        )
-    return outside
+    return True
 
 
 def request_origin(request: Request, settings: Settings | None = None) -> str:

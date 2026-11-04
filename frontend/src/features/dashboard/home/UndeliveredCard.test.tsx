@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { UndeliveredCard, type Undelivered } from './UndeliveredCard'
 
 const hook = vi.hoisted(() => ({ data: null as unknown }))
+vi.mock('@/lib/api', () => ({ call: vi.fn() }))
 vi.mock('@/features/dashboard/data', () => ({ useAppData: () => ({ data: hook.data, error: null, reload: vi.fn() }) }))
 
 const item = (over: Partial<Undelivered>): Undelivered => ({
@@ -33,5 +34,10 @@ describe('UndeliveredCard', () => {
     expect(out).toContain('2 notifications did not reach you')
     expect(out).toContain('Not delivered on Telegram')
     expect(out).toContain('4 tries')
+  })
+
+  it('offers a way to mark each one as seen', () => {
+    hook.data = { count: 1, items: [item({})] }
+    expect(html()).toContain('I have seen this')
   })
 })

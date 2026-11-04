@@ -191,3 +191,42 @@ def test_signature_route_is_owner_only(owner_client, gmail_fake, agent, path):
         owner_client.post(path.format("00000000-0000-0000-0000-000000000000"), json={"sign": False}).status_code == 404
     )
     assert owner_client.post(path.format(aid), json={"sign": "maybe"}).status_code == 422
+
+
+def _hosted_without_a_public_address(monkeypatch):
+    s = get_settings()
+    monkeypatch.setattr(s, "public_base_url", "")
+    monkeypatch.setattr(s, "frontend_origin", "http://localhost:3000")
+    monkeypatch.setattr(s, "deploy_mode", "hosted")
+
+
+def test_no_public_address_means_no_localhost_link_in_the_email_and_a_warning_on_the_card(
+    owner_client, gmail_fake, monkeypatch
+):
+    """#434: a deployment others can reach, with no PUBLIC_BASE_URL, must not mail a link to http://localhost."""
+    _hosted_without_a_public_address(monkeypatch)
+    aid = _queue(gmail_fake)
+    with session_scope() as s:
+        p = s.get(Approval, aid).payload
+        sent_draft = p["draft_id"]
+        assert p["sign_as_ava"] is True and p["signature_id"] == ""
+    text = raw(gmail_fake, sent_draft)
+    assert HONEST in text  # the AI disclosure stays
+    assert "localhost" not in text and "/c/" not in text and "http://" not in text
+    c = card_of(owner_client)
+    assert any("PUBLIC_BASE_URL" in w for w in c["warnings"])
+    assert "localhost" not in c["sign"]["text"]
+    assert owner_client.post(f"/app/approvals/{aid}/approve").status_code == 200  # sending still works
+    with session_scope() as s:
+        assert card.sent(s) == []  # no card was issued, so none is counted
+
+
+def test_with_a_real_public_address_the_link_is_there_and_no_warning(owner_client, gmail_fake, monkeypatch):
+    s = get_settings()
+    monkeypatch.setattr(s, "public_base_url", "https://ava.example.test")
+    monkeypatch.setattr(s, "deploy_mode", "hosted")
+    aid = _queue(gmail_fake)
+    with session_scope() as sess:
+        draft = sess.get(Approval, aid).payload["draft_id"]
+    assert "https://ava.example.test/c/" in raw(gmail_fake, draft)
+    assert not any("PUBLIC_BASE_URL" in w for w in card_of(owner_client)["warnings"])
