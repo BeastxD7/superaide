@@ -459,7 +459,7 @@ def public_address(ctx: Context) -> list[Result]:
             Result(
                 name,
                 FAIL,
-                f"Links in emails would point at {links.public_base(s)}, which other people cannot open, so the card link is left out.",
+                f"Links in emails would point at {links.public_base(s)}, which other people cannot open.",
                 "Set PUBLIC_BASE_URL (and FRONTEND_ORIGIN) to the address people reach Superaide at, e.g. https://ava.example.com, and restart.",
             )
         ]
