@@ -27,6 +27,7 @@ Category = Literal[
     "chitchat",
     "triage",
     "receptionist",
+    "notify",  # a push to the owner when a channel is down: retried, failed over, listed, never twice (#491)
     # Long-term memory (#51). Retrieval, learning and the audience gate are graded in code, offline.
     "ltm_inputs",  # a fact arriving by each path (chat, Telegram, Slack, intro, file, link, correction) is kept
     "ltm_update",  # a changed fact replaces the old one; the old one is not served
@@ -124,6 +125,9 @@ class World(Strict):
     # Offline, the triage classifier isn't connected (rules only). True: it is, and answers with each
     # turn's `fake.triage` (a TriageOutput as a dict, or "budget" for a refusal).
     triage_model: bool = False
+    # Channels that are down at the start: provider -> minutes until they work again (a long one: never in this run).
+    # Pushes to them raise DeliveryFailed, and Telegram and Slack are reachable through the real notify code.
+    outage: dict[Literal["telegram", "slack"], int] = Field(default_factory=dict)
 
 
 class FakeTool(Strict):

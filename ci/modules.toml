@@ -528,7 +528,9 @@ src = [
 tests = [
   "backend/tests/proactive/**",
 ]
-e2e = []
+e2e = [
+  "e2e/tests/reminders/notify-ack.spec.ts",
+]
 
 [modules.push]
 src = [

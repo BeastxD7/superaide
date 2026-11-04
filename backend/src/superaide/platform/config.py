@@ -85,6 +85,9 @@ class Settings(BaseSettings):
     # "Typing..." on Telegram and a status or "Working on it..." placeholder on Slack while Ava prepares a
     # reply. Cosmetic only: it changes neither what is said nor who may see it. On by default; false = silent.
     typing_indicators: bool = True
+    # A push that never gets through on the owner's channel is sent on another channel they linked, and a reception
+    # note (triage off) follows the owner's interrupt preference instead of staying in the app (#491). false = app only.
+    notify_failover: bool = True
     principal_card_days: int = Field(default=30, ge=1, le=365)
     # Misses (unknown, expired or revoked card links) one address may make a minute before /p/card answers 429.
     # 0 = no limit.

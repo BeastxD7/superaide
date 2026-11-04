@@ -80,3 +80,45 @@ def test_the_note_the_owner_receives_has_the_time_and_the_name(owner_world, ava,
     assert [n.content for n in notes] == [
         "Message taken from Sam, someone new, on Slack at 16:22. Open your dashboard to read it."
     ]
+
+
+def _telegram_up(monkeypatch, outbox) -> None:
+    from superaide.proactive import notify
+
+    monkeypatch.setattr(notify, "messenger_for", lambda provider: outbox.get(provider))
+    monkeypatch.setattr(notify, "confirmed_here", lambda provider, identity: True)
+
+
+def test_a_reception_note_follows_the_owners_telegram_preference(owner_world, ava, script, outbox, monkeypatch):
+    """#491: with triage off the note used to stay in the app even for an owner who asked for Telegram."""
+    _telegram_up(monkeypatch, outbox)
+    with session_scope() as s:
+        preferences_for(s, hired_owner(s)).interrupt_channel = "telegram"
+    script.out = ReceptionTurn(reply="Noted.", take_message=TakenMessage(name="Sam Lee", topic="quote", message="x"))
+    ava.handle(hello("send quote, my account number is 4111"))
+    pushed = [m["text"] for m in outbox["telegram"].sent if m.get("stable_key") == "9001"]
+    assert len(pushed) == 1 and pushed[0].startswith("Message taken from Sam, someone new, on Slack")
+    assert "4111" not in pushed[0] and "quote" not in pushed[0]  # fixed text only
+
+
+def test_a_reception_note_stays_in_the_app_for_an_owner_who_chose_the_app(
+    owner_world, ava, script, outbox, monkeypatch
+):
+    _telegram_up(monkeypatch, outbox)
+    script.out = ReceptionTurn(reply="Noted.", take_message=TakenMessage(name="Sam Lee", topic="quote", message="x"))
+    ava.handle(hello("send quote"))
+    assert outbox["telegram"].sent == []
+    with session_scope() as s:
+        assert s.scalars(select(Event).where(Event.meta["kind"].astext == "message_taken")).all()
+
+
+def test_the_reception_note_stays_in_the_app_with_failover_off(owner_world, ava, script, outbox, monkeypatch):
+    from superaide.platform.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "notify_failover", False)
+    _telegram_up(monkeypatch, outbox)
+    with session_scope() as s:
+        preferences_for(s, hired_owner(s)).interrupt_channel = "telegram"
+    script.out = ReceptionTurn(reply="Noted.", take_message=TakenMessage(name="Sam Lee", topic="quote", message="x"))
+    ava.handle(hello("send quote"))
+    assert outbox["telegram"].sent == []

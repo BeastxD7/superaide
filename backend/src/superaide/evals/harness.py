@@ -130,6 +130,24 @@ def _client_web_tools(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
+class OutageMessenger(FakeMessenger):
+    """A chat channel that is down until `up_at`: every direct message before then fails the way a real outage does."""
+
+    def __init__(self, provider: str) -> None:
+        super().__init__()
+        self.provider = provider
+        self.up_at: datetime | None = None
+        self.refused = 0
+
+    def send_dm(self, identity: Any, text: str) -> Any:
+        if self.up_at is None or datetime.now(UTC) < self.up_at:
+            from superaide.channels.health import DeliveryFailed
+
+            self.refused += 1
+            raise DeliveryFailed(self.provider, "unreachable", f"{self.provider} is unreachable")
+        return super().send_dm(identity, text)
+
+
 class OfflineModel:
     """The fake model for offline runs: a turn's scripted `fake:` (tool calls, then a reply),
     or a bland "OK." when there is none. Learning reads no facts."""
@@ -218,6 +236,7 @@ class Run:
     error: str = ""
     seconds: float = 0.0
     budget_stop: bool = False
+    outbox: dict[str, FakeMessenger] = field(default_factory=dict)  # what each channel was asked to send
 
     @property
     def passed(self) -> bool:
@@ -544,6 +563,7 @@ def patched(
     triage: bool = False,
     triage_model: bool = False,
     learn_model: bool = False,
+    reachable: bool = False,
 ) -> Iterator[None]:
     """Background jobs build their own model client and Telegram sender: point both at ours.
     Live, Ava has a model connected (`brain_ready`), so she handles reminders herself; offline she
@@ -562,7 +582,7 @@ def patched(
     notify.send_telegram = send_telegram  # type: ignore[assignment]
     if (triage_model or learn_model) and not live:  # the scripted triage classifier counts as a connected model
         wiring.brain_ready = lambda settings: True
-    if triage:  # escalations push to the owner on Slack too: catch those in the outbox
+    if triage or reachable:  # escalations and failovers push to Slack too: catch those in the outbox
         notify.messenger_for = lambda provider: outbox.get(provider)
         notify.confirmed_here = lambda provider, identity: True
     try:
@@ -585,7 +605,9 @@ def run_scenario(sc: Scenario, *, inner: LLM | None = None, judge: Judge | None 
     live = inner is not None
     offline = OfflineModel()
     rec = Recorder(inner if inner is not None else FakeLLM(offline), sc.world.web_pages)
-    outbox = {"telegram": FakeMessenger(), "slack": FakeMessenger(), "web": FakeMessenger()}
+    outbox: dict[str, FakeMessenger] = {"telegram": FakeMessenger(), "slack": FakeMessenger(), "web": FakeMessenger()}
+    for provider in sc.world.outage:
+        outbox[provider] = OutageMessenger(provider)
     settings: Settings = get_settings().model_copy(
         update={"web_tools_enabled": bool(sc.world.web_pages), "triage_enabled": sc.world.triage_enabled}
     )
@@ -593,6 +615,11 @@ def run_scenario(sc: Scenario, *, inner: LLM | None = None, judge: Judge | None 
 
     reset_db()
     run = Run(sc, start=start_time(sc))
+    run.outbox = outbox
+    for provider, minutes in sc.world.outage.items():
+        down = outbox[provider]
+        assert isinstance(down, OutageMessenger)
+        down.up_at = run.start + timedelta(minutes=minutes)
     live_settings = get_settings()
     protocol_before = live_settings.task_protocol_enabled
     live_settings.task_protocol_enabled = sc.world.task_protocol
@@ -601,7 +628,15 @@ def run_scenario(sc: Scenario, *, inner: LLM | None = None, judge: Judge | None 
     clock = traveller.start()
     try:
         with (
-            patched(rec, outbox, live, sc.world.triage_enabled, sc.world.triage_model, sc.world.learn_model),
+            patched(
+                rec,
+                outbox,
+                live,
+                sc.world.triage_enabled,
+                sc.world.triage_model,
+                sc.world.learn_model,
+                bool(sc.world.outage),
+            ),
             _many_owners(sc.world.second_owner),
         ):
             clock.shift(timedelta(days=-1))
