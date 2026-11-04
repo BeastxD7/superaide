@@ -1,7 +1,7 @@
 """approval_event: counts and timings of approval cards, no text or names (#407)
 
-Revision ID: 0090
-Revises: 0089
+Revision ID: 0091
+Revises: 0090
 Create Date: 2026-11-04 22:30:00.000000
 
 """
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0090"
-down_revision: str | Sequence[str] | None = "0089"
+revision: str = "0091"
+down_revision: str | Sequence[str] | None = "0090"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
