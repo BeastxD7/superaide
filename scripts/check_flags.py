@@ -57,7 +57,9 @@ def code_flags() -> dict[str, bool | None]:
                     ann = ast.unparse(stmt.annotation)
                     if ann == "bool" or name.upper().endswith("_ENABLED"):
                         v = stmt.value
-                        out[name.upper()] = v.value if isinstance(v, ast.Constant) and isinstance(v.value, bool) else None
+                        out[name.upper()] = (
+                            v.value if isinstance(v, ast.Constant) and isinstance(v.value, bool) else None
+                        )
     return out
 
 
@@ -112,7 +114,9 @@ def problems(today: date | None = None) -> list[str]:
     for n in sorted(set(names) - set(code)):
         out.append(f"flags.toml: {n} is in the registry but is not a flag in config.py (delete the entry)")
     if len(flags) > reg.get("budget", 0):
-        out.append(f"flags.toml: {len(flags)} flags is above the budget of {reg.get('budget')} (delete one, never raise it)")
+        out.append(
+            f"flags.toml: {len(flags)} flags is above the budget of {reg.get('budget')} (delete one, never raise it)"
+        )
     for f in flags:
         n = f.get("name", "?")
         if not f.get("owner"):
@@ -135,13 +139,17 @@ def problems(today: date | None = None) -> list[str]:
             if (due - added).days > MAX_DAYS:
                 out.append(f"flags.toml: {n} remove_by {due} is more than {MAX_DAYS} days after added {added}")
             if due < today:
-                out.append(f"flags.toml: {n} is overdue: remove_by {due} has passed (promote it to stable or delete it)")
+                out.append(
+                    f"flags.toml: {n} is overdue: remove_by {due} has passed (promote it to stable or delete it)"
+                )
         if n in code and code[n] is not None and code[n] != f.get("default"):
             out.append(f"flags.toml: {n} default {f.get('default')} differs from the code default {code[n]}")
     if not out:
         example = EXAMPLE.read_text()
         if splice(example, render_index(reg)) != example:
-            out.append("backend/.env.example: the FEATURE FLAGS index differs from flags.toml (run scripts/check_flags.py --write)")
+            out.append(
+                "backend/.env.example: the FEATURE FLAGS index differs from flags.toml (run scripts/check_flags.py --write)"
+            )
         if not FLAGS_DOC.exists() or FLAGS_DOC.read_text() != render_doc(reg):
             out.append("docs/flags.md differs from flags.toml (run scripts/check_flags.py --write)")
     return out
