@@ -29,6 +29,7 @@ from superaide.memory.knowledge.store import add_contact, contacts_of, preferenc
 from superaide.memory.models import Document, Event, MemoryItem, Onboarding
 from superaide.memory.store import get_or_create_context, log_event
 from superaide.platform.audit import audit
+from superaide.reception.api import first_name_shared, set_first_name_shared
 
 # "brain" comes first, but only for owners who have no AI yet (it is skipped when a model is ready, and when
 # the operator forced offline mode): the owner chooses Superaide AI credits, their own key, or to set it up
@@ -61,12 +62,14 @@ DIGESTS = [
     {"value": "none", "label": "No digest"},
 ]
 SHARE_OPTIONS = [
+    {"value": "first_name", "label": "Your first name"},
     {"value": "availability", "label": "Whether you're free or busy, without details"},
     {"value": "in_meeting", "label": "That you're in a meeting or travelling"},
     {"value": "work_email", "label": "Your work email"},
     {"value": "company_role", "label": "Your company and role"},
     {"value": "office_city", "label": "Which city you work from"},
 ]
+NAME_OPTION = "first_name"
 SHARE_LABELS = {o["value"]: o["label"] for o in SHARE_OPTIONS}
 RULES = [
     "I'm an AI, and I'll always say so to anyone I talk to.",
@@ -252,10 +255,12 @@ class Onboarder:
             }
         if step == "share":
             pref = preferences_for(session, person)
+            saved = [v for v in pref.shareable if v != NAME_OPTION]
             return {
                 "kind": "share",
                 "options": SHARE_OPTIONS,
-                "selected": pref.shareable if answers.get("share_saved") else ["availability", "in_meeting"],
+                "selected": (saved if answers.get("share_saved") else ["availability", "in_meeting"])
+                + ([NAME_OPTION] if first_name_shared(session, person) else []),
                 "never": pref.never_share,
                 "never_placeholder": "Anything I must never share? e.g. my phone number, my family's details",
                 "submit": "That's what you can share",
@@ -458,10 +463,12 @@ class Onboarder:
             else:
                 offered = [v for v in _list(payload.get("shareable")) if isinstance(v, str) and v in SHARE_LABELS]
                 chosen = list(dict.fromkeys(offered))  # each once, in the order given
+            said = "; ".join(SHARE_LABELS[c] for c in chosen) or "Nothing for now"
+            set_first_name_shared(session, person, NAME_OPTION in chosen)  # off unless ticked (owner decision, #475)
+            chosen = [c for c in chosen if c != NAME_OPTION]  # the name lives on the receptionist's own switch
             pref.shareable = chosen
             pref.never_share = _text(payload.get("never"), 1000)
             answers["share_saved"] = True
-            said = "; ".join(SHARE_LABELS[c] for c in chosen) or "Nothing for now"
             self._hear(session, person, said + (f". Never share: {pref.never_share}" if pref.never_share else ""))
             if pref.never_share:
                 remember_fact(

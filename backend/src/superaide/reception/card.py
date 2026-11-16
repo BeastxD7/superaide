@@ -21,7 +21,7 @@ from superaide.memory.models import OwnerPreference
 # Where the owner edits it, named as the app's own nav shows it. One place so the wording cannot drift.
 PLACE = "Settings → People you don't know → Your share card"
 SETTINGS_PATH = "/dashboard/settings#share-card"
-NUDGE_EVERY = timedelta(hours=24)
+NUDGE_EVERY = timedelta(days=7)  # owner decision (#475): once a week, not once a day
 _EMAIL = re.compile(r"^[^@\s,;<>]{1,64}@[^@\s,;<>]{1,190}\.[^@\s,;<>]{2,}$")
 
 

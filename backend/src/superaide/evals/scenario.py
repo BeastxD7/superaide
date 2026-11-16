@@ -120,6 +120,7 @@ class World(Strict):
     receptionist: bool = True
     reception_profile: str = ""  # the owner's public profile text
     reception_show_name: bool = False  # may Ava say the owner's first name to people she doesn't know
+    reception_card: dict[str, Any] = Field(default_factory=dict)  # the owner's share-card columns, e.g. card_company
     reception_limits: dict[str, int] = Field(default_factory=dict)  # per_hour / per_day for one unknown sender
     triage_settings: dict[str, Any] = Field(default_factory=dict)  # any other triage_settings column
     # Offline, the triage classifier isn't connected (rules only). True: it is, and answers with each
