@@ -1,26 +1,53 @@
 {
-  "generated_at": "2026-10-22T09:26:18+00:00",
+  "generated_at": "2026-11-16T12:35:05+00:00",
   "mode": "offline",
   "model": "fake",
   "k": 1,
   "cost_usd": 0.0,
   "projection": "",
   "overall": {
-    "scenarios": 0,
-    "mean": null,
-    "pass_k": null
+    "scenarios": 3,
+    "mean": 1.0,
+    "pass_k": 1.0
   },
-  "categories": {},
+  "categories": {
+    "ltm_time": {
+      "scenarios": 3,
+      "known_gaps": 0,
+      "mean": 1.0,
+      "pass_k": 1.0
+    }
+  },
   "scenarios": [
     {
-      "id": "xchan-no-recycled-hedges",
-      "category": "cross_channel",
+      "id": "ltm-time-not-yet-started",
+      "category": "ltm_time",
+      "severity": "medium",
+      "known_gap": "",
+      "passes": 1,
+      "k": 1,
+      "cost_usd": 0.0,
+      "skipped_checks": 0
+    },
+    {
+      "id": "ltm-time-chat-start-date-not-served-early",
+      "category": "ltm_time",
+      "severity": "high",
+      "known_gap": "",
+      "passes": 1,
+      "k": 1,
+      "cost_usd": 0.0,
+      "skipped_checks": 0
+    },
+    {
+      "id": "ltm-time-chat-end-date-stops-serving",
+      "category": "ltm_time",
       "severity": "critical",
       "known_gap": "",
       "passes": 1,
       "k": 1,
       "cost_usd": 0.0,
-      "skipped_checks": 6
+      "skipped_checks": 0
     }
   ],
   "failures": []
