@@ -53,6 +53,7 @@ typecheck: ## Type-check backend (mypy) and frontend (tsc)
 
 check-env: ## Every environment variable the app reads is in the .env.example files
 	python3 scripts/check_env_example.py
+	python3.14 scripts/check_flags.py
 
 openapi: ## Regenerate backend/openapi.snapshot.json after an API change (CI runs the full e2e when it changes)
 	$(BACKEND) uv run python scripts/openapi_snapshot.py
