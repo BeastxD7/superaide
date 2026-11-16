@@ -208,6 +208,46 @@ class ConsolidationRun(Scoped, Base):
     restored_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class ConsolidationChange(Scoped, Base):
+    """One thing the nightly job did to one of the owner's notes, or the owner's undo of it (#415). Append-only.
+
+    The job never deletes: `kind` is duplicate | near_duplicate | contradiction (a note retired by the job) or
+    undo (a compensating write that puts the fields in `before` back). `before` and `after` hold only the fields
+    the job touches (`retired` and `keeper`: valid_to, superseded_by, confidence, source_event_ids); the note
+    text lives once, in `memory_item`, so forgetting or erasing a note leaves no second copy here. A change is
+    "undone" when a row with `undoes_id` pointing at it exists; nothing here is ever updated or deleted.
+    """
+
+    __tablename__ = "consolidation_change"
+    __table_args__ = (
+        Index(
+            "ix_consolidation_change_owner_created",
+            "agent_id",
+            "owner_person_id",
+            text("created_at DESC"),
+            text("id DESC"),
+        ),
+        Index("ix_consolidation_change_run", "run_id"),
+        Index(
+            "ux_consolidation_change_undoes", "undoes_id", unique=True, postgresql_where=text("undoes_id IS NOT NULL")
+        ),
+    )
+
+    run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("consolidation_run.id"))
+    owner_person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"))
+    kind: Mapped[str] = mapped_column(String(20))
+    memory_id: Mapped[uuid.UUID] = mapped_column()  # the note that was retired (or restored)
+    kept_id: Mapped[uuid.UUID | None] = mapped_column(
+        nullable=True
+    )  # the note that stays; for a merge it absorbs sources
+    reason: Mapped[str] = mapped_column(Text, default="")
+    decided_by: Mapped[str] = mapped_column(String(8), default="code")  # code | model | owner
+    source: Mapped[str] = mapped_column(String(40), default="")  # where the retired note came from
+    before: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    after: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    undoes_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+
+
 class MemoryImport(Scoped, Base):
     """One memory passport the owner imported: what came in, so it can be previewed and erased as a set."""
 

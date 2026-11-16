@@ -39,7 +39,8 @@ from superaide.identity.trust import Trust
 from superaide.intentions.service import owner_zone
 from superaide.intentions.when import zone
 from superaide.jobs.queue import enqueue, handler
-from superaide.memory.models import ConsolidationRun, Context, Episode, Event, MemoryItem
+from superaide.memory.consolidation import changes
+from superaide.memory.models import ConsolidationChange, ConsolidationRun, Context, Episode, Event, MemoryItem
 from superaide.platform.audit import audit
 from superaide.platform.config import get_settings
 
@@ -258,12 +259,14 @@ def tidy(
     run.retired_ids = [d.id for _, d, _ in pairs]
     session.flush()
     for keeper, dup, kind in pairs:
+        before = changes.snapshot(dup, keeper)
         keeper.source_event_ids = sorted({*(keeper.source_event_ids or []), *(dup.source_event_ids or [])})
         if kind != "contradiction":
             keeper.confidence = max(keeper.confidence, dup.confidence)
         else:
             dup.superseded_by = keeper.id
-        dup.valid_to = now
+        dup.valid_to = now  # retired, never deleted: the row and its sources stay until the owner forgets it
+        changes.record(session, run, kind, dup, keeper, before, changes.snapshot(dup, keeper))
         audit(session, "memory", "consolidated", memory_id=dup.id, kept=keeper.id, run_id=run.id, kind=kind)
     return len(pairs)
 
@@ -273,6 +276,17 @@ def restore(session: Session, run_id: uuid.UUID) -> int:
     run = session.get(ConsolidationRun, run_id)
     if run is None or run.restored_at is not None:
         return 0
+    n = changes.undo_run(session, run)
+    if n == 0 and not session.scalar(
+        select(func.count()).select_from(ConsolidationChange).where(ConsolidationChange.run_id == run.id)
+    ):
+        n = _restore_legacy(session, run)  # a run from before the change log: its pre-image is in `snapshot`
+    run.restored_at = datetime.now(UTC)
+    audit(session, "memory", "consolidation_restored", run_id=run.id, restored=n)
+    return n
+
+
+def _restore_legacy(session: Session, run: ConsolidationRun) -> int:
     n = 0
     for item_id in run.retired_ids:
         m = session.get(MemoryItem, item_id)
@@ -281,8 +295,6 @@ def restore(session: Session, run_id: uuid.UUID) -> int:
             if any(e.get("id") == str(item_id) and e.get("kind") == "contradiction" for e in run.snapshot):
                 m.superseded_by = None
             n += 1
-    run.restored_at = datetime.now(UTC)
-    audit(session, "memory", "consolidation_restored", run_id=run.id, restored=n)
     return n
 
 
