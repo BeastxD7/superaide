@@ -34,6 +34,7 @@ export function NotebookPage() {
   const mirror = useAppData<{ enabled: boolean }>('/mirror')
   // Conversation summaries from the nightly job: 404 while it is off, so the link shows only when it answers.
   const episodes = useAppData<{ episodes: unknown[] }>('/episodes')
+  const tidy = useAppData<{ items: unknown[] }>('/tidy')
   const [filter, setFilter] = useState<string>('all')
   const [where, setWhere] = useState<string>('all')
   const [query, setQuery] = useState('')
@@ -190,6 +191,15 @@ export function NotebookPage() {
             className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-sm font-medium text-ink hover:bg-surface"
           >
             <MessagesSquare className="size-4 text-violet-700" aria-hidden /> Conversations: what {name} summarised overnight
+          </Link>
+        )}
+
+        {tidy.data && (
+          <Link
+            href="/dashboard/notebook/tidy"
+            className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-sm font-medium text-ink hover:bg-surface"
+          >
+            <Sparkles className="size-4 text-violet-700" aria-hidden /> What {name} tidied last night, with Undo
           </Link>
         )}
 
