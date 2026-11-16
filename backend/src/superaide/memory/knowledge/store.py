@@ -96,6 +96,8 @@ def remember_fact(
     trust_rank: int | None = None,
     author_person_id: Any = None,
     source_ref: str | None = None,
+    valid_from: datetime | None = None,
+    valid_to: datetime | None = None,
 ) -> MemoryItem | None:
     """Store one fact about the owner. Returns None if the same fact is already known (with the Echo Filter
     on, a repeat from a *different* root origin is still noted on the known fact). Its trust rank comes from its
@@ -136,6 +138,10 @@ def remember_fact(
         conflict_status="review" if trust.needs_review(source, category) else "none",
         source_ref=source_ref,
     )
+    if valid_from is not None:
+        item.valid_from = valid_from  # not served before it starts (memory_filter)
+    if valid_to is not None:
+        item.valid_to = valid_to  # not served once it has passed
     session.add(item)
     session.flush()
     if hearsay:
@@ -154,7 +160,9 @@ def supersede(session: Session, old: MemoryItem, new: MemoryItem) -> bool:
     if old.valid_to is not None:
         return True
     if new.trust_rank <= old.trust_rank and not old.locked:  # a locked fact only the owner may replace
-        old.valid_to = datetime.now(UTC)
+        now = datetime.now(UTC)
+        # A successor that starts later ("manager from next month") leaves the old note true until then.
+        old.valid_to = new.valid_from if new.valid_from > now else now
         old.superseded_by = new.id
         audit(session, "memory", "superseded", memory_id=old.id, by=new.id)
         return True

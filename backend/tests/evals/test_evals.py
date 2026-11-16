@@ -202,7 +202,7 @@ def test_time_scoped_gate_fails_when_recall_ignores_the_end_date(monkeypatch: py
 
     real = recall.memory_filter
     long_ago = datetime(2000, 1, 1, tzinfo=UTC)  # "now" far in the past: every end date is still ahead
-    monkeypatch.setattr(recall, "memory_filter", lambda aud, now=None: real(aud, long_ago))
+    monkeypatch.setattr(recall, "memory_filter", lambda aud, now=None: real(aud, long_ago, unstarted=True))
     regressions, _ = compare(_ltm_results(), load_baseline())
     assert any("ltm-time-not-served-after-the-end" in r for r in regressions), regressions
 

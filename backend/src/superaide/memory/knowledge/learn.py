@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 import re
 import uuid
+from datetime import UTC, date, datetime, time, timedelta, tzinfo
 from types import SimpleNamespace
 
 from sqlalchemy import select
@@ -20,7 +21,7 @@ from superaide.brain import keyhealth
 from superaide.identity.models import Person
 from superaide.jobs.models import Job
 from superaide.jobs.queue import enqueue, handler
-from superaide.memory.knowledge.facts import extract_facts
+from superaide.memory.knowledge.facts import Fact, extract_facts
 from superaide.memory.knowledge.store import channel_source, find_same_fact, remember_fact, supersede
 from superaide.memory.models import Context, Event, MemoryItem
 from superaide.platform.audit import audit
@@ -80,7 +81,8 @@ def learn(session: Session, job: Job) -> None:
     from superaide.intentions.service import owner_zone
     from superaide.intentions.when import zone
 
-    local = event.created_at.astimezone(zone(owner_zone(session, owner)))
+    tz = zone(owner_zone(session, owner))
+    local = event.created_at.astimezone(tz)
     near = neighbours(session, owner, event.content)
     facts = extract_facts(
         agent,
@@ -110,10 +112,12 @@ def learn(session: Session, job: Job) -> None:
                 same.document_id = None
             merged += 1
             continue
+        dates = validity(f, tz, event.created_at)
         item = remember_fact(
             session, owner=owner, content=f.content, category=f.category, source=source,
             confidence=f.confidence, origin_context_id=event.context_id,
             importance=f.importance, time_bound=f.time_bound,
+            valid_from=dates.get("valid_from"), valid_to=dates.get("valid_to"),
         )  # fmt: skip
         if item is None:
             continue
@@ -123,6 +127,29 @@ def learn(session: Session, job: Job) -> None:
         if old is not None and old.valid_to is None and supersede(session, old, item):
             superseded += 1  # the owner changed their mind: the old fact retires, queryable by valid time
     audit(session, "memory", "learned_from_chat", event_id=event.id, facts=kept, merged=merged, superseded=superseded)
+
+
+def _day(text: str | None) -> date | None:
+    try:
+        return date.fromisoformat(text.strip()[:10]) if text else None
+    except ValueError:
+        return None  # the model wrote something that is not a date: keep the fact, without dates
+
+
+def validity(f: Fact, tz: tzinfo, said_at: datetime) -> dict[str, datetime]:
+    """valid_from / valid_to for a learned fact, from the dates the extractor read (YYYY-MM-DD, the owner's
+    calendar). The last day counts in full, so the note ends at the start of the day after it. A start that is
+    not in the future is ignored (it is already true), and a start at or after the end is dropped as nonsense."""
+    out: dict[str, datetime] = {}
+    last = _day(f.valid_to)
+    if last is not None:
+        out["valid_to"] = datetime.combine(last + timedelta(days=1), time.min, tzinfo=tz).astimezone(UTC)
+    first = _day(f.valid_from)
+    if first is not None:
+        start = datetime.combine(first, time.min, tzinfo=tz).astimezone(UTC)
+        if start > said_at and ("valid_to" not in out or start < out["valid_to"]):
+            out["valid_from"] = start
+    return out
 
 
 def _owner_only(item: MemoryItem, owner: Person) -> bool:
