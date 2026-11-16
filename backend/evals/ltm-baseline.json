@@ -35,7 +35,7 @@
   "ltm-time-expired-note-kept-in-history": "pass",
   "ltm-time-file-cannot-overturn-the-owner": "pass",
   "ltm-time-newer-file-fact-from-owner-link": "pass",
-  "ltm-time-no-replaces-id-keeps-both": "known_gap",
+  "ltm-time-no-replaces-id-keeps-both": "pass",
   "ltm-time-not-served-after-the-end": "pass",
   "ltm-time-not-yet-started": "known_gap",
   "ltm-time-replace-chain": "pass",

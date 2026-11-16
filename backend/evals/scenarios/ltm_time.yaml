@@ -166,7 +166,6 @@
   category: ltm_time
   severity: high
   title: 'A change the extractor did not link to the old note ("moved to Pune") does not leave "lives in Mumbai" served'
-  known_gap: 'supersession needs the extractor to name the old note (`replaces`); without it two contradicting notes are both live; tracked in #555'
   world:
     learn_model: true
     memories:

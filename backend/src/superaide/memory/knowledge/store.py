@@ -8,6 +8,7 @@ from. Owner facts are private to the owner unless marked shareable.
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 from typing import Any
 
@@ -73,6 +74,50 @@ def find_same_fact(
         ).all()
     for row, sc in rows:
         if normalise(row.content) == norm or (similarity is not None and sc >= similarity):
+            return row
+    return None
+
+
+# Attributes a person has only one value of at a time. "X lives in Pune" contradicts "X lives in Mumbai";
+# "X likes tea" does not contradict "X likes pizza", so only these predicates are compared (#555).
+_SINGLE_VALUED = re.compile(
+    r"^(?P<subject>.+?)\s+(?P<attr>lives in|is based in|is located in|works at|works for|is moving to|moved to"
+    r"|is the (?:ceo|cto|cfo|coo|manager|head|director|founder|owner) of|'s (?:manager|city|employer) is)\s+"
+    r"(?P<value>.+?)\.?$",
+    re.I,
+)
+
+
+def _slot(content: str) -> tuple[str, str, str] | None:
+    from superaide.memory.recall.lexicon import normalise
+
+    m = _SINGLE_VALUED.match(" ".join(content.split()))
+    if m is None:
+        return None
+    return normalise(m["subject"]), normalise(m["attr"]), normalise(m["value"])
+
+
+def find_contradicted_fact(session: Session, owner: Person, content: str) -> MemoryItem | None:
+    """A live fact about the owner that gives a different value for the same single-valued attribute of
+    the same subject ("lives in Mumbai" against "lives in Pune"), found in code so a missed `replaces`
+    from the model cannot leave both served (#555). None when the new fact has no such slot."""
+    slot = _slot(content)
+    if slot is None:
+        return None
+    rows = session.scalars(
+        select(MemoryItem)
+        .where(
+            MemoryItem.valid_to.is_(None),
+            MemoryItem.conflict_status == "none",
+            MemoryItem.agent_id == owner.agent_id,
+            MemoryItem.subject_person_ids.contains([owner.id]),
+        )
+        .order_by(MemoryItem.created_at.desc())
+        .limit(500)
+    )
+    for row in rows:
+        old = _slot(row.content)
+        if old is not None and old[:2] == slot[:2] and old[2] != slot[2]:
             return row
     return None
 
