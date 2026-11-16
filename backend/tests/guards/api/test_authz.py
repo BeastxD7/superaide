@@ -57,6 +57,7 @@ FLAG_GATED = {
     ("GET", "/app/import-leases"),  # IMPORT_LEASE_ENABLED (#133)
     ("GET", "/app/mirror"),  # "The Mirror" (MIRROR_ENABLED)
     ("GET", "/app/episodes"),  # conversation summaries of the sleep job (SLEEP_JOB_ENABLED)
+    ("GET", "/app/tidy"),  # what the sleep job changed, with undo (SLEEP_JOB_ENABLED, #415)
     ("GET", "/app/identity-claims"),  # IDENTITY_CLAIM_REVIEW (#93)
     ("GET", "/app/brain/share-links"),  # the Glass brain share link (BRAIN_SHARE_ENABLED)
     ("GET", "/app/skill-releases"),  # SKILL_COOLDOWN_ENABLED (#129)
@@ -444,6 +445,21 @@ def test_the_episode_routes_are_owner_routes_behind_a_flag(app, browser, owner_d
     stranger = browser()
     signup(stranger, name="Mallory Tan", email="mallory@example.com")
     for method, path in EPISODE_ROUTES:
+        r = stranger.request(method, fill_path(path), json={} if method == "POST" else None)
+        assert r.status_code == 403
+        _assert_no_owner_data(r, owner_data)
+
+
+# --- what the sleep job tidied (/app/tidy, SLEEP_JOB_ENABLED) ---------------------------------
+
+TIDY_ROUTES = {("GET", "/app/tidy"), ("POST", "/app/tidy/{change_id}/undo")}
+
+
+def test_the_tidy_routes_are_owner_routes_behind_a_flag(app, browser, owner_data):
+    assert TIDY_ROUTES <= set(owner_routes(app))
+    stranger = browser()
+    signup(stranger, name="Mallory Tan", email="mallory@example.com")
+    for method, path in TIDY_ROUTES:
         r = stranger.request(method, fill_path(path), json={} if method == "POST" else None)
         assert r.status_code == 403
         _assert_no_owner_data(r, owner_data)
