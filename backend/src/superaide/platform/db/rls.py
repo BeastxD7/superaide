@@ -34,6 +34,7 @@ TABLES: tuple[str, ...] = (
     "calendar_watch",  # Google Calendar push channels
     "channel_identity",
     "channel_invite",
+    "consolidation_change",  # what the sleep job changed and the owner's undo, append-only (#415)
     "consolidation_run",  # the sleep job's pre-images (#50)
     "contact",
     "context",
