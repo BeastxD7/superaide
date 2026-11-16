@@ -8,6 +8,7 @@ from. Owner facts are private to the owner unless marked shareable.
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 from typing import Any
 
@@ -45,6 +46,18 @@ def channel_source(provider: str | None) -> str:
 
 DUPLICATE_SIMILARITY = 0.8  # pg_trgm similarity at which two of the owner's facts are one
 
+_MONTHS = (
+    "january february march april may june july august september october november december "
+    "jan feb mar apr jun jul aug sep sept oct nov dec"
+).split()
+_FIGURE = re.compile(r"\d+(?:[.,]\d+)*|\b(?:" + "|".join(_MONTHS) + r")\b", re.I)
+
+
+def figures(text: str) -> frozenset[str]:
+    """Every number and month in a fact ("12 December", "90 lakh"): the words that make two near-identical
+    sentences different facts. Thousands separators are ignored ("1,50,000" = "150000")."""
+    return frozenset(m.group(0).lower().replace(",", "") for m in _FIGURE.finditer(text))
+
 
 def find_same_fact(
     session: Session, owner: Person, content: str, *, similarity: float | None = DUPLICATE_SIMILARITY
@@ -72,7 +85,11 @@ def find_same_fact(
             select(MemoryItem, literal(0.0, Float)).where(live).order_by(MemoryItem.created_at.desc()).limit(500)
         ).all()
     for row, sc in rows:
-        if normalise(row.content) == norm or (similarity is not None and sc >= similarity):
+        if normalise(row.content) == norm:
+            return row
+        # Close by trigrams is "said again" only when both agree on every number and date: "moved to 19 December"
+        # is a correction of "12 December", not a repeat of it (#554).
+        if similarity is not None and sc >= similarity and figures(row.content) == figures(content):
             return row
     return None
 

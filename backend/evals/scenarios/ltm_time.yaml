@@ -218,7 +218,6 @@
   category: ltm_time
   severity: critical
   title: 'The same sentence with one date changed ("12 December" to "19 December") replaces the old note'
-  known_gap: 'the learner merges a fact into any note that is 80% similar by trigrams, so a correction that changes one date or number is dropped as "said again" (the extractor even names the old note in `replaces`); tracked in #554'
   world:
     learn_model: true
     memories:
@@ -235,7 +234,6 @@
   category: ltm_time
   severity: critical
   title: 'The same sentence with one number changed ("90 lakh" to "80 lakh") replaces the old note'
-  known_gap: 'same cause as ltm-time-corrected-date-is-not-a-duplicate (#554): the correction is merged into the old note by trigram similarity'
   world:
     learn_model: true
     memories:
