@@ -219,12 +219,12 @@ def test_pass_rate_threshold_for_a_category():
     assert 0 < MIN_PASS_RATE["ltm_time"] < 1
 
 
-def test_the_time_scoped_category_has_at_least_fifteen_scenarios_with_gaps_tracked():
+def test_the_time_scoped_category_has_at_least_fifteen_scenarios():
     from superaide.evals.gate import ltm_scenarios
 
     mine = [s for s in ltm_scenarios() if s.category == "ltm_time"]
     assert len(mine) >= 15
-    assert all(s.known_gap for s in mine if s.id.endswith(("not-yet-started", "is-not-a-duplicate")))
+    # Known gaps are tracked in evals/ltm-baseline.json, which the gate test compares against.
 
 
 # --- end-to-end ingestion scenarios (#51) -------------------------------------------------------
