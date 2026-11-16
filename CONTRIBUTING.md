@@ -46,7 +46,7 @@ uv run pytest tests/identity/test_footprint.py              # a file
 uv run pytest tests/identity/test_footprint.py -k name      # one test, by part of its name
 cd ..
 make test MODULE=identity                                    # a whole module plus what depends on it (ci/modules.toml)
-python3 scripts/select_tests.py --base origin/main --head HEAD   # what CI will run for your branch
+uv run --project backend python scripts/select_tests.py --base origin/main --head HEAD   # what CI will run for your branch
 
 # one Playwright spec (needs `make build` once, and the same Postgres; starts its own API and web on slot 0)
 cd e2e && npx playwright test tests/web-shell/smoke.spec.ts --project=desktop
