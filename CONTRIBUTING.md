@@ -144,6 +144,10 @@ These come from the architecture and are checked in review:
 - Schema changes: edit `db/models.py`, run `make migration m="what changed"`, and read the generated file. Migrations are numbered (`0028_…`); if two branches add the same number, renumber yours. CI fails if models and migrations differ or there is more than one head.
 - New `/app` routes must be classified in `tests/guards/api/test_authz.py` (public, account-only, flag-gated or owner).
 
+## Dependencies
+
+Upstream versions move fast (Python 3.14, Next.js 16, React 19), so they are taken on a schedule: Dependabot opens one grouped pull request per ecosystem every Monday, a Canary workflow tries the next Python and Node (allowed to fail), and a monthly issue sends you through the changelogs of the five riskiest dependencies. Lockfiles are committed and installed as written (`uv sync --locked`, `npm ci`); an exact pin needs a comment saying why. The routine, the checklist and the lockfile rules are in [docs/dependencies.md](docs/dependencies.md); `make check-env` runs the policy check.
+
 ## Frontend
 
 - Next.js 16 (App Router), React 19, TypeScript (strict), Tailwind CSS and shadcn/ui. Next 16 differs from older versions: check the docs bundled in `frontend/node_modules/next/dist/docs/` (see `frontend/AGENTS.md`).

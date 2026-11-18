@@ -1,0 +1,117 @@
+name: Canary
+
+# Early warning for upstream churn (issue #418, docs/dependencies.md). Weekly: the backend tests on the next Python and
+# the frontend build on the next Node, installed from the committed lockfiles. Both jobs are ALLOWED TO FAIL
+# (continue-on-error): a red canary is a warning to read, never a block on a pull request or a merge.
+# On the first of the month it also opens the "Monthly dependency review" issue.
+on:
+  schedule:
+    - cron: "17 4 * * 1" # Mondays
+    - cron: "37 4 1 * *" # the first of the month
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: canary
+  cancel-in-progress: true
+
+env:
+  PYTHON_NEXT: "3.15" # the Python minor after the one CI runs
+  NODE_NEXT: "26" # the Node major after the one CI runs (24)
+
+jobs:
+  python-next:
+    name: Backend tests on the next Python (allowed to fail)
+    if: github.event.schedule != '37 4 1 * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: agent
+          POSTGRES_PASSWORD: agent
+          POSTGRES_DB: agent
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U agent -d agent"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://agent:agent@localhost:5432/agent
+      TEST_DATABASE_URL: postgresql+psycopg://agent:agent@localhost:5432/agent_test
+      PGPASSWORD: agent
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.11.32"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: Install the next Python and the locked dependencies
+        run: |
+          uv python install "$PYTHON_NEXT"
+          uv sync --locked --python "$PYTHON_NEXT"
+          uv run --python "$PYTHON_NEXT" python --version
+
+      - name: Tests
+        run: |
+          psql -h localhost -U agent -d agent -c "CREATE DATABASE agent_test"
+          uv run --python "$PYTHON_NEXT" pytest -n auto -q
+
+  node-next:
+    name: Frontend build on the next Node (allowed to fail)
+    if: github.event.schedule != '37 4 1 * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_NEXT }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm test
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+
+  monthly-review:
+    name: Open the monthly dependency review
+    if: github.event.schedule == '37 4 1 * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Open the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="Monthly dependency review $(date -u +%Y-%m)"
+          if [ -n "$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[].number')" ]; then
+            echo "Already open: $title"; exit 0
+          fi
+          gh issue create --title "$title" --label dependencies --label "area:ci" \
+            --body "Work through the checklist in docs/dependencies.md (section 'Monthly review checklist'): changelogs of the five riskiest dependencies, the last four canary runs, stale Dependabot pull requests, held majors, lockfiles install clean, runtime end-of-life dates. Close this issue when done."
