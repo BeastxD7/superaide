@@ -1627,7 +1627,14 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             owner = require(s, Person, person_id)
             try:
                 results = batching.decide(
-                    s, ids=body.ids, digest=body.digest, approve=verdict == "approve", decided_by=owner.display_name
+                    s,
+                    ids=body.ids,
+                    digest=body.digest,
+                    approve=verdict == "approve",
+                    decided_by=owner.display_name,
+                    resolve=resolve,
+                    approval_error=ApprovalError,
+                    brake_engaged=lambda sess: brake.state(sess).engaged,
                 )
             except batching.BatchError as exc:
                 raise HTTPException(exc.status, str(exc)) from exc

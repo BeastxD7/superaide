@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -123,12 +124,20 @@ def groups(session: Session) -> list[Group]:
 
 
 def decide(
-    session: Session, *, ids: list[uuid.UUID], digest: str, approve: bool, decided_by: str
+    session: Session,
+    *,
+    ids: list[uuid.UUID],
+    digest: str,
+    approve: bool,
+    decided_by: str,
+    resolve: Callable[..., Approval],
+    approval_error: type[Exception],
+    brake_engaged: Callable[[Session], bool],
 ) -> list[dict[str, Any]]:
-    """Decide a whole batch or nothing. Raises BatchError (and decides nothing) when the set or content changed."""
+    """Decide a whole batch or nothing. Raises BatchError (and decides nothing) when the set or content changed.
+    The caller hands in `policy.actions.resolve`, its ApprovalError and the brake check: approvals must not import
+    policy (policy imports approvals), so the dependency points the other way."""
     from superaide.platform.config import get_settings
-    from superaide.policy import brake
-    from superaide.policy.actions import ApprovalError, resolve
 
     if len(set(ids)) != len(ids) or not MIN_GROUP <= len(ids) <= limit():
         raise BatchError(422, "A batch is two or more different requests.")
@@ -140,7 +149,7 @@ def decide(
         audit(session, "policy", "approval_batch_refused", approval_ids=[str(i) for i in ids])
         session.commit()  # keep the audit line
         raise BatchError(409, "These requests changed since you looked. Nothing was decided; look again.")
-    if approve and get_settings().rubber_stamp_brake_enabled and brake.state(session).engaged:
+    if approve and get_settings().rubber_stamp_brake_enabled and brake_engaged(session):
         raise BatchError(422, "You have been approving fast. Open each card and give a reason, or say no to the batch.")
     audit(
         session,
@@ -154,7 +163,7 @@ def decide(
     for a in items:
         try:
             resolve(session, a, approve=approve, decided_by=decided_by, via="app")
-        except ApprovalError as exc:  # one item already decided elsewhere: report it, carry on with the rest
+        except approval_error as exc:  # one item already decided elsewhere: report it, carry on with the rest
             out.append({"id": str(a.id), "status": a.status, "result": str(exc)})
             continue
         out.append({"id": str(a.id), "status": a.status, "result": (a.payload or {}).get("result")})
