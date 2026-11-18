@@ -53,4 +53,4 @@ Cold start (`e2e/scripts/ttfr-cold-start.mjs`): `install_backend`, `install_fron
 3. Self-hosting needs an AI key obtained outside the app before the first reply; the machine time is small
    (about a minute) but this human step is not measured at all.
 
-Each is filed as an issue; fixing them is out of scope here.
+Filed as #599, #600 and #601; fixing them is out of scope here.
