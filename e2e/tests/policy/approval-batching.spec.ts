@@ -74,6 +74,7 @@ test('after five identical yeses an offer for a narrow mandate appears, and a ta
   const offer = page.getByTestId('mandate-suggestion')
   await expect(offer).toContainText('Always do this kind of thing?')
   await expect(offer).toContainText('at most 25 times')
+  await offer.scrollIntoViewIfNeeded()
   await shot(page, 'suggestion')
   await offer.getByRole('button', { name: 'Yes, always' }).click()
   await expect(offer).toHaveCount(0)

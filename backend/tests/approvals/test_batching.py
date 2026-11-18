@@ -272,3 +272,14 @@ def test_suggestions_off_means_none(owner, settings, monkeypatch):
     approved(5)
     monkeypatch.setattr(settings, "mandate_suggest_after", 0)
     assert owner.get("/app/mandates/suggestions").json()["suggestions"] == []
+
+
+def test_listing_a_batch_counts_each_item_as_opened_once(owner):
+    from superaide.approvals.models import ApprovalEvent
+
+    ids = {card(), card()}
+    for _ in range(2):
+        batches(owner)
+    with session_scope() as s:
+        opened = {str(e.approval_id) for e in s.scalars(select(ApprovalEvent).where(ApprovalEvent.event == "opened"))}
+    assert opened == ids

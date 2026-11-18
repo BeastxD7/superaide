@@ -1590,6 +1590,11 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         if not batching.enabled():
             raise HTTPException(404, "Not Found")
         with session_scope() as s:
+            found = batching.groups(s)
+            if get_settings().approval_metrics_enabled:  # #407: the preview lists every item, so each was looked at
+                for g in found:
+                    for a in g.items:
+                        burden.record_opened(s, a)
             return [
                 {
                     "kind": g.kind,
@@ -1604,7 +1609,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                         for a in g.items
                     ],
                 }
-                for g in batching.groups(s)
+                for g in found
             ]
 
     @router.post(
