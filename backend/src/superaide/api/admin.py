@@ -29,6 +29,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import aliased
 
+from superaide import doctor
 from superaide.app.accounts import owner as hired_owner
 from superaide.approvals import binding
 from superaide.approvals.models import Approval
@@ -294,6 +295,7 @@ def overview() -> dict[str, Any]:
             "model_mode": "Claude API (real replies)" if live["brain"] else "offline (no API key, replies are echoes)",
             "channels": {"telegram": live["telegram"], "slack": live["slack"]},
             "simulator": settings.enable_simulator,
+            "gaps": doctor.gaps(settings),
             "spend": spend,
             # Gates from Infant to Child. Most are measured from phase 2 onward.
             "next_stage": "Child",

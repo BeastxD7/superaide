@@ -3,6 +3,8 @@ import { API_URL, ApiError, createClient } from '@/lib/http'
 
 export type Gate = { label: string; status: 'met' | 'unmet' | 'later'; detail: string }
 
+export type Gap = { id: string; label: string; detail: string; fix: string }
+
 export type Overview = {
   agent_name: string
   stage: string
@@ -12,6 +14,7 @@ export type Overview = {
   simulator: boolean
   channels: { telegram: boolean; slack: boolean }
   spend: Spend
+  gaps: Gap[]
   gates: Gate[]
   safety: {
     stranger_messages: number

@@ -73,6 +73,26 @@ export function Overview({ data }: { data: OverviewData }) {
         </Grid>
       </Card>
 
+      {data.gaps.length > 0 && (
+        <Card title="Gaps" titleId="gaps-title" description="Things that are set up in a way that will not work for other people.">
+          <Grid cols={evenCols(data.gaps.length)}>
+            {data.gaps.map((g) => (
+              <Tile key={g.id}>
+                <Badge tone="warn" dot>
+                  Gap
+                </Badge>
+                <p className="c-tile-name" data-testid="gap-row">
+                  {g.label}
+                </p>
+                <p className="c-tile-text">
+                  {g.detail} {g.fix}
+                </p>
+              </Tile>
+            ))}
+          </Grid>
+        </Card>
+      )}
+
       <Card title="Growth" titleId="growth-title">
         <div className="growth-frame" tabIndex={0} role="group" aria-label="Growth track, scrolls sideways on a small screen">
           <GrowthTrack stage={data.stage} gates={data.gates} />
