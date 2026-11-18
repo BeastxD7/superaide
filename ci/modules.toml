@@ -131,6 +131,7 @@ e2e = [
   "e2e/tests/app/fe-chat-streaming.spec.ts",
   "e2e/tests/app/glass-brain.spec.ts",
   "e2e/tests/app/episodes.spec.ts",
+  "e2e/tests/app/tidy.spec.ts",
   "e2e/tests/app/models.spec.ts",
   "e2e/tests/app/qa-models.spec.ts",
   "e2e/tests/journeys/live-chat.spec.ts",
@@ -378,6 +379,7 @@ src = [
   "backend/src/superaide/memory/__init__.py",
   "backend/src/superaide/memory/store.py",
   "backend/src/superaide/memory/models.py",
+  "backend/src/superaide/memory/api.py",
   "backend/src/superaide/memory/consolidation/**",
 ]
 tests = [
@@ -811,6 +813,7 @@ e2e = [
   "e2e/tests/brainshare/brain-share.spec.ts",
   "e2e/tests/app/chat-history.spec.ts",
   "e2e/tests/app/episodes.spec.ts",
+  "e2e/tests/app/tidy.spec.ts",
   "e2e/tests/app/glass-brain.spec.ts",
   "e2e/tests/mirror/mirror.spec.ts",
   "e2e/tests/passport/memory-passport.spec.ts",
