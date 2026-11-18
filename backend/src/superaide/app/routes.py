@@ -25,8 +25,7 @@ from superaide.app.catalog import catalog, find
 from superaide.app.deps import owner_person_id, slack_connected, telegram_username
 from superaide.app.onboarding import SHARE_LABELS, Onboarder, documents_view
 from superaide.app.stream import stream_turn
-from superaide.approvals import batching
-from superaide.approvals.api import burden
+from superaide.approvals.api import batching, burden
 from superaide.approvals.binding import expired
 from superaide.approvals.models import Approval
 from superaide.brain.wiring import brain_ready, brain_status

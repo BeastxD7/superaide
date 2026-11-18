@@ -16,7 +16,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from superaide.approvals.batching import NEVER_BATCH
+from superaide.approvals.api import batching
 from superaide.approvals.models import Approval
 from superaide.mandate import service
 from superaide.mandate.models import Mandate
@@ -67,7 +67,7 @@ def suggestions(session: Session, *, now: datetime | None = None) -> list[dict[s
     now = now or datetime.now(UTC)
     out = []
     for kind, (tool, words) in SUGGESTABLE.items():
-        if kind in NEVER_BATCH or tool in service.NEVER_UNSUPERVISED:
+        if kind in batching.NEVER_BATCH or tool in service.NEVER_UNSUPERVISED:
             continue
         n = _count(session, kind, now)
         if n < s.mandate_suggest_after or _covered(session, tool, now) or _snoozed(session, kind, now):
