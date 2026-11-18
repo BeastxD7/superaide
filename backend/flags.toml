@@ -1,0 +1,772 @@
+# The flag registry (issue #402). One entry per boolean setting in backend/src/superaide/platform/config.py and
+# per *_ENABLED flag. `python3.14 scripts/check_flags.py` (and backend/tests/config/test_flags.py) fail when this
+# file and the code disagree, when a stage is missing, when a flag is past its remove-by date, or when the number
+# of flags goes above `budget`.
+#
+# Lifecycle (CONTRIBUTING.md): stage = experiment | beta | stable. A flag that is not `stable` needs a
+# `remove_by` no more than 90 days after `added`: by then it is promoted (stage = "stable", no date needed),
+# or the flag and the code behind it are deleted. `stable` means a permanent switch with a reason to exist.
+#
+# `budget` is the most flags allowed. It can only go down: lower it when you delete a flag, never raise it.
+# `target` is where the cleanup issues are heading (at most this many owner-facing settings).
+#
+# The FEATURE FLAGS index in backend/.env.example and docs/flags.md are GENERATED from this file:
+#   python3.14 scripts/check_flags.py --write
+#
+# DRAFT: owner, stage and dates below were filled by a script from the current defaults (default true -> stable,
+# default false -> experiment, remove-by 90 days from 2026-11-16). The owner confirms each in review of #402.
+
+budget = 70
+target = 15
+
+[[flag]]
+name = "ACTION_LOG"
+summary = "hash-chained log of tool calls and executed approvals"
+default = false
+group = "owner-safe"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "AIRLOCK_ENABLED"
+summary = "replace other people's contact details, ids, addresses and names with placeholders before a model call"
+default = true
+group = "owner-decision"
+owner = "maintainer"
+stage = "stable"
+added = "2026-11-16"
+issue = "#402"
+
+[[flag]]
+name = "ALLOW_MANY_OWNERS"
+summary = "anyone who signs up may hire their own Ava (false = single-owner mode)"
+default = true
+group = "owner-safe"
+owner = "maintainer"
+stage = "stable"
+added = "2026-11-16"
+issue = "#402"
+
+[[flag]]
+name = "ALLOW_UNSAFE_PUBLIC_SELF_HOSTED"
+summary = "override the startup refusal of a public open-sign-up self-hosted server (do not)"
+default = false
+group = "owner-decision"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "APPROVAL_METRICS_ENABLED"
+summary = "count and time approval cards (no text or names): the owner's 'How much am I being asked?' card and a weekly table in the console"
+default = true
+group = "owner-decision"
+owner = "maintainer"
+stage = "stable"
+added = "2026-11-16"
+issue = "#402"
+
+[[flag]]
+name = "APPROVAL_REQUIRE_EXECUTOR"
+summary = "refuse an approval nothing can carry out (and web-form/contact-page routes) instead of queueing it"
+default = true
+group = "owner-safe"
+owner = "maintainer"
+stage = "stable"
+added = "2026-11-16"
+issue = "#402"
+
+[[flag]]
+name = "ASK_LINK_ENABLED"
+summary = "public /a/<handle> intake pages owners can publish (public, unauthenticated)"
+default = false
+group = "owner-decision"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "AUDITION_ENABLED"
+summary = "compare 2 or 3 candidate skills side by side on the last tasks (no network, effects stubbed)"
+default = false
+group = "owner-safe"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "BRAIN_SHARE_ENABLED"
+summary = "owner-created unlisted link (max 7 days, revocable) to a counts-only picture of memory"
+default = false
+group = "owner-decision"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "CIRCUIT_BREAKER_ENABLED"
+summary = "too many deletes or sends in a window freezes Ava; the halt word freezes her at once"
+default = false
+group = "owner-decision"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "CONNECTOR_FACTS_ENABLED"
+summary = "keep up to 3 short facts per calendar event or verified email as notes (small-model calls, never the raw text)"
+default = false
+group = "owner-decision"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "DISSENT_DESK_ENABLED"
+summary = "three different models answer high-stakes choices (needs DISSENT_MODELS; costs more)"
+default = false
+group = "owner-decision"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "ECHO_FILTER_ENABLED"
+summary = "facts heard via links, Telegram or Slack are hearsay until confirmed"
+default = false
+group = "owner-safe"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "ENABLE_API_DOCS"
+summary = "interactive API docs at /docs (turn off on a public server)"
+default = true
+group = "owner-safe"
+owner = "maintainer"
+stage = "stable"
+added = "2026-11-16"
+issue = "#402"
+
+[[flag]]
+name = "ENABLE_SIMULATOR"
+summary = "operator console impostor simulator (development only; off unless you turn it on)"
+default = false
+group = "owner-safe"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "FAKE_LLM"
+summary = "true forces offline echo replies and nothing is spent (tests, demos)"
+default = false
+group = "owner-decision"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "FOOTPRINT_GUARD_ENABLED"
+summary = "creating accounts, profiles or public posts needs approval; flags unknown names"
+default = false
+group = "owner-decision"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "FORK_NIGHT_ENABLED"
+summary = "three read-only overnight drafts of a choice the owner leaves (model calls)"
+default = false
+group = "owner-decision"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "GMAIL_TRIAGE_ENABLED"
+summary = "poll each owner's Gmail inbox and triage new mail (needs TRIAGE_ENABLED, Google)"
+default = false
+group = "owner-safe"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "GOOGLE_CALENDAR_PUSH"
+summary = "Google calendar change notifications (needs PUBLIC_BASE_URL on https)"
+default = false
+group = "owner-safe"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "GOOGLE_SIGNIN_ENABLED"
+summary = "\"Continue with Google\" on log-in and sign-up (needs Google client id and secret)"
+default = false
+group = "owner-safe"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "IDENTITY_CLAIM_REVIEW"
+summary = "an unknown account named like a contact is a stranger; the owner is asked who they are"
+default = false
+group = "owner-safe"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "IMPORT_LEASE_ENABLED"
+summary = "import context cards from a third-party export under a time-limited lease"
+default = false
+group = "owner-decision"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "MAIL_LOG_BODY"
+summary = "with MAIL_BACKEND=log, log whole emails (links included); false = recipient and subject only"
+default = true
+group = "owner-safe"
+owner = "maintainer"
+stage = "stable"
+added = "2026-11-16"
+issue = "#402"
+
+[[flag]]
+name = "MANDATES_ENABLED"
+summary = "signed mandate cards (can be handed on only narrower; revoking one revokes its children) let Ava do a named limited thing without asking"
+default = true
+group = "owner-decision"
+owner = "maintainer"
+stage = "stable"
+added = "2026-11-16"
+issue = "#402"
+
+[[flag]]
+name = "MANDATE_SHADOW_ENABLED"
+summary = "record (never act on) whether a mandate would have covered each approval"
+default = true
+group = "owner-decision"
+owner = "maintainer"
+stage = "stable"
+added = "2026-11-16"
+issue = "#402"
+
+[[flag]]
+name = "MANDATE_SKIP_ENABLED"
+summary = "a covering signed mandate lets Ava add or move a no-guest calendar event without a card (Child stage up, untainted, after shadow data)"
+default = true
+group = "owner-decision"
+owner = "maintainer"
+stage = "stable"
+added = "2026-11-16"
+issue = "#402"
+
+[[flag]]
+name = "MCP_PINNING"
+summary = "block an MCP tool whose description or schema changed since the owner approved it"
+default = false
+group = "owner-decision"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "MEMORY_RECHECK_ENABLED"
+summary = "digest may ask \"is this still true?\" about a few lasting facts a week"
+default = false
+group = "owner-safe"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "MEMORY_SOCKET_ENABLED"
+summary = "read-only MCP endpoint POST /mcp/memory for the owner's other assistants"
+default = false
+group = "owner-decision"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "MIRROR_ENABLED"
+summary = "\"The Mirror\": a weekly note of patterns in the owner's own reminders and messages (owners also opt in)"
+default = false
+group = "owner-decision"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "MODEL_DRILL_ENABLED"
+summary = "replay the last tasks on two models and show where the call sequences differ"
+default = false
+group = "owner-safe"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "NOTIFY_FAILOVER"
+summary = "a push that stays down is sent on the owner's other linked channel; reception notes follow their interrupt preference"
+default = true
+group = "owner-safe"
+owner = "maintainer"
+stage = "stable"
+added = "2026-11-16"
+issue = "#402"
+
+[[flag]]
+name = "ONE_GOOD_QUESTION_ENABLED"
+summary = "Ava may ask the owner one clarifying question a day"
+default = false
+group = "owner-safe"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "OVERNIGHT_TUNER_ENABLED"
+summary = "proposes a better triage prompt; nothing changes until the owner approves"
+default = false
+group = "owner-safe"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "OWNER_TWIN_ENABLED"
+summary = "calibration page scoring a predictor of the owner's approve/reject choices"
+default = false
+group = "owner-safe"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "PAYOUTS_ENABLED"
+summary = "creator payout LEDGER per accepted outcome with clawback and bond; moves no money (null provider only)"
+default = false
+group = "owner-decision"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "PIPELINE_TIMING_ENABLED"
+summary = "time each stage of every message turn (milliseconds only, no text); p50 and p95 in the operator console"
+default = true
+group = "owner-decision"
+owner = "maintainer"
+stage = "stable"
+added = "2026-11-16"
+issue = "#402"
+
+[[flag]]
+name = "PLATFORM_AI_ENABLED"
+summary = "owners may use the server's own Claude key as \"Superaide AI credits\" (costs you)"
+default = false
+group = "owner-decision"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "PRINCIPAL_CARD_ENABLED"
+summary = "every email Ava sends is signed 'Ava, personal assistant of <first name>' with a link to a signed page (owner can untick per email); false = kill switch"
+default = true
+group = "owner-decision"
+owner = "maintainer"
+stage = "stable"
+added = "2026-11-16"
+issue = "#402"
+
+[[flag]]
+name = "PUSH_ENABLED"
+summary = "web push to the owner's phone (makes a VAPID key pair on first use)"
+default = false
+group = "owner-safe"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "QUOTE_ODDS_ENABLED"
+summary = "approval cards show honest odds; low-odds approvals prepare instead of run"
+default = false
+group = "owner-decision"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "REHEARSAL_ENABLED"
+summary = "practise a hard conversation with Ava playing the other side"
+default = false
+group = "owner-safe"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "RELATIONSHIP_SAFETY_ENABLED"
+summary = "fixed replies for heavy or \"do you love me?\" owner messages"
+default = false
+group = "owner-safe"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "REPLAY_BEFORE_UPDATE_ENABLED"
+summary = "replay the last tasks with and without a skill, prompt or model change, then approve or reject"
+default = false
+group = "owner-safe"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "REQUIRE_VERIFIED_EMAIL"
+summary = "hiring needs a confirmed email (turn on once MAIL_BACKEND=smtp works)"
+default = false
+group = "owner-decision"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "RUBBER_STAMP_BRAKE_ENABLED"
+summary = "adds friction to fast always-yes approvals (can only add friction)"
+default = false
+group = "owner-safe"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "RUN_CHANNELS_IN_API"
+summary = "Telegram and Slack listeners inside the API process"
+default = true
+group = "owner-safe"
+owner = "maintainer"
+stage = "stable"
+added = "2026-11-16"
+issue = "#402"
+
+[[flag]]
+name = "RUN_JOBS_IN_API"
+summary = "reminders, follow-ups, digests inside the API process"
+default = true
+group = "owner-safe"
+owner = "maintainer"
+stage = "stable"
+added = "2026-11-16"
+issue = "#402"
+
+[[flag]]
+name = "SCHOOL_ENABLED"
+summary = "Ava School: write, consent to and export generic lessons (local only)"
+default = false
+group = "owner-safe"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "SCHOOL_PLAYBOOK_ENABLED"
+summary = "owner-written playbook text per lesson, put in the prompt only after its eval passed"
+default = false
+group = "owner-safe"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "SCHOOL_SHARING_ENABLED"
+summary = "signed lesson files, only for categories the owner allows (needs SCHOOL_ENABLED)"
+default = false
+group = "owner-safe"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "SECOND_OPINION_ENABLED"
+summary = "memory-free second view on the owner's own claims (small-model calls)"
+default = false
+group = "owner-safe"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "SESSION_COOKIE_SECURE"
+summary = "send the session cookie over HTTPS only (must be true on any https server)"
+default = false
+group = "owner-decision"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "SKILL_COOLDOWN_ENABLED"
+summary = "a new skill version waits 0/24/72 h by effect class before installs get it; deleted names are reserved"
+default = false
+group = "owner-decision"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "SKILL_RATCHET_ENABLED"
+summary = "Ava drafts playbooks; only owner-edited ones go live"
+default = false
+group = "owner-safe"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "SKILL_RECEIPTS_ENABLED"
+summary = "content-free, hash-chained receipts of how you answered a skill's actions; tiers computed from them"
+default = false
+group = "owner-decision"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "SKILL_SIGNALS_ENABLED"
+summary = "several scanners per skill (routed by their disagreement), a runtime-built behaviour card, demotion on a manifest gap"
+default = false
+group = "owner-decision"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "SLEEP_JOB_ENABLED"
+summary = "nightly job: episodes, and tidying duplicate and contradicting notes (small model, capped)"
+default = false
+group = "owner-safe"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "SURFACE_CHECK_ON_BOOT"
+summary = "refuse to start if a protected file differs from security/surface.lock.json"
+default = false
+group = "owner-safe"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "TASK_PROTOCOL_ENABLED"
+summary = "errands need a read-first plan (goal, evidence, route, ability, recommendation) before an approval"
+default = true
+group = "owner-safe"
+owner = "maintainer"
+stage = "stable"
+added = "2026-11-16"
+issue = "#402"
+
+[[flag]]
+name = "TIME_TRAVEL_RULES_ENABLED"
+summary = "standing orders compiled to rules, replayed on past messages, shadow-run first"
+default = false
+group = "owner-decision"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "TRACE_RECORDER"
+summary = "hashes-only record of every tool call (on by default; turn off only to save rows)"
+default = true
+group = "owner-safe"
+owner = "maintainer"
+stage = "stable"
+added = "2026-11-16"
+issue = "#402"
+
+[[flag]]
+name = "TRIAGE_ENABLED"
+summary = "record a handle/hold/interrupt/defer/verify decision for non-owner messages"
+default = false
+group = "owner-safe"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "TRIAGE_KNN_ENABLED"
+summary = "shadow urgency score beside each triage decision (needs TRIAGE_ENABLED)"
+default = false
+group = "owner-safe"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "TRIAGE_KNN_RAISE_ENABLED"
+summary = "once YOU press Promote, the kNN head may raise (never lower or silence) a calm message's urgency (needs TRIAGE_KNN_ENABLED)"
+default = false
+group = "owner-safe"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "TYPING_INDICATORS"
+summary = "\"typing...\" on Telegram, a status or \"Working on it...\" placeholder on Slack while Ava replies"
+default = true
+group = "owner-safe"
+owner = "maintainer"
+stage = "stable"
+added = "2026-11-16"
+issue = "#402"
+
+[[flag]]
+name = "VOICE_INTRO_V2"
+summary = "conversational voice interview in the introduction call"
+default = false
+group = "owner-safe"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
+
+[[flag]]
+name = "WEB_TOOLS_ENABLED"
+summary = "Ava may search and read the web (about US$0.01 a search from the research budget)"
+default = true
+group = "owner-safe"
+owner = "maintainer"
+stage = "stable"
+added = "2026-11-16"
+issue = "#402"
+
+[[flag]]
+name = "WHY_REPLAY_ENABLED"
+summary = "\"Why did you say that?\" replay of a reply (small-model calls)"
+default = false
+group = "owner-safe"
+owner = "maintainer"
+stage = "experiment"
+added = "2026-11-16"
+remove_by = "2027-02-14"
+issue = "#402"
