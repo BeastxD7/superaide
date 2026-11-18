@@ -108,7 +108,11 @@ class MemoryItem(Scoped, Base):
     allowed_kind: Mapped[str] = mapped_column(String(20), default="persons")
     allowed_person_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(UUID(as_uuid=True)), default=list)
     min_trust: Mapped[int] = mapped_column(Integer, default=2)
-    valid_from: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # Python-side default too, so a note is "started" by the same clock recall compares it against (a test or
+    # an eval that moves the clock gets consistent dates); the server default covers rows written by SQL.
+    valid_from: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now()
+    )
     valid_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # What kind of fact this is, where it came from, and how sure we are.
     # category: about | work | person | preference | urgency | availability | sharing | other

@@ -13,9 +13,9 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import ColumnElement, and_, or_, select
+from sqlalchemy import ColumnElement, and_, or_, select, true
 from sqlalchemy.orm import Session
 
 from superaide.identity.resolver import Sender
@@ -51,7 +51,12 @@ def audience_for(context: Context, sender: Sender) -> Audience:
     return Audience(person_ids=ids, has_unknown=True, min_trust=0, all_internal=False)
 
 
-def memory_filter(aud: Audience, now: datetime | None = None) -> ColumnElement[bool]:
+CLOCK_SKEW = timedelta(minutes=1)  # valid_from defaults to the database's clock, which may run a little ahead
+
+
+def memory_filter(aud: Audience, now: datetime | None = None, *, unstarted: bool = False) -> ColumnElement[bool]:
+    """The audience gate. `unstarted=True` also admits notes whose start (valid_from) is still ahead, for
+    callers that look at validity themselves (the retired-notes shelf)."""
     now = now or datetime.now(UTC)
     public = MemoryItem.allowed_kind == "public"
     org = and_(
@@ -68,13 +73,15 @@ def memory_filter(aud: Audience, now: datetime | None = None) -> ColumnElement[b
         or_(public, org, persons),
         MemoryItem.min_trust <= aud.min_trust if not aud.has_unknown else MemoryItem.allowed_kind == "public",
         or_(MemoryItem.valid_to.is_(None), MemoryItem.valid_to > now),
+        # A note that starts later ("from next month") is not true yet.
+        true() if unstarted else MemoryItem.valid_from <= now + CLOCK_SKEW,
         # A weaker claim waiting for the owner's decision, or a link fact in review, is never used.
         MemoryItem.conflict_status == "none",
     )
 
 
 def _const(value: bool) -> ColumnElement[bool]:
-    from sqlalchemy import false, true
+    from sqlalchemy import false
 
     return true() if value else false()
 

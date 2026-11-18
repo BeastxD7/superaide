@@ -202,7 +202,7 @@ def test_time_scoped_gate_fails_when_recall_ignores_the_end_date(monkeypatch: py
 
     real = recall.memory_filter
     long_ago = datetime(2000, 1, 1, tzinfo=UTC)  # "now" far in the past: every end date is still ahead
-    monkeypatch.setattr(recall, "memory_filter", lambda aud, now=None: real(aud, long_ago))
+    monkeypatch.setattr(recall, "memory_filter", lambda aud, now=None: real(aud, long_ago, unstarted=True))
     regressions, _ = compare(_ltm_results(), load_baseline())
     assert any("ltm-time-not-served-after-the-end" in r for r in regressions), regressions
 
@@ -218,12 +218,12 @@ def test_pass_rate_threshold_for_a_category():
     assert 0 < MIN_PASS_RATE["ltm_time"] < 1
 
 
-def test_the_time_scoped_category_has_at_least_fifteen_scenarios_with_gaps_tracked():
+def test_the_time_scoped_category_has_at_least_fifteen_scenarios():
     from superaide.evals.gate import ltm_scenarios
 
     mine = [s for s in ltm_scenarios() if s.category == "ltm_time"]
     assert len(mine) >= 15
-    assert all(s.known_gap for s in mine if s.id.endswith(("not-yet-started", "is-not-a-duplicate")))
+    # Known gaps are tracked in evals/ltm-baseline.json, which the gate test compares against.
 
 
 # --- end-to-end ingestion scenarios (#51) -------------------------------------------------------
