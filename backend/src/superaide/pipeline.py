@@ -24,7 +24,7 @@ from superaide.brain.llm import LLM
 from superaide.brain.llm import OnEvent as Emit
 from superaide.brain.spend.budget import AgentFrozen, BudgetExceeded
 from superaide.brain.turn import TurnOutput, build_messages, build_system
-from superaide.channels import attachments
+from superaide.channels import api as attachments
 from superaide.channels.base import InboundMessage, Messenger
 from superaide.channels.format import strip_citations
 from superaide.channels.health import DeliveryFailed

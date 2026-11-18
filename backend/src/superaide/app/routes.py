@@ -607,7 +607,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         text: str = Form("", max_length=4000),
         person_id: uuid.UUID = Depends(owner_person_id),
     ) -> dict[str, Any]:
-        from superaide.channels import attachments
+        from superaide.channels import api as attachments
 
         limit = get_settings().attachment_max_bytes
         try:

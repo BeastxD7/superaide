@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from superaide.channels.base import FileFetchError, FileTooBig, InboundMessage
-from superaide.memory.knowledge import extract
+from superaide.memory import api as knowledge
 
 log = logging.getLogger(__name__)
 
@@ -83,7 +83,7 @@ class Read:
         return len(self.kinds)
 
 
-def _read_one(data: bytes, limit: int) -> tuple[str, extract.Extracted | None, str]:
+def _read_one(data: bytes, limit: int) -> tuple[str, knowledge.Extracted | None, str]:
     """(kind, extracted, reason): extracted is None when the reason says why not."""
     if len(data) > limit:
         return "", None, too_big_message(limit)
@@ -95,8 +95,8 @@ def _read_one(data: bytes, limit: int) -> tuple[str, extract.Extracted | None, s
     try:
         # The name is ours, so the extractor's extension check agrees with the sniffed type and the sender's
         # file name never reaches the text, the prompt or the log.
-        found = extract.extract_file("attachment.pdf" if kind == "pdf" else "attachment.txt", data)
-    except extract.ExtractError as exc:
+        found = knowledge.extract_file("attachment.pdf" if kind == "pdf" else "attachment.txt", data)
+    except knowledge.ExtractError as exc:
         return kind, None, str(exc)
     except Exception as exc:  # a parser bug on a hostile file must not take the turn down
         log.warning("attachment: reader failed: %s", type(exc).__name__)
