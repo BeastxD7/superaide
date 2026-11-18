@@ -292,11 +292,9 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     from superaide.features.mirror.routes import make_mirror_router
 
     app.include_router(make_mirror_router(get_agent))  # 404 unless MIRROR_ENABLED
-    from superaide.app.episodes import make_episodes_router
+    from superaide.app.episodes import make_episodes_router, make_tidy_router
 
     app.include_router(make_episodes_router(get_agent))  # 404 unless SLEEP_JOB_ENABLED
-    from superaide.app.tidy import make_tidy_router
-
     app.include_router(make_tidy_router(get_agent))  # 404 unless SLEEP_JOB_ENABLED (#415)
 
     from superaide.skills.releases_routes import make_skill_releases_router
