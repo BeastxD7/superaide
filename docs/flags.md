@@ -1,7 +1,7 @@
 # Feature flags
 
 Generated from [`backend/flags.toml`](../backend/flags.toml) by `scripts/check_flags.py --write`; do not edit by hand.
-70 flags (budget 70, target 15 owner-facing). A flag that is not `stable` has a remove-by date: it is promoted or deleted by then.
+69 flags (budget 69, target 15 owner-facing). A flag that is not `stable` has a remove-by date: it is promoted or deleted by then.
 
 | Flag | Default | Stage | Owner | Remove by | What it does |
 | --- | --- | --- | --- | --- | --- |
@@ -12,7 +12,7 @@ Generated from [`backend/flags.toml`](../backend/flags.toml) by `scripts/check_f
 | `APPROVAL_METRICS_ENABLED` | true | stable | maintainer |  | count and time approval cards (no text or names): the owner's 'How much am I being asked?' card and a weekly table in the console |
 | `APPROVAL_REQUIRE_EXECUTOR` | true | stable | maintainer |  | refuse an approval nothing can carry out (and web-form/contact-page routes) instead of queueing it |
 | `ASK_LINK_ENABLED` | false | experiment | maintainer | 2027-02-14 | public /a/<handle> intake pages owners can publish (public, unauthenticated) |
-| `AUDITION_ENABLED` | false | experiment | maintainer | 2027-02-14 | compare 2 or 3 candidate skills side by side on the last tasks (no network, effects stubbed) |
+| `AUDITION_ENABLED` | false | experiment | maintainer | 2027-02-14 | compare 2 or 3 candidate skills side by side on the last tasks (read-only: nothing is sent or changed) |
 | `BRAIN_SHARE_ENABLED` | false | experiment | maintainer | 2027-02-14 | owner-created unlisted link (max 7 days, revocable) to a counts-only picture of memory |
 | `CIRCUIT_BREAKER_ENABLED` | false | experiment | maintainer | 2027-02-14 | too many deletes or sends in a window freezes Ava; the halt word freezes her at once |
 | `CONNECTOR_FACTS_ENABLED` | false | experiment | maintainer | 2027-02-14 | keep up to 3 short facts per calendar event or verified email as notes (small-model calls, never the raw text) |
@@ -32,7 +32,6 @@ Generated from [`backend/flags.toml`](../backend/flags.toml) by `scripts/check_f
 | `MANDATES_ENABLED` | true | stable | maintainer |  | signed mandate cards (can be handed on only narrower; revoking one revokes its children) let Ava do a named limited thing without asking |
 | `MANDATE_SHADOW_ENABLED` | true | stable | maintainer |  | record (never act on) whether a mandate would have covered each approval |
 | `MANDATE_SKIP_ENABLED` | true | stable | maintainer |  | a covering signed mandate lets Ava add or move a no-guest calendar event without a card (Child stage up, untainted, after shadow data) |
-| `MCP_PINNING` | false | experiment | maintainer | 2027-02-14 | block an MCP tool whose description or schema changed since the owner approved it |
 | `MEMORY_RECHECK_ENABLED` | false | experiment | maintainer | 2027-02-14 | digest may ask "is this still true?" about a few lasting facts a week |
 | `MEMORY_SOCKET_ENABLED` | false | experiment | maintainer | 2027-02-14 | read-only MCP endpoint POST /mcp/memory for the owner's other assistants |
 | `MIRROR_ENABLED` | false | experiment | maintainer | 2027-02-14 | "The Mirror": a weekly note of patterns in the owner's own reminders and messages (owners also opt in) |

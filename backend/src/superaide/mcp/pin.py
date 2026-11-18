@@ -144,14 +144,9 @@ def describe(session: Session, *, skill_id: str, server: str, change: Change, fr
     return lines
 
 
-def may_call(
-    session: Session, *, skill_id: str, server: str, tool: dict[str, Any], enabled: bool | None = None
-) -> bool:
-    """The client's gate just before a call: the tool as the server describes it right now must match its pin."""
-    from superaide.platform.config import get_settings
-
-    if not (get_settings().mcp_pinning if enabled is None else enabled):
-        return True
+def may_call(session: Session, *, skill_id: str, server: str, tool: dict[str, Any]) -> bool:
+    """The client's gate just before a call: the tool as the server describes it right now must match its pin.
+    There is no switch: a tool with no pin, or a pin that differs, is refused (#403)."""
     row = session.scalar(
         select(McpPin).where(McpPin.skill_id == skill_id, McpPin.server == server, McpPin.tool == str(tool.get("name")))
     )

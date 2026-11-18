@@ -96,19 +96,21 @@ class Settings(BaseSettings):
     # Every tool call is recorded as hashes only (tool, effect class, argument and result hashes; issue #110).
     trace_recorder: bool = True
     # Audition (#110). Off: /app/audition/* answers 404. On: the owner can put 2 or 3 candidate skills through their
-    # last tasks side by side (instructions and tool choices only: every effect stubbed, no network), at the cost of
-    # small-model calls inside the spend cap.
+    # last tasks side by side (instructions and tool choices only; read-only: nothing is sent or changed, no
+    # network), at the cost of small-model calls inside the spend cap.
     audition_enabled: bool = False
     audition_max_tasks: int = Field(default=20, ge=1, le=50)  # most recent tasks one audition replays
 
     # Model-swap drill (#110). Off: /app/model-drill answers 404. On: the owner can replay their last tasks on two
-    # models (effects stubbed, no network) and see where the call sequences differ, before changing Ava's model.
+    # models (read-only: nothing is sent or changed, no network) and see where the call sequences differ, before
+    # changing Ava's model.
     model_drill_enabled: bool = False
     drill_max_tasks: int = Field(default=20, ge=1, le=50)  # most recent tasks one drill replays on each model
 
     # Replay before update (#110). Off: /app/updates/* answers 404. On: before a skill, prompt or model change goes
-    # live, the owner can replay their last tasks with and without it (effects stubbed, local reads only, small-model
-    # calls inside the spend cap) and see how the calls differ by name and argument hash, then approve or reject.
+    # live, the owner can replay their last tasks with and without it (read-only: nothing is sent or changed, local
+    # reads only, small-model calls inside the spend cap) and see how the calls differ by name and argument hash,
+    # then approve or reject.
     replay_before_update_enabled: bool = False
     replay_max_tasks: int = Field(default=10, ge=1, le=50)  # most recent tasks one preview replays
 
@@ -135,9 +137,6 @@ class Settings(BaseSettings):
     mandate_skip_enabled: bool = True
     mandate_skip_min_days: int = Field(default=14, ge=0, le=365)
 
-    # An MCP tool whose description, schema or annotations differ from what the owner approved is blocked
-    # (issue #116). The MCP client calls mcp.pin.may_call; off by default until that client exists.
-    mcp_pinning: bool = False
     # Memory Socket (#138). Off by default. A read-only MCP endpoint (POST /mcp/memory) lets the owner's other
     # assistants ask Ava's memory one question at a time, with one token per consumer, a scope the owner picks
     # per consumer, rows filtered by the audience gate in SQL, a per-minute limit and a visible access log.
@@ -410,7 +409,7 @@ class Settings(BaseSettings):
     # approve, never what is said; the call reads it back as a structured proposal and never says it is done.
     # The voice shell holds no tools.
     # VOICE_PROVIDER: auto (default: deepgram when a key is present, otherwise none) | none (force off) |
-    # fake (scripted, offline) | realtime (adapter stub, no vendor wired) | deepgram (the documented hosted adapter).
+    # fake (scripted, offline) | deepgram (the documented hosted adapter).
     voice_provider: str = "auto"
     voice_provider_api_key: str = ""  # saved under the voice_provider connection; never logged
     # Import lease (#133). Off: /app/import-leases/* answer 404. On: the owner can bring in context cards
