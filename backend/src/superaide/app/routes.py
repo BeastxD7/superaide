@@ -25,6 +25,7 @@ from superaide.app.catalog import catalog, find
 from superaide.app.deps import owner_person_id, slack_connected, telegram_username
 from superaide.app.onboarding import SHARE_LABELS, Onboarder, documents_view
 from superaide.app.stream import stream_turn
+from superaide.approvals import batching
 from superaide.approvals.api import burden
 from superaide.approvals.binding import expired
 from superaide.approvals.models import Approval
@@ -170,6 +171,11 @@ class ChatBody(BaseModel):
 
 class LinkBody(BaseModel):
     url: str = Field(min_length=4, max_length=2048)
+
+
+class BatchBody(BaseModel):
+    ids: list[uuid.UUID] = Field(min_length=2, max_length=25)
+    digest: str = Field(min_length=64, max_length=64)
 
 
 class CallAnswerBody(BaseModel):
@@ -1569,6 +1575,59 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             if not gmail_skill.set_signing(s, approval, body.sign):
                 raise HTTPException(404, "That card has no sign-off to choose.")
             return _sign_view(approval)["sign"]
+
+    @router.get(
+        "/approvals/batches",
+        tags=["Owner: approvals"],
+        summary="Waiting requests that can be decided together",
+        description=(
+            "Alike, low-risk own-calendar requests grouped (APPROVAL_BATCH_MAX, 25 by default; 404 while 0). "
+            "Each group lists every item and a `digest` of their sealed content. Sending, money, deleting and access "
+            "are never grouped."
+        ),
+    )
+    def approval_batches(person_id: uuid.UUID = Depends(owner_person_id)) -> list[dict[str, Any]]:
+        if not batching.enabled():
+            raise HTTPException(404, "Not Found")
+        with session_scope() as s:
+            return [
+                {
+                    "kind": g.kind,
+                    "label": g.label,
+                    "digest": g.digest,
+                    "items": [
+                        {
+                            "id": str(a.id),
+                            "summary": (a.payload or {}).get("summary", ""),
+                            "at": a.created_at.isoformat(),
+                        }
+                        for a in g.items
+                    ],
+                }
+                for g in batching.groups(s)
+            ]
+
+    @router.post(
+        "/approvals/batch/{verdict}",
+        tags=["Owner: approvals"],
+        summary="Approve or reject a batch",
+        description=(
+            "`verdict` is `approve` or `reject`. Send the `ids` and `digest` of the batch you were shown; if any item "
+            "changed, was added or removed, nothing is decided (409). Each item is bound and resolved on its own."
+        ),
+    )
+    def decide_batch(verdict: str, body: BatchBody, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        if verdict not in {"approve", "reject"} or not batching.enabled():
+            raise HTTPException(404, "Not found")
+        with session_scope() as s:
+            owner = require(s, Person, person_id)
+            try:
+                results = batching.decide(
+                    s, ids=body.ids, digest=body.digest, approve=verdict == "approve", decided_by=owner.display_name
+                )
+            except batching.BatchError as exc:
+                raise HTTPException(exc.status, str(exc)) from exc
+            return {"results": results}
 
     @router.post(
         "/approvals/{approval_id}/{verdict}",

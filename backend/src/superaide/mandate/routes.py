@@ -13,7 +13,7 @@ from sqlalchemy import select
 
 from superaide.app.deps import owner_person_id
 from superaide.identity.auth.routes import reject_nul_text, require_csrf_header
-from superaide.mandate import service
+from superaide.mandate import service, suggest
 from superaide.mandate import token as tk
 from superaide.mandate.models import Mandate
 from superaide.platform.config import get_settings
@@ -82,6 +82,27 @@ def make_router() -> APIRouter:
             except tk.MandateError as exc:
                 raise HTTPException(422, str(exc)) from exc
             return service.chain_view(s, row)
+
+    @router.get("/suggestions", summary="Offers to always do a repeated, safe kind of thing")
+    def suggestions(person_id: uuid.UUID = Depends(owner_on)) -> dict[str, Any]:
+        with session_scope() as s:
+            return {"suggestions": suggest.suggestions(s)}
+
+    @router.post("/suggestions/{kind}/accept", summary="Sign the narrow mandate that was offered")
+    def accept_suggestion(kind: str, person_id: uuid.UUID = Depends(owner_on)) -> dict[str, Any]:
+        with session_scope() as s:
+            try:
+                return service.chain_view(s, suggest.accept(s, person_id, kind))
+            except tk.MandateError as exc:
+                raise HTTPException(404, str(exc)) from exc
+
+    @router.post("/suggestions/{kind}/dismiss", summary="Not now: don't offer this again for 30 days")
+    def dismiss_suggestion(kind: str, person_id: uuid.UUID = Depends(owner_on)) -> dict[str, bool]:
+        if kind not in suggest.SUGGESTABLE:
+            raise HTTPException(404, "There is no offer for that.")
+        with session_scope() as s:
+            suggest.dismiss(s, kind)
+            return {"dismissed": True}
 
     @router.post("/{mandate_id}/delegate", summary="Hand a mandate on, narrower")
     def delegate(mandate_id: uuid.UUID, body: DelegateBody, person_id: uuid.UUID = Depends(owner_on)) -> dict[str, Any]:

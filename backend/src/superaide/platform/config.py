@@ -425,6 +425,14 @@ class Settings(BaseSettings):
     # held by the brake, expired), shown to the owner as "How much am I being asked?" and to the operator as a
     # weekly trend. No card text, recipient or name is kept. Off: nothing is recorded and the routes answer 404.
     approval_metrics_enabled: bool = True
+    # Batch approval (#408): alike, safe own-calendar requests are shown as one card with a preview of every item and
+    # one decision, at most this many items to a card. Each item stays bound to its exact content; a changed item
+    # cancels the whole batch; sending, money, deleting and access are never batched (approvals/batching.py).
+    # 0 = off: one card per request, the batch routes answer 404. (A number, not a flag: the flag budget is full.)
+    approval_batch_max: int = Field(default=25, ge=0, le=25)
+    # Mandate suggestions (#408): after this many approved, identical own-calendar requests Ava offers a narrow,
+    # revocable mandate ("Always do this kind of thing?"). 0 = no offer. Needs MANDATES_ENABLED.
+    mandate_suggest_after: int = Field(default=5, ge=0, le=100)
     gmail_poll_minutes: int = 5
     # Rehearsal room (#58): the owner practises a hard conversation with Ava playing the other side. Off:
     # /app/rehearsal/* answer 404. On: text role-play, nothing is sent to anyone, and a session is

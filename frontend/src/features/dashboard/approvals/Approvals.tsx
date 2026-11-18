@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { BatchCard } from '@/features/dashboard/approvals/BatchCard'
 import { seenBeacon } from '@/features/dashboard/approvals/seen'
 import { useApprovals } from '@/features/dashboard/approvals/useApprovals'
 import { call, type ApprovalItem } from '@/lib/api'
@@ -56,13 +57,15 @@ function VoiceReadback({ readback }: { readback: NonNullable<ApprovalItem['readb
 // What Ava was asked to do that needs your yes first. Shown only while something is waiting.
 // `showExpired` (the Approvals page) also lists requests that ran out of time, so they do not just disappear.
 export function ApprovalsCard({ name, empty = null, showExpired = false }: { name: string; empty?: ReactNode; showExpired?: boolean }) {
-  const { data, reload, waiting: pending, expired } = useApprovals()
+  const { data, reload, waiting: allPending, expired, batches } = useApprovals()
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [reasons, setReasons] = useState<Record<string, string>>({})
   const [ticks, setTicks] = useState<Record<string, boolean>>({}) // the tick as clicked, until the saved answer is back
   const stale = showExpired ? expired : []
-  if (!pending.length && !stale.length) return data ? empty : null
+  const grouped = new Set(batches.flatMap((b) => b.items.map((i) => i.id)))
+  const pending = allPending.filter((a) => !grouped.has(a.id)) // the rest, one card each
+  if (!allPending.length && !stale.length) return data ? empty : null
 
   // The tick on an email's card: the choice is saved (and sealed with the approval) before any yes.
   async function setSign(id: string, sign: boolean) {
@@ -108,11 +111,11 @@ export function ApprovalsCard({ name, empty = null, showExpired = false }: { nam
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <ShieldQuestion className="size-5 text-violet-600" aria-hidden />
-          {pending.length ? 'Waiting for your OK' : 'Ran out of time'}
-          <Badge variant="secondary">{pending.length || stale.length}</Badge>
+          {allPending.length ? 'Waiting for your OK' : 'Ran out of time'}
+          <Badge variant="secondary">{allPending.length || stale.length}</Badge>
         </CardTitle>
         <CardDescription>
-          {pending.length ? `${name} won't do any of this until you say yes.` : `${name} did not do any of this. Ask her again if you still want it.`}
+          {allPending.length ? `${name} won't do any of this until you say yes.` : `${name} did not do any of this. Ask her again if you still want it.`}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -122,6 +125,17 @@ export function ApprovalsCard({ name, empty = null, showExpired = false }: { nam
           </div>
         )}
         <ul className="space-y-2">
+          {batches.map((b) => (
+            <BatchCard
+              key={b.kind}
+              batch={b}
+              onError={setError}
+              onDone={async () => {
+                await reload()
+                announceApprovalsChanged()
+              }}
+            />
+          ))}
           {pending.map((a) => (
             <li
               key={a.id}
@@ -216,7 +230,7 @@ export function ApprovalsCard({ name, empty = null, showExpired = false }: { nam
             </li>
           ))}
         </ul>
-        {pending.length > 0 && stale.length > 0 && (
+        {allPending.length > 0 && stale.length > 0 && (
           <h3 className="mt-4 mb-2 text-sm font-medium text-ink">Ran out of time. Ask {name} again if you still want these.</h3>
         )}
         {stale.length > 0 && (

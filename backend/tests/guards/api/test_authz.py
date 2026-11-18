@@ -49,6 +49,7 @@ FLAG_GATED = {
     ("GET", "/app/ask-link"),
     ("GET", "/app/ask-link/requests"),
     ("GET", "/app/mandates"),  # MANDATES_ENABLED (#112)
+    ("GET", "/app/mandates/suggestions"),  # MANDATES_ENABLED (#112), offers from #408
     ("GET", "/app/memory-socket"),  # MEMORY_SOCKET_ENABLED (#138); its MCP side is checked in test_memory_socket.py
     ("GET", "/app/fork-night"),  # FORK_NIGHT_ENABLED (#127)
     ("GET", "/app/standing-orders"),  # TIME_TRAVEL_RULES_ENABLED (#52)

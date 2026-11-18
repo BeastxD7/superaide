@@ -158,6 +158,32 @@
         "title": "AwayBody",
         "type": "object"
       },
+      "BatchBody": {
+        "properties": {
+          "digest": {
+            "maxLength": 64,
+            "minLength": 64,
+            "title": "Digest",
+            "type": "string"
+          },
+          "ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 25,
+            "minItems": 2,
+            "title": "Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ids",
+          "digest"
+        ],
+        "title": "BatchBody",
+        "type": "object"
+      },
       "Body_import_passport_app_passport_import_post": {
         "properties": {
           "confirm": {
@@ -4979,6 +5005,98 @@
         ]
       }
     },
+    "/app/approvals/batch/{verdict}": {
+      "post": {
+        "description": "`verdict` is `approve` or `reject`. Send the `ids` and `digest` of the batch you were shown; if any item changed, was added or removed, nothing is decided (409). Each item is bound and resolved on its own.",
+        "operationId": "decide_batch_app_approvals_batch__verdict__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "verdict",
+            "required": true,
+            "schema": {
+              "title": "Verdict",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Decide Batch App Approvals Batch  Verdict  Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Approve or reject a batch",
+        "tags": [
+          "Owner: approvals"
+        ]
+      }
+    },
+    "/app/approvals/batches": {
+      "get": {
+        "description": "Alike, low-risk own-calendar requests grouped (APPROVAL_BATCH_MAX, 25 by default; 404 while 0). Each group lists every item and a `digest` of their sealed content. Sending, money, deleting and access are never grouped.",
+        "operationId": "approval_batches_app_approvals_batches_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Approval Batches App Approvals Batches Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Waiting requests that can be decided together",
+        "tags": [
+          "Owner: approvals"
+        ]
+      }
+    },
     "/app/approvals/brake": {
       "get": {
         "description": "The Rubber-Stamp Brake (RUBBER_STAMP_BRAKE_ENABLED, off by default; 404 while off): your recent approval speed and refusals, and whether Ava is asking for a typed reason on high-risk cards.",
@@ -8577,6 +8695,134 @@
           }
         ],
         "summary": "Sign a mandate card",
+        "tags": [
+          "Owner: mandates"
+        ]
+      }
+    },
+    "/app/mandates/suggestions": {
+      "get": {
+        "operationId": "suggestions_app_mandates_suggestions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Suggestions App Mandates Suggestions Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Offers to always do a repeated, safe kind of thing",
+        "tags": [
+          "Owner: mandates"
+        ]
+      }
+    },
+    "/app/mandates/suggestions/{kind}/accept": {
+      "post": {
+        "operationId": "accept_suggestion_app_mandates_suggestions__kind__accept_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "title": "Kind",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Accept Suggestion App Mandates Suggestions  Kind  Accept Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Sign the narrow mandate that was offered",
+        "tags": [
+          "Owner: mandates"
+        ]
+      }
+    },
+    "/app/mandates/suggestions/{kind}/dismiss": {
+      "post": {
+        "operationId": "dismiss_suggestion_app_mandates_suggestions__kind__dismiss_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "title": "Kind",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Dismiss Suggestion App Mandates Suggestions  Kind  Dismiss Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Not now: don't offer this again for 30 days",
         "tags": [
           "Owner: mandates"
         ]

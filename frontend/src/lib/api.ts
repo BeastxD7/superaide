@@ -468,6 +468,16 @@ export type ApprovalItem = {
   sign?: { label: string; checked: boolean; text: string; can_change: boolean }
 }
 
+// Alike, safe own-calendar requests offered as one decision (#408). `digest` seals the exact items shown.
+export type ApprovalBatch = {
+  kind: string
+  label: string
+  digest: string
+  items: { id: string; summary: string; at: string }[]
+}
+
+export type MandateSuggestion = { kind: string; count: number; title: string; words: string; limits: string }
+
 export type Reminder = {
   id: string
   kind: 'reminder' | 'follow_up'
