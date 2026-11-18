@@ -16,7 +16,7 @@
 # DRAFT: owner, stage and dates below were filled by a script from the current defaults (default true -> stable,
 # default false -> experiment, remove-by 90 days from 2026-11-16). The owner confirms each in review of #402.
 
-budget = 70
+budget = 67
 target = 15
 
 [[flag]]
@@ -363,16 +363,6 @@ remove_by = "2027-02-14"
 issue = "#402"
 
 [[flag]]
-name = "NOTIFY_FAILOVER"
-summary = "a push that stays down is sent on the owner's other linked channel; reception notes follow their interrupt preference"
-default = true
-group = "owner-safe"
-owner = "maintainer"
-stage = "stable"
-added = "2026-11-16"
-issue = "#402"
-
-[[flag]]
 name = "ONE_GOOD_QUESTION_ENABLED"
 summary = "Ava may ask the owner one clarifying question a day"
 default = false
@@ -414,16 +404,6 @@ owner = "maintainer"
 stage = "experiment"
 added = "2026-11-16"
 remove_by = "2027-02-14"
-issue = "#402"
-
-[[flag]]
-name = "PIPELINE_TIMING_ENABLED"
-summary = "time each stage of every message turn (milliseconds only, no text); p50 and p95 in the operator console"
-default = true
-group = "owner-decision"
-owner = "maintainer"
-stage = "stable"
-added = "2026-11-16"
 issue = "#402"
 
 [[flag]]
@@ -730,16 +710,6 @@ remove_by = "2027-02-14"
 issue = "#402"
 
 [[flag]]
-name = "TYPING_INDICATORS"
-summary = "\"typing...\" on Telegram, a status or \"Working on it...\" placeholder on Slack while Ava replies"
-default = true
-group = "owner-safe"
-owner = "maintainer"
-stage = "stable"
-added = "2026-11-16"
-issue = "#402"
-
-[[flag]]
 name = "VOICE_INTRO_V2"
 summary = "conversational voice interview in the introduction call"
 default = false
@@ -770,3 +740,19 @@ stage = "experiment"
 added = "2026-11-16"
 remove_by = "2027-02-14"
 issue = "#402"
+
+# Flags promoted to always-on (issue #404). Setting one is ignored; startup warns once. Listed in docs/flags.md.
+[[retired]]
+name = "NOTIFY_FAILOVER"
+since = "2026-11-18"
+now = "a push that stays down is always sent on the owner's other linked channel"
+
+[[retired]]
+name = "PIPELINE_TIMING_ENABLED"
+since = "2026-11-18"
+now = "every message turn is always timed (milliseconds only, no text)"
+
+[[retired]]
+name = "TYPING_INDICATORS"
+since = "2026-11-18"
+now = "Telegram and Slack always show that Ava is working on a reply"

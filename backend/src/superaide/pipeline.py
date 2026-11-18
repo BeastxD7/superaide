@@ -179,8 +179,6 @@ class Agent:
 
     def _timed(self, msg: InboundMessage, emit: Emit | None = None) -> HandleResult:
         """One turn with its stage timings (#412): numbers only, written after the turn's own session has closed."""
-        if not self.settings.pipeline_timing_enabled:
-            return self._handle(msg, emit)
         with timing.open_turn() as timer:
             result = self._handle(msg, emit)
         timing.record(timer, provider=msg.provider, mode=result.mode)
@@ -982,7 +980,7 @@ class Agent:
         with it (refused, raising) never changes the reply. It is always ended, on success, error or cancel."""
         handle = None
         start = getattr(self.messengers.get(ctx.provider), "working", None)
-        if self.settings.typing_indicators and start is not None:
+        if start is not None:
             try:
                 handle = start(ctx.external_id, thread)
             except Exception as exc:

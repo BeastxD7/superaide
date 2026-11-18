@@ -1,7 +1,7 @@
 # Feature flags
 
 Generated from [`backend/flags.toml`](../backend/flags.toml) by `scripts/check_flags.py --write`; do not edit by hand.
-70 flags (budget 70, target 15 owner-facing). A flag that is not `stable` has a remove-by date: it is promoted or deleted by then.
+67 flags (budget 67, target 15 owner-facing). A flag that is not `stable` has a remove-by date: it is promoted or deleted by then.
 
 | Flag | Default | Stage | Owner | Remove by | What it does |
 | --- | --- | --- | --- | --- | --- |
@@ -37,12 +37,10 @@ Generated from [`backend/flags.toml`](../backend/flags.toml) by `scripts/check_f
 | `MEMORY_SOCKET_ENABLED` | false | experiment | maintainer | 2027-02-14 | read-only MCP endpoint POST /mcp/memory for the owner's other assistants |
 | `MIRROR_ENABLED` | false | experiment | maintainer | 2027-02-14 | "The Mirror": a weekly note of patterns in the owner's own reminders and messages (owners also opt in) |
 | `MODEL_DRILL_ENABLED` | false | experiment | maintainer | 2027-02-14 | replay the last tasks on two models and show where the call sequences differ |
-| `NOTIFY_FAILOVER` | true | stable | maintainer |  | a push that stays down is sent on the owner's other linked channel; reception notes follow their interrupt preference |
 | `ONE_GOOD_QUESTION_ENABLED` | false | experiment | maintainer | 2027-02-14 | Ava may ask the owner one clarifying question a day |
 | `OVERNIGHT_TUNER_ENABLED` | false | experiment | maintainer | 2027-02-14 | proposes a better triage prompt; nothing changes until the owner approves |
 | `OWNER_TWIN_ENABLED` | false | experiment | maintainer | 2027-02-14 | calibration page scoring a predictor of the owner's approve/reject choices |
 | `PAYOUTS_ENABLED` | false | experiment | maintainer | 2027-02-14 | creator payout LEDGER per accepted outcome with clawback and bond; moves no money (null provider only) |
-| `PIPELINE_TIMING_ENABLED` | true | stable | maintainer |  | time each stage of every message turn (milliseconds only, no text); p50 and p95 in the operator console |
 | `PLATFORM_AI_ENABLED` | false | experiment | maintainer | 2027-02-14 | owners may use the server's own Claude key as "Superaide AI credits" (costs you) |
 | `PRINCIPAL_CARD_ENABLED` | true | stable | maintainer |  | every email Ava sends is signed 'Ava, personal assistant of <first name>' with a link to a signed page (owner can untick per email); false = kill switch |
 | `PUSH_ENABLED` | false | experiment | maintainer | 2027-02-14 | web push to the owner's phone (makes a VAPID key pair on first use) |
@@ -71,7 +69,16 @@ Generated from [`backend/flags.toml`](../backend/flags.toml) by `scripts/check_f
 | `TRIAGE_ENABLED` | false | experiment | maintainer | 2027-02-14 | record a handle/hold/interrupt/defer/verify decision for non-owner messages |
 | `TRIAGE_KNN_ENABLED` | false | experiment | maintainer | 2027-02-14 | shadow urgency score beside each triage decision (needs TRIAGE_ENABLED) |
 | `TRIAGE_KNN_RAISE_ENABLED` | false | experiment | maintainer | 2027-02-14 | once YOU press Promote, the kNN head may raise (never lower or silence) a calm message's urgency (needs TRIAGE_KNN_ENABLED) |
-| `TYPING_INDICATORS` | true | stable | maintainer |  | "typing..." on Telegram, a status or "Working on it..." placeholder on Slack while Ava replies |
 | `VOICE_INTRO_V2` | false | experiment | maintainer | 2027-02-14 | conversational voice interview in the introduction call |
 | `WEB_TOOLS_ENABLED` | true | stable | maintainer |  | Ava may search and read the web (about US$0.01 a search from the research budget) |
 | `WHY_REPLAY_ENABLED` | false | experiment | maintainer | 2027-02-14 | "Why did you say that?" replay of a reply (small-model calls) |
+
+## Retired settings
+
+These were flags and are now always on (issue #404). Setting one in `.env` or the environment does nothing; startup logs one warning per name. Remove the line.
+
+| Setting | Since | Now |
+| --- | --- | --- |
+| `NOTIFY_FAILOVER` | 2026-11-18 | a push that stays down is always sent on the owner's other linked channel |
+| `PIPELINE_TIMING_ENABLED` | 2026-11-18 | every message turn is always timed (milliseconds only, no text) |
+| `TYPING_INDICATORS` | 2026-11-18 | Telegram and Slack always show that Ava is working on a reply |

@@ -121,6 +121,9 @@ def create_app(agent: Agent | None = None) -> FastAPI:
         from superaide.brain import platform_ai
 
         platform_ai.warn_if_unusable()
+        from superaide.platform import retired
+
+        retired.warn()  # a promoted flag still set in .env is ignored; say so once (#404)
         if fixed is None:
             from superaide.platform.security import dbcheck, deploy
 

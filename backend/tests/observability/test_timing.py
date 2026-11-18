@@ -9,11 +9,9 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import String, Text, select
 
-from superaide.brain.llm import FakeLLM
 from superaide.main import create_app
 from superaide.observability import store, timing
 from superaide.observability.models import TurnTiming
-from superaide.pipeline import Agent
 from superaide.platform.db.session import session_scope
 from tests.conftest import MANAGER_TG, tg
 
@@ -140,16 +138,6 @@ def test_a_message_dropped_for_a_bad_signature_is_timed_too(agent):
     assert agent.handle(msg).mode == "dropped"
     [row] = rows()
     assert row.mode == "dropped" and row.verify_ms is not None and row.identity_ms is None
-
-
-def test_nothing_is_timed_or_stored_when_the_flag_is_off(manager, outbox, settings):
-    off = Agent(
-        llm=FakeLLM(lambda *a: None),
-        messengers=outbox,
-        settings=settings.model_copy(update={"pipeline_timing_enabled": False}),
-    )
-    off.handle(tg(MANAGER_TG, "hi"))
-    assert rows() == []
 
 
 def test_a_failure_to_store_the_timing_never_breaks_the_reply(manager, agent, monkeypatch):

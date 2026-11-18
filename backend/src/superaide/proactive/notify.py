@@ -252,10 +252,8 @@ def _failover(session: Session, owner: Person, ctx: Any, d: NotificationDelivery
     """Hand a push that failed for good to the next channel the owner linked (Telegram to Slack or back), once.
     The new row carries the message (with a line saying why it came here) and its own retries; the old row is
     `rerouted`, so the list shows one open push, not two. Returns the new channel, or None when there is none."""
-    from superaide.platform.config import get_settings
-
     meta = d.meta or {}
-    if not get_settings().notify_failover or meta.get("failover_of"):
+    if meta.get("failover_of"):
         return None  # one hop only: a failover that fails stays listed on its own channel
     already = session.scalar(
         select(NotificationDelivery).where(NotificationDelivery.meta["failover_of"].astext == str(d.id)).limit(1)
