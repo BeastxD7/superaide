@@ -331,17 +331,7 @@ export function ChatPage() {
               </button>
             </div>
           )}
-          <div className="flex items-end gap-2 rounded-2xl border border-line bg-white p-1.5 pl-4 shadow-[0_10px_30px_-24px_rgba(27,22,56,0.6)] focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-400/30">
-            <textarea
-              ref={inputRef}
-              rows={1}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={onKey}
-              placeholder={`Message ${name}`}
-              aria-label={`Message ${name}`}
-              className="max-h-[220px] flex-1 resize-none bg-transparent py-2.5 text-ink outline-none placeholder:text-muted"
-            />
+          <div className="flex items-end gap-2 rounded-2xl border border-line bg-white p-1.5 shadow-[0_10px_30px_-24px_rgba(27,22,56,0.6)] focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-400/30">
             <input
               ref={fileRef}
               type="file"
@@ -362,6 +352,16 @@ export function ChatPage() {
             >
               <Paperclip className="size-5" />
             </button>
+            <textarea
+              ref={inputRef}
+              rows={1}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={onKey}
+              placeholder={`Message ${name}`}
+              aria-label={`Message ${name}`}
+              className="max-h-[220px] flex-1 resize-none bg-transparent py-2.5 pl-1 text-ink outline-none placeholder:text-muted"
+            />
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={() => void send(draft)}

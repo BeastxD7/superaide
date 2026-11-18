@@ -19,7 +19,7 @@ test('attach a text file with a caption: it is read, answered, and never stored'
   await page.getByRole('button', { name: 'Send' }).click()
   await expect(page.getByTestId('chat-attachment')).toHaveCount(0)
   await expect.poll(async () => (await webConversation()).some((e) => e.content === 'what does the file say?')).toBe(true)
-  await expect(page.getByText('what does the file say?')).toBeVisible()
+  await expect(page.getByText('what does the file say?', { exact: true }).last()).toBeVisible()
   const events = await webConversation()
   expect(events.some((e) => e.content.includes('Lantern'))).toBe(false)
   await expectNoSidewaysScroll(page)
