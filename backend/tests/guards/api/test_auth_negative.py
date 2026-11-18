@@ -445,6 +445,20 @@ def test_the_voice_calls_audio_upload_needs_the_csrf_header_and_a_session(browse
         assert browser().post(path, **form).status_code == 401, path
 
 
+def test_the_chat_attachment_upload_needs_the_csrf_header_a_session_and_refuses_bad_files(browser, owner):
+    """A multipart form is what a cross-site page can send without a preflight (#511): refused without
+    X-Requested-With and without a session, and a hostile file is a plain refusal, never a 500."""
+    form = {"files": {"file": ("a.txt", b"hello", "text/plain")}, "data": {"text": "hi"}}
+    plain = browser(csrf=False)
+    plain.cookies.set("superaide_session", owner.cookies.get("superaide_session"))
+    r = plain.post("/app/chat/attach", **form)
+    assert r.status_code == 403 and r.json()["detail"] == "Missing X-Requested-With header"
+    assert browser().post("/app/chat/attach", **form).status_code == 401
+    assert owner.post("/app/chat/attach", data={"text": "no file"}).status_code == 422  # the file part is required
+    zipped = {"file": ("report.pdf", b"PK\x03\x04" + b"\x00" * 40, "application/pdf")}  # not a PDF, whatever it says
+    assert owner.post("/app/chat/attach", files=zipped).status_code == 415
+
+
 def test_reads_do_not_need_the_csrf_header(browser, owner):
     plain = browser(csrf=False)
     plain.cookies.set("superaide_session", owner.cookies.get("superaide_session"))
