@@ -181,7 +181,8 @@ GUIDES = {
         "steps": [
             "Open the link: Slack creates your own Ava app with everything set up.",
             "Click Install to Workspace and allow it.",
-            "Made the app by hand? It also needs channels:history and groups:history (Ava reads threads).",
+            "Made the app by hand? It also needs channels:history and groups:history (Ava reads threads)"
+            " and files:read (Ava reads PDFs and text files).",
             "Copy the Bot User OAuth Token (xoxb-…) from OAuth & Permissions.",
             "Under Basic Information, create an app-level token with connections:write and copy it (xapp-…).",
             "Paste both here.",

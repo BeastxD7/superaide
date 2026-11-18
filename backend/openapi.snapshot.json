@@ -184,6 +184,26 @@
         "title": "BatchBody",
         "type": "object"
       },
+      "Body_chat_attach_app_chat_attach_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          },
+          "text": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_chat_attach_app_chat_attach_post",
+        "type": "object"
+      },
       "Body_import_passport_app_passport_import_post": {
         "properties": {
           "confirm": {
@@ -6499,6 +6519,55 @@
           }
         ],
         "summary": "Send a message",
+        "tags": [
+          "Owner: chat & notebook"
+        ]
+      }
+    },
+    "/app/chat/attach": {
+      "post": {
+        "description": "Multipart: `file` (a PDF or plain text file, at most ATTACHMENT_MAX_BYTES, 10 MB by default) and an optional `text`. The type is decided from the file's first bytes, not its name. The file is read in memory for this one turn and never stored; its text reaches Ava as quoted data, the turn is tainted, and no action rests on it. Answers like `/chat`. 413 too big, 415 not a PDF or text file, 422 empty.",
+        "operationId": "chat_attach_app_chat_attach_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_chat_attach_app_chat_attach_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Chat Attach App Chat Attach Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Send a message with a PDF or text file",
         "tags": [
           "Owner: chat & notebook"
         ]

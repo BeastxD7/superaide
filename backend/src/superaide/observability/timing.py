@@ -33,6 +33,7 @@ class TurnTimer:
         self._seconds: dict[str, float] = {}
         self._stack: list[list[Any]] = []  # [name, time this piece started]
         self.model_calls = 0
+        self.order: list[str] = []  # stage names in the order they were entered (the privacy ordering is tested on it)
         self.first_token_s: float | None = None
 
     @contextmanager
@@ -41,6 +42,7 @@ class TurnTimer:
         if self._stack:  # pause the outer stage: its time so far is its own
             outer = self._stack[-1]
             self._seconds[outer[0]] = self._seconds.get(outer[0], 0.0) + now - outer[1]
+        self.order.append(name)
         entry: list[Any] = [name, now]
         self._stack.append(entry)
         if name == "model":

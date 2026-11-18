@@ -14,7 +14,7 @@ from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
@@ -592,6 +592,47 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         with session_scope() as s:
             person = require(s, Person, person_id)
             msg = accounts.web_message(person, text)
+        result = get_agent().handle(msg)
+        return {"mode": result.mode, "reply": result.reply, "notes": result.notes}
+
+    @router.post(
+        "/chat/attach",
+        tags=["Owner: chat & notebook"],
+        summary="Send a message with a PDF or text file",
+        description=(
+            "Multipart: `file` (a PDF or plain text file, at most ATTACHMENT_MAX_BYTES, 10 MB by default) and an "
+            "optional `text`. The type is decided from the file's first bytes, not its name. The file is read in "
+            "memory for this one turn and never stored; its text reaches Ava as quoted data, the turn is tainted, "
+            "and no action rests on it. Answers like `/chat`. 413 too big, 415 not a PDF or text file, 422 empty."
+        ),
+    )
+    def chat_attach(
+        request: Request,
+        file: UploadFile = File(...),
+        text: str = Form("", max_length=4000),
+        person_id: uuid.UUID = Depends(owner_person_id),
+    ) -> dict[str, Any]:
+        from superaide.channels import api as attachments
+
+        limit = get_settings().attachment_max_bytes
+        try:
+            announced = int(request.headers.get("content-length") or 0)
+        except ValueError:
+            announced = 0
+        if announced > limit + 64 * 1024:  # refuse before reading the body (the form's own overhead is small)
+            raise HTTPException(413, attachments.too_big_message(limit))
+        data = file.file.read(limit + 1)
+        if not data:
+            raise HTTPException(422, "That file is empty.")
+        if len(data) > limit:
+            raise HTTPException(413, attachments.too_big_message(limit))
+        kind = attachments.sniff(data)
+        if kind != "pdf" and kind != "text":
+            raise HTTPException(415, attachments.IMAGE_NOT_READ if kind == "image" else attachments.NOT_READABLE_KIND)
+        with session_scope() as s:
+            person = require(s, Person, person_id)
+            msg = accounts.web_message(person, text.strip())
+        msg.attachments, msg.uploads = ["file"], [data]
         result = get_agent().handle(msg)
         return {"mode": result.mode, "reply": result.reply, "notes": result.notes}
 

@@ -242,6 +242,9 @@ class Settings(BaseSettings):
     # month by default. The cap sits INSIDE MAX_SPEND_USD and the other limits: all of them are checked, the
     # tightest wins. Empty dict (BUDGET_MONTHLY_BY_BUCKET={}) removes the voice cap, not the others.
     budget_monthly_by_bucket: dict[str, float] = Field(default_factory=lambda: {"voice_call": 5.00})
+    # The biggest file Ava will download and read from a message (Slack, Telegram, the app chat), in bytes (#511).
+    # Bigger files are refused with a reply that says so. The reader itself never takes more than 10 MB.
+    attachment_max_bytes: int = Field(default=10 * 1024 * 1024, ge=1024, le=10 * 1024 * 1024)
     # Longest a single live call may run, in seconds of caller audio heard. The call ends cleanly at this length.
     voice_call_max_seconds: int = Field(default=600, ge=10, le=3600)
     # These limits apply to each hired Ava on its own; an instance may set its own (agent_instance.spend_limits).

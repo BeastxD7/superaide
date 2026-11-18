@@ -27,6 +27,7 @@ REQUIRED_SCOPES: dict[str, str] = {
     "users:read": "knowing who is writing",
     "channels:history": "reading a thread in a public channel",
     "groups:history": "reading a thread in a private channel",
+    "files:read": "reading a PDF or text file you send",
 }
 
 # Only needed to list the channels Ava is in on the "Reading whole channels" card (#509). Reading itself needs

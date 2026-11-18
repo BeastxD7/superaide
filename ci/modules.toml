@@ -794,6 +794,8 @@ e2e = [
   "e2e/tests/mandate/mandate-skips.spec.ts",
   "e2e/tests/web-dashboard/knn-promote.spec.ts",
   "e2e/tests/web-dashboard/chat-empty.mobile.spec.ts",
+  "e2e/tests/web-dashboard/chat-attach.spec.ts",
+  "e2e/tests/web-dashboard/chat-attach.mobile.spec.ts",
   "e2e/tests/web-dashboard/citation-marks.mobile.spec.ts",
   "e2e/tests/web-dashboard/citation-marks.spec.ts",
   "e2e/tests/journeys/approval-honesty.spec.ts",
