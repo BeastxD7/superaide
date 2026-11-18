@@ -175,13 +175,14 @@ def test_ltm_gate_fails_when_a_correction_no_longer_retires_the_old_fact(monkeyp
     from superaide.evals.gate import compare, load_baseline
     from superaide.memory.knowledge import learn
 
-    # Learning ignores `replaces`: the old fact stays current and is served next to the new one.
+    # Learning ignores `replaces`: the old fact stays current and is served next to the new one. (A change to a
+    # single-valued attribute like "lives in" is still caught in code, #555, so the offsite correction is the probe.)
     real = learn.extract_facts
     monkeypatch.setattr(
         learn, "extract_facts", lambda *a, **k: [f.model_copy(update={"replaces": None}) for f in real(*a, **k) or []]
     )
     regressions, _ = compare(_ltm_results(), load_baseline())
-    assert any("ltm-update-city" in r for r in regressions), regressions
+    assert any("ltm-time-dm-corrected-on-slack" in r for r in regressions), regressions
 
 
 def test_compare_flags_new_missing_failing_and_improved_scenarios():

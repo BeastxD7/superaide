@@ -22,7 +22,13 @@ from superaide.identity.models import Person
 from superaide.jobs.models import Job
 from superaide.jobs.queue import enqueue, handler
 from superaide.memory.knowledge.facts import Fact, extract_facts
-from superaide.memory.knowledge.store import channel_source, find_same_fact, remember_fact, supersede
+from superaide.memory.knowledge.store import (
+    channel_source,
+    find_contradicted_fact,
+    find_same_fact,
+    remember_fact,
+    supersede,
+)
 from superaide.memory.models import Context, Event, MemoryItem
 from superaide.platform.audit import audit
 
@@ -125,7 +131,7 @@ def learn(session: Session, job: Job) -> None:
             continue
         item.source_event_ids = [event.id]
         kept += 1
-        old = by_id.get(f.replaces or 0)
+        old = by_id.get(f.replaces or 0) or unlinked_change(session, owner, f.content, item)
         if old is not None and old.valid_to is None and supersede(session, old, item):
             superseded += 1  # the owner changed their mind: the old fact retires, queryable by valid time
     audit(session, "memory", "learned_from_chat", event_id=event.id, facts=kept, merged=merged, superseded=superseded)
@@ -152,6 +158,13 @@ def validity(f: Fact, tz: tzinfo, said_at: datetime) -> dict[str, datetime]:
         if start > said_at and ("valid_to" not in out or start < out["valid_to"]):
             out["valid_from"] = start
     return out
+
+
+def unlinked_change(session: Session, owner: Person, content: str, new: MemoryItem) -> MemoryItem | None:
+    """The code-side check for a change the extractor did not link to the note it makes untrue (#555). Only an
+    owner-only note can be replaced this way, like the extractor's own `replaces`."""
+    found = find_contradicted_fact(session, owner, content)
+    return found if found is not None and found.id != new.id and _owner_only(found, owner) else None
 
 
 def _owner_only(item: MemoryItem, owner: Person) -> bool:
