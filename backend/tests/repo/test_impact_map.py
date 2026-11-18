@@ -190,3 +190,41 @@ def test_the_drift_command_reports_a_first_run_without_a_previous_map(im, tmp_pa
     old.write_text(json.dumps({"files": {STORE: []}}))
     assert im.main(["drift", "--map", str(old), "--fresh", str(fresh)]) == 0
     assert "1 of 1" in capsys.readouterr().out
+
+
+def test_a_carried_map_adds_its_pairs_but_not_its_age(im) -> None:
+    prev = {"version": 1, "generated_at": "2026-01-01T00:00:00+00:00", "files": {"f": ["t0"]}, "tests": ["t0"]}
+    part = {"generated_at": "2026-10-27T10:00:00+00:00", "files": {"f": ["t1"]}, "tests": ["t1"]}
+    got = im.merge([part], carry=prev)
+    assert got["files"] == {"f": ["t0", "t1"]} and got["generated_at"] == part["generated_at"]
+    assert im.merge([part], carry=None)["files"] == {"f": ["t1"]}
+    assert im.merge([part], carry={"version": 99, "files": {"f": ["zz"]}})["files"] == {
+        "f": ["t1"]
+    }  # unreadable: ignored
+
+
+def test_the_audit_counts_tests_that_ran_a_file_and_would_not_have_been_selected(im, idx) -> None:
+    old = fresh_map()  # knows only FAR_TEST for STORE
+    fresh = {STORE: {FAR_TEST, NOT_SELECTED, "backend/tests/gone/test_deleted.py"}}
+    got = im.audit(old, fresh, idx)
+    assert got["missed_pairs"] == 1 and got["misses"] == {STORE: [NOT_SELECTED]}  # the deleted test is ignored
+    assert "1 tests really ran" in im.render_audit(got)
+    assert im.audit(fresh_map(files={STORE: [FAR_TEST, NOT_SELECTED]}), fresh, idx)["missed_pairs"] == 0
+
+
+def test_the_audit_does_not_judge_files_where_the_rule_falls_back(im, idx) -> None:
+    stale_map = fresh_map(generated_at=(datetime.now(UTC) - timedelta(days=30)).isoformat())
+    got = im.audit(stale_map, {STORE: {NOT_SELECTED}}, idx)
+    assert got["files_fell_back"] == 1 and got["missed_pairs"] == 0
+
+
+def test_the_audit_command_fails_in_strict_mode_only_when_it_missed_something(im, tmp_path: Path, capsys) -> None:
+    old, fresh = tmp_path / "old.json", tmp_path / "fresh.json"
+    old.write_text(json.dumps(fresh_map()))
+    fresh.write_text(json.dumps({"files": {STORE: [NOT_SELECTED]}}))
+    args = ["audit", "--map", str(old), "--fresh", str(fresh), "--root", str(ROOT)]
+    assert im.main(args) == 0 and "1 tests really ran" in capsys.readouterr().out
+    assert im.main([*args, "--strict"]) == 1
+    fresh.write_text(json.dumps({"files": {STORE: [FAR_TEST]}}))
+    assert im.main([*args, "--strict"]) == 0
+    assert im.main(["audit", "--map", str(tmp_path / "none.json"), "--fresh", str(fresh), "--strict"]) == 0

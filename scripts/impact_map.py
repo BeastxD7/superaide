@@ -39,9 +39,7 @@ MAX_AGE_DAYS = 7
 
 
 def load_selector(root: Path = ROOT) -> Any:
-    spec = importlib.util.spec_from_file_location(
-        "select_tests", root / "scripts" / "select_tests.py"
-    )
+    spec = importlib.util.spec_from_file_location("select_tests", root / "scripts" / "select_tests.py")
     assert spec and spec.loader
     mod = importlib.util.module_from_spec(spec)
     sys.modules["select_tests"] = mod
@@ -69,12 +67,7 @@ def executed_by(data_file: str) -> dict[str, set[str]]:
             for ctx in contexts:
                 nodeid = ctx.split("|", 1)[0]
                 if "::" in nodeid:
-                    out[rel].add(
-                        TESTS
-                        + nodeid.split("::", 1)[0]
-                        .removeprefix("backend/tests/")
-                        .removeprefix("tests/")
-                    )
+                    out[rel].add(TESTS + nodeid.split("::", 1)[0].removeprefix("backend/tests/").removeprefix("tests/"))
     return out
 
 
@@ -84,19 +77,13 @@ def tests_seen(data_file: str) -> set[str]:
     data = CoverageData(basename=data_file)
     data.read()
     return {
-        TESTS
-        + c.split("|", 1)[0]
-        .split("::", 1)[0]
-        .removeprefix("backend/tests/")
-        .removeprefix("tests/")
+        TESTS + c.split("|", 1)[0].split("::", 1)[0].removeprefix("backend/tests/").removeprefix("tests/")
         for c in data.measured_contexts()
         if "::" in c
     }
 
 
-def build(
-    data_file: str, commit: str = "", now: datetime | None = None
-) -> dict[str, Any]:
+def build(data_file: str, commit: str = "", now: datetime | None = None) -> dict[str, Any]:
     files = {f: sorted(t) for f, t in sorted(executed_by(data_file).items())}
     return {
         "version": VERSION,
@@ -107,10 +94,18 @@ def build(
     }
 
 
-def merge(maps: list[dict[str, Any]]) -> dict[str, Any]:
-    """The shards of one run: union per file; the oldest date wins, so one stale part makes the whole map stale."""
+def merge(maps: list[dict[str, Any]], carry: dict[str, Any] | None = None) -> dict[str, Any]:
+    """The shards of one run: union per file; the oldest date wins, so one stale part makes the whole map stale.
+
+    `carry` is the previous run's map: its pairs are unioned in (they only ever add tests to a selection; coverage
+    of one run is not stable, a line that runs once, like a lazy init, is credited to whichever test ran first),
+    but its date is ignored, so the map is as old as the newest run that fed it."""
     files: dict[str, set[str]] = defaultdict(set)
     tests: set[str] = set()
+    if carry and carry.get("version") == VERSION:
+        for f, ts in carry.get("files", {}).items():
+            files[f].update(ts)
+        tests.update(carry.get("tests", []))
     for m in maps:
         for f, ts in m.get("files", {}).items():
             files[f].update(ts)
@@ -211,8 +206,7 @@ def render_shadow(result: dict[str, Any], total: int) -> str:
         lines += [
             f"- Backend tests this PR runs now: **{len(real)}** of {total}",
             f"- Under the impact map it would run: **{len(mine)}**",
-            f"- Left out by the map: {len(extra)}"
-            + (f" (e.g. `{'`, `'.join(extra[:3])}`)" if extra else ""),
+            f"- Left out by the map: {len(extra)}" + (f" (e.g. `{'`, `'.join(extra[:3])}`)" if extra else ""),
         ]
         added = sorted(set(mine) - set(real))
         if added:
@@ -220,9 +214,7 @@ def render_shadow(result: dict[str, Any], total: int) -> str:
                 f"- Added by the map (the real rule would skip them): **{len(added)}**: `{'`, `'.join(added[:5])}`"
             )
     elif result["mode"] == "fallback":
-        lines.append(
-            f"- Falls back to the real selection ({len(real)} of {total}): {result['reason']}"
-        )
+        lines.append(f"- Falls back to the real selection ({len(real)} of {total}): {result['reason']}")
     else:
         lines.append(f"- Same as the real selection: {result['reason']}")
     return "\n".join(lines) + "\n"
@@ -258,9 +250,59 @@ def render_drift(d: dict[str, Any]) -> str:
         ),
     ]
     for f, ts in d["worst"]:
-        lines.append(
-            f"  - `{f.removeprefix(SRC)}`: {len(ts)} new, e.g. `{ts[0].removeprefix(TESTS)}`"
-        )
+        lines.append(f"  - `{f.removeprefix(SRC)}`: {len(ts)} new, e.g. `{ts[0].removeprefix(TESTS)}`")
+    return "\n".join(lines) + "\n"
+
+
+# --- audit ---------------------------------------------------------------------------------------------
+
+
+def audit(
+    old: dict[str, Any] | None,
+    fresh: dict[str, set[str]],
+    idx: Any,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """The guard against drift: for every (file, test) pair a fresh run recorded, would the rule, using the OLD map,
+    have selected that test if only that file changed? A miss is a test that really ran the file and was not
+    selected. Only the narrow ("impact") proposal is judged: when the rule falls back to the real selection it is
+    the wide rule, which this audit does not replace. Tests that no longer exist are ignored."""
+    existing = set(idx.backend_tests)
+    misses: dict[str, list[str]] = {}
+    pairs = judged = fell_back = 0
+    for f in sorted(fresh):
+        tests = sorted(t for t in fresh[f] if t in existing)
+        if not tests:
+            continue
+        got = propose([f], idx, old, now)
+        if got["mode"] != "impact":
+            fell_back += 1
+            continue
+        picked = {"backend/" + x for x in got["backend_files"]}
+        pairs += len(tests)
+        judged += 1
+        lost = [t for t in tests if t not in picked]
+        if lost:
+            misses[f] = lost
+    return {
+        "files_judged": judged,
+        "files_fell_back": fell_back,
+        "pairs": pairs,
+        "missed_pairs": sum(len(v) for v in misses.values()),
+        "misses": misses,
+    }
+
+
+def render_audit(a: dict[str, Any]) -> str:
+    lines = [
+        "### Impact map audit (the rule, with the previous map, against this run's coverage)",
+        "",
+        f"- {a['files_judged']} files judged ({a['pairs']} file/test pairs), {a['files_fell_back']} fell back to the wide rule",
+        f"- **{a['missed_pairs']} tests really ran a file and would not have been selected**"
+        + (f", in {len(a['misses'])} files" if a["misses"] else ""),
+    ]
+    for f, ts in sorted(a["misses"].items(), key=lambda kv: -len(kv[1]))[:20]:
+        lines.append(f"  - `{f.removeprefix(SRC)}`: {len(ts)}, e.g. `{ts[0].removeprefix(TESTS)}`")
     return "\n".join(lines) + "\n"
 
 
@@ -278,9 +320,7 @@ def read_map(path: str | None) -> dict[str, Any] | None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    )
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     b = sub.add_parser("build")
     b.add_argument("--data", required=True)
@@ -289,10 +329,18 @@ def main(argv: list[str] | None = None) -> int:
     m = sub.add_parser("merge")
     m.add_argument("parts", nargs="+")
     m.add_argument("--out", required=True)
+    m.add_argument("--carry", help="the previous map: its pairs are kept (union), its date is not")
     d = sub.add_parser("drift")
     d.add_argument("--map", required=True)
     d.add_argument("--fresh", required=True)
     d.add_argument("--summary-file")
+    a = sub.add_parser("audit")
+    a.add_argument("--map", required=True)
+    a.add_argument("--fresh", required=True)
+    a.add_argument("--strict", action="store_true", help="exit 1 when the rule would have missed a test")
+    a.add_argument("--summary-file")
+    a.add_argument("--now", help="ISO time to judge the old map's age at (default: now; for replaying old data)")
+    a.add_argument("--root", default=str(ROOT))
     s = sub.add_parser("shadow")
     s.add_argument("--map")
     s.add_argument("--base", default="HEAD^1")
@@ -304,20 +352,15 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
 
     if args.cmd == "build":
-        Path(args.out).write_text(
-            json.dumps(build(args.data, args.commit), indent=1) + "\n"
-        )
+        Path(args.out).write_text(json.dumps(build(args.data, args.commit), indent=1) + "\n")
         return 0
     if args.cmd == "merge":
         parts = [p for p in (read_map(x) for x in args.parts) if p]
-        Path(args.out).write_text(json.dumps(merge(parts), indent=1) + "\n")
+        Path(args.out).write_text(json.dumps(merge(parts, read_map(args.carry)), indent=1) + "\n")
         return 0
     if args.cmd == "drift":
         old = read_map(args.map)
-        fresh = {
-            f: set(ts)
-            for f, ts in (read_map(args.fresh) or {}).get("files", {}).items()
-        }
+        fresh = {f: set(ts) for f, ts in (read_map(args.fresh) or {}).get("files", {}).items()}
         report = (
             render_drift(drift(old, fresh))
             if old and old.get("files")
@@ -329,16 +372,29 @@ def main(argv: list[str] | None = None) -> int:
                 fh.write(report)
         return 0
 
+    if args.cmd == "audit":
+        root = Path(args.root)
+        st = load_selector(root)
+        fresh = {f: set(ts) for f, ts in (read_map(args.fresh) or {}).get("files", {}).items()}
+        old = read_map(args.map)
+        if not old or not old.get("files") or not fresh:
+            print("### Impact map audit\n\n- no previous map or no fresh coverage: nothing to judge\n")
+            return 0
+        now = datetime.fromisoformat(args.now) if args.now else None
+        result = audit(old, fresh, st.build_index(root), now)
+        report = render_audit(result)
+        print(report)
+        if args.summary_file:
+            with open(args.summary_file, "a") as fh:
+                fh.write(report)
+        return 1 if args.strict and result["missed_pairs"] else 0
+
     # shadow: never fails the build, whatever goes wrong
     try:
         root = Path(args.root)
         st = load_selector(root)
         idx = st.build_index(root)
-        changed = (
-            args.changed
-            if args.changed is not None
-            else st.changed_files(args.base, args.head, root)
-        )
+        changed = args.changed if args.changed is not None else st.changed_files(args.base, args.head, root)
         result = propose(changed, idx, read_map(args.map))
         out = render_shadow(result, len(idx.backend_tests))
         print(json.dumps(result, indent=1) if args.json else out)
