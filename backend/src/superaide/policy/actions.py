@@ -147,6 +147,7 @@ def decide(
             **extra,
             **quote.assess(session, kind),
             **({"mandate_shadow": seen} if seen is not None else {}),
+            "tainted": tainted,  # #408: a batch is never offered for a turn that read untrusted content
             "summary": summary,
             "trust_at_request": requester.trust,
             "required_trust": rule.min_trust,

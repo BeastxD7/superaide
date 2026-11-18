@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAppData } from '@/features/dashboard/data'
-import { call } from '@/lib/api'
+import { call, type MandateSuggestion } from '@/lib/api'
 
 type Mandate = {
   id: string
@@ -26,6 +26,7 @@ type Skip = { at: string; tool: string; summary: string }
 // time. Shown only while the feature is on (the API answers 404 when off). Revoking one revokes what was handed on from it.
 export function MandatesCard({ name }: { name: string }) {
   const { data, error, reload } = useAppData<{ mandates: Mandate[]; skipping?: boolean; skips?: Skip[] }>('/mandates')
+  const offers = useAppData<{ suggestions: MandateSuggestion[] }>('/mandates/suggestions')
   const [busy, setBusy] = useState<string | null>(null)
   if (error || !data) return null
   const active = data.mandates.filter((m) => m.status === 'active')
@@ -35,6 +36,16 @@ export function MandatesCard({ name }: { name: string }) {
     try {
       await call(`/mandates/${id}/revoke`, { method: 'POST' })
       await reload()
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function answer(kind: string, verb: 'accept' | 'dismiss') {
+    setBusy(kind)
+    try {
+      await call(`/mandates/suggestions/${kind}/${verb}`, { method: 'POST' })
+      await Promise.all([reload(), offers.reload()])
     } finally {
       setBusy(null)
     }
@@ -53,6 +64,23 @@ export function MandatesCard({ name }: { name: string }) {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {(offers.data?.suggestions ?? []).map((o) => (
+          <div key={o.kind} className="mb-3 rounded-xl border border-violet-200 bg-violet-50/40 p-3" data-testid="mandate-suggestion">
+            <p className="text-sm font-medium text-ink">{o.title}</p>
+            <p className="mt-0.5 text-sm text-body">
+              You said yes to this {o.count} times: {o.words}.
+            </p>
+            <p className="mt-0.5 text-xs text-muted">If you agree: {o.limits}. Sending, spending and anything that tells other people still ask.</p>
+            <div className="mt-2 flex gap-2">
+              <Button size="sm" variant="outline" disabled={busy === o.kind} onClick={() => void answer(o.kind, 'dismiss')}>
+                Not now
+              </Button>
+              <Button size="sm" disabled={busy === o.kind} onClick={() => void answer(o.kind, 'accept')}>
+                Yes, always
+              </Button>
+            </div>
+          </div>
+        ))}
         {active.length === 0 ? (
           <p className="text-sm text-muted">No mandates are active.</p>
         ) : (

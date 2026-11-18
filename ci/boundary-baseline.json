@@ -89,6 +89,7 @@
  "app.routes -> trust.twin",
  "app.setup_check -> identity.auth.routes",
  "app.stream -> brain.llm",
+ "approvals.batching -> policy.kinds",
  "approvals.binding -> policy.killswitch",
  "approvals.outcomes -> memory.recall.retrieval",
  "approvals.outcomes -> policy.kinds",
