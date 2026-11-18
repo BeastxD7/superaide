@@ -1,5 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
-import { BRAIN, FAKE_ANTHROPIC_PORT, FAKE_ANTHROPIC_URL, API_PORT, API_URL, DEV, DEV_PORT, DEV_URL, PROXY, PROXY_A, PROXY_B, PROXY_C, UPSTREAM_PORT, BASE_URL, DB_NAME, FAKE_GOOGLE_PORT, FAKE_GOOGLE_URL, GOOGLE, PG_ADMIN_URL, SLOT, WEB_PORT, apiEnv } from './src/env'
+import { BRAIN, FAKE_ANTHROPIC_PORT, FAKE_ANTHROPIC_URL, API_PORT, API_URL, DEV, DEV_PORT, DEV_URL, PROXY, TTFR, PROXY_A, PROXY_B, PROXY_C, UPSTREAM_PORT, BASE_URL, DB_NAME, FAKE_GOOGLE_PORT, FAKE_GOOGLE_URL, GOOGLE, PG_ADMIN_URL, SLOT, WEB_PORT, apiEnv } from './src/env'
 
 // One slot = one API, one Next.js server and one database (see src/env.ts).
 // Tests inside a slot run one at a time because they reset the shared database;
@@ -27,8 +27,10 @@ export default defineConfig({
     launchOptions: { args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--mute-audio'] },
   },
   projects: [
-    { name: 'desktop', use: { ...devices['Desktop Chrome'] }, testIgnore: /\.(mobile|dev|proxy)\.spec\.ts$/ },
+    { name: 'desktop', use: { ...devices['Desktop Chrome'] }, testIgnore: /\.(mobile|dev|proxy|ttfr)\.spec\.ts$/ },
     { name: 'mobile', use: { ...devices['Pixel 7'] }, testMatch: /\.mobile\.spec\.ts$/ },
+    // The time-to-first-reply measurement (E2E_TTFR=1, with E2E_BRAIN=1): run nightly, not on pull requests (#411).
+    ...(TTFR ? [{ name: 'ttfr', use: { ...devices['Desktop Chrome'] }, testMatch: /\.ttfr\.spec\.ts$/ }] : []),
     // The /api proxy against a fake upstream (E2E_PROXY=1): no browser, no database.
     ...(PROXY ? [{ name: 'proxy', testMatch: /\.proxy\.spec\.ts$/ }] : []),
     // Against `next dev` (E2E_DEV=1): React runs every effect twice there, which the production build never does.

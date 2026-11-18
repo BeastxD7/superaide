@@ -1,0 +1,95 @@
+name: Time to first reply
+
+# Nightly (not on pull requests): how long a new owner takes from a fresh install to a first useful reply (#411).
+# Targets (docs/onboarding-time.md): hosted under 3 minutes, self-hosted under 10. The run fails when one is missed, and
+# keeps a trend: each run's numbers join the `ttfr-history` artifact of the run before it.
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read # to fetch the previous run's history artifact
+
+concurrency:
+  group: ttfr
+  cancel-in-progress: false
+
+jobs:
+  measure:
+    name: Measure
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: agent
+          POSTGRES_PASSWORD: agent
+          POSTGRES_DB: agent
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U agent -d agent"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      E2E_PG_ADMIN_URL: postgresql://agent:agent@localhost:5432/postgres
+      NEXT_TELEMETRY_DISABLED: 1
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.11.32"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      # The self-hosted half, from a clean checkout with no caches: the honest cold number.
+      - name: Cold start (install, build, migrate, start)
+        working-directory: e2e
+        run: |
+          npm ci --no-audit --no-fund
+          node scripts/ttfr-cold-start.mjs
+
+      - name: Browser
+        working-directory: e2e
+        run: npx playwright install --with-deps chromium
+
+      - name: Journey (hosted stack, fake Anthropic)
+        working-directory: e2e
+        run: E2E_TTFR=1 E2E_BRAIN=1 E2E_SLOT=0 npx playwright test --project=ttfr
+
+      - name: Previous history
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          run=$(gh api "repos/$REPO/actions/artifacts?name=ttfr-history&per_page=5" --jq '[.artifacts[] | select(.expired == false)][0].workflow_run.id')
+          if [ -n "$run" ] && [ "$run" != "null" ]; then gh run download "$run" --repo "$REPO" -n ttfr-history -D e2e/history || true; fi
+
+      - name: Check the targets and keep the trend
+        working-directory: e2e
+        run: |
+          mkdir -p history
+          node scripts/ttfr-report.mjs history/ttfr-history.json
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ttfr-results
+          path: e2e/test-results/ttfr
+          retention-days: 90
+
+      - name: Upload history
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ttfr-history
+          path: e2e/history/ttfr-history.json
+          retention-days: 90
+          if-no-files-found: ignore
