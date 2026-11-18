@@ -818,7 +818,7 @@ class Agent:
             if shared and (thread_block := self._slack_thread_block(ctx, msg, sender.name)):
                 messages[0] = {**messages[0], "content": thread_block + "\n\n" + str(messages[0]["content"])}
             if file_block:
-                messages[-1] = {**messages[-1], "content": f"{messages[-1]['content']}\n\n{file_block}"}
+                messages[-1] = {**messages[-1], "content": f"{file_block}\n\n{messages[-1]['content']}"}
             result = turn.run(messages)
         except BudgetExceeded as exc:
             return self._budget_reply(s, exc), ["budget"], {}
@@ -917,7 +917,7 @@ class Agent:
         with timing.span("retrieval"):
             messages = build_messages(recent_events(s, ctx, thread_id=thread_of(msg)), msg.text)
         if file_block:
-            messages[-1] = {**messages[-1], "content": f"{messages[-1]['content']}\n\n{file_block}"}
+            messages[-1] = {**messages[-1], "content": f"{file_block}\n\n{messages[-1]['content']}"}
         try:
             result = timing.timed_llm(self.llm).complete(
                 purpose="chat_turn",
