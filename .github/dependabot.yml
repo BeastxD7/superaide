@@ -5,15 +5,18 @@ updates:
     directory: /backend
     schedule:
       interval: weekly
+      day: monday
     labels: [dependencies, "area:backend"]
     groups:
       python-minor-and-patch:
         update-types: [minor, patch]
+      # Majors are one pull request each so a breaking change is read on its own (docs/dependencies.md).
 
   - package-ecosystem: npm
     directory: /frontend
     schedule:
       interval: weekly
+      day: monday
     labels: [dependencies, "area:frontend"]
     groups:
       npm-minor-and-patch:
@@ -31,6 +34,7 @@ updates:
     directory: /e2e
     schedule:
       interval: weekly
+      day: monday
     labels: [dependencies, "area:ci"]
     groups:
       npm-minor-and-patch:
@@ -48,7 +52,12 @@ updates:
     directories: [/backend, /frontend, /deploy/caddy]
     schedule:
       interval: weekly
+      day: monday
     labels: [dependencies, "area:deploy"]
+    groups:
+      docker-images:
+        patterns: ["*"]
+        update-types: [minor, patch]
     ignore:
       # Node runs on the Active LTS line only. Odd majors are never LTS, and moving to
       # the next even major is a manual change (Dockerfile, CI node-version, @types/node).
@@ -59,4 +68,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+      day: monday
     labels: [dependencies, "area:ci"]
+    groups:
+      github-actions:
+        patterns: ["*"]
+        update-types: [minor, patch]
