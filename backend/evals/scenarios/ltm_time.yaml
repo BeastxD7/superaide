@@ -106,7 +106,6 @@
   category: ltm_time
   severity: medium
   title: A note that starts next month is not served as true today
-  known_gap: 'recall filters on the end of a note (valid_to) but not its start (valid_from); tracked in #556'
   world:
     memories:
       - {content: "Meera Iyer is Jordan's manager from next month.", category: person, valid_from_days: 30}
@@ -114,6 +113,21 @@
     - say: "hello"
   checks:
     - recall_none: {query: "who is his manager", matching: ["Meera Iyer"]}
+
+- id: ltm-time-chat-start-date-not-served-early
+  category: ltm_time
+  severity: high
+  title: '"... from next month" said in chat is not served as true today, and the old manager stays until then'
+  world:
+    learn_model: true
+    memories:
+      - {content: "Priya Tan is Jordan's manager.", category: person}
+  turns:
+    - say: "Meera Iyer takes over as my manager from next month, Priya is stepping back then"
+      fake:
+        facts: [{content: "Meera Iyer is Jordan's manager from next month.", category: person, valid_from: "{{iso+30}}", replaces: 1}]
+  checks:
+    - recall_top: {query: "who is his manager", contains: ["Priya Tan"], absent: ["Meera Iyer"], k: 5}
 
 # --- told in chat: the end date has to be kept ------------------------------------------------
 - id: ltm-time-chat-end-date-learned
@@ -132,12 +146,11 @@
   category: ltm_time
   severity: critical
   title: '"... until next week" said in chat stops being served when the week is over'
-  known_gap: 'the fact extractor returns no end date (Fact has no valid_to), so nothing retires the note; tracked in #553'
   world: {learn_model: true}
   turns:
     - say: "Priya Tan is covering as my manager until next week, send her anything that needs a decision"
       fake:
-        facts: [{content: "Priya Tan is Jordan's manager until next week.", category: person, time_bound: true}]
+        facts: [{content: "Priya Tan is Jordan's manager until next week.", category: person, time_bound: true, valid_to: "{{iso+7}}"}]
     - advance: "+9d"
   checks:
     - recall_none: {query: "who is his manager", matching: ["Priya Tan"]}
@@ -217,7 +230,6 @@
   category: ltm_time
   severity: critical
   title: 'The same sentence with one date changed ("12 December" to "19 December") replaces the old note'
-  known_gap: 'the learner merges a fact into any note that is 80% similar by trigrams, so a correction that changes one date or number is dropped as "said again" (the extractor even names the old note in `replaces`); tracked in #554'
   world:
     learn_model: true
     memories:
@@ -234,7 +246,6 @@
   category: ltm_time
   severity: critical
   title: 'The same sentence with one number changed ("90 lakh" to "80 lakh") replaces the old note'
-  known_gap: 'same cause as ltm-time-corrected-date-is-not-a-duplicate (#554): the correction is merged into the old note by trigram similarity'
   world:
     learn_model: true
     memories:

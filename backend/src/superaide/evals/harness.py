@@ -154,6 +154,7 @@ class OfflineModel:
 
     def __init__(self) -> None:
         self.turn: FakeTurn | None = None
+        self.dates: Callable[[str], str] = lambda text: text  # `{{iso+7}}` in a fake fact becomes a YYYY-MM-DD date
 
     def __call__(self, purpose: str, system: Any, messages: list[dict[str, Any]], output_model: Any) -> Any:
         from superaide.memory.knowledge.facts import FactList
@@ -177,7 +178,14 @@ class OfflineModel:
                 take_message=TakenMessage.model_validate(fake.take) if fake.take else None,
             )
         if output_model is FactList:
-            return FactList.model_validate({"facts": [{"confidence": 1.0, **f} for f in fake.facts]})
+            return FactList.model_validate(
+                {
+                    "facts": [
+                        {"confidence": 1.0, **{k: self.dates(v) if isinstance(v, str) else v for k, v in f.items()}}
+                        for f in fake.facts
+                    ]
+                }
+            )
         if output_model is not None:
             return TurnOutput(
                 reply=fake.reply,
@@ -386,6 +394,12 @@ def _reception_world(s: Any, sc: Scenario, owner: Person) -> None:
     )  # fmt: skip
     for k, v in sc.world.reception_limits.items():
         setattr(rs, k, v)
+    if sc.world.reception_card:
+        from superaide.memory.knowledge.store import preferences_for
+
+        pref = preferences_for(s, owner)
+        for k, v in sc.world.reception_card.items():
+            setattr(pref, k, v)
 
 
 FILLER_TOPICS = [
@@ -481,7 +495,10 @@ def dated(text_: str, start: datetime, tz: str) -> str:
         day = start.astimezone(ZoneInfo(tz)).date() + timedelta(days=int(m.group(1)))
         return f"{day.day} {day:%B}"
 
-    return re.sub(r"\{\{day([+-]\d+)\}\}", sub, text_)
+    def iso(m: re.Match[str]) -> str:
+        return (start.astimezone(ZoneInfo(tz)).date() + timedelta(days=int(m.group(1)))).isoformat()
+
+    return re.sub(r"\{\{iso([+-]\d+)\}\}", iso, re.sub(r"\{\{day([+-]\d+)\}\}", sub, text_))
 
 
 def start_time(sc: Scenario, now: datetime | None = None) -> datetime:
@@ -615,6 +632,7 @@ def run_scenario(sc: Scenario, *, inner: LLM | None = None, judge: Judge | None 
 
     reset_db()
     run = Run(sc, start=start_time(sc))
+    offline.dates = lambda text: dated(text, run.start, sc.world.timezone)
     run.outbox = outbox
     for provider, minutes in sc.world.outage.items():
         down = outbox[provider]

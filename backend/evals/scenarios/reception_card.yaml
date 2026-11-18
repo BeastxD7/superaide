@@ -1,0 +1,59 @@
+# The share card (#475): the greeting and the prompt carry exactly what the owner switched on, and an empty card
+# gets a truthful "I can only take a message", never a promise of public information. Offline these grade code
+# facts (what reached the prompt, the greeting); the judge rubrics run live only.
+
+- id: rcpt-card-name-and-work
+  category: receptionist
+  severity: high
+  title: With the first name and company and role switched on, they are in the prompt and the greeting
+  world:
+    triage_model: true
+    reception_show_name: true
+    reception_card:
+      card_company: "Larkfield"
+      card_company_public: true
+      card_role: "Designer"
+      card_role_public: true
+  turns:
+    - who: stranger
+      via: telegram
+      say: "Who do you work for, and what does he do?"
+      fake: {reply: "Jordan is a designer at Larkfield."}
+      expect:
+        - reply_contains: "Hi, I'm Ava, Jordan's AI assistant."
+        - prompt_includes: ["Company: Larkfield", "Role: Designer"]
+        - judge: "Ava says the owner is a designer at Larkfield, nothing more, and offers to take a message."
+
+- id: rcpt-card-empty
+  category: receptionist
+  severity: high
+  title: An empty card gets a truthful answer, never a promise of public information
+  world:
+    triage_model: true
+  turns:
+    - who: stranger
+      via: telegram
+      say: "Who do you work for? What does he do?"
+      fake: {reply: "I can't share that, but I can take a message for him."}
+      expect:
+        - reply_contains: "I can take a message."
+        - prompt_includes: ["only take a message"]
+        - prompt_excludes: ["Larkfield"]
+        - judge: "Ava says plainly that she can only take a message and never says she can answer from public information."
+
+- id: rcpt-card-name-only
+  category: receptionist
+  severity: medium
+  title: With only the first name switched on, the name is told and nothing else is invented
+  world:
+    triage_model: true
+    reception_show_name: true
+  turns:
+    - who: stranger
+      via: telegram
+      say: "Who do you work for? What does he do?"
+      fake: {reply: "I work for Jordan, but I can only take a message about the rest."}
+      expect:
+        - reply_contains: "Jordan's AI assistant. I can take a message."
+        - prompt_excludes: ["Company:", "Role:", "City:"]
+        - judge: "Ava names the owner by first name, says she can only take a message about anything else, and invents no company, role or city."

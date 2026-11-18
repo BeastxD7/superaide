@@ -46,6 +46,18 @@ def channel_source(provider: str | None) -> str:
 
 DUPLICATE_SIMILARITY = 0.8  # pg_trgm similarity at which two of the owner's facts are one
 
+_MONTHS = (
+    "january february march april may june july august september october november december "
+    "jan feb mar apr jun jul aug sep sept oct nov dec"
+).split()
+_FIGURE = re.compile(r"\d+(?:[.,]\d+)*|\b(?:" + "|".join(_MONTHS) + r")\b", re.I)
+
+
+def figures(text: str) -> frozenset[str]:
+    """Every number and month in a fact ("12 December", "90 lakh"): the words that make two near-identical
+    sentences different facts. Thousands separators are ignored ("1,50,000" = "150000")."""
+    return frozenset(m.group(0).lower().replace(",", "") for m in _FIGURE.finditer(text))
+
 
 def find_same_fact(
     session: Session, owner: Person, content: str, *, similarity: float | None = DUPLICATE_SIMILARITY
@@ -73,7 +85,11 @@ def find_same_fact(
             select(MemoryItem, literal(0.0, Float)).where(live).order_by(MemoryItem.created_at.desc()).limit(500)
         ).all()
     for row, sc in rows:
-        if normalise(row.content) == norm or (similarity is not None and sc >= similarity):
+        if normalise(row.content) == norm:
+            return row
+        # Close by trigrams is "said again" only when both agree on every number and date: "moved to 19 December"
+        # is a correction of "12 December", not a repeat of it (#554).
+        if similarity is not None and sc >= similarity and figures(row.content) == figures(content):
             return row
     return None
 
@@ -141,6 +157,8 @@ def remember_fact(
     trust_rank: int | None = None,
     author_person_id: Any = None,
     source_ref: str | None = None,
+    valid_from: datetime | None = None,
+    valid_to: datetime | None = None,
 ) -> MemoryItem | None:
     """Store one fact about the owner. Returns None if the same fact is already known (with the Echo Filter
     on, a repeat from a *different* root origin is still noted on the known fact). Its trust rank comes from its
@@ -181,6 +199,10 @@ def remember_fact(
         conflict_status="review" if trust.needs_review(source, category) else "none",
         source_ref=source_ref,
     )
+    if valid_from is not None:
+        item.valid_from = valid_from  # not served before it starts (memory_filter)
+    if valid_to is not None:
+        item.valid_to = valid_to  # not served once it has passed
     session.add(item)
     session.flush()
     if hearsay:
@@ -199,7 +221,9 @@ def supersede(session: Session, old: MemoryItem, new: MemoryItem) -> bool:
     if old.valid_to is not None:
         return True
     if new.trust_rank <= old.trust_rank and not old.locked:  # a locked fact only the owner may replace
-        old.valid_to = datetime.now(UTC)
+        now = datetime.now(UTC)
+        # A successor that starts later ("manager from next month") leaves the old note true until then.
+        old.valid_to = new.valid_from if new.valid_from > now else now
         old.superseded_by = new.id
         audit(session, "memory", "superseded", memory_id=old.id, by=new.id)
         return True

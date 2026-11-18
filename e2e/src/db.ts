@@ -25,15 +25,19 @@ export async function resetDatabase(): Promise<void> {
     "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> 'alembic_version'",
   )
   if (!tables.length) return
-  const sql = `TRUNCATE ${tables.map((t) => `"${t.tablename}"`).join(', ')} RESTART IDENTITY CASCADE`
+  // A TRUNCATE that waits for a table lock also blocks every new reader of that table behind it (a request
+  // of the next test), and it takes its tables one by one, so it can deadlock with a worker transaction (#526).
+  // Never wait long: give up after 2 s (55P03) and try again, so the queue behind it keeps moving.
+  const sql = `SET lock_timeout = '2s'; TRUNCATE ${tables.map((t) => `"${t.tablename}"`).join(', ')} RESTART IDENTITY CASCADE`
   // The API's background worker keeps reading these tables; when Postgres resolves a
-  // deadlock with it by cancelling the TRUNCATE (SQLSTATE 40P01), try again.
+  // deadlock with it by cancelling the TRUNCATE (40P01) or the lock wait times out (55P03), try again.
   for (let attempt = 1; ; attempt++) {
     try {
       await query(sql)
       return
     } catch (e) {
-      if ((e as { code?: string }).code !== '40P01' || attempt >= 5) throw e
+      const code = (e as { code?: string }).code
+      if ((code !== '40P01' && code !== '55P03') || attempt >= 8) throw e
       await new Promise((r) => setTimeout(r, 100 * attempt))
     }
   }

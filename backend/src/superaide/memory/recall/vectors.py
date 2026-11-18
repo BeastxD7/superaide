@@ -222,8 +222,8 @@ def embed_missing(session: Session, max_rounds: int = 20) -> int:
     me = memory_embedding.c
     done = 0
     for _ in range(max_rounds):
-        rows = session.scalars(
-            select(MemoryItem)
+        rows = session.execute(
+            select(MemoryItem.id, MemoryItem.tenant_id, MemoryItem.agent_id, MemoryItem.content)
             .where(
                 MemoryItem.valid_to.is_(None),
                 MemoryItem.agent_id == scope_or_default().agent_id,
@@ -234,15 +234,16 @@ def embed_missing(session: Session, max_rounds: int = 20) -> int:
         ).all()
         if not rows:
             break
-        vectors = emb.embed([m.content for m in rows], kind="document")
+        session.commit()  # end the read transaction: embedding is slow and must not hold table locks (#526)
+        vectors = emb.embed([r.content for r in rows], kind="document")
         if not vectors:
             break
         now = datetime.now(UTC)
         stmt = insert(memory_embedding).values(
             [
-                {"memory_id": m.id, "model": emb.name, "tenant_id": m.tenant_id, "agent_id": m.agent_id,
+                {"memory_id": r.id, "model": emb.name, "tenant_id": r.tenant_id, "agent_id": r.agent_id,
                  "embedding": v, "created_at": now}
-                for m, v in zip(rows, vectors, strict=True)
+                for r, v in zip(rows, vectors, strict=True)
             ]
         )  # fmt: skip
         session.execute(
@@ -251,6 +252,7 @@ def embed_missing(session: Session, max_rounds: int = 20) -> int:
             )
         )
         done += len(rows)
+        session.commit()  # one short write per batch, so no lock outlives it
     return done + _embed_missing_chunks(session, emb)
 
 
@@ -262,8 +264,8 @@ def _embed_missing_chunks(session: Session, emb: Embedder) -> int:
     ce = chunk_embedding.c
     done = 0
     for _ in range(20):
-        rows = session.scalars(
-            select(DocumentChunk)
+        rows = session.execute(
+            select(DocumentChunk.id, DocumentChunk.tenant_id, DocumentChunk.agent_id, DocumentChunk.text)
             .join(Document, Document.id == DocumentChunk.document_id)
             .where(
                 Document.removed_at.is_(None),
@@ -275,15 +277,16 @@ def _embed_missing_chunks(session: Session, emb: Embedder) -> int:
         ).all()
         if not rows:
             break
-        vectors = emb.embed([c.text for c in rows], kind="document")
+        session.commit()  # see embed_missing: no table lock is held while embedding
+        vectors = emb.embed([r.text for r in rows], kind="document")
         if not vectors:
             break
         now = datetime.now(UTC)
         stmt = insert(chunk_embedding).values(
             [
-                {"chunk_id": c.id, "model": emb.name, "tenant_id": c.tenant_id, "agent_id": c.agent_id,
+                {"chunk_id": r.id, "model": emb.name, "tenant_id": r.tenant_id, "agent_id": r.agent_id,
                  "embedding": v, "created_at": now}
-                for c, v in zip(rows, vectors, strict=True)
+                for r, v in zip(rows, vectors, strict=True)
             ]
         )  # fmt: skip
         session.execute(
@@ -292,6 +295,7 @@ def _embed_missing_chunks(session: Session, emb: Embedder) -> int:
             )
         )
         done += len(rows)
+        session.commit()
     return done
 
 

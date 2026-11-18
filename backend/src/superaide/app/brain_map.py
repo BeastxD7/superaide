@@ -156,7 +156,7 @@ def build_map(session: Session, owner_id: uuid.UUID) -> dict[str, Any]:
         edges.append({"from": "owner", "to": f"topic:{cat}", "kind": "has"})
     # A retired note is still gated by who may see it (validity aside), so the shelf and the strike-throughs can
     # never show something the owner may not see.
-    gate = memory_filter(owner_audience(owner_id), EPOCH)
+    gate = memory_filter(owner_audience(owner_id), EPOCH, unstarted=True)
     live_ids = {m.id for m, _ in live}
     replaced = session.scalars(
         select(MemoryItem)

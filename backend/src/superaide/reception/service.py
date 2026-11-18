@@ -475,7 +475,11 @@ def _note(session: Session, owner: Person, row: ReceptionMessage, now: datetime)
     quiet = (
         select(func.count())
         .select_from(ReceptionMessage)
-        .where(ReceptionMessage.id != row.id, ReceptionMessage.created_at >= now - NOTE_EVERY)
+        .where(
+            ReceptionMessage.id != row.id,
+            ReceptionMessage.identity_id == row.identity_id,  # per sender: one chatty person cannot hide another (#472)
+            ReceptionMessage.created_at >= now - NOTE_EVERY,
+        )
     )
     if row.rank in URGENT_RANKS:
         quiet = quiet.where(ReceptionMessage.rank.in_(URGENT_RANKS))
@@ -528,8 +532,21 @@ def share_card_state(session: Session) -> tuple[bool, list[str]] | None:
     return bool(rs.show_first_name and rturn.first_name(boss)), card.lines(card.preference(session, boss))
 
 
+def first_name_shared(session: Session, owner: Person) -> bool:
+    return bool(settings_for(session, owner).show_first_name)
+
+
+def set_first_name_shared(session: Session, owner: Person, on: bool) -> None:
+    """The owner's choice to let Ava say their first name to someone she doesn't know (onboarding's share step and the
+    receptionist settings write the same switch, so there is one truth). Off until chosen."""
+    rs = settings_for(session, owner)
+    if rs.show_first_name != on:
+        rs.show_first_name = on
+        audit(session, "reception", "first_name_switch", on=on)
+
+
 def nudge_owner(session: Session, owner: Person) -> bool:
-    """A stranger wrote and the card is empty, so Ava could only take a message: tell the owner once a day, in the
+    """A stranger wrote and the card is empty, so Ava could only take a message: tell the owner once a week, in the
     app, with no word of what the stranger said (the owner's chat history is read by the model)."""
     from superaide.platform.db.models import AuditLog
     from superaide.proactive.notify import notify_owner
