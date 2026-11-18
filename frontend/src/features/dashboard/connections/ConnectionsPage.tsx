@@ -1,6 +1,7 @@
 'use client'
 
 import { AmbientChannels } from '@/features/dashboard/connections/AmbientChannels'
+import { SetupCheckCard } from '@/features/dashboard/connections/SetupCheckCard'
 import { ConnectorSettings } from '@/features/dashboard/connections/ConnectorSettings'
 import { HowThisWorks } from '@/features/dashboard/settings/HowThisWorks'
 import { Connections } from '@/features/workspace/Connections'
@@ -26,6 +27,9 @@ export function ConnectionsPage() {
         </div>
         <div className="mt-6">
           <AmbientChannels agentName={me.agent.name} />
+        </div>
+        <div className="mt-6">
+          <SetupCheckCard />
         </div>
         <div className="mt-6">
           <HowThisWorks
