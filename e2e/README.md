@@ -26,6 +26,7 @@ Postgres comes from `E2E_PG_ADMIN_URL`. The default, `postgresql://agent:agent@l
 ## Opt-in projects
 
 - `E2E_PROXY=1 npx playwright test --project=proxy` runs the `/api` proxy contract tests (`*.proxy.spec.ts`). It starts `scripts/fake-upstream.mjs` and three `next start` servers in front of it (defaults, `TRUST_PROXY_HEADERS=true`, and an unreachable upstream), so it needs `npm run build` in `frontend/` first. No browser and no database. CI runs it once, on shard 1.
+- `node scripts/proxy-bench.mjs [requests] [concurrency]` measures what the `/api` proxy adds (p50/p95, streaming, memory) against the same fake upstream; results are in ADR 0005. Needs `npm run build` in `frontend/` first.
 
 ## Accessibility coverage
 
