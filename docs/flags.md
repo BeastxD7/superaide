@@ -12,17 +12,26 @@ Generated from [`backend/flags.toml`](../backend/flags.toml) by `scripts/check_f
 | `APPROVAL_METRICS_ENABLED` | true | stable | maintainer |  | count and time approval cards (no text or names): the owner's 'How much am I being asked?' card and a weekly table in the console |
 | `APPROVAL_REQUIRE_EXECUTOR` | true | stable | maintainer |  | refuse an approval nothing can carry out (and web-form/contact-page routes) instead of queueing it |
 | `ASK_LINK_ENABLED` | false | experiment | maintainer | 2027-02-14 | public /a/<handle> intake pages owners can publish (public, unauthenticated) |
-| `AUDITION_ENABLED` | false | experiment | maintainer | 2027-02-14 | compare 2 or 3 candidate skills side by side on the last tasks (no network, effects stubbed) |
 | `BRAIN_SHARE_ENABLED` | false | experiment | maintainer | 2027-02-14 | owner-created unlisted link (max 7 days, revocable) to a counts-only picture of memory |
 | `CIRCUIT_BREAKER_ENABLED` | false | experiment | maintainer | 2027-02-14 | too many deletes or sends in a window freezes Ava; the halt word freezes her at once |
 | `CONNECTOR_FACTS_ENABLED` | false | experiment | maintainer | 2027-02-14 | keep up to 3 short facts per calendar event or verified email as notes (small-model calls, never the raw text) |
-| `DISSENT_DESK_ENABLED` | false | experiment | maintainer | 2027-02-14 | three different models answer high-stakes choices (needs DISSENT_MODELS; costs more) |
 | `ECHO_FILTER_ENABLED` | false | experiment | maintainer | 2027-02-14 | facts heard via links, Telegram or Slack are hearsay until confirmed |
 | `ENABLE_API_DOCS` | true | stable | maintainer |  | interactive API docs at /docs (turn off on a public server) |
 | `ENABLE_SIMULATOR` | false | experiment | maintainer | 2027-02-14 | operator console impostor simulator (development only; off unless you turn it on) |
+| `EXPERIMENT_AUDITION` | false | experiment | maintainer | 2027-02-14 | compare 2 or 3 candidate skills side by side on the last tasks (no network, effects stubbed) |
+| `EXPERIMENT_DISSENT_DESK` | false | experiment | maintainer | 2027-02-14 | three different models answer high-stakes choices (needs DISSENT_MODELS; costs more) |
+| `EXPERIMENT_FORK_NIGHT` | false | experiment | maintainer | 2027-02-14 | three read-only overnight drafts of a choice the owner leaves (model calls) |
+| `EXPERIMENT_MIRROR` | false | experiment | maintainer | 2027-02-14 | "The Mirror": a weekly note of patterns in the owner's own reminders and messages (owners also opt in) |
+| `EXPERIMENT_MODEL_DRILL` | false | experiment | maintainer | 2027-02-14 | replay the last tasks on two models and show where the call sequences differ |
+| `EXPERIMENT_OVERNIGHT_TUNER` | false | experiment | maintainer | 2027-02-14 | proposes a better triage prompt; nothing changes until the owner approves |
+| `EXPERIMENT_OWNER_TWIN` | false | experiment | maintainer | 2027-02-14 | calibration page scoring a predictor of the owner's approve/reject choices |
+| `EXPERIMENT_REHEARSAL` | false | experiment | maintainer | 2027-02-14 | practise a hard conversation with Ava playing the other side |
+| `EXPERIMENT_REPLAY_BEFORE_UPDATE` | false | experiment | maintainer | 2027-02-14 | replay the last tasks with and without a skill, prompt or model change, then approve or reject |
+| `EXPERIMENT_SECOND_OPINION` | false | experiment | maintainer | 2027-02-14 | memory-free second view on the owner's own claims (small-model calls) |
+| `EXPERIMENT_TIME_TRAVEL_RULES` | false | experiment | maintainer | 2027-02-14 | standing orders compiled to rules, replayed on past messages, shadow-run first |
+| `EXPERIMENT_WHY_REPLAY` | false | experiment | maintainer | 2027-02-14 | "Why did you say that?" replay of a reply (small-model calls) |
 | `FAKE_LLM` | false | experiment | maintainer | 2027-02-14 | true forces offline echo replies and nothing is spent (tests, demos) |
 | `FOOTPRINT_GUARD_ENABLED` | false | experiment | maintainer | 2027-02-14 | creating accounts, profiles or public posts needs approval; flags unknown names |
-| `FORK_NIGHT_ENABLED` | false | experiment | maintainer | 2027-02-14 | three read-only overnight drafts of a choice the owner leaves (model calls) |
 | `GMAIL_TRIAGE_ENABLED` | false | experiment | maintainer | 2027-02-14 | poll each owner's Gmail inbox and triage new mail (needs TRIAGE_ENABLED, Google) |
 | `GOOGLE_CALENDAR_PUSH` | false | experiment | maintainer | 2027-02-14 | Google calendar change notifications (needs PUBLIC_BASE_URL on https) |
 | `GOOGLE_SIGNIN_ENABLED` | false | experiment | maintainer | 2027-02-14 | "Continue with Google" on log-in and sign-up (needs Google client id and secret) |
@@ -35,21 +44,15 @@ Generated from [`backend/flags.toml`](../backend/flags.toml) by `scripts/check_f
 | `MCP_PINNING` | false | experiment | maintainer | 2027-02-14 | block an MCP tool whose description or schema changed since the owner approved it |
 | `MEMORY_RECHECK_ENABLED` | false | experiment | maintainer | 2027-02-14 | digest may ask "is this still true?" about a few lasting facts a week |
 | `MEMORY_SOCKET_ENABLED` | false | experiment | maintainer | 2027-02-14 | read-only MCP endpoint POST /mcp/memory for the owner's other assistants |
-| `MIRROR_ENABLED` | false | experiment | maintainer | 2027-02-14 | "The Mirror": a weekly note of patterns in the owner's own reminders and messages (owners also opt in) |
-| `MODEL_DRILL_ENABLED` | false | experiment | maintainer | 2027-02-14 | replay the last tasks on two models and show where the call sequences differ |
 | `NOTIFY_FAILOVER` | true | stable | maintainer |  | a push that stays down is sent on the owner's other linked channel; reception notes follow their interrupt preference |
 | `ONE_GOOD_QUESTION_ENABLED` | false | experiment | maintainer | 2027-02-14 | Ava may ask the owner one clarifying question a day |
-| `OVERNIGHT_TUNER_ENABLED` | false | experiment | maintainer | 2027-02-14 | proposes a better triage prompt; nothing changes until the owner approves |
-| `OWNER_TWIN_ENABLED` | false | experiment | maintainer | 2027-02-14 | calibration page scoring a predictor of the owner's approve/reject choices |
 | `PAYOUTS_ENABLED` | false | experiment | maintainer | 2027-02-14 | creator payout LEDGER per accepted outcome with clawback and bond; moves no money (null provider only) |
 | `PIPELINE_TIMING_ENABLED` | true | stable | maintainer |  | time each stage of every message turn (milliseconds only, no text); p50 and p95 in the operator console |
 | `PLATFORM_AI_ENABLED` | false | experiment | maintainer | 2027-02-14 | owners may use the server's own Claude key as "Superaide AI credits" (costs you) |
 | `PRINCIPAL_CARD_ENABLED` | true | stable | maintainer |  | every email Ava sends is signed 'Ava, personal assistant of <first name>' with a link to a signed page (owner can untick per email); false = kill switch |
 | `PUSH_ENABLED` | false | experiment | maintainer | 2027-02-14 | web push to the owner's phone (makes a VAPID key pair on first use) |
 | `QUOTE_ODDS_ENABLED` | false | experiment | maintainer | 2027-02-14 | approval cards show honest odds; low-odds approvals prepare instead of run |
-| `REHEARSAL_ENABLED` | false | experiment | maintainer | 2027-02-14 | practise a hard conversation with Ava playing the other side |
 | `RELATIONSHIP_SAFETY_ENABLED` | false | experiment | maintainer | 2027-02-14 | fixed replies for heavy or "do you love me?" owner messages |
-| `REPLAY_BEFORE_UPDATE_ENABLED` | false | experiment | maintainer | 2027-02-14 | replay the last tasks with and without a skill, prompt or model change, then approve or reject |
 | `REQUIRE_VERIFIED_EMAIL` | false | experiment | maintainer | 2027-02-14 | hiring needs a confirmed email (turn on once MAIL_BACKEND=smtp works) |
 | `RUBBER_STAMP_BRAKE_ENABLED` | false | experiment | maintainer | 2027-02-14 | adds friction to fast always-yes approvals (can only add friction) |
 | `RUN_CHANNELS_IN_API` | true | stable | maintainer |  | Telegram and Slack listeners inside the API process |
@@ -57,7 +60,6 @@ Generated from [`backend/flags.toml`](../backend/flags.toml) by `scripts/check_f
 | `SCHOOL_ENABLED` | false | experiment | maintainer | 2027-02-14 | Ava School: write, consent to and export generic lessons (local only) |
 | `SCHOOL_PLAYBOOK_ENABLED` | false | experiment | maintainer | 2027-02-14 | owner-written playbook text per lesson, put in the prompt only after its eval passed |
 | `SCHOOL_SHARING_ENABLED` | false | experiment | maintainer | 2027-02-14 | signed lesson files, only for categories the owner allows (needs SCHOOL_ENABLED) |
-| `SECOND_OPINION_ENABLED` | false | experiment | maintainer | 2027-02-14 | memory-free second view on the owner's own claims (small-model calls) |
 | `SESSION_COOKIE_SECURE` | false | experiment | maintainer | 2027-02-14 | send the session cookie over HTTPS only (must be true on any https server) |
 | `SKILL_COOLDOWN_ENABLED` | false | experiment | maintainer | 2027-02-14 | a new skill version waits 0/24/72 h by effect class before installs get it; deleted names are reserved |
 | `SKILL_RATCHET_ENABLED` | false | experiment | maintainer | 2027-02-14 | Ava drafts playbooks; only owner-edited ones go live |
@@ -66,7 +68,6 @@ Generated from [`backend/flags.toml`](../backend/flags.toml) by `scripts/check_f
 | `SLEEP_JOB_ENABLED` | false | experiment | maintainer | 2027-02-14 | nightly job: episodes, and tidying duplicate and contradicting notes (small model, capped) |
 | `SURFACE_CHECK_ON_BOOT` | false | experiment | maintainer | 2027-02-14 | refuse to start if a protected file differs from security/surface.lock.json |
 | `TASK_PROTOCOL_ENABLED` | true | stable | maintainer |  | errands need a read-first plan (goal, evidence, route, ability, recommendation) before an approval |
-| `TIME_TRAVEL_RULES_ENABLED` | false | experiment | maintainer | 2027-02-14 | standing orders compiled to rules, replayed on past messages, shadow-run first |
 | `TRACE_RECORDER` | true | stable | maintainer |  | hashes-only record of every tool call (on by default; turn off only to save rows) |
 | `TRIAGE_ENABLED` | false | experiment | maintainer | 2027-02-14 | record a handle/hold/interrupt/defer/verify decision for non-owner messages |
 | `TRIAGE_KNN_ENABLED` | false | experiment | maintainer | 2027-02-14 | shadow urgency score beside each triage decision (needs TRIAGE_ENABLED) |
@@ -74,4 +75,22 @@ Generated from [`backend/flags.toml`](../backend/flags.toml) by `scripts/check_f
 | `TYPING_INDICATORS` | true | stable | maintainer |  | "typing..." on Telegram, a status or "Working on it..." placeholder on Slack while Ava replies |
 | `VOICE_INTRO_V2` | false | experiment | maintainer | 2027-02-14 | conversational voice interview in the introduction call |
 | `WEB_TOOLS_ENABLED` | true | stable | maintainer |  | Ava may search and read the web (about US$0.01 a search from the research budget) |
-| `WHY_REPLAY_ENABLED` | false | experiment | maintainer | 2027-02-14 | "Why did you say that?" replay of a reply (small-model calls) |
+
+## Experiments
+
+Speculative features carry the `EXPERIMENT_` prefix. They are off by default, are not part of the supported settings, have no screen of their own in the settings page, and each has a hypothesis, a metric and a sunset date. A weekly job (`scripts/check_experiments.py`, `.github/workflows/experiments.yml`) opens an issue when an experiment passes its sunset date with no recorded `result`; the owner then promotes it (rename it, stage `stable`) or deletes it. The old names (`AUDITION_ENABLED` and the like) still work for one release and log a warning at startup.
+
+| Experiment | Hypothesis | Metric | Sunset | Result |
+| --- | --- | --- | --- | --- |
+| `EXPERIMENT_AUDITION` | Owners choose between two or three candidate skills better when each is replayed on their own recent tasks. | Share of audition runs followed by an install or a rejection within 24 hours. | 2027-02-14 |  |
+| `EXPERIMENT_DISSENT_DESK` | Three different models disagree on high-stakes choices often enough to justify the extra cost. | Disagreement rate per run, and share of runs where the owner chose the minority answer. | 2027-02-14 |  |
+| `EXPERIMENT_FORK_NIGHT` | Overnight read-only drafts of a pending choice save the owner time the next morning. | Share of drafts the owner used (accepted or edited) per week. | 2027-02-14 |  |
+| `EXPERIMENT_MIRROR` | A weekly note of patterns in the owner's own reminders and messages is read and judged true. | Share of notes opened and marked true by owners who opted in. | 2027-02-14 |  |
+| `EXPERIMENT_MODEL_DRILL` | Owners change Ava's model more safely when they can see where the call sequences differ on their own tasks. | Share of model changes preceded by a drill; share of drills that changed the decision. | 2027-02-14 |  |
+| `EXPERIMENT_OVERNIGHT_TUNER` | A grader-scored tuned triage prompt beats the built-in prompt. | Grader score of approved versions against the built-in prompt. | 2027-02-14 |  |
+| `EXPERIMENT_OWNER_TWIN` | A predictor of the owner's approve/reject choices can reach an accuracy that would justify fewer approval cards. | Accuracy at or above the calibration gate on at least 200 past decisions. | 2027-02-14 |  |
+| `EXPERIMENT_REHEARSAL` | Owners practise a hard conversation with Ava more than once. | Owners with two or more rehearsals in 30 days. | 2027-02-14 |  |
+| `EXPERIMENT_REPLAY_BEFORE_UPDATE` | A replay before a skill, prompt or model change shows regressions the owner would otherwise ship. | Share of replays with a differing call sequence that the owner then rejected. | 2027-02-14 |  |
+| `EXPERIMENT_SECOND_OPINION` | A memory-free second view sometimes changes the owner's mind about their own claim. | Share of second opinions after which the owner revises the claim. | 2027-02-14 |  |
+| `EXPERIMENT_TIME_TRAVEL_RULES` | Owners trust a standing order more after seeing it replayed on their past messages. | Share of compiled rules the owner activates after the replay. | 2027-02-14 |  |
+| `EXPERIMENT_WHY_REPLAY` | Owners use a replay of a reply to check why Ava said it, and it answers the question. | Replays opened per 100 replies, and share rated useful. | 2027-02-14 |  |

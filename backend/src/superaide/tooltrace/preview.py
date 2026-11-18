@@ -4,7 +4,7 @@ Before a skill, a prompt or a model change goes live, replay the owner's last N 
 with the change, effects stubbed (see rehearse.py), and show the owner how the calls differ by name and argument
 hash. The owner approves or rejects. Approving a *skill* installs it (with the permissions the owner confirms,
 exactly as the install route does); approving a prompt or model change records the decision and says it was not
-applied, because those live in settings the owner changes there. Off unless REPLAY_BEFORE_UPDATE_ENABLED.
+applied, because those live in settings the owner changes there. Off unless EXPERIMENT_REPLAY_BEFORE_UPDATE.
 """
 
 from __future__ import annotations

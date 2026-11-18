@@ -8,7 +8,7 @@ with the reasons, so the owner can see what was tried. Nothing becomes active ex
 only the owner's route calls. Nothing here can write the grader, the data split or the invariants: every write
 goes through `surface.guard`, and the grader is pinned by a hash that is checked before each run.
 Every model call (1 rewrite + 2 per held-out case, at most HELD_OUT_CAP cases) is purpose "tuner", inside the
-spend cap. Off unless OVERNIGHT_TUNER_ENABLED.
+spend cap. Off unless EXPERIMENT_OVERNIGHT_TUNER.
 """
 
 from __future__ import annotations

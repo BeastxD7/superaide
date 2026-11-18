@@ -12,7 +12,7 @@
 4. Promote: only the owner, only after enough agreeing firings and a high agreement rate. A promoted rule is
    demoted back to shadow automatically if its recent agreement slips. Ava never promotes herself.
 Even a live rule's draft reply ends in an approval card (policy/actions), never a send. Rules are kept in the
-instance's own state, so one owner's rules and history never reach another. Off unless TIME_TRAVEL_RULES_ENABLED.
+instance's own state, so one owner's rules and history never reach another. Off unless EXPERIMENT_TIME_TRAVEL_RULES.
 """
 
 from __future__ import annotations

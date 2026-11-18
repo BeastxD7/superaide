@@ -30,33 +30,33 @@ ID_ROUTES = {("GET", "/app/passages/{chunk_id}")}  # a cited passage of a shared
 FLAG_GATED = {
     ("GET", "/app/needs-you"),
     ("GET", "/app/triage/settings"),
-    ("GET", "/app/audition/candidates"),  # AUDITION_ENABLED (#110)
-    ("GET", "/app/model-drill"),  # MODEL_DRILL_ENABLED (#110)
-    ("GET", "/app/updates"),  # REPLAY_BEFORE_UPDATE_ENABLED (#110)
+    ("GET", "/app/audition/candidates"),  # EXPERIMENT_AUDITION (#110)
+    ("GET", "/app/model-drill"),  # EXPERIMENT_MODEL_DRILL (#110)
+    ("GET", "/app/updates"),  # EXPERIMENT_REPLAY_BEFORE_UPDATE (#110)
     ("GET", "/app/relationship-safety"),  # RELATIONSHIP_SAFETY_ENABLED (#124)
     ("GET", "/app/playbooks"),  # SKILL_RATCHET_ENABLED (#120)
-    ("GET", "/app/tuner"),  # OVERNIGHT_TUNER_ENABLED (#118)
-    ("GET", "/app/rehearsal"),  # REHEARSAL_ENABLED (#58)
+    ("GET", "/app/tuner"),  # EXPERIMENT_OVERNIGHT_TUNER (#118)
+    ("GET", "/app/rehearsal"),  # EXPERIMENT_REHEARSAL (#58)
     ("GET", "/app/rehearsal/{session_id}"),
     ("GET", "/app/triage/promotion"),  # the Wilson-bound gate view (#117)
     ("GET", "/app/school"),  # SCHOOL_ENABLED (#57)
     ("GET", "/app/school/sharing"),  # SCHOOL_SHARING_ENABLED (#57)
     ("GET", "/app/approvals/brake"),  # RUBBER_STAMP_BRAKE_ENABLED (#134)
     ("GET", "/app/question"),  # ONE_GOOD_QUESTION_ENABLED (#121)
-    ("GET", "/app/why/{event_id}"),  # WHY_REPLAY_ENABLED (#122)
-    ("GET", "/app/twin"),  # OWNER_TWIN_ENABLED (#119)
+    ("GET", "/app/why/{event_id}"),  # EXPERIMENT_WHY_REPLAY (#122)
+    ("GET", "/app/twin"),  # EXPERIMENT_OWNER_TWIN (#119)
     # The "Ask my Ava" link (ASK_LINK_ENABLED); its public side is checked in test_public_ask_routes below.
     ("GET", "/app/ask-link"),
     ("GET", "/app/ask-link/requests"),
     ("GET", "/app/mandates"),  # MANDATES_ENABLED (#112)
     ("GET", "/app/mandates/suggestions"),  # MANDATES_ENABLED (#112), offers from #408
     ("GET", "/app/memory-socket"),  # MEMORY_SOCKET_ENABLED (#138); its MCP side is checked in test_memory_socket.py
-    ("GET", "/app/fork-night"),  # FORK_NIGHT_ENABLED (#127)
-    ("GET", "/app/standing-orders"),  # TIME_TRAVEL_RULES_ENABLED (#52)
+    ("GET", "/app/fork-night"),  # EXPERIMENT_FORK_NIGHT (#127)
+    ("GET", "/app/standing-orders"),  # EXPERIMENT_TIME_TRAVEL_RULES (#52)
     # The introduction's voice call, v2 (VOICE_INTRO_V2, ADR 0012); its POSTs are enumerated like every route.
     ("GET", "/app/intro/voice"),
     ("GET", "/app/import-leases"),  # IMPORT_LEASE_ENABLED (#133)
-    ("GET", "/app/mirror"),  # "The Mirror" (MIRROR_ENABLED)
+    ("GET", "/app/mirror"),  # "The Mirror" (EXPERIMENT_MIRROR)
     ("GET", "/app/episodes"),  # conversation summaries of the sleep job (SLEEP_JOB_ENABLED)
     ("GET", "/app/tidy"),  # what the sleep job changed, with undo (SLEEP_JOB_ENABLED, #415)
     ("GET", "/app/identity-claims"),  # IDENTITY_CLAIM_REVIEW (#93)
@@ -419,7 +419,7 @@ def test_the_journal_routes_are_owner_routes_and_leak_nothing(app, browser, owne
         _assert_no_owner_data(r, owner_data)
 
 
-# --- the Mirror (/app/mirror, MIRROR_ENABLED) --------------------------------------------------
+# --- the Mirror (/app/mirror, EXPERIMENT_MIRROR) --------------------------------------------------
 
 MIRROR_ROUTES = {
     ("GET", "/app/mirror"),
