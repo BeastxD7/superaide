@@ -1,9 +1,9 @@
 'use client'
 
-import { AlertTriangle, AudioLines, Check, ChevronDown, ChevronRight, Copy, ExternalLink, KeyRound, ShieldAlert } from 'lucide-react'
+import { AlertTriangle, AudioLines, Check, ChevronDown, ChevronRight, Copy, Download, ExternalLink, KeyRound, ShieldAlert } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import Link from 'next/link'
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { call, type Me } from '@/lib/api'
 import { ActionError, LoadError } from '@/components/load-state'
 import { errorMessage, useAction, UserError } from '@/lib/action'
@@ -179,6 +179,7 @@ export function Connections({ agentName, me, refreshMe }: { agentName: string; m
                     provider={key}
                     service={s}
                     guide={status.guides[key]}
+                    agentName={agentName}
                     where={where}
                     onSaved={async (next) => {
                       setStatus(next)
@@ -231,6 +232,7 @@ function ConnectForm({
   provider,
   service,
   guide,
+  agentName,
   where,
   onSaved,
   me,
@@ -241,6 +243,7 @@ function ConnectForm({
   provider: Provider
   service: Service
   guide: { url: string; steps: string[] }
+  agentName: string
   where: string
   onSaved: (s: Status) => Promise<void>
   me: Me
@@ -254,9 +257,13 @@ function ConnectForm({
   const [failed, setFailed] = useState<'save' | 'disconnect'>('save')
   const fields = FIELDS[provider]
   const label = NAMES[provider]
+  const guided = provider === 'telegram' || provider === 'slack'
+  const checks = useTokenChecks(provider, values, guided)
+  const slackApp = useSlackManifest(agentName, provider === 'slack')
 
   function save(e: FormEvent) {
     e.preventDefault()
+    checks.cancel()
     setFailed('save')
     void run(async () => {
       const next = await call<Status>(`/connections/${provider}`, { method: 'POST', json: values })
@@ -304,6 +311,9 @@ function ConnectForm({
       {provider === 'slack' && service.connected && !rejected(service) && !linked.some((a) => a.provider === 'slack' && a.mine) && (
         <SlackPairing me={me} refreshMe={refreshMe} onLinked={onLinkedChanged} />
       )}
+      {guided && service.connected && !rejected(service) && linked.some((a) => a.provider === provider && a.mine) && (
+        <TestMessage provider={provider} />
+      )}
       {(!(service.connected && service.via === 'app') || rejected(service)) && (
         <>
           <ol className="space-y-1.5 text-sm text-body">
@@ -321,15 +331,25 @@ function ConnectForm({
                 : `Optional. Without it, the voice call uses your browser's own speech. Audio is never stored.`}
             </p>
           )}
+          {provider === 'slack' && <SlackAppName app={slackApp} />}
           {guide.url && (
             <a
-              href={guide.url}
+              href={provider === 'slack' && slackApp.createUrl ? slackApp.createUrl : guide.url}
               target="_blank"
               rel="noopener noreferrer"
               className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-lilac-100 px-3.5 py-2 text-sm font-medium text-violet-700 hover:bg-lilac-200"
             >
               {OPEN_LABEL[provider]} <ExternalLink className="size-3.5" />
             </a>
+          )}
+          {provider === 'slack' && slackApp.manifest && (
+            <button
+              type="button"
+              onClick={() => downloadText('slack-app-manifest.yml', slackApp.manifest)}
+              className="mt-3 ml-2 inline-flex items-center gap-1.5 rounded-full bg-white px-3.5 py-2 text-sm font-medium text-ink ring-1 ring-line hover:bg-lilac-50"
+            >
+              <Download className="size-3.5" aria-hidden /> Download the manifest
+            </button>
           )}
           <form onSubmit={save} className="mt-3 space-y-2" autoComplete="off">
             {fields.map((f) => (
@@ -342,8 +362,10 @@ function ConnectForm({
                   placeholder={f.placeholder}
                   autoComplete="off"
                   spellCheck={false}
+                  aria-describedby={`check-${provider}-${f.name}`}
                   className="mt-1 w-full rounded-xl bg-mist px-3 py-2.5 font-mono text-base text-ink outline-none md:text-sm focus:ring-2 focus:ring-violet-400/50"
                 />
+                {guided && <TokenVerdict id={`check-${provider}-${f.name}`} verdict={checks.verdicts[f.name]} />}
               </label>
             ))}
             <Button tone="violet" type="submit" className="w-full py-3" disabled={busy || fields.some((f) => !(values[f.name] ?? '').trim())}>
@@ -361,6 +383,178 @@ function ConnectForm({
           Disconnect {label}
         </button>
       )}
+    </div>
+  )
+}
+
+type Verdict =
+  | { state: 'checking' }
+  | { state: 'ok'; message: string; optionalMissing: string[] }
+  | { state: 'bad'; message: string; missing: string[] }
+  | { state: 'unchecked'; message: string }
+
+type CheckAnswer = { ok: boolean; error?: string; username?: string | null; missing_required?: string[]; missing_optional?: string[]; scopes_known?: boolean }
+
+// A token is checked with its service a moment after it is pasted, before anything is saved (backend channels/connect_guide.py).
+function useTokenChecks(provider: Provider, values: Record<string, string>, enabled: boolean) {
+  const [verdicts, setVerdicts] = useState<Record<string, Verdict | undefined>>({})
+  const timers = useRef<Record<string, number>>({})
+  const asked = useRef<Record<string, string>>({})
+
+  const cancel = useCallback(() => {
+    for (const t of Object.values(timers.current)) window.clearTimeout(t)
+    timers.current = {}
+  }, [])
+
+  useEffect(() => {
+    if (!enabled) return
+    for (const [name, raw] of Object.entries(values)) {
+      const value = raw.trim()
+      if (asked.current[name] === value) continue
+      asked.current[name] = value
+      window.clearTimeout(timers.current[name])
+      if (value.length < 10) continue // too short to be a token: nothing to ask (and nothing shown, see below)
+      timers.current[name] = window.setTimeout(() => {
+        setVerdicts((v) => ({ ...v, [name]: { state: 'checking' } }))
+        const body = { [name]: value }
+        call<CheckAnswer | { bot: CheckAnswer | null; app: CheckAnswer | null }>(`/connections/${provider}/check`, { method: 'POST', json: body })
+          .then((r) => {
+            if (asked.current[name] !== value) return // pasted over meanwhile
+            const a: CheckAnswer | null | undefined = 'ok' in r ? r : name === 'bot_token' ? r.bot : r.app
+            const verdict: Verdict = !a
+              ? { state: 'unchecked', message: 'Not checked.' }
+              : a.ok
+                ? {
+                    state: 'ok',
+                    message:
+                      provider === 'telegram'
+                        ? `Telegram accepts this token${a.username ? ` (@${a.username})` : ''}.`
+                        : name === 'bot_token'
+                          ? 'Slack accepts this token.'
+                          : 'Slack accepts this token and can open Socket Mode.',
+                    optionalMissing: a.missing_optional ?? [],
+                  }
+                : { state: 'bad', message: a.error ?? 'Slack did not accept this.', missing: a.missing_required ?? [] }
+            setVerdicts((v) => ({ ...v, [name]: verdict }))
+          })
+          .catch(() => {
+            if (asked.current[name] === value)
+              setVerdicts((v) => ({ ...v, [name]: { state: 'unchecked', message: "Couldn't check this right now. You can still press Check and save." } }))
+          })
+      }, 500)
+    }
+  }, [values, provider, enabled])
+
+  useEffect(() => cancel, [cancel])
+  // A verdict counts only while the field still holds something token-sized.
+  const shown = Object.fromEntries(Object.entries(verdicts).filter(([name]) => (values[name] ?? '').trim().length >= 10))
+  return { verdicts: shown, cancel }
+}
+
+function TokenVerdict({ id, verdict }: { id: string; verdict: Verdict | undefined }) {
+  return (
+    <span id={id} aria-live="polite" className="mt-1 block text-xs empty:hidden" data-testid={`verdict-${id}`}>
+      {verdict?.state === 'checking' && <span className="text-muted">Checking with the service…</span>}
+      {verdict?.state === 'unchecked' && <span className="text-muted">{verdict.message}</span>}
+      {verdict?.state === 'ok' && (
+        <span className="text-ok">
+          <Check className="mr-1 inline size-3.5" aria-hidden />
+          {verdict.message}
+          {verdict.optionalMissing.length > 0 && (
+            <span className="block text-muted" data-testid="optional-missing">
+              Optional permissions not granted yet: {verdict.optionalMissing.join(', ')}. Ava still works; the parts that need them (reading a
+              thread, a file you send) stay off until you add them and reinstall the app.
+            </span>
+          )}
+        </span>
+      )}
+      {verdict?.state === 'bad' && (
+        <span className="text-danger" role="alert">
+          <AlertTriangle className="mr-1 inline size-3.5" aria-hidden />
+          {verdict.message}
+          {verdict.missing.length > 0 && (
+            <span className="block font-medium" data-testid="missing-required">
+              Missing: {verdict.missing.join(', ')}
+            </span>
+          )}
+        </span>
+      )}
+    </span>
+  )
+}
+
+type SlackApp = { name: string; setName: (n: string) => void; manifest: string; createUrl: string }
+
+// The Slack app's name, and the manifest and "create app" link made for it by the backend.
+function useSlackManifest(agentName: string, enabled: boolean): SlackApp {
+  const [name, setName] = useState(agentName)
+  const [made, setMade] = useState({ manifest: '', createUrl: '' })
+  useEffect(() => {
+    if (!enabled) return
+    let live = true
+    const t = window.setTimeout(() => {
+      call<{ manifest: string; create_url: string }>(`/connections/slack/manifest?name=${encodeURIComponent(name)}`)
+        .then((r) => {
+          if (live) setMade({ manifest: r.manifest, createUrl: r.create_url })
+        })
+        .catch(() => undefined) // the plain guide link still works
+    }, 300)
+    return () => {
+      live = false
+      window.clearTimeout(t)
+    }
+  }, [name, enabled])
+  return { name, setName, ...made }
+}
+
+function SlackAppName({ app }: { app: SlackApp }) {
+  return (
+    <label className="mt-3 block">
+      <span className="text-xs font-medium text-ink">Name of your Slack app</span>
+      <input
+        value={app.name}
+        onChange={(e) => app.setName(e.target.value)}
+        maxLength={35}
+        autoComplete="off"
+        className="mt-1 w-full rounded-xl bg-mist px-3 py-2.5 text-base text-ink outline-none md:text-sm focus:ring-2 focus:ring-violet-400/50"
+      />
+      <span className="mt-1 block text-xs text-muted">Used for the app and its bot in your workspace. You can change it later in Slack.</span>
+    </label>
+  )
+}
+
+function downloadText(filename: string, text: string) {
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/yaml' }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+// Once the account is linked: one message to prove the connection end to end (only ever to the owner's own account).
+function TestMessage({ provider }: { provider: Provider }) {
+  const [sent, setSent] = useState(false)
+  const { run, busy, error } = useAction()
+  const label = NAMES[provider]
+  return (
+    <div className="mb-3 flex flex-wrap items-center gap-2" data-testid="test-message">
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() =>
+          void run(async () => {
+            setSent(false)
+            await call(`/connections/${provider}/test-message`, { method: 'POST' })
+            setSent(true)
+          })
+        }
+        className="rounded-full bg-lilac-100 px-3.5 py-2 text-sm font-medium text-violet-700 hover:bg-lilac-200 disabled:opacity-60"
+      >
+        {busy ? 'Sending…' : `Send a test message on ${label}`}
+      </button>
+      {sent && <span className="text-sm text-ok">Sent. Check {label}.</span>}
+      {error && <ActionError action="send the test message" error={error} />}
     </div>
   )
 }
