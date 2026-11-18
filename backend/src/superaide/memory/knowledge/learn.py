@@ -102,6 +102,8 @@ def learn(session: Session, job: Job) -> None:
     kept = merged = superseded = 0
     for f in facts:
         same = by_id.get(f.same_as or 0) or find_same_fact(session, owner, f.content)
+        if same is not None and not f.same_as and same is by_id.get(f.replaces or 0):
+            same = None  # the extractor says this makes that note untrue: a correction, not a repeat (#554)
         if same is not None and _owner_only(same, owner):
             if event.id not in (same.source_event_ids or []):  # said again: one fact, both sources
                 same.source_event_ids = [*(same.source_event_ids or []), event.id]
