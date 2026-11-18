@@ -8,6 +8,7 @@ from __future__ import annotations
 import contextvars
 import hmac
 import logging
+import re
 import threading
 import time
 from collections import deque
@@ -24,6 +25,9 @@ from superaide.channels.base import (
     MESSENGER_FACTORIES,
     PRESS_HANDLERS,
     Button,
+    FileFetchError,
+    FileRef,
+    FileTooBig,
     InboundAction,
     InboundMessage,
     Sources,
@@ -67,7 +71,20 @@ def _content_kind(message: dict[str, Any]) -> str:
     return next((k for k in CONTENT_KINDS if k in message), "other")
 
 
+_FILE_PATH = re.compile(r"(?!.*\.\.)[A-Za-z0-9_./-]{1,300}")
 ATTACHMENT_KINDS = ("photo", "document", "voice", "audio", "video", "video_note", "animation")
+
+
+def _document_refs(message: dict[str, Any]) -> list[FileRef]:
+    """The one document a message may carry (photos, voice and video are acknowledged only). Just its id and size."""
+    doc = message.get("document")
+    if not isinstance(doc, dict):
+        return []
+    fid = doc.get("file_id")
+    if not isinstance(fid, str) or not re.fullmatch(r"[A-Za-z0-9_-]{5,200}", fid):
+        return []
+    size = doc.get("file_size")
+    return [FileRef(fid, size if isinstance(size, int) and size > 0 else 0)]
 
 
 def parse_update(update: dict[str, Any], *, verified: bool, bot: str = "") -> InboundMessage | None:
@@ -106,6 +123,7 @@ def parse_update(update: dict[str, Any], *, verified: bool, bot: str = "") -> In
         chat_title=chat.get("title", ""),
         endpoint=bot,
         attachments=attachments,
+        file_refs=_document_refs(message),
         raw=update,
     )
 
@@ -189,7 +207,44 @@ class TelegramMessenger:
 
     def __init__(self, token: str, client: httpx.Client | None = None) -> None:
         self.base = f"https://api.telegram.org/bot{token}"
+        self.file_base = f"https://api.telegram.org/file/bot{token}"
         self.http = client or httpx.Client(timeout=15)
+
+    def fetch_file(self, ref: FileRef, max_bytes: int) -> bytes:
+        """The bytes of one document (getFile, then the file URL), for a sender Ava already knows. Telegram's Bot API
+        only hands out files up to 20 MB. Raises FileFetchError with a sentence for the sender; the token is in the
+        URL, so only exception types are logged."""
+        if ref.size > max_bytes:
+            raise FileTooBig("too big")
+        r = self._call("getFile", {"file_id": ref.id})
+        try:
+            body = r.json() if r is not None else {}
+        except ValueError:
+            body = {}
+        if not isinstance(body, dict):
+            body = {}
+        if r is not None and r.status_code == 400 and "too big" in str(body.get("description", "")).lower():
+            raise FileFetchError("Telegram only lets me download files up to 20 MB. Send me a smaller one.")
+        meta = body.get("result")
+        path = meta.get("file_path") if isinstance(meta, dict) else None
+        if r is None or r.status_code != 200 or not isinstance(path, str) or not _FILE_PATH.fullmatch(path):
+            raise FileFetchError("I couldn't download that file from Telegram.")
+        size = meta.get("file_size") if isinstance(meta, dict) else None
+        if isinstance(size, int) and size > max_bytes:
+            raise FileTooBig("too big")
+        try:
+            with self.http.stream("GET", f"{self.file_base}/{path}", follow_redirects=False) as resp:
+                if resp.status_code != 200:
+                    raise FileFetchError("I couldn't download that file from Telegram.")
+                data = b""
+                for chunk in resp.iter_bytes():
+                    data += chunk
+                    if len(data) > max_bytes:
+                        raise FileTooBig("too big")
+        except httpx.HTTPError as exc:
+            log.warning("telegram file download failed: %s", type(exc).__name__)
+            raise FileFetchError("I couldn't download that file from Telegram.") from None
+        return data
 
     def working(self, chat_id: str, thread_id: str = "") -> TypingLoop | None:
         """ "typing..." in this chat until the returned loop is closed."""

@@ -136,3 +136,11 @@ def test_the_manifest_subscribes_to_the_room_message_events():
         "event_subscriptions"
     ]
     assert {"app_mention", "message.im", "message.channels", "message.groups"} <= set(events["bot_events"])
+
+
+def test_an_app_without_files_read_is_reported_missing_with_what_it_costs():
+    """#511: reading a PDF or text file needs files:read; the owner gets the same notice as for any scope."""
+    result = scopes.check_scopes(BOT, fake_slack(ALL.replace(",files:read", "")))
+    assert result.status == scopes.MISSING and result.missing == ["files:read"]
+    assert "PDF" in scopes.REQUIRED_SCOPES["files:read"]
+    assert "files:read" in scopes.missing_message(result.missing)

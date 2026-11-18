@@ -24,6 +24,7 @@ from superaide.brain.llm import LLM
 from superaide.brain.llm import OnEvent as Emit
 from superaide.brain.spend.budget import AgentFrozen, BudgetExceeded
 from superaide.brain.turn import TurnOutput, build_messages, build_system
+from superaide.channels import attachments
 from superaide.channels.base import InboundMessage, Messenger
 from superaide.channels.format import strip_citations
 from superaide.channels.health import DeliveryFailed
@@ -143,8 +144,8 @@ _MENTION = re.compile(r"<@[A-Z0-9]+(?:\|[^>]*)?>")
 
 
 ATTACHMENT_NOTICE = (
-    "I got your attachment, but I can't read files, photos or voice notes yet. "
-    "Paste the part that matters as text and I'll take it from there."
+    "I got your attachment, but I can only read PDFs and plain text files, and only in a direct message with me; "
+    "I can't look at photos or voice notes yet. Paste the part that matters as text and I'll take it from there."
 )
 
 
@@ -332,12 +333,29 @@ class Agent:
                 self._reply(s, ctx, aud, reply, thread)
                 return HandleResult("stranger", reply, ["receptionist"] if received is not None else [])
 
+            file_block = ""
             if msg.attachments:
-                # Files are not read yet (#511). Said in the same conversation, never silence; fixed text, no model,
-                # nothing from the file or its name is stored or shown, and no action can come from it.
-                reply = ATTACHMENT_NOTICE
-                self._reply(s, ctx, aud, reply, thread)
-                return HandleResult("known", reply, ["attachment_unread"])
+                # A known sender's PDF or text file is read in a direct message (channels/attachments.py); anything
+                # else is said plainly in the same conversation, never silence: fixed text, no model, nothing from the
+                # file or its name stored or shown, and no action can come from it (#511).
+                read = None
+                if ctx.kind == "dm" and (msg.file_refs or msg.uploads):
+                    read = attachments.read_message(
+                        msg, self.messengers.get(msg.provider), self.settings.attachment_max_bytes
+                    )
+                    audit(
+                        s, "pipeline", "attachment_read", provider=msg.provider, files=read.read,
+                        kinds=sorted(set(read.kinds)), chars=read.chars, refused=len(read.reasons),
+                    )  # fmt: skip
+                if read is None or not read.block:
+                    reply = ATTACHMENT_NOTICE if read is None else attachments.reasons_text(read.reasons)
+                    self._reply(s, ctx, aud, reply, thread)
+                    return HandleResult("known", reply, ["attachment_unread"])
+                file_block = read.block
+                if not msg.text.strip():
+                    inbound.content = attachments.marker(read.kinds)
+                if read.reasons:  # the model is told what was skipped so its answer is honest about it
+                    file_block += "\n[Not read: " + " ".join(read.reasons) + "]"
 
             # With a model connected, Ava handles reminders herself (her create_reminder tool), so
             # she understands typos and phrasing and you can watch her reason. The code-only
@@ -380,7 +398,7 @@ class Agent:
                     try:
                         with s.begin_nested():  # a failed turn undoes its own half-done work, not the inbound record
                             reply, notes, meta = self._owner_turn(
-                                s, sender, ctx, aud, msg, inbound, emit, shared=shared
+                                s, sender, ctx, aud, msg, inbound, emit, shared=shared, file_block=file_block
                             )
                     except Exception as exc:
                         reply, notes, meta = self._turn_failed(s, exc, msg), ["failed"], {"failed": type(exc).__name__}
@@ -404,7 +422,7 @@ class Agent:
             with self._working(ctx, thread):
                 try:
                     with s.begin_nested():
-                        reply, notes = self._think(s, sender, ctx, aud, msg)
+                        reply, notes = self._think(s, sender, ctx, aud, msg, file_block)
                 except Exception as exc:
                     reply, notes = self._turn_failed(s, exc, msg), ["failed"]
                 reply = self._steady(s, reply)
@@ -728,6 +746,7 @@ class Agent:
         emit: Emit | None = None,
         *,
         shared: bool = False,
+        file_block: str = "",
     ) -> tuple[str, list[str], dict]:
         """The owner's own conversation: a tool loop that can look things up, set reminders,
         search the web and ask for approval, with every answer citing its sources.
@@ -778,6 +797,8 @@ class Agent:
             learns=brain_ready(self.settings) and not shared,
             shared=shared,
         )
+        if file_block:  # airlock: the file's text is quoted data, so the turn is tainted and no action rests on it
+            turn.file_read = turn.tainted = True
         try:
             labels = timeline.labels
             if shared:  # who wrote what: only the owner's own messages carry the owner's authority
@@ -796,6 +817,8 @@ class Agent:
             )
             if shared and (thread_block := self._slack_thread_block(ctx, msg, sender.name)):
                 messages[0] = {**messages[0], "content": thread_block + "\n\n" + str(messages[0]["content"])}
+            if file_block:
+                messages[-1] = {**messages[-1], "content": f"{messages[-1]['content']}\n\n{file_block}"}
             result = turn.run(messages)
         except BudgetExceeded as exc:
             return self._budget_reply(s, exc), ["budget"], {}
@@ -878,7 +901,9 @@ class Agent:
             "only the message after this block is from the person you are answering.]\n" + "\n".join(lines) + cut
         )
 
-    def _think(self, s, sender: Sender, ctx: Context, aud: Audience, msg: InboundMessage) -> tuple[str, list[str]]:
+    def _think(
+        self, s, sender: Sender, ctx: Context, aud: Audience, msg: InboundMessage, file_block: str = ""
+    ) -> tuple[str, list[str]]:
         is_owner = sender.relation == "manager" and aud.person_ids == {sender.person.id} if sender.person else False
         with timing.span("retrieval"):
             memories = visible_memories(s, aud, limit=30 if is_owner else 5)
@@ -891,6 +916,8 @@ class Agent:
         system = build_system(self.name, sender, aud, memories, brief=brief)
         with timing.span("retrieval"):
             messages = build_messages(recent_events(s, ctx, thread_id=thread_of(msg)), msg.text)
+        if file_block:
+            messages[-1] = {**messages[-1], "content": f"{messages[-1]['content']}\n\n{file_block}"}
         try:
             result = timing.timed_llm(self.llm).complete(
                 purpose="chat_turn",
@@ -923,7 +950,9 @@ class Agent:
             cost_usd=float(result.cost_usd),
         )
         reply = out.reply
-        if out.requested_action.kind != "none":
+        if out.requested_action.kind != "none" and file_block:
+            notes.append(f"action:{out.requested_action.kind}:refused_tainted")  # a file can't ask for an action
+        elif out.requested_action.kind != "none":
             decision = decide(
                 s,
                 kind=out.requested_action.kind,

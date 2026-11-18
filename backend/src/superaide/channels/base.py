@@ -10,6 +10,24 @@ from superaide.identity.models import ChannelIdentity
 from superaide.memory.models import Context
 
 
+class FileFetchError(Exception):
+    """A file could not be fetched from the platform. The message is fixed text written by us (never the platform's
+    own words), safe to say to the sender."""
+
+
+class FileTooBig(FileFetchError):
+    """The platform says the file is over the limit (or it turned out to be while downloading)."""
+
+
+@dataclass(frozen=True)
+class FileRef:
+    """Which platform file a message carries: its opaque id and the size the platform reports. Never a name, URL or
+    MIME type from the client (#511)."""
+
+    id: str
+    size: int = 0
+
+
 @dataclass
 class InboundMessage:
     provider: str  # telegram | slack
@@ -33,6 +51,11 @@ class InboundMessage:
     # Kinds of file the message carries ("photo", "document", "file"...), from the platform's own structure and never
     # from a client-supplied name or MIME type. Nothing is downloaded or read (#511): the pipeline tells the sender.
     attachments: list[str] = field(default_factory=list)
+    # The files of `attachments` that may be read (Slack files, Telegram documents): fetched later, by the messenger,
+    # only for a known sender (channels/attachments.py).
+    file_refs: list[FileRef] = field(default_factory=list)
+    # The app chat uploads the bytes with the request (held in memory for this turn only, never stored).
+    uploads: list[bytes] = field(default_factory=list, repr=False)
     raw: dict[str, Any] = field(default_factory=dict)
 
 
@@ -121,6 +144,17 @@ class FakeMessenger:
     def answer_callback(self, callback_id: str, text: str = "") -> bool:
         self.answers.append({"callback_id": callback_id, "text": text})
         return True
+
+    files: dict[str, bytes] = field(default_factory=dict)  # file id -> bytes, what fetch_file returns
+    fetch_log: list[str] = field(default_factory=list)
+
+    def fetch_file(self, ref: FileRef, max_bytes: int) -> bytes:
+        self.fetch_log.append(ref.id)
+        if ref.id not in self.files:
+            raise FileFetchError("I couldn't download that file.")
+        if len(self.files[ref.id]) > max_bytes:
+            raise FileTooBig("too big")
+        return self.files[ref.id]
 
     def send_dm(self, identity: ChannelIdentity, text: str) -> None:
         self.sent.append({"to_identity": str(identity.id), "stable_key": identity.stable_key, "text": text})

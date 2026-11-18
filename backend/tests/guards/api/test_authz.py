@@ -118,6 +118,8 @@ def _call(client, method: str, path: str, ids: dict[str, str] | None = None):
         url = fill_path(url)
     if path == "/app/intro/files":
         return client.request(method, url, files={"file": ("x.txt", b"hello", "text/plain")})
+    if path == "/app/chat/attach":
+        return client.request(method, url, files={"file": ("x.txt", b"hello", "text/plain")}, data={"text": "hi"})
     return client.request(method, url, json={} if method != "GET" else None)
 
 

@@ -9,14 +9,25 @@ from __future__ import annotations
 import hashlib
 import hmac
 import logging
+import re
 import time
 from collections.abc import Callable
 from contextvars import ContextVar
 from typing import Any
+from urllib.parse import urlparse
+
+import httpx
 
 from superaide.channels import format as fmt
 from superaide.channels import health
-from superaide.channels.base import MESSENGER_FACTORIES, InboundMessage, Sources
+from superaide.channels.base import (
+    MESSENGER_FACTORIES,
+    FileFetchError,
+    FileRef,
+    FileTooBig,
+    InboundMessage,
+    Sources,
+)
 from superaide.identity.models import ChannelIdentity
 from superaide.memory.models import Context
 
@@ -62,6 +73,18 @@ def endpoint_of(payload: dict[str, Any]) -> str:
     """Our side of a Slack event: the workspace the app is installed in, and the app."""
     team, app = str(payload.get("team_id") or ""), str(payload.get("api_app_id") or "")
     return f"{team}/{app}" if app else team
+
+
+def _file_refs(files: Any) -> list[FileRef]:
+    """The ids of an upload's files (at most 10). Names, URLs and MIME types in the event are the client's words and
+    are not kept; the messenger asks Slack itself for what it needs (files.info)."""
+    out: list[FileRef] = []
+    for f in files if isinstance(files, list) else []:
+        fid = f.get("id") if isinstance(f, dict) else None
+        if isinstance(fid, str) and re.fullmatch(r"F[A-Z0-9]{2,30}", fid):
+            size = f.get("size")
+            out.append(FileRef(fid, size if isinstance(size, int) and size > 0 else 0))
+    return out[:10]
 
 
 def parse_event(
@@ -118,9 +141,14 @@ def parse_event(
         raw=payload,
         ambient=is_ambient,
         attachments=["file"] * min(len(files), 10) if has_files and isinstance(files, list) else [],
+        file_refs=_file_refs(files) if has_files else [],
     )
 
 
+FILES_SCOPE_MISSING = (
+    "Slack hasn't allowed me to read files yet. The Slack app needs the files:read permission "
+    "(OAuth & Permissions, then reinstall the app). Paste the text instead, or ask me again once that is added."
+)
 THREAD_MESSAGES = 25  # how much of a thread Ava reads when the owner @-mentions her in it
 WORKING_TEXT = "Working on it…"
 WORKING_STATUS = "is working on it…"
@@ -186,12 +214,53 @@ class SlackWorking:
 class SlackMessenger:
     status_unavailable = False  # set once Slack says assistant.threads.setStatus can't be used by this app
 
-    def __init__(self, token: str, client: Any = None) -> None:
+    def __init__(self, token: str, client: Any = None, http: httpx.Client | None = None) -> None:
         if client is None:
             from slack_sdk import WebClient
 
             client = WebClient(token=token)
         self.client = client
+        self._token = token
+        self._http = http
+
+    def fetch_file(self, ref: FileRef, max_bytes: int) -> bytes:
+        """The bytes of one uploaded file, for a sender Ava already knows (channels/attachments.py). Slack is asked for
+        the file by id (files.info, scope files:read); the private URL must be https on files.slack.com and is fetched
+        with the bot token, without following redirects. Raises FileFetchError with a sentence for the sender."""
+        try:
+            info = self._call("files_info", file=ref.id)
+        except health.DeliveryFailed:
+            raise FileFetchError("I couldn't reach Slack to download that file.") from None
+        except Exception as exc:
+            code = _error_code(exc)
+            log.error("slack: couldn't get a file (%s)", code or type(exc).__name__)
+            if code in {"missing_scope", "not_allowed_token_type"}:
+                raise FileFetchError(FILES_SCOPE_MISSING) from None
+            raise FileFetchError("I couldn't download that file from Slack.") from None
+        meta = (info.get("file") if info else None) or {}
+        size = meta.get("size")
+        if isinstance(size, int) and size > max_bytes:
+            raise FileTooBig("too big")
+        url = urlparse(str(meta.get("url_private_download") or meta.get("url_private") or ""))
+        if url.scheme != "https" or url.hostname != "files.slack.com":
+            raise FileFetchError("I couldn't download that file from Slack.")
+        try:
+            with (self._http or httpx.Client(timeout=30)).stream(
+                "GET", url.geturl(), headers={"Authorization": f"Bearer {self._token}"}, follow_redirects=False
+            ) as r:
+                if r.status_code != 200 or "text/html" in r.headers.get("content-type", ""):
+                    # Slack answers with a login page when the token may not read files
+                    log.error("slack: file download refused (status %s): is files:read granted?", r.status_code)
+                    raise FileFetchError(FILES_SCOPE_MISSING)
+                data = b""
+                for chunk in r.iter_bytes():
+                    data += chunk
+                    if len(data) > max_bytes:
+                        raise FileTooBig("too big")
+        except httpx.HTTPError as exc:
+            log.warning("slack: file download failed: %s", type(exc).__name__)
+            raise FileFetchError("I couldn't download that file from Slack.") from None
+        return data
 
     def _call(self, method: str, **kwargs: Any) -> Any:
         """One Web API call. A rejected token or an unreachable Slack becomes DeliveryFailed and is

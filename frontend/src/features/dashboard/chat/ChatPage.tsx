@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowUp, BookOpen, Lightbulb, PenLine, Wand2 } from 'lucide-react'
+import { ArrowUp, BookOpen, Lightbulb, Paperclip, PenLine, Wand2, X } from 'lucide-react'
 import Link from 'next/link'
 import { motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
@@ -8,7 +8,7 @@ import { Conversation, type LiveTurn } from '@/components/Conversation'
 import { useReveal } from '@/hooks/use-reveal'
 import { Notice } from '@/components/site'
 import { Button } from '@/components/ui/button'
-import { call, callPage, streamChat, type Message } from '@/lib/api'
+import { call, callPage, streamChat, uploadForm, type Message } from '@/lib/api'
 import { ChatSkeleton } from './ChatSkeleton'
 import { apply } from '@/lib/chat-turn'
 import { droppedBy, joinOlder, oldestSaved, PAGE } from '@/lib/chat-history'
@@ -17,6 +17,10 @@ import { useSession } from '@/lib/session-context'
 import { errorMessage } from '@/lib/action'
 import { announceReminderSteps } from '@/lib/reminder-toast'
 import { ResumeButton } from '@/features/dashboard/chat/ResumeButton'
+
+// Mirrors the server's default (ATTACHMENT_MAX_BYTES); the server decides, this only saves a pointless upload.
+const MAX_FILE_BYTES = 10 * 1024 * 1024
+const FILE_TYPES = '.pdf,.txt,.md,application/pdf,text/plain,text/markdown'
 
 const QUICK = [
   { icon: Lightbulb, label: 'How would you handle…', prefill: 'If someone messages you saying ' },
@@ -38,6 +42,8 @@ export function ChatPage() {
   const [live, setLive] = useState<LiveTurn | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
+  const [file, setFile] = useState<File | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -131,14 +137,26 @@ export function ChatPage() {
     el.style.height = `${Math.min(el.scrollHeight, 220)}px`
   }, [draft])
 
+  function pick(f: File | undefined) {
+    if (!f) return
+    if (f.size > MAX_FILE_BYTES) return setError('That file is over 10 MB. Send a smaller PDF or text file.')
+    setError(null)
+    setFile(f)
+  }
+
   async function send(text: string) {
     const t = text.trim()
-    if (!t || pending) return
+    const attached = file
+    if ((!t && !attached) || pending) return
     localCount.current += 1
     const localId = `local-${localCount.current}`
     setDraft('')
+    setFile(null)
     setError(null)
-    setMessages((m) => [...m, { id: localId, from: 'you', text: t, at: new Date().toISOString() }])
+    setMessages((m) => [
+      ...m,
+      { id: localId, from: 'you', text: t || `Sent a file: ${attached?.name ?? ''}`, at: new Date().toISOString() },
+    ])
     setPending(true)
     setLive({ steps: [], reasoning: '', text: '', status: 'Thinking' })
     let started = false // the server has the message, so it's saved whatever happens next
@@ -149,20 +167,27 @@ export function ChatPage() {
     abort.current = controller
     refreshedWhileSending.current = true
     try {
-      await streamChat(
-        t,
-        (e) => {
-          started = true
-          if (e.event === 'done') {
-            mode = e.data.mode
-            finished = true
-          } else if (e.event === 'error') {
-            failure = e.data.message
-            finished = true
-          } else setLive((now) => (now ? apply(now, e) : now))
-        },
-        controller.signal,
-      )
+      if (attached) {
+        // A file goes up as one request and the reply comes back whole (no live steps).
+        const r = await uploadForm<{ mode: string }>('/chat/attach', attached, { text: t })
+        started = finished = true
+        mode = r.mode
+      } else {
+        await streamChat(
+          t,
+          (e) => {
+            started = true
+            if (e.event === 'done') {
+              mode = e.data.mode
+              finished = true
+            } else if (e.event === 'error') {
+              failure = e.data.message
+              finished = true
+            } else setLive((now) => (now ? apply(now, e) : now))
+          },
+          controller.signal,
+        )
+      }
       if (unmounted.current) return
       // The stream closed without saying it was done (a proxy idle timeout, a restart): same as a dropped connection.
       if (started && !finished) throw new Error('stream ended early')
@@ -186,6 +211,7 @@ export function ChatPage() {
         // Not sent: take the bubble back and give you your words to try again.
         setMessages((m) => m.filter((x) => x.id !== localId))
         setDraft((d) => d || t)
+        setFile((f) => f ?? attached)
         setError(errorMessage(e))
       }
     } finally {
@@ -290,6 +316,21 @@ export function ChatPage() {
               <Notice tone="error">{error}</Notice>
             </div>
           )}
+          {file && (
+            <div className="mb-2 flex items-center gap-2 text-sm text-ink" data-testid="chat-attachment">
+              <Paperclip className="size-4 text-muted" aria-hidden />
+              <span className="max-w-[16rem] truncate">{file.name}</span>
+              <span className="text-muted">{Math.max(1, Math.round(file.size / 1024))} KB</span>
+              <button
+                type="button"
+                onClick={() => setFile(null)}
+                aria-label="Remove the attached file"
+                className="grid size-6 place-items-center rounded-md text-muted hover:text-ink"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+          )}
           <div className="flex items-end gap-2 rounded-2xl border border-line bg-white p-1.5 pl-4 shadow-[0_10px_30px_-24px_rgba(27,22,56,0.6)] focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-400/30">
             <textarea
               ref={inputRef}
@@ -301,17 +342,37 @@ export function ChatPage() {
               aria-label={`Message ${name}`}
               className="max-h-[220px] flex-1 resize-none bg-transparent py-2.5 text-ink outline-none placeholder:text-muted"
             />
+            <input
+              ref={fileRef}
+              type="file"
+              accept={FILE_TYPES}
+              className="hidden"
+              data-testid="chat-file-input"
+              onChange={(e) => {
+                pick(e.target.files?.[0])
+                e.target.value = '' // the same file can be picked again after removing it
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={pending}
+              className="grid size-10 touch:size-11 shrink-0 place-items-center rounded-xl text-muted hover:text-ink disabled:opacity-50"
+              aria-label="Attach a PDF or text file"
+            >
+              <Paperclip className="size-5" />
+            </button>
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={() => void send(draft)}
-              disabled={!draft.trim() || pending}
+              disabled={(!draft.trim() && !file) || pending}
               className="grid size-10 touch:size-11 shrink-0 place-items-center rounded-xl bg-violet-600 text-white hover:bg-violet-700 disabled:bg-lilac-200"
               aria-label="Send"
             >
               <ArrowUp className="size-5" />
             </motion.button>
           </div>
-          <p className="mt-2 text-center text-xs text-muted">Enter to send, Shift and Enter for a new line.</p>
+          <p className="mt-2 text-center text-xs text-muted">Enter to send, Shift and Enter for a new line. PDF and text files up to 10 MB can be attached.</p>
         </div>
       </div>
     </div>
