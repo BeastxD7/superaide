@@ -511,9 +511,40 @@ def spend_cap(ctx: Context) -> list[Result]:
     return _ok(name)
 
 
-def run_all(ctx: Context) -> list[Result]:
+# The checks that make sense for an owner inside the app (#567): the ones about the deployment's addresses, spend
+# cap and storage. The rest (settings file, ports, migrations, chat tokens) are for the person running the server
+# and stay in `superaide doctor`.
+IN_APP_CHECKS = ("Database", "Master key", "Public address", "Google redirects", "Spend cap")
+
+
+def run_in_app(settings: Settings, http: httpx.Client | None = None) -> list[Result]:
+    """The in-app subset of the checks; read-only, and no result names a secret (they name settings only)."""
+    ctx = Context(settings=settings, http=http)
+    return run_all(ctx, only=IN_APP_CHECKS)
+
+
+def gaps(settings: Settings) -> list[dict[str, str]]:
+    """Cheap, offline findings for the operator console's Gaps list (no network, no database)."""
+    from superaide import links
+
+    out: list[dict[str, str]] = []
+    if _local_but_public(settings):
+        out.append(
+            {
+                "id": "links_point_at_localhost",
+                "label": "Links in emails point at localhost",
+                "detail": f"Links would point at {links.public_base(settings)}, which other people cannot open.",
+                "fix": "Set PUBLIC_BASE_URL (and FRONTEND_ORIGIN) to the address people reach Superaide at, and restart.",
+            }
+        )
+    return out
+
+
+def run_all(ctx: Context, only: tuple[str, ...] | None = None) -> list[Result]:
     results: list[Result] = []
     for title, fn in CHECKS:
+        if only is not None and title not in only:
+            continue
         try:
             results.extend(fn(ctx))
         except Exception as exc:  # a broken check must not hide the others

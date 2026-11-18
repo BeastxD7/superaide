@@ -13404,6 +13404,35 @@
         ]
       }
     },
+    "/app/setup-check": {
+      "post": {
+        "description": "Runs the checks that matter inside the app (database, key storage, public address, Google redirects, spend cap) and says how to fix each problem.",
+        "operationId": "run_app_setup_check_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Run App Setup Check Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Check my setup",
+        "tags": [
+          "Setup check"
+        ]
+      }
+    },
     "/app/skill-payouts": {
       "get": {
         "description": "404 while off.",
