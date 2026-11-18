@@ -133,7 +133,12 @@ def test_cursor_is_bound_to_its_owner_and_bad_input_is_a_422(browser):
     assert all(m["text"].startswith("theirs") for m in walk(b, limit=4))
     for bad in ({"limit": 0}, {"limit": 201}, {"cursor": "junk"}, {"q": "x" * 201}):
         assert a.get("/app/notebook", params=bad).status_code == 422
-    assert a.get("/app/notebook", params={"cursor": cursor[:-3] + "AAA"}).status_code == 422
+    # Tamper deterministically: the old `cursor[:-3] + "AAA"` left the cursor unchanged whenever the signature
+    # happened to end in "AAA" (about 1 run in 262,144), which is what made this fail once (#526).
+    alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+    tampered = cursor[:-1] + next(c for c in alphabet if c != cursor[-1])
+    assert tampered != cursor
+    assert a.get("/app/notebook", params={"cursor": tampered}).status_code == 422
 
 
 def test_notebook_page_uses_the_live_notes_index_on_skewed_data(browser):

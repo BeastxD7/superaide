@@ -184,6 +184,26 @@ def test_tampered_or_malformed_cursor_is_refused(mangle):
         decode_cursor(token, NEWEST_FIRST, endpoint=EP, bind="b")
 
 
+def test_no_other_signature_tail_verifies_and_many_random_cursors_never_forge():
+    """#526: the signature is compared as text, so changing any character, including the last one whose low
+    bits are only base64 padding, is refused; and no random tail ever verifies."""
+    import secrets
+
+    alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+    v, body, sig = good_token().split(".")
+    for ch in alphabet:
+        if ch == sig[-1]:
+            continue
+        with pytest.raises(InvalidCursor):
+            decode_cursor(f"{v}.{body}.{sig[:-1]}{ch}", NEWEST_FIRST, endpoint=EP, bind="b")
+    for _ in range(2000):
+        forged = "".join(secrets.choice(alphabet) for _ in range(len(sig)))
+        if forged == sig:
+            continue
+        with pytest.raises(InvalidCursor):
+            decode_cursor(f"{v}.{body}.{forged}", NEWEST_FIRST, endpoint=EP, bind="b")
+
+
 def test_forged_payload_with_a_valid_looking_signature_shape_is_refused():
     """An attacker who edits the payload (say, the bind) cannot re-sign it without the server key."""
     v, body, sig = good_token().split(".")

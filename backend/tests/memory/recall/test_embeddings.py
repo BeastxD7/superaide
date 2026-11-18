@@ -162,3 +162,30 @@ def test_voyage_calls_are_on_the_ledger_and_stop_at_their_monthly_cap(monkeypatc
         assert entry.purpose == "embed" and entry.cost_usd == Decimal("0.00002")
     assert v.embed(["Jordan is vegetarian."], kind="document") is None  # the next would pass the cap
     assert len(calls) == 1
+
+
+def test_the_embedding_job_holds_no_table_lock_while_it_embeds(manager, monkeypatch):
+    """#526: the job read facts, then embedded them (slow) inside one open transaction, so it held an
+    ACCESS SHARE lock on memory_item the whole time. A TRUNCATE (the e2e reset) queued behind it, every
+    new request queued behind the TRUNCATE, and the two deadlocked. Nothing may be locked while embedding."""
+    with session_scope() as s:
+        remember_fact(s, owner=manager, content=TOKYO, category="work")
+    seen: list[str] = []
+    real = FakeEmbedder.embed
+
+    def probe(self, texts, kind="document"):
+        with get_engine().connect() as other:
+            try:
+                other.execute(text("SET LOCAL lock_timeout = '300ms'"))
+                other.execute(text("LOCK TABLE memory_item IN ACCESS EXCLUSIVE MODE"))
+                seen.append("free")
+            except Exception as exc:  # lock timeout: the job is holding the table
+                seen.append(type(exc).__name__)
+            finally:
+                other.rollback()
+        return real(self, texts, kind=kind)
+
+    monkeypatch.setattr(FakeEmbedder, "embed", probe)
+    with session_scope() as s:
+        assert vectors.embed_missing(s) == 1
+    assert seen == ["free"]
