@@ -36,6 +36,7 @@ LIST_APPROVALS_TOOL: dict[str, Any] = {
         "type": "object",
         "properties": {
             "status": {"type": "string", "enum": ["pending", "approved", "rejected", "any"]},
+            "kind": {"type": "string", "description": "Only this kind of action, e.g. gmail_send"},
             "hours": {"type": "integer", "description": "Only those decided or asked in the last N hours (1 to 720)"},
         },
         "additionalProperties": False,
@@ -59,6 +60,9 @@ def _rows(session: Session, args: dict[str, Any]) -> list[Approval]:
     q = select(Approval).order_by(Approval.created_at.desc()).limit(30)
     if status in {"pending", "approved", "rejected"}:
         q = q.where(Approval.status == status)
+    kind = str(args.get("kind") or "").strip()[:40]
+    if kind:
+        q = q.where(Approval.kind == kind)
     rows = list(session.scalars(q).all())
     if args.get("hours"):
         cutoff = datetime.now(UTC) - timedelta(hours=max(1, min(int(args["hours"]), 720)))

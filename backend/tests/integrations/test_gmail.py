@@ -432,3 +432,84 @@ def test_gmail_connects_on_the_address_the_owner_is_using_and_refuses_an_unregis
         done.headers["location"].startswith(f"{get_settings().frontend_origin}/")
         and public not in done.headers["location"]
     )
+
+
+# --- mail Ava sent through an approval is recognised (#483) -------------------------------------
+
+
+def _send_through_approval(owner_client, gmail_fake) -> str:
+    gmail_fake.add(mail("m1", thread="t1"))
+    connect(scopes=(api.READONLY, api.COMPOSE), drafts=True)
+    with session_scope() as s:
+        script = Script(
+            tool_use(
+                "gmail_send",
+                {"thread_id": "t1", "text": "See you Friday.", "reaches_a_person": "yes", "evidence": "human"},
+            ),
+            "It's waiting for you.",
+        )
+        turn_for(s, script, "tell Daniel yes and send it").run([{"role": "user", "content": "send it"}])
+        [a] = s.scalars(select(Approval)).all()
+        approval_id = str(a.id)
+    assert owner_client.post(f"/app/approvals/{approval_id}/approve").status_code == 200
+    return approval_id
+
+
+def test_mail_sent_through_an_approval_is_marked_as_sent_by_ava_with_a_link(owner_client, gmail_fake):
+    approval_id = _send_through_approval(owner_client, gmail_fake)
+    gmail_fake.add(mail("sent-d1", thread="x", sender=f"Jordan Whitfield <{OWNER_ADDR}>", labels=("SENT",)))
+    with session_scope() as s:
+        content, err = gmail.run(s, hired_owner(s), "gmail_search", {"query": "in:sent"}, tainted=False)
+    text = content[0]["content"][0]["text"]
+    assert not err and "Sent by Ava through the owner's approval" in text and "not suspicious" in text
+    assert f"ava://approval/{approval_id}" in text
+    with session_scope() as s:
+        content, _ = gmail.run(s, hired_owner(s), "gmail_read_thread", {"thread_id": "x"}, tainted=False)
+    assert f"ava://approval/{approval_id}" in content[0]["content"][0]["text"]
+
+
+def test_sent_mail_without_an_approval_record_is_still_flagged_and_never_marked_as_ava(owner_client, gmail_fake):
+    _send_through_approval(owner_client, gmail_fake)
+    # Looks like Ava's mail ("signed Ava") and sits in Sent, but its id is not in the ledger: not matched.
+    gmail_fake.add(
+        mail(
+            "forged-1",
+            thread="y",
+            sender=f"Jordan Whitfield <{OWNER_ADDR}>",
+            labels=("SENT",),
+            body="signed Ava, personal assistant of Jordan",
+        )  # fmt: skip
+    )
+    gmail_fake.add(mail("plain-1", thread="z"))  # received mail: no note at all
+    with session_scope() as s:
+        content, _ = gmail.run(s, hired_owner(s), "gmail_search", {"query": "x"}, tainted=False)
+    texts = {c["source"].rsplit("/", 1)[-1]: c["content"][0]["text"] for c in content}
+    assert "Sent by Ava" not in texts["forged-1"] and "no Ava approval record" in texts["forged-1"]
+    assert "Sent by Ava" not in texts["plain-1"]
+    assert "approval" not in texts["plain-1"].lower()
+
+
+def test_a_rejected_send_is_not_in_the_ledger(owner_client, gmail_fake):
+    gmail_fake.add(mail("m1", thread="t1"))
+    connect(scopes=(api.READONLY, api.COMPOSE), drafts=True)
+    with session_scope() as s:
+        script = Script(
+            tool_use("gmail_send", {"thread_id": "t1", "text": "No.", "reaches_a_person": "yes", "evidence": "human"}),
+            "Waiting.",
+        )
+        turn_for(s, script, "send it").run([{"role": "user", "content": "send it"}])
+        [a] = s.scalars(select(Approval)).all()
+        approval_id = a.id
+    assert owner_client.post(f"/app/approvals/{approval_id}/reject").status_code == 200
+    gmail_fake.add(mail("sent-d1", thread="x", labels=("SENT",)))  # same id a send would have had
+    with session_scope() as s:
+        assert gmail.sent_ledger(s, ["sent-d1"]) == {}
+
+
+def test_list_approvals_can_be_narrowed_to_one_kind(owner_client, gmail_fake):
+    from superaide.approvals import outcomes
+
+    _send_through_approval(owner_client, gmail_fake)
+    with session_scope() as s:
+        assert "gmail_send" in outcomes.list_text(s, {"kind": "gmail_send"})
+        assert outcomes.list_text(s, {"kind": "create_event"}) == "No approval requests match."

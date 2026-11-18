@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import logging
 import re
+import uuid
 from datetime import UTC, datetime
 from email.utils import parseaddr, parsedate_to_datetime
 from typing import Any
@@ -38,6 +39,7 @@ from superaide.integrations.gmail import settings as gmail_settings
 from superaide.integrations.google import client as google
 from superaide.platform.audit import audit
 from superaide.platform.config import get_settings
+from superaide.platform.db.models import AuditLog
 from superaide.policy.registry import DISCARDERS, EXECUTORS
 from superaide.skills.models import InstalledSkill
 
@@ -148,6 +150,47 @@ def who(msg: dict[str, Any]) -> str:
     return f"{name} ({dom})" if name and dom else name or dom or "unknown sender"
 
 
+def sent_ledger(session: Session, message_ids: list[str]) -> dict[str, Approval]:
+    """Which of these Gmail message ids Ava sent, and through which approval (#483). The ledger is the audit
+    line `gmail_sent` written when an approved send goes out, joined to its approval row; only an approved
+    `gmail_send` or `gmail_compose` approval counts. Read-only, in code, never from the model's words."""
+    ids = [m for m in dict.fromkeys(message_ids) if m]
+    if not ids:
+        return {}
+    rows = session.execute(
+        select(AuditLog.detail).where(AuditLog.action == "gmail_sent", AuditLog.detail["message_id"].astext.in_(ids))
+    ).all()
+    by_message: dict[str, uuid.UUID] = {}
+    for (detail,) in rows:
+        try:
+            by_message[str(detail["message_id"])] = uuid.UUID(str(detail["approval_id"]))
+        except KeyError, ValueError, TypeError:
+            continue
+    if not by_message:
+        return {}
+    approvals = {
+        a.id: a for a in session.scalars(select(Approval).where(Approval.id.in_(set(by_message.values())))).all()
+    }
+    return {
+        mid: approvals[aid]
+        for mid, aid in by_message.items()
+        if aid in approvals and approvals[aid].status == "approved"
+    }
+
+
+def ledger_note(msg: dict[str, Any], ledger: dict[str, Approval]) -> str:
+    """One line for a mail result: sent by Ava through an approval (cited), or in Sent mail with no record."""
+    a = ledger.get(str(msg.get("id", "")))
+    if a is not None:
+        when = f" on {a.decided_at:%d %b %Y %H:%M} UTC" if a.decided_at else ""
+        return (
+            f"\nSent by Ava through the owner's approval{when}; this is not suspicious. Approval: ava://approval/{a.id}"
+        )
+    if "SENT" in (msg.get("labelIds") or []):
+        return "\nIn Sent mail, but there is no Ava approval record for it (the owner may have sent it themselves)."
+    return ""
+
+
 def risks(text: str) -> set[str]:
     from superaide.triage.rules import risk_screen
 
@@ -177,6 +220,7 @@ def search(session: Session, owner: Person, args: dict[str, Any]) -> tuple[Any, 
         client = api.http_client()
         ids = api.search(client, tok, query, limit)
         out = []
+        ledger = sent_ledger(session, ids)
         for mid in ids:
             msg = api.message(client, tok, mid, fmt="metadata")
             if msg is None:
@@ -213,7 +257,7 @@ def search(session: Session, owner: Person, args: dict[str, Any]) -> tuple[Any, 
                 _source(
                     msg,
                     f"From: {who(msg)}\nSubject: {subj}\nDate: {_when(msg)}{' (unread)' if unread else ''}\n"
-                    f"Thread: {msg.get('threadId', '')}\nPreview: {preview}",
+                    f"Thread: {msg.get('threadId', '')}\nPreview: {preview}{ledger_note(msg, ledger)}",
                 )
             )
     except NotReady as exc:
@@ -239,7 +283,9 @@ def read_thread(session: Session, owner: Person, args: dict[str, Any]) -> tuple[
         return "No such thread. Use a thread id from gmail_search.", True
     out = []
     cfg = gmail_settings.load(session)
-    for msg in (found.get("messages") or [])[-cfg.thread_depth :]:
+    shown = (found.get("messages") or [])[-cfg.thread_depth :]
+    ledger = sent_ledger(session, [str(m.get("id", "")) for m in shown])
+    for msg in shown:
         addr, labels = api.sender(msg)[1], list(msg.get("labelIds") or [])
         subj = api.subject(msg)
         if gmail_settings.matches(cfg.blocked, address=addr, labels=labels):
@@ -263,7 +309,13 @@ def read_thread(session: Session, owner: Person, args: dict[str, Any]) -> tuple[
                 + gmail_settings.blocked_note(gmail_settings.label_of("codes"))
                 + ")"
             )
-        out.append(_source(msg, f"From: {who(msg)}\nDate: {_when(msg)}\nSubject: {subj}\n\n{body or '(no text)'}"))
+        out.append(
+            _source(
+                msg,
+                f"From: {who(msg)}\nDate: {_when(msg)}\nSubject: {subj}\n\n"
+                f"{body or '(no text)'}{ledger_note(msg, ledger)}",
+            )
+        )
     audit(session, "skills", "gmail_thread_read", messages=len(out))
     return out or "That thread is empty.", not out
 
@@ -696,7 +748,14 @@ def send_approved(session: Session, approval: Approval) -> str:
     except (NotReady, google.GoogleError) as exc:
         log.warning("couldn't send an approved Gmail draft: %s", exc)
         return f"Approved, but it couldn't be sent: {exc} The draft is still in Gmail."
-    audit(session, "skills", "gmail_sent", approval_id=approval.id, message_id=str(sent.get("id", "")))
+    audit(
+        session,
+        "skills",
+        "gmail_sent",
+        approval_id=approval.id,
+        message_id=str(sent.get("id", "")),
+        thread_id=str(sent.get("threadId", "")),
+    )
     p = approval.payload or {}
     if p.get("alt_draft_id"):  # the other variant of this email is no longer wanted
         try:
