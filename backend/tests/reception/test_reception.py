@@ -394,10 +394,10 @@ def test_flag_off_the_owner_gets_one_fixed_note_and_a_digest_line(owner_world, a
         reply="Noted.", take_message=TakenMessage(name="Sam", topic="quote", message="send quote")
     )
     ava.handle(hello("send quote"))
-    ava.handle(sl("U_ANOTHER_ONE", "another message"))
+    ava.handle(hello("and one more thing"))
     with session_scope() as s:
         notes = s.scalars(select(Event).where(Event.meta["kind"].astext == "message_taken")).all()
-        assert len(notes) == 1  # a burst makes one note
+        assert len(notes) == 1  # a burst from one sender makes one note (a second sender gets their own, #472)
         # the first name the sender gave and the owner's local time (#516), never the message
         assert re.fullmatch(
             r"Message taken from Sam, someone new, on Slack at \d\d:\d\d\. Open your dashboard to read it\.",
@@ -768,3 +768,92 @@ def test_asking_the_owners_ava_to_share_the_name_gets_an_honest_answer_and_a_lin
     with session_scope() as s:
         text = capabilities.block(s, tz="UTC", web=False)
     assert "your first name is shared" in text and "City: Pune" in text and "Whitfield" not in text
+
+
+# --- the owner's name choice in onboarding, the weekly nudge, the eleventh message (issues #475, #472) -----------
+
+
+def answer_share(client: TestClient, **answer: Any) -> dict[str, Any]:
+    from superaide.memory.models import Onboarding
+
+    with session_scope() as s:  # the step only counts when it is the current one
+        s.scalars(select(Onboarding)).one().step = "share"
+    r = client.post("/app/onboarding", json={"step": "share", "answer": answer})
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def test_onboarding_offers_the_first_name_unticked_and_ticking_it_turns_the_switch_on(owner_world, ava, script):
+    c = owner_world["client"]
+    answer_share(c, shareable=["availability"], never="")
+    with session_scope() as s:
+        assert service.settings_for(s, hired_owner(s)).show_first_name is False  # off unless ticked
+    answer_share(c, shareable=["first_name", "availability"], never="")
+    with session_scope() as s:
+        owner = hired_owner(s)
+        assert service.settings_for(s, owner).show_first_name is True
+        assert preferences_for(s, owner).shareable == ["availability"]  # the name lives on the receptionist's switch
+    script.out = ReceptionTurn(reply="Sure.")
+    r = ava.handle(hello("Who do you work for?"))
+    assert r.reply is not None and r.reply.startswith("Hi, I'm Ava, Jordan's AI assistant.")
+    assert "Jordan" in script.systems[0]
+
+
+def test_skipping_the_share_step_and_unticking_turn_the_name_off_again(owner_world):
+    c = owner_world["client"]
+    answer_share(c, shareable=["first_name"], never="")
+    answer_share(c, skip=True)
+    with session_scope() as s:
+        assert service.settings_for(s, hired_owner(s)).show_first_name is False
+
+
+def share_view(client: TestClient) -> dict[str, Any]:
+    from superaide.memory.models import Onboarding
+
+    with session_scope() as s:
+        s.scalars(select(Onboarding)).one().step = "share"
+    return client.get("/app/onboarding").json()["input"]
+
+
+def test_the_share_step_shows_the_name_option_and_ticked_only_when_the_switch_is_on(owner_world):
+    c = owner_world["client"]
+    first = share_view(c)
+    assert "first_name" in [o["value"] for o in first["options"]] and "first_name" not in first["selected"]
+    set_reception(show_first_name=True)
+    assert "first_name" in share_view(c)["selected"]
+
+
+def test_the_empty_card_nudge_comes_once_a_week_not_once_a_day(owner_world, ava, script):
+    ava.handle(hello("hello"))
+    with session_scope() as s:
+        for row in s.scalars(select(AuditLog).where(AuditLog.action == "card_empty_nudge")):
+            row.created_at = datetime.now(UTC) - timedelta(days=3)
+        assert service.nudge_owner(s, hired_owner(s)) is False  # three days is inside the week
+        for row in s.scalars(select(AuditLog).where(AuditLog.action == "card_empty_nudge")):
+            row.created_at = datetime.now(UTC) - timedelta(days=8)
+        s.flush()
+        assert service.nudge_owner(s, hired_owner(s)) is True
+
+
+def test_a_friends_urgent_eleventh_message_is_stored_ranked_and_never_lost(owner_world, ava, script, outbox):
+    for i in range(10):
+        ava.handle(hello(f"hey {i}"))
+    last = ava.handle(hello("I need this within 5 mins please, it is urgent"))
+    assert last.reply is not None and "passed on" in last.reply and "passed on what you sent" not in last.reply
+    rows = taken()
+    assert len(rows) == 11 and rows[-1].message.startswith("I need this within 5 mins")
+    assert script.calls == 10  # no model call over the limit, and the message was kept anyway
+    assert rows[-1].rank in ("urgent", "unverified", "normal")
+
+
+def test_the_owner_note_is_per_sender_so_a_second_person_is_not_hidden_by_the_first(owner_world, ava, script):
+    ava.handle(hello("hi", who="U_FRIEND_A"))
+    ava.handle(hello("hi again", who="U_FRIEND_A"))
+    ava.handle(hello("hello, it's me", who="U_FRIEND_B"))
+    with session_scope() as s:
+        notes = [
+            e
+            for e in s.scalars(select(Event).where(Event.direction == "out"))
+            if (e.meta or {}).get("kind") == "message_taken"
+        ]
+    assert len(notes) == 2  # one per sender, none for the repeat

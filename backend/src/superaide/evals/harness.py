@@ -394,6 +394,12 @@ def _reception_world(s: Any, sc: Scenario, owner: Person) -> None:
     )  # fmt: skip
     for k, v in sc.world.reception_limits.items():
         setattr(rs, k, v)
+    if sc.world.reception_card:
+        from superaide.memory.knowledge.store import preferences_for
+
+        pref = preferences_for(s, owner)
+        for k, v in sc.world.reception_card.items():
+            setattr(pref, k, v)
 
 
 FILLER_TOPICS = [
