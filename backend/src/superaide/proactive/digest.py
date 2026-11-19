@@ -199,6 +199,9 @@ def compose(
     from superaide.triage.digest import digest_lines  # ADR 0010: [] while TRIAGE_ENABLED is off
 
     lines += digest_lines(session, owner, now)
+    from superaide.commitments.api import digest_lines as promise_lines
+
+    lines += promise_lines(session, owner, now)  # promises past their time; [] when there are none
     from superaide.platform.config import get_settings
 
     if not get_settings().triage_enabled:  # with triage on, messages taken are in its sections
