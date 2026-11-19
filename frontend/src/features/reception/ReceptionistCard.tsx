@@ -11,6 +11,7 @@ import { useAppData } from '@/features/dashboard/data'
 import { call, type ReceptionistSettings, type ShareCardEdit } from '@/lib/api'
 import { ShareCardSection } from '@/features/reception/ShareCardSection'
 import { QuestionsSection } from '@/features/reception/QuestionsSection'
+import { TakeoverSection } from '@/features/reception/TakeoverSection'
 import { errorMessage } from '@/lib/action'
 
 // Settings → "People you don't know": whether Ava talks with them for you, what she may say, and whether
@@ -114,6 +115,7 @@ export function ReceptionistCard({ agentName }: { agentName: string }) {
                   </Button>
                 </form>
                 <QuestionsSection agentName={agentName} />
+                <TakeoverSection agentName={agentName} />
                 <ShareCardSection data={data} agentName={agentName} busy={busy} onSave={saveCard} />
                 <p className="text-xs text-muted">
                   Limits per person: {data.per_hour} messages an hour, {data.per_day} a day. Messages she takes show up under Needs
