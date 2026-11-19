@@ -135,7 +135,8 @@ def sent_to_the_model(window: int, history: list[dict[str, Any]]) -> tuple[FakeL
         return turn.llm, list(s.scalars(select(AuditLog).where(AuditLog.action == "prompt_trimmed")))
 
 
-def test_a_turn_on_a_small_window_sends_a_prompt_inside_the_budget_and_audits_what_went(owner_client):  # noqa: F811
+def test_a_turn_on_a_small_window_sends_a_prompt_inside_the_budget_and_audits_what_went(owner_client, monkeypatch):  # noqa: F811
+    monkeypatch.setattr("superaide.brain.prompt_tiers.select_tier", lambda *a, **k: "full")  # this tests the budget
     history = turns(20, 600)
     with session_scope() as s:
         turn = turn_for(s, Script("ok"))
