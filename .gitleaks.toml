@@ -24,7 +24,7 @@ regexes = ['''^987654321012345678$''']
 [[allowlists]]
 description = "Made-up Slack app token in the API connection tests"
 condition = "AND"
-paths = ['''(^|/)test_connections_negative\.py$''']
+paths = ['''(^|/)(test_connections_negative|test_connect_guide_api|test_connect_guide)\.py$''']
 regexes = ['''^xapp-1-A111-2222-[a-z]+$''']
 
 [[allowlists]]
