@@ -8,6 +8,7 @@ import { isBrand } from '@/components/brands/marks'
 import { Orb } from '@/components/Orb'
 import { AskRequests } from '@/features/ask/AskRequests'
 import { ApprovalsCard } from '@/features/dashboard/approvals/Approvals'
+import { BriefingCard } from '@/features/dashboard/briefing/BriefingCard'
 import { QuestionCard } from '@/features/dashboard/home/QuestionCard'
 import { UndeliveredCard } from '@/features/dashboard/home/UndeliveredCard'
 import { STAGES } from '@/components/stages'
@@ -68,6 +69,7 @@ export function DashboardHome() {
           </div>
         )}
 
+        <BriefingCard name={name} />
         <ApprovalsCard name={name} />
         <UndeliveredCard name={name} />
         <QuestionCard name={name} />

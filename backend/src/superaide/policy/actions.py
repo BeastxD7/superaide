@@ -199,8 +199,12 @@ def _log_executed(session: Session, approval: Approval) -> None:
     chain.append(session, kind="executed", tool=tool, effect=effect_of(tool), approval_id=approval.id)
 
 
-def resolve(session: Session, approval: Approval, *, approve: bool, decided_by: str, via: str = "") -> Approval:
-    """Decide an approval (see `_resolve`), then write the outcome into the owner's conversation (#340)."""
+def resolve(
+    session: Session, approval: Approval, *, approve: bool, decided_by: str, via: str = "", in_chat: str = ""
+) -> Approval:
+    """Decide an approval (see `_resolve`), then write the outcome into the owner's conversation (#340).
+    `in_chat` is the provider of the conversation the owner decided in (#642): the reply there already says what
+    happened, so the outcome is not pushed to a channel as well (and not written twice into the app chat)."""
     was_pending = approval.status == "pending"
     done = _resolve(session, approval, approve=approve, decided_by=decided_by, via=via)
     if was_pending and done.status != "pending":
@@ -211,7 +215,7 @@ def resolve(session: Session, approval: Approval, *, approve: bool, decided_by: 
                 verdict="expired" if done.decided_by == EXPIRED_BY else ("approve" if approve else "reject"),
                 via=via,
             )
-        outcomes.announce(session, done)
+        outcomes.announce(session, done, in_chat=in_chat)
     return done
 
 
