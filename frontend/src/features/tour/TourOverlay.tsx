@@ -140,7 +140,7 @@ export function TourOverlay({
         <p className="text-xs text-muted dark:text-white/70" aria-live="polite">
           Step {index + 1} of {steps.length}
         </p>
-        <h2 id={titleId} className="mt-1 text-base font-semibold">
+        <h2 id={titleId} className="mt-1 text-base font-semibold text-ink dark:text-white">
           {step.title}
         </h2>
         <p id={bodyId} className="mt-1 text-sm text-body dark:text-white/80">

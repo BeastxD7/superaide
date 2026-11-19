@@ -159,8 +159,15 @@ def seen_before(session: Session, context: Context, external_id: str) -> bool:
     )
 
 
+DM_THREAD_LEAD = 6  # top-level turns a DM thread brings along
+
+
 def recent_events(session: Session, context: Context, limit: int = 12, thread_id: str = "") -> list[Event]:
-    """The latest messages of this conversation: one thread, or the main conversation outside threads."""
+    """The latest messages of this conversation: one thread, or the main conversation outside threads.
+
+    In a one-to-one DM a thread continues the conversation it was opened from (#640): it also brings the
+    thread's root, whoever wrote it, and the last few top-level turns, so "yes please" under Ava's question still
+    has the question. A channel or group thread has its own audience and gets none of that."""
     in_thread = (
         or_(Event.thread_id == thread_id, Event.external_id == thread_id)  # the thread's first message
         if thread_id
@@ -173,7 +180,20 @@ def recent_events(session: Session, context: Context, limit: int = 12, thread_id
         .order_by(Event.created_at.desc(), Event.id)
         .limit(limit)
     ).all()
-    return list(reversed(rows))
+    if not (thread_id and context.kind == "dm"):
+        return list(reversed(rows))
+    ambient = ~Event.meta.has_key("ambient")
+    root = session.scalars(
+        select(Event).where(Event.context_id == context.id, Event.external_id == thread_id, ambient).limit(1)
+    ).first()
+    lead = session.scalars(
+        select(Event)
+        .where(Event.context_id == context.id, Event.thread_id.is_(None), ambient)
+        .order_by(Event.created_at.desc(), Event.id)
+        .limit(DM_THREAD_LEAD)
+    ).all()
+    merged = {e.id: e for e in [*rows, *lead, *([root] if root else [])]}
+    return sorted(merged.values(), key=lambda e: (e.created_at, e.id))
 
 
 # --- one conversation across channels (ADR 0008) ---------------------------------------

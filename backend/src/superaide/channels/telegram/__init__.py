@@ -266,16 +266,18 @@ class TelegramMessenger:
             health.record("telegram", health.UNREACHABLE, f"Couldn't reach Telegram ({type(exc).__name__})")
             raise health.DeliveryFailed("telegram", health.UNREACHABLE, "Telegram couldn't be reached") from None
 
-    def _send(self, chat_id: str, text: str, thread_id: str = "", sources: Sources | None = None) -> bool:
+    def _send(self, chat_id: str, text: str, thread_id: str = "", sources: Sources | None = None) -> str | bool:
         """Send Markdown as Telegram HTML, split under the 4096-character limit. If Telegram
         can't parse the markup, that message goes again as plain text.
 
-        True when Telegram took it. Raises DeliveryFailed when the token is rejected or Telegram
-        can't be reached (and records the channel's health); False for a per-chat refusal, e.g. the
-        person blocked the bot (403), which says nothing about the token."""
+        The message id of the first part (a string) when Telegram took it, True when it gave none. Raises
+        DeliveryFailed when the token is rejected or Telegram can't be reached (and records the channel's
+        health); False for a per-chat refusal, e.g. the person blocked the bot (403), which says nothing about
+        the token."""
         typing = _TYPING.get()
         if typing is not None and typing.chat_id == chat_id:
             typing.close()  # nothing is sent as "typing" after this message
+        first_id = ""
         for html_text, markdown in fmt.outgoing(
             text, sources, render=fmt.to_telegram_html, footer=fmt.telegram_footer, limit=fmt.TELEGRAM_LIMIT
         ):
@@ -302,8 +304,9 @@ class TelegramMessenger:
                     health.record("telegram", health.UNREACHABLE, f"Telegram answered {r.status_code}")
                     raise health.DeliveryFailed("telegram", health.UNREACHABLE, f"Telegram answered {r.status_code}")
                 return False
+            first_id = first_id or _message_id(r)
         health.record("telegram", health.OK)
-        return True
+        return first_id or True
 
     def _call(self, method: str, body: dict[str, Any]) -> httpx.Response | None:
         try:
@@ -354,10 +357,20 @@ class TelegramMessenger:
     def send_dm(self, identity: ChannelIdentity, text: str) -> bool:
         # In a private chat the chat ID equals the user ID. The user must have
         # started the bot once, or Telegram refuses the message.
-        return self._send(identity.stable_key, text)
+        return bool(self._send(identity.stable_key, text))
 
-    def send_to_context(self, context: Context, text: str, thread_id: str = "", sources: Sources | None = None) -> bool:
+    def send_to_context(
+        self, context: Context, text: str, thread_id: str = "", sources: Sources | None = None
+    ) -> str | bool:
         return self._send(context.external_id, text, thread_id, sources)
+
+
+def _message_id(r: httpx.Response) -> str:
+    """The id Telegram gave the message it just sent, or "" when the reply carries none."""
+    try:
+        return str(r.json()["result"]["message_id"])
+    except Exception:
+        return ""
 
 
 def set_webhook(token: str, url: str, secret: str, client: httpx.Client | None = None) -> bool:

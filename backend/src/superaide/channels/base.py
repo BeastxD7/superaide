@@ -86,6 +86,8 @@ class Messenger(Protocol):
     """`text` is Ava's Markdown; each messenger converts it to its channel's format. `sources`
     (owner DMs only) become a short footer so the "[1]" marks point at something.
 
+    `send_to_context` returns the platform id of the message it posted (a string) when the platform gave one,
+    and that id is stored on the outbound event so a thread under the reply finds it (#640).
     Sends may return False when the platform refused that one message, and raise
     channels.health.DeliveryFailed when the channel itself is down (token rejected, unreachable)."""
 
@@ -93,7 +95,7 @@ class Messenger(Protocol):
 
     def send_to_context(
         self, context: Context, text: str, thread_id: str = "", sources: Sources | None = None
-    ) -> bool | None: ...
+    ) -> str | bool | None: ...
 
 
 class Working(Protocol):
@@ -166,11 +168,12 @@ class FakeMessenger:
         """The id of the one-to-one chat with this person (Slack: conversations.open). Same shape as the tests' DMs."""
         return f"D_{identity.stable_key}"
 
-    def send_to_context(self, context: Context, text: str, thread_id: str = "", sources: Sources | None = None) -> None:
+    def send_to_context(self, context: Context, text: str, thread_id: str = "", sources: Sources | None = None) -> str:
         sent: dict[str, Any] = {"to_context": context.external_id, "text": text, "thread_id": thread_id}
         if sources:
             sent["sources"] = sources
         self.sent.append(sent)
+        return f"fake-{len(self.sent)}"  # a platform id, as Slack's ts or Telegram's message_id
 
 
 class WebMessenger:
