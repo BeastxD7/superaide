@@ -68,7 +68,10 @@ RESUMED = "I can reply again."
 SAVE_FAILED = "I couldn't save that just now. Please try again in a few minutes."
 STORAGE_FULL = "I can't take any more messages from you today. Please try again tomorrow."
 STORE_PER_DAY = 200  # messages kept per sender per day: flooding storage is still bounded
-FALLBACK = "I can't chat right now, but I've passed your message on. If you like, add your name and how to reach you."
+FALLBACK = (
+    "I can't chat right now, but I've passed your message on, and it will be waiting when they next check in. "
+    "If you like, add your name and how to reach you."
+)
 PAUSED = "I'm paused right now, but I've passed your message on."
 # Safety replies (#498): fixed, reviewed text. Code picks one from the labels in reception/signals.py; the model
 # never writes them and is never told what was detected. Each says it is an AI, gives no advice, and promises
@@ -439,6 +442,8 @@ def _talk(
 
     if not brain_ready(agent.settings):
         return FALLBACK, None, "code"
+    from superaide.reception import resilience
+
     system = rturn.system_prompt(session, owner, rs, agent.name)
     messages = build_messages(recent_events(session, ctx, limit=rturn.HISTORY), msg.text)
     try:
@@ -446,14 +451,18 @@ def _talk(
                                messages=messages)  # fmt: skip
     except BudgetExceeded as exc:
         audit(session, "reception", "budget_cap_reached", period=exc.period)
+        resilience.record_model(session, resilience.BUDGET, exc.period)
         return FALLBACK, None, "code"
     except AgentFrozen:
         return PAUSED, None, "paused"
     except Exception:
         log.exception("receptionist turn failed")
+        resilience.record_model(session, resilience.ERROR, "turn_failed")
         return FALLBACK, None, "code"
     if out is None or not out.reply.strip():
+        resilience.record_model(session, resilience.ERROR, "unreadable")
         return FALLBACK, None, "code"
+    resilience.record_model(session, resilience.OK)
     return out.reply.strip()[:1500], out.take_message, "model"
 
 

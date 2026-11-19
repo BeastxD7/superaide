@@ -83,6 +83,19 @@ export function DashboardShell({ defaultOpen, children }: { defaultOpen: boolean
               </Link>
             </div>
           )}
+          {me.degraded && me.degraded.level !== 'paused' && (
+            <div role="status" data-testid="degraded-banner" className="shrink-0 border-b border-line/70 bg-amber-50 px-4 py-2 text-sm text-ink">
+              {me.degraded.line}
+              {me.degraded.channels.length > 0 && (
+                <>
+                  {' '}
+                  <Link href="/dashboard/connections" className="font-medium underline">
+                    Check connections
+                  </Link>
+                </>
+              )}
+            </div>
+          )}
           {PWA_ENABLED && <InstallHint />}
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">{children}</div>
           {/* Phones only (below md), behind NEXT_PUBLIC_MOBILE_TABS; desktop is unchanged. */}
