@@ -24,12 +24,12 @@ A visitor message is readable by exactly one audience: the owner, in a direct me
 
 ### 2.2 Where it is read: no new write path in slice 1
 
-`reception_message` stays the store; it already holds who (provider, handle, the name they gave), when, the claimed and ranked urgency, topic and the message, and links to the inbound `event`. The read side gets one audience-scoped query, written once (`reception/recall.py`), used by two owner-private tools:
+`reception_message` stays the store; it already holds who (provider, handle, the name they gave), when, the claimed and ranked urgency, topic and the message, and links to the inbound `event`. The read side gets one audience-scoped query, written once (`visitor_rows` in `memory/recall/retrieval.py`, so the import-boundary rules hold), used by two owner-private tools:
 
-- `recall` (topic search, optional `channel`): visitor messages join the fused result list as `kind=message` sources, cited as `ava://msg/<provider>/<inbound event id>`, which the owner can already click through.
+- `recall` (topic search, optional `channel`, only when the caller passes the owner-private `rooms` flag): visitor messages lead the fused result list as `kind=message` sources, cited as `ava://msg/<provider>/<inbound event id>`, which the owner can already click through.
 - `channel_activity` (what happened, by time): gains a third section, "People Ava does not know, in direct messages", newest first.
 
-The audience gate is in SQL, in the same statement that selects the rows, as for every other record: the caller passes the `Audience`; the function returns nothing unless it is a known, single-person, no-unknown audience whose person is the owner, and the SQL also filters on the owner's agent scope. There is no Python post-filter to forget.
+The audience gate is part of the SQL statement that selects the rows, as for every other record: the caller passes the `Audience`; the predicate is constant false unless it is a known, single-person, no-unknown audience whose person is the owner, and otherwise it also pins the row's `agent_id` to the owner's agent. There is no Python post-filter to forget.
 
 ### 2.3 Content: fixed summary plus the visitor's own words, for the owner only
 
