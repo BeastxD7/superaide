@@ -73,8 +73,11 @@ def main(argv: list[str] | None = None) -> int:
     v = sub.add_parser("voice-vs-text", help="30 tasks by text and by voice, offline (#125): how often voice diverges")
     v.add_argument("--out", help="where to write the JSON report (default backend/evals/results)")
     g = sub.add_parser("gate", help="regression gate (ltm or human): offline, fails if a scenario regresses")
-    g.add_argument("--suite", choices=("ltm", "human"), default="ltm", help="which scenarios to gate (default ltm)")
+    g.add_argument(
+        "--suite", choices=("ltm", "human", "continuity", "retrieval"), default="ltm", help="which suite to gate"
+    )
     g.add_argument("--update", action="store_true", help="record today's results as the baseline")
+    sub.add_parser("retrieval", help="retrieval golden set: recall@k, MRR and nDCG per category, offline (#648)")
     t = sub.add_parser("triage", help="triage precision and recall on the labelled set (ADR 0010)")
     t.add_argument("--live", action="store_true", help="use the triage model (costs money)")
     t.add_argument("--cap", type=float, default=0.25, help="hard spend cap in US$ over the evals ledger")
@@ -105,6 +108,12 @@ def main(argv: list[str] | None = None) -> int:
 
         _env(args_for_offline())
         return voice_vs_text.main(args.out)
+
+    if args.cmd == "retrieval":
+        from superaide.evals import retrieval
+
+        _env(args_for_offline())
+        return retrieval.write_report()
 
     if args.cmd == "gate":
         from superaide.evals.gate import run_gate
