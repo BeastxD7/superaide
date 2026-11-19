@@ -1,0 +1,26 @@
+name: Experiments
+
+# Weekly (issue #405): open an issue for every EXPERIMENT_ flag in backend/flags.toml that is past its sunset date
+# with no recorded result. Reads the registry only; it never changes code and never blocks a pull request.
+on:
+  schedule:
+    - cron: "11 5 * * 1" # Mondays
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sunset:
+    name: Experiments past their sunset
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Open an issue for each overdue experiment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/check_experiments.py --open-issues

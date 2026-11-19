@@ -42,7 +42,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         tags=["Owner: skills"],
         summary="Model-swap drill",
         description=(
-            "MODEL_DRILL_ENABLED (off by default; 404 while off): the model Ava uses now and how many recent tasks "
+            "EXPERIMENT_MODEL_DRILL (off by default; 404 while off): the model Ava uses now and how many recent tasks "
             "a drill can replay."
         ),
     )

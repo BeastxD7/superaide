@@ -9,7 +9,7 @@ plain code decides whether the minority view is worth showing.
 - The classifier is not an LLM. With a split vote it surfaces the minority only if that adviser was confident
   and its reasons are not just the majority's reasons repeated. It shows "one adviser disagrees, and why";
   it never overrides anyone and never decides for the owner.
-Off unless DISSENT_DESK_ENABLED.
+Off unless EXPERIMENT_DISSENT_DESK.
 """
 
 from __future__ import annotations

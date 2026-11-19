@@ -1,9 +1,9 @@
-// "The Mirror" (#54): a weekly note of patterns with receipts. Behind MIRROR_ENABLED, so it runs only with
+// "The Mirror" (#54): a weekly note of patterns with receipts. Behind EXPERIMENT_MIRROR, so it runs only with
 // E2E_MIRROR=1 (e.g. `E2E_MIRROR=1 E2E_SLOT=45 npx playwright test mirror`).
 import { MIRROR } from '../../src/env'
 import { expect, query, test } from '../../src/fixtures'
 
-test.skip(!MIRROR, 'MIRROR_ENABLED is off by default; set E2E_MIRROR=1 to run these')
+test.skip(!MIRROR, 'EXPERIMENT_MIRROR is off by default; set E2E_MIRROR=1 to run these')
 
 async function seedReminders(): Promise<void> {
   for (const weeksAgo of [0, 1, 2, 3]) {

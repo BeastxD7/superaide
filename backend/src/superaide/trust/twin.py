@@ -8,7 +8,7 @@ way, prequentially: every past decision is predicted from only the decisions bef
 The calibration page reads those scores. `gate` says whether the twin has earned the right to be *trusted
 as a signal* (enough decisions, accurate, calibrated, better than always guessing the common answer). It is
 information for the owner; nothing in Superaide grants autonomy from it automatically. Edits are not
-predicted because approvals cannot be edited yet. Off unless OWNER_TWIN_ENABLED.
+predicted because approvals cannot be edited yet. Off unless EXPERIMENT_OWNER_TWIN.
 """
 
 from __future__ import annotations

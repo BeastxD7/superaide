@@ -43,6 +43,22 @@ INTERNAL_ENV: set[str] = set()
 ENTRY = re.compile(r"^#? ?([A-Z][A-Z0-9_]*)=")
 
 
+def env_name(stmt: ast.AnnAssign) -> str:
+    """The environment variable of a Settings field: its alias, or for AliasChoices(new, old...) the first (current)
+    name, or the field name upper-cased."""
+    assert isinstance(stmt.target, ast.Name)
+    env = stmt.target.id.upper()
+    if isinstance(stmt.value, ast.Call):
+        for kw in stmt.value.keywords:
+            if kw.arg in {"alias", "validation_alias"}:
+                v = kw.value
+                if isinstance(v, ast.Constant):
+                    env = str(v.value).upper()
+                elif isinstance(v, ast.Call) and v.args and isinstance(v.args[0], ast.Constant):
+                    env = str(v.args[0].value).upper()
+    return env
+
+
 def settings_fields() -> dict[str, str]:
     """Env name -> annotation source, for every Settings field read from the environment."""
     tree = ast.parse(CONFIG.read_text())
@@ -54,13 +70,7 @@ def settings_fields() -> dict[str, str]:
                     name = stmt.target.id
                     if name in NOT_FROM_ENV:
                         continue
-                    env = name.upper()
-                    value = stmt.value
-                    if isinstance(value, ast.Call):
-                        for kw in value.keywords:
-                            if kw.arg in {"alias", "validation_alias"} and isinstance(kw.value, ast.Constant):
-                                env = str(kw.value.value).upper()
-                    out[env] = ast.unparse(stmt.annotation)
+                    out[env_name(stmt)] = ast.unparse(stmt.annotation)
     return out
 
 
