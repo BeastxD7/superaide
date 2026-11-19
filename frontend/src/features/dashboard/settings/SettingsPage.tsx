@@ -13,6 +13,7 @@ import { AskLinkCard } from '@/features/ask/AskLinkCard'
 import { AccessLogCard } from '@/features/dashboard/settings/AccessLogCard'
 import { CHANNEL_LABEL, DIGEST_LABEL, useAppData } from '@/features/dashboard/data'
 import { ReceptionistCard } from '@/features/reception/ReceptionistCard'
+import { TryAsVisitor } from '@/features/reception/TryAsVisitor'
 import { AppError, auth, type Preferences } from '@/lib/api'
 import { useSession } from '@/lib/session-context'
 import { PWA_ENABLED } from '@/lib/flags'
@@ -89,6 +90,7 @@ export function SettingsPage() {
         </Card>
 
         <ReceptionistCard agentName={name} />
+        <TryAsVisitor agentName={name} />
         <AskLinkCard />
 
         <AccessLogCard name={name} />

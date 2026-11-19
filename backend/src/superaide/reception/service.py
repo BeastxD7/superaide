@@ -440,6 +440,12 @@ def _reason(session: Session, owner: Person, row: ReceptionMessage) -> str:
     return f"Message taken from {who} on {when}"
 
 
+def _sandbox() -> Any:
+    from superaide.reception.sandbox_guard import active
+
+    return active()
+
+
 def _to_triage(session: Session, owner: Person, row: ReceptionMessage, inbound: Event, now: datetime) -> None:
     """With triage on: a Needs-you item. Never `interrupt` (a stranger isn't verified): at most an
     unverified request that escalates, when it matches one of the owner's urgent topics."""
@@ -470,7 +476,9 @@ def _to_triage(session: Session, owner: Person, row: ReceptionMessage, inbound: 
     session.flush()
     row.decision_id = d.id
     audit(session, "triage", "decided", decision_id=d.id, decision=d.decision, rule_hits=d.rule_hits, stage="-")
-    if escalate:
+    if escalate and (sandbox := _sandbox()) is not None:  # a preview (#499): the ladder is described, never started
+        sandbox.skipped.append("escalation: the ladder that rings the owner is not started from a preview")
+    elif escalate:
         pref = preferences_for(session, owner)
         quiet_end = next_local(now, pref.timezone, pref.quiet_end) if in_quiet_hours(pref, now) else None
         open_escalation(session, d, owner, max_step=1, breaks_quiet=False, defer_until=quiet_end,

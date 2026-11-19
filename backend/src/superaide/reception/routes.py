@@ -9,7 +9,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
@@ -53,6 +53,24 @@ class SettingsBody(BaseModel):
     per_hour: int | None = Field(default=None, ge=1, le=60)
     per_day: int | None = Field(default=None, ge=1, le=500)
     urgent_over_cap: bool | None = None
+
+
+class PreviewLine(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    role: Literal["visitor", "ava"]
+    text: str = Field(max_length=1000)
+
+
+class PreviewBody(BaseModel):
+    """Lines a visitor would write, run in order through the real receptionist inside a sandbox (#499). `history` is
+    what was said before (replayed without a model call, so a longer chat is not paid for twice)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    channel: Literal["telegram", "slack"] = "telegram"
+    history: list[PreviewLine] = Field(default_factory=list, max_length=20)
+    messages: list[Annotated[str, Field(min_length=1, max_length=1000)]] = Field(min_length=1, max_length=8)
 
 
 class AnswerBody(BaseModel):
@@ -202,6 +220,31 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             m.status, m.decided_at = body.status, datetime.now(UTC)
             audit(s, "reception", "message_marked", message_id=m.id, status=body.status)
             return message_view(m)
+
+    @router.get(
+        "/receptionist/preview/scripts",
+        summary="Standard preview scripts",
+        description="Visitor lines to replay through the preview, for example after changing a setting.",
+    )
+    def preview_scripts(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        from superaide.reception import sandbox
+
+        return {"scripts": sandbox.standard_scripts()}
+
+    @router.post(
+        "/receptionist/preview",
+        summary="Try the receptionist as a visitor",
+        description="Runs what a stranger would write through the real receptionist inside a sandbox: nothing is sent, "
+        "nothing is stored as a visitor's message, no notification reaches you. The reply is what they would "
+        "get; the model's cost is counted.",
+    )
+    def preview(body: PreviewBody, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        from superaide.reception import sandbox
+
+        return sandbox.preview(
+            get_agent(), person_id, channel=body.channel, history=[h.model_dump() for h in body.history],
+            messages=body.messages,
+        )  # fmt: skip
 
     @router.get(
         "/receptionist/questions",

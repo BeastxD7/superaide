@@ -12,9 +12,11 @@ from superaide.reception.resilience import MAX_ATTEMPTS as VISITOR_REPLY_ATTEMPT
 from superaide.reception.resilience import queue_reply as queue_visitor_reply
 from superaide.reception.resilience import record_model as record_model_health
 from superaide.reception.resilience import status as outage_status
+from superaide.reception.sandbox_guard import active as sandbox_active
 from superaide.reception.service import first_name_shared, set_first_name_shared, share_card_state
 
 __all__ = [
+    "sandbox_active",
     "MODEL_BUDGET",
     "MODEL_ERROR",
     "VISITOR_REPLY_ATTEMPTS",

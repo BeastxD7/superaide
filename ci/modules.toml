@@ -580,6 +580,7 @@ tests = [
 ]
 e2e = [
   "e2e/tests/reception/share-card.spec.ts",
+  "e2e/tests/reception/try-as-visitor.spec.ts",
   "e2e/tests/reception/degraded-banner.spec.ts",
 ]
 
