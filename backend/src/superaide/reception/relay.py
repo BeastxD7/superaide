@@ -15,8 +15,9 @@ what is sent:
 - Approving is the second step. The executor re-checks everything, honours the kill switch, caps relays per
   recipient per day, sends, writes the message into the conversation and audits it.
 
-Not here yet (see the PR): a signed mandate that skips the card, a commitment for "I'll reply in an hour", a
-dedicated `relay` table (the approval row is the record) and replies routed as threads."""
+Not here yet (see the PR): a signed mandate that skips the card, a dedicated
+`relay` table (the approval row is the record)
+and replies routed as threads."""
 
 from __future__ import annotations
 
@@ -268,6 +269,28 @@ def _local(session: Session, at: datetime) -> str:
     return f"{at.astimezone(zone(preferences_for(session, owner).timezone)):%H:%M}"
 
 
+def _promise(
+    session: Session, approval: Approval, identity: ChannelIdentity, ctx: Context, data: dict, now: datetime
+) -> None:
+    """The owner promised a reply ("I'll reply in an hour"): code records it as a commitment (#480). Never read from
+    the model's draft, and a failure here never undoes the send."""
+    from superaide.app.accounts import owner as instance_owner
+    from superaide.commitments.api import from_relay
+
+    owner = instance_owner(session)
+    if owner is None:
+        return
+    try:
+        with session.begin_nested():
+            from_relay(
+                session, owner, approval_id=approval.id, identity_id=identity.id, context_id=ctx.id,
+                provider=ctx.provider, recipient=str(data.get("recipient") or ""),
+                instruction=str(data.get("instruction") or ""), now=now,
+            )  # fmt: skip
+    except Exception as exc:
+        audit(session, "reception", "commitment_failed", approval_id=approval.id, reason=type(exc).__name__)
+
+
 def execute(session: Session, approval: Approval) -> str:
     """The owner approved this exact text to this exact conversation: send it, record it, say what happened."""
     from superaide.channels.health import DeliveryFailed
@@ -318,6 +341,7 @@ def execute(session: Session, approval: Approval) -> str:
         meta={"relay": True, "approval_id": str(approval.id)},
     )  # fmt: skip
     audit(session, "reception", "relay_sent", approval_id=approval.id, provider=ctx.provider)
+    _promise(session, approval, identity, ctx, data, now)
     return f"Sent to {data.get('recipient') or 'them'} on {where} at {_local(session, now)}."
 
 
