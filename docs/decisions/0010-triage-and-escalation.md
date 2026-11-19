@@ -734,3 +734,14 @@ External (official unless marked):
 - Telegram Bot API, InlineKeyboardButton / answerCallbackQuery: https://core.telegram.org/bots/api#inlinekeyboardbutton ; 64-byte `callback_data` (secondary): https://docs.python-telegram-bot.org/en/v20.2/telegram.inlinekeyboardbutton.html
 - Slack interactive components and the 3-second ack: https://docs.slack.dev/tools/java-slack-sdk/guides/interactive-components
 - Interruption research (Iqbal & Horvitz 2007, Iqbal & Bailey 2008, Mark et al. 2008, Horvitz bounded deferral, Fitz et al. batching): links in `Personal assistant memory architecture.md`.
+
+## Owner inbox and awareness (#476, 2026-11)
+
+The owner's private chat has one read-only tool, `inbox` (`reception/inbox.py`), over `reception_message`: who is waiting
+(first name as given, labelled unverified, handle, channel), how many messages, how long, urgency and deadline as
+code read them, and a code-cut excerpt; with an `id`, the stored words as a quote. The prompt also carries one
+code-built line ("People waiting for the owner right now: 1 ...") with a first name cut to letters and no typed words, so
+Ava does not need a tool call to know. A turn that read the words is tainted like a channel read: `propose_action`
+is refused in it, so what a stranger wrote can't make Ava act. Not offered in channels (`SHARED_TOOLS`), never to
+strangers or colleagues. Still open: a conversation state (read, answered, ended) beyond the message status, a
+live refresh, and an Inbox page with unread counts (the "Messages taken" list is the page today).
