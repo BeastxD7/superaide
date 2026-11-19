@@ -102,7 +102,6 @@
   category: human
   severity: high
   based_on: "#472 (point 5)"
-  known_gap: "#616: the linking note follows any sentence with 'it is' / 'this is' in it (identity/linking.py CLAIM_RE), not only a name"
   title: "Ordinary sentences like 'it is about the project' and 'it is important' do not get the 'I've sent a code' note"
   world: {owner_name: Ananya Menon, triage_model: true}
   turns:
@@ -122,7 +121,6 @@
   category: human
   severity: low
   based_on: "#472"
-  known_gap: "#617: the limit notice reads 'I'll stop replying until in about 60 minutes' (reception/service.py LIMIT_REPLY and _resume_text)"
   title: "The limit notice is a grammatical sentence: 'until in about 60 minutes' is not"
   world: {owner_name: Ananya Menon, triage_model: true, reception_limits: {per_hour: 1}}
   turns:

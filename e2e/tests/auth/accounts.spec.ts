@@ -75,6 +75,35 @@ test.describe('sign-up', () => {
     await expect(accountButton(page)).toHaveAccessibleName(`Account: signed in as ${person.name}`)
   })
 
+  test('every kind of early submit, coming from the hire page, ends on the hire page and never on a browser error (#600)', async ({ page }) => {
+    const person = newPerson()
+    let release!: () => void
+    const held = new Promise<void>((resolve) => (release = resolve))
+    await page.route('**/_next/static/chunks/**', async (route) => {
+      await held
+      await route.continue()
+    })
+    const navigations: string[] = []
+    page.on('framenavigated', (frame) => frame === page.mainFrame() && navigations.push(frame.url()))
+    await page.goto(`/signup?next=${encodeURIComponent('/agents/ava/hire')}`, { waitUntil: 'commit' })
+    await expect(signupForm(page).name).toBeVisible()
+    const f = signupForm(page)
+    await fillSignup(page, person)
+    // Everything a hurried person or a script can do before React is live: Enter, a click, a scripted submit.
+    await f.password.press('Enter')
+    await f.submit.click({ force: true })
+    await page.locator('form').evaluate((form: HTMLFormElement) => form.requestSubmit())
+    await expect(page).toHaveURL(/\/signup\?next=%2Fagents%2Fava%2Fhire$/)
+    expect(navigations.filter((u) => !u.includes('/signup?next='))).toEqual([]) // no reload, no error page
+    release()
+
+    await expect(f.submit).toBeEnabled()
+    await expect(f.name).toHaveValue(person.name)
+    await f.submit.click()
+    await expect(page).toHaveURL(/\/agents\/ava\/hire$/)
+    await expect(page.getByText('Ava is an AI personal assistant.')).toBeVisible()
+  })
+
   test('a new visitor creates an account and is signed in @smoke', async ({ page, api }) => {
     const person = newPerson()
     await gotoSignup(page)

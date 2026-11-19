@@ -61,7 +61,7 @@ NEAR_NOTICE = (
 )
 LIMIT_MARK = "reply limit for now"
 LIMIT_REPLY = (
-    "I've reached my reply limit for now, so I'll stop replying until {when}. "
+    "I've reached my reply limit for now, so I'll stop replying and can reply again {when}. "
     "What you send meanwhile is still passed on."
 )
 RESUMED = "I can reply again."
