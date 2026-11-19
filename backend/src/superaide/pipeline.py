@@ -20,6 +20,7 @@ from typing import cast
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
+from superaide.approvals import origin, shortcut
 from superaide.brain.llm import LLM
 from superaide.brain.llm import OnEvent as Emit
 from superaide.brain.spend.budget import AgentFrozen, BudgetExceeded
@@ -268,6 +269,17 @@ class Agent:
                 self._reply(s, ctx, aud, handed_back, thread)
                 return HandleResult("known", handed_back, ["takeover_released"])
 
+            if (
+                ctx.kind == "dm"
+                and sender.known
+                and not sender.unconfirmed
+                and sender.person is not None
+                and self._is_owner(s, sender)
+                and (decided := shortcut.handle(s, sender=sender, ctx=ctx, aud=aud, msg=msg, is_owner=True)) is not None
+            ):  # a one-word yes or no on the card just shown: read in code, no model (#642)
+                self._reply(s, ctx, aud, decided.text, thread, meta=decided.meta or None)
+                return HandleResult("known", decided.text, decided.notes or ["approval_reply"])
+
             invite_code = parse_start_code(msg.text) if msg.provider == "telegram" else None
             if invite_code is not None:
                 if sender.known:
@@ -336,12 +348,9 @@ class Agent:
 
                 try:
                     with s.begin_nested():
-                        # A file alone from a stranger is not a conversation: the fixed reply, no model.
-                        received = (
-                            None
-                            if msg.attachments and not msg.text.strip()
-                            else handle_stranger(self, s, sender, ctx, msg, inbound)
-                        )
+                        # A file alone from a stranger: the fixed reply, no model, unless the owner chose a
+                        # voice-note or photo service (reception/media.py).
+                        received = handle_stranger(self, s, sender, ctx, msg, inbound)
                 except Exception as exc:  # the fixed reply still goes out (issue #83)
                     self._turn_failed(s, exc, msg)
                     received = None
@@ -357,9 +366,10 @@ class Agent:
                 # else is said plainly in the same conversation, never silence: fixed text, no model, nothing from the
                 # file or its name stored or shown, and no action can come from it (#511).
                 read = None
-                if ctx.kind == "dm" and (msg.file_refs or msg.uploads):
+                media = attachments.media_for(self.settings) if msg.file_refs or msg.uploads else None
+                if ctx.kind == "dm" and attachments.has_work(msg, media):
                     read = attachments.read_message(
-                        msg, self.messengers.get(msg.provider), self.settings.attachment_max_bytes
+                        msg, self.messengers.get(msg.provider), self.settings.attachment_max_bytes, media
                     )
                     audit(
                         s, "pipeline", "attachment_read", provider=msg.provider, files=read.read,
@@ -425,6 +435,10 @@ class Agent:
                         reply, followup = self._hand_off(s, sender, msg)
                     reply = self._steady(s, reply)
                     self._reply(s, ctx, aud, reply, thread, meta=meta)
+                    if not shared and meta.get("approvals") and ctx.provider != "web":
+                        from superaide.approvals import buttons
+
+                        buttons.offer(s, self.messengers.get(ctx.provider), ctx, sender.trust, meta["approvals"])
                 if shared:  # nothing is learned from a room
                     return HandleResult("known", reply, [*notes, "shared_context"], followup=followup)
                 from superaide.memory.knowledge import learn
@@ -867,7 +881,8 @@ class Agent:
                 messages[0] = {**messages[0], "content": thread_block + "\n\n" + str(messages[0]["content"])}
             if file_block:
                 messages[-1] = {**messages[-1], "content": f"{file_block}\n\n{messages[-1]['content']}"}
-            result = turn.run(messages)
+            with origin.bound(context_id=ctx.id, event_id=inbound.id, provider=ctx.provider):
+                result = turn.run(messages)  # any card asked for in this turn records where it was asked (#642)
         except BudgetExceeded as exc:
             return self._budget_reply(s, exc), ["budget"], {}
         except AgentFrozen:
@@ -896,6 +911,8 @@ class Agent:
             meta["reasoning"] = result.reasoning
         if playbook_arm is not None:
             meta["playbook_arm"] = playbook_arm
+        if cards := self._cards_of_turn(s, inbound):
+            meta["approvals"] = cards  # the cards this reply announces: what a later "send" is bound to (#642)
         if timeline.labels:
             meta["other_channels"] = len(timeline.labels)  # turns from other channels this reply saw
         reply = strip_label(result.text)
@@ -904,6 +921,17 @@ class Agent:
 
             reply = review(self, s, sender.person, msg.text, reply)
         return reply, [*result.notes, f"steps:{result.steps}"], meta
+
+    @staticmethod
+    def _cards_of_turn(s, inbound) -> list[str]:
+        from superaide.approvals.models import Approval
+
+        rows = s.scalars(
+            select(Approval.id).where(
+                Approval.status == "pending", Approval.payload["origin_event_id"].as_string() == str(inbound.id)
+            )
+        )
+        return [str(i) for i in rows]
 
     def _slack_thread_block(self, ctx: Context, msg: InboundMessage, owner_name: str) -> str:
         """The thread the owner @-mentioned Ava in, read with conversations.replies, as
