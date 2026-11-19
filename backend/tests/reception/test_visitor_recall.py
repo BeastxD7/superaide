@@ -113,7 +113,7 @@ def test_recall_by_topic_finds_it_on_any_channel_the_owner_uses(owner_world, ava
 
 def test_a_quiet_report_says_so_and_never_claims_telegram_cannot_be_read(owner_world, ava, model):
     result = ask_owner(ava, model, "channel_activity")
-    assert "Nobody Ava does not know has written" in result and "kept 30 days" in result
+    assert "Nobody Ava does not know has written" in result and "30 days" not in result  # kept however old
     assert "can't read" not in result.lower()
 
 
@@ -139,14 +139,14 @@ def test_the_owners_turn_writes_nothing_about_the_visitor(owner_world, ava, mode
         assert s.scalar(select(func.count()).select_from(MemoryItem)) == before
 
 
-def test_old_and_spam_messages_are_not_returned(owner_world, ava, model):
+def test_old_messages_are_kept_and_spam_is_not_returned(owner_world, ava, model):
     visitor_wrote(ava)
     with session_scope() as s:
         aud = owner_aud(s)
         assert len(visitor.visitor_rows(s, aud)) == 1
         s.execute(update(ReceptionMessage).values(created_at=datetime.now(UTC) - timedelta(days=31)))
     with session_scope() as s:
-        assert visitor.visitor_rows(s, owner_aud(s)) == []
+        assert len(visitor.visitor_rows(s, owner_aud(s))) == 1  # retention keeps everything (owner decision, #644)
         s.execute(update(ReceptionMessage).values(created_at=datetime.now(UTC), status="spam"))
     with session_scope() as s:
         assert visitor.visitor_rows(s, owner_aud(s)) == []

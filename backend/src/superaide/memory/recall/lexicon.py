@@ -130,7 +130,7 @@ CHATTER = {
     "sent", "sending", "go", "now", "just", "also", "hi", "hello", "hey", "fine", "right", "good", "great", "cool",
     "nice", "no", "nope", "then", "there", "here", "so", "but", "if", "be", "been", "am", "were", "will", "would",
     "should", "shall", "may", "might", "must", "some", "anyone", "anybody", "anything", "something", "someone",
-    "write", "writes", "wrote", "written", "writing", "saying", "says", "asked", "ask", "asks", "message",
+    "saying", "says", "asked", "ask", "asks", "message",
     "messages", "last", "week", "weeks", "day", "days", "ago", "let", "lets", "get", "got", "give", "show", "find",
     "look", "check", "again", "more", "other", "us", "we", "he", "she", "him", "her", "they", "them", "his", "their",
     "our", "its", "by", "as", "up", "out", "over", "into", "than", "very", "too", "in", "yesterday", "today",
