@@ -188,7 +188,9 @@ tests = [
   "backend/tests/brain/**",
   "backend/tests/live/**",
 ]
-e2e = []
+e2e = [
+  "e2e/tests/brain/ai-key-banner.spec.ts",
+]
 
 [modules.brainshare]
 src = [

@@ -121,6 +121,9 @@ def create_app(agent: Agent | None = None) -> FastAPI:
         from superaide.brain import platform_ai
 
         platform_ai.warn_if_unusable()
+        from superaide.brain.api import keyhealth
+
+        keyhealth.warn_if_missing(settings)  # an error in the log, never a crash (#633)
         from superaide.platform import retired
 
         retired.warn()  # a promoted flag still set in .env is ignored; say so once (#404)

@@ -41,6 +41,8 @@ export type Me = {
     failed_replies: number
     line: string
   } | null
+  // Why the AI cannot be used for a configuration reason (#633); null while fine. Fixed text, never a provider message.
+  ai_notice?: { reason: 'key_missing' | 'key_invalid' | 'credit_low' | 'spend_cap'; message: string; action: string; href: string } | null
   channels: {
     web: boolean
     telegram: boolean
