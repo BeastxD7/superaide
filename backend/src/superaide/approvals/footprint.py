@@ -24,7 +24,7 @@ from superaide.platform.config import get_settings
 from superaide.policy.registry import CREATION_RULES
 
 # Kinds whose text goes to or about someone else.
-OUTBOUND_KINDS = frozenset({"message_someone_else", "publish_post", "post_review", "gmail_send"})
+OUTBOUND_KINDS = frozenset({"message_someone_else", "relay_message", "publish_post", "post_review", "gmail_send"})
 _NAME = re.compile(r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b")
 _STOP = {"Thank You", "Best Regards", "Kind Regards", "Dear Sir", "Good Morning", "Good Afternoon", "Happy Birthday"}
 
