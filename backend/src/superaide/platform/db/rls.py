@@ -108,6 +108,7 @@ TABLES: tuple[str, ...] = (
     "notification_delivery",  # pushes to the owner's Telegram or Slack and how they went (#491)
     "turn_timing",  # per-stage milliseconds of each message turn (#412)
     "presence_state",  # what the owner said about being reachable, with an end time (#495)
+    "reply_draft",  # replies drafted for the owner to approve (#485)
     "commitment",  # promises with a person and a time, owner-private (#480)
     "takeover",  # the owner is handling a visitor conversation, Ava stays out of it (#493)
     "approval_event",  # counts and timings of approval cards, no text (#407)
