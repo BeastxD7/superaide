@@ -204,6 +204,13 @@ export function Meet({ session }: { session: Session }) {
             ))}
           </div>
         )}
+        {view && !view.done && (
+          <div className="mx-auto flex max-w-2xl justify-end px-4 pb-1">
+            <Link href="/dashboard/chat" className="inline-flex min-h-11 items-center rounded-full px-3 text-sm font-medium text-violet-700 hover:bg-white">
+              Ask a question first
+            </Link>
+          </div>
+        )}
       </header>
 
       <main ref={scrollerRef} tabIndex={0} aria-label="Conversation" className="min-h-0 flex-1 overflow-y-auto">

@@ -26,19 +26,28 @@ from superaide.brain import capabilities, taskplan, verify
 from superaide.brain.llm import LLM, StepResult, SystemBlock
 from superaide.brain.spend.budget import BudgetExceeded
 from superaide.brain.turn import load_charter
-from superaide.channels.api import CHANNEL_ACTIVITY_TOOL, ROOM_MARK, channel_activity_report
+from superaide.channels.api import CHANNEL_ACTIVITY_TOOL, ROOM_MARK, channel_activity_report, channel_hours
 from superaide.identity.resolver import Sender
 from superaide.intentions import service as intentions
 from superaide.intentions.when import clean_task, find_moment, names_a_day, zone
 from superaide.memory.audience import Audience
 from superaide.memory.models import Event
-from superaide.memory.recall.retrieval import ROOM_TITLE, Source, pre_recall, recall
+from superaide.memory.recall.retrieval import (
+    ROOM_TITLE,
+    VISITOR_MARK,
+    VISITOR_TITLE,
+    Source,
+    pre_recall,
+    recall,
+    visitor_report,
+)
 from superaide.observability import api as timing
 from superaide.platform.audit import audit
 from superaide.platform.config import get_settings
 from superaide.policy.actions import action_kinds, decide
 from superaide.presence import api as presence
 from superaide.proactive.notify import CHANNEL_NAMES, EXTERNAL
+from superaide.reception.api import INBOX_TOOL, QUOTE_MARK, awareness_line, inbox_report
 from superaide.skills import registry
 from superaide.skills.manifest import Skill
 
@@ -217,6 +226,8 @@ def narrate(name: str, args: dict[str, Any]) -> str:
         return "Checking your approval requests"
     if name == "channel_activity":
         return "Checking who pinged you in channels"
+    if name == "inbox":
+        return "Checking who is waiting for you"
     if name == "set_presence":
         return {"clear": "Clearing your status", "status": "Checking your status"}.get(
             str(args.get("action", "set")), "Setting your status"
@@ -577,6 +588,9 @@ class OwnerTurn:
         skills = registry.instructions_for(self.skills())
         self._known = who + ("\n\n" + self.brief if self.brief else "")  # facts Ava was told, for the source check
         facts = capabilities.block(self.s, tz=tz, web=self.web)
+        waiting = awareness_line(self.s)  # code-built from stored rows, never from the model
+        if waiting:
+            facts += "\n\n" + waiting
         state = presence.active(self.s, self.sender.person.id)
         if state is not None:
             facts += "\n\nThe owner's status (set by them): " + presence.status_text(state, tz)
@@ -608,6 +622,7 @@ class OwnerTurn:
             ACTION_TOOL,
             LIST_APPROVALS_TOOL,
             CHANNEL_ACTIVITY_TOOL,
+            INBOX_TOOL,
             PRESENCE_TOOL,
         ]
         if self._protocol():
@@ -675,7 +690,7 @@ class OwnerTurn:
                 self.s, self.aud, str(args.get("query", "")), exclude_event=self.inbound.id,
                 channel=str(args.get("channel") or "") or None, rooms=not self.shared,
             )  # fmt: skip
-            if any(src.title.startswith(ROOM_TITLE) for src in found):
+            if any(src.title.startswith((ROOM_TITLE, VISITOR_TITLE)) for src in found):
                 self.tainted = self.room_read = (
                     True  # other people's words from a room: information, never instructions
                 )
@@ -712,7 +727,18 @@ class OwnerTurn:
             self.notes.append("channel_activity")
             self.tainted = True  # other people's words: information, never instructions
             report = channel_activity_report(self.s, self.sender.person.id, args)
-            self.room_read = ROOM_MARK in report  # room messages were read: no action may rest on this turn
+            visitors = visitor_report(self.s, self.sender.person.id, self.aud, channel_hours(args))
+            if visitors:
+                report = f"{report}\n\n{visitors}"
+            # room messages or a stranger's words were read: no action may rest on this turn
+            self.room_read = ROOM_MARK in report or VISITOR_MARK in report
+            return report, False
+        if name == "inbox":
+            assert self.sender.person is not None
+            self.notes.append("inbox")
+            report = inbox_report(self.s, zone(intentions.owner_zone(self.s, self.sender.person)), args)
+            if QUOTE_MARK in report:  # strangers' words entered the turn: information, never instructions
+                self.tainted = self.room_read = True
             return report, False
         if name == "set_presence":
             return self._presence(str(args.get("action") or "set"))
