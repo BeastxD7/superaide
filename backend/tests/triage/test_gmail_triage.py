@@ -8,6 +8,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
+import time_machine
 from sqlalchemy import select
 
 from superaide.app.accounts import owner as hired_owner
@@ -25,6 +26,8 @@ from superaide.platform.tenancy.context import InstanceScope, use_instance
 from superaide.triage import digest as triage_digest
 from superaide.triage.models import TriageDecision
 from tests.integrations.gmail_fake import connect, gmail_fake_fixture, mail, owner_client_fixture  # noqa: F401  (fixtures)
+
+MIDDAY_UTC = datetime(2026, 11, 19, 12, 0, tzinfo=UTC)
 
 
 @pytest.fixture
@@ -102,6 +105,7 @@ def test_a_verified_contact_is_known_and_an_unverified_from_line_is_not(owner_cl
     assert spoofed.features["vip"] is False  # an unchecked From line never makes someone a VIP
 
 
+@time_machine.travel(MIDDAY_UTC, tick=True)  # not the 23:59 minute, where a 00:00-23:59 window ends
 def test_an_urgent_email_from_a_verified_vip_interrupts(owner_client, gmail_fake, flags):
     with session_scope() as s:
         from superaide.memory.knowledge.store import preferences_for
