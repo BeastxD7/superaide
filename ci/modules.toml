@@ -601,6 +601,18 @@ e2e = [
   "e2e/tests/rehearsal/rehearsal.spec.ts",
 ]
 
+[modules.briefing]
+src = [
+  "backend/src/superaide/briefing/**",
+]
+tests = [
+  "backend/tests/briefing/**",
+]
+e2e = [
+  "e2e/tests/briefing/briefing.spec.ts",
+  "e2e/tests/briefing/briefing.mobile.spec.ts",
+]
+
 [modules.commitments]
 src = [
   "backend/src/superaide/commitments/**",
