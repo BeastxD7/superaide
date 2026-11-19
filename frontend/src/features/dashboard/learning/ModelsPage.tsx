@@ -208,7 +208,7 @@ export function ModelsPage() {
           />
         )}
 
-        {data && <MediaProvidersCard key={[...connected].join(',')} />}
+        {data && <MediaProvidersCard key={`media-${[...connected].join(',')}`} />}
       </div>
     </div>
   )
