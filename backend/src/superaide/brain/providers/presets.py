@@ -79,7 +79,10 @@ PRESETS: dict[str, Preset] = {
         Preset(
             "ollama", "Ollama (on this computer)", "http://localhost:11434/v1", key_required=False,
             guide_url="https://ollama.com/download", local=True, max_tokens_param="max_tokens", capabilities=_LOCAL,
-            note="Free and private, but slower, and smaller models are less reliable with tools.",
+            note=(
+                "Free and private, but slower, and smaller models are less reliable with tools. "
+                "Thinking models such as qwen3 answer directly."
+            ),
         ),
         Preset(
             "vllm", "vLLM / LM Studio (local server)", "http://localhost:8000/v1", key_required=False, local=True,

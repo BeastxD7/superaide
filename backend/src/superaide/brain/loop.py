@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session
 from superaide.approvals import outcomes, recipients
 from superaide.brain import capabilities, taskplan, verify
 from superaide.brain.llm import LLM, StepResult, SystemBlock
+from superaide.brain.providers.thinking import strip_think
 from superaide.brain.spend.budget import BudgetExceeded
 from superaide.brain.turn import load_charter
 from superaide.channels.api import CHANNEL_ACTIVITY_TOOL, ROOM_MARK, channel_activity_report, channel_hours
@@ -339,7 +340,9 @@ def render(content: list[dict[str, Any]]) -> tuple[str, list[Cited]]:
     for block in content:
         if block.get("type") != "text":
             continue
-        text = str(block.get("text", ""))
+        text = strip_think(str(block.get("text", "")))  # whatever the provider, no <think> block is a reply
+        if not text.strip() and "think>" in str(block.get("text", "")).lower():
+            continue
         marks: list[int] = []
         for citation in block.get("citations") or []:
             cited = _cited_from(citation)
