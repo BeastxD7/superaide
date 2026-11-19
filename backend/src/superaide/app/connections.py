@@ -13,9 +13,7 @@ import secrets
 import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any
-from urllib.parse import quote
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -24,7 +22,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from superaide.app.deps import owner_person_id, telegram_username
-from superaide.channels import health
+from superaide.channels import connect_guide, health
 from superaide.identity.auth import google as google_auth
 from superaide.identity.auth.routes import current_user_id, reject_nul_text, require_csrf_header
 from superaide.identity.vault import check, store
@@ -130,6 +128,17 @@ class GoogleClientBody(BaseModel):
     client_secret: str = Field(min_length=10, max_length=200)
 
 
+class TelegramCheckBody(BaseModel):
+    bot_token: str = Field(min_length=1, max_length=100)
+
+
+class SlackCheckBody(BaseModel):
+    """Either token, or both: each is checked on its own as it is pasted."""
+
+    bot_token: str | None = Field(default=None, max_length=300)
+    app_token: str | None = Field(default=None, max_length=300)
+
+
 class SlackBody(BaseModel):
     bot_token: str = Field(min_length=10, max_length=300)
     app_token: str = Field(min_length=10, max_length=300)
@@ -191,11 +200,11 @@ GUIDES = {
 }
 
 
-def slack_manifest_url() -> str:
-    manifest = Path(__file__).resolve().parents[1] / "channels" / "slack" / "manifest.yml"
-    if not manifest.exists():
-        return "https://api.slack.com/apps?new_app=1"
-    return "https://api.slack.com/apps?new_app=1&manifest_yaml=" + quote(manifest.read_text())
+def slack_manifest_url(name: str | None = None) -> str:
+    """Slack's 'create app' page with the manifest (the owner's chosen app name, or Ava) filled in."""
+    if not connect_guide.MANIFEST_FILE.exists():
+        return connect_guide.CREATE_URL
+    return connect_guide.create_url(name)
 
 
 def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool]]) -> APIRouter:
@@ -263,6 +272,72 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
     )
     def status(request: Request, _: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         return view(request)
+
+    @router.get(
+        "/slack/manifest",
+        summary="Slack app manifest",
+        description=(
+            "The Slack app manifest (scopes, events, Socket Mode) with the app name you chose, and the Slack "
+            "'create app' link that pre-fills it."
+        ),
+    )
+    def slack_manifest(name: str = "", _: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        chosen = connect_guide.clean_name(name)
+        return {
+            "name": chosen,
+            "manifest": connect_guide.render_manifest(chosen),
+            "create_url": connect_guide.create_url(chosen),
+        }
+
+    @router.post(
+        "/telegram/check",
+        summary="Check a Telegram bot token (not saved)",
+        description="Asks Telegram whether the pasted token works and names the bot. Nothing is stored.",
+    )
+    def check_telegram_token(body: TelegramCheckBody, _: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        return connect_guide.check_telegram_token(body.bot_token, http_client())
+
+    @router.post(
+        "/slack/check",
+        summary="Check Slack tokens (not saved)",
+        description=(
+            "Checks the bot token (accepted? which permissions are missing?) and the app-level token (will "
+            "Socket Mode open?) separately. Nothing is stored and no token is returned."
+        ),
+    )
+    def check_slack_tokens(body: SlackCheckBody, _: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        client = http_client()
+        return {
+            "bot": connect_guide.check_slack_bot_token(body.bot_token, client) if body.bot_token else None,
+            "app": connect_guide.check_slack_app_token(body.app_token, client) if body.app_token else None,
+        }
+
+    @router.post(
+        "/{provider}/test-message",
+        summary="Send a test message to your own account",
+        description=(
+            "Sends one short message to your linked Telegram or Slack account, so you see the connection work. "
+            "Only to you; `provider` is `telegram` or `slack`."
+        ),
+    )
+    def test_message(provider: str, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        from superaide.identity.models import Person
+        from superaide.proactive import notify
+
+        if provider not in notify.EXTERNAL:
+            raise HTTPException(404, "Unknown connection")
+        name = notify.CHANNEL_NAMES[provider]
+        with session_scope() as s:
+            owner = s.get(Person, person_id)
+            identity = notify.identity_for(s, owner, provider) if owner else None
+            if identity is None:
+                raise HTTPException(409, f"Link your {name} account first, so I know where to send it.")
+            s.expunge(identity)
+        text = f"Hello from {get_agent().settings.agent_name}: {name} is connected. You can reply here."
+        sent, why = notify._push(provider, identity, text)
+        if not sent:
+            raise HTTPException(502, why or f"{name} didn't accept the message.")
+        return {"sent": True}
 
     @router.post(
         "/telegram",

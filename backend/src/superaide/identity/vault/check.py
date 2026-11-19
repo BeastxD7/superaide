@@ -70,6 +70,39 @@ def check_telegram(bot_token: str, client: httpx.Client | None = None) -> Checke
     return Checked(values={"bot_token": token}, meta={"username": bot.get("username"), "name": bot.get("first_name")})
 
 
+def slack_bot_token_error(code: str) -> str:
+    """Why Slack refused the bot token, naming the page or setting to fix. `code` is Slack's own error word
+    (never the token), included so a rare answer can still be looked up."""
+    base = "Slack didn't accept the bot token."
+    if code in ("token_revoked", "token_expired"):
+        return f"{base} It was revoked: reinstall the app (Install App) and copy the new Bot User OAuth Token."
+    if code == "account_inactive":
+        return f"{base} The app or its workspace is no longer active: reinstall the app to your workspace."
+    if code == "invalid_auth" or not code:
+        return f"{base} Install the app to your workspace (Install App) and copy the Bot User OAuth Token again."
+    return f"{base} Install the app to your workspace and copy it again (Slack said: {code})."
+
+
+def slack_app_token_error(code: str) -> str:
+    """Why Slack refused the app-level token, naming the exact scope or setting."""
+    base = "Slack didn't accept the app-level token."
+    if code == "missing_scope":
+        return (
+            f"{base} It needs the connections:write scope: under Basic Information > App-Level Tokens, "
+            "make a new one with it."
+        )
+    if code == "not_allowed_token_type":
+        return (
+            f"{base} That is not an app-level token: make one under Basic Information > App-Level Tokens "
+            "(it starts with xapp-)."
+        )
+    if code in ("invalid_auth", "not_authed", "token_revoked", "token_expired"):
+        return (
+            f"{base} Copy it again from Basic Information > App-Level Tokens, or make a new one with connections:write."
+        )
+    return f"{base} Make sure Socket Mode is on and it has connections:write (Slack said: {code or 'no reason'})."
+
+
 def check_slack(bot_token: str, app_token: str, client: httpx.Client | None = None) -> Checked:
     bot, app = bot_token.strip(), app_token.strip()
     if not bot.startswith("xoxb-"):
@@ -85,11 +118,9 @@ def check_slack(bot_token: str, app_token: str, client: httpx.Client | None = No
     except (httpx.HTTPError, ValueError) as exc:
         raise CheckFailed("Couldn't reach Slack. Check your internet connection and try again.") from exc
     if not auth.get("ok"):
-        raise CheckFailed("Slack didn't accept the bot token. Install the app to your workspace and copy it again.")
+        raise CheckFailed(slack_bot_token_error(str(auth.get("error") or "")))
     if not conn.get("ok"):
-        raise CheckFailed(
-            "Slack didn't accept the app-level token. Make sure Socket Mode is on and it has connections:write."
-        )
+        raise CheckFailed(slack_app_token_error(str(conn.get("error") or "")))
     return Checked(
         values={"bot_token": bot, "app_token": app, "team_id": str(auth.get("team_id", ""))},
         meta={"team": auth.get("team"), "bot_user": auth.get("user")},

@@ -2364,6 +2364,37 @@
         "title": "SlackBody",
         "type": "object"
       },
+      "SlackCheckBody": {
+        "description": "Either token, or both: each is checked on its own as it is pasted.",
+        "properties": {
+          "app_token": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "App Token"
+          },
+          "bot_token": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bot Token"
+          }
+        },
+        "title": "SlackCheckBody",
+        "type": "object"
+      },
       "SnoozeBody": {
         "properties": {
           "minutes": {
@@ -2488,6 +2519,21 @@
           "bot_token"
         ],
         "title": "TelegramBody",
+        "type": "object"
+      },
+      "TelegramCheckBody": {
+        "properties": {
+          "bot_token": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Bot Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "bot_token"
+        ],
+        "title": "TelegramCheckBody",
         "type": "object"
       },
       "TestBody": {
@@ -6869,6 +6915,106 @@
         ]
       }
     },
+    "/app/connections/slack/check": {
+      "post": {
+        "description": "Checks the bot token (accepted? which permissions are missing?) and the app-level token (will Socket Mode open?) separately. Nothing is stored and no token is returned.",
+        "operationId": "check_slack_tokens_app_connections_slack_check_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SlackCheckBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Check Slack Tokens App Connections Slack Check Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Check Slack tokens (not saved)",
+        "tags": [
+          "Connections"
+        ]
+      }
+    },
+    "/app/connections/slack/manifest": {
+      "get": {
+        "description": "The Slack app manifest (scopes, events, Socket Mode) with the app name you chose, and the Slack 'create app' link that pre-fills it.",
+        "operationId": "slack_manifest_app_connections_slack_manifest_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "name",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Slack Manifest App Connections Slack Manifest Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Slack app manifest",
+        "tags": [
+          "Connections"
+        ]
+      }
+    },
     "/app/connections/telegram": {
       "post": {
         "description": "Checks the bot token with Telegram, stores it encrypted and starts the listener.",
@@ -6913,6 +7059,55 @@
           }
         ],
         "summary": "Connect Telegram",
+        "tags": [
+          "Connections"
+        ]
+      }
+    },
+    "/app/connections/telegram/check": {
+      "post": {
+        "description": "Asks Telegram whether the pasted token works and names the bot. Nothing is stored.",
+        "operationId": "check_telegram_token_app_connections_telegram_check_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TelegramCheckBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Check Telegram Token App Connections Telegram Check Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Check a Telegram bot token (not saved)",
         "tags": [
           "Connections"
         ]
@@ -6963,6 +7158,56 @@
           }
         ],
         "summary": "Disconnect a service",
+        "tags": [
+          "Connections"
+        ]
+      }
+    },
+    "/app/connections/{provider}/test-message": {
+      "post": {
+        "description": "Sends one short message to your linked Telegram or Slack account, so you see the connection work. Only to you; `provider` is `telegram` or `slack`.",
+        "operationId": "test_message_app_connections__provider__test_message_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "title": "Provider",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Test Message App Connections  Provider  Test Message Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Send a test message to your own account",
         "tags": [
           "Connections"
         ]

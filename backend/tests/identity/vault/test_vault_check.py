@@ -243,7 +243,15 @@ def test_slack_rejects_a_wrong_app_token():
     http, _ = client_for(slack_service(conn={"ok": False, "error": "not_allowed_token_type"}))
     with pytest.raises(CheckFailed, match="didn't accept the app-level token") as exc:
         check_slack(SLACK_BOT, SLACK_APP, http)
-    assert "Socket Mode" in str(exc.value)
+    assert "not an app-level token" in str(exc.value) and "Basic Information" in str(exc.value)
+    assert_no_secret(exc, SLACK_BOT, SLACK_APP)
+
+
+def test_slack_names_the_setting_when_slack_gives_an_unknown_reason():
+    http, _ = client_for(slack_service(conn={"ok": False, "error": "something_new"}))
+    with pytest.raises(CheckFailed, match="Socket Mode is on and it has connections:write") as exc:
+        check_slack(SLACK_BOT, SLACK_APP, http)
+    assert "something_new" in str(exc.value)
     assert_no_secret(exc, SLACK_BOT, SLACK_APP)
 
 
