@@ -30,6 +30,7 @@ from superaide.brain.providers.types import (
     PartDone,
     Reasoning,
     ReasoningDelta,
+    SourceBlock,
     SourceDoc,
     Step,
     StopReason,
@@ -121,6 +122,8 @@ def to_chat_messages(system: str, messages: list[Message]) -> list[dict[str, Any
         for p in m.parts:
             if isinstance(p, ToolResult):
                 out.append({"role": "tool", "tool_call_id": p.call_id, "content": result_text(p)})
+            elif isinstance(p, SourceBlock):
+                texts.append(citations.render_sources(p.sources))
             elif isinstance(p, Text) and p.text:
                 texts.append(p.text)
         if texts:
