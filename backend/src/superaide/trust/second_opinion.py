@@ -13,7 +13,7 @@ Two gates against flattery, both in code:
 
 One small-model call per judged reply, purpose "second_opinion", inside the spend cap (BudgetGuard reserves
 its worst case first). A refused or failed call changes nothing: the reply goes out as it was.
-Off unless SECOND_OPINION_ENABLED.
+Off unless EXPERIMENT_SECOND_OPINION.
 """
 
 from __future__ import annotations

@@ -5760,7 +5760,7 @@
     },
     "/app/audition/candidates": {
       "get": {
-        "description": "Audition (AUDITION_ENABLED, off by default; 404 while off): the skills that can be compared.",
+        "description": "Audition (EXPERIMENT_AUDITION, off by default; 404 while off): the skills that can be compared.",
         "operationId": "audition_candidates_app_audition_candidates_get",
         "responses": {
           "200": {
@@ -9258,7 +9258,7 @@
     },
     "/app/mirror": {
       "get": {
-        "description": "404 while MIRROR_ENABLED is off.",
+        "description": "404 while EXPERIMENT_MIRROR is off.",
         "operationId": "mirror_app_mirror_get",
         "responses": {
           "200": {
@@ -9408,7 +9408,7 @@
     },
     "/app/model-drill": {
       "get": {
-        "description": "MODEL_DRILL_ENABLED (off by default; 404 while off): the model Ava uses now and how many recent tasks a drill can replay.",
+        "description": "EXPERIMENT_MODEL_DRILL (off by default; 404 while off): the model Ava uses now and how many recent tasks a drill can replay.",
         "operationId": "drill_info_app_model_drill_get",
         "responses": {
           "200": {
@@ -15362,7 +15362,7 @@
     },
     "/app/tuner": {
       "get": {
-        "description": "Overnight Tuner (OVERNIGHT_TUNER_ENABLED, off by default; 404 while off): the triage prompt versions Ava proposed, what the grader scored, and which one is active. Nothing changes without your approval.",
+        "description": "Overnight Tuner (EXPERIMENT_OVERNIGHT_TUNER, off by default; 404 while off): the triage prompt versions Ava proposed, what the grader scored, and which one is active. Nothing changes without your approval.",
         "operationId": "tuner_list_app_tuner_get",
         "responses": {
           "200": {
@@ -15508,7 +15508,7 @@
     },
     "/app/twin": {
       "get": {
-        "description": "Owner Twin (OWNER_TWIN_ENABLED, off by default; 404 while off): a predictor of your approve or reject choices, scored on your past decisions, with a calibration table and the gate it must pass.",
+        "description": "Owner Twin (EXPERIMENT_OWNER_TWIN, off by default; 404 while off): a predictor of your approve or reject choices, scored on your past decisions, with a calibration table and the gate it must pass.",
         "operationId": "twin_app_twin_get",
         "responses": {
           "200": {
@@ -15537,7 +15537,7 @@
     },
     "/app/updates": {
       "get": {
-        "description": "Replay before update (REPLAY_BEFORE_UPDATE_ENABLED, off by default; 404 while off): what a skill, prompt or model change would have done differently on your recent tasks, as tool names and short hashes only.",
+        "description": "Replay before update (EXPERIMENT_REPLAY_BEFORE_UPDATE, off by default; 404 while off): what a skill, prompt or model change would have done differently on your recent tasks, as tool names and short hashes only.",
         "operationId": "updates_list_app_updates_get",
         "responses": {
           "200": {
@@ -15809,7 +15809,7 @@
     },
     "/app/why/{event_id}": {
       "get": {
-        "description": "The stored result of a replay (404 while WHY_REPLAY_ENABLED is off, or if it isn't your reply).",
+        "description": "The stored result of a replay (404 while EXPERIMENT_WHY_REPLAY is off, or not your reply).",
         "operationId": "why_get_app_why__event_id__get",
         "parameters": [
           {

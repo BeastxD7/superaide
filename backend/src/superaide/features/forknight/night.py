@@ -10,7 +10,7 @@
 - Every call is reserved against the "fork" daily bucket first (BudgetGuard, purpose "fork_night"); a refused
   call leaves that branch out, and a run with no branches left is recorded as failed, never retried for free.
 - Runs are kept in the instance's own state (the last RUNS_KEPT); the owner picks one draft and the pick is
-  recorded. Off unless FORK_NIGHT_ENABLED.
+  recorded. Off unless EXPERIMENT_FORK_NIGHT.
 """
 
 from __future__ import annotations

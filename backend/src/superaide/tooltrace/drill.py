@@ -4,7 +4,7 @@ sequences differ, before the owner changes the model Ava runs on.
 Both models run the same tasks with the same stubs (see rehearse.py): only local reads run, every other effect
 is answered with a canned result, nothing is changed or sent and there is no network call. The report says how
 many tasks would change, where in each sequence the first difference is, and which tools only one model reached
-for, as tool names and short argument hashes. Off unless MODEL_DRILL_ENABLED.
+for, as tool names and short argument hashes. Off unless EXPERIMENT_MODEL_DRILL.
 """
 
 from __future__ import annotations

@@ -9,7 +9,7 @@ Safety, in code: only replies in the owner's own one-to-one conversation can be 
 come from the same audience-filtered query the pipeline uses, so replay can never show a note the
 conversation could not. Every model call goes through the LLM wrapper (BudgetGuard reserves its worst case
 first), at most REPLAY_MAX_ABLATIONS + 1 per request, and a refused call ends the run with what was scored.
-Off unless WHY_REPLAY_ENABLED.
+Off unless EXPERIMENT_WHY_REPLAY.
 """
 
 from __future__ import annotations

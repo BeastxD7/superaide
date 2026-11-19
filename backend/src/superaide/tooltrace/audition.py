@@ -4,7 +4,7 @@ Each candidate skill is added to what Ava already has and every task is rehearse
 the owner sees what each would have done on work they really asked for before installing any of them. It judges
 the skill's instructions and tool choices only: the executor stubs every effect and answers every non-local
 read with a canned result, so there is no network call and nothing is changed or sent, whatever the skill
-declares. What comes back is tool names and short argument hashes. Off unless AUDITION_ENABLED.
+declares. What comes back is tool names and short argument hashes. Off unless EXPERIMENT_AUDITION.
 """
 
 from __future__ import annotations

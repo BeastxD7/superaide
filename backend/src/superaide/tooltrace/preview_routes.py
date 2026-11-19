@@ -58,8 +58,9 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         tags=["Owner: skills"],
         summary="Update previews",
         description=(
-            "Replay before update (REPLAY_BEFORE_UPDATE_ENABLED, off by default; 404 while off): what a skill, prompt "
-            "or model change would have done differently on your recent tasks, as tool names and short hashes only."
+            "Replay before update (EXPERIMENT_REPLAY_BEFORE_UPDATE, off by default; 404 while off): what a skill, "
+            "prompt or model change would have done differently on your recent tasks, as tool names and short hashes "
+            "only."
         ),
     )
     def updates_list(person_id: uuid.UUID = Depends(updates_on)) -> list[dict[str, Any]]:

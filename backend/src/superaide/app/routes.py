@@ -994,7 +994,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         "/why/{event_id}",
         tags=["Owner: chat & notebook"],
         summary="Which notes changed this reply",
-        description="The stored result of a replay (404 while WHY_REPLAY_ENABLED is off, or if it isn't your reply).",
+        description="The stored result of a replay (404 while EXPERIMENT_WHY_REPLAY is off, or not your reply).",
     )
     def why_get(event_id: uuid.UUID, person_id: uuid.UUID = Depends(why_on)) -> dict[str, Any]:
         from superaide.trust import replay
@@ -1166,8 +1166,8 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         tags=["Owner: people & rules"],
         summary="Prompt versions",
         description=(
-            "Overnight Tuner (OVERNIGHT_TUNER_ENABLED, off by default; 404 while off): the triage prompt versions Ava "
-            "proposed, what the grader scored, and which one is active. Nothing changes without your approval."
+            "Overnight Tuner (EXPERIMENT_OVERNIGHT_TUNER, off by default; 404 while off): the triage prompt versions "
+            "Ava proposed, what the grader scored, and which one is active. Nothing changes without your approval."
         ),
     )
     def tuner_list(person_id: uuid.UUID = Depends(tuner_on)) -> dict[str, Any]:
@@ -1538,7 +1538,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         tags=["Owner: approvals"],
         summary="How well Ava can predict your approvals",
         description=(
-            "Owner Twin (OWNER_TWIN_ENABLED, off by default; 404 while off): a predictor of your approve or reject "
+            "Owner Twin (EXPERIMENT_OWNER_TWIN, off by default; 404 while off): a predictor of your approve or reject "
             "choices, scored on your past decisions, with a calibration table and the gate it must pass."
         ),
     )

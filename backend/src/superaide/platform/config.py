@@ -6,7 +6,7 @@ import uuid
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Fixed IDs for the single-tenant MVP. Every row carries them so the
@@ -92,18 +92,24 @@ class Settings(BaseSettings):
     # Audition (#110). Off: /app/audition/* answers 404. On: the owner can put 2 or 3 candidate skills through their
     # last tasks side by side (instructions and tool choices only: every effect stubbed, no network), at the cost of
     # small-model calls inside the spend cap.
-    audition_enabled: bool = False
+    audition_enabled: bool = Field(
+        default=False, validation_alias=AliasChoices("EXPERIMENT_AUDITION", "AUDITION_ENABLED")
+    )
     audition_max_tasks: int = Field(default=20, ge=1, le=50)  # most recent tasks one audition replays
 
     # Model-swap drill (#110). Off: /app/model-drill answers 404. On: the owner can replay their last tasks on two
     # models (effects stubbed, no network) and see where the call sequences differ, before changing Ava's model.
-    model_drill_enabled: bool = False
+    model_drill_enabled: bool = Field(
+        default=False, validation_alias=AliasChoices("EXPERIMENT_MODEL_DRILL", "MODEL_DRILL_ENABLED")
+    )
     drill_max_tasks: int = Field(default=20, ge=1, le=50)  # most recent tasks one drill replays on each model
 
     # Replay before update (#110). Off: /app/updates/* answers 404. On: before a skill, prompt or model change goes
     # live, the owner can replay their last tasks with and without it (effects stubbed, local reads only, small-model
     # calls inside the spend cap) and see how the calls differ by name and argument hash, then approve or reject.
-    replay_before_update_enabled: bool = False
+    replay_before_update_enabled: bool = Field(
+        default=False, validation_alias=AliasChoices("EXPERIMENT_REPLAY_BEFORE_UPDATE", "REPLAY_BEFORE_UPDATE_ENABLED")
+    )
     replay_max_tasks: int = Field(default=10, ge=1, le=50)  # most recent tasks one preview replays
 
     # Hash-chained log of tool calls and executed approvals (issue #113). Off by default.
@@ -177,20 +183,26 @@ class Settings(BaseSettings):
     # comma-separated list of model ids the provider layer can route) answer independently; plain code, not a
     # model, decides whether a minority view is worth showing. Only choices at or above DISSENT_MIN_STAKES run,
     # and every call is reserved against the "dissent" daily bucket.
-    dissent_desk_enabled: bool = False
+    dissent_desk_enabled: bool = Field(
+        default=False, validation_alias=AliasChoices("EXPERIMENT_DISSENT_DESK", "DISSENT_DESK_ENABLED")
+    )
     dissent_models: str = ""
     dissent_min_stakes: int = Field(default=3, ge=1, le=5)
     # Fork Night (#127). Off by default. The owner leaves a choice (a trip plan, a reply plan, a budget) and
     # overnight three read-only drafts are written, each with its unknowns and confidence, for the owner to pick
     # from in the morning. Drafts have no tools, read no outside content and are reserved against the "fork"
     # daily bucket. FORK_NIGHT_HOUR is the local hour they run.
-    fork_night_enabled: bool = False
+    fork_night_enabled: bool = Field(
+        default=False, validation_alias=AliasChoices("EXPERIMENT_FORK_NIGHT", "FORK_NIGHT_ENABLED")
+    )
     fork_night_hour: int = Field(default=2, ge=0, le=23)
     # Time-travel rules (#52). Off by default. The owner writes a standing order in plain words; it is compiled to a
     # deterministic rule (sender/keyword/channel -> label or draft a reply), replayed against the last
     # TIME_TRAVEL_REPLAY_DAYS of the owner's own message log, and only then can be switched on. New rules run in
     # shadow first; the owner promotes one after TIME_TRAVEL_PROMOTE_AFTER agreeing firings.
-    time_travel_rules_enabled: bool = False
+    time_travel_rules_enabled: bool = Field(
+        default=False, validation_alias=AliasChoices("EXPERIMENT_TIME_TRAVEL_RULES", "TIME_TRAVEL_RULES_ENABLED")
+    )
     time_travel_replay_days: int = Field(default=90, ge=1, le=365)
     time_travel_promote_after: int = Field(default=20, ge=1)
     time_travel_min_agreement: float = Field(default=0.9, ge=0, le=1)
@@ -361,7 +373,9 @@ class Settings(BaseSettings):
     # Ava to judge their own claim or choice, a small-model call with an EMPTY memory context gives a second
     # view, replies are logged as validating the owner or not, and above agreement_limit the reply must carry the
     # strongest case for the other side. At most two small-model calls per judged owner message, inside the cap.
-    second_opinion_enabled: bool = False
+    second_opinion_enabled: bool = Field(
+        default=False, validation_alias=AliasChoices("EXPERIMENT_SECOND_OPINION", "SECOND_OPINION_ENABLED")
+    )
     agreement_limit: float = 0.75
     # Relationship safety and a steady voice (#124, tracking #142). Off: replies are as before. On: emotionally
     # heavy or "do you love me?" owner messages get a fixed human-written reply with no model call, any reply
@@ -373,7 +387,9 @@ class Settings(BaseSettings):
     # Overnight Tuner (#118, tracking #142). Off: /app/tuner answers 404 and the built-in triage prompt is always
     # used. On: the owner can run a tuning pass that PROPOSES a better triage prompt (judged on a held-out week and
     # an invariant suite); nothing changes until the owner approves, and the owner can roll back.
-    overnight_tuner_enabled: bool = False
+    overnight_tuner_enabled: bool = Field(
+        default=False, validation_alias=AliasChoices("EXPERIMENT_OVERNIGHT_TUNER", "OVERNIGHT_TUNER_ENABLED")
+    )
     # Rubber-Stamp Brake (#134, tracking #142). Off: approvals work as before. On: when the owner's recent
     # approvals are all yes and faster than a card can be read, high-risk cards need a typed reason and only
     # a few cards show at once. It can only add friction, never remove it.
@@ -393,11 +409,15 @@ class Settings(BaseSettings):
     # "Why did you say that?" (#122, tracking #142). Off: /app/why/* answers 404. On: the owner can ask which notes
     # changed one of Ava's replies; each request costs at most replay_max_ablations + 1 small-model calls, all inside
     # the spend cap.
-    why_replay_enabled: bool = False
+    why_replay_enabled: bool = Field(
+        default=False, validation_alias=AliasChoices("EXPERIMENT_WHY_REPLAY", "WHY_REPLAY_ENABLED")
+    )
     replay_max_ablations: int = 8
     # Owner Twin (#119, tracking #142). Off: /app/twin answers 404. On: a calibration page scores a small
     # predictor of the owner's approve/reject choices. It reads approvals only and grants nothing.
-    owner_twin_enabled: bool = False
+    owner_twin_enabled: bool = Field(
+        default=False, validation_alias=AliasChoices("EXPERIMENT_OWNER_TWIN", "OWNER_TWIN_ENABLED")
+    )
     # Live voice (#125). No on/off flag (#448): voice is available when a provider key is present
     # (VOICE_PROVIDER_API_KEY or DEEPGRAM_API_KEY) and off, with a hint saying what to add, when there is none.
     # An action heard on a call becomes an approval marked voice-origin that only a tap in the Superaide app can
@@ -431,7 +451,9 @@ class Settings(BaseSettings):
     # Rehearsal room (#58): the owner practises a hard conversation with Ava playing the other side. Off:
     # /app/rehearsal/* answer 404. On: text role-play, nothing is sent to anyone, and a session is
     # deleted after a day unless the owner keeps it.
-    rehearsal_enabled: bool = False
+    rehearsal_enabled: bool = Field(
+        default=False, validation_alias=AliasChoices("EXPERIMENT_REHEARSAL", "REHEARSAL_ENABLED")
+    )
     # Deletable kNN triage head (#117). Off: nothing changes. On (needs TRIAGE_ENABLED): each triage decision
     # also records, in `features["knn"]`, how urgent the owner's own past feedback says similar messages
     # were. It never changes the decision; it is a shadow score to compare against the model's.
@@ -478,7 +500,7 @@ class Settings(BaseSettings):
     # "The Mirror": a weekly note of patterns in the owner's own reminders and messages, each with receipts.
     # Off: /app/mirror/* answer 404 (owner routes still 401/403 first). On: an owner may opt in. The patterns
     # are counted in code and worded from templates, so it makes no model call at all.
-    mirror_enabled: bool = False
+    mirror_enabled: bool = Field(default=False, validation_alias=AliasChoices("EXPERIMENT_MIRROR", "MIRROR_ENABLED"))
     # How long a list's "next page" cursor stays valid (ADR 0014). Cursors are signed and bound to one list and
     # one owner; expiry only bounds how long a leaked one is useful. A page left open longer reloads the list.
     pagination_cursor_max_age_s: int = 24 * 3600

@@ -49,7 +49,7 @@ export const DATABASE_URL = PG_URL.replace(/^postgres(ql)?:\/\//, 'postgresql+ps
 export const ASK_LINK = process.env.E2E_ASK_LINK === '1'
 // "Who is this?" (IDENTITY_CLAIM_REVIEW, #93): E2E_CLAIMS=1 switches it on for tests/identity/identity-claims.spec.ts.
 export const CLAIMS = process.env.E2E_CLAIMS === '1'
-// "The Mirror" (MIRROR_ENABLED) is off by default; E2E_MIRROR=1 turns it on for tests/mirror/mirror.spec.ts.
+// "The Mirror" (EXPERIMENT_MIRROR) is off by default; E2E_MIRROR=1 turns it on for tests/mirror/mirror.spec.ts.
 export const MIRROR = process.env.E2E_MIRROR === '1'
 // The voice call v2 (ADR 0012) with fake speech services; E2E_VOICE=1 for tests/voice/voice-intro.spec.ts.
 export const VOICE = process.env.E2E_VOICE === '1'
@@ -99,7 +99,7 @@ export function apiEnv(): Record<string, string> {
           ANTHROPIC_BASE_URL: FAKE_ANTHROPIC_URL,
         }
       : {}),
-    ...(MIRROR ? { MIRROR_ENABLED: 'true' } : {}),
+    ...(MIRROR ? { EXPERIMENT_MIRROR: 'true' } : {}),
     ...(CLAIMS ? { IDENTITY_CLAIM_REVIEW: 'true' } : {}),
     ...(ASK_LINK ? { ASK_LINK_ENABLED: 'true', ASK_MIN_SECONDS: '1' } : {}),
     ...(GOOGLE
@@ -112,7 +112,7 @@ export function apiEnv(): Record<string, string> {
           GOOGLE_REDIRECT_ORIGINS: `http://127.0.0.1:${WEB_PORT}`,
         }
       : {}),
-    ...(REHEARSAL ? { REHEARSAL_ENABLED: 'true' } : {}),
+    ...(REHEARSAL ? { EXPERIMENT_REHEARSAL: 'true' } : {}),
     ...(SLEEP ? { SLEEP_JOB_ENABLED: 'true' } : {}),
     ...(BRAIN_SHARE ? { BRAIN_SHARE_ENABLED: 'true' } : {}),
     ...(SCHOOL ? { SCHOOL_ENABLED: 'true' } : {}),

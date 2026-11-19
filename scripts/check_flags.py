@@ -4,7 +4,10 @@
 Fails (exit 1, a list on stdout) when:
   * a boolean Settings field or *_ENABLED setting has no registry entry, or an entry names no setting;
   * an entry has no owner, no valid stage (experiment | beta | stable) or no `added` date;
-  * a flag that is not `stable` has no `remove_by`, or one more than 90 days after `added`, or one in the past;
+  * an EXPERIMENT_ flag (issue #405) has no hypothesis, metric or sunset date, is not in the experiment group, or has a
+    sunset more than 180 days after `added` (an overdue sunset is not a failure here: scripts/check_experiments.py
+    opens an issue for it);
+  * a flag that is not `stable` and is not an experiment has no `remove_by`, or one more than 90 days after `added`, or one in the past;
   * the number of flags is above `budget` (the budget only goes down);
   * a default in the registry differs from the code's default;
   * the FEATURE FLAGS index in backend/.env.example or docs/flags.md differs from what the registry generates.
@@ -34,7 +37,10 @@ STAGES = {"experiment", "beta", "stable"}
 GROUPS = {
     "owner-safe": "Safe to turn on by yourself (cost and risk are bounded; see the README for setup):",
     "owner-decision": "Needs an owner decision first (spends money, sends data elsewhere, widens what Ava may do, or is public):",
+    "experiment": "Experiments (EXPERIMENT_ prefix; off by default, no support promised, each has a sunset date; see docs/flags.md):",
 }
+EXPERIMENT_PREFIX = "EXPERIMENT_"
+MAX_EXPERIMENT_DAYS = 180
 MAX_DAYS = 90
 BEGIN, END = "# BEGIN GENERATED FLAGS (scripts/check_flags.py --write)", "# END GENERATED FLAGS"
 
@@ -55,11 +61,12 @@ def code_flags() -> dict[str, bool | None]:
                     if name in env.NOT_FROM_ENV:
                         continue
                     ann = ast.unparse(stmt.annotation)
-                    if ann == "bool" or name.upper().endswith("_ENABLED"):
+                    env_var = env.env_name(stmt)
+                    if ann == "bool" or env_var.endswith("_ENABLED"):
                         v = stmt.value
-                        out[name.upper()] = (
-                            v.value if isinstance(v, ast.Constant) and isinstance(v.value, bool) else None
-                        )
+                        if isinstance(v, ast.Call):  # Field(default=False, ...)
+                            v = next((kw.value for kw in v.keywords if kw.arg == "default"), None)
+                        out[env_var] = v.value if isinstance(v, ast.Constant) and isinstance(v.value, bool) else None
     return out
 
 
@@ -74,6 +81,7 @@ def render_index(reg: dict) -> str:
 
 
 def render_doc(reg: dict) -> str:
+    experiments = sorted((f for f in reg["flag"] if f["name"].startswith(EXPERIMENT_PREFIX)), key=lambda f: f["name"])
     out = [
         "# Feature flags",
         "",
@@ -86,9 +94,25 @@ def render_doc(reg: dict) -> str:
     ]
     for f in sorted(reg["flag"], key=lambda f: f["name"]):
         s = f["summary"].replace("|", "\\|")
-        out.append(
-            f"| `{f['name']}` | {str(f['default']).lower()} | {f['stage']} | {f['owner']} | {f.get('remove_by', '')} | {s} |"
-        )
+        due = f.get("remove_by") or f.get("sunset", "")
+        out.append(f"| `{f['name']}` | {str(f['default']).lower()} | {f['stage']} | {f['owner']} | {due} | {s} |")
+    out += [
+        "",
+        "## Experiments",
+        "",
+        "Speculative features carry the `EXPERIMENT_` prefix. They are off by default, are not part of the supported "
+        "settings, have no screen of their own in the settings page, and each has a hypothesis, a metric and a sunset "
+        "date. A weekly job (`scripts/check_experiments.py`, `.github/workflows/experiments.yml`) opens an issue when "
+        "an experiment passes its sunset date with no recorded `result`; the owner then promotes it (rename it, "
+        "stage `stable`) or deletes it. The old names (`AUDITION_ENABLED` and the like) still work for one release "
+        "and log a warning at startup.",
+        "",
+        "| Experiment | Hypothesis | Metric | Sunset | Result |",
+        "| --- | --- | --- | --- | --- |",
+    ]
+    for f in experiments:
+        cells = [f"`{f['name']}`"] + [str(f.get(k, "")).replace("|", "\\|") for k in ("hypothesis", "metric", "sunset", "result")]
+        out.append("| " + " | ".join(cells) + " |")
     if reg.get("retired"):
         out += [
             "",
@@ -148,7 +172,23 @@ def problems(today: date | None = None) -> list[str]:
         except ValueError:
             out.append(f"flags.toml: {n} has no valid `added` date")
             continue
-        if f.get("stage") != "stable":
+        if n.startswith(EXPERIMENT_PREFIX):
+            if f.get("group") != "experiment":
+                out.append(f"flags.toml: {n} must be in the experiment group")
+            if f.get("stage") != "experiment" or f.get("default") is not False:
+                out.append(f"flags.toml: {n} must be stage experiment and off by default")
+            for key in ("hypothesis", "metric", "sunset"):
+                if not str(f.get(key) or "").strip():
+                    out.append(f"flags.toml: experiment {n} has no {key}")
+            try:
+                sunset = date.fromisoformat(str(f.get("sunset")))
+            except ValueError:
+                sunset = None
+            if sunset is not None and (sunset - added).days > MAX_EXPERIMENT_DAYS:
+                out.append(f"flags.toml: experiment {n} sunset {sunset} is more than {MAX_EXPERIMENT_DAYS} days after added")
+        elif f.get("group") == "experiment":
+            out.append(f"flags.toml: {n} is in the experiment group but its name has no {EXPERIMENT_PREFIX} prefix")
+        if not n.startswith(EXPERIMENT_PREFIX) and f.get("stage") != "stable":
             try:
                 due = date.fromisoformat(str(f.get("remove_by")))
             except ValueError:
