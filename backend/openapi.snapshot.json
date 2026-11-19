@@ -1466,6 +1466,30 @@
         "title": "PredictionBody",
         "type": "object"
       },
+      "PreviewLine": {
+        "additionalProperties": false,
+        "properties": {
+          "role": {
+            "enum": [
+              "visitor",
+              "ava"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 1000,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "text"
+        ],
+        "title": "PreviewLine",
+        "type": "object"
+      },
       "PriceBody": {
         "properties": {
           "input_usd_per_mtok": {
@@ -3361,6 +3385,45 @@
           }
         },
         "title": "CardBody",
+        "type": "object"
+      },
+      "superaide__reception__routes__PreviewBody": {
+        "additionalProperties": false,
+        "description": "Lines a visitor would write, run in order through the real receptionist inside a sandbox (#499). `history` is\nwhat was said before (replayed without a model call, so a longer chat is not paid for twice).",
+        "properties": {
+          "channel": {
+            "default": "telegram",
+            "enum": [
+              "telegram",
+              "slack"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/PreviewLine"
+            },
+            "maxItems": 20,
+            "title": "History",
+            "type": "array"
+          },
+          "messages": {
+            "items": {
+              "maxLength": 1000,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Messages",
+            "type": "array"
+          }
+        },
+        "required": [
+          "messages"
+        ],
+        "title": "PreviewBody",
         "type": "object"
       },
       "superaide__reception__routes__SettingsBody": {
@@ -12537,6 +12600,84 @@
           }
         ],
         "summary": "Mark a message taken",
+        "tags": [
+          "Owner: receptionist"
+        ]
+      }
+    },
+    "/app/receptionist/preview": {
+      "post": {
+        "description": "Runs what a stranger would write through the real receptionist inside a sandbox: nothing is sent, nothing is stored as a visitor's message, no notification reaches you. The reply is what they would get; the model's cost is counted.",
+        "operationId": "preview_app_receptionist_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/superaide__reception__routes__PreviewBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Preview App Receptionist Preview Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Try the receptionist as a visitor",
+        "tags": [
+          "Owner: receptionist"
+        ]
+      }
+    },
+    "/app/receptionist/preview/scripts": {
+      "get": {
+        "description": "Visitor lines to replay through the preview, for example after changing a setting.",
+        "operationId": "preview_scripts_app_receptionist_preview_scripts_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Preview Scripts App Receptionist Preview Scripts Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Standard preview scripts",
         "tags": [
           "Owner: receptionist"
         ]

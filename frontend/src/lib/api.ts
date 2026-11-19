@@ -743,6 +743,33 @@ export type ShareCardField = { key: 'company' | 'role' | 'city' | 'email'; label
 export type ShareCard = { fields: ShareCardField[]; told: string[]; empty: boolean; place: string }
 export type ShareCardEdit = Partial<Record<ShareCardField['key'], string> & Record<`${ShareCardField['key']}_public`, boolean>>
 
+// "Try as a visitor" (#499): one visitor line run through the real receptionist inside a sandbox.
+export type PreviewTurn = {
+  said: string
+  reply: string | null
+  mode: 'stranger' | 'fixed' | 'silent' | 'error'
+  stored: { topic: string; name: string; rank: string; source: string; message: string } | null
+  notifications: { text: string; kind: string; channel: string }[]
+}
+export type PreviewResult = {
+  preview: true
+  channel: 'telegram' | 'slack'
+  turns: PreviewTurn[]
+  used: {
+    enabled: boolean
+    greeting: string
+    first_name_shared: boolean
+    profile_used: boolean
+    card_lines: string[]
+    public_facts: string[]
+    per_hour: number
+    per_day: number
+  }
+  skipped: string[]
+  spend_usd: string
+}
+export type PreviewScript = { id: string; title: string; lines: string[] }
+
 export type ReceptionistSettings = {
   card: ShareCard
   enabled: boolean
