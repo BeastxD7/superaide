@@ -71,4 +71,7 @@ def write(session: Session, ctx: Context, owner: Person, text: str) -> tuple[boo
         meta={"owner_live": True, "delivered": delivered},
     )  # fmt: skip
     start_or_refresh(session, ctx, owner, now)
+    from superaide.commitments.api import close_for_context
+
+    close_for_context(session, owner, ctx.id, now)  # she wrote to them herself: the promises to them are kept (#480)
     return True, delivered
