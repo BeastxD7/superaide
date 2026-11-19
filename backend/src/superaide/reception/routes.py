@@ -52,6 +52,7 @@ class SettingsBody(BaseModel):
     public_profile: str | None = Field(default=None, max_length=2000)
     per_hour: int | None = Field(default=None, ge=1, le=60)
     per_day: int | None = Field(default=None, ge=1, le=500)
+    urgent_over_cap: bool | None = None
 
 
 class StatusBody(BaseModel):
@@ -74,6 +75,7 @@ def view(s: Session, rs: ReceptionSettings, owner: Person, agent_name: str) -> d
         "public_profile": rs.public_profile,
         "per_hour": rs.per_hour,
         "per_day": rs.per_day,
+        "urgent_over_cap": rs.urgent_over_cap,
         "greeting": greeting(
             agent_name, owner, rs, has_card=has_card(s, owner, rs)
         ),  # what a stranger's first reply starts with
