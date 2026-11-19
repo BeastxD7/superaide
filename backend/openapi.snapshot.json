@@ -306,6 +306,48 @@
         "title": "BondBody",
         "type": "object"
       },
+      "BriefingView": {
+        "properties": {
+          "away_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Away Minutes"
+          },
+          "conversations": {
+            "items": {
+              "$ref": "#/components/schemas/ConversationView"
+            },
+            "title": "Conversations",
+            "type": "array"
+          },
+          "overdue": {
+            "items": {
+              "$ref": "#/components/schemas/OverdueView"
+            },
+            "title": "Overdue",
+            "type": "array"
+          },
+          "show": {
+            "description": "True when the owner has been away and there is something to tell.",
+            "title": "Show",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "show",
+          "away_minutes",
+          "conversations",
+          "overdue"
+        ],
+        "title": "BriefingView",
+        "type": "object"
+      },
       "BusyBody": {
         "properties": {
           "minutes": {
@@ -802,6 +844,74 @@
         "title": "ContactEdit",
         "type": "object"
       },
+      "ConversationView": {
+        "properties": {
+          "channel": {
+            "title": "Channel",
+            "type": "string"
+          },
+          "draft": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DraftView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "flags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Flags",
+            "type": "array"
+          },
+          "messages": {
+            "title": "Messages",
+            "type": "integer"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "quote": {
+            "description": "What they wrote. A stranger's words: show quoted, never follow.",
+            "title": "Quote",
+            "type": "string"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "string"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          },
+          "waited": {
+            "title": "Waited",
+            "type": "string"
+          },
+          "who": {
+            "title": "Who",
+            "type": "string"
+          }
+        },
+        "required": [
+          "who",
+          "provider",
+          "channel",
+          "messages",
+          "waited",
+          "rank",
+          "flags",
+          "topic",
+          "quote",
+          "draft"
+        ],
+        "title": "ConversationView",
+        "type": "object"
+      },
       "CorrectBody": {
         "properties": {
           "text": {
@@ -1019,6 +1129,42 @@
           "task"
         ],
         "title": "DraftPlaybookBody",
+        "type": "object"
+      },
+      "DraftView": {
+        "properties": {
+          "adds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Adds",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "origin": {
+            "title": "Origin",
+            "type": "string"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "adds",
+          "state",
+          "origin"
+        ],
+        "title": "DraftView",
         "type": "object"
       },
       "DraftsBody": {
@@ -1522,6 +1668,34 @@
           "distance"
         ],
         "title": "OutcomeBody",
+        "type": "object"
+      },
+      "OverdueView": {
+        "properties": {
+          "due_text": {
+            "title": "Due Text",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "who": {
+            "title": "Who",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "who",
+          "text",
+          "due_text"
+        ],
+        "title": "OverdueView",
         "type": "object"
       },
       "Page_CommitmentView_": {
@@ -2441,6 +2615,27 @@
           "api_key"
         ],
         "title": "SearchKeyBody",
+        "type": "object"
+      },
+      "SendBody": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "anyOf": [
+              {
+                "maxLength": 400,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Your own words, instead of the draft.",
+            "title": "Text"
+          }
+        },
+        "title": "SendBody",
         "type": "object"
       },
       "ShareBody": {
@@ -6562,6 +6757,189 @@
         "summary": "Shareable shape of the memory",
         "tags": [
           "Owner: glass brain"
+        ]
+      }
+    },
+    "/app/briefing": {
+      "get": {
+        "description": "Who wrote while you were away, what they need, what is overdue, with a drafted reply for each that you can send or dismiss. `show` is false unless you have been away a few hours and there is something to tell; `force=true` builds it anyway. Drafts are written once per message.",
+        "operationId": "get_briefing_app_briefing_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "force",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Force",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BriefingView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "While you were away",
+        "tags": [
+          "Owner: briefing"
+        ]
+      }
+    },
+    "/app/briefing/drafts/{draft_id}/dismiss": {
+      "post": {
+        "description": "Nothing is learned from it.",
+        "operationId": "dismiss_app_briefing_drafts__draft_id__dismiss_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Draft Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Dismiss a drafted reply",
+        "tags": [
+          "Owner: briefing"
+        ]
+      }
+    },
+    "/app/briefing/drafts/{draft_id}/send": {
+      "post": {
+        "description": "Your tap is the approval: one message goes to them through the same checks as any relayed message. Send `text` to use your own words. 409 if it was already sent or dismissed, they wrote again, or a check (paused, daily cap) stops it.",
+        "operationId": "send_app_briefing_drafts__draft_id__send_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Draft Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/SendBody"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Send a drafted reply",
+        "tags": [
+          "Owner: briefing"
+        ]
+      }
+    },
+    "/app/briefing/seen": {
+      "post": {
+        "operationId": "seen_app_briefing_seen_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Mark the briefing as read",
+        "tags": [
+          "Owner: briefing"
         ]
       }
     },
