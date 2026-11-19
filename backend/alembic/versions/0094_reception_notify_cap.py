@@ -1,7 +1,7 @@
 """reception: the owner's urgent-over-cap opt-in and when a message notified the owner (#477)
 
-Revision ID: 0093
-Revises: 0092
+Revision ID: 0094
+Revises: 0093
 Create Date: 2026-11-19 10:00:00.000000
 
 """
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0093"
-down_revision: str | Sequence[str] | None = "0092"
+revision: str = "0094"
+down_revision: str | Sequence[str] | None = "0093"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
