@@ -70,6 +70,7 @@ STORE_PER_DAY = 200  # messages kept per sender per day: flooding storage is sti
 FALLBACK = "I can't chat right now, but I've passed your message on. If you like, add your name and how to reach you."
 PAUSED = "I'm paused right now, but I've passed your message on."
 NOTE_EVERY = timedelta(minutes=15)
+NOTES_PER_HOUR = 3  # owner notifications one sender can cause in an hour: code's cap, whatever the message says (#477)
 URGENT_RANKS = ("urgent", "unverified")
 CHANNEL = {"telegram": "Telegram", "slack": "Slack"}
 
@@ -472,12 +473,17 @@ def _may_escalate(session: Session, owner: Person, row: ReceptionMessage, now: d
 
 
 def _note(session: Session, owner: Person, row: ReceptionMessage, now: datetime) -> None:
-    """With triage off: one short in-app note, fixed text only, at most every 15 minutes."""
+    """With triage off: one short in-app note, built from fields code read (first name, channel, time, deadline),
+    never the stranger's words. A burst makes one note (15 minutes, per sender); one sender can cause at most
+    NOTES_PER_HOUR notes an hour, and urgency lifts that only when the owner chose so. In quiet hours the note stays
+    in the app and nothing is pushed to Telegram or Slack."""
+    from superaide.memory.knowledge.profile import in_quiet_hours
+    from superaide.memory.knowledge.store import preferences_for
     from superaide.proactive.notify import notify_owner
 
-    # A burst makes one note. An urgent or risky message is judged against earlier urgent ones only, so a flood of
-    # ordinary messages (or the cap notice, #474) cannot hide it from the owner.
-    quiet = (
+    # An urgent or risky message is judged against earlier urgent ones only, so a flood of ordinary messages (or
+    # the cap notice, #474) cannot hide it from the owner.
+    burst = (
         select(func.count())
         .select_from(ReceptionMessage)
         .where(
@@ -487,17 +493,42 @@ def _note(session: Session, owner: Person, row: ReceptionMessage, now: datetime)
         )
     )
     if row.rank in URGENT_RANKS:
-        quiet = quiet.where(ReceptionMessage.rank.in_(URGENT_RANKS))
-    if session.scalar(quiet):
+        burst = burst.where(ReceptionMessage.rank.in_(URGENT_RANKS))
+    if session.scalar(burst):
         return
-    text = _reason(session, owner, row) + ". Open your dashboard to read it."
-    # The note is fixed text (a reason, never the stranger's words), so it may follow the owner's interrupt preference
-    # like any other notification: someone who asked for Telegram is not left with an unread in-app line (#491).
-    # While the owner's declared status is on, a stranger's note stays in the app, nothing is pushed (#495).
-    held = presence.active(session, owner.id, now) is not None
-    notify_owner(
-        session, owner, text, {"kind": "message_taken", "message_id": str(row.id)}, channel="app" if held else "default"
+    sent_this_hour = session.scalar(
+        select(func.count())
+        .select_from(ReceptionMessage)
+        .where(
+            ReceptionMessage.identity_id == row.identity_id,
+            ReceptionMessage.notified_at >= now - timedelta(hours=1),
+        )
     )
+    if (sent_this_hour or 0) >= NOTES_PER_HOUR and not (
+        row.rank in URGENT_RANKS and settings_for(session, owner).urgent_over_cap
+    ):
+        audit(session, "reception", "note_capped", message_id=row.id, rank=row.rank)
+        return
+    text = _reason(session, owner, row) + _reply_by(session, owner, row) + ". Open your dashboard to read it."
+    pref = preferences_for(session, owner)
+    row.notified_at = now
+    # The note is code text (a reason, never the stranger's words), so it may follow the owner's interrupt preference
+    # like any other notification: someone who asked for Telegram is not left with an unread in-app line (#491).
+    # A stranger never breaks quiet hours, and while the owner's declared status is on nothing is pushed (#495).
+    meta = {"kind": "message_taken", "message_id": str(row.id), "source": f"notification:{row.id}"}
+    held = in_quiet_hours(pref, now) or presence.active(session, owner.id, now) is not None
+    notify_owner(session, owner, text, meta, channel="app" if held else "default")
+
+
+def _reply_by(session: Session, owner: Person, row: ReceptionMessage) -> str:
+    """ ", they asked for a reply by 14:07": the deadline code read from what they said, as their claim."""
+    from superaide.intentions.when import zone
+    from superaide.memory.knowledge.store import preferences_for
+
+    if row.deadline_parse != "ok" or row.deadline_at is None:
+        return ""
+    local = row.deadline_at.astimezone(zone(preferences_for(session, owner).timezone))
+    return f", and they asked for a reply by {local:%H:%M}"
 
 
 def digest_lines(session: Session, owner: Person, since: datetime, now: datetime) -> list[str]:

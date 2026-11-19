@@ -162,3 +162,20 @@ def test_the_worker_thread_runs_due_jobs_and_stops_cleanly(ran):
     finally:
         worker.stop()
     assert ran == [("ok", {"n": 1})]
+
+
+@pytest.mark.parametrize("plan", ["enable_hashjoin = off, enable_nestloop = off", "enable_mergejoin = off"])
+def test_claimed_jobs_come_back_in_due_order_whatever_join_the_planner_picks(ran, plan):
+    # Regression for #593: UPDATE ... RETURNING follows the planner's join order, which with a merge join is
+    # by random uuid, so the batch used to run out of order and the deleted-job test failed now and then.
+    from sqlalchemy import text
+
+    with session_scope() as s:
+        for i in range(6):
+            enqueue(s, "ok", {"n": i}, run_at=NOW - timedelta(seconds=10 - i))
+    with session_scope() as s:
+        for setting in plan.split(", "):
+            s.execute(text(f"SET LOCAL {setting}"))
+        claimed = queue._claim(s, NOW, 20)
+        order = [s.get(Job, job_id).payload["n"] for job_id, _kind, _scope in claimed]
+    assert order == [0, 1, 2, 3, 4]  # at most PER_INSTANCE, earliest due first

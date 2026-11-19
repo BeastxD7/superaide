@@ -735,6 +735,16 @@ External (official unless marked):
 - Slack interactive components and the 3-second ack: https://docs.slack.dev/tools/java-slack-sdk/guides/interactive-components
 - Interruption research (Iqbal & Horvitz 2007, Iqbal & Bailey 2008, Mark et al. 2008, Horvitz bounded deferral, Fitz et al. batching): links in `Personal assistant memory architecture.md`.
 
+## Stranger notifications: caps, quiet hours, sourced replay (#477, 2026-11)
+
+With triage off, a message from someone new makes one in-app note built by code (first name as given, channel, time,
+and a deadline code read, shown as their claim; never their words). One sender can cause at most 3 such notes an hour;
+urgency lifts that only when the owner turned on `urgent_over_cap` (`PUT /app/receptionist`, off by default). In the
+owner's quiet hours the note stays in the app and nothing is pushed. The note carries `source=notification:<id>`, and the
+next owner turn replays it as "[Notification the app sent to the owner ..., a real delivery: ...]", so Ava no longer
+disowns it. Open: quiet hours still default to 22:00-07:00 from onboarding (the owner asked for none by default), a digest
+for non-urgent notes, and a settings control for `urgent_over_cap`.
+
 ## Owner presence (#495, 2026-11)
 
 `presence_state` (`presence/`) holds what the owner said about being reachable: kind, an end time (required, so a state
