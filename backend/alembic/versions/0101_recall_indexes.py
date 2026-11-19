@@ -1,7 +1,7 @@
 """recall_indexes: indexes for recall by time, sender and words (#644)
 
-Revision ID: 0100
-Revises: 0099
+Revision ID: 0101
+Revises: 0100
 Create Date: 2026-11-20 12:00:00.000000
 
 """
@@ -11,8 +11,8 @@ from collections.abc import Sequence
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0100"
-down_revision: str | Sequence[str] | None = "0099"
+revision: str = "0101"
+down_revision: str | Sequence[str] | None = "0100"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
