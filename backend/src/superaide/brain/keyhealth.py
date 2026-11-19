@@ -53,7 +53,8 @@ def is_auth_error(exc: BaseException) -> bool:
 
 # Why the model cannot be used for a configuration reason (#633). The provider layer classifies, the model never does.
 KEY_MISSING, KEY_INVALID, CREDIT_LOW, SPEND_CAP = "key_missing", "key_invalid", "credit_low", "spend_cap"
-REASONS = (KEY_MISSING, KEY_INVALID, CREDIT_LOW, SPEND_CAP)
+CONTEXT_SMALL = "context_small"  # a local Ollama model's window is smaller than Ava's prompt (it would silently cut it)
+REASONS = (KEY_MISSING, KEY_INVALID, CREDIT_LOW, SPEND_CAP, CONTEXT_SMALL)
 TROUBLE_KEY = "ai_trouble"
 TROUBLE_FRESH = timedelta(minutes=60)  # credit and cap trouble is forgotten unless seen again (credits get topped up)
 MODELS_PAGE = "/dashboard/models"
@@ -62,12 +63,14 @@ OWNER_TEXT = {
     KEY_INVALID: KEY_REJECTED_CHAT,
     CREDIT_LOW: "My AI provider says the account is out of credit. Add credit at the provider, then try again.",
     SPEND_CAP: "I've reached the spending cap, so I'm paused. Raise the cap on the AI model page.",
+    CONTEXT_SMALL: "My local model's memory window is too small for me, so I forget things. See the AI model page.",
 }
 ACTIONS = {
     KEY_MISSING: "Add a key",
     KEY_INVALID: "Check the key",
     CREDIT_LOW: "Open AI model settings",
     SPEND_CAP: "Raise the cap",
+    CONTEXT_SMALL: "See how to fix it",
 }
 
 
@@ -76,12 +79,14 @@ CAUSES = {
     KEY_INVALID: "The AI provider rejected the key.",
     CREDIT_LOW: "The AI provider says the account is out of credit.",
     SPEND_CAP: "The spend cap was reached, so model calls are refused.",
+    CONTEXT_SMALL: "A local Ollama model's context window is smaller than Ava's prompt, so Ollama cuts it off.",
 }
 FIXES = {
     KEY_MISSING: "Add a key on the AI model page.",
     KEY_INVALID: "Check or replace the key on the AI model page.",
     CREDIT_LOW: "Add credit at the provider, then try again.",
     SPEND_CAP: "Raise the limit on the AI model page (or MAX_SPEND_USD).",
+    CONTEXT_SMALL: "Make a bigger-window copy of the model with a Modelfile (num_ctx 16384) and choose it.",
 }
 
 
@@ -144,8 +149,32 @@ def record_trouble(reason: str, provider: str) -> None:
         log.exception("couldn't record AI trouble")
 
 
-def notice(session: Session, settings: Any) -> dict[str, str] | None:
-    """What the owner is told in the app (banner and Check my setup): {"reason", "message", "action", "href"}."""
+def small_context(session: Session, settings: Any, *, fresh: bool = False) -> Any:
+    """The first Ollama model in use (chat, triage, deep) whose window is smaller than Ava's prompt, if any.
+    Local servers only: a hosted deployment never contacts an owner-typed address from here."""
+    from sqlalchemy import select
+
+    from superaide.brain.models import LlmProvider, ModelRole
+    from superaide.brain.providers import ollama_ctx
+    from superaide.platform.tenancy.context import mine
+
+    if getattr(settings, "deploy_mode", "self_hosted") == "hosted":
+        return None
+    roles = {r.role: r for r in session.scalars(select(ModelRole).where(mine(ModelRole)))}
+    for name in ("chat", "triage", "deep"):
+        role = roles.get(name)
+        row = session.scalar(select(LlmProvider).where(mine(LlmProvider), LlmProvider.key == role.provider)) if role else None
+        if role is None or row is None or row.preset != "ollama" or not row.enabled:
+            continue
+        found = ollama_ctx.warning(row.base_url, role.model, fresh=fresh)
+        if found is not None:
+            return found
+    return None
+
+
+def notice(session: Session, settings: Any, *, fresh: bool = False) -> dict[str, str] | None:
+    """What the owner is told in the app (banner and Check my setup): {"reason", "message", "action", "href"}.
+    `fresh` asks a local Ollama again instead of using its answer from the last few minutes."""
     reason: str | None = None
     if missing(settings):
         reason = KEY_MISSING
@@ -160,7 +189,16 @@ def notice(session: Session, settings: Any) -> dict[str, str] | None:
         if fresh and cur.get("reason") in (CREDIT_LOW, SPEND_CAP):
             reason = cur["reason"]
     if reason is None:
-        return None
+        found = small_context(session, settings, fresh=fresh)
+        if found is None:
+            return None
+        return {
+            "reason": CONTEXT_SMALL,
+            "message": f"{found.message} {found.steps}",
+            "action": ACTIONS[CONTEXT_SMALL],
+            "href": MODELS_PAGE,
+            "fix": found.steps,
+        }
     return {"reason": reason, "message": OWNER_TEXT[reason], "action": ACTIONS[reason], "href": MODELS_PAGE}
 
 
