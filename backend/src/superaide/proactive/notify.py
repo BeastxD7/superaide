@@ -64,7 +64,7 @@ def rejected_channels(session: Session) -> list[str]:
 def messenger_for(provider: str) -> Any:
     """A sender for Telegram or Slack with the bot token saved in the app, or None without one."""
     from superaide.identity.vault.store import runtime_settings
-    from superaide.reception.api import sandbox_active
+    from superaide.platform.sandbox_guard import active as sandbox_active
 
     if sandbox_active() is not None:  # a preview (#499) reaches no channel
         return None
@@ -326,7 +326,7 @@ def notify_owner(
     interruption preference. A push that fails is retried by a job (1, 5, then 15 minutes) and the
     owner is told in the app; one that never gets through stays listed as not delivered, so a failed
     delivery is never silent."""
-    from superaide.reception.api import sandbox_active
+    from superaide.platform.sandbox_guard import active as sandbox_active
 
     if (sandbox := sandbox_active()) is not None:  # a preview (#499): record what would be sent, send and store nothing
         sandbox.notifications.append({"text": text, "kind": str((meta or {}).get("kind", "")), "channel": channel})

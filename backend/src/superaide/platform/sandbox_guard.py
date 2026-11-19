@@ -1,6 +1,7 @@
 """The switch that stops code at the edge of the database while a sandbox preview runs (#499, sandbox.py).
 
-Kept free of heavy imports so `proactive.notify` and the escalation code can ask `active()` without a cycle."""
+Lives in platform/ (importable by everyone, imports nothing of ours) so `proactive.notify` and the
+escalation code can ask `active()` without reaching into reception, which would close a cycle."""
 
 from __future__ import annotations
 
