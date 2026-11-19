@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import re
+from datetime import UTC, datetime
 
+import time_machine
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
@@ -14,6 +16,9 @@ from superaide.main import create_app
 from superaide.memory.knowledge.store import add_contact, preferences_for
 from superaide.platform.db.session import session_scope
 from tests.conftest import sl, tg
+
+MIDDAY_UTC = datetime(2026, 11, 19, 12, 0, tzinfo=UTC)
+
 
 CLOCK = re.compile(r"It's [A-Z][a-z]{2} \d\d:\d\d")  # "It's Sat 03:10 for ..."
 
@@ -120,6 +125,7 @@ def test_pinned_facts_stay_within_their_budget(agent, model):
     assert 0 < len(pinned) <= PINNED_MAX and sum(len(p) for p in pinned) <= PINNED_CHARS + 2 * len(pinned)
 
 
+@time_machine.travel(MIDDAY_UTC, tick=True)  # not the 23:59 minute, where a 00:00-23:59 window ends
 def test_a_colleague_is_not_told_the_owners_local_time_or_quiet_hours_unless_availability_is_shared(
     agent, model, colleague
 ):
@@ -134,6 +140,7 @@ def test_a_colleague_is_not_told_the_owners_local_time_or_quiet_hours_unless_ava
     assert "usual hours" not in system
 
 
+@time_machine.travel(MIDDAY_UTC, tick=True)  # not the 23:59 minute, where a 00:00-23:59 window ends
 def test_with_availability_shared_a_colleague_gets_a_worded_state_without_the_clock(agent, model, colleague):
     _setup(agent)  # shares availability
     with session_scope() as s:
