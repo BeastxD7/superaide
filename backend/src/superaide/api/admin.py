@@ -270,7 +270,7 @@ def _ai_gaps(s: Any, settings: Any) -> list[dict[str, str]]:
             "id": f"ai_{reason}",
             "label": keyhealth.CAUSES[reason],
             "detail": found["message"],
-            "fix": keyhealth.FIXES[reason],
+            "fix": found.get("fix") or keyhealth.FIXES[reason],
         }
     ]
 
