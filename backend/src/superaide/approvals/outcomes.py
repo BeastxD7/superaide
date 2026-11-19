@@ -95,9 +95,13 @@ def list_sources(session: Session, args: dict[str, Any]) -> list[Any]:
     ]
 
 
-def announce(session: Session, approval: Approval) -> None:
-    """Write the outcome into the owner's conversation and push it by their preference. Never raises."""
+def announce(session: Session, approval: Approval, *, in_chat: str = "") -> None:
+    """Write the outcome into the owner's conversation and push it by their preference. Never raises.
+    `in_chat`: the owner decided it in a chat that gets its own reply (#642): the app's own chat is not told twice
+    and a channel gets no push, the app keeps its note."""
     if approval.status == "pending" or approval.requested_by_person_id is None:
+        return
+    if in_chat == "web":
         return
     try:
         from superaide.proactive.notify import notify_owner
@@ -116,7 +120,7 @@ def announce(session: Session, approval: Approval) -> None:
             owner,
             text,
             {"kind": "approval_outcome", "approval_id": str(approval.id), "status": approval.status},
-            channel=str(p.get("channel") or "") or "default",
+            channel="app" if in_chat else (str(p.get("channel") or "") or "default"),
         )
     except Exception:  # an outcome note must never undo a decision
         log.warning("couldn't announce an approval outcome", exc_info=True)

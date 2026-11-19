@@ -22,9 +22,12 @@ from superaide.channels import format as fmt
 from superaide.channels import health
 from superaide.channels.base import (
     MESSENGER_FACTORIES,
+    PRESS_HANDLERS,
+    Button,
     FileFetchError,
     FileRef,
     FileTooBig,
+    InboundAction,
     InboundMessage,
     Sources,
 )
@@ -142,6 +145,31 @@ def parse_event(
         ambient=is_ambient,
         attachments=["file"] * min(len(files), 10) if has_files and isinstance(files, list) else [],
         file_refs=_file_refs(files) if has_files else [],
+    )
+
+
+def parse_block_action(body: dict[str, Any], *, verified: bool) -> InboundAction | None:
+    """A press on one of our Block Kit buttons (`block_actions`), or None. Who pressed is Slack's own user id and
+    workspace; where it was pressed is the channel of the message the button sits on."""
+    if body.get("type") != "block_actions":
+        return None
+    actions = body.get("actions")
+    first = actions[0] if isinstance(actions, list) and actions and isinstance(actions[0], dict) else None
+    user = body.get("user") or {}
+    if first is None or not user.get("id"):
+        return None
+    team = str(user.get("team_id") or (body.get("team") or {}).get("id") or "")
+    app = str(body.get("api_app_id") or "")
+    return InboundAction(
+        provider="slack",
+        sender_id=str(user["id"]),
+        action_id=str(body.get("trigger_id") or ""),
+        data=str(first.get("value") or first.get("action_id") or "")[:100],
+        chat_id=str((body.get("channel") or {}).get("id") or (body.get("container") or {}).get("channel_id") or ""),
+        message_id=str((body.get("message") or {}).get("ts") or (body.get("container") or {}).get("message_ts") or ""),
+        endpoint=f"{(body.get('team') or {}).get('id') or team}/{app}" if app else team,
+        verified=verified,
+        tenant_scope=team,
     )
 
 
@@ -388,6 +416,33 @@ class SlackMessenger:
     def send_to_context(self, context: Context, text: str, thread_id: str = "", sources: Sources | None = None) -> bool:
         return self._post(context.external_id, text, thread_id, sources)
 
+    def send_buttons(self, chat_id: str, text: str, buttons: list[Button]) -> str | None:
+        """A message with a row of buttons (Block Kit); returns "channel:ts" for later edits. Needs Interactivity
+        switched on in the Slack app, or a press shows an error in Slack and reaches nobody."""
+        plain = fmt.to_slack(text)[:2900]
+        elements = [
+            {"type": "button", "text": {"type": "plain_text", "text": label[:30]}, "action_id": data, "value": data}
+            for label, data in buttons
+        ]
+        blocks = [
+            {"type": "section", "text": {"type": "mrkdwn", "text": plain}},
+            {"type": "actions", "elements": elements},
+        ]
+        posted = self._call("chat_postMessage", channel=chat_id, text=plain, blocks=blocks)
+        return f"{chat_id}:{posted['ts']}"
+
+    def edit_message(self, ref: str, text: str) -> bool:
+        """Replace a posted message's text and drop its buttons."""
+        channel, _, ts = ref.partition(":")
+        if not channel or not ts:
+            return False
+        try:
+            self._call("chat_update", channel=channel, ts=ts, text=fmt.to_slack(text)[:2900], blocks=[])
+        except Exception as exc:
+            log.warning("slack: couldn't edit the message (%s)", _error_code(exc) or type(exc).__name__)
+            return False
+        return True
+
 
 def run_socket_mode(bot_token: str, app_token: str, our_team_id: str, handle: Callable[[InboundMessage], Any]) -> None:
     """Receive events over a websocket: no public URL, good for a laptop. Blocks."""
@@ -410,6 +465,14 @@ def socket_mode_handler(bot_token: str, app_token: str, our_team_id: str, handle
     @app.event("message")
     def on_message(body: dict[str, Any]) -> None:
         _dispatch(body)
+
+    @app.action(re.compile(r"^ap1:"))
+    def on_approval_press(ack: Callable[[], Any], body: dict[str, Any]) -> None:
+        ack()  # Slack wants the answer within three seconds; the decision runs after
+        press = parse_block_action(body, verified=True)
+        handler = PRESS_HANDLERS.get("slack")
+        if press is not None and handler is not None:
+            handler(bot_token, press)
 
     @app.event("app_mention")
     def on_mention(body: dict[str, Any]) -> None:
