@@ -770,7 +770,7 @@ export type TakenMessageView = {
   status: 'new' | 'done' | 'dismissed' | 'spam'
   created_at: string
 }
-// The rehearsal room (#58). Every /rehearsal route answers 404 while the backend's REHEARSAL_ENABLED is off.
+// The rehearsal room (#58). Every /rehearsal route answers 404 while the backend's EXPERIMENT_REHEARSAL is off.
 export type RehearsalTurn = { who: 'owner' | 'other'; text: string }
 export type RehearsalPoint = { heading: string; advice: string; quote: string }
 export type RehearsalSession = {

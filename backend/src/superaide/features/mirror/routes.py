@@ -1,6 +1,6 @@
 """/app/mirror: "The Mirror", a weekly note on patterns with receipts (Notebook > The Mirror).
 
-Behind MIRROR_ENABLED (off by default: 404 while off, after the owner checks) and an opt-in per owner.
+Behind EXPERIMENT_MIRROR (off by default: 404 while off, after the owner checks) and an opt-in per owner.
 Owner only, CSRF-checked. No model call."""
 
 from __future__ import annotations
@@ -41,7 +41,7 @@ def make_mirror_router(get_agent: Callable[[], Any]) -> APIRouter:
         dependencies=[Depends(require_csrf_header), Depends(reject_nul_text)],
     )
 
-    @router.get("", summary="This week's note", description="404 while MIRROR_ENABLED is off.")
+    @router.get("", summary="This week's note", description="404 while EXPERIMENT_MIRROR is off.")
     def mirror(person_id: uuid.UUID = Depends(mirror_owner)) -> dict[str, Any]:
         with session_scope() as s:
             return service.view(s, person_id)

@@ -40,7 +40,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         "/audition/candidates",
         tags=["Owner: skills"],
         summary="Skills you can audition",
-        description="Audition (AUDITION_ENABLED, off by default; 404 while off): the skills that can be compared.",
+        description="Audition (EXPERIMENT_AUDITION, off by default; 404 while off): the skills that can be compared.",
     )
     def audition_candidates(person_id: uuid.UUID = Depends(audition_on)) -> list[dict[str, Any]]:
         from superaide.tooltrace import audition

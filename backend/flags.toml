@@ -93,14 +93,16 @@ remove_by = "2027-02-14"
 issue = "#402"
 
 [[flag]]
-name = "AUDITION_ENABLED"
+name = "EXPERIMENT_AUDITION"
 summary = "compare 2 or 3 candidate skills side by side on the last tasks (read-only: nothing is sent or changed)"
 default = false
-group = "owner-safe"
+group = "experiment"
 owner = "maintainer"
 stage = "experiment"
 added = "2026-11-16"
-remove_by = "2027-02-14"
+hypothesis = "Owners choose between two or three candidate skills better when each is replayed on their own recent tasks."
+metric = "Share of audition runs followed by an install or a rejection within 24 hours."
+sunset = "2027-02-14"
 issue = "#402"
 
 [[flag]]
@@ -137,14 +139,16 @@ remove_by = "2027-02-14"
 issue = "#402"
 
 [[flag]]
-name = "DISSENT_DESK_ENABLED"
+name = "EXPERIMENT_DISSENT_DESK"
 summary = "three different models answer high-stakes choices (needs DISSENT_MODELS; costs more)"
 default = false
-group = "owner-decision"
+group = "experiment"
 owner = "maintainer"
 stage = "experiment"
 added = "2026-11-16"
-remove_by = "2027-02-14"
+hypothesis = "Three different models disagree on high-stakes choices often enough to justify the extra cost."
+metric = "Disagreement rate per run, and share of runs where the owner chose the minority answer."
+sunset = "2027-02-14"
 issue = "#402"
 
 [[flag]]
@@ -202,14 +206,16 @@ remove_by = "2027-02-14"
 issue = "#402"
 
 [[flag]]
-name = "FORK_NIGHT_ENABLED"
+name = "EXPERIMENT_FORK_NIGHT"
 summary = "three read-only overnight drafts of a choice the owner leaves (model calls)"
 default = false
-group = "owner-decision"
+group = "experiment"
 owner = "maintainer"
 stage = "experiment"
 added = "2026-11-16"
-remove_by = "2027-02-14"
+hypothesis = "Overnight read-only drafts of a pending choice save the owner time the next morning."
+metric = "Share of drafts the owner used (accepted or edited) per week."
+sunset = "2027-02-14"
 issue = "#402"
 
 [[flag]]
@@ -330,25 +336,29 @@ remove_by = "2027-02-14"
 issue = "#402"
 
 [[flag]]
-name = "MIRROR_ENABLED"
+name = "EXPERIMENT_MIRROR"
 summary = "\"The Mirror\": a weekly note of patterns in the owner's own reminders and messages (owners also opt in)"
 default = false
-group = "owner-decision"
+group = "experiment"
 owner = "maintainer"
 stage = "experiment"
 added = "2026-11-16"
-remove_by = "2027-02-14"
+hypothesis = "A weekly note of patterns in the owner's own reminders and messages is read and judged true."
+metric = "Share of notes opened and marked true by owners who opted in."
+sunset = "2027-02-14"
 issue = "#402"
 
 [[flag]]
-name = "MODEL_DRILL_ENABLED"
+name = "EXPERIMENT_MODEL_DRILL"
 summary = "replay the last tasks on two models and show where the call sequences differ"
 default = false
-group = "owner-safe"
+group = "experiment"
 owner = "maintainer"
 stage = "experiment"
 added = "2026-11-16"
-remove_by = "2027-02-14"
+hypothesis = "Owners change Ava's model more safely when they can see where the call sequences differ on their own tasks."
+metric = "Share of model changes preceded by a drill; share of drills that changed the decision."
+sunset = "2027-02-14"
 issue = "#402"
 
 [[flag]]
@@ -373,25 +383,29 @@ remove_by = "2027-02-14"
 issue = "#402"
 
 [[flag]]
-name = "OVERNIGHT_TUNER_ENABLED"
+name = "EXPERIMENT_OVERNIGHT_TUNER"
 summary = "proposes a better triage prompt; nothing changes until the owner approves"
 default = false
-group = "owner-safe"
+group = "experiment"
 owner = "maintainer"
 stage = "experiment"
 added = "2026-11-16"
-remove_by = "2027-02-14"
+hypothesis = "A grader-scored tuned triage prompt beats the built-in prompt."
+metric = "Grader score of approved versions against the built-in prompt."
+sunset = "2027-02-14"
 issue = "#402"
 
 [[flag]]
-name = "OWNER_TWIN_ENABLED"
+name = "EXPERIMENT_OWNER_TWIN"
 summary = "calibration page scoring a predictor of the owner's approve/reject choices"
 default = false
-group = "owner-safe"
+group = "experiment"
 owner = "maintainer"
 stage = "experiment"
 added = "2026-11-16"
-remove_by = "2027-02-14"
+hypothesis = "A predictor of the owner's approve/reject choices can reach an accuracy that would justify fewer approval cards."
+metric = "Accuracy at or above the calibration gate on at least 200 past decisions."
+sunset = "2027-02-14"
 issue = "#402"
 
 [[flag]]
@@ -459,14 +473,16 @@ remove_by = "2027-02-14"
 issue = "#402"
 
 [[flag]]
-name = "REHEARSAL_ENABLED"
+name = "EXPERIMENT_REHEARSAL"
 summary = "practise a hard conversation with Ava playing the other side"
 default = false
-group = "owner-safe"
+group = "experiment"
 owner = "maintainer"
 stage = "experiment"
 added = "2026-11-16"
-remove_by = "2027-02-14"
+hypothesis = "Owners practise a hard conversation with Ava more than once."
+metric = "Owners with two or more rehearsals in 30 days."
+sunset = "2027-02-14"
 issue = "#402"
 
 [[flag]]
@@ -481,14 +497,16 @@ remove_by = "2027-02-14"
 issue = "#402"
 
 [[flag]]
-name = "REPLAY_BEFORE_UPDATE_ENABLED"
+name = "EXPERIMENT_REPLAY_BEFORE_UPDATE"
 summary = "replay the last tasks with and without a skill, prompt or model change, then approve or reject"
 default = false
-group = "owner-safe"
+group = "experiment"
 owner = "maintainer"
 stage = "experiment"
 added = "2026-11-16"
-remove_by = "2027-02-14"
+hypothesis = "A replay before a skill, prompt or model change shows regressions the owner would otherwise ship."
+metric = "Share of replays with a differing call sequence that the owner then rejected."
+sunset = "2027-02-14"
 issue = "#402"
 
 [[flag]]
@@ -567,14 +585,16 @@ remove_by = "2027-02-14"
 issue = "#402"
 
 [[flag]]
-name = "SECOND_OPINION_ENABLED"
+name = "EXPERIMENT_SECOND_OPINION"
 summary = "memory-free second view on the owner's own claims (small-model calls)"
 default = false
-group = "owner-safe"
+group = "experiment"
 owner = "maintainer"
 stage = "experiment"
 added = "2026-11-16"
-remove_by = "2027-02-14"
+hypothesis = "A memory-free second view sometimes changes the owner's mind about their own claim."
+metric = "Share of second opinions after which the owner revises the claim."
+sunset = "2027-02-14"
 issue = "#402"
 
 [[flag]]
@@ -665,14 +685,16 @@ added = "2026-11-16"
 issue = "#402"
 
 [[flag]]
-name = "TIME_TRAVEL_RULES_ENABLED"
+name = "EXPERIMENT_TIME_TRAVEL_RULES"
 summary = "standing orders compiled to rules, replayed on past messages, shadow-run first"
 default = false
-group = "owner-decision"
+group = "experiment"
 owner = "maintainer"
 stage = "experiment"
 added = "2026-11-16"
-remove_by = "2027-02-14"
+hypothesis = "Owners trust a standing order more after seeing it replayed on their past messages."
+metric = "Share of compiled rules the owner activates after the replay."
+sunset = "2027-02-14"
 issue = "#402"
 
 [[flag]]
@@ -750,12 +772,14 @@ added = "2026-11-16"
 issue = "#402"
 
 [[flag]]
-name = "WHY_REPLAY_ENABLED"
+name = "EXPERIMENT_WHY_REPLAY"
 summary = "\"Why did you say that?\" replay of a reply (small-model calls)"
 default = false
-group = "owner-safe"
+group = "experiment"
 owner = "maintainer"
 stage = "experiment"
 added = "2026-11-16"
-remove_by = "2027-02-14"
+hypothesis = "Owners use a replay of a reply to check why Ava said it, and it answers the question."
+metric = "Replays opened per 100 replies, and share rated useful."
+sunset = "2027-02-14"
 issue = "#402"

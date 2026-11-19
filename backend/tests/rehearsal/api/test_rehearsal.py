@@ -1,6 +1,6 @@
 """The rehearsal room (#58): practise a hard conversation; nothing leaves the owner.
 
-Hidden (404) while REHEARSAL_ENABLED is off; owner-only; the model runs inside BudgetGuard; no
+Hidden (404) while EXPERIMENT_REHEARSAL is off; owner-only; the model runs inside BudgetGuard; no
 `event` or `memory_item` rows are written; the debrief cites only the owner's own words; an
 unkept session is erased after a day and any session can be erased at once.
 """

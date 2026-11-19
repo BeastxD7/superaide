@@ -1,4 +1,4 @@
-"""The owner's rehearsal API (#58). Owner-only, CSRF-checked, per instance; 404 while REHEARSAL_ENABLED is off.
+"""The owner's rehearsal API (#58). Owner-only, CSRF-checked, per instance; 404 while EXPERIMENT_REHEARSAL is off.
 
 Nothing here sends a message anywhere or writes memory. A session lives for a day unless kept.
 """

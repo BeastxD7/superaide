@@ -93,7 +93,7 @@ def decide(
     if wants_model:
         from superaide.platform.config import get_settings
 
-        system = None  # the built-in prompt, unless the owner approved a tuned one (OVERNIGHT_TUNER_ENABLED)
+        system = None  # the built-in prompt, unless the owner approved a tuned one (EXPERIMENT_OVERNIGHT_TUNER)
         if get_settings().overnight_tuner_enabled:
             from superaide.trust.tuner import active_text
 

@@ -121,6 +121,9 @@ def create_app(agent: Agent | None = None) -> FastAPI:
         from superaide.brain import platform_ai
 
         platform_ai.warn_if_unusable()
+        from superaide.platform import renamed
+
+        renamed.warn()  # an experiment still set by its old name keeps working; say so once (#405)
         if fixed is None:
             from superaide.platform.security import dbcheck, deploy
 
@@ -247,7 +250,7 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     app.include_router(make_preview_routes_router(get_agent))  # 404 everywhere while its flag is off
     from superaide.features.rehearsal.routes import make_router as make_rehearsal_router
 
-    app.include_router(make_rehearsal_router(get_agent))  # 404 everywhere while REHEARSAL_ENABLED is off
+    app.include_router(make_rehearsal_router(get_agent))  # 404 everywhere while EXPERIMENT_REHEARSAL is off
     from superaide.asklink.routes import make_owner_router as make_ask_owner_router
     from superaide.asklink.routes import make_public_router as make_ask_public_router
 
@@ -270,13 +273,13 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     app.include_router(make_share_owner_router())
     from superaide.features.dissent.routes import make_router as make_dissent_router
 
-    app.include_router(make_dissent_router(get_agent))  # 404 unless DISSENT_DESK_ENABLED and three models are set
+    app.include_router(make_dissent_router(get_agent))  # 404 unless EXPERIMENT_DISSENT_DESK and three models are set
     from superaide.features.forknight.routes import make_router as make_fork_router
 
-    app.include_router(make_fork_router(get_agent))  # 404 unless FORK_NIGHT_ENABLED
+    app.include_router(make_fork_router(get_agent))  # 404 unless EXPERIMENT_FORK_NIGHT
     from superaide.rules.routes import make_router as make_rules_router
 
-    app.include_router(make_rules_router(get_agent))  # 404 unless TIME_TRAVEL_RULES_ENABLED
+    app.include_router(make_rules_router(get_agent))  # 404 unless EXPERIMENT_TIME_TRAVEL_RULES
     from superaide.mandate.routes import make_router as make_mandate_router
 
     app.include_router(make_mandate_router())  # 404 for the owner unless MANDATES_ENABLED
@@ -294,7 +297,7 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     app.include_router(make_journal_router(get_agent))
     from superaide.features.mirror.routes import make_mirror_router
 
-    app.include_router(make_mirror_router(get_agent))  # 404 unless MIRROR_ENABLED
+    app.include_router(make_mirror_router(get_agent))  # 404 unless EXPERIMENT_MIRROR
     from superaide.app.episodes import make_episodes_router, make_tidy_router
 
     app.include_router(make_episodes_router(get_agent))  # 404 unless SLEEP_JOB_ENABLED
