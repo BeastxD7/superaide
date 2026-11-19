@@ -2706,6 +2706,22 @@
         "title": "WebSettingsBody",
         "type": "object"
       },
+      "WriteBody": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "WriteBody",
+        "type": "object"
+      },
       "superaide__api__admin__LinkBody": {
         "properties": {
           "person_id": {
@@ -3513,6 +3529,19 @@
               }
             ],
             "title": "Show First Name"
+          },
+          "takeover_idle_minutes": {
+            "anyOf": [
+              {
+                "maximum": 1440.0,
+                "minimum": 5.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Takeover Idle Minutes"
           },
           "urgent_over_cap": {
             "anyOf": [
@@ -12527,6 +12556,147 @@
           }
         ],
         "summary": "Change receptionist settings",
+        "tags": [
+          "Owner: receptionist"
+        ]
+      }
+    },
+    "/app/receptionist/conversations": {
+      "get": {
+        "description": "People Ava doesn't know who wrote in the last 30 days, one row each, newest first, with whether you are handling the conversation yourself (Ava stays out of it until you hand it back or you go quiet).",
+        "operationId": "conversations_app_receptionist_conversations_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Conversations App Receptionist Conversations Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Conversations you can step into",
+        "tags": [
+          "Owner: receptionist"
+        ]
+      }
+    },
+    "/app/receptionist/conversations/{context_id}/release": {
+      "post": {
+        "description": "Ava answers this conversation again from the visitor's next message.",
+        "operationId": "release_app_receptionist_conversations__context_id__release_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "context_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Context Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Release App Receptionist Conversations  Context Id  Release Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Give control back to Ava",
+        "tags": [
+          "Owner: receptionist"
+        ]
+      }
+    },
+    "/app/receptionist/conversations/{context_id}/write": {
+      "post": {
+        "description": "Sends your own words to that person (labelled as from you, not Ava) and takes the conversation over: Ava does not reply there, but reads what you wrote, until you hand it back or stay silent for the idle window.",
+        "operationId": "write_app_receptionist_conversations__context_id__write_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "context_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Context Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WriteBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Write App Receptionist Conversations  Context Id  Write Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Write to a visitor yourself",
         "tags": [
           "Owner: receptionist"
         ]

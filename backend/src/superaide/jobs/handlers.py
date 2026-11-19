@@ -17,6 +17,7 @@ def load() -> None:
     import superaide.proactive.digest  # noqa: F401  (registers send_digest)
     import superaide.proactive.prep  # noqa: F401  (registers meeting_prep, scan_meetings)
     import superaide.reception.api  # noqa: F401  (registers visitor_reply_retry, via reception/resilience.py)
+    import superaide.reception.takeover  # noqa: F401  (registers takeover_expire)
     import superaide.triage.buttons  # noqa: F401  (registers escalation_refresh)
     import superaide.triage.digest  # noqa: F401  (registers triage_catchup)
     import superaide.triage.escalate  # noqa: F401  (registers escalation_step)
