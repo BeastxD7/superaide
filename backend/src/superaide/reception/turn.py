@@ -50,11 +50,20 @@ class TakenMessage(BaseModel):
     message: str = ""
 
 
+class AskOwner(BaseModel):
+    """A question the model wants the owner to answer (#494). Only a proposal: code decides whether one is opened."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    question: str = ""
+
+
 class ReceptionTurn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     reply: str
     take_message: TakenMessage | None = None
+    ask_owner: AskOwner | None = None
 
 
 def first_name(owner: Person) -> str:

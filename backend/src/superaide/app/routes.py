@@ -60,6 +60,7 @@ from superaide.platform.tenancy.endpoints import slack_key
 from superaide.policy import brake, kinds
 from superaide.policy.actions import ApprovalError, resolve
 from superaide.policy.killswitch import instance_frozen, is_frozen, platform_frozen, set_frozen
+from superaide.reception.api import outage_status
 from superaide.skills import registry as skill_registry
 
 
@@ -329,6 +330,8 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                     # you" on Home means nothing if Telegram rejects the bot token.
                     "health": {p: health.get(s, p) for p in health.PROVIDERS},
                 },
+                # Outage status for the banner (#503): None while everything works. Fixed text and counts only.
+                "degraded": outage_status(s),
             }
 
     @router.get(

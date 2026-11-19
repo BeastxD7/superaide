@@ -30,6 +30,17 @@ export type Me = {
   can_resume?: boolean
   // Which optional parts of the product this server has switched on. Optional: an older API doesn't send it.
   features?: { triage?: boolean }
+  // Outage status (#503): null while everything works. `line` is fixed text built by the server, never a visitor's words.
+  degraded?: {
+    level: 'normal' | 'basic' | 'paused'
+    reasons: string[]
+    channels: string[]
+    since: string | null
+    waiting_messages: number
+    queued_replies: number
+    failed_replies: number
+    line: string
+  } | null
   channels: {
     web: boolean
     telegram: boolean
@@ -778,6 +789,18 @@ export type ReceptionistSettings = {
   per_hour: number
   per_day: number
   greeting: string
+}
+
+// A question someone Ava doesn't know asked that she couldn't answer (#494). `question` and `name` are theirs: show quoted.
+export type VisitorQuestionView = {
+  id: string
+  provider: string
+  name: string
+  question: string
+  state: 'asked' | 'answered' | 'declined' | 'expired'
+  answer: string
+  delivery: '' | 'sent' | 'failed'
+  created_at: string
 }
 
 export type TakenMessageView = {

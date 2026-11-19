@@ -42,6 +42,25 @@ class ReceptionSettings(Scoped, Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
 
 
+class VisitorQuestion(Scoped, Base):
+    """Something a visitor asked that Ava could not answer from the public information (#494). `question` is
+    written by the visitor, so it is data: shown quoted to the owner, never put in a notification or in the owner's
+    chat. `answer` is the owner's own typed text; code relays it inside a fixed template."""
+
+    __tablename__ = "visitor_question"
+    __table_args__ = (Index("ix_visitor_question_agent_state", "agent_id", "state", "created_at"),)
+
+    identity_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("channel_identity.id"), index=True)
+    context_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("context.id"))
+    provider: Mapped[str] = mapped_column(String(20))  # telegram | slack
+    question: Mapped[str] = mapped_column(Text, default="")
+    state: Mapped[str] = mapped_column(String(10), default="asked")  # asked | answered | declined | expired
+    answer: Mapped[str] = mapped_column(Text, default="")
+    delivery: Mapped[str] = mapped_column(String(10), default="")  # "" | sent | failed (the relay to the visitor)
+    notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    answered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class ReceptionMessage(Scoped, Base):
     __tablename__ = "reception_message"
     __table_args__ = (Index("ix_reception_message_agent_status", "agent_id", "status", "created_at"),)
