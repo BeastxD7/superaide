@@ -38,7 +38,7 @@ from superaide.identity.resolver import Sender
 from superaide.memory.models import Context, Event
 from superaide.platform.audit import audit
 from superaide.presence import api as presence
-from superaide.reception import card
+from superaide.reception import ask, card
 from superaide.reception import turn as rturn
 from superaide.reception.models import ReceptionMessage, ReceptionSettings
 
@@ -263,7 +263,7 @@ def handle_stranger(
         return "" if _said_recently(session, ctx, STORAGE_FULL, now) else STORAGE_FULL
 
     resumed = _resumed(session, ctx)
-    reply, from_model, mode = _talk(agent, session, owner, rs, ctx, msg)
+    reply, from_model, mode, asked = _talk(agent, session, owner, rs, ctx, msg)
     # Code stores every message; the model only adds structure. One it did not structure is kept as typed.
     structured = (
         mode == "model" and from_model is not None and bool(from_model.message.strip() or from_model.topic.strip())
@@ -272,6 +272,9 @@ def handle_stranger(
     row = _keep(agent, session, owner, sender, ctx, msg, inbound, taken, source="model" if structured else "code")
     if row is None:  # never "I've passed it on" for something that was not stored
         reply = SAVE_FAILED
+    elif asked is not None and asked.question.strip():  # #494: what she says follows what code did, not the model
+        opened = _ask(session, owner, sender, ctx, msg, asked.question)
+        reply = ask.HOLD.format(who=ask.owner_ref(session, owner)) if opened else ask.REFUSED
     if first and not rturn.has_card(session, owner, rs):  # she could only take a message: say so to the owner (#475)
         try:
             with session.begin_nested():
@@ -300,17 +303,33 @@ def handle_stranger(
     return reply
 
 
+def _ask(session: Session, owner: Person, sender: Sender, ctx: Context, msg: InboundMessage, question: str) -> bool:
+    """Open the owner's question (a savepoint: a failure leaves the visitor's message stored and says no)."""
+    try:
+        with session.begin_nested():
+            return (
+                ask.open_question(
+                    session, owner, identity_id=sender.identity.id, ctx=ctx, provider=msg.provider, question=question
+                )
+                is not None
+            )
+    except Exception:
+        log.exception("receptionist could not open a question")
+        return False
+
+
 def _talk(
     agent: Any, session: Session, owner: Person, rs: ReceptionSettings, ctx: Context, msg: InboundMessage
-) -> tuple[str, rturn.TakenMessage | None, str]:
-    """(reply, taken message, mode): mode is model | code (no model, budget, bad answer) | paused."""
+) -> tuple[str, rturn.TakenMessage | None, str, rturn.AskOwner | None]:
+    """(reply, taken message, mode, a question the model proposed): mode is model | code (no model, budget, bad
+    answer) | paused."""
     from superaide.brain.spend.budget import AgentFrozen, BudgetExceeded
     from superaide.brain.turn import build_messages
     from superaide.brain.wiring import brain_ready, with_credits
     from superaide.memory.store import recent_events
 
     if not brain_ready(agent.settings):
-        return FALLBACK, None, "code"
+        return FALLBACK, None, "code", None
     from superaide.reception import resilience
 
     system = rturn.system_prompt(session, owner, rs, agent.name)
@@ -321,18 +340,18 @@ def _talk(
     except BudgetExceeded as exc:
         audit(session, "reception", "budget_cap_reached", period=exc.period)
         resilience.record_model(session, resilience.BUDGET, exc.period)
-        return FALLBACK, None, "code"
+        return FALLBACK, None, "code", None
     except AgentFrozen:
-        return PAUSED, None, "paused"
+        return PAUSED, None, "paused", None
     except Exception:
         log.exception("receptionist turn failed")
         resilience.record_model(session, resilience.ERROR, "turn_failed")
-        return FALLBACK, None, "code"
+        return FALLBACK, None, "code", None
     if out is None or not out.reply.strip():
         resilience.record_model(session, resilience.ERROR, "unreadable")
-        return FALLBACK, None, "code"
+        return FALLBACK, None, "code", None
     resilience.record_model(session, resilience.OK)
-    return out.reply.strip()[:1500], out.take_message, "model"
+    return out.reply.strip()[:1500], out.take_message, "model", out.ask_owner
 
 
 # --- the hand-off ----------------------------------------------------------------------------------

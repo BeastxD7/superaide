@@ -22,8 +22,8 @@ from superaide.identity.models import Person
 from superaide.platform.audit import audit
 from superaide.platform.db.session import require, session_scope
 from superaide.platform.tenancy.context import scope_or_default
-from superaide.reception import card
-from superaide.reception.models import ReceptionMessage, ReceptionSettings
+from superaide.reception import ask, card
+from superaide.reception.models import ReceptionMessage, ReceptionSettings, VisitorQuestion
 from superaide.reception.service import card_preferences, greeting, settings_for
 from superaide.reception.turn import has_card
 
@@ -53,6 +53,12 @@ class SettingsBody(BaseModel):
     per_hour: int | None = Field(default=None, ge=1, le=60)
     per_day: int | None = Field(default=None, ge=1, le=500)
     urgent_over_cap: bool | None = None
+
+
+class AnswerBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    text: str = Field(min_length=1, max_length=ask.ANSWER_CHARS)
 
 
 class StatusBody(BaseModel):
@@ -90,6 +96,36 @@ def message_view(m: ReceptionMessage) -> dict[str, Any]:
         "claimed_urgency": m.claimed_urgency, "rank": m.rank, "source": m.source, "status": m.status,
         "created_at": m.created_at.isoformat(),
     }  # fmt: skip
+
+
+def question_view(q: VisitorQuestion, name: str) -> dict[str, Any]:
+    """`question` and `name` are the visitor's words (unverified): the app shows them quoted."""
+    return {
+        "id": str(q.id), "provider": q.provider, "name": name, "question": q.question, "state": q.state,
+        "answer": q.answer, "delivery": q.delivery, "created_at": q.created_at.isoformat(),
+    }  # fmt: skip
+
+
+def _name_of(s: Session, identity_id: uuid.UUID) -> str:
+    row = s.scalar(
+        select(ReceptionMessage.name)
+        .where(ReceptionMessage.identity_id == identity_id, ReceptionMessage.name != "")
+        .order_by(ReceptionMessage.created_at.desc())
+        .limit(1)
+    )
+    word = ((row or "").split() or [""])[0]
+    return "".join(c for c in word if c.isalpha() or c in "'-")[:20].strip("'-")
+
+
+def _question(s: Session, question_id: uuid.UUID) -> VisitorQuestion:
+    q = s.scalar(
+        select(VisitorQuestion).where(
+            VisitorQuestion.id == question_id, VisitorQuestion.agent_id == scope_or_default().agent_id
+        )
+    )
+    if q is None:
+        raise HTTPException(404, "Not found")
+    return q
 
 
 def make_router(get_agent: Callable[[], Any]) -> APIRouter:
@@ -166,5 +202,49 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             m.status, m.decided_at = body.status, datetime.now(UTC)
             audit(s, "reception", "message_marked", message_id=m.id, status=body.status)
             return message_view(m)
+
+    @router.get(
+        "/receptionist/questions",
+        summary="Questions waiting for you",
+        description="Things people Ava doesn't know asked that she couldn't answer, newest first (last 30 days).",
+    )
+    def questions(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        with session_scope() as s:
+            ask.expire_old(s)
+            rows = s.scalars(
+                select(VisitorQuestion)
+                .where(
+                    VisitorQuestion.agent_id == scope_or_default().agent_id,
+                    VisitorQuestion.created_at >= datetime.now(UTC) - WINDOW,
+                )
+                .order_by(VisitorQuestion.created_at.desc())
+                .limit(100)
+            ).all()
+            return {
+                "questions": [question_view(q, _name_of(s, q.identity_id)) for q in rows],
+                "open": sum(1 for q in rows if q.state == "asked"),
+            }
+
+    @router.post(
+        "/receptionist/questions/{question_id}/answer",
+        summary="Answer a visitor's question",
+        description="Sends your answer to that person inside a fixed sentence, once. Nothing is saved for others.",
+    )
+    def answer(question_id: uuid.UUID, body: AnswerBody, person_id: uuid.UUID = Depends(owner_person_id)) -> dict:
+        with session_scope() as s:
+            q = _question(s, question_id)
+            taken, notice = ask.answer(s, q, body.text)
+            if not taken:
+                raise HTTPException(409, notice)
+            return {**question_view(q, _name_of(s, q.identity_id)), "notice": notice}
+
+    @router.post("/receptionist/questions/{question_id}/decline", summary="Don't answer a visitor's question")
+    def decline(question_id: uuid.UUID, person_id: uuid.UUID = Depends(owner_person_id)) -> dict:
+        with session_scope() as s:
+            q = _question(s, question_id)
+            problem = ask.decline(s, q)
+            if problem:
+                raise HTTPException(409, problem)
+            return question_view(q, _name_of(s, q.identity_id))
 
     return router
