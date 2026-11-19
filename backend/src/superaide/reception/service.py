@@ -354,10 +354,10 @@ def handle_stranger(
 
     resumed = _resumed(session, ctx)
     if _model_turns(session, sender, now) >= MODEL_TURNS_PER_DAY:  # this sender's share of the model is spent
-        reply, from_model, mode, asked = MODEL_LIMIT_REPLY, None, "code", None
+        reply, from_model, mode, asked, sched = MODEL_LIMIT_REPLY, None, "code", None, None
         sig = sig.with_(signals.FLOOD)
     else:
-        reply, from_model, mode, asked = _talk(agent, session, owner, rs, ctx, msg)
+        reply, from_model, mode, asked, sched = _talk(agent, session, owner, rs, ctx, msg)
     # Code stores every message; the model only adds structure. One it did not structure is kept as typed.
     structured = (
         mode == "model" and from_model is not None and bool(from_model.message.strip() or from_model.topic.strip())
@@ -371,6 +371,8 @@ def handle_stranger(
     elif asked is not None and asked.question.strip():  # #494: what she says follows what code did, not the model
         opened = _ask(session, owner, sender, ctx, msg, asked.question)
         reply = ask.HOLD.format(who=ask.owner_ref(session, owner)) if opened else ask.REFUSED
+    elif sched is not None:  # #496: the times and the words are code's; the model only said they want to meet
+        reply = _schedule(session, owner, sender, ctx, msg, sched, from_model.name if from_model else "")
     if first and not rturn.has_card(session, owner, rs):  # she could only take a message: say so to the owner (#475)
         try:
             with session.begin_nested():
@@ -449,18 +451,41 @@ def _ask(session: Session, owner: Person, sender: Sender, ctx: Context, msg: Inb
         return False
 
 
+def _schedule(
+    session: Session,
+    owner: Person,
+    sender: Sender,
+    ctx: Context,
+    msg: InboundMessage,
+    sched: rturn.ScheduleAsk,
+    name: str,
+) -> str:
+    """Offer or confirm meeting times (a savepoint: a failure leaves the message stored and says no)."""
+    from superaide.reception import booking
+
+    try:
+        with session.begin_nested():
+            return booking.handle(
+                session, owner, identity_id=sender.identity.id, ctx=ctx, provider=msg.provider, ask=sched,
+                visitor_name=name,
+            )  # fmt: skip
+    except Exception:
+        log.exception("receptionist could not handle a booking")
+        return booking.UNAVAILABLE
+
+
 def _talk(
     agent: Any, session: Session, owner: Person, rs: ReceptionSettings, ctx: Context, msg: InboundMessage
-) -> tuple[str, rturn.TakenMessage | None, str, rturn.AskOwner | None]:
-    """(reply, taken message, mode, a question the model proposed): mode is model | code (no model, budget, bad
-    answer) | paused."""
+) -> tuple[str, rturn.TakenMessage | None, str, rturn.AskOwner | None, rturn.ScheduleAsk | None]:
+    """(reply, taken message, mode, a question the model proposed, a meeting the model proposed): mode is model |
+    code (no model, budget, bad answer) | paused."""
     from superaide.brain.spend.budget import AgentFrozen, BudgetExceeded
     from superaide.brain.turn import build_messages
     from superaide.brain.wiring import brain_ready, with_credits
     from superaide.memory.store import recent_events
 
     if not brain_ready(agent.settings):
-        return FALLBACK, None, "code", None
+        return FALLBACK, None, "code", None, None
     from superaide.reception import resilience
 
     system = rturn.system_prompt(session, owner, rs, agent.name)
@@ -471,18 +496,18 @@ def _talk(
     except BudgetExceeded as exc:
         audit(session, "reception", "budget_cap_reached", period=exc.period)
         resilience.record_model(session, resilience.BUDGET, exc.period)
-        return FALLBACK, None, "code", None
+        return FALLBACK, None, "code", None, None
     except AgentFrozen:
-        return PAUSED, None, "paused", None
+        return PAUSED, None, "paused", None, None
     except Exception:
         log.exception("receptionist turn failed")
         resilience.record_model(session, resilience.ERROR, "turn_failed")
-        return FALLBACK, None, "code", None
+        return FALLBACK, None, "code", None, None
     if out is None or not out.reply.strip():
         resilience.record_model(session, resilience.ERROR, "unreadable")
-        return FALLBACK, None, "code", None
+        return FALLBACK, None, "code", None, None
     resilience.record_model(session, resilience.OK)
-    return out.reply.strip()[:1500], out.take_message, "model", out.ask_owner
+    return out.reply.strip()[:1500], out.take_message, "model", out.ask_owner, out.schedule
 
 
 # --- the hand-off ----------------------------------------------------------------------------------

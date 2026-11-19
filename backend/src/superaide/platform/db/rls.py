@@ -98,6 +98,7 @@ TABLES: tuple[str, ...] = (
     "triage_settings",
     "reception_message",  # receptionist (ADR 0010 TR5)
     "visitor_question",  # a visitor question for the owner (#494)
+    "booking_request",  # a visitor's request for time with the owner (#496)
     "tour_progress",  # which guided tours the owner finished or skipped (#626)
     "reception_settings",
     "ask_link",  # the "Ask my Ava" link

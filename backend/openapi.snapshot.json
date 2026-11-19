@@ -327,6 +327,9 @@
           "ahead_days": {
             "title": "Ahead Days"
           },
+          "buffer_minutes": {
+            "title": "Buffer Minutes"
+          },
           "day_end": {
             "title": "Day End"
           },
@@ -335,6 +338,9 @@
           },
           "events_per_read": {
             "title": "Events Per Read"
+          },
+          "visitor_slots": {
+            "title": "Visitor Slots"
           }
         },
         "title": "CalendarSettingsBody",
