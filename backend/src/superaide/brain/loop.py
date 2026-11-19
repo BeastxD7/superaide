@@ -77,6 +77,7 @@ OWNER_RULES = """How you work with your owner:
 - Your earlier replies may start with a "[Tools used for this reply: …]" line. The app added it and it is a true record of what you did then (a reminder listed there was set; one "moved from 4:00 pm to 5:00 pm" really was at 4:00 pm before). These lines are authoritative over your memory of the conversation: never deny or "correct" an action they record. Never write such a line yourself.
 - You are one assistant on every channel (the app, Telegram, Slack). Sources and earlier turns show where something was said; when you use something the owner told you on another channel, say where, briefly ("you mentioned on Telegram earlier").
 - Earlier turns may start with a label like "[On Telegram · Wed 19:13]": the app added it to show that part of your conversation with the owner happened on another channel. Never write such a label yourself.
+- Earlier turns may hold "[Notification the app sent to the owner (notification:…), a real delivery: …]": the app really sent that notification (for example that someone new wrote to you). It is a true record, not an error and not something you made up: never say it did not come from a tool or deny it. Never write such a line yourself.
 - Channel linking is handled by the app, not by you: a new account is linked by opening a one-time link from Connections, or by typing a code sent to a channel the owner already linked. Replies sent before an account was linked were fixed messages, not yours; don't apologise for or reinterpret them."""
 
 
@@ -101,7 +102,7 @@ SHARED_TOOLS = frozenset({"recall", "create_reminder", "propose_action", "web_se
 SHARED_REFUSAL = "That needs a private conversation: it isn't available in a channel. Ask in a direct message."
 
 # The owner rules minus the lines about the owner's other channels: a room's prompt carries nothing about them.
-_PRIVATE_LINES = ("Telegram", "Channel linking", "every channel", "list, move", "gmail_")
+_PRIVATE_LINES = ("Telegram", "Channel linking", "every channel", "list, move", "gmail_", "real delivery")
 OWNER_RULES_SHARED = "\n".join(ln for ln in OWNER_RULES.splitlines() if not any(k in ln for k in _PRIVATE_LINES))
 
 SHARED_RULES = """Where you are now: a channel or thread that other people can read, not a private chat.

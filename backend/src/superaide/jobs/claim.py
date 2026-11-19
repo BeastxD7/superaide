@@ -35,17 +35,23 @@ AS $$
      WHERE (j.status = 'queued' AND j.run_at <= p_now)
         OR (j.status = 'running' AND j.locked_at < p_now - p_stale)
   ), picked AS (
-    SELECT j.id
+    SELECT j.id, d.rank, d.run_at
       FROM job j JOIN due d ON d.id = j.id
      WHERE d.rank <= p_per_instance
      ORDER BY d.rank, d.run_at
      LIMIT p_limit
        FOR UPDATE OF j SKIP LOCKED
+  ), claimed AS (
+    UPDATE job SET status = 'running', locked_at = p_now, attempts = job.attempts + 1
+      FROM picked
+     WHERE job.id = picked.id
+    RETURNING job.id, job.kind::text AS kind, job.tenant_id, job.agent_id
   )
-  UPDATE job SET status = 'running', locked_at = p_now, attempts = job.attempts + 1
-    FROM picked
-   WHERE job.id = picked.id
-  RETURNING job.id, job.kind::text, job.tenant_id, job.agent_id
+  -- UPDATE ... RETURNING comes back in whatever order the planner joined the rows (with a merge join,
+  -- by random uuid), so the order is restored here: fair rank first, then due time.
+  SELECT c.id, c.kind, c.tenant_id, c.agent_id
+    FROM claimed c JOIN picked p ON p.id = c.id
+   ORDER BY p.rank, p.run_at, c.id
 $$;
 REVOKE ALL ON FUNCTION claim_due_jobs(timestamptz, integer, integer, interval) FROM PUBLIC;
 """
