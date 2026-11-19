@@ -1,3 +1,4 @@
+# ruff: noqa: F811
 """#501 and #511: a voice note or photo from someone Ava does not know. Only when the owner chose a service, only
 behind the receptionist's gates, read by code and stored as data for the owner: no model sees it, nothing is claimed,
 linked or run from it. Fake provider only."""

@@ -387,8 +387,8 @@ def test_prices_are_bounded_and_nul_bytes_refused(owner_client, service):  # noq
     base = {"provider": "openai", "model": "m"}
     assert owner_client.post("/app/media-providers/prices", json={**base, "usd_per_minute": "-1"}).status_code == 422
     assert owner_client.post("/app/media-providers/prices", json={**base, "usd_per_minute": "11"}).status_code == 422
-    assert owner_client.post("/app/media-providers/prices", json={"provider": "nowhere", "model": "m",
-                                                                   "usd_per_minute": "1"}).status_code == 404  # fmt: skip
+    unknown = {"provider": "nowhere", "model": "m", "usd_per_minute": "1"}
+    assert owner_client.post("/app/media-providers/prices", json=unknown).status_code == 404
     assert owner_client.put(
         "/app/media-providers/vision", json={"provider": "anthropic", "model": "a\u0000b"}
     ).status_code in (400, 422)
