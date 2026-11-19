@@ -1,0 +1,93 @@
+# The retrieval golden set (#648), built from the Zeeshan and Meera thread of 2026-11-20 (report:
+# docs/research/memory-retrieval-and-conversation-continuity.md, section 7.5).
+#
+# One seeded world, many queries. Each query names the sources that must be found (`expect`) and the ones that must
+# not appear (`absent`); superaide.evals.retrieval turns the results into recall@1, recall@5, MRR and nDCG@5 per
+# category and gates them against evals/retrieval-baseline.json. A query that fails today is recorded there as
+# `known_gap` and flips to `pass` in the PR that fixes it (the baseline is rewritten with `gate --suite retrieval
+# --update`). Fictional names only: the owner is Jordan Whitfield, the visitors Zeeshan Khan and Meera Iyer, the
+# colleague Priya Tan.
+#
+# Ages: `age_days` counts back from now; `local_day` is a calendar day in the owner's zone (-1 = yesterday);
+# `last_week` is that weekday of the previous calendar week. Both of those are computed from the clock when the set
+# runs, so no query depends on which weekday the suite happens to run on.
+
+world:
+  timezone: Asia/Kolkata
+  owner_name: Jordan Whitfield
+  filler: 15            # unrelated, newer owner notes, so "the newest few" is never the answer
+  # `visible_to`: who besides the owner may legitimately read it (colleague | stranger). Everything else is private.
+  notes:
+    - {key: n_meera_invoice, age_days: 9, category: other,
+       text: "Meera Iyer is the vendor contact at Kreo; her invoice for the October design work is still unpaid."}
+    - {key: n_meera_hours, age_days: 20, category: other, text: "Meera prefers to be called after 4 pm."}
+    - {key: n_office_hours, age_days: 30, category: other, audience: public, visible_to: [colleague, stranger],
+       text: "Jordan's office hours are 10 am to 6 pm on weekdays."}
+    - {key: n_review, age_days: 12, category: other, audience: org, visible_to: [colleague],
+       text: "The quarterly review is on the first Monday of every month."}
+  visitors:
+    - {key: v_zeeshan_contract, name: Zeeshan Khan, sender: "8101", age_days: 26, topic: contract signature,
+       text: "Urgent: the Kreo contract needs your signature before Friday, please call me back."}
+    - {key: v_zeeshan_lease, name: Zeeshan Khan, sender: "8101", age_days: 31, topic: warehouse lease,
+       text: "Following up on the warehouse lease: can you confirm the viewing date?"}
+    - {key: v_meera_invoice, name: Meera Iyer, sender: "8102", last_week: wed, topic: invoice,
+       text: "Hi, checking whether the invoice for the October design work has been settled, it is overdue on our side."}
+    - {key: v_meera_coffee, name: Meera Iyer, sender: "8102", local_day: -1, topic: coffee,
+       text: "Are you free for a coffee tomorrow afternoon?"}
+  colleague_messages:
+    - {key: c_signoff, age_days: 3, visible_to: [colleague],  # Priya's own DM: she may read her own words
+      
+       text: "Can you give the final sign-off on the Kreo invoice before the accounts close?"}
+  files:
+    - {key: f_drill, title: Office safety handbook,
+       text: "Fire drill: every first Thursday at 11 am. Gather at the car park behind the building."}
+
+queries:
+  # ---- time ---------------------------------------------------------------------------------------------------
+  - {id: time-last-week-invoice, category: time, say: "what did Meera say last week about the invoice?",
+     expect: [v_meera_invoice], absent: [v_meera_coffee]}
+  - {id: time-yesterday, category: time, say: "what did Meera say yesterday",
+     expect: [v_meera_coffee], absent: [v_meera_invoice]}
+  - {id: time-26-days, category: time, say: "what did Zeeshan write about the contract",
+     expect: [v_zeeshan_contract]}
+  - {id: time-31-days, category: time, say: "what did Zeeshan write about the warehouse lease",
+     expect: [v_zeeshan_lease]}
+  # ---- person and kind ----------------------------------------------------------------------------------------
+  - {id: person-zeeshan, category: person, say: "what did Zeeshan write",
+     expect: [v_zeeshan_contract, v_zeeshan_lease], absent: [v_meera_invoice, v_meera_coffee]}
+  - {id: person-meera, category: person, say: "what did Meera say",
+     expect: [v_meera_invoice, v_meera_coffee], absent: [v_zeeshan_contract]}
+  - {id: person-colleague-signoff, category: person, say: "invoice sign-off",
+     expect: [c_signoff]}  # readable once the owner decides colleagues' DMs are visible to the owner
+  - {id: person-meera-note, category: person, say: "when should I call Meera", expect: [n_meera_hours]}
+  - {id: kind-file, category: person, say: "when is the fire drill", expect: [f_drill]}
+  # ---- paraphrase ---------------------------------------------------------------------------------------------
+  - {id: paraphrase-bill-pending, category: paraphrase, say: "bill payment pending",
+     expect: [v_meera_invoice, n_meera_invoice]}
+  - {id: paraphrase-vendor, category: paraphrase, say: "who is our vendor contact at Kreo", expect: [n_meera_invoice]}
+  - {id: paraphrase-evacuation, category: paraphrase, say: "where do we gather during an evacuation",
+     expect: [f_drill]}
+  - {id: paraphrase-public-as-stranger, category: paraphrase, as: stranger, say: "what are the office hours",
+     expect: [n_office_hours]}  # an unverified sender still gets public information
+  # ---- typos --------------------------------------------------------------------------------------------------
+  - {id: typo-last-week-invoice, category: typo, say: "what did Meera say last wek abut the invoce?",
+     expect: [v_meera_invoice], absent: [v_meera_coffee]}
+  - {id: typo-zeeshan-contract, category: typo, say: "what did Zeeshn write abut the contrct",
+     expect: [v_zeeshan_contract]}
+  # ---- a second language --------------------------------------------------------------------------------------
+  - {id: multilingual-es-invoice, category: multilingual, say: "¿qué dijo Meera la semana pasada sobre la factura?",
+     expect: [v_meera_invoice], absent: [v_meera_coffee]}
+  - {id: multilingual-hinglish-contract, category: multilingual, say: "Zeeshan ne contract ke baare mein kya likha",
+     expect: [v_zeeshan_contract]}
+  # ---- words that must not find a visitor and must never taint the turn (an accidental match blocks a relay) ----
+  - {id: stopword-yes-please, category: stopword, say: "yes please",
+     absent: [v_zeeshan_contract, v_zeeshan_lease, v_meera_invoice, v_meera_coffee], no_taint: true}
+  - {id: stopword-send, category: stopword, say: "send",
+     absent: [v_zeeshan_contract, v_zeeshan_lease, v_meera_invoice, v_meera_coffee], no_taint: true}
+  - {id: stopword-ok, category: stopword, say: "ok",
+     absent: [v_zeeshan_contract, v_zeeshan_lease, v_meera_invoice, v_meera_coffee], no_taint: true}
+
+# Every query above whose category is not privacy_negative and that runs as the owner is asked again as a
+# colleague, as a stranger and in a group chat. Nothing the owner alone may read can come back (the sources without
+# `visible_to` for that audience), and the turn is not tainted.
+audiences: [colleague, stranger, group]
