@@ -79,6 +79,7 @@ def test_gate_job_keeps_its_name_and_needs():
         "images",
         "secrets",
         "tests-required",
+        "evidence",
     } == set(jobs["result"]["needs"])
     # A hung e2e job must not hold a pull request for long, but a green shard takes 9 to 14 minutes, so the limit has to
     # leave room above that: 25 for the shards, 15 for the short smoke set.
