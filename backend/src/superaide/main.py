@@ -251,6 +251,9 @@ def create_app(agent: Agent | None = None) -> FastAPI:
 
     app.include_router(make_contact_record_router())  # /app/people/{id}: one person's record (#500)
 
+    from superaide.briefing.routes import make_router as make_briefing_router
+
+    app.include_router(make_briefing_router(get_agent))  # while you were away: briefing and drafted replies (#485)
     from superaide.commitments.routes import make_router as make_commitments_router
 
     app.include_router(make_commitments_router())  # the promises ledger (#480)

@@ -24,6 +24,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from superaide.approvals import buttons as approval_buttons
 from superaide.channels.base import MESSENGER_FACTORIES, PRESS_HANDLERS, Button, InboundAction
 from superaide.identity.models import ChannelIdentity, Person
 from superaide.identity.trust import Trust
@@ -70,6 +71,8 @@ def _owner_identity(session: Session, esc: Escalation, action: InboundAction) ->
 
 def on_telegram_press(bot_token: str, action: InboundAction) -> str:
     """Handle one press; returns what the presser is told. Never raises: the press is always answered."""
+    if action.data.startswith(approval_buttons.PREFIX + ":"):  # an approval card's Approve / Cancel (#642)
+        return approval_buttons.on_press(bot_token, action)
     reply = "That button has expired."
     try:
         reply = press(action)
