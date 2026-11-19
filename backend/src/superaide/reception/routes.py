@@ -13,16 +13,17 @@ from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from superaide.app.deps import owner_person_id
 from superaide.identity.auth.routes import reject_nul_text, require_csrf_header
 from superaide.identity.models import Person
+from superaide.memory.models import Context
 from superaide.platform.audit import audit
 from superaide.platform.db.session import require, session_scope
 from superaide.platform.tenancy.context import scope_or_default
-from superaide.reception import ask, card
+from superaide.reception import ask, card, takeover, takeover_send
 from superaide.reception.models import ReceptionMessage, ReceptionSettings, VisitorQuestion
 from superaide.reception.service import card_preferences, greeting, settings_for
 from superaide.reception.turn import has_card
@@ -53,6 +54,13 @@ class SettingsBody(BaseModel):
     per_hour: int | None = Field(default=None, ge=1, le=60)
     per_day: int | None = Field(default=None, ge=1, le=500)
     urgent_over_cap: bool | None = None
+    takeover_idle_minutes: int | None = Field(default=None, ge=takeover.MIN_MINUTES, le=takeover.MAX_MINUTES)
+
+
+class WriteBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    text: str = Field(min_length=1, max_length=takeover.MAX_TEXT)
 
 
 class PreviewLine(BaseModel):
@@ -100,6 +108,7 @@ def view(s: Session, rs: ReceptionSettings, owner: Person, agent_name: str) -> d
         "per_hour": rs.per_hour,
         "per_day": rs.per_day,
         "urgent_over_cap": rs.urgent_over_cap,
+        "takeover_idle_minutes": takeover.window_minutes(s, owner.id),  # 0: the deployment turned takeover off
         "greeting": greeting(
             agent_name, owner, rs, has_card=has_card(s, owner, rs)
         ),  # what a stranger's first reply starts with
@@ -289,5 +298,90 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             if problem:
                 raise HTTPException(409, problem)
             return question_view(q, _name_of(s, q.identity_id))
+
+    @router.get(
+        "/receptionist/conversations",
+        summary="Conversations you can step into",
+        description=(
+            "People Ava doesn't know who wrote in the last 30 days, one row each, newest first, with whether you are "
+            "handling the conversation yourself (Ava stays out of it until you hand it back or you go quiet)."
+        ),
+    )
+    def conversations(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        with session_scope() as s:
+            if not takeover.enabled():
+                raise HTTPException(404, "Not found")
+            rows = s.execute(
+                select(ReceptionMessage.context_id, func.max(ReceptionMessage.created_at))
+                .where(
+                    ReceptionMessage.agent_id == scope_or_default().agent_id,
+                    ReceptionMessage.created_at >= datetime.now(UTC) - WINDOW,
+                )
+                .group_by(ReceptionMessage.context_id)
+                .order_by(func.max(ReceptionMessage.created_at).desc())
+                .limit(50)
+            ).all()
+            out = []
+            for context_id, last in rows:
+                ctx = s.get(Context, context_id)
+                if ctx is None:
+                    continue
+                row = takeover.active(s, context_id)
+                out.append(
+                    {
+                        "context_id": str(context_id),
+                        "provider": ctx.provider,
+                        "name": takeover.visitor_name(s, ctx),
+                        "last_at": last.isoformat(),
+                        "takeover": takeover.view(s, row) if row else None,
+                        "messages": takeover.recent(s, context_id) if row else [],
+                    }  # fmt: skip
+                )
+            return {"conversations": out, "handling": sum(1 for c in out if c["takeover"]),
+                    "idle_minutes": takeover.window_minutes(s, person_id)}  # fmt: skip
+
+    def _visitor_context(s: Session, context_id: uuid.UUID, owner_id: uuid.UUID) -> Context:
+        ctx = s.scalar(select(Context).where(Context.id == context_id, Context.agent_id == scope_or_default().agent_id))
+        if not takeover.enabled() or ctx is None or not takeover.is_visitor_context(s, ctx, owner_id):
+            raise HTTPException(404, "Not found")
+        return ctx
+
+    @router.post(
+        "/receptionist/conversations/{context_id}/write",
+        summary="Write to a visitor yourself",
+        description=(
+            "Sends your own words to that person (labelled as from you, not Ava) and takes the conversation over: Ava "
+            "does not reply there, but reads what you wrote, until you hand it back or stay silent for the idle window."
+        ),
+    )
+    def write(context_id: uuid.UUID, body: WriteBody, person_id: uuid.UUID = Depends(owner_person_id)) -> dict:
+        with session_scope() as s:
+            owner = require(s, Person, person_id)
+            ctx = _visitor_context(s, context_id, owner.id)
+            try:
+                taken, delivered = takeover_send.write(s, ctx, owner, body.text)
+            except takeover_send.RateLimited as exc:
+                raise HTTPException(429, str(exc)) from exc
+            if not taken:
+                raise HTTPException(409, "Ava is paused, or there was nothing to send.")
+            row = takeover.active(s, ctx.id)
+            return {
+                "delivered": delivered,
+                "notice": "" if delivered else takeover_send.UNDELIVERED,
+                "takeover": takeover.view(s, row) if row else None,
+            }  # fmt: skip
+
+    @router.post(
+        "/receptionist/conversations/{context_id}/release",
+        summary="Give control back to Ava",
+        description="Ava answers this conversation again from the visitor's next message.",
+    )
+    def release(context_id: uuid.UUID, person_id: uuid.UUID = Depends(owner_person_id)) -> dict:
+        with session_scope() as s:
+            ctx = _visitor_context(s, context_id, person_id)
+            row = takeover.active(s, ctx.id)
+            if row is not None:
+                takeover.release(s, row, "owner")
+            return {"released": row is not None}
 
     return router

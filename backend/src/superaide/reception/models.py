@@ -12,7 +12,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, text
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -39,7 +39,33 @@ class ReceptionSettings(Scoped, Base):
     # Owner opt-in (#477): a message that looks urgent may still notify after the sender's hourly cap of
     # notifications is used up. Off: urgency never lifts the cap.
     urgent_over_cap: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    # Live takeover (#493): minutes without a message from the owner after which Ava takes a conversation back.
+    # NULL: the deployment default (`TAKEOVER_IDLE_MINUTES`, 150).
+    takeover_idle_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+
+class Takeover(Scoped, Base):
+    """The owner is handling a visitor's conversation themselves (#493). While `status` is `active`, code stops Ava from
+    replying in `context_id`; what the visitor writes is still stored, and what the owner writes is kept as context.
+    Ava takes the conversation back when the owner says so (`released`, reason `owner` or `command`) or after the owner
+    has been silent for the idle window (reason `idle`). At most one active row per conversation."""
+
+    __tablename__ = "takeover"
+    __table_args__ = (
+        Index("ix_takeover_agent_status", "agent_id", "status", "last_owner_message_at"),
+        Index("uq_takeover_active_context", "context_id", unique=True, postgresql_where=text("status = 'active'")),
+    )
+
+    context_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("context.id"))
+    owner_person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"))
+    status: Mapped[str] = mapped_column(String(10), default="active")  # active | released
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    last_owner_message_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ended_reason: Mapped[str] = mapped_column(String(10), default="")  # "" | idle | owner | command
+    # When the owner was last told the visitor wrote again (at most once in `takeover.PING_EVERY`).
+    notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class VisitorQuestion(Scoped, Base):

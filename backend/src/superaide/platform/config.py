@@ -443,6 +443,11 @@ class Settings(BaseSettings):
     # cancels the whole batch; sending, money, deleting and access are never batched (approvals/batching.py).
     # 0 = off: one card per request, the batch routes answer 404. (A number, not a flag: the flag budget is full.)
     approval_batch_max: int = Field(default=25, ge=0, le=25)
+    # Live takeover (#493): when the owner writes in a visitor's conversation Ava stops replying there (she still
+    # reads what the owner wrote) and takes it back after this many minutes without a message from the owner, or when
+    # the owner hands it back. 150 by default; each owner can change theirs in Settings. 0 = off: Ava never steps out
+    # and the takeover routes answer 404. (A number, not a flag: the flag budget is full.)
+    takeover_idle_minutes: int = Field(default=150, ge=0, le=1440)
     # Mandate suggestions (#408): after this many approved, identical own-calendar requests Ava offers a narrow,
     # revocable mandate ("Always do this kind of thing?"). 0 = no offer. Needs MANDATES_ENABLED.
     mandate_suggest_after: int = Field(default=5, ge=0, le=100)
