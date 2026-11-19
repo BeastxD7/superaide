@@ -283,6 +283,13 @@ class FakeApp:
 
         return register
 
+    def action(self, pattern):
+        def register(fn):
+            self.listeners["action"] = fn
+            return fn
+
+        return register
+
 
 class FakeSocketModeHandler:
     def __init__(self, app: FakeApp, app_token: str) -> None:
@@ -308,7 +315,7 @@ def test_the_socket_mode_handler_uses_both_tokens_and_listens_for_dms_and_mentio
     handler = socket_mode_handler("xoxb-bot", "xapp-app", OUR_TEAM, lambda m: None)
     assert isinstance(handler, FakeSocketModeHandler) and handler.app_token == "xapp-app"
     assert handler.app.token == "xoxb-bot"
-    assert set(handler.app.listeners) == {"message", "app_mention"}
+    assert set(handler.app.listeners) == {"message", "app_mention", "action"}  # action: approval card buttons (#642)
 
 
 def test_socket_mode_events_reach_the_handler_as_verified_messages(fake_bolt):
@@ -353,3 +360,26 @@ def test_run_socket_mode_starts_the_handler(fake_bolt, monkeypatch):
     monkeypatch.setattr(slack, "socket_mode_handler", spy)
     run_socket_mode("xoxb-bot", "xapp-app", OUR_TEAM, lambda m: None)
     assert len(built) == 1 and built[0].started
+
+
+def test_a_button_press_is_acknowledged_first_and_handed_to_the_press_handler(fake_bolt):
+    from superaide.channels.base import PRESS_HANDLERS
+
+    seen: list[Any] = []
+    order: list[str] = []
+    saved = PRESS_HANDLERS.get("slack")
+    PRESS_HANDLERS["slack"] = lambda token, action: (order.append("handled"), seen.append((token, action)))
+    try:
+        handler = slack.socket_mode_handler("xoxb-1", "xapp-1", "T_OURS", lambda m: None)
+        body = {
+            "type": "block_actions", "api_app_id": "A1", "team": {"id": "T_OURS"}, "user": {"id": "U1"},
+            "trigger_id": "t1", "channel": {"id": "D1"}, "message": {"ts": "1.2"},
+            "actions": [{"action_id": "ap1:x:y", "value": "ap1:x:y"}],
+        }  # fmt: skip
+        handler.app.listeners["action"](lambda: order.append("ack"), body)
+        assert order == ["ack", "handled"] and seen[0][0] == "xoxb-1" and seen[0][1].sender_id == "U1"
+        handler.app.listeners["action"](lambda: order.append("ack"), {"type": "view_submission"})
+        assert len(seen) == 1  # not a button press: acknowledged, nothing handled
+    finally:
+        if saved is not None:
+            PRESS_HANDLERS["slack"] = saved

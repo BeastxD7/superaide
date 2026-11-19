@@ -174,6 +174,9 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     from superaide.app.providers import make_router as make_providers_router
 
     app.include_router(make_providers_router(get_agent, apply_connections))
+    from superaide.app.media_settings import make_router as make_media_providers_router
+
+    app.include_router(make_media_providers_router(apply_connections))
     from superaide.integrations.gmail.routes import make_router as make_gmail_router
 
     app.include_router(make_gmail_router(get_agent))
@@ -247,6 +250,9 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     from superaide.reception.routes import make_router as make_reception_router
 
     app.include_router(make_reception_router(get_agent))  # receptionist (ADR 0010 TR5)
+    from superaide.briefing.routes import make_router as make_briefing_router
+
+    app.include_router(make_briefing_router(get_agent))  # while you were away: briefing and drafted replies (#485)
     from superaide.commitments.routes import make_router as make_commitments_router
 
     app.include_router(make_commitments_router())  # the promises ledger (#480)
