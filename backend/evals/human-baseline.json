@@ -10,7 +10,7 @@
   "human-group-chat-ignored": "pass",
   "human-injection-in-stranger-text": "pass",
   "human-limit-notice-reads-well": "known_gap",
-  "human-meera-claim-note": "known_gap",
+  "human-meera-claim-note": "pass",
   "human-meera-replay": "pass",
   "human-name-allowed": "pass",
   "human-name-withheld": "pass",

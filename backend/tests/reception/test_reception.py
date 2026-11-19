@@ -17,7 +17,7 @@ from superaide.approvals.models import Approval
 from superaide.brain.llm import FakeLLM
 from superaide.brain.spend.budget import BudgetExceeded
 from superaide.channels.base import FakeMessenger, InboundMessage
-from superaide.identity.models import ChannelIdentity, Person
+from superaide.identity.models import ChannelIdentity, LinkChallenge, Person
 from superaide.intentions.models import Intention
 from superaide.jobs.handlers import load
 from superaide.jobs.models import Job
@@ -593,6 +593,23 @@ def test_a_claimed_name_starts_the_challenge_and_the_reply_never_says_whether_it
     sent_codes = codes_sent(outbox["slack"])
     assert len(sent_codes) == 1  # the real Priya got a code on her own channel; the unknown name got nothing
     assert sent_codes[0] not in known.reply and sent_codes[0] not in unknown.reply
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["it is about the project we were supposed to work on", "please tell them it is important", "this is urgent"],
+)
+def test_an_ordinary_sentence_gets_no_linking_note_and_starts_no_challenge(
+    owner_world, ava, script, outbox, colleague, text
+):
+    """#616: "it is important" is not a name, so no challenge starts and the visitor is not told a code was sent."""
+    r = ava.handle(hello(text))
+    assert r.reply is not None and service.CLAIM_NOTE not in r.reply and "sent a code" not in r.reply
+    with session_scope() as s:
+        assert s.scalars(select(LinkChallenge)).all() == []
+    from tests.conftest import codes_sent
+
+    assert codes_sent(outbox["slack"]) == []
 
 
 def test_an_unconfirmed_owner_account_on_a_new_bot_gets_the_confirm_flow_not_the_receptionist(

@@ -22,6 +22,43 @@ def test_claim_and_code_detection():
     assert detect_code("1234567") is None
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        "it is about the project we were supposed to work on",
+        "please tell them it is important",
+        "this is urgent",
+        "this is about the invoice",
+        "it's not working",
+        "its a long story",
+        "I'm trying to reach Ananya",
+        "I am here to ask something",
+        "it is what it is",
+        "this is working now",
+        "it's raining",
+    ],
+)
+def test_ordinary_sentences_are_not_name_claims(text):
+    """#616: a sentence with "it is" / "this is" in it never starts the linking challenge."""
+    assert detect_claimed_name(text) is None
+
+
+@pytest.mark.parametrize(
+    ("text", "name"),
+    [
+        ("I'm Meera", "Meera"),
+        ("this is Meera Iyer", "Meera Iyer"),
+        ("it is Rahul Verma and I need help", "Rahul Verma"),
+        ("It's Jordan from the other number", "Jordan"),
+        ("hello, this is meera iyer", "meera iyer"),
+        ("it is about the thing. I'm Priya", "Priya"),
+        ("I am Ananya Menon", "Ananya Menon"),
+    ],
+)
+def test_real_name_claims_still_detected(text, name):
+    assert detect_claimed_name(text) == name
+
+
 def test_unknown_sender_gets_stranger_mode(agent, model):
     result = agent.handle(tg("999", "hello"))
     assert result.mode == "stranger"
