@@ -13,6 +13,7 @@ import type { PersonCard } from '@/lib/api'
 import { initialOf } from '@/lib/initial'
 import { usePaginated } from '@/lib/paginated'
 import { useSession } from '@/lib/session-context'
+import { PendingFriends } from '@/features/dashboard/people/PendingFriends'
 
 // Where someone is recognised, or that they are not yet. The table shows it as a column from the small
 // breakpoint up; below it the same line sits under the name, so a phone loses nothing (#300).
@@ -48,6 +49,7 @@ export function PeoplePage() {
           {name} treats these people as yours. VIPs always get through to you, even in quiet hours. She recognises
           someone on a channel only once they&apos;ve linked it, never from a name alone.
         </p>
+        <PendingFriends />
         {error && (
           <div className="mt-4">
             <Notice tone="error">{error}</Notice>

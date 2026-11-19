@@ -1084,6 +1084,28 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "HandleBody": {
+        "additionalProperties": false,
+        "properties": {
+          "handle": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Handle",
+            "type": "string"
+          },
+          "provider": {
+            "maxLength": 20,
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "handle"
+        ],
+        "title": "HandleBody",
+        "type": "object"
+      },
       "HireBody": {
         "properties": {
           "accepted_notice": {
@@ -7658,6 +7680,141 @@
         ]
       }
     },
+    "/app/friends/pending": {
+      "get": {
+        "description": "Accounts acknowledged as a contact's (a username you listed, or an invite you made) but not trusted yet. Each shows the platform's immutable id; the username and name are ones the sender chose.",
+        "operationId": "pending_app_friends_pending_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Pending App Friends Pending Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Accounts waiting for your approval",
+        "tags": [
+          "Owner: people & rules"
+        ]
+      }
+    },
+    "/app/friends/{identity_id}/approve": {
+      "post": {
+        "description": "Links the account to the contact. From then on Ava recognises it, greets them by name and may share what you allow for them.",
+        "operationId": "approve_app_friends__identity_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Identity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Approve App Friends  Identity Id  Approve Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Approve an account as this contact",
+        "tags": [
+          "Owner: people & rules"
+        ]
+      }
+    },
+    "/app/friends/{identity_id}/decline": {
+      "post": {
+        "description": "Keeps the account a stranger and stops asking about it.",
+        "operationId": "decline_app_friends__identity_id__decline_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identity_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Identity Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Decline App Friends  Identity Id  Decline Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Decline an account",
+        "tags": [
+          "Owner: people & rules"
+        ]
+      }
+    },
     "/app/gmail": {
       "get": {
         "description": "Installed, connected, drafts, and the address.",
@@ -11187,6 +11344,179 @@
           }
         ],
         "summary": "Forget a fact about a person",
+        "tags": [
+          "Owner: people & rules"
+        ]
+      }
+    },
+    "/app/people/{contact_id}/handles": {
+      "post": {
+        "description": "A Telegram username or id, or a Slack member id. A username only makes a sender an unverified friend you must approve; an id you type is your own approval.",
+        "operationId": "add_handle_app_people__contact_id__handles_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contact_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Contact Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HandleBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Add Handle App People  Contact Id  Handles Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "List an account for a contact",
+        "tags": [
+          "Owner: people & rules"
+        ]
+      }
+    },
+    "/app/people/{contact_id}/handles/{handle_id}/remove": {
+      "post": {
+        "description": "Removes the listed account. An account already approved stays linked until it is unlinked.",
+        "operationId": "remove_handle_app_people__contact_id__handles__handle_id__remove_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contact_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Contact Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "handle_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Handle Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Remove Handle App People  Contact Id  Handles  Handle Id  Remove Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Stop listing an account for a contact",
+        "tags": [
+          "Owner: people & rules"
+        ]
+      }
+    },
+    "/app/people/{contact_id}/invite": {
+      "post": {
+        "description": "A Telegram link for this contact, valid a week and only through this bot. Whoever opens it is acknowledged as an unverified friend and waits for your approval. `available` is false until Telegram is connected.",
+        "operationId": "invite_app_people__contact_id__invite_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contact_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Contact Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Invite App People  Contact Id  Invite Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "A one-time invite link for a contact",
         "tags": [
           "Owner: people & rules"
         ]

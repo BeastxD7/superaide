@@ -186,6 +186,8 @@ _MOVED = {
     "ChannelIdentity": "superaide.identity.models",
     "ChannelInvite": "superaide.identity.models",
     "ConsolidationRun": "superaide.memory.models",
+    "ContactHandle": "superaide.identity.models",
+    "FriendCandidate": "superaide.identity.models",
     "Contact": "superaide.memory.models",
     "Context": "superaide.memory.models",
     "Document": "superaide.memory.models",

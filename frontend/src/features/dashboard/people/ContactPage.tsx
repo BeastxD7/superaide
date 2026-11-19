@@ -14,13 +14,20 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { CATEGORY_LABEL, CHANNEL_LABEL, capitalise } from '@/features/dashboard/data'
 import { errorMessage } from '@/lib/action'
-import { call, type ContactFact, type ContactRecord } from '@/lib/api'
+import { call, type ContactFact, type ContactRecord, type FriendTier } from '@/lib/api'
 import { formatDay } from '@/lib/dates'
 import { useResource } from '@/lib/use-resource'
 import { useSession } from '@/lib/session-context'
 
 // One person: what Ava knows about them, where each thing came from and who may be told it. The owner edits the
 // relationship, VIP and private notes, and can forget a fact (Ava stops using it; the row is kept, retired).
+const TIER_LABEL: Record<FriendTier, string> = {
+  colleague: 'Colleague',
+  verified_friend: 'Verified friend',
+  unverified_friend: 'Unverified: waiting for your approval',
+  not_linked: 'Not linked yet',
+}
+
 export function ContactPage() {
   const { id } = useParams<{ id: string }>()
   const { me } = useSession()
@@ -87,6 +94,9 @@ function Record({ record, assistant, reload }: { record: ContactRecord; assistan
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <h1 className="text-3xl font-medium text-ink tight [overflow-wrap:anywhere]">{record.name}</h1>
         {record.vip && <Badge>VIP</Badge>}
+        <Badge className="font-normal" data-tier={record.tier}>
+          {TIER_LABEL[record.tier]}
+        </Badge>
       </div>
       <p className="mt-1 text-body">
         Everything {assistant} holds about {record.name}, where it came from and who may be told it. Forgetting a fact stops{' '}
@@ -112,6 +122,8 @@ function Record({ record, assistant, reload }: { record: ContactRecord; assistan
           <p className="mt-2 text-sm text-muted">Not linked yet. {assistant} only recognises someone from a linked account, never a name.</p>
         )}
       </section>
+
+      <Accounts record={record} assistant={assistant} reload={reload} />
 
       <section className="mt-4 rounded-xl border border-line bg-white p-4" aria-labelledby="yours">
         <h2 id="yours" className="text-sm font-medium text-ink">
@@ -194,5 +206,110 @@ function Record({ record, assistant, reload }: { record: ContactRecord; assistan
         </ul>
       )}
     </>
+  )
+}
+
+// Accounts the owner lists for this person, and a one-time invite link. A username only makes the sender an
+// unverified friend the owner approves; an id typed here is the owner's own approval.
+function Accounts({ record, assistant, reload }: { record: ContactRecord; assistant: string; reload: () => Promise<unknown> }) {
+  const [provider, setProvider] = useState('telegram')
+  const [handle, setHandle] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [invite, setInvite] = useState<{ available: boolean; url?: string; expires_days?: number } | null>(null)
+
+  async function run(fn: () => Promise<unknown>) {
+    setError(null)
+    try {
+      await fn()
+      await reload()
+    } catch (e) {
+      setError(errorMessage(e))
+    }
+  }
+
+  return (
+    <section className="mt-4 rounded-xl border border-line bg-white p-4" aria-labelledby="accounts">
+      <h2 id="accounts" className="text-sm font-medium text-ink">
+        Their accounts
+      </h2>
+      <p className="mt-1 text-xs text-muted">
+        List an account and {assistant} acknowledges it, but only shares what is public until you approve it. A name in a
+        message never counts.
+      </p>
+      {record.handles.length > 0 && (
+        <ul className="mt-3 space-y-1 text-sm text-body">
+          {record.handles.map((h) => (
+            <li key={h.id} className="flex items-center gap-3">
+              <span>
+                {CHANNEL_LABEL[h.provider] ?? capitalise(h.provider)} {h.kind === 'id' ? `id ${h.value}` : `@${h.value}`}
+              </span>
+              <button
+                className="touch:min-h-11 text-xs font-medium text-muted hover:text-danger"
+                onClick={() => void run(() => call(`/people/${record.id}/handles/${h.id}/remove`, { method: 'POST' }))}
+              >
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <form
+        className="mt-3 flex flex-wrap items-end gap-2"
+        onSubmit={(e) => {
+          e.preventDefault()
+          void run(async () => {
+            await call(`/people/${record.id}/handles`, { method: 'POST', json: { provider, handle } })
+            setHandle('')
+          })
+        }}
+      >
+        <div>
+          <Label htmlFor="acct-provider">Channel</Label>
+          <select
+            id="acct-provider"
+            value={provider}
+            onChange={(e) => setProvider(e.target.value)}
+            className="mt-1 h-9 rounded-md border border-line bg-white px-2 text-sm"
+          >
+            <option value="telegram">Telegram</option>
+            <option value="slack">Slack</option>
+          </select>
+        </div>
+        <div className="min-w-40 flex-1">
+          <Label htmlFor="acct-handle">{provider === 'telegram' ? 'Username or id' : 'Member id'}</Label>
+          <Input
+            id="acct-handle"
+            value={handle}
+            maxLength={200}
+            placeholder={provider === 'telegram' ? '@meera_i' : 'U01ABCDEF'}
+            onChange={(e) => setHandle(e.target.value)}
+            className="mt-1"
+          />
+        </div>
+        <Button size="sm" type="submit" disabled={!handle.trim()}>
+          List account
+        </Button>
+      </form>
+      <div className="mt-4 border-t border-line pt-3">
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => void run(async () => setInvite(await call(`/people/${record.id}/invite`, { method: 'POST' })))}
+        >
+          Make an invite link
+        </Button>
+        {invite && !invite.available && (
+          <p role="status" className="mt-2 text-sm text-body">
+            Connect Telegram first: <Link href="/dashboard/connections" className="underline">Connections</Link>.
+          </p>
+        )}
+        {invite?.available && (
+          <p role="status" className="mt-2 text-sm text-body [overflow-wrap:anywhere]">
+            Send this to {record.name} (works once, {invite.expires_days} days): <span className="font-mono">{invite.url}</span>
+          </p>
+        )}
+      </div>
+      <ActionError action="save that" error={error} />
+    </section>
   )
 }

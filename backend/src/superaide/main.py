@@ -245,6 +245,9 @@ def create_app(agent: Agent | None = None) -> FastAPI:
 
     app.include_router(make_reception_router(get_agent))  # receptionist (ADR 0010 TR5)
     from superaide.app.api import make_contact_record_router
+    from superaide.identity.api import make_friends_router
+
+    app.include_router(make_friends_router(get_agent))  # friends: handles, approval, invites (#479, #504)
 
     app.include_router(make_contact_record_router())  # /app/people/{id}: one person's record (#500)
     from superaide.tooltrace.audition_routes import make_router as make_audition_routes_router
