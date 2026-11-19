@@ -113,8 +113,8 @@ def test_a_new_state_replaces_the_old_and_clear_ends_it(owner_world):
         presence.set_state(s, owner.id, read("busy until 3 pm"), "Asia/Kolkata", now=T0)
         presence.set_state(s, owner.id, read("driving until 5"), "Asia/Kolkata", now=T0)
         assert presence.active(s, owner.id, T0).kind == "driving"
-        assert presence.clear(s, owner.id) is True and presence.active(s, owner.id, T0) is None
-        assert presence.clear(s, owner.id) is False
+        assert presence.clear(s, owner.id, T0) is True and presence.active(s, owner.id, T0) is None
+        assert presence.clear(s, owner.id, T0) is False
 
 
 def test_the_visitor_line_is_a_fixed_template_with_the_end_time_only(owner_world):

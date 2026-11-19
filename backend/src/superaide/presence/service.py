@@ -68,8 +68,8 @@ def set_state(
     return row
 
 
-def clear(session: Session, person_id: uuid.UUID) -> bool:
-    row = active(session, person_id)
+def clear(session: Session, person_id: uuid.UUID, now: datetime | None = None) -> bool:
+    row = active(session, person_id, now)
     if row is None:
         return False
     row.status = "cleared"
