@@ -52,6 +52,11 @@ KINDS: dict[str, KindInfo] = {
         "there. Say no on every card to ignore the claim.",
         True,
     ),
+    "relay_message": KindInfo(
+        "Send a message to someone who wrote to Ava",
+        "Sends exactly the text on the card to that person, in their own Telegram or Slack chat with Ava.",
+        True,
+    ),
     "message_someone_else": KindInfo(
         "Message someone for you",
         "Nothing: Superaide cannot send messages to other people yet (no web forms, contact pages or chat DMs).",

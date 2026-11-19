@@ -32,6 +32,7 @@ HIGH_RISK = frozenset(
     {
         "publish_post",
         "message_someone_else",
+        "relay_message",
         "grant_access",
         "delete_memory",
         "gmail_send",
