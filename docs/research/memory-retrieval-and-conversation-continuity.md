@@ -415,7 +415,25 @@ The retrieval pipeline is tens of milliseconds. The local model's prompt evaluat
 
 Order: P0/P1 bugs that are model-independent first, then the budget, then approvals, then retrieval.
 
-<!-- ISSUES -->
+| Order | Issue | Kind | Priority | What it delivers | Depends on |
+| --- | --- | --- | --- | --- | --- |
+| 1 | #638 | bug | P1 | Pre-recalled notes reach every OpenAI-compatible model (3.4) | |
+| 2 | #639 | bug | P1 | The email "Correction:" only fires on email sentences; a pending card is stated truthfully (4.2) | |
+| 3 | #640 | bug | P1 | A Slack DM thread keeps the conversation; outbound message ids are stored (3.2) | |
+| 4 | #648 | tests | P1 | Golden-set retrieval metrics and continuity scenarios from this thread; gaps recorded as known until fixed (7.5) | |
+| 5 | #641 | feature | P1 | Context window per model, token budget, truncation detection, compact and minimal tiers (3.5 to 3.7) | |
+| 6 | #642 | feature | P1 | "send" and buttons approve one bound, clean, pending card in the owner's private chat, in code (4.4) | #640 for origin ids |
+| 7 | #644 | feature | P1 | Recall with time, person and kind filters; ranked visitor messages; no accidental taint (5.4) | #648 |
+| 8 | #645 | feature | P1 | Retention keeps everything: no 30-day blind spot, erase is soft (5.1, 5.4) | owner decision |
+| 9 | #643 | feature | P2 | Referents and offers carried to the next turn; unkept promises retried (3.3, 4.3) | #640 |
+| 10 | #646 | feature | P2 | The owner can recall what known people wrote to Ava, as tainted reported speech (5.4) | owner decision |
+| 11 | #649 | feature | P2 | Known non-owners get notes chosen for their question, not the newest five (5.1) | |
+| 12 | #647 | feature | P2 | One derived search index with meaning search for messages, visitor messages and episodes; pluggable embedders; index policy (7.1 to 7.3) | #644, #648 |
+| 13 | #650 | feature | P3 | "Remember that…" merges near-duplicates when said (5.1) | |
+
+Rolling summaries of long threads are already #416 and are not duplicated; #641 leaves the slot for them in the budget. The cross-channel timeline is #512; #644, #646 and #647 are slices of it. The no-hard-delete rule of #415 is extended to sources by #645. #642 and #643 serve the task protocol (#330) and the human-like assistant tracking issue (#488). All thirteen issues are unassigned, labelled `status:triage`, and each carries its own evidence and acceptance tests.
+
+Owner decisions carried into the issues: retention keeps everything, with soft delete only (#645); unverified senders get public information only (pinned by tests in #644, #646, #647 and #649).
 
 Questions for the owner:
 
