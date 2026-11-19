@@ -2,7 +2,7 @@
 # Non-developers: double-click start.command (or `bash start.command`) instead.
 
 .DEFAULT_GOAL := help
-.PHONY: help setup db db-down migrate migration api web dev lint fmt typecheck test e2e e2e-ui eval eval-live eval-gate eval-human eval-ltm-live eval-mem0 test-changed check check-env openapi build stack stack-down clean
+.PHONY: help setup db db-down migrate migration api web dev lint fmt typecheck test e2e e2e-ui eval eval-live eval-gate eval-human eval-retrieval eval-ltm-live eval-mem0 test-changed check check-env openapi build stack stack-down clean
 
 BACKEND = cd backend &&
 FRONTEND = cd frontend &&
@@ -88,12 +88,17 @@ e2e-ui: build ## The same, in Playwright's interactive UI
 
 eval: ## Scenario evals, offline (fake model, free): scorecard in backend/evals/results/
 	$(BACKEND) uv run python -m superaide.evals run
+	$(BACKEND) uv run python -m superaide.evals retrieval
 
 eval-gate: ## Long-term-memory regression gate, offline and free: fails if a scenario regresses (CI runs it via pytest)
 	$(BACKEND) uv run python -m superaide.evals gate
 
 eval-human: ## Human-likeness gate (the Meera replay and more), offline and free: fails if a scenario regresses (CI runs it via pytest)
 	$(BACKEND) uv run python -m superaide.evals gate --suite human
+
+eval-retrieval: ## Retrieval golden set and conversation-continuity gates (#648), offline and free: fails on a drop below evals/*-baseline.json
+	$(BACKEND) uv run python -m superaide.evals gate --suite retrieval
+	$(BACKEND) uv run python -m superaide.evals gate --suite continuity
 
 eval-ltm-live: ## Memory scenarios on the real model (~US$0.10, hard cap US$0.25): scorecard in backend/evals/results/
 	$(BACKEND) uv run python -m superaide.evals run --live --cap 0.25 --name scorecard-ltm-live --env-file $(or $(env),.env) $(foreach c,ltm_inputs ltm_update ltm_temporal ltm_multisession ltm_abstain ltm_canary ltm_ingest ltm_time,--category $(c))
