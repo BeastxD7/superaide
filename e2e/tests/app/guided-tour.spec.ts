@@ -1,6 +1,7 @@
 // The guided tour (#626): the first-run prompt, the spotlight walkthrough, skip, replay, and that the answer is the
 // account's (kept on the server), not the browser's.
 import { expect, query, test } from '../../src/fixtures'
+import { expectTourContrast } from '../../src/helpers/tour-contrast'
 
 test.use({ tourOn: true })
 
@@ -138,3 +139,11 @@ test('with reduced motion the spotlight does not animate', async ({ page, owner 
   const prop = await page.getByTestId('tour-spotlight').evaluate((el) => getComputedStyle(el).transitionProperty)
   expect(prop).toBe('none')
 })
+
+// #657: the headings inherited a global dark `text-ink`, so in dark mode they were dark on a dark card.
+for (const scheme of ['dark', 'light'] as const) {
+  test(`every tour text element meets WCAG AA contrast in ${scheme} mode`, async ({ page, owner }) => {
+    void owner
+    await expectTourContrast(page, scheme)
+  })
+}

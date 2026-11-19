@@ -521,13 +521,15 @@ def ai_key(ctx: Context) -> list[Result]:
         from superaide.platform.db.session import session_scope
 
         with session_scope() as s:
-            found = keyhealth.notice(s, ctx.settings)
+            found = keyhealth.notice(s, ctx.settings, fresh=True)
     except Exception:
         found = {"reason": keyhealth.KEY_MISSING} if keyhealth.missing(ctx.settings) else None
     if found is None:
         return _ok(name)
     reason = found["reason"]
     status = FAIL if reason in (keyhealth.KEY_MISSING, keyhealth.KEY_INVALID) else WARN
+    if reason == keyhealth.CONTEXT_SMALL:  # the notice names the model and its window, and has the exact steps
+        return [Result(name, status, found["message"].removesuffix(" " + found["fix"]), found["fix"])]
     return [Result(name, status, keyhealth.CAUSES[reason], keyhealth.FIXES[reason])]
 
 

@@ -225,7 +225,10 @@ returned to the model as an error result); each `ToolResult` becomes a `role: to
 rendered as text with markers (section 5); `effort` becomes `reasoning_effort` where the model supports it;
 `max_tokens` becomes `max_completion_tokens`; streaming always sends `stream_options.include_usage`;
 `reasoning_content` / `reasoning` deltas (DeepSeek, OpenRouter, Ollama) become `ReasoningDelta`; and
-`finish_reason` values `stop`, `tool_calls`, `length` and `content_filter` map onto `StopReason`. Structured
+Reasoning is for the owner's live thinking view only: a `Reasoning` part never becomes text of a
+reply, and `<think>...</think>` blocks in the answer text are removed (streamed and final) for every
+provider. Ollama requests are sent with `reasoning_effort: "none"`, so local thinking models (qwen3,
+deepseek-r1) answer directly. `finish_reason` values `stop`, `tool_calls`, `length` and `content_filter` map onto `StopReason`. Structured
 output uses `response_format: json_schema` (strict) where supported, with a strict-schema transform
 (`additionalProperties: false`, every property required, optional fields as nullable). Otherwise it uses JSON
 mode, otherwise instructions; it then validates, retries once with the error, and refuses after that.

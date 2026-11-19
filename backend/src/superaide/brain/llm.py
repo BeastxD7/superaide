@@ -175,7 +175,7 @@ class ProviderLLM:
                 on_event("text", {"delta": event.text})
             elif isinstance(event, t.ReasoningDelta):
                 on_event("thinking", {"delta": event.text})
-            elif isinstance(event, t.PartDone):
+            elif isinstance(event, t.PartDone) and not _hidden(event.part):
                 on_event("block", {"block": part_to_wire(event.part)})
 
         step = self.provider.step(
@@ -183,7 +183,9 @@ class ProviderLLM:
             max_tokens=max_tokens, effort=effort, on_event=relay if on_event is not None else None,
         )  # fmt: skip
         content = [
-            part_to_wire(p) for p in step.parts if not (isinstance(p, t.Text) and not p.text and not p.citations)
+            part_to_wire(p)
+            for p in step.parts
+            if not (isinstance(p, t.Text) and not p.text and not p.citations) and not _hidden(p)
         ]
         usage = UsageCounts(
             input_tokens=step.usage.input_tokens,
@@ -268,6 +270,14 @@ class RoutedLLM:
             result.text = restore_any(result.text, mapping)
             result.parsed = restore_any(result.parsed, mapping)
         return result
+
+
+def _hidden(part: Any) -> bool:
+    """A reasoning part that is not Claude's own signed thinking. Converting it to wire would make it a
+    plain text block, which the tool loop joins into the reply: reasoning must never become answer text."""
+    from superaide.brain.providers.types import Reasoning
+
+    return isinstance(part, Reasoning) and "anthropic" not in (part.provider_data or {})
 
 
 def placeholder_note(mapping: dict[str, str]) -> str:

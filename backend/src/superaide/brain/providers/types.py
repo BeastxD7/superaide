@@ -90,6 +90,15 @@ class ToolResult:
 
 
 @dataclass
+class SourceBlock:
+    """Sources attached straight to a user message (notes found before the model ran), not to a tool
+    result. Claude reads them natively; other providers get them as `[source ...]` text."""
+
+    sources: list[SourceDoc]
+    provider_data: dict[str, Any] | None = None
+
+
+@dataclass
 class HostedToolCall:
     """A tool the provider runs itself (e.g. Anthropic's web_search server tool)."""
 
@@ -108,7 +117,7 @@ class HostedToolResult:
     provider_data: dict[str, Any] | None = None
 
 
-ContentPart = Text | Reasoning | ToolCall | ToolResult | HostedToolCall | HostedToolResult
+ContentPart = Text | Reasoning | ToolCall | ToolResult | SourceBlock | HostedToolCall | HostedToolResult
 
 
 @dataclass
@@ -230,7 +239,7 @@ def sources_in(parts: list[ContentPart]) -> list[SourceDoc]:
     for p in parts:
         if isinstance(p, ToolResult) and isinstance(p.content, list):
             out.extend(p.content)
-        elif isinstance(p, HostedToolResult):
+        elif isinstance(p, (HostedToolResult, SourceBlock)):
             out.extend(p.sources)
     return out
 
