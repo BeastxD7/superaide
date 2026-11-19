@@ -28,6 +28,7 @@ Category = Literal[
     "triage",
     "receptionist",
     "human",  # a human-like assistant for people Ava doesn't know (#484): replayed conversations, gated in CI
+    "continuity",  # the next turn knows the last one: thread history, what a tool showed, "send", prompt size (#648)
     "notify",  # a push to the owner when a channel is down: retried, failed over, listed, never twice (#491)
     # Long-term memory (#51). Retrieval, learning and the audience gate are graded in code, offline.
     "ltm_inputs",  # a fact arriving by each path (chat, Telegram, Slack, intro, file, link, correction) is kept
@@ -130,6 +131,8 @@ class World(Strict):
     # Channels that are down at the start: provider -> minutes until they work again (a long one: never in this run).
     # Pushes to them raise DeliveryFailed, and Telegram and Slack are reachable through the real notify code.
     outage: dict[Literal["telegram", "slack"], int] = Field(default_factory=dict)
+    # Gmail can save drafts (the owner connected it): a reply about sending is checked differently (capabilities.py).
+    gmail_drafts: bool = False
 
 
 class FakeTool(Strict):
@@ -184,6 +187,8 @@ class Turn(Strict):
     fake: FakeTurn | None = None
     press: Press | None = None
     share: Share | None = None  # a file or link shared through the ingest pipeline (ltm_ingest)
+    # Slack: write in a thread under Ava's latest reply, as the platform sends it (thread_ts = the reply's ts).
+    thread_under_ava: bool = False
 
     @model_validator(mode="after")
     def _something(self) -> Turn:

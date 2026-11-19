@@ -247,6 +247,10 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     from superaide.app.api import make_contact_record_router
 
     app.include_router(make_contact_record_router())  # /app/people/{id}: one person's record (#500)
+
+    from superaide.commitments.routes import make_router as make_commitments_router
+
+    app.include_router(make_commitments_router())  # the promises ledger (#480)
     from superaide.tooltrace.audition_routes import make_router as make_audition_routes_router
 
     app.include_router(make_audition_routes_router(get_agent))  # 404 everywhere while its flag is off
