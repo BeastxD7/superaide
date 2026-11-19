@@ -800,6 +800,7 @@ src = [
 tests = [
   "frontend/src/features/dashboard/**/*.test.ts",
   "frontend/src/features/dashboard/**/*.test.tsx",
+  "frontend/src/features/reception/**/*.test.tsx",
 ]
 e2e = [
   "e2e/tests/policy/halt-resume.spec.ts",
