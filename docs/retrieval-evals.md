@@ -30,7 +30,7 @@ Meera Iyer, the colleague Priya Tan.
 a thread under Ava's message carries the turn before, "send" with one clean card sends and with two asks which, a turn
 that read a stranger's words cannot create a card or be approved by text, a reply about a Telegram message gets no email
 correction, and the prompt size. `evals/continuity-baseline.json` records the scenarios for behaviour that is not built
-yet as `known_gap` (#640 to #643); `make eval-retrieval` also gates them.
+yet as `known_gap` (#641 to #643); `make eval-retrieval` also gates them.
 
 Not written yet because the behaviour they grade has no hook: a prompt over the model's window is trimmed by rule and
 audited, and the compact tier stays under 2,500 tokens (both need the context window and tiers of #641).

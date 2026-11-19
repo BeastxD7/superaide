@@ -31,7 +31,6 @@
   category: continuity
   severity: high
   based_on: "#640: a thread under Ava's own message started with no history"
-  known_gap: "#640: Ava's outbound posts are stored without the Slack ts, so the thread root is unknown"
   title: In a Slack DM, a reply in a thread under Ava's message carries the turn before it
   turns:
     - who: owner
@@ -150,7 +149,6 @@
   category: continuity
   severity: high
   based_on: '#639: "Correction: I can email people for you" appended to a Telegram relay reply'
-  known_gap: "#639: the capability check matches any sentence that says Ava cannot message people, on any channel"
   title: A reply about messaging someone on Telegram gets no email correction
   world: {gmail_drafts: true}
   turns:
