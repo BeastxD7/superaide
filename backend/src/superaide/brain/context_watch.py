@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from superaide.brain import context_window as cw
 from superaide.platform.audit import audit
-from superaide.policy.killswitch import get_state, set_state
+from superaide.policy.killswitch import get_state
 
 log = logging.getLogger(__name__)
 
@@ -49,6 +49,23 @@ def window_for(session: Session, model_id: str, *, probe: bool = True) -> cw.Win
         base_url=row.base_url,
         override=override if isinstance(override, int) else None,
         probe=probe,
+    )
+
+
+def _save(session: Session, value: dict[str, Any]) -> None:
+    """Upsert the state row without expiring the caller's objects: this runs in the middle of a turn."""
+    from sqlalchemy.dialects.postgresql import insert
+
+    from superaide.platform.db.models import AgentState
+    from superaide.platform.tenancy.context import scope_or_default
+
+    scope = scope_or_default()
+    session.flush()
+    stmt = insert(AgentState).values(tenant_id=scope.tenant_id, agent_id=scope.agent_id, key=STATE_KEY, value=value)
+    session.execute(
+        stmt.on_conflict_do_update(
+            index_elements=[AgentState.tenant_id, AgentState.agent_id, AgentState.key], set_={"value": value}
+        )
     )
 
 
@@ -100,9 +117,8 @@ def observe(
             "budget": cw.input_budget(info.tokens, max_tokens),
         }
         audited = before.get("audited") if recent else now.isoformat()
-        set_state(
-            session, STATE_KEY, {**detail, "at": first or now.isoformat(), "seen": now.isoformat(), "audited": audited}
-        )
+        stamps = {"at": first or now.isoformat(), "seen": now.isoformat(), "audited": audited}
+        _save(session, {**detail, **stamps})
         if not recent:
             audit(session, "brain", "prompt_truncated", **detail)
             if owner_notice:

@@ -47,7 +47,7 @@ def big_turn(s, reported: int) -> OwnerTurn:
     turn.model = local_model(s) if not s.scalar(select(LlmProvider)) else "ollama::qwen3:8b"
     turn.llm = Cutting(Script("ok"))
     turn.llm.reported = reported
-    turn.brief = "Rule: be kind. " * 2_000  # about 7,000 tokens once estimated
+    turn.brief = "Rule: be kind. " * 1_000  # roughly 10,000 tokens once estimated
     return turn
 
 
@@ -78,7 +78,7 @@ def test_a_cut_prompt_is_audited_once_shown_and_told_to_the_owner_once(owner_cli
 
 def test_a_prompt_the_server_read_whole_is_not_flagged(owner_client):  # noqa: F811
     with session_scope() as s:
-        turn = big_turn(s, 6_500)
+        turn = big_turn(s, 9_000)
         turn.run([{"role": "user", "content": "hi"}])
         assert rows(s, "prompt_truncated") == []
         assert context_watch.current(s) is None

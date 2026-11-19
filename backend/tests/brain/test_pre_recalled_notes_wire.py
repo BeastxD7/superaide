@@ -63,14 +63,15 @@ def test_an_openai_compatible_turn_sends_the_note_and_can_cite_it():
         person = hired_owner(s)
         assert person is not None
         m = note(s, person.id, "Jordan's favourite cuisine is Thai food.")
+        mid = m.id  # the fake server reports 10 prompt tokens, which the turn notes as a cut prompt (expires m)
         server = Server(completion(f"Thai food [ava://memory/{m.id}]."))
         p, _ = provider(server, prices=PriceRegistry({("openai", "claude-haiku-5-5"): PRICE}))
         turn = turn_for(s, lambda *a: None, text="what is my favourite cuisine?")
         turn.llm = ProviderLLM(p)
         result = turn.run([{"role": "user", "content": "what is my favourite cuisine?"}])
     sent = [x for x in server.requests[0]["messages"] if x["role"] == "user"][-1]["content"]
-    assert LEAD in sent and "Jordan's favourite cuisine is Thai food." in sent and f"ava://memory/{m.id}" in sent
-    assert [c.uri for c in result.sources] == [f"ava://memory/{m.id}"]  # the reply's citation resolves
+    assert LEAD in sent and "Jordan's favourite cuisine is Thai food." in sent and f"ava://memory/{mid}" in sent
+    assert [c.uri for c in result.sources] == [f"ava://memory/{mid}"]  # the reply's citation resolves
     assert result.text.startswith("Thai food [1].")
 
 
