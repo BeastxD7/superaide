@@ -458,7 +458,7 @@ def visitor_sources(
 
 def visitor_report(session: Session, owner_id: uuid.UUID, aud: Audience, hours: int) -> str:
     """The section of `channel_activity` about direct messages from people Ava does not know. '' for non-owners."""
-    if aud.person_ids != {owner_id}:
+    if aud.has_unknown or aud.person_ids != {owner_id}:
         return ""
     rows = visitor_rows(session, aud, hours=hours)
     span = f"in the last {hours} hours"
