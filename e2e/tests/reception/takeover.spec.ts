@@ -36,6 +36,9 @@ test.describe('live takeover', () => {
     const quiet = await visitorSays(admin, 'Thanks, are you still there?')
     expect(quiet.mode).toBe('takeover')
     expect(quiet.reply).toBeNull()
+    await page.reload()
+    await expect(page.getByTestId('takeover-messages')).toContainText('Thanks, are you still there?')
+    await expect(page.getByTestId('takeover-messages')).toContainText('Hi Meera, I will call you at noon.')
 
     await page.setViewportSize({ width: 360, height: 740 })
     await row.evaluate((el) => el.scrollIntoView())

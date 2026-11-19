@@ -801,6 +801,8 @@ export type VisitorConversationView = {
   name: string
   last_at: string
   takeover: TakeoverView | null
+  // The last messages, only while the owner is handling it. `from: 'visitor'` is their words: unverified, show quoted.
+  messages: { from: 'visitor' | 'owner' | 'ava'; text: string; at: string }[]
 }
 
 // A question someone Ava doesn't know asked that she couldn't answer (#494). `question` and `name` are theirs: show quoted.

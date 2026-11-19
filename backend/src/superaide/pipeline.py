@@ -308,9 +308,11 @@ class Agent:
                 self._reply(s, ctx, aud, reply, thread, retry=True)
                 return HandleResult("unconfirmed", reply)
 
-            if not (sender.known and self._is_owner(s, sender)) and takeover.active(s, ctx.id) is not None:
-                # The owner is handling this conversation (#493): what was written is stored, nobody answers it.
+            if not (sender.known and self._is_owner(s, sender)) and (held := takeover.active(s, ctx.id)) is not None:
+                # The owner is handling this conversation (#493): what was written is stored and the owner is
+                # told (fixed words), nobody answers it.
                 audit(s, "takeover", "no_reply", event_id=inbound.id)
+                takeover.visitor_wrote(s, held)
                 return HandleResult("takeover", None, ["owner_handling"])
 
             if not sender.known:

@@ -64,6 +64,8 @@ class Takeover(Scoped, Base):
     last_owner_message_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ended_reason: Mapped[str] = mapped_column(String(10), default="")  # "" | idle | owner | command
+    # When the owner was last told the visitor wrote again (at most once in `takeover.PING_EVERY`).
+    notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class VisitorQuestion(Scoped, Base):

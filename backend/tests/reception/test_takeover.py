@@ -226,3 +226,59 @@ def test_the_routes_need_the_owner_and_validate_the_window(owner_world, ava, scr
         assert owner_world["client"].put("/app/receptionist", json={"takeover_idle_minutes": bad}).status_code == 422
     assert write(owner_world, "00000000-0000-0000-0000-000000000000", "").status_code == 422
     set_reception(takeover_idle_minutes=None)
+
+
+def owner_notes(kind: str) -> list[str]:
+    with session_scope() as s:
+        return [e.content for e in s.scalars(select(Event).where(Event.meta["kind"].as_string() == kind))]
+
+
+def test_the_owner_sees_what_the_visitor_writes_and_is_told_once_in_fixed_words(owner_world, ava, script):
+    visitor_says(ava, script)
+    cid = context_id(owner_world)
+    write(owner_world, cid, "Hi Meera")
+    visitor_says(ava, script, "Please call me: it is about the invoice <b>today</b>")
+    visitor_says(ava, script, "Hello??")
+    [note] = owner_notes("takeover_visitor")  # the second message within 10 minutes adds no second note
+    assert note == takeover.PING and "invoice" not in note
+    row = owner_world["client"].get(BASE).json()["conversations"][0]
+    mine = [(m["from"], m["text"]) for m in row["messages"]]
+    assert ("visitor", "Please call me: it is about the invoice <b>today</b>") in mine  # data, quoted by the app
+    assert ("owner", "Hi Meera") in mine
+    with session_scope() as s:
+        r = s.scalar(select(Takeover))
+        assert r is not None
+        r.notified_at = datetime.now(UTC) - timedelta(minutes=11)
+    visitor_says(ava, script, "Still waiting")
+    assert len(owner_notes("takeover_visitor")) == 2
+
+
+def test_the_person_is_told_once_that_the_owner_joined_and_every_message_says_it_is_not_ava(
+    owner_world, ava, script, outbox
+):
+    visitor_says(ava, script)
+    cid = context_id(owner_world)
+    write(owner_world, cid, "first")
+    write(owner_world, cid, "second")
+    first, second = replies(outbox)[-2:]
+    assert "has joined this chat" in first and "Ava is not replying" in first
+    assert "has joined" not in second and "(not Ava)" in second
+
+
+def test_an_owner_cannot_flood_a_conversation(owner_world, ava, script):
+    from superaide.reception import takeover_send
+
+    visitor_says(ava, script)
+    cid = context_id(owner_world)
+    for i in range(takeover_send.PER_HOUR):
+        assert write(owner_world, cid, f"m{i}").status_code == 200
+    assert write(owner_world, cid, "one more").status_code == 429
+
+
+def test_the_owner_is_told_when_ava_takes_the_conversation_back_by_herself(owner_world, ava, script):
+    visitor_says(ava, script)
+    write(owner_world, context_id(owner_world))
+    age(takeover.window_minutes_default() + 1)
+    assert visitor_says(ava, script, "Hello?").reply
+    [note] = owner_notes("takeover_back")
+    assert "is back in your chat" in note and "Hello" not in note

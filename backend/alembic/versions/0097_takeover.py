@@ -33,6 +33,7 @@ def upgrade() -> None:
         sa.Column("last_owner_message_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("ended_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("ended_reason", sa.String(length=10), nullable=False),
+        sa.Column("notified_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("id", sa.UUID(), nullable=False),
         sa.Column("tenant_id", sa.UUID(), nullable=False),
         sa.Column("agent_id", sa.UUID(), nullable=False),

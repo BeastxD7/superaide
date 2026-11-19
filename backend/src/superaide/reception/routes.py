@@ -334,6 +334,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                         "name": takeover.visitor_name(s, ctx),
                         "last_at": last.isoformat(),
                         "takeover": takeover.view(s, row) if row else None,
+                        "messages": takeover.recent(s, context_id) if row else [],
                     }  # fmt: skip
                 )
             return {"conversations": out, "handling": sum(1 for c in out if c["takeover"]),
@@ -357,7 +358,10 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         with session_scope() as s:
             owner = require(s, Person, person_id)
             ctx = _visitor_context(s, context_id, owner.id)
-            taken, delivered = takeover_send.write(s, ctx, owner, body.text)
+            try:
+                taken, delivered = takeover_send.write(s, ctx, owner, body.text)
+            except takeover_send.RateLimited as exc:
+                raise HTTPException(429, str(exc)) from exc
             if not taken:
                 raise HTTPException(409, "Ava is paused, or there was nothing to send.")
             row = takeover.active(s, ctx.id)

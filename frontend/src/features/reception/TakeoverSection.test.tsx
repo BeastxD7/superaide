@@ -11,10 +11,11 @@ vi.mock('@/features/dashboard/data', () => ({
   }),
 }))
 
-import { resumesIn, TakeoverSection } from '@/features/reception/TakeoverSection'
+import { resumesIn } from '@/features/reception/resumes-in'
+import { TakeoverSection } from '@/features/reception/TakeoverSection'
 
 const c = (over: Partial<VisitorConversationView>): VisitorConversationView => ({
-  context_id: 'c1', provider: 'telegram', name: 'Meera', last_at: '', takeover: null, ...over,
+  context_id: 'c1', provider: 'telegram', name: 'Meera', last_at: '', takeover: null, messages: [], ...over,
 })
 
 // The owner-is-handling-this indicator and the hand-back button appear only while a takeover is active (#493).
@@ -37,6 +38,17 @@ describe('TakeoverSection', () => {
     const out = html(<TakeoverSection agentName="Ava" />)
     expect(out).toContain('You’re handling this. Ava isn’t replying here.')
     expect(out).toContain('Give control back to Ava')
+  })
+
+  it('shows what they wrote quoted and escaped while the owner handles it', () => {
+    const takeover = { started_at: '', last_owner_message_at: '', resumes_at: new Date(Date.now() + 60000).toISOString() }
+    state.conversations = [
+      c({ takeover, messages: [{ from: 'visitor', text: '<img src=x onerror=alert(1)> call me', at: '1' }, { from: 'owner', text: 'On it', at: '2' }] }),
+    ]
+    const out = html(<TakeoverSection agentName="Ava" />)
+    expect(out).toContain('call me”')
+    expect(out).not.toMatch(/<img/i)
+    expect(out).toContain('You: ')
   })
 
   it('escapes markup in the visitor’s name', () => {

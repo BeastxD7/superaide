@@ -4,20 +4,27 @@ channel notification code."""
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from superaide.identity.models import Person
 from superaide.memory.audience import Audience
-from superaide.memory.models import Context
+from superaide.memory.models import Context, Event
 from superaide.platform.audit import audit
 from superaide.reception import ask
 from superaide.reception.inbox import plain
-from superaide.reception.takeover import MAX_TEXT, start_or_refresh
+from superaide.reception.takeover import MAX_TEXT, _row, start_or_refresh
 
 LABEL = "Message from {who} (not Ava): {text}"
+JOINED = "{who} has joined this chat (not Ava). Ava is not replying now. Message from {who}: {text}"
+PER_HOUR = 30  # messages the owner can send into one conversation in an hour
 UNDELIVERED = "Saved, but that channel is not connected or refused it. Ava is still stepped out."
+
+
+class RateLimited(Exception):
+    pass
 
 
 def write(session: Session, ctx: Context, owner: Person, text: str) -> tuple[bool, bool]:
@@ -34,7 +41,22 @@ def write(session: Session, ctx: Context, owner: Person, text: str) -> tuple[boo
     if is_frozen(session):
         return False, False
     now = datetime.now(UTC)
-    label = LABEL.format(who=ask.owner_ref(session, owner), text=body)
+    recent = session.scalar(
+        select(func.count())
+        .select_from(Event)
+        .where(
+            Event.context_id == ctx.id,
+            Event.direction == "out",
+            Event.meta.has_key("owner_live"),
+            Event.created_at >= now - timedelta(hours=1),
+        )
+    )
+    if (recent or 0) >= PER_HOUR:
+        audit(session, "takeover", "rate_limited", context_id=ctx.id)
+        raise RateLimited(f"That's {PER_HOUR} messages in an hour to this conversation. Try again in a while.")
+    who = ask.owner_ref(session, owner)
+    joining = _row(session, ctx.id) is None  # the person is told once that a human has joined (never Ava pretending)
+    label = (JOINED if joining else LABEL).format(who=who, text=body)
     delivered = False
     messenger = notify.messenger_for(ctx.provider)
     if messenger is not None:

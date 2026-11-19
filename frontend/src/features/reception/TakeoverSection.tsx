@@ -7,16 +7,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { useAppData } from '@/features/dashboard/data'
 import { errorMessage } from '@/lib/action'
 import { call, type VisitorConversationView } from '@/lib/api'
+import { resumesIn } from '@/features/reception/resumes-in'
 
 const WHERE: Record<string, string> = { telegram: 'Telegram', slack: 'Slack' }
-
-export function resumesIn(resumesAt: string, now: number = Date.now()): string {
-  const minutes = Math.max(0, Math.round((new Date(resumesAt).getTime() - now) / 60000))
-  if (minutes < 1) return 'any moment now'
-  if (minutes < 60) return `in about ${minutes} minute${minutes === 1 ? '' : 's'}`
-  const hours = Math.round(minutes / 6) / 10
-  return `in about ${hours} hours`
-}
 
 // "Step into a conversation" (#493): write to someone yourself and Ava stays out of that conversation (she still reads what
 // you wrote). She takes it back when you press the button, tell her to, or stay silent for the idle window.
@@ -92,6 +85,16 @@ export function TakeoverSection({ agentName }: { agentName: string }) {
                 <p className="text-xs text-muted">She takes it back {resumesIn(c.takeover.resumes_at)} unless you write again.</p>
               </>
             ) : null}
+            {c.takeover && c.messages.length > 0 && (
+              <ul className="space-y-1 text-sm" aria-label="Recent messages" data-testid="takeover-messages">
+                {c.messages.map((m, i) => (
+                  <li key={`${m.at}-${i}`} className={m.from === 'owner' ? 'text-ink' : 'text-body'}>
+                    <span className="text-xs text-muted">{m.from === 'owner' ? 'You' : m.from === 'ava' ? agentName : 'Them'}: </span>
+                    {m.from === 'visitor' ? `“${m.text}”` : m.text}
+                  </li>
+                ))}
+              </ul>
+            )}
             <Textarea
               aria-label={`Your message to ${c.name || 'this person'}`}
               rows={2}

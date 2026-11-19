@@ -41,6 +41,10 @@ log = logging.getLogger(__name__)
 MIN_MINUTES = 5
 MAX_MINUTES = 1440
 MAX_TEXT = 1000
+PING_EVERY = timedelta(minutes=10)  # at most one "they wrote again" note per takeover in this time
+SHOWN = 12  # messages of the conversation shown to the owner beside the panel
+PING = "A person you're chatting with wrote again. Open Settings to read it and reply: /dashboard/settings#takeover"
+BACK = "{agent} is back in your chat with {who} after {minutes} minutes without a message from you."
 RELEASE_CMD = re.compile(
     r"^\s*(?:(?:ava|hey ava)[,:]?\s+)?(?:please\s+)?(?:take (?:it |the (?:chat|conversation) )?(?:back|over again)|"
     r"(?:give|hand)(?: (?:control|the (?:chat|conversation)|it))? back(?: to ava)?|"
@@ -76,6 +80,61 @@ def _row(session: Session, context_id: uuid.UUID) -> Takeover | None:
 def release(session: Session, row: Takeover, reason: str, now: datetime | None = None) -> None:
     row.status, row.ended_at, row.ended_reason = "released", now or datetime.now(UTC), reason
     audit(session, "takeover", "released", context_id=row.context_id, reason=reason)
+    if reason == "idle":
+        _tell_owner_back(session, row)
+
+
+def _tell_owner_back(session: Session, row: Takeover) -> None:
+    """Fixed text, no visitor words: Ava took the conversation back by herself, so the owner is told (in the app)."""
+    from superaide.proactive.notify import notify_owner
+
+    owner = session.get(Person, row.owner_person_id)
+    ctx = session.get(Context, row.context_id)
+    if owner is None or ctx is None:
+        return
+    who = visitor_name(session, ctx) or "that person"
+    minutes = window_minutes(session, row.owner_person_id)
+    text = BACK.format(agent=get_settings().agent_name, who=who, minutes=minutes)
+    try:
+        with session.begin_nested():
+            notify_owner(session, owner, text, {"kind": "takeover_back", "source": f"takeover:{row.id}"}, channel="app")
+    except Exception:
+        log.exception("couldn't tell the owner the chat is back with Ava")
+
+
+def visitor_wrote(session: Session, row: Takeover, now: datetime | None = None) -> None:
+    """The visitor wrote while the owner is handling it: the owner is told once in a while, in fixed words, and reads
+    the message in the app (it is data there, quoted; it is never put in the notification or in the owner's chat)."""
+    from superaide.proactive.notify import notify_owner
+
+    now = now or datetime.now(UTC)
+    if row.notified_at is not None and now - row.notified_at < PING_EVERY:
+        return
+    owner = session.get(Person, row.owner_person_id)
+    if owner is None:
+        return
+    row.notified_at = now
+    try:
+        with session.begin_nested():
+            notify_owner(session, owner, PING, {"kind": "takeover_visitor", "source": f"takeover:{row.id}"})
+    except Exception:
+        log.exception("couldn't tell the owner the visitor wrote")
+
+
+def recent(session: Session, context_id: uuid.UUID) -> list[dict[str, str]]:
+    """The last messages of the conversation for the owner's panel. `text` is the visitor's own words where `from` is
+    "visitor": unverified data, shown quoted."""
+    rows = session.scalars(
+        select(Event)
+        .where(Event.context_id == context_id, ~Event.meta.has_key("ambient"))
+        .order_by(Event.created_at.desc(), Event.id)
+        .limit(SHOWN)
+    ).all()
+    out = []
+    for e in reversed(rows):
+        who = "visitor" if e.direction == "in" else ("owner" if (e.meta or {}).get("owner_live") else "ava")
+        out.append({"from": who, "text": e.content[:500], "at": e.created_at.isoformat()})
+    return out
 
 
 def active(session: Session, context_id: uuid.UUID, now: datetime | None = None) -> Takeover | None:
