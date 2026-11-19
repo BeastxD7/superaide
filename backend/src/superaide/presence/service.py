@@ -19,18 +19,19 @@ from superaide.presence.parse import Parsed
 NOTICE = "They're not available until {at}. Your message is passed on, and they'll see it after that."
 
 
-def _local(at: datetime, tz: str) -> str:
+def _local(at: datetime, tz: str, now: datetime | None = None) -> str:
+    """`now` is the caller's clock (the same one that decided `at`), so "today" never disagrees with it."""
     local = at.astimezone(ZoneInfo(tz))
     return (
         f"{local:%H:%M} {local.tzname() or tz}"
-        if local.date() == datetime.now(ZoneInfo(tz)).date()
+        if local.date() == (now or datetime.now(UTC)).astimezone(ZoneInfo(tz)).date()
         else (f"{local:%a %H:%M} {local.tzname() or tz}")
     )
 
 
-def visitor_line(until: datetime, tz: str) -> str:
+def visitor_line(until: datetime, tz: str, now: datetime | None = None) -> str:
     """The only words a visitor hears: no kind, no reason, no place. A fixed template filled with the end time."""
-    return NOTICE.format(at=_local(until, tz))
+    return NOTICE.format(at=_local(until, tz, now))
 
 
 def active(session: Session, person_id: uuid.UUID, now: datetime | None = None) -> PresenceState | None:
@@ -60,7 +61,7 @@ def set_state(
         old.status = "cleared"
     row = PresenceState(
         person_id=person_id, kind=parsed.kind, valid_from=now, valid_until=parsed.until,
-        allow_relations=list(parsed.allow_relations), visitor_line=visitor_line(parsed.until, tz),
+        allow_relations=list(parsed.allow_relations), visitor_line=visitor_line(parsed.until, tz, now),
     )  # fmt: skip
     session.add(row)
     session.flush()

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+import pytest
 import time_machine
 from sqlalchemy import select
 
@@ -29,6 +30,14 @@ from tests.reception.test_reception import (  # noqa: F401  (fixtures and helper
 )
 
 ARRIVED = datetime(2026, 10, 27, 10, 52, tzinfo=UTC)  # 16:22 in Asia/Kolkata
+
+
+@pytest.fixture(autouse=True)
+def _daytime_clock():
+    """Quiet hours (22:00-07:00) hold every push, so a test that reads the wall clock fails after 22:00 in the owner's
+    zone (main went red at 00:05 IST). Every test here starts at a fixed afternoon and the clock keeps running."""
+    with time_machine.travel(ARRIVED, tick=True):
+        yield
 
 
 def reason(rank: str, name: str = "", provider: str = "telegram") -> str:
@@ -110,3 +119,29 @@ def test_a_reception_note_stays_in_the_app_for_an_owner_who_chose_the_app(
     assert outbox["telegram"].sent == []
     with session_scope() as s:
         assert s.scalars(select(Event).where(Event.meta["kind"].astext == "message_taken")).all()
+
+
+@pytest.mark.parametrize(
+    ("at", "pushed"),
+    [
+        (ARRIVED, 1),  # 16:22 IST
+        (
+            datetime(2026, 10, 27, 18, 35, tzinfo=UTC),
+            0,
+        ),  # 00:05 IST: quiet hours hold the push, the note stays in the app
+        (datetime(2026, 10, 27, 1, 30, tzinfo=UTC), 1),  # 07:00 IST: quiet hours just ended
+    ],
+    ids=["afternoon", "after-midnight-ist", "quiet-hours-end"],
+)
+def test_the_telegram_push_of_a_note_follows_the_owners_clock_not_the_machines(
+    owner_world, ava, script, outbox, monkeypatch, at, pushed
+):
+    """Guards the 00:05 IST failure of main: the result depends on the owner's local time only."""
+    _telegram_up(monkeypatch, outbox)
+    with session_scope() as s:
+        preferences_for(s, hired_owner(s)).interrupt_channel = "telegram"
+        preferences_for(s, hired_owner(s)).timezone = "Asia/Kolkata"
+    script.out = ReceptionTurn(reply="Noted.", take_message=TakenMessage(name="Sam Lee", topic="quote", message="x"))
+    with time_machine.travel(at, tick=False):
+        ava.handle(hello("send quote"))
+    assert len([m for m in outbox["telegram"].sent if m.get("stable_key") == "9001"]) == pushed
