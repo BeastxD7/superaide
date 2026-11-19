@@ -27,6 +27,7 @@ Category = Literal[
     "chitchat",
     "triage",
     "receptionist",
+    "human",  # a human-like assistant for people Ava doesn't know (#484): replayed conversations, gated in CI
     "notify",  # a push to the owner when a channel is down: retried, failed over, listed, never twice (#491)
     # Long-term memory (#51). Retrieval, learning and the audience gate are graded in code, offline.
     "ltm_inputs",  # a fact arriving by each path (chat, Telegram, Slack, intro, file, link, correction) is kept
