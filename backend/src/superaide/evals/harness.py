@@ -147,6 +147,14 @@ class OutageMessenger(FakeMessenger):
             raise DeliveryFailed(self.provider, "unreachable", f"{self.provider} is unreachable")
         return super().send_dm(identity, text)
 
+    def send_to_context(self, context: Any, text: str, thread_id: str = "", sources: Any = None) -> Any:
+        if self.up_at is None or datetime.now(UTC) < self.up_at:
+            from superaide.channels.health import DeliveryFailed
+
+            self.refused += 1
+            raise DeliveryFailed(self.provider, "unreachable", f"{self.provider} is unreachable")
+        return super().send_to_context(context, text, thread_id, sources)
+
 
 class OfflineModel:
     """The fake model for offline runs: a turn's scripted `fake:` (tool calls, then a reply),
@@ -173,6 +181,12 @@ class OfflineModel:
         from superaide.reception.turn import ReceptionTurn, TakenMessage
 
         if output_model is ReceptionTurn:
+            if fake.reception == "budget":
+                from superaide.brain.spend.budget import BudgetExceeded
+
+                raise BudgetExceeded("today's receptionist limit", "bucket")
+            if fake.reception == "down":
+                raise ConnectionError("the model provider is overloaded")
             return ReceptionTurn(
                 reply=fake.reply if self.turn else "Hello! I can pass a message on if you like.",
                 take_message=TakenMessage.model_validate(fake.take) if fake.take else None,
