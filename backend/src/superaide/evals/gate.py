@@ -21,7 +21,13 @@ BASELINE = Path(__file__).resolve().parents[3] / "evals" / "ltm-baseline.json"
 HUMAN_BASELINE = Path(__file__).resolve().parents[3] / "evals" / "human-baseline.json"
 LTM = tuple(c for c in CATEGORIES if c.startswith("ltm_"))
 HUMAN = ("human",)
-SUITES = {"ltm": (LTM, BASELINE), "human": (HUMAN, HUMAN_BASELINE)}
+CONTINUITY_BASELINE = Path(__file__).resolve().parents[3] / "evals" / "continuity-baseline.json"
+CONTINUITY = ("continuity",)
+SUITES = {
+    "ltm": (LTM, BASELINE),
+    "human": (HUMAN, HUMAN_BASELINE),
+    "continuity": (CONTINUITY, CONTINUITY_BASELINE),
+}
 # The lowest share of a category's scenarios that may pass, known gaps counted as failures. The per-scenario
 # baseline stops a regression; this stops the category from being "fixed" by recording ever more known gaps.
 MIN_PASS_RATE = {"ltm_time": 0.65, "human": 0.8}  # human: 20 of 24 pass today, the rest are tracked gaps
@@ -29,6 +35,10 @@ MIN_PASS_RATE = {"ltm_time": 0.65, "human": 0.8}  # human: 20 of 24 pass today, 
 
 def ltm_scenarios() -> list[Scenario]:
     return [s for s in load_all() if s.category in LTM]
+
+
+def continuity_scenarios() -> list[Scenario]:
+    return [s for s in load_all() if s.category in CONTINUITY]
 
 
 def human_scenarios() -> list[Scenario]:
@@ -65,6 +75,10 @@ def below_threshold(results: Mapping[str, bool], by_category: Mapping[str, str])
 
 
 def run_gate(update: bool = False, suite: str = "ltm") -> int:
+    if suite == "retrieval":  # metrics per category rather than scenarios: its own module (#648)
+        from superaide.evals import retrieval
+
+        return retrieval.run_gate(update=update)
     from superaide.evals.harness import reset_db, run_scenario
 
     categories, baseline_path = SUITES[suite]

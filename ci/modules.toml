@@ -602,6 +602,18 @@ e2e = [
   "e2e/tests/rehearsal/rehearsal.spec.ts",
 ]
 
+[modules.commitments]
+src = [
+  "backend/src/superaide/commitments/**",
+]
+tests = [
+  "backend/tests/commitments/**",
+]
+e2e = [
+  "e2e/tests/commitments/commitments.spec.ts",
+  "e2e/tests/commitments/commitments.mobile.spec.ts",
+]
+
 [modules.reminders]
 src = [
   "backend/src/superaide/intentions/**",
