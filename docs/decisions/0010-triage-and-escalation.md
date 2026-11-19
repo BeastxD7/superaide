@@ -744,3 +744,14 @@ owner's quiet hours the note stays in the app and nothing is pushed. The note ca
 next owner turn replays it as "[Notification the app sent to the owner ..., a real delivery: ...]", so Ava no longer
 disowns it. Open: quiet hours still default to 22:00-07:00 from onboarding (the owner asked for none by default), a digest
 for non-urgent notes, and a settings control for `urgent_over_cap`.
+
+## Owner inbox and awareness (#476, 2026-11)
+
+The owner's private chat has one read-only tool, `inbox` (`reception/inbox.py`), over `reception_message`: who is waiting
+(first name as given, labelled unverified, handle, channel), how many messages, how long, urgency and deadline as
+code read them, and a code-cut excerpt; with an `id`, the stored words as a quote. The prompt also carries one
+code-built line ("People waiting for the owner right now: 1 ...") with a first name cut to letters and no typed words, so
+Ava does not need a tool call to know. A turn that read the words is tainted like a channel read: `propose_action`
+is refused in it, so what a stranger wrote can't make Ava act. Not offered in channels (`SHARED_TOOLS`), never to
+strangers or colleagues. Still open: a conversation state (read, answered, ended) beyond the message status, a
+live refresh, and an Inbox page with unread counts (the "Messages taken" list is the page today).

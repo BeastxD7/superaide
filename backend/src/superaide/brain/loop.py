@@ -46,6 +46,7 @@ from superaide.platform.audit import audit
 from superaide.platform.config import get_settings
 from superaide.policy.actions import action_kinds, decide
 from superaide.proactive.notify import CHANNEL_NAMES, EXTERNAL
+from superaide.reception.api import INBOX_TOOL, QUOTE_MARK, awareness_line, inbox_report
 from superaide.skills import registry
 from superaide.skills.manifest import Skill
 
@@ -198,6 +199,8 @@ def narrate(name: str, args: dict[str, Any]) -> str:
         return "Checking your approval requests"
     if name == "channel_activity":
         return "Checking who pinged you in channels"
+    if name == "inbox":
+        return "Checking who is waiting for you"
     if name == "propose_action":
         return f"Asking for your approval: {str(args.get('summary', ''))[:100]}"
     if name == "calendar_events":
@@ -554,6 +557,9 @@ class OwnerTurn:
         skills = registry.instructions_for(self.skills())
         self._known = who + ("\n\n" + self.brief if self.brief else "")  # facts Ava was told, for the source check
         facts = capabilities.block(self.s, tz=tz, web=self.web)
+        waiting = awareness_line(self.s)  # code-built from stored rows, never from the model
+        if waiting:
+            facts += "\n\n" + waiting
         return [
             SystemBlock(
                 load_charter(self.agent_name)
@@ -582,6 +588,7 @@ class OwnerTurn:
             ACTION_TOOL,
             LIST_APPROVALS_TOOL,
             CHANNEL_ACTIVITY_TOOL,
+            INBOX_TOOL,
         ]
         if self._protocol():
             tools.append(taskplan.PLAN_TOOL)
@@ -690,6 +697,13 @@ class OwnerTurn:
                 report = f"{report}\n\n{visitors}"
             # room messages or a stranger's words were read: no action may rest on this turn
             self.room_read = ROOM_MARK in report or VISITOR_MARK in report
+            return report, False
+        if name == "inbox":
+            assert self.sender.person is not None
+            self.notes.append("inbox")
+            report = inbox_report(self.s, zone(intentions.owner_zone(self.s, self.sender.person)), args)
+            if QUOTE_MARK in report:  # strangers' words entered the turn: information, never instructions
+                self.tainted = self.room_read = True
             return report, False
         if name == "list_approvals":
             self.notes.append("approvals")
