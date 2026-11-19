@@ -6,7 +6,7 @@ Split from `keyhealth.py`, which jobs, knowledge and the providers use to read t
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -36,4 +36,30 @@ def note_owner(session: Session, owner: Any, provider: str, *, what: str = "", r
     else:
         text = CREDITS_NOTE if provider == "credits" else OWNER_NOTE
     notify_owner(session, owner, text + (f" ({what})" if what else ""), {"kind": "ai_key_rejected"}, channel="app")
+    return True
+
+
+TRUNCATION_NOTE_EVERY = timedelta(days=7)
+
+
+def note_truncation(session: Session, model: str, window: int) -> bool:
+    """Tell the owner in the app, once per model per week, that the server cut the start of a prompt (#641)."""
+    from superaide.app.accounts import owner as hired_by
+
+    state = get_state(session, "prompt_truncated_note")
+    now = datetime.now(UTC)
+    try:
+        if model in state and now - datetime.fromisoformat(state[model]) < TRUNCATION_NOTE_EVERY:
+            return False
+    except ValueError:
+        pass
+    boss = hired_by(session)
+    if boss is None:
+        return False
+    set_state(session, "prompt_truncated_note", {**state, model: now.isoformat()})
+    text = (
+        f"The model {model.split('::')[-1]} has a {window:,}-token window and its server cut the start of what I "
+        "was told, so I may have forgotten my rules or the conversation. Open the AI model page to fix it."
+    )
+    notify_owner(session, boss, text, {"kind": "prompt_truncated"}, channel="app")
     return True

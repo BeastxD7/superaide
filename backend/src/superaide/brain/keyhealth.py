@@ -54,7 +54,8 @@ def is_auth_error(exc: BaseException) -> bool:
 # Why the model cannot be used for a configuration reason (#633). The provider layer classifies, the model never does.
 KEY_MISSING, KEY_INVALID, CREDIT_LOW, SPEND_CAP = "key_missing", "key_invalid", "credit_low", "spend_cap"
 CONTEXT_SMALL = "context_small"  # a local Ollama model's window is smaller than Ava's prompt (it would silently cut it)
-REASONS = (KEY_MISSING, KEY_INVALID, CREDIT_LOW, SPEND_CAP, CONTEXT_SMALL)
+CONTEXT_CUT = "context_cut"  # a server read fewer prompt tokens than were sent: it cut the start of the prompt (#641)
+REASONS = (KEY_MISSING, KEY_INVALID, CREDIT_LOW, SPEND_CAP, CONTEXT_SMALL, CONTEXT_CUT)
 TROUBLE_KEY = "ai_trouble"
 TROUBLE_FRESH = timedelta(minutes=60)  # credit and cap trouble is forgotten unless seen again (credits get topped up)
 MODELS_PAGE = "/dashboard/models"
@@ -64,6 +65,7 @@ OWNER_TEXT = {
     CREDIT_LOW: "My AI provider says the account is out of credit. Add credit at the provider, then try again.",
     SPEND_CAP: "I've reached the spending cap, so I'm paused. Raise the cap on the AI model page.",
     CONTEXT_SMALL: "My local model's memory window is too small for me, so I forget things. See the AI model page.",
+    CONTEXT_CUT: "My model's server cut the start of what I was told, so I may forget my rules. See the AI model page.",
 }
 ACTIONS = {
     KEY_MISSING: "Add a key",
@@ -71,6 +73,7 @@ ACTIONS = {
     CREDIT_LOW: "Open AI model settings",
     SPEND_CAP: "Raise the cap",
     CONTEXT_SMALL: "See how to fix it",
+    CONTEXT_CUT: "See how to fix it",
 }
 
 
@@ -80,6 +83,7 @@ CAUSES = {
     CREDIT_LOW: "The AI provider says the account is out of credit.",
     SPEND_CAP: "The spend cap was reached, so model calls are refused.",
     CONTEXT_SMALL: "A local Ollama model's context window is smaller than Ava's prompt, so Ollama cuts it off.",
+    CONTEXT_CUT: "The model's server reported far fewer prompt tokens than were sent: it cut the start of the prompt.",
 }
 FIXES = {
     KEY_MISSING: "Add a key on the AI model page.",
@@ -87,6 +91,7 @@ FIXES = {
     CREDIT_LOW: "Add credit at the provider, then try again.",
     SPEND_CAP: "Raise the limit on the AI model page (or MAX_SPEND_USD).",
     CONTEXT_SMALL: "Make a bigger-window copy of the model with a Modelfile (num_ctx 16384) and choose it.",
+    CONTEXT_CUT: "Give the model a bigger window (Ollama: a Modelfile with num_ctx 16384) or choose a model with one.",
 }
 
 
@@ -176,6 +181,26 @@ def small_context(session: Session, settings: Any, *, fresh: bool = False) -> An
     return None
 
 
+def cut_notice(session: Session) -> dict[str, str] | None:
+    """The server cut a prompt recently (brain/context_watch.py), seen in a reply's token count (#641)."""
+    from superaide.brain import context_watch
+
+    state = context_watch.current(session)
+    if state is None:
+        return None
+    detail = (
+        f"{str(state.get('model', '')).split('::')[-1]} read {state.get('reported', 0):,} tokens of about "
+        f"{state.get('sent_estimate', 0):,} sent (window {state.get('window', 0):,})."
+    )
+    return {
+        "reason": CONTEXT_CUT,
+        "message": f"{detail} {FIXES[CONTEXT_CUT]}",
+        "action": ACTIONS[CONTEXT_CUT],
+        "href": MODELS_PAGE,
+        "fix": FIXES[CONTEXT_CUT],
+    }
+
+
 def notice(session: Session, settings: Any, *, fresh: bool = False) -> dict[str, str] | None:
     """What the owner is told in the app (banner and Check my setup): {"reason", "message", "action", "href"}.
     `fresh` asks a local Ollama again instead of using its answer from the last few minutes."""
@@ -195,7 +220,7 @@ def notice(session: Session, settings: Any, *, fresh: bool = False) -> dict[str,
     if reason is None:
         found = small_context(session, settings, fresh=fresh)
         if found is None:
-            return None
+            return cut_notice(session)
         return {
             "reason": CONTEXT_SMALL,
             "message": f"{found.message} {found.steps}",
