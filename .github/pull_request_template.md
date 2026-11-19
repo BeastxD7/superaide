@@ -103,15 +103,27 @@
 
 <!-- The setting and its default (new behaviour ships off, e.g. TRIAGE_ENABLED=false). Or "None". -->
 
-## Screenshots
+## Before and after
 
-<!-- For UI changes: drag images into the cells. For a flow, also attach a short screen recording or GIF. Blur personal data. -->
+<!-- REQUIRED on every PR, enforced by the "Before and after images" CI check (scripts/check_pr_evidence.py, issue #662):
+     an image under Before and an image under After, in this body. There is no "N/A": a backend-only change shows a
+     rendered screenshot of the real behaviour (the failing-then-passing test output, the API response, the chat),
+     made with `python3 scripts/render_evidence.py`. Text or a code block does not count. Publish the PNGs on the
+     `evidence` branch (pr-<n>/before-*.png, after-*.png) and embed
+     https://raw.githubusercontent.com/BeastxD7/superaide/evidence/pr-<n>/<file>.png, or drag them in here.
+     Editing this description re-runs the check; no push needed. Only Dependabot is exempt. Blur personal data. -->
 
-| Before | After |
-| --- | --- |
-| | |
+### Before (main)
 
-- [ ] N/A: no UI change
+<!-- ![before: what the reader sees on main](https://raw.githubusercontent.com/BeastxD7/superaide/evidence/pr-<n>/before-<name>.png) -->
+
+### After (this branch)
+
+<!-- ![after: what the reader sees on this branch](https://raw.githubusercontent.com/BeastxD7/superaide/evidence/pr-<n>/after-<name>.png) -->
+
+## Where to see the change
+
+<!-- URL, steps and env flags to reproduce it. -->
 
 ## Rollback plan
 
