@@ -75,5 +75,5 @@ and every skill must validate against it before it can be listed or installed.
   without a matching one.
 - **Tool pinning:** each tool's (name, description, inputSchema, annotations) is hashed when the owner approves
   the skill (`mcp/pin.py`). A tool that later differs, and any new tool, is blocked and shown to the owner as a
-  diff until they approve it again. The model never sees a blocked tool. Controlled by `MCP_PINNING`, off until
-  the MCP client that calls `mcp.pin.may_call` ships.
+  diff until they approve it again. The model never sees a blocked tool. There is no switch (the `MCP_PINNING` flag was removed in #403):
+  the MCP client that calls `mcp.pin.may_call` refuses an unpinned or changed tool.

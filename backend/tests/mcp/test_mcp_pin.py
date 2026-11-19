@@ -67,8 +67,8 @@ def test_a_rug_pull_is_blocked_every_time_and_only_that_tool():
             if [ch.tool for ch in c.blocked] == ["send_email"] and c.allowed == ["list_folders", "search"]:
                 blocked += 1
             assert c.blocked[0].kind == "changed" and c.blocked[0].fields
-            assert not pin.may_call(s, skill_id=SKILL, server=SERVER, tool=server.tools[0], enabled=True)
-            assert pin.may_call(s, skill_id=SKILL, server=SERVER, tool=server.tools[1], enabled=True)
+            assert not pin.may_call(s, skill_id=SKILL, server=SERVER, tool=server.tools[0])
+            assert pin.may_call(s, skill_id=SKILL, server=SERVER, tool=server.tools[1])
             s.rollback()
     assert blocked == 100
 
@@ -106,7 +106,7 @@ def test_unpinned_servers_and_other_skills_get_nothing_for_free():
         approve(s, server)
         other = pin.check(s, skill_id="evil/other", server=SERVER, result=server.list_tools())
         assert not other.clean and other.allowed == []
-        assert not pin.may_call(s, skill_id="evil/other", server=SERVER, tool=server.tools[0], enabled=True)
+        assert not pin.may_call(s, skill_id="evil/other", server=SERVER, tool=server.tools[0])
 
 
 def test_ttl_follows_the_server_but_is_bounded_and_defaults_short():
@@ -120,7 +120,7 @@ def test_ttl_follows_the_server_but_is_bounded_and_defaults_short():
     assert pin.ttl_of({"ttlMs": -5}) == pin.DEFAULT_TTL_MS and pin.ttl_of({"ttlMs": True}) == pin.DEFAULT_TTL_MS
 
 
-def test_the_switch_is_off_by_default():
-    assert get_settings().mcp_pinning is False
+def test_there_is_no_switch_an_unpinned_tool_is_always_refused():
+    assert not hasattr(get_settings(), "mcp_pinning")
     with session_scope() as s:
-        assert pin.may_call(s, skill_id="x", server="y", tool={"name": "t"})
+        assert not pin.may_call(s, skill_id="x", server="y", tool={"name": "t"})

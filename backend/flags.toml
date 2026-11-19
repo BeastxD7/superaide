@@ -16,7 +16,7 @@
 # DRAFT: owner, stage and dates below were filled by a script from the current defaults (default true -> stable,
 # default false -> experiment, remove-by 90 days from 2026-11-16). The owner confirms each in review of #402.
 
-budget = 70
+budget = 69
 target = 15
 
 [[flag]]
@@ -94,7 +94,7 @@ issue = "#402"
 
 [[flag]]
 name = "EXPERIMENT_AUDITION"
-summary = "compare 2 or 3 candidate skills side by side on the last tasks (no network, effects stubbed)"
+summary = "compare 2 or 3 candidate skills side by side on the last tasks (read-only: nothing is sent or changed)"
 default = false
 group = "experiment"
 owner = "maintainer"
@@ -311,17 +311,6 @@ group = "owner-decision"
 owner = "maintainer"
 stage = "stable"
 added = "2026-11-16"
-issue = "#402"
-
-[[flag]]
-name = "MCP_PINNING"
-summary = "block an MCP tool whose description or schema changed since the owner approved it"
-default = false
-group = "owner-decision"
-owner = "maintainer"
-stage = "experiment"
-added = "2026-11-16"
-remove_by = "2027-02-14"
 issue = "#402"
 
 [[flag]]

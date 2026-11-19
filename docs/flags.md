@@ -1,7 +1,7 @@
 # Feature flags
 
 Generated from [`backend/flags.toml`](../backend/flags.toml) by `scripts/check_flags.py --write`; do not edit by hand.
-70 flags (budget 70, target 15 owner-facing). A flag that is not `stable` has a remove-by date: it is promoted or deleted by then.
+69 flags (budget 69, target 15 owner-facing). A flag that is not `stable` has a remove-by date: it is promoted or deleted by then.
 
 | Flag | Default | Stage | Owner | Remove by | What it does |
 | --- | --- | --- | --- | --- | --- |
@@ -18,7 +18,7 @@ Generated from [`backend/flags.toml`](../backend/flags.toml) by `scripts/check_f
 | `ECHO_FILTER_ENABLED` | false | experiment | maintainer | 2027-02-14 | facts heard via links, Telegram or Slack are hearsay until confirmed |
 | `ENABLE_API_DOCS` | true | stable | maintainer |  | interactive API docs at /docs (turn off on a public server) |
 | `ENABLE_SIMULATOR` | false | experiment | maintainer | 2027-02-14 | operator console impostor simulator (development only; off unless you turn it on) |
-| `EXPERIMENT_AUDITION` | false | experiment | maintainer | 2027-02-14 | compare 2 or 3 candidate skills side by side on the last tasks (no network, effects stubbed) |
+| `EXPERIMENT_AUDITION` | false | experiment | maintainer | 2027-02-14 | compare 2 or 3 candidate skills side by side on the last tasks (read-only: nothing is sent or changed) |
 | `EXPERIMENT_DISSENT_DESK` | false | experiment | maintainer | 2027-02-14 | three different models answer high-stakes choices (needs DISSENT_MODELS; costs more) |
 | `EXPERIMENT_FORK_NIGHT` | false | experiment | maintainer | 2027-02-14 | three read-only overnight drafts of a choice the owner leaves (model calls) |
 | `EXPERIMENT_MIRROR` | false | experiment | maintainer | 2027-02-14 | "The Mirror": a weekly note of patterns in the owner's own reminders and messages (owners also opt in) |
@@ -41,7 +41,6 @@ Generated from [`backend/flags.toml`](../backend/flags.toml) by `scripts/check_f
 | `MANDATES_ENABLED` | true | stable | maintainer |  | signed mandate cards (can be handed on only narrower; revoking one revokes its children) let Ava do a named limited thing without asking |
 | `MANDATE_SHADOW_ENABLED` | true | stable | maintainer |  | record (never act on) whether a mandate would have covered each approval |
 | `MANDATE_SKIP_ENABLED` | true | stable | maintainer |  | a covering signed mandate lets Ava add or move a no-guest calendar event without a card (Child stage up, untainted, after shadow data) |
-| `MCP_PINNING` | false | experiment | maintainer | 2027-02-14 | block an MCP tool whose description or schema changed since the owner approved it |
 | `MEMORY_RECHECK_ENABLED` | false | experiment | maintainer | 2027-02-14 | digest may ask "is this still true?" about a few lasting facts a week |
 | `MEMORY_SOCKET_ENABLED` | false | experiment | maintainer | 2027-02-14 | read-only MCP endpoint POST /mcp/memory for the owner's other assistants |
 | `NOTIFY_FAILOVER` | true | stable | maintainer |  | a push that stays down is sent on the owner's other linked channel; reception notes follow their interrupt preference |
