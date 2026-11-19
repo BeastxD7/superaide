@@ -149,6 +149,10 @@ export function AuthPage({
           transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
           ref={formRef}
           onSubmit={submit}
+          // Before React is live a scripted or early submit would be the browser's own: a reload of /signup? that
+          // drops `next` and what was typed (#600). `dialog` outside a <dialog> does nothing, so it is held
+          // instead; once live, submit() above handles it and always calls preventDefault.
+          method="dialog"
           className="flex flex-1 flex-col"
           noValidate
         >

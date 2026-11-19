@@ -45,7 +45,9 @@ FORBIDDEN: dict[str, set[str]] = {
     "approvals.footprint": {"policy.actions"},
     "evals.checks": {"evals.harness"},
     # technique 3: notifications find the channel adapters through channels.base registries
-    "proactive.notify": {"channels.telegram", "channels.slack"},
+    # #627: "is a sandbox preview running?" is asked of platform.sandbox_guard; reception.api pulls in relay, which
+    # imports policy.actions, which closed policy.actions -> approvals.outcomes -> proactive.notify again
+    "proactive.notify": {"channels.telegram", "channels.slack", "reception.api", "reception.relay"},
     "channels.telegram": {"triage.buttons"},
     "brain.keyhealth": {"proactive.notify"},
     # technique 4: reactions to "a source was read / removed" are event subscribers, not calls from the skills
