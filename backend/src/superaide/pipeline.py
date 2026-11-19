@@ -1092,12 +1092,13 @@ class Agent:
 
             wire = text + card.footer(s, channel=ctx.provider, to=to)
         failed_kind = ""
+        posted: str | bool | None = None
         try:
             with timing.span("send"):
                 if sources and ctx.kind == "dm":
-                    messenger.send_to_context(ctx, wire, thread, sources=sources)
+                    posted = messenger.send_to_context(ctx, wire, thread, sources=sources)
                 else:
-                    messenger.send_to_context(ctx, strip_citations(wire), thread)
+                    posted = messenger.send_to_context(ctx, strip_citations(wire), thread)
         except DeliveryFailed as exc:  # health is recorded by the messenger; keep the turn and its record
             log.warning("reply not delivered on %s: %s", ctx.provider, exc.kind)
             audit(s, "pipeline", "reply_not_delivered", provider=ctx.provider, reason=exc.kind)
@@ -1108,7 +1109,18 @@ class Agent:
             audit(s, "pipeline", "reply_not_delivered", provider=ctx.provider, reason=type(exc).__name__)
             meta = {**(meta or {}), "undelivered": type(exc).__name__}
             failed_kind = type(exc).__name__
-        sent = log_event(s, context=ctx, direction="out", content=text, audience=aud, thread_id=thread, meta=meta)
+        # The platform's id for what was posted (Slack ts, Telegram message_id), so a thread opened under this
+        # reply finds it as its root (#640). Nothing when the platform refused or gave none.
+        sent = log_event(
+            s,
+            context=ctx,
+            direction="out",
+            content=text,
+            audience=aud,
+            thread_id=thread,
+            meta=meta,
+            external_id=posted if isinstance(posted, str) and not failed_kind else "",
+        )
         if failed_kind and (retry or to is not None) and ctx.provider in {"telegram", "slack"}:
             # A visitor's reply is queued and retried with back-off (#503); the owner's own replies are in the app.
             from superaide.reception.api import queue_visitor_reply
