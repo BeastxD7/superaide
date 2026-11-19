@@ -26,13 +26,21 @@ from superaide.brain import capabilities, taskplan, verify
 from superaide.brain.llm import LLM, StepResult, SystemBlock
 from superaide.brain.spend.budget import BudgetExceeded
 from superaide.brain.turn import load_charter
-from superaide.channels.api import CHANNEL_ACTIVITY_TOOL, ROOM_MARK, channel_activity_report
+from superaide.channels.api import CHANNEL_ACTIVITY_TOOL, ROOM_MARK, channel_activity_report, channel_hours
 from superaide.identity.resolver import Sender
 from superaide.intentions import service as intentions
 from superaide.intentions.when import clean_task, find_moment, names_a_day, zone
 from superaide.memory.audience import Audience
 from superaide.memory.models import Event
-from superaide.memory.recall.retrieval import ROOM_TITLE, Source, pre_recall, recall
+from superaide.memory.recall.retrieval import (
+    ROOM_TITLE,
+    VISITOR_MARK,
+    VISITOR_TITLE,
+    Source,
+    pre_recall,
+    recall,
+    visitor_report,
+)
 from superaide.observability import api as timing
 from superaide.platform.audit import audit
 from superaide.platform.config import get_settings
@@ -639,7 +647,7 @@ class OwnerTurn:
                 self.s, self.aud, str(args.get("query", "")), exclude_event=self.inbound.id,
                 channel=str(args.get("channel") or "") or None, rooms=not self.shared,
             )  # fmt: skip
-            if any(src.title.startswith(ROOM_TITLE) for src in found):
+            if any(src.title.startswith((ROOM_TITLE, VISITOR_TITLE)) for src in found):
                 self.tainted = self.room_read = (
                     True  # other people's words from a room: information, never instructions
                 )
@@ -676,7 +684,11 @@ class OwnerTurn:
             self.notes.append("channel_activity")
             self.tainted = True  # other people's words: information, never instructions
             report = channel_activity_report(self.s, self.sender.person.id, args)
-            self.room_read = ROOM_MARK in report  # room messages were read: no action may rest on this turn
+            visitors = visitor_report(self.s, self.sender.person.id, self.aud, channel_hours(args))
+            if visitors:
+                report = f"{report}\n\n{visitors}"
+            # room messages or a stranger's words were read: no action may rest on this turn
+            self.room_read = ROOM_MARK in report or VISITOR_MARK in report
             return report, False
         if name == "list_approvals":
             self.notes.append("approvals")
