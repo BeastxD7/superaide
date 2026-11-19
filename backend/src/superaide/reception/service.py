@@ -596,7 +596,7 @@ def _reason(session: Session, owner: Person, row: ReceptionMessage) -> str:
 
 
 def _sandbox() -> Any:
-    from superaide.reception.sandbox_guard import active
+    from superaide.platform.sandbox_guard import active
 
     return active()
 
