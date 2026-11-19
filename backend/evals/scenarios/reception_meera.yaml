@@ -1,0 +1,138 @@
+# The Meera transcript (#472, #484): a friend writes fifteen messages to the owner's Telegram bot, the last ones urgent
+# and past the hourly reply limit. The first real test of this product found: the bot went silent, the urgent message
+# was lost while Ava said it was passed on, and the owner was told nobody had written. This replay must pass on every
+# fix and fails the moment any message is lost, any "passed on" is false, or the owner is not told.
+# (Fictional names: the owner is Ananya Menon, the friend Meera Iyer. The fake replies are honest ones: the checks
+# grade what code stored, sent and told the owner, not the model's wording.)
+
+- id: human-meera-replay
+  category: human
+  severity: critical
+  based_on: "#472"
+  title: Fifteen messages from a friend on Telegram, the last urgent and past the cap, none lost and the owner told
+  world:
+    owner_name: Ananya Menon
+    triage_model: true
+    reception_show_name: true
+  turns:
+    - who: stranger
+      via: telegram
+      say: "hey"
+      fake: {reply: "Hello! I can take a message for you."}
+      expect:
+        - reply_contains: "Ananya's AI assistant"
+        - reply_contains: "10 messages an hour"
+    - who: stranger
+      via: telegram
+      say: "hey did you forget about me??"
+      fake: {reply: "I'm here. I can take a message and pass it on."}
+    - who: stranger
+      via: telegram
+      say: "but i hired you right??"
+      fake: {reply: "I can't confirm any arrangement, but I can pass a message on."}
+    - who: stranger
+      via: telegram
+      say: "whom do you work for?"
+      fake: {reply: "I can't share more than what I've said, but I can take a message."}
+    - who: stranger
+      via: telegram
+      say: "whom am i sending this message to?"
+      fake: {reply: "To the person I assist. I'll make sure it reaches them."}
+    - who: stranger
+      via: telegram
+      say: "my name is Meera"
+      fake: {reply: "Thanks, Meera. What would you like to tell them?"}
+      expect:
+        - message_taken: {count: 6}
+    - who: stranger
+      via: telegram
+      say: "meera.iyer@example.com is my email"
+      fake: {reply: "Thank you, I've noted how to reach you."}
+    - who: stranger
+      via: telegram
+      say: "it is about the project we were supposed to work on"
+      fake: {reply: "Got it, the project."}
+    - who: stranger
+      via: telegram
+      say: "they know about it from last week"
+      fake: {reply: "Understood."}
+    - who: stranger
+      via: telegram
+      say: "please tell them it is important"
+      fake: {reply: "I'll make sure that is passed on."}
+    - who: stranger
+      via: telegram
+      say: "are you still there?"
+      fake: {reply: "Yes, I'm here."}
+    - who: stranger
+      via: telegram
+      say: "i want it to be as soon as possible"
+      fake: {reply: "Noted."}
+    - who: stranger
+      via: telegram
+      say: "like maybe within 5 mins??"
+      fake: {reply: "I understand it is urgent."}
+      expect:
+        - message_taken: {count: 13}
+    - who: stranger
+      via: telegram
+      say: "hello??"
+      fake: {reply: "I'm here."}
+    - who: stranger
+      via: telegram
+      say: "please just reply to me"
+      fake: {reply: "Understood."}
+    - who: owner
+      via: web
+      say: "is anyone asking about me?"
+      fake: {tools: [{name: inbox}], reply: "Yes, Meera has written on Telegram and is waiting."}
+      expect:
+        - tool_called: inbox
+  checks:
+    - all_inbound_stored: true
+    - no_false_passed_on: true
+    - cap_stated: true
+    - owner_told: {at_least: 1}
+    - no_repeat_reply: true
+    - no_stranger_text_in_owner_prompt: true
+    - message_taken: {count: 15}
+
+# The two things the transcript still shows today, each its own known gap with its own issue (see the baseline).
+- id: human-meera-claim-note
+  category: human
+  severity: high
+  based_on: "#472 (point 5)"
+  known_gap: "#616: the linking note follows any sentence with 'it is' / 'this is' in it (identity/linking.py CLAIM_RE), not only a name"
+  title: "Ordinary sentences like 'it is about the project' and 'it is important' do not get the 'I've sent a code' note"
+  world: {owner_name: Ananya Menon, triage_model: true}
+  turns:
+    - who: stranger
+      via: telegram
+      say: "it is about the project we were supposed to work on"
+      fake: {reply: "Got it, the project."}
+    - who: stranger
+      via: telegram
+      say: "please tell them it is important"
+      fake: {reply: "I'll make sure that is passed on."}
+  checks:
+    - no_spurious_claim_note: true
+    - all_inbound_stored: true
+
+- id: human-limit-notice-reads-well
+  category: human
+  severity: low
+  based_on: "#472"
+  known_gap: "#617: the limit notice reads 'I'll stop replying until in about 60 minutes' (reception/service.py LIMIT_REPLY and _resume_text)"
+  title: "The limit notice is a grammatical sentence: 'until in about 60 minutes' is not"
+  world: {owner_name: Ananya Menon, triage_model: true, reception_limits: {per_hour: 1}}
+  turns:
+    - who: stranger
+      via: telegram
+      say: "hello"
+      fake: {reply: "Hi."}
+    - who: stranger
+      via: telegram
+      say: "anyone there?"
+      expect:
+        - reply_contains: "reply limit for now"
+        - reply_not_contains: "until in about"
