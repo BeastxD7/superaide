@@ -329,13 +329,9 @@ def _talk(
     from superaide.memory.store import recent_events
 
     if not brain_ready(agent.settings):
-<<<<<<< HEAD
         return FALLBACK, None, "code", None
-=======
-        return FALLBACK, None, "code"
     from superaide.reception import resilience
 
->>>>>>> origin/main
     system = rturn.system_prompt(session, owner, rs, agent.name)
     messages = build_messages(recent_events(session, ctx, limit=rturn.HISTORY), msg.text)
     try:
@@ -343,30 +339,19 @@ def _talk(
                                messages=messages)  # fmt: skip
     except BudgetExceeded as exc:
         audit(session, "reception", "budget_cap_reached", period=exc.period)
-<<<<<<< HEAD
-        return FALLBACK, None, "code", None
-=======
         resilience.record_model(session, resilience.BUDGET, exc.period)
-        return FALLBACK, None, "code"
->>>>>>> origin/main
+        return FALLBACK, None, "code", None
     except AgentFrozen:
         return PAUSED, None, "paused", None
     except Exception:
         log.exception("receptionist turn failed")
-<<<<<<< HEAD
-        return FALLBACK, None, "code", None
-    if out is None or not out.reply.strip():
-        return FALLBACK, None, "code", None
-    return out.reply.strip()[:1500], out.take_message, "model", out.ask_owner
-=======
         resilience.record_model(session, resilience.ERROR, "turn_failed")
-        return FALLBACK, None, "code"
+        return FALLBACK, None, "code", None
     if out is None or not out.reply.strip():
         resilience.record_model(session, resilience.ERROR, "unreadable")
-        return FALLBACK, None, "code"
+        return FALLBACK, None, "code", None
     resilience.record_model(session, resilience.OK)
-    return out.reply.strip()[:1500], out.take_message, "model"
->>>>>>> origin/main
+    return out.reply.strip()[:1500], out.take_message, "model", out.ask_owner
 
 
 # --- the hand-off ----------------------------------------------------------------------------------
