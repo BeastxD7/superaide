@@ -20,6 +20,7 @@ import {
   totalEvents,
   trackPosts,
 } from '../../src/helpers/introduction'
+import { composer } from '../../src/helpers/workspace'
 
 // Ava "types" each line for up to two seconds. Most tests ask for reduced motion (a real
 // browser setting) so her lines appear at once; the full walk-through keeps the animation.
@@ -883,15 +884,37 @@ test.describe('coming back to the introduction', () => {
     await other.close()
   })
 
-  test('the dashboard sends you back to the introduction until it is finished', async ({ page, api }) => {
+  test('a first question can be asked in the chat while the introduction is still going (#599)', async ({ page, owner }) => {
     const meet = new Meet(page)
-    await page.goto('/dashboard/chat')
+    await page.goto('/meet')
+    await meet.expectStep('Hello')
+    await page.getByRole('link', { name: 'Ask a question first' }).click()
+    await expect(page).toHaveURL(/\/dashboard\/chat$/)
+    await expect(page.getByTestId('intro-unfinished')).toContainText(/still getting to know you/)
+
+    await composer(page).fill('What can you do for me this week?')
+    await composer(page).press('Enter')
+    await expect(page.getByText('You said: "What can you do for me this week?"')).toBeVisible()
+
+    // The introduction is not lost: it continues where it was.
+    await page.getByTestId('intro-unfinished').getByRole('link', { name: 'Continue the introduction' }).click()
+    await expect(page).toHaveURL(/\/meet$/)
+    await meet.expectStep('Hello')
+    // The rest of the dashboard stays closed until it is done.
+    await page.goto('/dashboard/notebook')
+    await expect(page).toHaveURL(/\/meet$/)
+    void owner
+  })
+
+  test('the dashboard (except the chat) sends you back to the introduction until it is finished', async ({ page, api }) => {
+    const meet = new Meet(page)
+    await page.goto('/dashboard/people')
     await expect(page).toHaveURL(/\/meet$/)
     await meet.expectStep('Hello')
 
     await api.answer('hello', { choice: 'Nice to meet you' })
     await api.answer('about', { mode: 'chat', text: 'I lead applied AI.' })
-    await page.goto('/dashboard/chat')
+    await page.goto('/dashboard/people')
     await expect(page).toHaveURL(/\/meet$/)
     await meet.expectStep('Your people')
 
@@ -900,7 +923,7 @@ test.describe('coming back to the introduction', () => {
     await api.answer('reach', { quiet_start: '22:00', quiet_end: '07:00' })
     await api.answer('share', { shareable: [] })
     await api.answer('rules')
-    await page.goto('/dashboard/chat')
+    await page.goto('/dashboard/people')
     await expect(page).toHaveURL(/\/meet$/)
     await meet.expectStep('Connect')
 
