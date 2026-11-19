@@ -4,6 +4,7 @@ from __future__ import annotations
 
 
 def load() -> None:
+    import superaide.commitments.service  # noqa: F401  (registers commitment_step)
     import superaide.features.forknight.night  # noqa: F401  (registers fork_night)
     import superaide.features.journal.service  # noqa: F401  (registers journal_from_turn)
     import superaide.integrations.calendar.watch  # noqa: F401  (registers renew_calendar_watch)
