@@ -51,6 +51,30 @@ const workspaceHeading = (page: Page, person: Person) => chatHeading(page, perso
 
 // ---------------------------------------------------------------------------------
 test.describe('sign-up', () => {
+  test('a form filled in and submitted before the page is interactive is not lost or sent to a blank page (#600)', async ({ page }) => {
+    const person = newPerson()
+    // A slow phone: hold the page's scripts back so the form is on screen but React hasn't started yet.
+    let release!: () => void
+    const held = new Promise<void>((resolve) => (release = resolve))
+    await page.route('**/_next/static/chunks/**', async (route) => {
+      await held
+      await route.continue()
+    })
+    await page.goto('/signup', { waitUntil: 'commit' })
+    const f = signupForm(page)
+    await fillSignup(page, person)
+    await f.password.press('Enter') // an early submit: nothing may navigate or end on an error page
+    await expect(page).toHaveURL('/signup')
+    release()
+
+    // Once the page is live it has kept what was typed, so the button is ready and one click signs up.
+    await expect(f.submit).toBeEnabled()
+    await expect(f.email).toHaveValue(person.email)
+    await f.submit.click()
+    await expect(page).toHaveURL('/')
+    await expect(accountButton(page)).toHaveAccessibleName(`Account: signed in as ${person.name}`)
+  })
+
   test('a new visitor creates an account and is signed in @smoke', async ({ page, api }) => {
     const person = newPerson()
     await gotoSignup(page)
