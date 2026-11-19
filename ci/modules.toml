@@ -469,6 +469,14 @@ e2e = [
   "e2e/tests/passport/memory-passport.spec.ts",
 ]
 
+[modules.presence]
+src = [
+  "backend/src/superaide/presence/**",
+]
+tests = [
+  "backend/tests/presence/**",
+]
+
 [modules.observability]
 src = [
   "backend/src/superaide/observability/**",

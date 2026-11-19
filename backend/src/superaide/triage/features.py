@@ -23,6 +23,7 @@ from superaide.intentions.when import find_moment, zone
 from superaide.memory.knowledge.profile import in_quiet_hours
 from superaide.memory.knowledge.store import preferences_for
 from superaide.memory.models import Contact, Context, Event
+from superaide.presence import api as presence
 from superaide.triage.models import EscalationDelivery
 from superaide.triage.store import current_stage, settings_for
 from superaide.triage.types import Stage
@@ -180,6 +181,10 @@ def gather(session: Session, *, event: Event, owner: Person, now: datetime | Non
         deadline = found[0].astimezone(UTC)
 
     quiet = in_quiet_hours(pref, now)
+    busy_until = ts.busy_until
+    state = presence.active(session, owner.id, now)
+    if state is not None and not presence.lets_through(session, state, owner.id, sender.id if sender else None):
+        busy_until = max(busy_until, state.valid_until) if busy_until else state.valid_until  # the owner's own words
     return Features(
         text=event.content or "",
         now=now,
@@ -197,7 +202,7 @@ def gather(session: Session, *, event: Event, owner: Person, now: datetime | Non
         quiet_end_at=next_local(now, pref.timezone, pref.quiet_end) if quiet else None,
         vip_breaks_quiet=pref.vip_breaks_quiet,
         away_until=ts.away_until,
-        busy_until=ts.busy_until,
+        busy_until=busy_until,
         repeats=repeats,
         interrupts_last_hour=interrupts_since(session, owner, now - timedelta(hours=1)),
         interrupts_today=interrupts_since(session, owner, now - timedelta(hours=24)),

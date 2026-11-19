@@ -37,6 +37,7 @@ from superaide.identity.models import Person
 from superaide.identity.resolver import Sender
 from superaide.memory.models import Context, Event
 from superaide.platform.audit import audit
+from superaide.presence import api as presence
 from superaide.reception import card
 from superaide.reception import turn as rturn
 from superaide.reception.models import ReceptionMessage, ReceptionSettings
@@ -282,6 +283,10 @@ def handle_stranger(
         near_at = max(1, -(-rs.per_hour * 4 // 5))  # 80 percent, rounded up
         if hour == near_at and left > 0 and not _said_recently(session, ctx, NEAR_MARK, now):
             reply = f"{reply}\n\n{NEAR_NOTICE.format(left=left, s='' if left == 1 else 's')}"
+    if row is not None:  # the owner's declared status: the only availability words a visitor ever hears (#495)
+        state = presence.active(session, owner.id)
+        if state is not None and state.visitor_line and not _said_recently(session, ctx, state.visitor_line, now):
+            reply = f"{reply}\n\n{state.visitor_line}"
     if resumed:
         reply = f"{RESUMED} {reply}"
     if claimed:
@@ -488,7 +493,11 @@ def _note(session: Session, owner: Person, row: ReceptionMessage, now: datetime)
     text = _reason(session, owner, row) + ". Open your dashboard to read it."
     # The note is fixed text (a reason, never the stranger's words), so it may follow the owner's interrupt preference
     # like any other notification: someone who asked for Telegram is not left with an unread in-app line (#491).
-    notify_owner(session, owner, text, {"kind": "message_taken", "message_id": str(row.id)}, channel="default")
+    # While the owner's declared status is on, a stranger's note stays in the app, nothing is pushed (#495).
+    held = presence.active(session, owner.id, now) is not None
+    notify_owner(
+        session, owner, text, {"kind": "message_taken", "message_id": str(row.id)}, channel="app" if held else "default"
+    )
 
 
 def digest_lines(session: Session, owner: Person, since: datetime, now: datetime) -> list[str]:
