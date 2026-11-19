@@ -3,7 +3,10 @@ name: CI
 on:
   push:
     branches: [main]
+  # `edited` re-runs the pipeline when the PR body, title or base is edited, so adding the Before and After images
+  # to the description (the `evidence` job, issue #662) turns the gate green without a push.
   pull_request:
+    types: [opened, synchronize, reopened, edited]
   # A GitHub merge queue (if enabled) tests the merged result once, here.
   merge_group:
   workflow_dispatch:
@@ -19,7 +22,8 @@ permissions:
 concurrency:
   # On main every push has its own group: GitHub keeps only ONE queued run per group and cancels older queued
   # ones, so merging several PRs in a row left main with cancelled runs and no verdict.
-  group: ci-${{ github.workflow }}-${{ github.ref }}${{ github.ref == 'refs/heads/main' && format('-{0}', github.sha) || '' }}
+  # An edit of the description gets its own group, so it never cancels the run of the latest push (and vice versa).
+  group: ci-${{ github.workflow }}-${{ github.ref }}${{ github.ref == 'refs/heads/main' && format('-{0}', github.sha) || '' }}${{ github.event.action == 'edited' && '-edited' || '' }}
   cancel-in-progress: ${{ github.workflow == 'CI' && github.ref != 'refs/heads/main' }}
 
 jobs:
@@ -664,6 +668,33 @@ jobs:
           export PR_LABELS=$(echo "$pr" | jq -r '[.labels[].name] | join(",")')
           gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[].filename' | python3 scripts/tests_required.py
 
+  # Every pull request shows Before and After images in its body (AGENTS.md section 4, issue #662). The body comes from
+  # the event payload (an edit re-runs this workflow with the new body); Dependabot is the only exemption. The script
+  # prints exactly what to add. Standard library only, no third-party action.
+  evidence:
+    name: Before and after images
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts/check_pr_evidence.py
+          sparse-checkout-cone-mode: false
+      - name: The body has a Before image and an After image
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          REPO: ${{ github.repository }}
+        run: |
+          set +e -o pipefail
+          python3 scripts/check_pr_evidence.py | tee evidence.out
+          code=$?
+          { echo '### Before and after images'; echo; echo '```text'; sed 's/^::error[^:]*:://' evidence.out; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          exit $code
+
   # The one check to require in branch protection. Skipped jobs count as success, a failed or
   # cancelled one (or an unexpected state) fails it. Without this, a required job that was
   # skipped would stay pending forever.
@@ -674,7 +705,7 @@ jobs:
   result:
     name: CI result
     if: always()
-    needs: [changes, backend-static, backend-tests, frontend, e2e, e2e-smoke, images, secrets, tests-required]
+    needs: [changes, backend-static, backend-tests, frontend, e2e, e2e-smoke, images, secrets, tests-required, evidence]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     permissions:
@@ -757,4 +788,7 @@ jobs:
           tr=$(echo "$NEEDS" | jq -r '.["tests-required"].result')
           if [ "$EVENT" = pull_request ]; then
             [ "$tr" = success ] || { echo "::error::tests-required is $tr: a feat or fix pull request must change a test file (see its log)"; exit 1; }
+            # evidence (issue #662): every pull request body shows Before and After images; Dependabot is exempt inside the job.
+            ev=$(echo "$NEEDS" | jq -r '.evidence.result')
+            [ "$ev" = success ] || { echo "::error::evidence is $ev: the pull request body needs a Before and an After image (see the 'Before and after images' job log for exactly what to add)"; exit 1; }
           fi
