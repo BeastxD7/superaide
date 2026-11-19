@@ -47,7 +47,15 @@ from superaide.platform.config import get_settings
 from superaide.policy.actions import action_kinds, decide
 from superaide.presence import api as presence
 from superaide.proactive.notify import CHANNEL_NAMES, EXTERNAL
-from superaide.reception.api import INBOX_TOOL, QUOTE_MARK, RELAY_TOOL, awareness_line, inbox_report, relay_request
+from superaide.reception.api import (
+    INBOX_TOOL,
+    QUOTE_MARK,
+    RELAY_TOOL,
+    awareness_line,
+    inbox_report,
+    relay_pending,
+    relay_request,
+)
 from superaide.skills import registry
 from superaide.skills.manifest import Skill
 
@@ -1410,7 +1418,9 @@ class OwnerTurn:
     def _result(self, text: str, sources: list[Cited], notes: list[str], steps: int) -> LoopResult:
         from superaide.integrations.gmail import skill as gmail_skill
 
-        text, removed = capabilities.strip_claims(text, self.ok_tools, can_send=gmail_skill.can_draft(self.s))
+        text, removed = capabilities.strip_claims(
+            text, self.ok_tools, can_send=gmail_skill.can_draft(self.s), pending=relay_pending(self.s)
+        )
         if removed:
             notes.append(f"claim_removed:{len(removed)}")
             audit(self.s, "brain", "action_claim_removed", kinds=sorted(set(removed)))
