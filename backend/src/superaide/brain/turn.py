@@ -121,8 +121,18 @@ def gap_line(before: datetime, after: datetime, tz: Any) -> str:
 OUTSIDER_TEXT_KINDS = frozenset({"meeting_prep", "digest", "triage", "triage_catchup", "escalation"})
 
 
+# Notifications the app itself sent to the owner (someone new wrote to Ava). Their text is code-built (a first name
+# the sender gave, a channel, a time) and was really delivered, so the next turn sees them as a sourced system
+# event, not as something Ava said and might disown (#477, #472 item 3).
+NOTIFICATION_KINDS = frozenset({"message_taken", "card_empty"})
+
+
 def neutral_note(ev: Event) -> str | None:
-    kind = (ev.meta or {}).get("kind")
+    meta = ev.meta or {}
+    kind = meta.get("kind")
+    if ev.direction == "out" and kind in NOTIFICATION_KINDS:
+        source = str(meta.get("source") or "notification")[:60]
+        return f"[Notification the app sent to the owner ({source}), a real delivery: {ev.content}]"
     if ev.direction == "out" and kind in OUTSIDER_TEXT_KINDS:
         return f"[I posted a {str(kind).replace('_', ' ')} note to the owner here. Its text is not repeated.]"
     return None

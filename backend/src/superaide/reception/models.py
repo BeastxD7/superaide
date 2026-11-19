@@ -36,6 +36,9 @@ class ReceptionSettings(Scoped, Base):
     public_profile: Mapped[str] = mapped_column(Text, default="")
     per_hour: Mapped[int] = mapped_column(Integer, default=PER_HOUR)
     per_day: Mapped[int] = mapped_column(Integer, default=PER_DAY)
+    # Owner opt-in (#477): a message that looks urgent may still notify after the sender's hourly cap of
+    # notifications is used up. Off: urgency never lifts the cap.
+    urgent_over_cap: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
 
 
@@ -64,4 +67,5 @@ class ReceptionMessage(Scoped, Base):
     source: Mapped[str] = mapped_column(String(10), default="model")  # model | code (no model, or over budget)
     status: Mapped[str] = mapped_column(String(12), default="new")  # new | done | dismissed | spam
     decision_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("triage_decision.id"), nullable=True)
+    notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # owner was told
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
