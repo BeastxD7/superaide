@@ -2,6 +2,7 @@
 
 import { ArrowRight, Drama, GraduationCap } from 'lucide-react'
 import Link from 'next/link'
+import { PageContainer, PageHeader, ResponsiveGrid } from '@/components/layout'
 import { Button } from '@/components/ui/button'
 import { useRehearsalEnabled } from '@/features/rehearsal/useRehearsal'
 import { useSchoolEnabled } from '@/features/school/useSchool'
@@ -18,14 +19,12 @@ export function LearningPage() {
     rehearsal && { href: '/dashboard/learning/rehearsal', label: 'Rehearsal room', icon: Drama, text: `Practise a hard conversation with ${name} playing the other side. Nothing is sent.` },
   ].filter(Boolean) as { href: string; label: string; icon: typeof Drama; text: string }[]
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 lg:py-8">
-        <h1 className="text-3xl font-medium text-ink tight">Learning</h1>
-        <p className="mt-1 text-body">How {name} learns and practises.</p>
+    <PageContainer width="list">
+        <PageHeader title="Learning" description={`How ${name} learns and practises.`} />
         {items.length === 0 ? (
           <p className="mt-6 text-body">This isn&rsquo;t turned on yet.</p>
         ) : (
-          <ul className="mt-6 grid gap-3 sm:grid-cols-2" aria-label="Learning">
+          <ResponsiveGrid as="ul" min="20rem" className="mt-6" aria-label="Learning">
             {items.map(({ href, label, icon: Icon, text }) => (
               <li key={href} className="flex flex-col rounded-xl border border-line bg-white p-4">
                 <div className="flex items-center gap-3">
@@ -42,9 +41,8 @@ export function LearningPage() {
                 </Button>
               </li>
             ))}
-          </ul>
+          </ResponsiveGrid>
         )}
-      </div>
-    </div>
+    </PageContainer>
   )
 }

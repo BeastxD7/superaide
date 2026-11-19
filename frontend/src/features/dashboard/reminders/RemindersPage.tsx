@@ -1,5 +1,6 @@
 'use client'
 
+import { PageContainer, PageHeader, ResponsiveGrid } from '@/components/layout'
 import { AlarmClock, Check, Clock, X } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Notice } from '@/components/site'
@@ -55,15 +56,18 @@ export function RemindersPage() {
   const reminders = data?.reminders
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 lg:py-8">
-        <h1 className="text-3xl font-medium text-ink tight">Reminders</h1>
-        <p className="mt-1 text-body">
-          {name} brings these back at the right time, here in the app and on Telegram if you chose it. You can also just
-          tell her in chat: &ldquo;remind me to call Priya tomorrow at 5&rdquo;.
-        </p>
+    <PageContainer width="list">
+        <PageHeader
+          title="Reminders"
+          description={
+            <>
+              {name} brings these back at the right time, here in the app and on Telegram if you chose it. You can also just
+              tell her in chat: &ldquo;remind me to call Priya tomorrow at 5&rdquo;.
+            </>
+          }
+        />
 
-        <form onSubmit={add} className="mt-6 flex flex-col gap-2 sm:flex-row">
+        <form onSubmit={add} className="mt-6 flex max-w-3xl flex-col gap-2 sm:flex-row">
           <label htmlFor="new-reminder" className="sr-only">
             New reminder
           </label>
@@ -87,7 +91,7 @@ export function RemindersPage() {
           </div>
         )}
 
-        <ul className="mt-6 space-y-2" aria-label="Upcoming reminders">
+        <ResponsiveGrid as="ul" min="26rem" className="mt-6" aria-label="Upcoming reminders">
           {!reminders &&
             [0, 1].map((i) => (
               <li key={i} className="rounded-xl border border-line bg-white p-4">
@@ -95,13 +99,13 @@ export function RemindersPage() {
               </li>
             ))}
           {reminders?.length === 0 && (
-            <li className="rounded-xl border border-dashed border-line p-6 text-center text-sm text-muted">
+            <li className="col-span-full rounded-xl border border-dashed border-line p-6 text-center text-sm text-muted">
               Nothing coming up. Add one above, or ask {name} in chat.
             </li>
           )}
           {reminders?.map((r) => (
-            <li key={r.id} className="flex flex-col gap-3 rounded-xl border border-line bg-white p-4 sm:flex-row sm:items-center">
-              <div className="min-w-0 flex-1">
+            <li key={r.id} className="flex flex-col gap-3 rounded-xl border border-line bg-white p-4 @3xl/page:justify-between">
+              <div className="min-w-0">
                 <p className="font-medium [overflow-wrap:anywhere] text-ink">{r.text}</p>
                 <p className="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-muted">
                   <Clock className="size-3.5" aria-hidden />
@@ -110,7 +114,7 @@ export function RemindersPage() {
                   {r.kind === 'follow_up' && <Badge variant="outline">Follow-up</Badge>}
                 </p>
               </div>
-              <div className="flex shrink-0 flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-1.5">
                 {SNOOZES.map((s) => (
                   <Button
                     key={s.minutes}
@@ -143,8 +147,7 @@ export function RemindersPage() {
               </div>
             </li>
           ))}
-        </ul>
-      </div>
-    </div>
+        </ResponsiveGrid>
+    </PageContainer>
   )
 }
