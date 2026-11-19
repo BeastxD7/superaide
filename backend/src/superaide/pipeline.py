@@ -255,6 +255,19 @@ class Agent:
                 audit(s, "pipeline", "frozen_no_reply", event_id=inbound.id)
                 return HandleResult("frozen")
 
+            from superaide.reception import takeover
+
+            if (
+                ctx.kind == "dm"
+                and sender.known
+                and not sender.unconfirmed
+                and sender.person is not None
+                and self._is_owner(s, sender)
+                and (handed_back := takeover.release_by_command(s, sender.person, msg.text)) is not None
+            ):  # "give control back to Ava": a fixed command read in code, no model (#493)
+                self._reply(s, ctx, aud, handed_back, thread)
+                return HandleResult("known", handed_back, ["takeover_released"])
+
             invite_code = parse_start_code(msg.text) if msg.provider == "telegram" else None
             if invite_code is not None:
                 if sender.known:
@@ -294,6 +307,13 @@ class Agent:
                 reply = self._unconfirmed_reply(sender, msg.provider)
                 self._reply(s, ctx, aud, reply, thread, retry=True)
                 return HandleResult("unconfirmed", reply)
+
+            if not (sender.known and self._is_owner(s, sender)) and (held := takeover.active(s, ctx.id)) is not None:
+                # The owner is handling this conversation (#493): what was written is stored and the owner is
+                # told (fixed words), nobody answers it.
+                audit(s, "takeover", "no_reply", event_id=inbound.id)
+                takeover.visitor_wrote(s, held)
+                return HandleResult("takeover", None, ["owner_handling"])
 
             if not sender.known:
                 from superaide.identity import claims

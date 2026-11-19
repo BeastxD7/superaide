@@ -153,6 +153,10 @@ def build_messages(
     for ev in history:
         role = "user" if ev.direction == "in" else "assistant"
         content = neutral_note(ev) or ev.content
+        if ev.direction == "out" and isinstance(ev.meta, dict) and ev.meta.get("owner_live"):
+            content = (
+                f"[The owner wrote this themselves while Ava was stepped out; it is not Ava's own reply.] {content}"
+            )
         if role == "assistant" and (used := tools_used(ev)):
             content = used + "\n" + content
         at = ev.created_at

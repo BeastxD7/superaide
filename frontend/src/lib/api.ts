@@ -790,7 +790,21 @@ export type ReceptionistSettings = {
   public_profile: string
   per_hour: number
   per_day: number
+  takeover_idle_minutes: number
   greeting: string
+}
+
+// A conversation with someone Ava doesn't know, and whether the owner is handling it themselves (#493).
+// `name` is theirs (unverified): show it as text.
+export type TakeoverView = { started_at: string; last_owner_message_at: string; resumes_at: string }
+export type VisitorConversationView = {
+  context_id: string
+  provider: string
+  name: string
+  last_at: string
+  takeover: TakeoverView | null
+  // The last messages, only while the owner is handling it. `from: 'visitor'` is their words: unverified, show quoted.
+  messages: { from: 'visitor' | 'owner' | 'ava'; text: string; at: string }[]
 }
 
 // A question someone Ava doesn't know asked that she couldn't answer (#494). `question` and `name` are theirs: show quoted.
