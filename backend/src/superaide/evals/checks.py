@@ -63,7 +63,7 @@ CODE_ONLY = {
     "triage_decision", "escalation_state", "escalation_pushed", "escalation_acks", "interrupt_count",
     "audit_logged", "triage_feedback", "message_taken", "prompt_includes", "recall_top", "recall_none",
     "memory_count", "memory_from_document", "signal_labelled", "documents", "memory_retired", "delivery", "pushed",
-    "visitor_replies", "degraded", "approval_status",
+    "visitor_replies", "degraded", "prior_ids_in_prompt", "prompt_tokens_under", "approvals_pending", "approval_status",
 }  # fmt: skip
 
 
@@ -191,6 +191,45 @@ def prompt_includes(ctx: Ctx, value: Any) -> tuple[bool, str]:
     text_ = "\n".join(c.prompt for c in t.calls).lower()
     missing = [p for p in _list(value) if p.lower() not in text_]
     return not missing, f"missing from the prompt: {missing}"
+
+
+CHARS_PER_TOKEN = 4.3  # measured on qwen3 for English prompt text and JSON (docs/research/memory-retrieval-*.md)
+
+
+@check("prior_ids_in_prompt")
+def prior_ids_in_prompt(ctx: Ctx, value: Any) -> tuple[bool, str]:
+    """True: every id a tool result showed in an earlier turn ("id 3649daf7") is in this turn's prompt, so a
+    follow-up like "yes please" can still use it (#643)."""
+    t = _turn(ctx)
+    seen: set[str] = set()
+    for earlier in ctx.run.turns:
+        if earlier.index >= t.index:
+            break
+        for c in earlier.calls:
+            seen |= set(re.findall(r"\bid ([0-9a-f]{8})\b", c.prompt))
+    if not seen:
+        return False, "no earlier tool result showed an id (the scenario is wrong)"
+    text_ = "\n".join(c.prompt for c in t.calls)
+    missing = sorted(i for i in seen if i not in text_)
+    return (not missing) is bool(value), f"ids shown earlier and missing from this prompt: {missing}"
+
+
+@check("prompt_tokens_under")
+def prompt_tokens_under(ctx: Ctx, value: Any) -> tuple[bool, str]:
+    """The largest model prompt of this turn (system + messages), estimated at 4.3 characters a token, is under
+    this many tokens. The tool schemas are not counted here, so a target is for the text the code writes."""
+    t = _turn(ctx)
+    biggest = max((len(c.prompt) for c in t.calls), default=0)
+    tokens = round(biggest / CHARS_PER_TOKEN)
+    return tokens < int(value), f"the prompt is about {tokens} tokens, the target is under {int(value)}"
+
+
+@check("approvals_pending")
+def approvals_pending(ctx: Ctx, value: Any) -> tuple[bool, str]:
+    """This many approvals are still waiting for the owner's decision."""
+    with session_scope() as s:
+        n = len(list(s.scalars(select(Approval.id).where(Approval.status == "pending"))))
+    return n == int(value), f"{n} approvals pending, expected {value}"
 
 
 # --- long-term memory retrieval, graded on the search itself (no model) -------------------
