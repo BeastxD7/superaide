@@ -122,7 +122,6 @@
   category: human
   severity: low
   based_on: "#472"
-  known_gap: "#617: the limit notice reads 'I'll stop replying until in about 60 minutes' (reception/service.py LIMIT_REPLY and _resume_text)"
   title: "The limit notice is a grammatical sentence: 'until in about 60 minutes' is not"
   world: {owner_name: Ananya Menon, triage_model: true, reception_limits: {per_hour: 1}}
   turns:

@@ -7,6 +7,7 @@ The model is fake, so the proof is what was stored and what was said."""
 # ruff: noqa: F811
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime, timedelta
 
 import time_machine
@@ -66,6 +67,16 @@ def test_fifteen_messages_are_all_stored_whatever_the_cap_and_the_model_does(own
         "structured 5",
     }  # 10 is past the cap: no model, so no structure
     assert script.calls == 10  # no model call once the cap is reached
+
+
+def test_the_limit_notice_is_a_grammatical_sentence(owner_world, ava, script):
+    """#617: it once read "I'll stop replying until in about 60 minutes"."""
+    for i in range(10):
+        ava.handle(hello(f"message {i}"))
+    notice = said(ava.handle(hello("message 10")))
+    assert "until in" not in notice
+    assert re.search(r"I'll stop replying and can reply again in about \d+ (minutes?|hours)\. ", notice)
+    assert service.LIMIT_MARK in notice  # the mark the "said recently" and "resumed" checks search for
 
 
 def test_at_the_cap_one_truthful_notice_with_the_time_then_quiet(owner_world, ava, script):
