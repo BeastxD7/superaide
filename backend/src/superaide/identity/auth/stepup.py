@@ -38,6 +38,7 @@ TTL = timedelta(minutes=2)
 # The actions that need a step-up, each with what the owner is told. Anything else is refused.
 ACTIONS: dict[str, str] = {
     "gmail_codes_read": "Let Ava read one-time codes and password resets in your Gmail",
+    "mcp_stdio_server": "Let Ava start a program on this computer as an MCP server",
 }
 
 

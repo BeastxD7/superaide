@@ -44,6 +44,86 @@
         "title": "ActivatePlaybookBody",
         "type": "object"
       },
+      "AddBody": {
+        "properties": {
+          "args": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Args",
+            "type": "array"
+          },
+          "command": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Command",
+            "type": "string"
+          },
+          "confirm_password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirm Password"
+          },
+          "confirmation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmation"
+          },
+          "env": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Env",
+            "type": "object"
+          },
+          "headers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Headers",
+            "type": "object"
+          },
+          "label": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "transport": {
+            "enum": [
+              "stdio",
+              "http"
+            ],
+            "title": "Transport",
+            "type": "string"
+          },
+          "url": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "transport"
+        ],
+        "title": "AddBody",
+        "type": "object"
+      },
       "AddressBody": {
         "properties": {
           "email": {
@@ -77,6 +157,27 @@
           "answer"
         ],
         "title": "AnswerQuestionBody",
+        "type": "object"
+      },
+      "ApproveBody": {
+        "properties": {
+          "tools": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tools"
+          }
+        },
+        "title": "ApproveBody",
         "type": "object"
       },
       "ApprovePreviewBody": {
@@ -423,6 +524,45 @@
           "cards"
         ],
         "title": "CardBatch",
+        "type": "object"
+      },
+      "ChangeBody": {
+        "properties": {
+          "calls_per_hour": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calls Per Hour"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "timeout_s": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeout S"
+          }
+        },
+        "title": "ChangeBody",
         "type": "object"
       },
       "ChannelBody": {
@@ -2237,6 +2377,24 @@
           "seq"
         ],
         "title": "RevertBody",
+        "type": "object"
+      },
+      "RiskBody": {
+        "properties": {
+          "risk": {
+            "enum": [
+              "read",
+              "write",
+              "destructive"
+            ],
+            "title": "Risk",
+            "type": "string"
+          }
+        },
+        "required": [
+          "risk"
+        ],
+        "title": "RiskBody",
         "type": "object"
       },
       "RoleChoice": {
@@ -9922,6 +10080,362 @@
         "summary": "Revoke a mandate and everything handed on from it",
         "tags": [
           "Owner: mandates"
+        ]
+      }
+    },
+    "/app/mcp/servers": {
+      "get": {
+        "description": "Every server with its tools, each tool's risk class and approval state. Secrets are never shown.",
+        "operationId": "servers_app_mcp_servers_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Servers App Mcp Servers Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Your MCP servers",
+        "tags": [
+          "Owner: MCP servers"
+        ]
+      },
+      "post": {
+        "operationId": "add_app_mcp_servers_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Add App Mcp Servers Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Add an MCP server",
+        "tags": [
+          "Owner: MCP servers"
+        ]
+      }
+    },
+    "/app/mcp/servers/{server_id}": {
+      "delete": {
+        "operationId": "delete_app_mcp_servers__server_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "server_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Server Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Remove a server, its approvals and its secrets",
+        "tags": [
+          "Owner: MCP servers"
+        ]
+      },
+      "patch": {
+        "operationId": "change_app_mcp_servers__server_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "server_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Server Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Change App Mcp Servers  Server Id  Patch",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Switch a server on or off, or change its limits",
+        "tags": [
+          "Owner: MCP servers"
+        ]
+      }
+    },
+    "/app/mcp/servers/{server_id}/approve": {
+      "post": {
+        "description": "Records each tool's name, description, schema and hints. If the server later changes one, that tool is blocked until you approve it again.",
+        "operationId": "approve_app_mcp_servers__server_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "server_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Server Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Approve App Mcp Servers  Server Id  Approve Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Approve tools as listed",
+        "tags": [
+          "Owner: MCP servers"
+        ]
+      }
+    },
+    "/app/mcp/servers/{server_id}/test": {
+      "post": {
+        "description": "Nothing is callable by Ava until you approve the tools. A failure is returned as `error` (200).",
+        "operationId": "test_app_mcp_servers__server_id__test_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "server_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Server Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Test App Mcp Servers  Server Id  Test Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Connect, list the tools and keep the listing",
+        "tags": [
+          "Owner: MCP servers"
+        ]
+      }
+    },
+    "/app/mcp/servers/{server_id}/tools/{tool}/risk": {
+      "put": {
+        "description": "read runs at once; write and destructive wait for your approval every time. Unset means write.",
+        "operationId": "risk_app_mcp_servers__server_id__tools__tool__risk_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "server_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Server Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tool",
+            "required": true,
+            "schema": {
+              "title": "Tool",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RiskBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Risk App Mcp Servers  Server Id  Tools  Tool  Risk Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Set a tool's risk class",
+        "tags": [
+          "Owner: MCP servers"
         ]
       }
     },

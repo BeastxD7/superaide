@@ -465,6 +465,25 @@ def test_reads_do_not_need_the_csrf_header(browser, owner):
     assert plain.get("/auth/me").status_code == 200 and plain.get("/app/me").status_code == 200
 
 
+def test_the_mcp_routes_need_the_csrf_header_and_refuse_bad_input(browser, owner):
+    bare = browser(csrf=False)
+    bare.cookies.set("superaide_session", owner.cookies.get("superaide_session"))
+    sid = str(uuid.uuid4())
+    for method, path in (
+        ("POST", "/app/mcp/servers"),
+        ("PATCH", f"/app/mcp/servers/{sid}"),
+        ("DELETE", f"/app/mcp/servers/{sid}"),
+        ("POST", f"/app/mcp/servers/{sid}/test"),
+        ("POST", f"/app/mcp/servers/{sid}/approve"),
+        ("PUT", f"/app/mcp/servers/{sid}/tools/x/risk"),
+    ):
+        assert bare.request(method, path, json={}).status_code == 403, path
+    assert owner.post("/app/mcp/servers", json={}).status_code == 422
+    assert owner.post("/app/mcp/servers", json={"label": "a\u0000", "transport": "http"}).status_code == 422
+    assert owner.patch(f"/app/mcp/servers/{sid}", json={"enabled": "maybe"}).status_code == 422
+    assert owner.patch(f"/app/mcp/servers/{sid}", json={"enabled": True}).status_code == 404
+
+
 def test_the_gmail_routes_need_the_csrf_header_and_refuse_bad_input(browser, owner):
     plain = browser(csrf=False)
     plain.cookies.set("superaide_session", owner.cookies.get("superaide_session"))
