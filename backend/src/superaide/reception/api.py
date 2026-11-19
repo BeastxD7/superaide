@@ -5,6 +5,7 @@ from superaide.reception.card import FIELDS, HELP, PLACE, RULES, SETTINGS_PATH
 from superaide.reception.inbox import INBOX_TOOL, QUOTE_MARK, awareness_line
 from superaide.reception.inbox import report as inbox_report
 from superaide.reception.relay import RELAY_TOOL
+from superaide.reception.relay import pending_sentences as relay_pending
 from superaide.reception.relay import request as relay_request
 from superaide.reception.resilience import BUDGET as MODEL_BUDGET
 from superaide.reception.resilience import ERROR as MODEL_ERROR
@@ -30,6 +31,7 @@ __all__ = [
     "QUOTE_MARK",
     "RELAY_TOOL",
     "relay_request",
+    "relay_pending",
     "awareness_line",
     "inbox_report",
     "PLACE",

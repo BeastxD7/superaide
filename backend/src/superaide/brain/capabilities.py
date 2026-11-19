@@ -245,22 +245,57 @@ _CANT_SEND = re.compile(
     r"\b(other people|anyone|others|people|emails?)\b|\bread-only\b",
     re.IGNORECASE,
 )
+# A sentence is about email only when it says so and names no other channel; one that mentions the owner's
+# approval is the true rule, not a denial (#639).
+_EMAIL_WORD = re.compile(r"\b(e-?mails?|gmail|inbox)\b", re.IGNORECASE)
+_OTHER_CHANNEL = re.compile(
+    r"\b(telegram|slack|whatsapp|sms|imessage|signal|discord|teams|text messages?|dms?|direct messages?)\b",
+    re.IGNORECASE,
+)
+_APPROVAL_WORD = re.compile(r"\b(approv\w*|your (?:ok|okay|go-ahead|confirmation)|confirm\w*)\b", re.IGNORECASE)
+_CANT_MESSAGE = re.compile(
+    r"\b(can't|cannot|can not|unable to|not able to|am not able to)\s+(send|message|text|contact|reach)\b",
+    re.IGNORECASE,
+)
+EMAIL_DENIAL = "a statement that you cannot email people"
+MESSAGE_DENIAL = "a statement that you cannot message people"
+
+
+def _about_email(sentence: str) -> bool:
+    return bool(_EMAIL_WORD.search(sentence)) and not _OTHER_CHANNEL.search(sentence)
 
 
 def contradicts_capability(text: str, can_send: bool) -> bool:
-    """With Gmail drafts on she can email people (with approval); "I can't send to other people" or "Gmail is
-    read-only" in the same conversation as a saved draft is a contradiction (#394)."""
-    return bool(can_send and _CANT_SEND.search(text or ""))
+    """With Gmail drafts on she can email people (with approval); "I can't email other people" or "Gmail is
+    read-only" in the same conversation as a saved draft is a contradiction (#394). Only a sentence about email
+    counts: "I can't send messages to other people" or "without your approval" says nothing about Gmail (#639)."""
+    text = text or ""
+    return bool(can_send and _CANT_SEND.search(text) and _about_email(text) and not _APPROVAL_WORD.search(text))
 
 
-def strip_claims(text: str, ok_tools: set[str], can_send: bool = False) -> tuple[str, list[str]]:
-    """Remove the sentences that claim an action nothing did, or deny a capability she has. (text, removed)."""
+def denies_messaging(sentence: str) -> bool:
+    """ "I can't send/message/text people" with no mention of approval and not about email alone."""
+    return bool(_CANT_MESSAGE.search(sentence) and not _APPROVAL_WORD.search(sentence) and not _about_email(sentence))
+
+
+def strip_claims(
+    text: str, ok_tools: set[str], can_send: bool = False, pending: list[str] | None = None
+) -> tuple[str, list[str]]:
+    """Remove the sentences that claim an action nothing did, or deny a capability she has. (text, removed).
+
+    `pending` are true sentences built by code from approvals waiting for the owner ("Your message to Meera on
+    Telegram is waiting for your OK."); a sentence that denies sending messages is replaced by them (#639)."""
     removed: list[str] = []
     kept: list[str] = []
+    waiting = list(pending or [])
     for sentence in re.split(r"(?<=[.!?])\s+|\n+", text or ""):
         bad = unsupported_claims(sentence, ok_tools)
         if contradicts_capability(sentence, can_send):
-            bad = [*bad, "a statement that you cannot email people"]
+            bad = [*bad, EMAIL_DENIAL]
+        elif waiting and denies_messaging(sentence):
+            bad = [*bad, MESSAGE_DENIAL]
+            kept += waiting  # once: the first denial carries the true state, later ones are dropped
+            waiting = []
         if bad:
             removed += bad
         elif sentence.strip():
@@ -269,9 +304,9 @@ def strip_claims(text: str, ok_tools: set[str], can_send: bool = False) -> tuple
         return text, []
     undone = [r for r in dict.fromkeys(removed) if not r.startswith("a statement that")]
     note = "Correction: I haven't actually done that, no tool ran for " + " or ".join(undone) + "." if undone else ""
-    if len(undone) < len(set(removed)):
+    if EMAIL_DENIAL in removed:
         note = ("Correction: I can email people for you; every send waits for your approval. " + note).strip()
-    return "\n".join([*kept, note]), removed
+    return "\n".join([*kept, *([note] if note else [])]), removed
 
 
 _DENIAL = re.compile(
