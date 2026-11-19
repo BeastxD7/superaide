@@ -9,7 +9,7 @@
 // are still balanced over the shards, and a shard that gets none prints nothing (the workflow then skips it).
 //
 // Playwright's own --shard splits by test count; a few slow specs made one shard twice as long as
-// the others. Here every spec file under tests/ (minus the opt-in proxy and dev projects) is placed,
+// the others. Here every spec file under tests/ (minus the opt-in proxy, dev and ttfr projects) is placed,
 // slowest first, on the shard with the least time so far. A file missing from shard-timings.json gets
 // the average weight, so a new spec still runs on exactly one shard (nothing can fall out).
 import { readFileSync, readdirSync, writeFileSync, statSync } from 'node:fs'
@@ -24,7 +24,7 @@ function specFiles(dir = join(root, 'tests')) {
   for (const name of readdirSync(dir)) {
     const p = join(dir, name)
     if (statSync(p).isDirectory()) out.push(...specFiles(p))
-    else if (/\.spec\.ts$/.test(name) && !/\.(proxy|dev)\.spec\.ts$/.test(name)) out.push(relative(root, p))
+    else if (/\.spec\.ts$/.test(name) && !/\.(proxy|dev|ttfr)\.spec\.ts$/.test(name)) out.push(relative(root, p))
   }
   return out.sort()
 }

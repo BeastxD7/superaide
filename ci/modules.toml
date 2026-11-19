@@ -874,6 +874,7 @@ tests = [
   "frontend/src/features/onboarding/*.test.ts",
 ]
 e2e = [
+  "e2e/tests/journeys/time-to-first-reply.ttfr.spec.ts",
   "e2e/tests/memory/doc-loader.spec.ts",
   "e2e/tests/memory/doc-loader.mobile.spec.ts",
   "e2e/tests/web-onboarding/fe-a11y-intro.spec.ts",
