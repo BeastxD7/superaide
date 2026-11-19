@@ -63,6 +63,7 @@ CODE_ONLY = {
     "triage_decision", "escalation_state", "escalation_pushed", "escalation_acks", "interrupt_count",
     "audit_logged", "triage_feedback", "message_taken", "prompt_includes", "recall_top", "recall_none",
     "memory_count", "memory_from_document", "documents", "memory_retired", "delivery", "pushed",
+    "visitor_replies", "degraded",
 }  # fmt: skip
 
 
@@ -603,6 +604,31 @@ def message_taken(ctx: Ctx, value: Any) -> tuple[bool, str]:
             q = q.where(ReceptionMessage.source == value["source"])
         n = len(list(s.scalars(q)))
     return n == int(value["count"]), f"{n} messages taken, expected {value['count']}"
+
+
+@check("visitor_replies")
+def visitor_replies(ctx: Ctx, value: Any) -> tuple[bool, str]:
+    """{channel, count, contains?}: a channel accepted this many replies to people in a conversation (not pushes to
+    the owner), optionally of which this many contain `contains`. Retries must not make it more than once."""
+    sent = [m for m in ctx.run.outbox[value["channel"]].sent if m.get("to_context")]
+    texts = [str(m.get("text", "")) for m in sent]
+    n = len([t for t in texts if all(_found(p, t) for p in _list(value.get("contains") or []))])
+    return n == int(value["count"]), f"{n} replies on {value['channel']}, expected {value['count']}: {texts}"
+
+
+@check("degraded")
+def degraded(ctx: Ctx, value: Any) -> tuple[bool, str]:
+    """The owner's outage status: `{level, contains?}`, or `none` when everything works."""
+    from superaide.reception import resilience
+
+    with session_scope() as s:
+        st = resilience.status(s)
+    if value == "none":
+        return st is None, f"status {st}"
+    if st is None:
+        return False, "no outage status, expected one"
+    ok = st["level"] == value["level"] and all(p in st["line"] for p in _list(value.get("contains") or []))
+    return ok, f"status {st['level']}: {st['line']}"
 
 
 @check("delivery")

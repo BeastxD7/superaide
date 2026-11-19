@@ -145,6 +145,7 @@ class FakeTurn(Strict):
     facts: list[dict[str, Any]] = Field(default_factory=list)  # what the fact extractor reads (world.learn_model)
     triage: dict[str, Any] | Literal["budget"] | None = None  # the triage classifier's answer (world.triage_model)
     take: dict[str, Any] | None = None  # the message the receptionist takes (a TakenMessage), with `reply`
+    reception: Literal["down", "budget"] | None = None  # the receptionist's model fails this turn (#503)
 
 
 class Share(Strict):
