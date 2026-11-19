@@ -610,6 +610,7 @@ tests = [
 ]
 e2e = [
   "e2e/tests/commitments/commitments.spec.ts",
+  "e2e/tests/commitments/commitments.mobile.spec.ts",
 ]
 
 [modules.reminders]
