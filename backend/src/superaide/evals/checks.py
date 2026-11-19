@@ -63,7 +63,7 @@ CODE_ONLY = {
     "triage_decision", "escalation_state", "escalation_pushed", "escalation_acks", "interrupt_count",
     "audit_logged", "triage_feedback", "message_taken", "prompt_includes", "recall_top", "recall_none",
     "memory_count", "memory_from_document", "signal_labelled", "documents", "memory_retired", "delivery", "pushed",
-    "visitor_replies", "degraded",
+    "visitor_replies", "degraded", "approval_status",
 }  # fmt: skip
 
 
@@ -479,6 +479,16 @@ def approval(ctx: Ctx, value: Any) -> tuple[bool, str]:
     if spec.get("summary_any"):
         hits = [f for f in hits if _matches(f[1], _list(spec["summary_any"]))]
     return bool(hits), f"no pending approval like {spec}; have {found or 'none'}"
+
+
+@check("approval_status")
+def approval_status(ctx: Ctx, value: Any) -> tuple[bool, str]:
+    """{kind: relay_message, status: approved, count: 1}: this many approvals of the kind are in that state."""
+    with session_scope() as s:
+        rows = [(a.kind, a.status) for a in s.scalars(select(Approval))]
+    want = (value.get("kind"), value["status"])
+    n = sum(1 for kind, status in rows if status == want[1] and want[0] in (None, kind))
+    return n == int(value.get("count", 1)), f"{n} {want[1]} approvals of {want[0] or 'any kind'}, have {rows or 'none'}"
 
 
 @check("approval_count")
