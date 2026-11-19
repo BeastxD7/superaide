@@ -102,10 +102,10 @@ def _is_owner(session: Session, aud: Audience) -> tuple[uuid.UUID, uuid.UUID] | 
 
 
 def _zone(session: Session) -> str:
-    from superaide.intentions.service import owner_zone
+    from superaide.memory.knowledge.store import preferences_for
 
     found = instance_owner(session)
-    return owner_zone(session, found[1]) if found else "UTC"
+    return (preferences_for(session, found[1]).timezone or "UTC") if found else "UTC"
 
 
 def _candidates(session: Session, owner_id: uuid.UUID, agent_id: uuid.UUID) -> list[tuple[str, PersonMatch]]:
