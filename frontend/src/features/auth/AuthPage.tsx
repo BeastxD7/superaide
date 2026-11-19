@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft, Eye, EyeOff } from 'lucide-react'
 import { motion } from 'motion/react'
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { AppError, auth } from '@/lib/api'
 import type { Session } from '@/lib/session-context'
 import { Orb } from '@/components/Orb'
@@ -53,6 +53,18 @@ export function AuthPage({
     googleReason ? { message: googleProblem(googleReason) } : null,
   )
   const [google, setGoogle] = useState(false)
+  const formRef = useRef<HTMLFormElement>(null)
+
+  // Someone quick (or on a slow phone) types before the page has hydrated: the browser keeps what they typed,
+  // but React starts from empty state, so the form would look filled while its button stayed disabled (#600).
+  // Pick up what is already in the fields. Until this runs the button is disabled, so a submit can't reach the
+  // browser's own form handling (which would reload the page instead of signing up).
+  useEffect(() => {
+    const value = (id: string) => formRef.current?.querySelector<HTMLInputElement>(`[data-field="${id}"]`)?.value ?? ''
+    setName((n) => n || value('name'))
+    setEmail((v) => v || value('email'))
+    setPassword((v) => v || value('password'))
+  }, [])
   const [googleBusy, setGoogleBusy] = useState(false)
 
   // Offer Google only when this server has it switched on.
@@ -135,6 +147,7 @@ export function AuthPage({
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          ref={formRef}
           onSubmit={submit}
           className="flex flex-1 flex-col"
           noValidate
@@ -176,6 +189,7 @@ export function AuthPage({
                 <span className="text-sm font-medium text-ink">Your name</span>
                 <input
                   autoFocus
+                  data-field="name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   autoComplete="name"
@@ -191,6 +205,7 @@ export function AuthPage({
               <span className="text-sm font-medium text-ink">Email</span>
               <input
                 autoFocus={mode === 'login'}
+                data-field="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -208,6 +223,7 @@ export function AuthPage({
               <div className="relative mt-2">
                 <input
                   id="auth-password"
+                  data-field="password"
                   type={show ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
