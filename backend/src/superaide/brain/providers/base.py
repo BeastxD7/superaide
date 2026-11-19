@@ -99,7 +99,19 @@ def _note_rejected_key(guard: Guard, provider: str, exc: BaseException) -> None:
     error is tagged so every caller can tell it from a passing failure."""
     from superaide.brain import keyhealth
 
-    if not keyhealth.is_auth_error(exc):
+    reason = keyhealth.classify(exc)
+    if reason is None or reason == keyhealth.SPEND_CAP:
+        return
+    exc.ai_reason = reason  # type: ignore[attr-defined]
+    if reason == keyhealth.CREDIT_LOW:
+        scope = getattr(guard, "scope", None)
+        if scope is None:
+            keyhealth.record_trouble(reason, provider)
+        else:
+            from superaide.platform.tenancy.context import use_instance
+
+            with use_instance(scope):
+                keyhealth.record_trouble(reason, provider)
         return
     label = "credits" if getattr(guard, "key_source", "owner") == "platform" else provider
     keyhealth.mark(exc, label)

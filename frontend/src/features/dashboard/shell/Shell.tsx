@@ -83,7 +83,15 @@ export function DashboardShell({ defaultOpen, children }: { defaultOpen: boolean
               </Link>
             </div>
           )}
-          {me.degraded && me.degraded.level !== 'paused' && (
+          {me.ai_notice && (
+            <div role="alert" data-testid="ai-key-banner" data-reason={me.ai_notice.reason} className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-line/70 bg-rose-100 px-4 py-2 text-sm text-[#6b3d06]">
+              <span>{me.ai_notice.message}</span>
+              <Link href={me.ai_notice.href} className="font-medium underline">
+                {me.ai_notice.action}
+              </Link>
+            </div>
+          )}
+          {me.degraded && me.degraded.level !== 'paused' && !(me.ai_notice && me.degraded.channels.length === 0) && (
             <div role="status" data-testid="degraded-banner" className="shrink-0 border-b border-line/70 bg-amber-50 px-4 py-2 text-sm text-ink">
               {me.degraded.line}
               {me.degraded.channels.length > 0 && (

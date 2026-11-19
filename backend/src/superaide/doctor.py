@@ -511,10 +511,30 @@ def spend_cap(ctx: Context) -> list[Result]:
     return _ok(name)
 
 
+@check("AI key")
+def ai_key(ctx: Context) -> list[Result]:
+    """Whether Ava can think: a key is set, the provider accepts it, has credit, and the spend cap is not reached (#633)."""
+    from superaide.brain import keyhealth
+
+    name = "AI key"
+    try:
+        from superaide.platform.db.session import session_scope
+
+        with session_scope() as s:
+            found = keyhealth.notice(s, ctx.settings)
+    except Exception:
+        found = {"reason": keyhealth.KEY_MISSING} if keyhealth.missing(ctx.settings) else None
+    if found is None:
+        return _ok(name)
+    reason = found["reason"]
+    status = FAIL if reason in (keyhealth.KEY_MISSING, keyhealth.KEY_INVALID) else WARN
+    return [Result(name, status, keyhealth.CAUSES[reason], keyhealth.FIXES[reason])]
+
+
 # The checks that make sense for an owner inside the app (#567): the ones about the deployment's addresses, spend
 # cap and storage. The rest (settings file, ports, migrations, chat tokens) are for the person running the server
 # and stay in `superaide doctor`.
-IN_APP_CHECKS = ("Database", "Master key", "Public address", "Google redirects", "Spend cap")
+IN_APP_CHECKS = ("Database", "Master key", "AI key", "Public address", "Google redirects", "Spend cap")
 
 
 def run_in_app(settings: Settings, http: httpx.Client | None = None) -> list[Result]:

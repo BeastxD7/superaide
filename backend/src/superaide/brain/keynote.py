@@ -11,12 +11,12 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from superaide.brain.keyhealth import CREDITS_NOTE, NOTE_EVERY, OWNER_NOTE
+from superaide.brain.keyhealth import CREDIT_LOW, CREDITS_NOTE, NOTE_EVERY, OWNER_NOTE
 from superaide.policy.killswitch import get_state, set_state
 from superaide.proactive.notify import notify_owner
 
 
-def note_owner(session: Session, owner: Any, provider: str, *, what: str = "") -> bool:
+def note_owner(session: Session, owner: Any, provider: str, *, what: str = "", reason: str = "") -> bool:
     """One in-app note per three hours, however many calls fail. Returns whether one was sent."""
     state = get_state(session, "ai_key_note")
     last = state.get("at")
@@ -28,6 +28,12 @@ def note_owner(session: Session, owner: Any, provider: str, *, what: str = "") -
         except ValueError:
             pass
     set_state(session, "ai_key_note", {"at": now.isoformat()})
-    text = CREDITS_NOTE if provider == "credits" else OWNER_NOTE
+    if reason == CREDIT_LOW:
+        text = (
+            "I couldn't use the AI model: the provider says the account is out of credit. "
+            "Add credit there, then check the AI model page."
+        )
+    else:
+        text = CREDITS_NOTE if provider == "credits" else OWNER_NOTE
     notify_owner(session, owner, text + (f" ({what})" if what else ""), {"kind": "ai_key_rejected"}, channel="app")
     return True

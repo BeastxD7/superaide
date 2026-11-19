@@ -701,18 +701,33 @@ class Agent:
         plain "can't answer", and tell the owner in the app once per three hours. None: not that kind of error."""
         from superaide.brain import keyhealth, keynote
 
-        if not keyhealth.is_auth_error(exc):
+        reason = keyhealth.classify(exc)
+        if reason not in (keyhealth.KEY_INVALID, keyhealth.CREDIT_LOW):
             return None
         provider = keyhealth.provider_of(exc)
-        keyhealth.record_rejected(provider)
-        audit(s, "pipeline", "ai_key_rejected", provider=provider)
+        if reason == keyhealth.KEY_INVALID:
+            keyhealth.record_rejected(provider)
+        else:
+            keyhealth.record_trouble(reason, provider)  # the provider layer records it too; this covers other LLMs
+        audit(s, "pipeline", "ai_key_rejected", provider=provider, reason=reason)
         if not owner:
             from superaide.app.accounts import owner as hired_by
 
             boss = hired_by(s)
             if boss is not None:
-                keynote.note_owner(s, boss, provider)
-        return keyhealth.message_for(provider) if owner else keyhealth.OTHERS_CHAT
+                keynote.note_owner(s, boss, provider, reason=reason)
+        if not owner:
+            return keyhealth.OTHERS_CHAT
+        return keyhealth.message_for(provider) if reason == keyhealth.KEY_INVALID else keyhealth.OWNER_TEXT[reason]
+
+    def _key_missing(self, s) -> str | None:
+        """No AI key at all (and the offline demo is not forced): the owner is told what to add, not given an echo."""
+        from superaide.brain import keyhealth
+
+        if not keyhealth.missing(self.settings):
+            return None
+        audit(s, "pipeline", "ai_key_missing")
+        return keyhealth.OWNER_TEXT[keyhealth.KEY_MISSING]
 
     def _budget_reply(self, s, exc: BudgetExceeded, *, owner: bool = True) -> str:
         """What to say when a spending limit stops a model call. The owner hears which limit and what to
@@ -722,6 +737,10 @@ class Agent:
         from superaide.reception.api import MODEL_BUDGET, record_model_health
 
         record_model_health(s, MODEL_BUDGET, exc.period)
+        from superaide.brain import keyhealth
+
+        if owner:
+            keyhealth.record_trouble(keyhealth.SPEND_CAP, "anthropic")
         if not owner:
             return "Sorry, I can't help with this right now. Please try again a little later."
         if exc.period == "platform_day":
@@ -737,7 +756,10 @@ class Agent:
             return "I've used today's thinking budget, so I'll pick this up again tomorrow."
         if exc.period == "month":
             return "I've used this month's budget, so I'm pausing until it frees up."
-        return f"I've reached my US${self.settings.max_spend_usd:.0f} spending cap, so I'm paused."
+        return (
+            f"I've reached my US${self.settings.max_spend_usd:.0f} spending cap, so I'm paused. "
+            "Raise the cap on the AI model page."
+        )
 
     def _owner_turn(
         self,
@@ -787,6 +809,8 @@ class Agent:
 
             if lessons := school_playbook.live_text(s, sender.person.id):  # passed their eval, switched on by the owner
                 brief = brief + "\n\n" + lessons
+        if (told := self._key_missing(s)) is not None:
+            return told, ["key_missing"], {}
         turn = OwnerTurn(
             llm=timing.timed_llm(self.llm),
             model=self.settings.model_chat,
@@ -909,6 +933,8 @@ class Agent:
         self, s, sender: Sender, ctx: Context, aud: Audience, msg: InboundMessage, file_block: str = ""
     ) -> tuple[str, list[str]]:
         is_owner = sender.relation == "manager" and aud.person_ids == {sender.person.id} if sender.person else False
+        if is_owner and (told := self._key_missing(s)) is not None:
+            return told, ["key_missing"]
         with timing.span("retrieval"):
             memories = visible_memories(s, aud, limit=30 if is_owner else 5)
             brief = owner_brief(s, sender, aud)
