@@ -31,6 +31,23 @@ def test_human_scenarios_match_the_recorded_baseline():
     assert not improvements, improvements  # a gap that now passes: record it with `gate --suite human --update`
 
 
+def test_the_human_pass_rate_stays_above_its_threshold():
+    from superaide.evals.gate import MIN_PASS_RATE, below_threshold
+
+    results = _results()
+    by_category = {s.id: s.category for s in human_scenarios()}
+    assert not below_threshold(results, by_category), below_threshold(results, by_category)
+    assert MIN_PASS_RATE["human"] >= 0.8
+
+
+def test_the_threshold_trips_when_known_gaps_pile_up():
+    from superaide.evals.gate import below_threshold
+
+    by_category = {f"s{i}": "human" for i in range(10)}
+    assert below_threshold({f"s{i}": i < 7 for i in range(10)}, by_category)  # 7 of 10 is under 80 percent
+    assert not below_threshold({f"s{i}": i < 8 for i in range(10)}, by_category)
+
+
 def test_the_gate_fails_when_a_message_is_not_stored(monkeypatch: pytest.MonkeyPatch):
     from superaide.reception import service
 

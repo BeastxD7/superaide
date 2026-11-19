@@ -24,7 +24,7 @@ HUMAN = ("human",)
 SUITES = {"ltm": (LTM, BASELINE), "human": (HUMAN, HUMAN_BASELINE)}
 # The lowest share of a category's scenarios that may pass, known gaps counted as failures. The per-scenario
 # baseline stops a regression; this stops the category from being "fixed" by recording ever more known gaps.
-MIN_PASS_RATE = {"ltm_time": 0.65}
+MIN_PASS_RATE = {"ltm_time": 0.65, "human": 0.8}  # human: 20 of 24 pass today, the rest are tracked gaps
 
 
 def ltm_scenarios() -> list[Scenario]:
