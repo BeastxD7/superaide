@@ -28,6 +28,7 @@ from tests.reception.test_reception import (  # noqa: F401
     connected,
     outbox,
     owner_world,
+    script,
     taken,
 )
 

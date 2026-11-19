@@ -23,6 +23,7 @@ from tests.reception.test_reception import (  # noqa: F401
     connected,
     outbox,
     owner_world,
+    script,
 )
 from tests.reception.test_visitor_recall import ASKED, FRIEND, Model, model, visitor_wrote  # noqa: F401
 
