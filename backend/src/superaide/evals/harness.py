@@ -51,6 +51,7 @@ STRANGER_TG, STRANGER_SLACK = "7999", "U_STRANGER"
 VIP_TG, VIP_SLACK = "7003", "U_DANA"
 CONTACT_TG, CONTACT_SLACK = "7004", "U_SAM"
 TEAM = "T_OURS"
+AVA_THREAD_TS = "1790000000.000200"  # the ts Slack gave Ava's reply: the thread a reply under it carries
 GROUP_TG, GROUP_SLACK = "-100777", "C_TEAM"
 CHAT_PURPOSES = {"chat_turn", "verify", "receptionist"}
 
@@ -554,16 +555,17 @@ def inbound(turn: Turn, owner: Person, text_: str, mid: str = "") -> InboundMess
     }.get((turn.who, turn.via))  # fmt: skip
     if sender is None:
         raise ValueError(f"{turn.who} can't write on {turn.via}")
+    thread = AVA_THREAD_TS if turn.thread_under_ava else ""
     if turn.via == "telegram":
         chat = GROUP_TG if turn.chat == "group" else sender
         return InboundMessage(
             provider="telegram", tenant_scope="", sender_id=sender, chat_id=chat, chat_kind=turn.chat,
-            text=text_, verified=True, message_id=mid,
+            text=text_, verified=True, message_id=mid, thread_id=thread,
         )  # fmt: skip
     chat = GROUP_SLACK if turn.chat == "group" else f"D_{sender}"
     return InboundMessage(
         provider="slack", tenant_scope=TEAM, sender_id=sender, chat_id=chat, chat_kind=turn.chat, text=text_,
-        verified=True, message_id=mid, raw={"team_id": TEAM},
+        verified=True, message_id=mid, thread_id=thread, raw={"team_id": TEAM},
     )  # fmt: skip
 
 
@@ -670,6 +672,7 @@ def run_scenario(sc: Scenario, *, inner: LLM | None = None, judge: Judge | None 
                 bool(sc.world.outage),
             ),
             _many_owners(sc.world.second_owner),
+            _gmail_drafts(sc.world.gmail_drafts),
         ):
             clock.shift(timedelta(days=-1))
             run.owner_id = build_world(sc, run.start, run)
@@ -815,6 +818,20 @@ def _many_owners(on: bool) -> Iterator[None]:
         yield
     finally:
         settings.allow_many_owners = saved
+
+
+@contextmanager
+def _gmail_drafts(on: bool) -> Iterator[None]:
+    """The owner has connected Gmail with drafts on: the reply check that denies "I can't send" applies (#639)."""
+    from superaide.integrations.gmail import skill
+
+    saved = skill.can_draft
+    if on:
+        skill.can_draft = lambda session: True
+    try:
+        yield
+    finally:
+        skill.can_draft = saved
 
 
 def _seed_messages(agent: Any, sc: Scenario, owner_id: uuid.UUID) -> None:
