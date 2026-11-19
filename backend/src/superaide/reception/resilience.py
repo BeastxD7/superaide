@@ -127,16 +127,33 @@ def status(session: Session, now: datetime | None = None) -> dict[str, Any] | No
     return {
         "level": level, "reasons": reasons, "channels": channels, "since": since, "waiting_messages": waiting,
         "queued_replies": queued, "failed_replies": failed,
-        "line": describe(level, reasons, channels, since, waiting, queued, failed),
+        "line": describe(level, reasons, channels, since, waiting, queued, failed, _owner_zone(session)),
     }  # fmt: skip
 
 
+def _owner_zone(session: Session) -> Any:
+    """The owner's own time zone, so "since 14:02" is their clock."""
+    from superaide.app.accounts import owner as hired_owner
+    from superaide.intentions.when import zone
+    from superaide.memory.knowledge.store import preferences_for
+
+    boss = hired_owner(session)
+    return zone(preferences_for(session, boss).timezone) if boss is not None else UTC
+
+
 def describe(
-    level: str, reasons: list[str], channels: list[str], since: str | None, waiting: int, queued: int, failed: int
+    level: str,
+    reasons: list[str],
+    channels: list[str],
+    since: str | None,
+    waiting: int,
+    queued: int,
+    failed: int,
+    tz: Any = UTC,
 ) -> str:
     """One sentence in fixed words: what is wrong, how long, and what to expect."""
     parts: list[str] = []
-    when = f" since {datetime.fromisoformat(since).strftime('%H:%M UTC')}" if since else ""
+    when = f" since {datetime.fromisoformat(since).astimezone(tz).strftime('%H:%M')}" if since else ""
     if level == "paused":
         parts.append("Paused: nobody is answered and no new messages are taken until you resume")
     elif "budget" in reasons:

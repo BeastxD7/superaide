@@ -189,3 +189,11 @@ def test_a_reply_to_the_owner_is_not_queued(owner_world, ava, script, outbox):
     outbox["slack"] = ava.messengers["slack"] = Flaky()
     ava.handle(sl("U_BOSS", "hello"))
     assert jobs() == []
+
+
+def test_the_time_in_the_status_is_the_owners_own_clock(owner_world, ava, script):
+    with time_machine.travel(T0, tick=False):  # 08:00 UTC is 13:30 in Asia/Kolkata (the owner's zone)
+        script.fail = RuntimeError("provider overloaded")
+        ava.handle(hello("hello?"))
+        st = status()
+    assert st is not None and "since 13:30" in st["line"] and "UTC" not in st["line"]
