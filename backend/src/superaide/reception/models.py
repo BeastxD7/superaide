@@ -118,7 +118,16 @@ class BookingRequest(Scoped, Base):
 
 class ReceptionMessage(Scoped, Base):
     __tablename__ = "reception_message"
-    __table_args__ = (Index("ix_reception_message_agent_status", "agent_id", "status", "created_at"),)
+    __table_args__ = (
+        Index("ix_reception_message_agent_status", "agent_id", "status", "created_at"),
+        # Recall by time and by sender, and the words of a message (#644). The expression is the one recall searches.
+        Index("ix_reception_message_agent_created", "agent_id", "created_at"),
+        Index(
+            "ix_reception_message_fts",
+            text("to_tsvector('english', message)"),
+            postgresql_using="gin",
+        ),
+    )
 
     identity_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("channel_identity.id"), index=True)
     context_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("context.id"))
