@@ -29,9 +29,33 @@ from superaide.platform.tenancy.context import mine
 
 CODE_RE = re.compile(r"^\s*(\d{6})\s*$")
 CLAIM_RE = re.compile(
-    r"\b(?:i am|i'm|im|it's|its|it is|this is)\s+([a-z][a-z\-']{1,40}(?:\s+[a-z][a-z\-']{1,40})?)",
+    r"\b(?P<lead>i am|i'm|im|it's|its|it is|this is)\s+(?P<name>[a-z][a-z\-']{1,40}(?:\s+[a-z][a-z\-']{1,40})?)",
     re.IGNORECASE,
 )
+# Words that follow "it is" / "this is" / "I'm" in an ordinary sentence and are never a name (#616). Checked in
+# code, so a sentence never starts the linking challenge; nothing here depends on who the sender is.
+NOT_A_NAME = frozenset(
+    """a about above absolutely actually after again all almost already also always am an and any anyone are as
+    asking at available back bad because been before being best better between big both busy but by calling can
+    certain clear close coming correct current definitely done early easy either else enough especially even ever
+    every everything exactly fair far fine for from fully getting going gone good got great hard has have having
+    he her here hers high him his how however i if important in into is it its just kind last late later least
+    less like likely little long looking lost low made mainly maybe me mine more most much must my near need
+    needed never new next no none not now of off ok okay old on once one only open or other our out over own
+    part pending perhaps please possible pretty probably quite ready real really related right same say see she
+    short since slow so some someone something soon sorry sort still such sure than thanks that the their them
+    then there these they thing this those though through time to today tomorrow tonight too true trying
+    unable unclear under until up urgent us used very waiting want was we well were what when where which while
+    who whom why will with within without worried would wrong yes yesterday yet you your""".split()
+)
+_NOT_A_NAME_SUFFIXES = ("ing", "ly", "ed")
+
+
+def _name_word(word: str, capitalised: bool) -> bool:
+    w = word.lower().strip("-'")
+    if len(w) < 2 or w in NOT_A_NAME:
+        return False
+    return capitalised or not w.endswith(_NOT_A_NAME_SUFFIXES)
 
 
 def detect_code(text: str) -> str | None:
@@ -40,8 +64,22 @@ def detect_code(text: str) -> str | None:
 
 
 def detect_claimed_name(text: str) -> str | None:
-    m = CLAIM_RE.search(text)
-    return m.group(1).strip() if m else None
+    """The name in "I'm Meera" or "this is Meera Iyer", or None for an ordinary sentence ("it is important",
+    "this is about the project"). The word after the lead-in must be able to be a name: not a stopword and, when
+    typed lowercase, not an -ing/-ly/-ed word. "it's"/"it is"/"its" count only when the name is capitalised."""
+    for m in CLAIM_RE.finditer(text):
+        lead = m.group("lead").lower()
+        words = m.group("name").split()
+        flags = [w[0].isupper() for w in words]
+        if lead in ("it's", "its", "it is") and not flags[0]:
+            continue
+        if not _name_word(words[0], flags[0]):
+            continue
+        keep = [words[0]]
+        if len(words) > 1 and _name_word(words[1], flags[1]):
+            keep.append(words[1])
+        return " ".join(keep)
+    return None
 
 
 def plain_name(raw: object, limit: int = 40) -> str:
