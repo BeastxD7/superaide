@@ -3263,6 +3263,22 @@
         "title": "CreateBody",
         "type": "object"
       },
+      "superaide__reception__routes__AnswerBody": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "AnswerBody",
+        "type": "object"
+      },
       "superaide__reception__routes__CardBody": {
         "additionalProperties": false,
         "description": "The share card (#475): a value and its own switch, each optional; only what is sent changes.",
@@ -12537,6 +12553,146 @@
           }
         ],
         "summary": "Mark a message taken",
+        "tags": [
+          "Owner: receptionist"
+        ]
+      }
+    },
+    "/app/receptionist/questions": {
+      "get": {
+        "description": "Things people Ava doesn't know asked that she couldn't answer, newest first (last 30 days).",
+        "operationId": "questions_app_receptionist_questions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Questions App Receptionist Questions Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Questions waiting for you",
+        "tags": [
+          "Owner: receptionist"
+        ]
+      }
+    },
+    "/app/receptionist/questions/{question_id}/answer": {
+      "post": {
+        "description": "Sends your answer to that person inside a fixed sentence, once. Nothing is saved for others.",
+        "operationId": "answer_app_receptionist_questions__question_id__answer_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "question_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Question Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/superaide__reception__routes__AnswerBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Answer App Receptionist Questions  Question Id  Answer Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Answer a visitor's question",
+        "tags": [
+          "Owner: receptionist"
+        ]
+      }
+    },
+    "/app/receptionist/questions/{question_id}/decline": {
+      "post": {
+        "operationId": "decline_app_receptionist_questions__question_id__decline_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "question_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Question Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Decline App Receptionist Questions  Question Id  Decline Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Don't answer a visitor's question",
         "tags": [
           "Owner: receptionist"
         ]

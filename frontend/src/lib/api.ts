@@ -753,6 +753,18 @@ export type ReceptionistSettings = {
   greeting: string
 }
 
+// A question someone Ava doesn't know asked that she couldn't answer (#494). `question` and `name` are theirs: show quoted.
+export type VisitorQuestionView = {
+  id: string
+  provider: string
+  name: string
+  question: string
+  state: 'asked' | 'answered' | 'declined' | 'expired'
+  answer: string
+  delivery: '' | 'sent' | 'failed'
+  created_at: string
+}
+
 export type TakenMessageView = {
   id: string
   provider: string
