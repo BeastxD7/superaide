@@ -38,7 +38,7 @@ from superaide.identity.resolver import Sender
 from superaide.memory.models import Context, Event
 from superaide.platform.audit import audit
 from superaide.presence import api as presence
-from superaide.reception import card
+from superaide.reception import card, signals
 from superaide.reception import turn as rturn
 from superaide.reception.models import ReceptionMessage, ReceptionSettings
 
@@ -69,6 +69,33 @@ STORAGE_FULL = "I can't take any more messages from you today. Please try again 
 STORE_PER_DAY = 200  # messages kept per sender per day: flooding storage is still bounded
 FALLBACK = "I can't chat right now, but I've passed your message on. If you like, add your name and how to reach you."
 PAUSED = "I'm paused right now, but I've passed your message on."
+# Safety replies (#498): fixed, reviewed text. Code picks one from the labels in reception/signals.py; the model
+# never writes them and is never told what was detected. Each says it is an AI, gives no advice, and promises
+# only what code does (the message is stored and shown to the owner). The marks are what `_said_recently` finds.
+DISTRESS_MARK = "I'm really sorry you're going through this"
+DISTRESS_REPLY = (
+    f"{DISTRESS_MARK}. I'm an AI assistant, so I can't give you the help you deserve, but I've passed your message "
+    "on right away. If you might be in danger or thinking of hurting yourself, please call your local emergency "
+    "number now, or find a crisis line for your country at findahelpline.com. You don't have to face this alone."
+)
+THREAT_MARK = "I've passed this on to the person you wrote to"
+THREAT_REPLY = (
+    f"{THREAT_MARK}. I'm an AI assistant and can't act on it myself. If anyone is in immediate danger, please call "
+    "your local emergency number."
+)
+REFUSAL_MARK = "I can't share or help with that"
+REFUSAL_REPLY = f"{REFUSAL_MARK}. I'm an AI assistant, and I've passed your message on instead."
+BOUNDARY_MARK = "I'm here to pass on messages"
+BOUNDARY_REPLY = (
+    f"{BOUNDARY_MARK}, and I won't continue this conversation in that tone. What you wrote is still passed on."
+)
+MODEL_LIMIT_REPLY = (
+    "I've passed that on. I can't answer every message today, but anything else you send is still passed on."
+)
+MODEL_TURNS_PER_DAY = 20  # receptionist model turns one unknown sender can cause a day; after that code answers alone
+DISTRESS_REPLIES_PER_HOUR = 3  # a person in distress is answered again, but a repeated phrase cannot run up replies
+SEVERE_NOTES_PER_HOUR = 6  # owner notes one sender can cause in an hour for distress or a threat
+SEVERE_NOTE_EVERY = timedelta(minutes=5)
 NOTE_EVERY = timedelta(minutes=15)
 NOTES_PER_HOUR = 3  # owner notifications one sender can cause in an hour: code's cap, whatever the message says (#477)
 URGENT_RANKS = ("urgent", "unverified")
@@ -127,6 +154,42 @@ def _said_recently(session: Session, ctx: Context, text: str, now: datetime) -> 
     )
 
 
+def _said_count(session: Session, ctx: Context, text: str, since: datetime) -> int:
+    return int(
+        session.scalar(
+            select(func.count())
+            .select_from(Event)
+            .where(
+                Event.context_id == ctx.id,
+                Event.direction == "out",
+                Event.content.contains(text),
+                Event.created_at >= since,
+            )
+        )
+        or 0
+    )
+
+
+def _model_turns(session: Session, sender: Sender, now: datetime) -> int:
+    """Receptionist model turns for this sender in the last 24 hours (code writes one `turn` audit row per turn)."""
+    from superaide.platform.db.models import AuditLog
+
+    return int(
+        session.scalar(
+            select(func.count())
+            .select_from(AuditLog)
+            .where(
+                AuditLog.action == "turn",
+                AuditLog.actor == "reception",
+                AuditLog.created_at >= now - timedelta(hours=24),
+                AuditLog.detail["identity_id"].astext == str(sender.identity.id),
+                AuditLog.detail["mode"].astext == "model",
+            )
+        )
+        or 0
+    )
+
+
 def _first_reply(session: Session, ctx: Context) -> bool:
     return session.scalar(select(Event.id).where(Event.context_id == ctx.id, Event.direction == "out").limit(1)) is None
 
@@ -182,12 +245,13 @@ def _keep(
     taken: rturn.TakenMessage,
     *,
     source: str,
+    sig: signals.Signals = signals.NONE,
 ) -> ReceptionMessage | None:
     """Store the message, or None when that failed: nothing may then be said to be passed on. A savepoint, so a
     failure inside the owner's note or the triage item rolls the whole row back instead of half-writing it."""
     try:
         with session.begin_nested():
-            return store_message(agent, session, owner, sender, ctx, msg, inbound, taken, source=source)
+            return store_message(agent, session, owner, sender, ctx, msg, inbound, taken, source=source, sig=sig)
     except Exception:
         log.exception("receptionist could not store a message")
         audit(session, "reception", "store_failed", identity_id=sender.identity.id)
@@ -232,13 +296,28 @@ def handle_stranger(
     first = _first_reply(session, ctx)
     hello = greeting(agent.name, owner, rs, has_card=rturn.has_card(session, owner, rs))
     over_storage = _stored_today(session, sender, now) >= STORE_PER_DAY
+    sig = signals.detect(msg.text)
+    if exhausted:
+        sig = sig.with_(signals.FLOOD)
+
+    if sig and not over_storage and (sig.has(*signals.SEVERE, signals.HARASSMENT) or sig.wants_data):
+        return _safety_reply(agent, session, owner, sender, ctx, msg, inbound, sig, now)
 
     if exhausted:  # no model call: code keeps the message and says, once, when Ava will answer again
         audit(session, "reception", "rate_limited", identity_id=sender.identity.id, hour=hour, day=day)
         if over_storage:
             return "" if _said_recently(session, ctx, STORAGE_FULL, now) else STORAGE_FULL
         row = _keep(
-            agent, session, owner, sender, ctx, msg, inbound, rturn.TakenMessage(message=msg.text[:2000]), source="code"
+            agent,
+            session,
+            owner,
+            sender,
+            ctx,
+            msg,
+            inbound,
+            rturn.TakenMessage(message=msg.text[:2000]),
+            source="code",
+            sig=sig,
         )
         if row is None:
             return SAVE_FAILED
@@ -260,13 +339,19 @@ def handle_stranger(
         return "" if _said_recently(session, ctx, STORAGE_FULL, now) else STORAGE_FULL
 
     resumed = _resumed(session, ctx)
-    reply, from_model, mode = _talk(agent, session, owner, rs, ctx, msg)
+    if _model_turns(session, sender, now) >= MODEL_TURNS_PER_DAY:  # this sender's share of the model is spent
+        reply, from_model, mode = MODEL_LIMIT_REPLY, None, "code"
+        sig = sig.with_(signals.FLOOD)
+    else:
+        reply, from_model, mode = _talk(agent, session, owner, rs, ctx, msg)
     # Code stores every message; the model only adds structure. One it did not structure is kept as typed.
     structured = (
         mode == "model" and from_model is not None and bool(from_model.message.strip() or from_model.topic.strip())
     )
     taken = from_model if structured and from_model is not None else rturn.TakenMessage(message=msg.text[:2000])
-    row = _keep(agent, session, owner, sender, ctx, msg, inbound, taken, source="model" if structured else "code")
+    row = _keep(
+        agent, session, owner, sender, ctx, msg, inbound, taken, source="model" if structured else "code", sig=sig
+    )
     if row is None:  # never "I've passed it on" for something that was not stored
         reply = SAVE_FAILED
     if first and not rturn.has_card(session, owner, rs):  # she could only take a message: say so to the owner (#475)
@@ -295,6 +380,41 @@ def handle_stranger(
     taken_ok = row is not None
     audit(session, "reception", "turn", identity_id=sender.identity.id, mode=mode, took_message=taken_ok)
     return reply
+
+
+def _safety_reply(
+    agent: Any,
+    session: Session,
+    owner: Person,
+    sender: Sender,
+    ctx: Context,
+    msg: InboundMessage,
+    inbound: Event,
+    sig: signals.Signals,
+    now: datetime,
+) -> str:
+    """The reply when code found distress, a threat, abuse, or a request for credentials, money or private details
+    (#498). No model call, so nothing the stranger wrote can steer the answer, and no lookup, so the refusal is the
+    same sentence whether or not the owner has the data they ask for (nobody can probe). The message is always
+    stored first, and the owner is told in the right tone; what the stranger gets is one of the fixed texts here."""
+    row = _keep(
+        agent, session, owner, sender, ctx, msg, inbound, rturn.TakenMessage(message=msg.text[:2000]), source="code",
+        sig=sig,
+    )  # fmt: skip
+    if row is None:
+        return SAVE_FAILED
+    audit(session, "reception", "safety_reply", identity_id=sender.identity.id, labels=list(sig.labels))
+    hour, day = now - timedelta(hours=1), now - timedelta(hours=24)
+    if sig.has(signals.DISTRESS):  # a person is answered again, a few times an hour
+        text = DISTRESS_REPLY
+        left = DISTRESS_REPLIES_PER_HOUR - _said_count(session, ctx, DISTRESS_MARK, hour)
+    elif sig.has(signals.THREAT):
+        text, left = THREAT_REPLY, 1 - _said_count(session, ctx, THREAT_MARK, hour)
+    elif sig.wants_data:
+        text, left = REFUSAL_REPLY, 1 - _said_count(session, ctx, REFUSAL_MARK, hour)
+    else:  # abuse: one calm boundary a day, then silence on that thread; the message is still passed on
+        text, left = BOUNDARY_REPLY, 1 - _said_count(session, ctx, BOUNDARY_MARK, day)
+    return text if left > 0 else ""
 
 
 def _talk(
@@ -340,6 +460,7 @@ def store_message(
     taken: rturn.TakenMessage,
     *,
     source: str,
+    sig: signals.Signals = signals.NONE,
 ) -> ReceptionMessage:
     from superaide.asklink.service import rank_request
 
@@ -349,18 +470,25 @@ def store_message(
     r = rank_request(
         session, owner, topic=taken.topic, why=taken.message, deadline=None, deadline_at=deadline_at, now=arrived
     )
+    rank = r.rank
+    if sig.wants_data or sig.has(signals.AUTHORITY, signals.CREDENTIAL, signals.PAYMENT):
+        rank = "unverified"  # asking for data in someone's name: never a normal message
+    elif sig.has(*signals.SEVERE) and rank in ("normal", "low"):
+        rank = "urgent"
     handle = f"@{msg.sender_username}" if msg.sender_username else msg.sender_display
     row = ReceptionMessage(
         identity_id=sender.identity.id, context_id=ctx.id, inbound_event_id=inbound.id, provider=msg.provider,
         handle=handle[:200], name=taken.name[:120], contact=taken.contact[:200], topic=taken.topic[:200],
         message=taken.message[:4000], deadline_text=taken.deadline_text[:120], claimed_urgency=taken.urgency,
-        deadline_at=deadline_at, deadline_parse=parse, rank=r.rank,
-        rule_hits=[h for h in r.hits if h != "source:ask_link"] + [f"source:{msg.provider}"],
+        deadline_at=deadline_at, deadline_parse=parse, rank=rank,
+        rule_hits=[h for h in r.hits if h != "source:ask_link"] + [f"source:{msg.provider}", *sig.hits()],
         source=source,
     )  # fmt: skip
     session.add(row)
     session.flush()
     audit(session, "reception", "message_taken", message_id=row.id, rank=row.rank, source=source)
+    if sig:  # labels only, never a quote (#498)
+        audit(session, "reception", "signals", message_id=row.id, labels=list(sig.labels))
     if agent.settings.triage_enabled:
         _to_triage(session, owner, row, inbound, now)
     else:
@@ -405,6 +533,21 @@ def _reason(session: Session, owner: Person, row: ReceptionMessage) -> str:
     name = _first_name(row)
     who = f"{name}, someone new," if name else "someone new"
     when = f"{where} at {_local_time(session, owner, row)}"
+    sig = signals.from_hits(row.rule_hits)
+    if signals.DISTRESS in sig:
+        return (
+            f"Message from {who} on {when} may be from someone in distress. I replied with a caring note and a "
+            "pointer to help. Please read it now"
+        )
+    if signals.THREAT in sig:
+        return f"Message from {who} on {when} contains what looks like a threat. Please read it now"
+    if signals.CREDENTIAL in sig or signals.PAYMENT in sig or signals.AUTHORITY in sig:
+        return (
+            f"Message from {who} on {when} asks for private details, codes or money, and may claim to speak for "
+            "you. I declined and told them nothing. It may be a scam"
+        )
+    if signals.HARASSMENT in sig:
+        return f"Message from {who} on {when} is abusive. I replied once, calmly, and will not reply again"
     if row.rank == "unverified":
         return f"Message from {who} on {when} asks for something risky (money, codes or secrecy)"
     if row.rank == "urgent":
@@ -483,16 +626,19 @@ def _note(session: Session, owner: Person, row: ReceptionMessage, now: datetime)
 
     # An urgent or risky message is judged against earlier urgent ones only, so a flood of ordinary messages (or
     # the cap notice, #474) cannot hide it from the owner.
+    severe = bool({signals.PREFIX + s for s in signals.SEVERE} & set(row.rule_hits or []))
     burst = (
         select(func.count())
         .select_from(ReceptionMessage)
         .where(
             ReceptionMessage.id != row.id,
             ReceptionMessage.identity_id == row.identity_id,  # per sender: one chatty person cannot hide another (#472)
-            ReceptionMessage.created_at >= now - NOTE_EVERY,
+            ReceptionMessage.created_at >= now - (SEVERE_NOTE_EVERY if severe else NOTE_EVERY),
         )
     )
-    if row.rank in URGENT_RANKS:
+    if severe:  # distress or a threat: only an earlier one counts, so ordinary chatter never hides it
+        burst = burst.where(ReceptionMessage.rule_hits.overlap([signals.PREFIX + s for s in signals.SEVERE]))
+    elif row.rank in URGENT_RANKS:
         burst = burst.where(ReceptionMessage.rank.in_(URGENT_RANKS))
     if session.scalar(burst):
         return
@@ -504,7 +650,7 @@ def _note(session: Session, owner: Person, row: ReceptionMessage, now: datetime)
             ReceptionMessage.notified_at >= now - timedelta(hours=1),
         )
     )
-    if (sent_this_hour or 0) >= NOTES_PER_HOUR and not (
+    if (sent_this_hour or 0) >= (SEVERE_NOTES_PER_HOUR if severe else NOTES_PER_HOUR) and not (
         row.rank in URGENT_RANKS and settings_for(session, owner).urgent_over_cap
     ):
         audit(session, "reception", "note_capped", message_id=row.id, rank=row.rank)

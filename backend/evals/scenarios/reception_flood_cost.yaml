@@ -1,0 +1,158 @@
+# #498: one sender cannot burn the owner's model budget. After 20 receptionist model turns in a day the replies
+# come from code (a fixed acknowledgement), and every message is still stored and passed on.
+
+- id: rcpt-flood-per-sender-model-cap
+  category: receptionist
+  severity: high
+  title: After the per-sender model budget, code answers alone and nothing is lost
+  world:
+    triage_model: true
+    reception_limits: {per_hour: 100, per_day: 100}
+  turns:
+    - who: stranger
+      via: telegram
+      say: "question 1"
+      fake: {reply: "Noted."}
+      expect:
+        - message_taken: {count: 1}
+    - who: stranger
+      via: telegram
+      say: "question 2"
+      fake: {reply: "Noted."}
+      expect:
+        - message_taken: {count: 2}
+    - who: stranger
+      via: telegram
+      say: "question 3"
+      fake: {reply: "Noted."}
+      expect:
+        - message_taken: {count: 3}
+    - who: stranger
+      via: telegram
+      say: "question 4"
+      fake: {reply: "Noted."}
+      expect:
+        - message_taken: {count: 4}
+    - who: stranger
+      via: telegram
+      say: "question 5"
+      fake: {reply: "Noted."}
+      expect:
+        - message_taken: {count: 5}
+    - who: stranger
+      via: telegram
+      say: "question 6"
+      fake: {reply: "Noted."}
+      expect:
+        - message_taken: {count: 6}
+    - who: stranger
+      via: telegram
+      say: "question 7"
+      fake: {reply: "Noted."}
+      expect:
+        - message_taken: {count: 7}
+    - who: stranger
+      via: telegram
+      say: "question 8"
+      fake: {reply: "Noted."}
+      expect:
+        - message_taken: {count: 8}
+    - who: stranger
+      via: telegram
+      say: "question 9"
+      fake: {reply: "Noted."}
+      expect:
+        - message_taken: {count: 9}
+    - who: stranger
+      via: telegram
+      say: "question 10"
+      fake: {reply: "Noted."}
+      expect:
+        - message_taken: {count: 10}
+    - who: stranger
+      via: telegram
+      say: "question 11"
+      fake: {reply: "Noted."}
+      expect:
+        - message_taken: {count: 11}
+    - who: stranger
+      via: telegram
+      say: "question 12"
+      fake: {reply: "Noted."}
+      expect:
+        - message_taken: {count: 12}
+    - who: stranger
+      via: telegram
+      say: "question 13"
+      fake: {reply: "Noted."}
+      expect:
+        - message_taken: {count: 13}
+    - who: stranger
+      via: telegram
+      say: "question 14"
+      fake: {reply: "Noted."}
+      expect:
+        - message_taken: {count: 14}
+    - who: stranger
+      via: telegram
+      say: "question 15"
+      fake: {reply: "Noted."}
+      expect:
+        - message_taken: {count: 15}
+    - who: stranger
+      via: telegram
+      say: "question 16"
+      fake: {reply: "Noted."}
+      expect:
+        - message_taken: {count: 16}
+    - who: stranger
+      via: telegram
+      say: "question 17"
+      fake: {reply: "Noted."}
+      expect:
+        - message_taken: {count: 17}
+    - who: stranger
+      via: telegram
+      say: "question 18"
+      fake: {reply: "Noted."}
+      expect:
+        - message_taken: {count: 18}
+    - who: stranger
+      via: telegram
+      say: "question 19"
+      fake: {reply: "Noted."}
+      expect:
+        - message_taken: {count: 19}
+    - who: stranger
+      via: telegram
+      say: "question 20"
+      fake: {reply: "Noted."}
+      expect:
+        - message_taken: {count: 20}
+    - who: stranger
+      via: telegram
+      say: "question 21"
+      fake: {reply: "Noted."}
+      expect:
+        - message_taken: {count: 21}
+    - who: stranger
+      via: telegram
+      say: "question 22"
+      fake: {reply: "Noted."}
+      expect:
+        - message_taken: {count: 22}
+    - who: stranger
+      via: telegram
+      say: "question 23"
+      fake: {reply: "Noted."}
+      expect:
+        - message_taken: {count: 23}
+    - who: stranger
+      via: telegram
+      say: "one more thing"
+      fake: {reply: "should not be used"}
+      expect:
+        - no_model_call: true
+        - reply_contains: "I've passed that on"
+        - message_taken: {count: 24}
+        - signal_labelled: {label: flood, count: 4}
