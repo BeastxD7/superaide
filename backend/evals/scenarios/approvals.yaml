@@ -86,3 +86,117 @@
   checks:
     - approval: {kind: message_someone_else, summary_any: ["Priya|late"]}
     - approval_count: 1
+
+# #642: the owner answers a card where they are. Decided in code before any model runs. (Fictional names.)
+- id: appr-send-by-reply
+  category: approvals
+  severity: critical
+  title: '"tell Zeeshan I am busy" then "send" in the same DM sends exactly the card''s text, without the model'
+  world:
+    triage_model: true
+    outage: {telegram: 0, slack: 0}  # both channels reachable from the start (the relay really sends)
+  turns:
+    - who: stranger
+      via: telegram
+      say: "please ask him to call me, it is urgent"
+      fake: {reply: "I will pass that on.", take: {name: Zeeshan Ali, topic: a call, message: "please ask him to call me, it is urgent"}}
+    - who: owner
+      via: telegram
+      say: "tell Zeeshan I am busy, I will call back in an hour"
+      fake:
+        tools:
+          - name: relay_message
+            input: {to: Zeeshan, text: "The owner is busy and will call back in an hour."}
+        reply: "That is waiting for your OK."
+      expect:
+        - tool_called: relay_message
+    - who: owner
+      via: telegram
+      say: "send"
+      expect:
+        - reply_contains: "Sent to Zeeshan"
+        - reply_not_contains: ["not recognized", "I can't"]
+  checks:
+    - approval_status: {kind: relay_message, status: approved, count: 1}
+
+- id: appr-send-with-nothing-waiting
+  category: approvals
+  severity: high
+  title: '"send" with no card waiting reaches the model and approves nothing'
+  turns:
+    - who: owner
+      via: telegram
+      say: "send"
+      fake: {reply: "There is nothing waiting for you to send."}
+      expect:
+        - reply_contains: "nothing waiting"
+  checks:
+    - approval_count: 0
+
+- id: appr-send-two-cards-asks-which
+  category: approvals
+  severity: critical
+  title: With two cards waiting "send" approves nothing and asks which; "send 2" approves only the second
+  world:
+    triage_model: true
+    outage: {telegram: 0, slack: 0}  # both channels reachable from the start (the relay really sends)
+  turns:
+    - who: stranger
+      via: telegram
+      say: "can you tell him I am outside"
+      fake: {reply: "Noted.", take: {name: Zeeshan Ali, topic: a visit, message: "I am outside"}}
+    - who: stranger
+      via: slack
+      say: "please ask him to call me"
+      fake: {reply: "Noted.", take: {name: Priya Menon, topic: a call, message: "please ask him to call me"}}
+    - who: owner
+      via: telegram
+      say: "tell Zeeshan I am busy"
+      fake:
+        tools: [{name: relay_message, input: {to: Zeeshan, text: "The owner is busy."}}]
+        reply: "That is waiting for your OK."
+    - who: owner
+      via: telegram
+      say: "tell Priya I will call back"
+      fake:
+        tools: [{name: relay_message, input: {to: Priya, text: "The owner will call back."}}]
+        reply: "That is waiting for your OK."
+    - who: owner
+      via: telegram
+      say: "send"
+      expect:
+        - reply_contains: "More than one request"
+    - who: owner
+      via: telegram
+      say: "send 2"
+      expect:
+        - reply_contains: "Sent to Priya"
+  checks:
+    - approval_status: {kind: relay_message, status: approved, count: 1}
+    - approval_status: {kind: relay_message, status: pending, count: 1}
+
+- id: appr-send-in-a-channel-approves-nothing
+  category: approvals
+  severity: critical
+  title: '"send" typed in a channel, by the owner or anyone, approves nothing'
+  world:
+    triage_model: true
+    outage: {telegram: 0, slack: 0}  # both channels reachable from the start (the relay really sends)
+  turns:
+    - who: stranger
+      via: telegram
+      say: "please ask him to call me, it is urgent"
+      fake: {reply: "I will pass that on.", take: {name: Zeeshan Ali, topic: a call, message: "please ask him to call me"}}
+    - who: owner
+      via: telegram
+      say: "tell Zeeshan I am busy"
+      fake:
+        tools: [{name: relay_message, input: {to: Zeeshan, text: "The owner is busy."}}]
+        reply: "That is waiting for your OK."
+    - who: owner
+      via: slack
+      chat: group
+      say: "send"
+      fake: {reply: "Waiting for approval in the app."}
+  checks:
+    - approval_status: {kind: relay_message, status: pending, count: 1}

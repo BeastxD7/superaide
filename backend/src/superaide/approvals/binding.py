@@ -59,8 +59,10 @@ APPROVAL_TTL_CHOICES = (0, 1, 24, 72, 168)  # hours the owner may pick for how l
 def seal(approval: Approval) -> None:
     """Record what the owner is about to be shown: the hash of the payload and, when a lifetime is set, the
     moment the request stops being answerable. Call it once the payload is final, before the first flush."""
+    from superaide.approvals.origin import stamp
     from superaide.platform.config import get_settings
 
+    approval.payload = stamp(dict(approval.payload or {}))  # #642: the conversation that asked, inside the seal
     settings = get_settings()
     if settings.approval_binding != "off":
         approval.bound_hash = payload_hash(approval.kind, approval.payload)
