@@ -1,7 +1,7 @@
 """reply_draft: replies drafted for the owner to approve (#485)
 
-Revision ID: 0100
-Revises: 0099
+Revision ID: 0101
+Revises: 0100
 Create Date: 2026-11-20 02:00:16.731480
 
 """
@@ -16,8 +16,8 @@ from alembic import op
 TABLES = ("reply_draft",)
 
 # revision identifiers, used by Alembic.
-revision: str = "0100"
-down_revision: str | Sequence[str] | None = "0099"
+revision: str = "0101"
+down_revision: str | Sequence[str] | None = "0100"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
