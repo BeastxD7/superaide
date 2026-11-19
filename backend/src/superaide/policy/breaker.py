@@ -19,7 +19,7 @@ from superaide.policy.killswitch import get_state, set_frozen, set_state
 STATE_KEY = "breaker"
 # Action kinds that delete, archive or send. Anything else is not counted.
 BURST_KINDS = frozenset(
-    {"gmail_send", "message_someone_else", "delete_memory", "calendar_decline_event", "publish_post"}
+    {"gmail_send", "message_someone_else", "relay_message", "delete_memory", "calendar_decline_event", "publish_post"}
 )
 HALT_REPLY = "Stopped. I am paused and will not act or reply until you resume me in the app."
 

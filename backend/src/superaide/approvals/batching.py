@@ -39,6 +39,7 @@ NEVER_BATCH = frozenset(
         "ask_reply",
         "reply_on_behalf",
         "message_someone_else",
+        "relay_message",
         "publish_post",
         "grant_access",
         "delete_memory",
