@@ -162,6 +162,11 @@ class TurnBudget:
             self.budget = cw.input_budget(self.window.tokens, self.max_tokens)
         return self.budget
 
+    def window_info(self) -> cw.WindowInfo:
+        self._resolve()
+        assert self.window is not None
+        return self.window
+
     def fit(self, system: Any, tools: Any, msgs: list[Msg], turn_start: int) -> tuple[list[Msg], int]:
         """Never raises: on any failure the prompt goes out as it was."""
         try:

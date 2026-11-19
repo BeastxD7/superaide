@@ -1,0 +1,23 @@
+{
+  "full": {
+    "system_rules": 1844,
+    "system_state": 1166,
+    "tools": 2099,
+    "tool_count": 11,
+    "fixed": 5109
+  },
+  "compact": {
+    "system_rules": 1003,
+    "system_state": 102,
+    "tools": 402,
+    "tool_count": 3,
+    "fixed": 1507
+  },
+  "minimal": {
+    "system_rules": 573,
+    "system_state": 22,
+    "tools": 0,
+    "tool_count": 0,
+    "fixed": 595
+  }
+}
