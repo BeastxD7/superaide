@@ -438,6 +438,16 @@ class Settings(BaseSettings):
     # held by the brake, expired), shown to the owner as "How much am I being asked?" and to the operator as a
     # weekly trend. No card text, recipient or name is kept. Off: nothing is recorded and the routes answer 404.
     approval_metrics_enabled: bool = True
+    # Approve by reply (#642): in the owner's own verified direct message or app chat, a one-word "send" / "yes" /
+    # "cancel" decides the one card Ava just announced there, in code and before any model runs. This is the comma
+    # list of card kinds that may be approved that way (a "no" is always accepted). Never from a channel, never for a
+    # card asked for in a turn that read other people's words or on a call. Empty = off: cards are decided in the app.
+    # (A list, not a flag: the flag budget is full.)
+    approve_by_reply_kinds: str = "relay_message,gmail_send"
+    # Approve and Cancel buttons under a card's notice, by provider (comma list of telegram and slack; empty = none).
+    # Slack needs "Interactivity" switched on in the Slack app (channels/slack/manifest.yml) before its buttons work,
+    # so only Telegram is on by default.
+    approval_buttons: str = "telegram"
     # Batch approval (#408): alike, safe own-calendar requests are shown as one card with a preview of every item and
     # one decision, at most this many items to a card. Each item stays bound to its exact content; a changed item
     # cancels the whole batch; sending, money, deleting and access are never batched (approvals/batching.py).

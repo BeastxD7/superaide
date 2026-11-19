@@ -33,7 +33,7 @@ settings:
       - message.groups
       - message.im
   interactivity:
-    is_enabled: false
+    is_enabled: true  # Approve / Cancel buttons on approval cards (APPROVAL_BUTTONS=telegram,slack); over Socket Mode, no URL
   org_deploy_enabled: false
   socket_mode_enabled: true
   token_rotation_enabled: false

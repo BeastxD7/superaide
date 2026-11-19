@@ -72,6 +72,7 @@ class InboundAction:
     message_id: str = ""
     endpoint: str = ""  # which bot received it
     verified: bool = False
+    tenant_scope: str = ""  # Slack: the presser's workspace (a Telegram account has none)
 
 
 Sources = list[dict[str, Any]]
