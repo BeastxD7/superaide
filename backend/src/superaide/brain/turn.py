@@ -93,6 +93,19 @@ def tools_used(ev: Event) -> str:
     return f"[Tools used for this reply: {'; '.join(done)}]" if done else ""
 
 
+def card_note(ev: Event) -> str:
+    """What an earlier reply asked the owner to approve (#642), written by code from the event's record: the cards'
+    ids, so "send" or "yes please" in the next message has something to point at. The card's words are not repeated
+    (they may be someone else's); "Where things stand" carries the live state."""
+    ids = [str(i)[:8] for i in ((ev.meta or {}).get("approvals") or [])[:3]]
+    if not ids:
+        return ""
+    return (
+        f"[This reply asked for the owner's OK on card {', '.join('#' + i for i in ids)}. The owner can answer "
+        '"send" or "cancel" here; the app decides it, not you.]'
+    )
+
+
 REMINDER_TOOLS = {"create_reminder", "update_reminder", "cancel_reminder", "list_reminders"}
 
 
@@ -159,6 +172,8 @@ def build_messages(
             )
         if role == "assistant" and (used := tools_used(ev)):
             content = used + "\n" + content
+        if role == "assistant" and (card := card_note(ev)):
+            content = card + "\n" + content
         at = ev.created_at
         if tz is not None and prev is not None and at is not None and at - prev >= GAP:
             content = gap_line(prev, at, tz) + "\n" + content

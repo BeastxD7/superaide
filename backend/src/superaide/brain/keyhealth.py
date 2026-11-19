@@ -183,10 +183,12 @@ def small_context(session: Session, settings: Any, *, fresh: bool = False) -> An
 
 def cut_notice(session: Session) -> dict[str, str] | None:
     """The server cut a prompt recently (brain/context_watch.py), seen in a reply's token count (#641)."""
-    from superaide.brain import context_watch
-
-    state = context_watch.current(session)
-    if state is None:
+    state = get_state(session, "prompt_truncated")  # written by brain/context_watch.py
+    try:
+        recent = bool(state) and datetime.now(UTC) - datetime.fromisoformat(state["seen"]) < timedelta(hours=24)
+    except KeyError, ValueError:
+        recent = False
+    if not recent:
         return None
     detail = (
         f"{str(state.get('model', '')).split('::')[-1]} read {state.get('reported', 0):,} tokens of about "
