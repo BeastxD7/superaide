@@ -1,7 +1,7 @@
 """takeover: live human takeover of a visitor conversation (#493)
 
-Revision ID: 0097
-Revises: 0096
+Revision ID: 0098
+Revises: 0097
 Create Date: 2026-11-19 19:34:43.419199
 
 """
@@ -15,8 +15,8 @@ from alembic import op
 TABLES = ("takeover",)
 
 # revision identifiers, used by Alembic.
-revision: str = "0097"
-down_revision: str | Sequence[str] | None = "0096"
+revision: str = "0098"
+down_revision: str | Sequence[str] | None = "0097"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
