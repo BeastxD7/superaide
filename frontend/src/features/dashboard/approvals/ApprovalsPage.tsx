@@ -16,6 +16,7 @@ export function ApprovalsPage() {
       <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 lg:py-8">
         <h1 className="text-3xl font-medium text-ink tight">Approvals</h1>
         <p className="mt-1 text-body">Things {name} was asked to do that need your yes first.</p>
+        <div data-tour="approvals-list">
         <ApprovalsCard
           name={name}
           showExpired
@@ -25,6 +26,7 @@ export function ApprovalsPage() {
             </p>
           }
         />
+        </div>
         <BurdenCard />
         <MandatesCard name={name} />
         <TwinCard name={name} />

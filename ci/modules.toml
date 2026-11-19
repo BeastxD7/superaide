@@ -129,6 +129,8 @@ tests = [
 ]
 e2e = [
   "e2e/tests/app/hire-path.spec.ts",
+  "e2e/tests/app/guided-tour.spec.ts",
+  "e2e/tests/app/guided-tour.mobile.spec.ts",
   "e2e/tests/app/chat-history.spec.ts",
   "e2e/tests/app/fe-chat-streaming.spec.ts",
   "e2e/tests/app/glass-brain.spec.ts",
@@ -789,6 +791,7 @@ e2e = [
 [modules.web-dashboard]
 src = [
   "frontend/src/features/dashboard/**",
+  "frontend/src/features/tour/**",
   "frontend/src/features/needs-you/**",
   "frontend/src/features/workspace/**",
   "frontend/src/features/principal-card/**",
@@ -802,6 +805,7 @@ src = [
 ]
 tests = [
   "frontend/src/features/dashboard/**/*.test.ts",
+  "frontend/src/features/tour/**/*.test.ts",
   "frontend/src/features/dashboard/**/*.test.tsx",
   "frontend/src/features/reception/**/*.test.tsx",
 ]

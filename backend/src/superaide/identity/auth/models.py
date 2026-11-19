@@ -10,7 +10,7 @@ from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Integer, St
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, validates
 
-from superaide.platform.db.models import EMAIL_MATCH_SQL, Base, TenantScoped, _agent
+from superaide.platform.db.models import EMAIL_MATCH_SQL, Base, Scoped, TenantScoped, _agent
 
 
 class EmailToken(Base):
@@ -166,3 +166,15 @@ class IntegrationSecret(TenantScoped, Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
     )
+
+
+class TourProgress(Scoped, Base):
+    """Which guided tours an owner finished or skipped (#626), written through /app/tour. Under RLS."""
+
+    __tablename__ = "tour_progress"
+    __table_args__ = (UniqueConstraint("person_id", "tour", name="uq_tour_progress_person_tour"),)
+
+    person_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("person.id"), index=True)
+    tour: Mapped[str] = mapped_column(String(20))
+    status: Mapped[str] = mapped_column(String(10))  # completed | skipped
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))

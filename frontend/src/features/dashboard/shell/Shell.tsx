@@ -11,6 +11,7 @@ import { AppSidebar } from '@/features/dashboard/shell/AppSidebar'
 import { agentStatus, navItemFor } from '@/features/dashboard/shell/nav'
 import { ReminderWatcher } from '@/features/dashboard/reminders/ReminderWatcher'
 import { MobileTabBar } from '@/features/mobile/TabBar'
+import { TourProvider } from '@/features/tour/TourProvider'
 import { InstallHint } from '@/features/pwa/install'
 import { MOBILE_TABS_ENABLED, PWA_ENABLED } from '@/lib/flags'
 import { useSession } from '@/lib/session-context'
@@ -50,6 +51,7 @@ export function DashboardShell({ defaultOpen, children }: { defaultOpen: boolean
 
   return (
     <TooltipProvider delayDuration={300}>
+      <TourProvider ready={me.onboarding.done} agentName={me.agent.name}>
       {/* The app fills the window exactly: the header stays put, and each page
           scrolls inside it (the chat keeps its composer on screen). */}
       <SidebarProvider defaultOpen={defaultOpen} className="h-svh">
@@ -61,7 +63,7 @@ export function DashboardShell({ defaultOpen, children }: { defaultOpen: boolean
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4" />
             <p className="font-medium text-ink">{page?.label ?? 'Dashboard'}</p>
-            <span className="ml-auto flex items-center gap-2 rounded-full bg-mist px-3 py-1 text-xs text-body">
+            <span data-tour="agent-status" className="ml-auto flex items-center gap-2 rounded-full bg-mist px-3 py-1 text-xs text-body">
               <span className={`size-1.5 rounded-full ${status.dot}`} aria-hidden />
               {me.agent.name}: {status.label.toLowerCase()}
             </span>
@@ -102,6 +104,7 @@ export function DashboardShell({ defaultOpen, children }: { defaultOpen: boolean
           {MOBILE_TABS_ENABLED && <MobileTabBar />}
         </SidebarInset>
       </SidebarProvider>
+      </TourProvider>
     </TooltipProvider>
   )
 }

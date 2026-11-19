@@ -220,11 +220,11 @@ export function NotebookPage() {
         </Link>
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative sm:w-72">
+          <div className="relative sm:w-72" data-tour="notebook-search">
             <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" aria-hidden />
             <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search the notebook" aria-label="Search the notebook" className="pl-9" />
           </div>
-          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter by kind">
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter by kind" data-tour="notebook-filters">
             {['all', ...categories].map((c) => (
               <Button
                 key={c}
