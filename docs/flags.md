@@ -1,7 +1,7 @@
 # Feature flags
 
 Generated from [`backend/flags.toml`](../backend/flags.toml) by `scripts/check_flags.py --write`; do not edit by hand.
-69 flags (budget 69, target 15 owner-facing). A flag that is not `stable` has a remove-by date: it is promoted or deleted by then.
+66 flags (budget 66, target 15 owner-facing). A flag that is not `stable` has a remove-by date: it is promoted or deleted by then.
 
 | Flag | Default | Stage | Owner | Remove by | What it does |
 | --- | --- | --- | --- | --- | --- |
@@ -43,10 +43,8 @@ Generated from [`backend/flags.toml`](../backend/flags.toml) by `scripts/check_f
 | `MANDATE_SKIP_ENABLED` | true | stable | maintainer |  | a covering signed mandate lets Ava add or move a no-guest calendar event without a card (Child stage up, untainted, after shadow data) |
 | `MEMORY_RECHECK_ENABLED` | false | experiment | maintainer | 2027-02-14 | digest may ask "is this still true?" about a few lasting facts a week |
 | `MEMORY_SOCKET_ENABLED` | false | experiment | maintainer | 2027-02-14 | read-only MCP endpoint POST /mcp/memory for the owner's other assistants |
-| `NOTIFY_FAILOVER` | true | stable | maintainer |  | a push that stays down is sent on the owner's other linked channel; reception notes follow their interrupt preference |
 | `ONE_GOOD_QUESTION_ENABLED` | false | experiment | maintainer | 2027-02-14 | Ava may ask the owner one clarifying question a day |
 | `PAYOUTS_ENABLED` | false | experiment | maintainer | 2027-02-14 | creator payout LEDGER per accepted outcome with clawback and bond; moves no money (null provider only) |
-| `PIPELINE_TIMING_ENABLED` | true | stable | maintainer |  | time each stage of every message turn (milliseconds only, no text); p50 and p95 in the operator console |
 | `PLATFORM_AI_ENABLED` | false | experiment | maintainer | 2027-02-14 | owners may use the server's own Claude key as "Superaide AI credits" (costs you) |
 | `PRINCIPAL_CARD_ENABLED` | true | stable | maintainer |  | every email Ava sends is signed 'Ava, personal assistant of <first name>' with a link to a signed page (owner can untick per email); false = kill switch |
 | `PUSH_ENABLED` | false | experiment | maintainer | 2027-02-14 | web push to the owner's phone (makes a VAPID key pair on first use) |
@@ -71,7 +69,6 @@ Generated from [`backend/flags.toml`](../backend/flags.toml) by `scripts/check_f
 | `TRIAGE_ENABLED` | false | experiment | maintainer | 2027-02-14 | record a handle/hold/interrupt/defer/verify decision for non-owner messages |
 | `TRIAGE_KNN_ENABLED` | false | experiment | maintainer | 2027-02-14 | shadow urgency score beside each triage decision (needs TRIAGE_ENABLED) |
 | `TRIAGE_KNN_RAISE_ENABLED` | false | experiment | maintainer | 2027-02-14 | once YOU press Promote, the kNN head may raise (never lower or silence) a calm message's urgency (needs TRIAGE_KNN_ENABLED) |
-| `TYPING_INDICATORS` | true | stable | maintainer |  | "typing..." on Telegram, a status or "Working on it..." placeholder on Slack while Ava replies |
 | `VOICE_INTRO_V2` | false | experiment | maintainer | 2027-02-14 | conversational voice interview in the introduction call |
 | `WEB_TOOLS_ENABLED` | true | stable | maintainer |  | Ava may search and read the web (about US$0.01 a search from the research budget) |
 
@@ -93,3 +90,13 @@ Speculative features carry the `EXPERIMENT_` prefix. They are off by default, ar
 | `EXPERIMENT_SECOND_OPINION` | A memory-free second view sometimes changes the owner's mind about their own claim. | Share of second opinions after which the owner revises the claim. | 2027-02-14 |  |
 | `EXPERIMENT_TIME_TRAVEL_RULES` | Owners trust a standing order more after seeing it replayed on their past messages. | Share of compiled rules the owner activates after the replay. | 2027-02-14 |  |
 | `EXPERIMENT_WHY_REPLAY` | Owners use a replay of a reply to check why Ava said it, and it answers the question. | Replays opened per 100 replies, and share rated useful. | 2027-02-14 |  |
+
+## Retired settings
+
+These were flags and are now always on (issue #404). Setting one in `.env` or the environment does nothing; startup logs one warning per name. Remove the line.
+
+| Setting | Since | Now |
+| --- | --- | --- |
+| `NOTIFY_FAILOVER` | 2026-11-18 | a push that stays down is always sent on the owner's other linked channel |
+| `PIPELINE_TIMING_ENABLED` | 2026-11-18 | every message turn is always timed (milliseconds only, no text) |
+| `TYPING_INDICATORS` | 2026-11-18 | Telegram and Slack always show that Ava is working on a reply |

@@ -82,12 +82,6 @@ class Settings(BaseSettings):
     # saying what she may and may not agree to and until when. The owner can switch the default off in Settings
     # and untick it on one email's approval card. false = no card anywhere and /p/card answers 404.
     principal_card_enabled: bool = True
-    # "Typing..." on Telegram and a status or "Working on it..." placeholder on Slack while Ava prepares a
-    # reply. Cosmetic only: it changes neither what is said nor who may see it. On by default; false = silent.
-    typing_indicators: bool = True
-    # A push that never gets through on the owner's channel is sent on another channel they linked, and a reception
-    # note (triage off) follows the owner's interrupt preference instead of staying in the app (#491). false = app only.
-    notify_failover: bool = True
     principal_card_days: int = Field(default=30, ge=1, le=365)
     # Misses (unknown, expired or revoked card links) one address may make a minute before /p/card answers 429.
     # 0 = no limit.
@@ -440,9 +434,6 @@ class Settings(BaseSettings):
     # placeholders, and the reply, including text streamed to the owner, gets the originals back. Set
     # AIRLOCK_ENABLED=false to send conversations as they are. The on-device model and attestation are not built.
     airlock_enabled: bool = True
-    # Per-stage timing of every message turn (#412): numbers only, kept in `turn_timing` and logged as one line per
-    # turn, shown as p50/p95 in the operator console. Off: nothing is timed or stored.
-    pipeline_timing_enabled: bool = True
     # Approval fatigue metrics (#407): counts and timings of approval cards (requested, opened, decided, how fast,
     # held by the brake, expired), shown to the owner as "How much am I being asked?" and to the operator as a
     # weekly trend. No card text, recipient or name is kept. Off: nothing is recorded and the routes answer 404.

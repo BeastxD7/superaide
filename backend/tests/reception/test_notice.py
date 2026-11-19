@@ -110,15 +110,3 @@ def test_a_reception_note_stays_in_the_app_for_an_owner_who_chose_the_app(
     assert outbox["telegram"].sent == []
     with session_scope() as s:
         assert s.scalars(select(Event).where(Event.meta["kind"].astext == "message_taken")).all()
-
-
-def test_the_reception_note_stays_in_the_app_with_failover_off(owner_world, ava, script, outbox, monkeypatch):
-    from superaide.platform.config import get_settings
-
-    monkeypatch.setattr(get_settings(), "notify_failover", False)
-    _telegram_up(monkeypatch, outbox)
-    with session_scope() as s:
-        preferences_for(s, hired_owner(s)).interrupt_channel = "telegram"
-    script.out = ReceptionTurn(reply="Noted.", take_message=TakenMessage(name="Sam Lee", topic="quote", message="x"))
-    ava.handle(hello("send quote"))
-    assert outbox["telegram"].sent == []

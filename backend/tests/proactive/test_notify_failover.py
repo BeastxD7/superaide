@@ -15,7 +15,6 @@ from superaide.channels.health import DeliveryFailed
 from superaide.identity.models import ChannelIdentity
 from superaide.jobs.queue import run_due
 from superaide.memory.models import Event
-from superaide.platform.config import get_settings
 from superaide.platform.db.session import session_scope
 from superaide.proactive import notify
 from superaide.proactive.models import NotificationDelivery
@@ -133,15 +132,6 @@ def test_a_telegram_that_was_never_linked_goes_to_slack_at_once(world):
             i.lifecycle = "revoked"
     assert send() == ["app", "slack"]
     assert len(senders["slack"].delivered) == 1 and senders["telegram"].delivered == []
-
-
-def test_failover_off_keeps_the_old_behaviour(world, monkeypatch):
-    monkeypatch.setattr(get_settings(), "notify_failover", False)
-    senders = world(telegram_down=True)
-    send()
-    run_through_the_retries()
-    [d] = rows()
-    assert d.state == "failed" and senders["slack"].delivered == []
 
 
 def test_a_recovered_channel_does_not_also_fail_over(world):

@@ -41,23 +41,6 @@ def test_a_model_turn_is_wrapped_by_the_indicator_and_it_ends_after_the_reply(ag
     assert outbox["telegram"].working_log == [f"start {MANAGER_TG}", "reply", f"close {MANAGER_TG}"]
 
 
-def test_the_indicator_is_off_when_the_setting_is_off_and_the_reply_is_the_same(
-    agent, outbox, manager, model, settings
-):
-    model.reply = "Sure."
-    agent.handle(tg(MANAGER_TG, "hello"))
-    on_reply = outbox["telegram"].sent[-1]["text"]
-    assert outbox["telegram"].working_log  # on by default
-    settings.typing_indicators = False
-    try:
-        outbox["telegram"].working_log.clear()
-        agent.handle(tg(MANAGER_TG, "hello again"))
-    finally:
-        settings.typing_indicators = True
-    assert outbox["telegram"].working_log == []
-    assert outbox["telegram"].sent[-1]["text"] == on_reply  # what is said does not depend on the indicator
-
-
 def test_a_failing_turn_still_ends_the_indicator_and_still_replies(agent, outbox, manager, model):
     def boom(*a: Any, **k: Any) -> Any:
         raise RuntimeError("model fell over")

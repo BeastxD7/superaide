@@ -113,6 +113,19 @@ def render_doc(reg: dict) -> str:
     for f in experiments:
         cells = [f"`{f['name']}`"] + [str(f.get(k, "")).replace("|", "\\|") for k in ("hypothesis", "metric", "sunset", "result")]
         out.append("| " + " | ".join(cells) + " |")
+    if reg.get("retired"):
+        out += [
+            "",
+            "## Retired settings",
+            "",
+            "These were flags and are now always on (issue #404). Setting one in `.env` or the environment does "
+            "nothing; startup logs one warning per name. Remove the line.",
+            "",
+            "| Setting | Since | Now |",
+            "| --- | --- | --- |",
+        ]
+        for r in sorted(reg["retired"], key=lambda r: r["name"]):
+            out.append(f"| `{r['name']}` | {r['since']} | {r['now'].replace('|', chr(92) + '|')} |")
     return "\n".join(out) + "\n"
 
 
@@ -137,6 +150,11 @@ def problems(today: date | None = None) -> list[str]:
         out.append(f"flags.toml: {n} is a flag in config.py but has no registry entry")
     for n in sorted(set(names) - set(code)):
         out.append(f"flags.toml: {n} is in the registry but is not a flag in config.py (delete the entry)")
+    for r in reg.get("retired", []):
+        if r.get("name") in names:
+            out.append(f"flags.toml: {r['name']} is both a flag and retired")
+        if not (r.get("name") and r.get("since") and r.get("now")):
+            out.append(f"flags.toml: a retired entry needs name, since and now: {r}")
     if len(flags) > reg.get("budget", 0):
         out.append(
             f"flags.toml: {len(flags)} flags is above the budget of {reg.get('budget')} (delete one, never raise it)"

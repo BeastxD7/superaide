@@ -63,6 +63,7 @@ e2e = []
 core = true
 src = [
   "backend/src/superaide/platform/config.py",
+  "backend/src/superaide/platform/retired.py",
   "backend/src/superaide/platform/renamed.py",
   "backend/src/superaide/__init__.py",
   "backend/src/superaide/_compat.py",
