@@ -23,8 +23,9 @@ export function DashboardShell({ defaultOpen, children }: { defaultOpen: boolean
   const router = useRouter()
   const pathname = usePathname() ?? '/dashboard'
   const me = session.me
-  // The one page open during the introduction: the AI model page, where the brain step sends people to connect a provider.
-  const openDuringIntro = pathname === '/dashboard/models'
+  // The pages open during the introduction: the AI model page, where the brain step sends people to connect a provider,
+  // and the chat, so a first question never waits behind Ava's scripted steps (#599).
+  const openDuringIntro = pathname === '/dashboard/models' || pathname === '/dashboard/chat'
 
   // A failed read of the agent's state is not "not hired": stay put and offer a retry. The
   // state we have may be out of date too, so it is not used to redirect either.
@@ -65,6 +66,14 @@ export function DashboardShell({ defaultOpen, children }: { defaultOpen: boolean
               {me.agent.name}: {status.label.toLowerCase()}
             </span>
           </header>
+          {!me.onboarding.done && (
+            <div data-testid="intro-unfinished" className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-line/70 bg-lilac-100 px-4 py-2 text-sm text-ink">
+              <span>{me.agent.name} is still getting to know you, so answers stay general until the introduction is done.</span>
+              <Link href="/meet" className="font-medium text-violet-700 underline">
+                Continue the introduction
+              </Link>
+            </div>
+          )}
           {(me.channels.health?.slack?.missing_scopes?.length ?? 0) > 0 && (
             <div role="alert" data-testid="slack-scopes-banner" className="shrink-0 border-b border-line/70 bg-rose-100 px-4 py-2 text-sm text-[#6b3d06]">
               Slack is missing permissions ({me.channels.health?.slack?.missing_scopes?.join(', ')}), so {me.agent.name} can&apos;t do
