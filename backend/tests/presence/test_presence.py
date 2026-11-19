@@ -38,6 +38,15 @@ from tests.reception.test_reception import (  # noqa: F401  (fixtures and helper
 )
 
 IST = ZoneInfo("Asia/Kolkata")
+
+
+@pytest.fixture(autouse=True)
+def _fixed_clock():
+    """The tests set states relative to T0; "today" and quiet hours must not follow the wall clock."""
+    with time_machine.travel(T0, tick=True):
+        yield
+
+
 T0 = datetime(2026, 11, 19, 4, 30, tzinfo=UTC)  # 10:00 in Asia/Kolkata
 OWNER = "U_BOSS"
 
@@ -117,13 +126,24 @@ def test_a_new_state_replaces_the_old_and_clear_ends_it(owner_world):
         assert presence.clear(s, owner.id, T0) is False
 
 
-def test_the_visitor_line_is_a_fixed_template_with_the_end_time_only(owner_world):
-    with session_scope() as s:
+@pytest.mark.parametrize(
+    ("now", "at"),
+    [
+        (T0, "17:00 IST"),  # 10:00 IST
+        (datetime(2026, 11, 19, 18, 35, tzinfo=UTC), "05:00 IST"),  # 00:05 IST next day: main went red at this hour
+        (datetime(2026, 11, 19, 23, 59, tzinfo=UTC), "17:00 IST"),  # 05:29 IST, just before midnight UTC
+        (datetime(2026, 11, 19, 12, 29, tzinfo=UTC), "Fri 05:00 IST"),  # 17:59 IST: the next 5 is tomorrow morning
+    ],
+    ids=["morning", "after-midnight-ist", "midnight-utc", "after-five"],
+)
+def test_the_visitor_line_is_a_fixed_template_with_the_end_time_only(owner_world, now, at):
+    """Whether the end time shows a weekday depends on the caller's `now`, never on the day the suite happens to run."""
+    with time_machine.travel(now + timedelta(days=3), tick=False), session_scope() as s:  # wall clock disagrees
         owner = hired_owner(s)
-        st = presence.set_state(s, owner.id, read("driving until 5, only family"), "Asia/Kolkata", now=T0)
+        st = presence.set_state(s, owner.id, read("driving until 5, only family", at=now), "Asia/Kolkata", now=now)
         assert (
             st.visitor_line
-            == "They're not available until 17:00 IST. Your message is passed on, and they'll see it after that."
+            == f"They're not available until {at}. Your message is passed on, and they'll see it after that."
         )
         assert "driving" not in st.visitor_line and "family" not in st.visitor_line
 
