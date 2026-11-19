@@ -12,7 +12,7 @@ Names in examples (Zeeshan, Meera Iyer, Priya Tan, Jordan Whitfield) are fiction
 2. **The amnesia had one model-side cause (already fixed) and four code-side causes that remain.** The Ollama prompt truncation explains most of the transcript. Independent of it: Slack thread history can be empty or partial, tool results do not survive to the next turn, notes found before the model runs are dropped for every non-Claude provider, and nothing in the code knows a model's context window.
 3. **"send" cannot work today.** An approval can only be decided from the app. There is no code path from a chat message to an approval, and no buttons on Slack. This needs a small, code-decided shortcut (section 4).
 4. **The "Correction:" line is a regular expression that is too wide.** It fires on any sentence that says Ava cannot message "people", on any channel, including true sentences (section 4.2).
-5. **Three of the five "known gaps" in the project notes are already fixed** in the current code; the notes are stale. Two new gaps matter more: the 30-day window that hides visitor messages, and a hard-delete path, both of which conflict with the owner's decision that retention keeps everything.
+5. **Three of the five "known gaps" in the project notes are already fixed** in the current code; the notes are stale. Two other gaps matter more: the 30-day window that hides visitor messages, and a hard-delete path. Both conflict with the owner's decision of 2026-11-19 that memory is kept and erase is a soft delete.
 
 Section 9 lists what was verified by running code and what is inferred.
 
@@ -22,7 +22,7 @@ Section 9 lists what was verified by running code and what is inferred.
 | --- | --- | --- | --- |
 | "hi" | Reply began with reasoning text | Separate fix in progress | Out of scope |
 | "anyone asked about me?" | Listed Zeeshan's Telegram message (26 days old, urgent) | The `inbox` tool and the code-built "People waiting" line worked | Correct |
-| "yes please" | "I'm here to help! How can I assist you today?" | Prompt truncated by Ollama (known). Also possible: empty thread history (3.2). Even with full history, the inbox id from the previous turn is not in the prompt (3.3) | Model and code |
+| "yes please" | "I'm here to help! How can I assist you today?" | Prompt truncated by Ollama (known). Possible as well, not established: empty thread history (3.2). Even with full history, the inbox id from the previous turn is not in the prompt (3.3) | Model and code |
 | Quoted question | "I will now read… Let me fetch the message", no result | The model wrote a plan and stopped without a tool call. The claim check only covers four phrasings (4.3) | Model, with a code gap |
 | "tell zeeshan im busy" | Approval card created | `relay_message` worked | Correct |
 | "send" | "The command 'send' is not recognized." | Model text (this string is not in the code). No chat path to approve (4.1) | Code gap |
@@ -51,8 +51,11 @@ Three shapes were reproduced with the fake model (section 9, experiment E2):
 | A. Every message at the top level of the DM | Complete (all earlier turns) |
 | B. Owner replies in a thread under their own first message | The first message and the thread only. Ava's top-level reply to the first message is missing |
 | C. Owner replies in a thread under **Ava's** message | **Nothing.** The only message is "yes please", because the thread root is Ava's message and its `ts` was never stored |
+| D. Every message, the first too, carries the same thread id (how Slack's assistant view sends them) | Complete |
 
-Which shape the incident had is not known from the pasted text; the brief calls it a "Slack thread", so B or C is likely. In shape C, "yes please" arrives with no history at all on any model, and "I'm here to help! How can I assist you today?" is the expected reply.
+This is a verified bug. Whether it contributed to the incident is unknown: the pasted text does not show which shape the chat had, and in shapes A and D the history is complete. In shape C, "yes please" arrives with no history at all on any model, and "I'm here to help! How can I assist you today?" is the expected reply.
+
+What exactly survived the Ollama cut was not re-examined here (the coordinator diagnosed it from the server log). Ollama's chat code says it keeps system messages and the latest message and drops the oldest turns first ([source](https://raw.githubusercontent.com/ollama/ollama/main/server/prompt.go)); the log line reported a cut to about the last 2,050 tokens. Either way earlier turns were lost.
 
 Related: a first top-level DM message is answered at the top level (`thread_of`, `pipeline.py:89-96`, returns "" for a DM), so a thread the owner opens afterwards always starts split from the turn before it.
 
@@ -109,13 +112,15 @@ Measured on a test database with the qwen3 tokenizer (Ollama `prompt_eval_count`
 | System block 1: who, time, channels, `LEARNS`, owner brief, capability block, web rules, "People waiting" line (`loop.py:524-612`, `brain/capabilities.py:145-166`) | 6,048 | 1,436 |
 | 11 tool schemas (largest: `propose_action` 407, `create_reminder` 330, `relay_message` 318, `channel_activity` 296, `inbox` 273) | 8,747 | 1,943 |
 | The message "hi" and template overhead | | 17 |
-| **Total** | | **5,009** |
+| **Total, counted as one prompt** | | **5,009** |
+
+The rows add up to a little more than the total because each part was counted in its own request, with its own template overhead.
 
 The production prompt was 7,746 tokens with 12 tools. The difference was not measured (the live database was not read). The parts that exist in production and not in the test are: the task protocol rules and `record_plan` tool (on by default, `platform/config.py:404`), substitute `web_search` and `web_fetch` tools and their rules, the citation rule (`brain/citations.py:18`), Gmail and Calendar lines and tools if connected, pinned facts in the owner brief (up to 1,600 characters, `memory/knowledge/profile.py:51`) and up to 8,000 characters of history.
 
 Two more facts matter for a local model:
 
-- **Speed.** The M5 Pro evaluated the prompt at about 550 tokens per second (5,009 tokens in 9.1 s, measured). A 7,700-token prompt is about 14 s before the first word when nothing is cached, on every step of the tool loop.
+- **Speed.** The M5 Pro evaluated prompts at 420 to 550 tokens per second across the runs (5,009 tokens in 9.1 s; 3,088 in 7.4 s). A 7,700-token prompt is about 14 to 18 s before the first word when nothing is cached, on every step of the tool loop.
 - **Cache.** The qwen3 chat template renders tools *after* the system text inside the system message (checked with `/api/show`). System block 1 contains the clock to the minute (`loop.py:548`), so everything after it, including about 1,900 tokens of tools, is re-evaluated whenever the minute changes. Volatile text placed last would keep the prefix cached.
 
 ### 3.7 A token budget and tiered prompts
@@ -156,7 +161,7 @@ Safety is unchanged: identity, audience, trust, taint and approvals are decided 
 - An approval is decided only by `policy.actions.resolve` (`backend/src/superaide/policy/actions.py:202`). Its only callers are the app route (`app/routes.py:1716`) and an eval. There is no chat path, and Slack has no approval buttons (`channels/base.py:64` models button presses for Telegram escalations only).
 - The owner's prompt does carry pending cards: "Where things stand … relay_message: Send Zeeshan on Slack: … -> WAITING for the owner's OK" (`brain/capabilities.py:109-142`; seen in the next turn's prompt in experiment E5). The summary is cut to 80 characters, and the block sits at the end of the system prompt.
 - The model has no tool that approves, by design: the model must never be able to approve its own card.
-- The relay card does not record where the owner asked (`payload.channel` is absent for `relay_message`, E5), so the outcome cannot be sent back to that conversation by origin.
+- The relay card does not record where the owner asked (`payload.channel` is absent for `relay_message`, E5). `outcomes.announce` sends the outcome to `payload.channel` or else to the owner's default channel (`approvals/outcomes.py:98-121`), so a relay's outcome goes by preference, not to the conversation it was asked in.
 
 So after "tell zeeshan im busy" the honest answer to "send" is "it is waiting on a card in the app", and the product gives the owner no way to say yes where they are.
 
@@ -220,7 +225,7 @@ Questions for the owner are in section 8.
 | Retrieval returns the newest 5 or 30 memories whatever the question | **Fixed for the owner's chat. Open for everyone else.** The owner's `recall` fuses an all-words search, an any-word search, trigram and a pgvector arm with RRF (k=60), weighted by importance and decay. A colleague's or other known person's turn still gets the newest 30 or 5 notes | `memory/recall/retrieval.py:86-148`, `:297-321`; `pipeline.py:939`; `memory/audience.py:89-95` |
 | Deduplication only catches exact strings | **Partly open.** "Remember that…" compares normalised text only: four phrasings of "I like green tea" left three notes (E7). Facts learned from chat are compared with their nearest neighbours by the extractor. The nightly near-duplicate merge exists behind `SLEEP_JOB_ENABLED`, off by default | `memory/store.py:259-289`; `memory/knowledge/learn.py:176-184`; `memory/consolidation/merge.py`; `memory/consolidation/sleep.py:3-4` |
 | Extraction reads only the first 12,000 characters | **Fixed up to 60,000 characters.** Six windows of 12,000 are read; longer text is cut with a notice | `memory/knowledge/facts.py:19`, `:135`, `:154`; `memory/knowledge/extract.py:39`, `:127-153` |
-| Removing a source soft-retires its facts instead of deleting them | **Both now exist, and the hard one conflicts with the owner's decision.** `retire_document` hides; `erase_document` deletes the text, passages, facts and vectors | `memory/knowledge/store.py:312-313`; `memory/knowledge/erase.py:1-9`, `:58`, `:65`, `:94` |
+| Removing a source soft-retires its facts instead of deleting them | **Both now exist, and the hard one conflicts with the owner's decision of 2026-11-19** (erase is a soft delete; never hard-delete by default). `retire_document` hides; `erase_document` deletes the text, passages, facts and vectors | `memory/knowledge/store.py:312-313`; `memory/knowledge/erase.py:1-9`, `:58`, `:65`, `:94` |
 | The owner's "never share" text is pasted into prompts for non-owners | **Fixed.** It is added only in the owner-private branch. A canary in `never_share` was absent from a colleague's prompt and present in the owner's (E7) | `memory/knowledge/profile.py:91-105`, `:123-126` |
 
 ### 5.2 What `recall` searches
@@ -400,9 +405,9 @@ Extend `backend/evals`, which already has a `recall_top` check (`backend/src/sup
 
 | Step | Number | Source |
 | --- | --- | --- |
-| Prompt evaluation, qwen3:8b Q4 | about 550 tokens/s; 5,009 tokens in 9.1 s | Measured |
-| Today's owner prompt, cold | about 14 s before the first token at 7,700 tokens, per loop step | Derived from the measurement |
-| Compact tier (2,500 tokens fixed) | about 4.5 s cold; less with a cached prefix | Derived |
+| Prompt evaluation, qwen3:8b Q4 | 420 to 550 tokens/s; 5,009 tokens in 9.1 s | Measured |
+| Today's owner prompt, cold | about 14 to 18 s before the first token at 7,700 tokens, per loop step | Derived from the measurement |
+| Compact tier (2,500 tokens fixed) | about 5 to 6 s cold; less with a cached prefix | Derived |
 | Query embedding, MiniLM in process | 7.4 ms median | Measured |
 | Bulk embedding, MiniLM | 256 short texts in 1.1 s | Measured |
 | Exact vector search, 384 dimensions | 8 ms over one owner's 5,000 rows; 58 ms over 100,000 rows | Measured in a scratch Postgres 17 with pgvector 0.8 |
@@ -435,13 +440,17 @@ Rolling summaries of long threads are already #416 and are not duplicated; #641 
 
 Owner decisions carried into the issues: retention keeps everything, with soft delete only (#645); unverified senders get public information only (pinned by tests in #644, #646, #647 and #649).
 
-Questions for the owner:
+Already decided by the owner on 2026-11-19, and built into the issues:
+
+- **Retention:** keep memory; "erase" is a soft delete (hidden from use, kept); never hard-delete by default. So #645 turns `erase_document` into a soft delete and removes the 30-day blind spot for the owner's own reading.
+- **Unverified senders:** acknowledged, not trusted; public details only until the owner verifies the platform identity. The code already does this for memory (5.5); #644, #646, #647 and #649 pin it with tests.
+
+Questions that remain for the owner:
 
 1. **Text approvals.** Is "send" in the owner's private DM enough to approve a relay to a person who already wrote in? Recommended: yes for `relay_message`; email sends stay on the card or a button until there is data. Which kinds may ever be approved by text?
-2. **Erase versus retention.** "Retention keeps everything (soft delete only)" conflicts with `erase_document`, which deletes for good. Should "erase" become a soft delete with a purge only on an explicit, separate request, or stay as the one exception?
-3. **The 30-day window.** With soft delete only, should visitor messages older than 30 days stay readable by the owner (recommended: yes, searchable for ever, and out of the "waiting" list after 30 days)?
-4. **Known people's messages to Ava.** Should the owner be able to recall what a colleague or friend wrote to Ava in their own DM with her? Today it is impossible. Recommended: yes, as reported speech, tainted like any other person's words.
-5. **Rooms.** The daily job deletes room messages after the channel's retention (`channels/ambient.py:240-247`). Keep (it is a per-channel setting) or soft delete as well?
+2. **A real purge.** With erase now soft, is an explicit purge still wanted as a separate, confirmed action for data that must go (recommended: yes)? Note that Telegram's bot terms require deleting user data on request (see the cross-channel memory design report).
+3. **Room messages.** The daily job hard-deletes stored channel messages after the per-channel retention the owner chose (`channels/ambient.py:240-247`). Under "never hard-delete by default", should this become a soft delete too, or stay because it is an explicit setting and those are other people's words?
+4. **Known people's messages to Ava.** Should the owner be able to recall what a colleague or friend wrote to Ava in their own DM with her? Today it is impossible. ADR 0008 keeps a colleague's DM on its own path and context and does not rule on the owner reading it; the cross-channel memory design report raises notice to stored colleagues as an open point. Recommended: yes, as reported speech, tainted like any other person's words, with a per-contact switch.
 
 ## 9. Verified and inferred
 
@@ -452,8 +461,9 @@ Experiments ran on 2026-11-20 against a scratch Postgres 17 database created for
 | E1 | Prompt size by part; 5,009 tokens for "hi" in the test world; 550 tokens/s | **Ran.** Built the real owner prompt and tool list, counted with Ollama `prompt_eval_count` |
 | E1 | Why production was 7,746 tokens | **Inferred** from the code paths that add text; not measured on live data |
 | E1 | Tools render after the system text in the qwen3 template | **Ran** (`/api/show`) |
-| E2 | Thread shapes A, B, C; 12-event window; outbound events have no external id | **Ran** |
-| E2 | Which shape the incident had | **Inferred** |
+| E2 | Thread shapes A, B, C, D; 12-event window; outbound events have no external id | **Ran** |
+| E2 | Which shape the incident had, and whether the thread bug contributed | **Unknown** |
+| | What survived the Ollama cut | **Not re-examined** (coordinator's diagnosis taken as given) |
 | E3 | The inbox id is absent from the next prompt | **Ran** |
 | E4 | `strip_claims` outputs in 4.2 | **Ran** (called the function) |
 | E5 | The pending relay card is in the next prompt; the payload has no channel; "send" reaches the model only | **Ran**, plus reading `resolve` callers |
