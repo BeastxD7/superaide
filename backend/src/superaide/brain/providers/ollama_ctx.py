@@ -1,4 +1,4 @@
-"""Ollama silently cuts a prompt to its context window (4096 tokens unless set otherwise).
+"""Ollama silently cuts a prompt to its context window (often 4096 tokens).
 
 Ava's prompt (charter, owner brief, memories, tools) is around 8,000 tokens, so on the default window the start
 of it is dropped without any error and Ava forgets who she works for. The window cannot be set through
@@ -17,8 +17,8 @@ import httpx
 
 NEEDED_TOKENS = 12288  # Ava's prompt is about 8k tokens; this leaves room for the conversation and the reply
 RECOMMENDED = 16384
-OLLAMA_DEFAULT = 4096  # what Ollama runs a model with when no num_ctx is set (OLLAMA_CONTEXT_LENGTH can change it)
 CACHE_SECONDS = 300
+UNKNOWN_SECONDS = 30  # an unknown answer is asked again soon (the model may get loaded)
 _NUM_CTX = re.compile(r"^\s*num_ctx\s+(\d+)\s*$", re.MULTILINE)
 _cache: dict[tuple[str, str], tuple[float, int | None]] = {}
 
@@ -37,33 +37,51 @@ def root_url(base_url: str) -> str:
     return root[: -len("/v1")] if root.endswith("/v1") else root
 
 
-def parse_context(info: dict) -> int:
-    """The window the model runs with: a Modelfile `num_ctx` if there is one, else Ollama's default. A model
-    whose own maximum is lower than that is limited by its maximum."""
+def parse_context(info: dict) -> int | None:
+    """The window a model will run with, from /api/show: a Modelfile `num_ctx` (capped by the model's own
+    maximum). None when none is set: Ollama's real default depends on its version and OLLAMA_CONTEXT_LENGTH,
+    so it is not guessed."""
     found = _NUM_CTX.search(str(info.get("parameters") or ""))
-    window = int(found.group(1)) if found else OLLAMA_DEFAULT
+    if not found:
+        return None
+    window = int(found.group(1))
     for key, value in (info.get("model_info") or {}).items():
         if str(key).endswith(".context_length") and isinstance(value, int) and value > 0:
             window = min(window, value)
     return window
 
 
+def _loaded_window(http: httpx.Client, root: str, model: str) -> int | None:
+    """/api/ps lists the models in memory with the context length actually in use."""
+    resp = http.get(f"{root}/api/ps")
+    if resp.status_code != 200:
+        return None
+    for item in (resp.json() or {}).get("models") or []:
+        if model in (item.get("name"), item.get("model")) and isinstance(item.get("context_length"), int):
+            return int(item["context_length"]) or None
+    return None
+
+
 def context_tokens(base_url: str, model: str, *, client: httpx.Client | None = None, fresh: bool = False) -> int | None:
-    """The model's window in tokens, or None when Ollama cannot be asked (not Ollama, not running, unknown model)."""
+    """The model's window in tokens, or None when unknown (not Ollama, not running, not loaded and no num_ctx set).
+    A loaded model's real window (/api/ps) wins; otherwise the Modelfile's num_ctx (/api/show)."""
     key = (root_url(base_url), model)
     hit = _cache.get(key)
-    if hit and not fresh and time.monotonic() - hit[0] < CACHE_SECONDS:
+    ttl = CACHE_SECONDS if hit and hit[1] is not None else UNKNOWN_SECONDS
+    if hit and not fresh and time.monotonic() - hit[0] < ttl:
         return hit[1]
     tokens: int | None = None
     try:
         http = client or httpx.Client(timeout=3)
         try:
-            resp = http.post(f"{key[0]}/api/show", json={"model": model})
+            tokens = _loaded_window(http, key[0], model)
+            if tokens is None:
+                resp = http.post(f"{key[0]}/api/show", json={"model": model})
+                if resp.status_code == 200 and isinstance(resp.json(), dict):
+                    tokens = parse_context(resp.json())
         finally:
             if client is None:
                 http.close()
-        if resp.status_code == 200 and isinstance(resp.json(), dict):
-            tokens = parse_context(resp.json())
     except Exception:
         tokens = None
     _cache[key] = (time.monotonic(), tokens)
@@ -80,7 +98,9 @@ def modelfile_steps(model: str) -> str:
     )
 
 
-def warning(base_url: str, model: str, *, client: httpx.Client | None = None, fresh: bool = False) -> ContextWarning | None:
+def warning(
+    base_url: str, model: str, *, client: httpx.Client | None = None, fresh: bool = False
+) -> ContextWarning | None:
     tokens = context_tokens(base_url, model, client=client, fresh=fresh)
     if tokens is None or tokens >= NEEDED_TOKENS:
         return None

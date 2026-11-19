@@ -17,14 +17,17 @@ BASE = "http://localhost:11434/v1"
 
 
 class FakeShow:
-    """A fake Ollama /api/show per model name; counts the calls."""
+    """A fake Ollama: /api/show per model name and /api/ps for what is loaded; records the calls."""
 
-    def __init__(self, shows: dict[str, dict]) -> None:
-        self.shows, self.calls = shows, []
+    def __init__(self, shows: dict[str, dict], loaded: list[dict] | None = None) -> None:
+        self.shows, self.loaded, self.calls = shows, loaded or [], []
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
         import json
 
+        if request.url.path == "/api/ps":
+            self.calls.append("ps")
+            return httpx.Response(200, json={"models": self.loaded})
         assert request.url.path == "/api/show"
         name = json.loads(request.content)["model"]
         self.calls.append(name)
@@ -33,34 +36,40 @@ class FakeShow:
         return httpx.Response(200, json=self.shows[name])
 
 
-DEFAULT = {"parameters": "stop \"<|im_end|>\"\ntemperature 0.6", "model_info": {"qwen3.context_length": 40960}}
+DEFAULT = {"parameters": 'stop "<|im_end|>"\ntemperature 0.6', "model_info": {"qwen3.context_length": 40960}}
 BIG = {"parameters": "num_ctx 16384\ntemperature 0.6", "model_info": {"qwen3.context_length": 40960}}
 
 
 @pytest.fixture
 def show(monkeypatch):
     ollama_ctx.forget()
-    fake = FakeShow({"qwen3:8b": DEFAULT, "qwen3-16k": BIG})
+    fake = FakeShow({"qwen3:8b": DEFAULT, "qwen3-16k": BIG}, loaded=[{"name": "qwen3:8b", "context_length": 4096}])
     real = httpx.Client
     monkeypatch.setattr(ollama_ctx.httpx, "Client", lambda **kw: real(transport=httpx.MockTransport(fake)))
     yield fake
     ollama_ctx.forget()
 
 
-def test_a_model_without_num_ctx_runs_on_ollamas_small_default(show):
+def test_a_loaded_model_reports_the_window_actually_in_use(show):
     assert ollama_ctx.context_tokens(BASE, "qwen3:8b") == 4096
-    assert show.calls == ["qwen3:8b"]
+    assert show.calls == ["ps"]  # /api/ps answered, /api/show was not needed
 
 
-def test_a_modelfile_num_ctx_is_what_counts_and_the_models_own_limit_caps_it(show):
+def test_a_model_not_loaded_uses_its_modelfile_num_ctx_and_the_models_own_limit_caps_it(show):
     assert ollama_ctx.context_tokens(BASE, "qwen3-16k") == 16384
-    assert ollama_ctx.parse_context({"parameters": "num_ctx 65536", "model_info": {"x.context_length": 8192}}) == 8192
+    assert show.calls == ["ps", "qwen3-16k"]
+    capped = {"parameters": "num_ctx 65536", "model_info": {"x.context_length": 8192}}
+    assert ollama_ctx.parse_context(capped) == 8192
 
 
-def test_unknown_models_and_a_server_that_is_down_are_not_warnings(show, monkeypatch):
-    assert ollama_ctx.context_tokens(BASE, "nope") is None and ollama_ctx.warning(BASE, "nope") is None
-    ollama_ctx.forget()
+def test_an_unknown_window_is_never_a_warning(show):
+    show.loaded = []
+    assert ollama_ctx.context_tokens(BASE, "qwen3:8b") is None  # not loaded, no num_ctx: do not guess
+    assert ollama_ctx.warning(BASE, "qwen3:8b", fresh=True) is None
+    assert ollama_ctx.warning(BASE, "nope") is None  # unknown model
 
+
+def test_a_server_that_is_down_is_not_a_warning(show, monkeypatch):
     def boom(**kw):
         raise httpx.ConnectError("down")
 
@@ -71,9 +80,9 @@ def test_unknown_models_and_a_server_that_is_down_are_not_warnings(show, monkeyp
 def test_the_answer_is_cached_unless_asked_fresh(show):
     ollama_ctx.context_tokens(BASE, "qwen3:8b")
     ollama_ctx.context_tokens(BASE, "qwen3:8b")
-    assert show.calls == ["qwen3:8b"]
+    assert show.calls == ["ps"]
     ollama_ctx.context_tokens(BASE, "qwen3:8b", fresh=True)
-    assert show.calls == ["qwen3:8b"] * 2
+    assert show.calls == ["ps"] * 2
 
 
 def test_the_warning_has_the_exact_modelfile_steps(show):

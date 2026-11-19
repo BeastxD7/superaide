@@ -163,7 +163,11 @@ def small_context(session: Session, settings: Any, *, fresh: bool = False) -> An
     roles = {r.role: r for r in session.scalars(select(ModelRole).where(mine(ModelRole)))}
     for name in ("chat", "triage", "deep"):
         role = roles.get(name)
-        row = session.scalar(select(LlmProvider).where(mine(LlmProvider), LlmProvider.key == role.provider)) if role else None
+        row = (
+            session.scalar(select(LlmProvider).where(mine(LlmProvider), LlmProvider.key == role.provider))
+            if role
+            else None
+        )
         if role is None or row is None or row.preset != "ollama" or not row.enabled:
             continue
         found = ollama_ctx.warning(row.base_url, role.model, fresh=fresh)
