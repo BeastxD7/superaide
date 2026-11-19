@@ -1,6 +1,7 @@
 'use client'
 
 import { Star } from 'lucide-react'
+import Link from 'next/link'
 import { BrandIcon } from '@/components/BrandIcon'
 import { isBrand } from '@/components/brands/marks'
 import { Notice } from '@/components/site'
@@ -73,7 +74,9 @@ export function PeoplePage() {
                       <span className="grid size-8 shrink-0 place-items-center rounded-full bg-lilac-100 text-xs font-semibold text-violet-700">
                         {initialOf(p.name)}
                       </span>
-                      <span className="min-w-0 font-medium text-ink [overflow-wrap:anywhere]">{p.name}</span>
+                      <Link href={`/dashboard/people/${p.id}`} className="min-w-0 font-medium text-ink [overflow-wrap:anywhere] hover:underline">
+                        {p.name}
+                      </Link>
                     </span>
                     <span className="mt-1.5 block text-xs text-body sm:hidden">
                       <span className="text-muted">Recognised on: </span>

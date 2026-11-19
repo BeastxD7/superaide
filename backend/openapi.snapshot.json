@@ -599,6 +599,50 @@
         "title": "ConsentBody",
         "type": "object"
       },
+      "ContactEdit": {
+        "additionalProperties": false,
+        "description": "Only what the owner may set. Each field is optional: send the ones that change.",
+        "properties": {
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "relationship": {
+            "anyOf": [
+              {
+                "maxLength": 30,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relationship"
+          },
+          "vip": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vip"
+          }
+        },
+        "title": "ContactEdit",
+        "type": "object"
+      },
       "CorrectBody": {
         "properties": {
           "text": {
@@ -10924,6 +10968,116 @@
         ]
       }
     },
+    "/app/people/{contact_id}": {
+      "get": {
+        "description": "What Ava knows about a person on the owner's People list: the owner's fields, where Ava recognises them, and every live fact with where it came from, when, and who may be told it.",
+        "operationId": "get_record_app_people__contact_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contact_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Contact Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Record App People  Contact Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "One person's record",
+        "tags": [
+          "Owner: people & rules"
+        ]
+      },
+      "patch": {
+        "description": "Changes the relationship, the VIP switch or the owner's private notes. Only the fields sent.",
+        "operationId": "edit_record_app_people__contact_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contact_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Contact Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContactEdit"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Edit Record App People  Contact Id  Patch",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Edit a person's record",
+        "tags": [
+          "Owner: people & rules"
+        ]
+      }
+    },
     "/app/people/{contact_id}/erase": {
       "post": {
         "description": "Deletes the notes they asked Ava to keep and notes about them, and empties the text of their messages. For a person on the owner's People list.",
@@ -10970,6 +11124,69 @@
           }
         ],
         "summary": "Erase what Ava holds about a person",
+        "tags": [
+          "Owner: people & rules"
+        ]
+      }
+    },
+    "/app/people/{contact_id}/facts/{memory_id}/forget": {
+      "post": {
+        "description": "Ava stops using this fact. The row is kept (retired), not deleted: it no longer reaches any conversation. Only a fact about this person, or one they told Ava.",
+        "operationId": "forget_fact_app_people__contact_id__facts__memory_id__forget_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contact_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Contact Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "memory_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Memory Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Forget Fact App People  Contact Id  Facts  Memory Id  Forget Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Forget a fact about a person",
         "tags": [
           "Owner: people & rules"
         ]

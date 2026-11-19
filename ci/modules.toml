@@ -816,6 +816,8 @@ e2e = [
   "e2e/tests/policy/halt-resume.spec.ts",
   "e2e/tests/mandate/mandate-skips.spec.ts",
   "e2e/tests/web-dashboard/knn-promote.spec.ts",
+  "e2e/tests/web-dashboard/contact-record.spec.ts",
+  "e2e/tests/web-dashboard/contact-record.mobile.spec.ts",
   "e2e/tests/web-dashboard/chat-empty.mobile.spec.ts",
   "e2e/tests/web-dashboard/chat-attach.spec.ts",
   "e2e/tests/web-dashboard/chat-attach.mobile.spec.ts",

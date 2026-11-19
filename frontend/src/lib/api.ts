@@ -202,6 +202,29 @@ export type PersonCard = {
   channels: string[]
 }
 
+export type ContactFact = {
+  id: string
+  content: string
+  category: string
+  about_them: boolean
+  source: string
+  source_label: string
+  source_title: string | null
+  learned_at: string
+  confidence: number
+  audience: { kind: 'owner' | 'people' | 'team' | 'anyone'; label: string }
+}
+
+export type ContactRecord = {
+  id: string
+  name: string
+  relationship: string
+  vip: boolean
+  notes: string
+  channels: { provider: string; handle: string; last_seen_at: string | null }[]
+  facts: ContactFact[]
+}
+
 export type Preferences = {
   urgent_topics: string[]
   digest: string
@@ -235,7 +258,7 @@ export { ApiError as AppError }
 // Axios client for the backend, sending the session cookie with each request.
 const client = createClient(API_URL, { withCredentials: true })
 
-type Init = { method?: 'GET' | 'POST' | 'PUT' | 'DELETE'; json?: unknown; signal?: AbortSignal }
+type Init = { method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'; json?: unknown; signal?: AbortSignal }
 
 // A 401 from /app/* means the session has ended (signed out elsewhere, expired, password changed).
 // The session provider registers one handler that clears the signed-in state and sends the person
