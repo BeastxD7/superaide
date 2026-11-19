@@ -20,6 +20,7 @@ from pydantic import BaseModel, ValidationError
 from superaide.brain import citations
 from superaide.brain.providers.base import CheckReport, Guard, Priced, mark_billable, metered
 from superaide.brain.providers.presets import Preset
+from superaide.brain.providers.thinking import ThinkFilter, strip_think
 from superaide.brain.providers.types import (
     Capabilities,
     Completion,
@@ -30,6 +31,7 @@ from superaide.brain.providers.types import (
     PartDone,
     Reasoning,
     ReasoningDelta,
+    SourceBlock,
     SourceDoc,
     Step,
     StopReason,
@@ -121,6 +123,8 @@ def to_chat_messages(system: str, messages: list[Message]) -> list[dict[str, Any
         for p in m.parts:
             if isinstance(p, ToolResult):
                 out.append({"role": "tool", "tool_call_id": p.call_id, "content": result_text(p)})
+            elif isinstance(p, SourceBlock):
+                texts.append(citations.render_sources(p.sources))
             elif isinstance(p, Text) and p.text:
                 texts.append(p.text)
         if texts:
@@ -207,7 +211,7 @@ def parts_from_message(message: Any, sources: list[SourceDoc]) -> list[ContentPa
     reasoning = _get(message, "reasoning_content") or _get(message, "reasoning")
     if reasoning:
         parts.append(Reasoning(str(reasoning)))
-    content = _get(message, "content") or ""
+    content = strip_think(str(_get(message, "content") or ""))  # <think> blocks are never part of an answer
     if content:
         texts, _dropped = citations.extract(str(content), sources)
         if texts:
@@ -330,6 +334,10 @@ class OpenAICompatProvider:
                 request["parallel_tool_calls"] = False
         if effort and self.preset.capabilities.reasoning:
             request["reasoning_effort"] = effort
+        elif self.preset.id == "ollama":
+            # Thinking models (qwen3, deepseek-r1…) reason at length before answering, which is slow on a
+            # laptop and not what a reply should carry. Ollama's OpenAI endpoint turns it off with "none".
+            request["reasoning_effort"] = "none"
         return request
 
     def _call(
@@ -351,6 +359,7 @@ class OpenAICompatProvider:
 
     def _stream(self, request: dict[str, Any], on_event: OnStreamEvent) -> _Accumulated:
         acc = _Accumulated()
+        thinks = ThinkFilter()  # <think>...</think> in the text is reasoning, never shown as the answer
         markers = citations.MarkerFilter()  # the owner sees the text without [ava://…] markers as it streams
         stream = self.client.chat.completions.create(**request, stream=True, stream_options={"include_usage": True})
         started = False
@@ -367,7 +376,7 @@ class OpenAICompatProvider:
                     text = _get(delta, "content")
                     if text:
                         acc.content += text
-                        if shown := markers.feed(text):
+                        if shown := markers.feed(thinks.feed(text)):
                             on_event(TextDelta(shown))
                     thought = _get(delta, "reasoning_content") or _get(delta, "reasoning")
                     if thought:
@@ -384,7 +393,7 @@ class OpenAICompatProvider:
             if started:
                 mark_billable(exc)  # the answer had begun, so the provider may have billed for it
             raise
-        if rest := markers.flush():
+        if rest := markers.feed(thinks.flush()) + markers.flush():
             on_event(TextDelta(rest))
         return acc
 
@@ -459,7 +468,7 @@ class OpenAICompatProvider:
         for attempt in range(attempts):
             raw, message, cost = self._call(purpose, model, request, max_tokens, None)
             total += cost
-            text = str(_get(message, "content") or "")
+            text = strip_think(str(_get(message, "content") or ""))
             finish = _get((_get(raw, "choices") or [None])[0], "finish_reason")
             if output_model is None or finish == "length":
                 break

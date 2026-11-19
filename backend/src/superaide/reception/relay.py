@@ -257,6 +257,22 @@ def request(session: Session, owner: Person, sender: Any, *, to: str, text: str,
     )
 
 
+def pending_sentences(session: Session, limit: int = 3) -> list[str]:
+    """What is true right now about relays waiting for the owner's OK, from the approval record (recipient and
+    channel from the payload, never from model text), for replacing a false "I can't send messages" (#639)."""
+    rows = session.scalars(
+        select(Approval.payload)
+        .where(Approval.kind == KIND, Approval.status == "pending")
+        .order_by(Approval.created_at.desc())
+        .limit(limit)
+    ).all()
+    return [
+        f"Your message to {p.get('recipient') or 'them'} on {channel_name(str(p.get('provider') or ''))} "
+        "is waiting for your OK."
+        for p in rows
+    ]
+
+
 def _local(session: Session, at: datetime) -> str:
     """The time in the owner's zone, as 14:08."""
     from superaide.app.accounts import owner as instance_owner
