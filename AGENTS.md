@@ -44,7 +44,10 @@ Run these locally on your **final rebase/merge with `main`**. CI repeats them, b
 Use the repository template and keep the PR to one theme.
 
 - **Linked issues:** `Closes #n` only if **every** acceptance item of the issue is met; otherwise `Refs #n` and say what remains.
-- **Before and after:** screenshots (embedded in the PR body) of the behaviour on `main` and on your branch for any UI change; for backend-only changes, the failing-then-passing test output and the query plan or timing where relevant.
+- **Before and after images (compulsory, no exceptions but Dependabot):** the PR body has a `## Before and after` section with a `### Before` image (behaviour on `main`) and a `### After` image (behaviour on your branch), embedded in the body, hosted on the `evidence` branch (`https://raw.githubusercontent.com/BeastxD7/superaide/evidence/pr-<n>/<file>.png`) or as a GitHub attachment. This is a required CI check (`Before and after images`, part of the `CI result` gate; `scripts/check_pr_evidence.py`), not a convention: a PR without both images cannot merge. The check reads the body from the event and re-runs when you edit the description, so fix a red one by editing the body. Docs, CI, refactor and backend-only PRs are not exempt.
+  - **UI change:** screenshots at 1280 wide (and 360 for layout changes).
+  - **Backend-only change:** a rendered screenshot of the real behaviour, never a text block: the failing-then-passing test output, the API response or the chat showing it. Make it with `python3 scripts/render_evidence.py out/before.png --title "BEFORE (main): ..." --cmd "<command>"` (run on `main` for Before, on your branch for After; it needs `cd e2e && npm ci` once), then publish the PNGs on the `evidence` branch. Also include the query plan or timing where relevant.
+  - Fictional names and no secrets in images.
 - **Where to see it:** steps and flags to reproduce.
 - **Questions for the maintainer:** every decision you did not make for them.
 - **Disclosure:** state in the PR that it was written with an agent (tool and model name) in the "Authored with an AI agent" line of the template. Add a `Co-Authored-By:` trailer naming the agent on commits.
