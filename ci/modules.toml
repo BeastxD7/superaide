@@ -785,6 +785,7 @@ e2e = [
   "e2e/tests/web-shell/fe-forms-nav.spec.ts",
   "e2e/tests/web-shell/fe-links.dev.spec.ts",
   "e2e/tests/web-shell/fe-needs-you-keyboard.spec.ts",
+  "e2e/tests/web-shell/layout-wide.spec.ts",
   "e2e/tests/web-shell/fe-longtext.mobile.spec.ts",
   "e2e/tests/web-shell/mobile-nav.mobile.spec.ts",
   "e2e/tests/web-shell/proxy.proxy.spec.ts",
