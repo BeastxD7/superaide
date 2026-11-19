@@ -14,13 +14,13 @@ Superaide AI credits pay for.
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy.orm import Session
 
 from superaide.channels import health
-from superaide.policy.killswitch import set_state
+from superaide.policy.killswitch import get_state, set_state
 
 log = logging.getLogger(__name__)
 
@@ -49,6 +49,119 @@ def is_auth_error(exc: BaseException) -> bool:
         if isinstance(inner, dict) and inner.get("type") in {"authentication_error", "permission_error"}:
             return True
     return "invalid x-api-key" in str(exc).lower()
+
+
+# Why the model cannot be used for a configuration reason (#633). The provider layer classifies, the model never does.
+KEY_MISSING, KEY_INVALID, CREDIT_LOW, SPEND_CAP = "key_missing", "key_invalid", "credit_low", "spend_cap"
+REASONS = (KEY_MISSING, KEY_INVALID, CREDIT_LOW, SPEND_CAP)
+TROUBLE_KEY = "ai_trouble"
+TROUBLE_FRESH = timedelta(minutes=60)  # credit and cap trouble is forgotten unless seen again (credits get topped up)
+MODELS_PAGE = "/dashboard/models"
+OWNER_TEXT = {
+    KEY_MISSING: "I have no AI key yet, so I can't think. Add one on the AI model page.",
+    KEY_INVALID: KEY_REJECTED_CHAT,
+    CREDIT_LOW: "My AI provider says the account is out of credit. Add credit at the provider, then try again.",
+    SPEND_CAP: "I've reached the spending cap, so I'm paused. Raise the cap on the AI model page.",
+}
+ACTIONS = {
+    KEY_MISSING: "Add a key",
+    KEY_INVALID: "Check the key",
+    CREDIT_LOW: "Open AI model settings",
+    SPEND_CAP: "Raise the cap",
+}
+
+
+CAUSES = {
+    KEY_MISSING: "No AI key is set, so Ava cannot think (replies are offline echoes).",
+    KEY_INVALID: "The AI provider rejected the key.",
+    CREDIT_LOW: "The AI provider says the account is out of credit.",
+    SPEND_CAP: "The spend cap was reached, so model calls are refused.",
+}
+FIXES = {
+    KEY_MISSING: "Add a key on the AI model page.",
+    KEY_INVALID: "Check or replace the key on the AI model page.",
+    CREDIT_LOW: "Add credit at the provider, then try again.",
+    SPEND_CAP: "Raise the limit on the AI model page (or MAX_SPEND_USD).",
+}
+
+
+def is_credit_error(exc: BaseException) -> bool:
+    """The provider says the account has no credit left (Anthropic 400 "credit balance is too low", HTTP 402)."""
+    status = getattr(exc, "status_code", None)
+    if status == 402:
+        return True
+    text = str(exc).lower()
+    body = getattr(exc, "body", None)
+    if isinstance(body, dict):
+        inner = body.get("error", body)
+        if isinstance(inner, dict):
+            text += " " + str(inner.get("message", "")).lower() + " " + str(inner.get("code", "")).lower()
+    return (status in (400, 429, None) or type(exc).__name__ == "BadRequestError") and any(
+        s in text for s in ("credit balance is too low", "insufficient_quota", "insufficient credit", "out of credit")
+    )
+
+
+def classify(exc: BaseException) -> str | None:
+    """key_invalid, credit_low or spend_cap for an error that needs the owner to act; None for a passing failure."""
+    from superaide.brain.spend.budget import BudgetExceeded
+
+    if isinstance(exc, BudgetExceeded):
+        return SPEND_CAP
+    if is_auth_error(exc):
+        return KEY_INVALID
+    if is_credit_error(exc):
+        return CREDIT_LOW
+    return None
+
+
+def missing(settings: Any) -> bool:
+    """A real model is wanted (FAKE_LLM off) but no provider has a key, so replies are offline echoes."""
+    from superaide.brain.wiring import brain_status
+
+    return not settings.fake_llm and brain_status(settings).reason == "no_provider"
+
+
+def warn_if_missing(settings: Any) -> None:
+    """At startup: say in the log when no AI key is set. Never raises, never prints a key."""
+    try:
+        if missing(settings):
+            log.error(
+                "No AI key is set, so replies are offline echoes. Add one on the AI model page "
+                "(or set ANTHROPIC_API_KEY in backend/.env) and restart."
+            )
+    except Exception:
+        log.exception("couldn't check the AI key at startup")
+
+
+def record_trouble(reason: str, provider: str) -> None:
+    """Best effort, in the instance in scope: the last configuration failure, for the banner. No message, no key."""
+    from superaide.platform.db.session import session_scope
+
+    try:
+        with session_scope() as s:
+            set_state(s, TROUBLE_KEY, {"reason": reason, "provider": provider, "at": datetime.now(UTC).isoformat()})
+    except Exception:
+        log.exception("couldn't record AI trouble")
+
+
+def notice(session: Session, settings: Any) -> dict[str, str] | None:
+    """What the owner is told in the app (banner and Check my setup): {"reason", "message", "action", "href"}."""
+    reason: str | None = None
+    if missing(settings):
+        reason = KEY_MISSING
+    elif rejected(session):
+        reason = KEY_INVALID
+    else:
+        cur = get_state(session, TROUBLE_KEY)
+        try:
+            fresh = datetime.now(UTC) - datetime.fromisoformat(cur["at"]) < TROUBLE_FRESH
+        except KeyError, ValueError:
+            fresh = False
+        if fresh and cur.get("reason") in (CREDIT_LOW, SPEND_CAP):
+            reason = cur["reason"]
+    if reason is None:
+        return None
+    return {"reason": reason, "message": OWNER_TEXT[reason], "action": ACTIONS[reason], "href": MODELS_PAGE}
 
 
 def mark(exc: BaseException, provider: str) -> None:
@@ -107,6 +220,7 @@ def reset(session: Session) -> None:
     for provider in {*KNOWN, *_extra(session)}:
         health.set_health(session, _name(provider), health.OK)
     set_state(session, "ai_key_note", {})
+    set_state(session, TROUBLE_KEY, {})
 
 
 def message_for(provider: str) -> str:
