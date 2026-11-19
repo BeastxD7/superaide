@@ -26,6 +26,9 @@ class FileRef:
 
     id: str
     size: int = 0
+    # What the platform's own structure says it is ("photo", "voice", "audio", "document"; "" when it does not say).
+    # Only used to skip a download we would not read; what a file is comes from its first bytes (attachments.py).
+    kind: str = ""
 
 
 @dataclass
@@ -72,6 +75,7 @@ class InboundAction:
     message_id: str = ""
     endpoint: str = ""  # which bot received it
     verified: bool = False
+    tenant_scope: str = ""  # Slack: the presser's workspace (a Telegram account has none)
 
 
 Sources = list[dict[str, Any]]

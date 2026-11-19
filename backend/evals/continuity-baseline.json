@@ -2,8 +2,8 @@
   "continuity-inbox-id-in-next-prompt": "known_gap",
   "continuity-no-email-correction-on-a-chat-relay": "pass",
   "continuity-owner-prompt-does-not-grow": "pass",
-  "continuity-send-one-clean-card": "known_gap",
-  "continuity-send-two-cards-asks-which": "known_gap",
+  "continuity-send-one-clean-card": "pass",
+  "continuity-send-two-cards-asks-which": "pass",
   "continuity-slack-thread-under-ava": "pass",
   "continuity-small-talk-prompt-is-minimal": "known_gap",
   "continuity-tainted-turn-cannot-send-by-text": "pass"
