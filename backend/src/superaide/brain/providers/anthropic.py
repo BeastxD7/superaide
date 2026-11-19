@@ -38,6 +38,7 @@ from superaide.brain.providers.types import (
     PartDone,
     Reasoning,
     ReasoningDelta,
+    SourceBlock,
     SourceDoc,
     Step,
     StopReason,
@@ -219,6 +220,8 @@ def part_from_wire(block: dict[str, Any]) -> ContentPart:
         else:
             body = str(content or "")
         return ToolResult(str(block.get("tool_use_id", "")), body, bool(block.get("is_error")), raw)
+    if kind == "search_result":
+        return SourceBlock([source_from_wire(block)], raw)
     if kind == "server_tool_use":
         return HostedToolCall(str(block.get("id", "")), str(block.get("name", "")), dict(block.get("input") or {}), raw)
     if kind in HOSTED_RESULTS:
@@ -250,6 +253,8 @@ def part_to_wire(part: ContentPart) -> dict[str, Any]:
         if part.is_error:
             result["is_error"] = True
         return result
+    if isinstance(part, SourceBlock):
+        return {"type": "text", "text": "\n".join(s.text for s in part.sources)}  # no raw wire block: plain text
     if isinstance(part, Reasoning):
         # Thinking from another provider has no signature Claude would accept: say it as text.
         return {"type": "text", "text": part.text}

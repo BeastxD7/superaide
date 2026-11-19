@@ -339,8 +339,10 @@ class SlackMessenger:
         except Exception as exc:
             log.warning("slack: couldn't remove the placeholder (%s)", type(exc).__name__)
 
-    def _post(self, channel: str, text: str, thread_id: str = "", sources: Sources | None = None) -> bool:
-        """Markdown goes out as Slack mrkdwn, split under Slack's recommended length."""
+    def _post(self, channel: str, text: str, thread_id: str = "", sources: Sources | None = None) -> str | bool:
+        """Markdown goes out as Slack mrkdwn, split under Slack's recommended length. Returns the `ts` of the
+        first message posted (the id the pipeline stores, so a thread under this reply finds its root), or True
+        when Slack gave none."""
         messages = fmt.outgoing(text, sources, render=fmt.to_slack, footer=fmt.slack_footer, limit=fmt.SLACK_LIMIT)
         active = _ACTIVE.get()
         if not (
@@ -351,9 +353,11 @@ class SlackMessenger:
         ):
             active = None
         pending = active if active is not None and active.ts else None  # a status has no ts
+        first_ts = ""
         for number, (mrkdwn, _) in enumerate(messages):
             try:
-                self._post_part(channel, mrkdwn, thread_id)
+                ts = self._post_part(channel, mrkdwn, thread_id)
+                first_ts = first_ts or ts
             except Exception:
                 if number:  # earlier parts are already out: never leave the reader at a half sentence unannounced
                     self._tell_unfinished(channel, thread_id)
@@ -364,9 +368,9 @@ class SlackMessenger:
                     # An edit would not notify anyone, so the reply is a new message; the placeholder goes after it
                     # (best-effort: if the delete fails it stays, the reply is never lost).
                     self._discard(channel, pending.ts)
-        return True
+        return first_ts or True
 
-    def _post_part(self, channel: str, text: str, thread_id: str) -> None:
+    def _post_part(self, channel: str, text: str, thread_id: str) -> str:
         """One message of a reply. A long reply is several messages sent one after the other, and Slack answers a
         quick second post with `ratelimited` (Retry-After): wait that long once instead of dropping the rest of the
         reply, which left the thread ending mid-sentence (#509)."""
@@ -374,13 +378,14 @@ class SlackMessenger:
         if thread_id:
             kwargs["thread_ts"] = thread_id
         try:
-            self._call("chat_postMessage", **kwargs)
+            posted = self._call("chat_postMessage", **kwargs)
         except Exception as exc:
             wait = _retry_after(exc)
             if wait is None:
                 raise
             time.sleep(wait)
-            self._call("chat_postMessage", **kwargs)
+            posted = self._call("chat_postMessage", **kwargs)
+        return _posted_ts(posted)
 
     def _tell_unfinished(self, channel: str, thread_id: str) -> None:
         try:
@@ -393,7 +398,7 @@ class SlackMessenger:
         return str(self._call("conversations_open", users=identity.stable_key)["channel"]["id"])
 
     def send_dm(self, identity: ChannelIdentity, text: str) -> bool:
-        return self._post(self.open_dm(identity), text)
+        return bool(self._post(self.open_dm(identity), text))
 
     def thread_history(self, channel: str, thread_ts: str, limit: int = THREAD_MESSAGES) -> list[dict[str, Any]]:
         """The messages of one thread, oldest first: [{"user", "text", "ts", "bot"}]. [] when Slack refuses
@@ -413,7 +418,9 @@ class SlackMessenger:
             )  # fmt: skip
         return out
 
-    def send_to_context(self, context: Context, text: str, thread_id: str = "", sources: Sources | None = None) -> bool:
+    def send_to_context(
+        self, context: Context, text: str, thread_id: str = "", sources: Sources | None = None
+    ) -> str | bool:
         return self._post(context.external_id, text, thread_id, sources)
 
     def send_buttons(self, chat_id: str, text: str, buttons: list[Button]) -> str | None:
@@ -442,6 +449,14 @@ class SlackMessenger:
             log.warning("slack: couldn't edit the message (%s)", _error_code(exc) or type(exc).__name__)
             return False
         return True
+
+
+def _posted_ts(posted: Any) -> str:
+    """The `ts` Slack gave a posted message, or "" (a fake or an odd reply carries none)."""
+    try:
+        return str(posted["ts"] or "")
+    except Exception:
+        return ""
 
 
 def run_socket_mode(bot_token: str, app_token: str, our_team_id: str, handle: Callable[[InboundMessage], Any]) -> None:

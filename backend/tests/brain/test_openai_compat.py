@@ -332,3 +332,166 @@ def test_brackets_that_are_not_markers_stream_through():
     f = MarkerFilter()
     shown = "".join(f.feed(c) for c in ["Options [a", "] and [see note]", " and [1]."]) + f.flush()
     assert shown == "Options [a] and [see note] and [1]."
+
+
+# --- reasoning never reaches a reply (any provider) -------------------------------------------
+
+
+def _chunk(delta: dict | None, finish: str | None = None, usage: dict | None = None) -> dict:
+    choices = [] if delta is None else [{"index": 0, "delta": delta, "finish_reason": finish}]
+    c: dict[str, Any] = {"id": "c1", "object": "chat.completion.chunk", "created": 1, "model": "m", "choices": choices}
+    if usage:
+        c["usage"] = usage
+    return c
+
+
+USAGE = {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30}
+THOUGHT = "Okay, the user said hi. Let me check the available functions."
+
+
+def _streamed_reply(*chunks: dict) -> tuple[str, list[Any]]:
+    server = Server(list(chunks))
+    p, _ = provider(server, "ollama", prices=PriceRegistry(base_urls={"ollama": "http://localhost:11434/v1"}),
+                    base_url="http://localhost:11434/v1")  # fmt: skip
+    events: list[Any] = []
+    turn = turn_for_stream(p, events)
+    return turn, events
+
+
+def turn_for_stream(p: OpenAICompatProvider, events: list[Any]) -> str:
+    from superaide.brain.llm import ProviderLLM
+
+    result = ProviderLLM(p).step(
+        purpose="chat_turn", model="qwen3:8b", system=[], messages=[{"role": "user", "content": "hi"}], tools=[],
+        max_tokens=100, on_event=lambda kind, data: events.append((kind, data)),
+    )  # fmt: skip
+    from superaide.brain.loop import render
+
+    return render(result.content)[0]
+
+
+def test_ollama_turns_thinking_off_by_default():
+    server = Server(completion("hello"))
+    base = "http://localhost:11434/v1"
+    p, _ = provider(server, "ollama", prices=PriceRegistry(base_urls={"ollama": base}), base_url=base)
+    p.step(purpose="chat_turn", model="qwen3:8b", system=[], messages=ask(), tools=[], max_tokens=100)
+    assert server.requests[0]["reasoning_effort"] == "none"
+    other = Server(completion("hello"))
+    q, _ = provider(other, "vllm", prices=PriceRegistry(base_urls={"vllm": "http://localhost:8000/v1"}),
+                    base_url="http://localhost:8000/v1")  # fmt: skip
+    q.step(purpose="chat_turn", model="m", system=[], messages=ask(), tools=[], max_tokens=100)
+    assert "reasoning_effort" not in other.requests[0]
+
+
+def test_streamed_reasoning_deltas_are_shown_as_thinking_but_never_join_the_reply():
+    text, events = _streamed_reply(
+        _chunk({"role": "assistant", "reasoning": THOUGHT[:20]}),
+        _chunk({"reasoning": THOUGHT[20:]}),
+        _chunk({"content": "Hi! How can I help?"}, "stop"),
+        _chunk(None, usage=USAGE),
+    )  # fmt: skip
+    assert text == "Hi! How can I help?" and THOUGHT[:10] not in text
+    assert "".join(d["delta"] for k, d in events if k == "thinking") == THOUGHT
+    assert not any(THOUGHT[:10] in d.get("delta", "") for k, d in events if k == "text")
+    assert not any(k == "block" and THOUGHT[:10] in json.dumps(d) for k, d in events)
+
+
+def test_reasoning_only_reply_is_empty_not_the_reasoning():
+    text, _ = _streamed_reply(_chunk({"reasoning_content": THOUGHT}, "length"), _chunk(None, usage=USAGE))
+    assert text == ""
+
+
+def test_reasoning_on_a_tool_call_turn_never_becomes_the_answer():
+    call = {
+        "index": 0,
+        "id": "call_1",
+        "type": "function",
+        "function": {"name": "recall", "arguments": '{"query": "x"}'},
+    }
+    server = Server(
+        [_chunk({"reasoning": THOUGHT}), _chunk({"tool_calls": [call]}, "tool_calls"), _chunk(None, usage=USAGE)],
+        [_chunk({"reasoning": "Now answer."}), _chunk({"content": "Friday."}, "stop"), _chunk(None, usage=USAGE)],
+    )
+    p, _ = provider(server, "ollama", prices=PriceRegistry(base_urls={"ollama": "http://localhost:11434/v1"}),
+                    base_url="http://localhost:11434/v1")  # fmt: skip
+    from superaide.brain.llm import ProviderLLM
+    from superaide.brain.loop import render
+
+    first = ProviderLLM(p).step(
+        purpose="chat_turn", model="qwen3:8b", system=[], messages=[{"role": "user", "content": "hi"}],
+        tools=[{"name": "recall", "description": "d", "input_schema": {"type": "object", "properties": {}}}],
+        max_tokens=100, on_event=lambda *_: None,
+    )  # fmt: skip
+    assert any(b["type"] == "tool_use" for b in first.content)
+    assert render(first.content)[0] == ""
+    assert not any(THOUGHT[:10] in json.dumps(b) for b in first.content)
+
+
+def test_a_non_streamed_message_keeps_reasoning_out_of_the_visible_text():
+    server = Server(
+        httpx.Response(200, json={
+            "id": "c", "object": "chat.completion", "created": 1, "model": "m",
+            "choices": [{"index": 0, "finish_reason": "stop",
+                         "message": {"role": "assistant", "reasoning": THOUGHT, "content": "Hi there."}}],
+            "usage": USAGE,
+        })
+    )  # fmt: skip
+    p, _ = provider(server, "ollama", prices=PriceRegistry(base_urls={"ollama": "http://localhost:11434/v1"}),
+                    base_url="http://localhost:11434/v1")  # fmt: skip
+    from superaide.brain.llm import ProviderLLM
+    from superaide.brain.loop import render
+
+    step = ProviderLLM(p).step(purpose="chat_turn", model="qwen3:8b", system=[],
+                               messages=[{"role": "user", "content": "hi"}], tools=[], max_tokens=100)  # fmt: skip
+    assert render(step.content)[0] == "Hi there."
+
+
+@pytest.mark.parametrize(
+    ("raw", "clean"),
+    [
+        ("<think>Let me think.</think>Hello!", "Hello!"),
+        ("<think>\nstep 1\nstep 2\n</think>\n\nHello!", "Hello!"),
+        ("Hello <THINK>secret</THINK>there", "Hello there"),
+        ("<think>one</think>A<think>two</think>B", "AB"),
+        ("Done.<think>cut off by the token limit", "Done."),
+        ("reasoning with no opening tag</think>The answer.", "The answer."),
+        ("No tags, even <b>html</b> and a < b.", "No tags, even <b>html</b> and a < b."),
+    ],
+)
+def test_strip_think_removes_every_think_block(raw, clean):
+    from superaide.brain.providers.thinking import strip_think
+
+    assert strip_think(raw) == clean
+
+
+@pytest.mark.parametrize("size", [1, 2, 3, 5, 7, 100])
+@pytest.mark.parametrize(
+    ("raw", "clean"),
+    [
+        ("<think>Let me think.</think>Hello there!", "Hello there!"),
+        ("Hello <think>hidden</think>there, a < b.", "Hello there, a < b."),
+        ("Hi <thing> ok", "Hi <thing> ok"),
+    ],
+)
+def test_streamed_think_blocks_never_show_however_the_chunks_fall(raw, clean, size):
+    from superaide.brain.providers.thinking import ThinkFilter
+
+    f = ThinkFilter()
+    shown = "".join(f.feed(raw[i : i + size]) for i in range(0, len(raw), size)) + f.flush()
+    assert shown.strip() == clean
+
+
+def test_think_tags_in_content_never_reach_the_streamed_or_final_reply():
+    text, events = _streamed_reply(
+        _chunk({"content": "<thi"}), _chunk({"content": "nk>Okay, the user said hi.</th"}),
+        _chunk({"content": "ink>Hello!"}, "stop"), _chunk(None, usage=USAGE),
+    )  # fmt: skip
+    assert text == "Hello!"
+    assert "".join(d["delta"] for k, d in events if k == "text") == "Hello!"
+
+
+def test_think_blocks_in_any_providers_text_block_are_dropped_by_the_loop():
+    from superaide.brain.loop import render
+
+    assert render([{"type": "text", "text": "<think>plan</think>Answer."}])[0] == "Answer."
+    assert render([{"type": "text", "text": "<think>only thoughts</think>"}])[0] == ""

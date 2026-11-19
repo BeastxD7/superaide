@@ -39,7 +39,7 @@ export function WelcomeTour({ name, onTake, onSkip }: { name: string; onTake: ()
         aria-describedby={bodyId}
         className="w-full max-w-md rounded-2xl border border-line bg-white p-6 text-ink shadow-xl dark:border-white/15 dark:bg-night-900 dark:text-white"
       >
-        <h2 id={titleId} className="text-xl font-semibold tight">
+        <h2 id={titleId} className="text-xl font-semibold tight text-ink dark:text-white">
           Welcome. Want a quick tour?
         </h2>
         <p id={bodyId} className="mt-2 text-sm text-body dark:text-white/80">
