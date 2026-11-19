@@ -768,3 +768,12 @@ note stays in the app (no push) while it is on; (2) `triage.features.gather` rai
 not let through, so rule R8 holds them like any busy owner; (3) the owner's prompt carries the status. Not built yet:
 calendar-derived presence, a one-tap control in the app, the "extend" prompt ten minutes before the end, the briefing and
 proxy-message uses. The wording a visitor hears is neutral by default; whether Ava may say "driving" is the owner's call.
+
+## Safety signals in a stranger's message (#498, 2026-11)
+
+`reception/signals.py` reads a visitor's message in code and returns fixed labels: `distress`, `threat`, `harassment`, `authority_claim`, `credential_request`, `payment_request`, `private_request` and `flood`. Word lists cover English, Spanish, French and romanised Hindi. The labels never change who the sender is (no trust, no authority), are never put in a model prompt, and are stored only as `signal:<label>` in `reception_message.rule_hits` and as labels in the audit log, never as a quote.
+
+- **Distress, threat:** a fixed reply (no model call, an AI disclosure, no advice, a pointer to local emergency services and findahelpline.com), the message stored, rank `urgent`, and an owner note that says "read it now" (with triage on, the Needs-you item is opened and the note is sent as well, so it is told at once either way). The note makes no claim about the reply, which may be silent after three an hour. These notes use a 5-minute window and a limit of 6 an hour per sender instead of the ordinary 15 minutes and 3, so a flood of ordinary messages never hides them and a repeated phrase cannot spam the owner. The note never carries the visitor's words; the dashboard does.
+- **Authority claim plus a request for details, any request for codes or passwords, any request for money:** one fixed refusal, with no lookup, so it is the same sentence whether or not the owner holds the data (anti-probing). Rank `unverified`, and the owner is told nothing was shared and it may be a scam. An authority claim on its own ("his brother asked me to call") goes to the model as before and only adds its label.
+- **Abuse:** one calm boundary a day (with the AI notice), then silence on that thread; the messages are still stored. A fixed safety reply is not a greeting, so a thread that opened with one still gets the introduction and the limit notice on its next ordinary turn.
+- **Cost:** one sender gets at most 20 receptionist model turns a day. After that code replies with a fixed acknowledgement; every message is still stored and passed on.

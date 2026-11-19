@@ -62,7 +62,7 @@ CODE_ONLY = {
     "prompt_excludes", "no_model_call", "outbound_excludes", "mode",
     "triage_decision", "escalation_state", "escalation_pushed", "escalation_acks", "interrupt_count",
     "audit_logged", "triage_feedback", "message_taken", "prompt_includes", "recall_top", "recall_none",
-    "memory_count", "memory_from_document", "documents", "memory_retired", "delivery", "pushed",
+    "memory_count", "memory_from_document", "signal_labelled", "documents", "memory_retired", "delivery", "pushed",
     "visitor_replies", "degraded",
 }  # fmt: skip
 
@@ -604,6 +604,22 @@ def message_taken(ctx: Ctx, value: Any) -> tuple[bool, str]:
             q = q.where(ReceptionMessage.source == value["source"])
         n = len(list(s.scalars(q)))
     return n == int(value["count"]), f"{n} messages taken, expected {value['count']}"
+
+
+@check("signal_labelled")
+def signal_labelled(ctx: Ctx, value: Any) -> tuple[bool, str]:
+    """{label, count}: this many taken messages carry the safety label (#498), and no stored text holds `absent`."""
+    from superaide.reception.models import ReceptionMessage
+
+    with session_scope() as s:
+        n = len(
+            list(
+                s.scalars(
+                    select(ReceptionMessage.id).where(ReceptionMessage.rule_hits.contains([f"signal:{value['label']}"]))
+                )
+            )
+        )
+    return n == int(value["count"]), f"{n} messages labelled {value['label']}, expected {value['count']}"
 
 
 @check("visitor_replies")

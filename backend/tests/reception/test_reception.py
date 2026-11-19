@@ -234,7 +234,10 @@ def _a_context(s) -> Context:
 )
 def test_nothing_private_ever_reaches_the_prompt(owner_world, ava, script, attack):
     seed_private_world()
-    ava.handle(hello(attack))
+    r = ava.handle(hello(attack))
+    if not script.calls:  # code refused a request for a code or money before any model call (#498)
+        assert r.reply == service.REFUSAL_REPLY and CANARY not in str(r.reply)
+        return
     p = script.prompt
     assert CANARY not in p
     for private in ("divorce", "visa", "Goa", "Priya", "sister", "locker", "hospital", "quiet"):

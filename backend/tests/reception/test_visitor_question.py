@@ -101,7 +101,8 @@ def test_declining_tells_the_visitor_plainly(owner_world, ava, script, outbox):
 def test_redteam_a_question_about_secrets_is_never_opened(owner_world, ava, script, bad):
     reply = visitor_asks(ava, script, question=bad)
     assert questions() == []
-    assert reply.startswith("Hi") and ask.REFUSED in reply  # the visitor is told it was not asked
+    # the visitor is told it was not asked: by the question gate, or earlier by the safety refusal for money (#498)
+    assert (reply.startswith("Hi") and ask.REFUSED in reply) or "I can't share or help with that" in reply
     assert "I've asked" not in reply
 
 
