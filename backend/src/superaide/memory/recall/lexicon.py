@@ -122,6 +122,21 @@ STOP = {
     "which", "who", "why", "with", "you", "your",
 }  # fmt: skip
 
+# Words that carry no topic in a chat: pleasantries, commands and the verbs of "what did she say". A question made only
+# of these ("yes please", "send", "ok") finds nothing, and in a longer one they do not match a stored message by
+# themselves (#644). Kept apart from STOP, which `words` removes everywhere; these only leave the any-word searches.
+CHATTER = {
+    "yes", "yeah", "yep", "yup", "ok", "okay", "kk", "please", "pls", "plz", "thanks", "thank", "thx", "sure", "send",
+    "sent", "sending", "go", "now", "just", "also", "hi", "hello", "hey", "fine", "right", "good", "great", "cool",
+    "nice", "no", "nope", "then", "there", "here", "so", "but", "if", "be", "been", "am", "were", "will", "would",
+    "should", "shall", "may", "might", "must", "some", "anyone", "anybody", "anything", "something", "someone",
+    "write", "writes", "wrote", "written", "writing", "saying", "says", "asked", "ask", "asks", "message",
+    "messages", "last", "week", "weeks", "day", "days", "ago", "let", "lets", "get", "got", "give", "show", "find",
+    "look", "check", "again", "more", "other", "us", "we", "he", "she", "him", "her", "they", "them", "his", "their",
+    "our", "its", "by", "as", "up", "out", "over", "into", "than", "very", "too", "in", "yesterday", "today",
+    "tomorrow",
+}  # fmt: skip
+
 
 def _tokens(text: str) -> list[str]:
     """Runs of letters, marks and digits in any script ("colour", "café", "काला", "黒"). Nothing
@@ -152,6 +167,11 @@ def words(text: str) -> list[str]:
         if w not in STOP and w not in out:
             out.append(w)
     return out
+
+
+def content_words(text: str) -> list[str]:
+    """`words` without the chatter: what a message has to match to be about the question."""
+    return [w for w in words(text) if w not in CHATTER]
 
 
 def _swap(word: str, table: dict[str, str]) -> str | None:
