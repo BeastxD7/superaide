@@ -20,7 +20,6 @@ test('the record shows facts with source, date and audience, and the owner edits
   const fact = page.getByRole('listitem').filter({ hasText: 'Meera prefers calls after 6pm.' })
   await expect(fact).toContainText('Told to Ava on Telegram')
   await expect(fact).toContainText('Shared with: Only you')
-  await page.screenshot({ path: 'test-results/contact-after.png', fullPage: true })
 
   await page.getByLabel('Your private notes').fill('Met at the offsite')
   await page.getByLabel('Relationship').fill('close friend')
@@ -29,7 +28,7 @@ test('the record shows facts with source, date and audience, and the owner edits
   await page.reload()
   await expect(page.getByLabel('Relationship')).toHaveValue('close friend')
   await expect(page.getByLabel('Your private notes')).toHaveValue('Met at the offsite')
-  await page.getByLabel(/VIP: always gets through/).click()
+  await page.getByLabel(/VIP: always gets through/).check()
   await expect.poll(async () => (await query<{ vip: boolean }>(`SELECT vip FROM contact`))[0].vip).toBe(true)
 
   await fact.getByRole('button', { name: 'Forget this' }).click()

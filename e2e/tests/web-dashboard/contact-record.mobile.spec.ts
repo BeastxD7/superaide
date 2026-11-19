@@ -11,5 +11,4 @@ test('a person\'s record fits a phone', async ({ page, api, owner }) => {
   await expect(page.getByRole('heading', { level: 1, name: 'Meera Iyer' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Forget this' })).toBeVisible()
   await expectNoSidewaysScroll(page)
-  await page.screenshot({ path: 'test-results/contact-mobile.png', fullPage: true })
 })

@@ -49,6 +49,7 @@ export function ContactPage() {
 function Record({ record, assistant, reload }: { record: ContactRecord; assistant: string; reload: () => Promise<unknown> }) {
   const [relationship, setRelationship] = useState(record.relationship)
   const [notes, setNotes] = useState(record.notes)
+  const [vip, setVip] = useState(record.vip)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -129,9 +130,12 @@ function Record({ record, assistant, reload }: { record: ContactRecord; assistan
           <label className="flex items-center gap-2 text-sm text-body">
             <input
               type="checkbox"
-              checked={record.vip}
+              checked={vip}
               disabled={saving}
-              onChange={(e) => void save({ vip: e.target.checked })}
+              onChange={(e) => {
+                setVip(e.target.checked)
+                void save({ vip: e.target.checked })
+              }}
               className="size-4 accent-violet-600"
             />
             VIP: always gets through to you, even in quiet hours

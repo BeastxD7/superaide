@@ -20,7 +20,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from superaide.app.deps import owner_person_id
-from superaide.identity.auth.routes import reject_nul_text, require_csrf_header
+from superaide.identity.auth.deps import reject_nul_text, require_csrf_header
 from superaide.identity.models import ChannelIdentity, Person
 from superaide.memory.models import Contact, Document, MemoryItem
 from superaide.platform.audit import audit

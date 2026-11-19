@@ -17,12 +17,15 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import delete, select
 
+from superaide.app.contact_record import make_router as make_contact_record_router
 from superaide.app.deps import owner_person_id
 from superaide.identity.auth.deps import reject_nul_text, require_csrf_header
 from superaide.identity.auth.models import TourProgress
 from superaide.platform.db.session import session_scope
 
 # The tours the front end knows. "welcome" is the first-run prompt; the others are the per-page tours.
+__all__ = ["TOURS", "make_contact_record_router", "make_tour_router"]  # the doors other packages may use
+
 TOURS = ("welcome", "chat", "home", "connections", "notebook", "approvals", "settings")
 
 
