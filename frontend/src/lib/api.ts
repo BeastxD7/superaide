@@ -579,6 +579,21 @@ export type ModelSettings = {
 
 export type ConnectionTest = { ok: boolean; message: string; models: string[] }
 
+// /app/media-providers: which service listens to voice notes and which looks at photos (#501, #511).
+export type MediaCapabilityId = 'transcribe' | 'vision'
+export type MediaCapability = {
+  id: MediaCapabilityId
+  label: string
+  hint: string
+  suggested: string[]
+  choice: { provider: string; model: string } | null
+  on: boolean
+  problem: string | null // why a saved choice cannot run now
+  price: { known: boolean; free: boolean; unit: 'minute' | 'mtok'; usd?: number } | null
+  providers: { key: string; label: string; models: string[]; ready: boolean }[]
+}
+export type MediaSettings = { capabilities: MediaCapability[] }
+
 // Triage and escalation (ADR 0010). Every /needs-you and /triage route answers 404 while the
 // backend's TRIAGE_ENABLED is off, and the app then hides the inbox.
 export type TriageDecision = 'handle' | 'hold' | 'interrupt' | 'defer' | 'verify'

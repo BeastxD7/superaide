@@ -236,15 +236,25 @@ def test_slack_events_keep_file_ids_only_and_ignore_odd_ids_and_names():
     assert "passwd" not in repr(msg.file_refs) and "evil" not in repr(msg.file_refs)
 
 
-def test_telegram_keeps_a_documents_id_only_and_photos_have_none():
+def test_telegram_keeps_file_ids_and_kinds_only():
     base = {"message_id": 1, "from": {"id": 5}, "chat": {"id": 5, "type": "private"}}
     doc = parse_update(
         {"message": {**base, "document": {"file_id": "BQACAgQAAxk", "file_name": "../x.pdf", "file_size": 9}}},
         verified=True,
     )
-    assert doc is not None and doc.file_refs == [FileRef("BQACAgQAAxk", 9)] and doc.attachments == ["document"]
+    assert (
+        doc is not None and doc.file_refs == [FileRef("BQACAgQAAxk", 9, "document")] and doc.attachments == ["document"]
+    )
     photo = parse_update({"message": {**base, "photo": [{"file_id": "AgACAgQAAxk"}]}}, verified=True)
-    assert photo is not None and photo.file_refs == [] and photo.attachments == ["photo"]
+    # A photo is kept as its largest size, a voice note as its id (#501, #511); nothing else about them is kept.
+    assert photo is not None and photo.file_refs == [FileRef("AgACAgQAAxk", 0, "photo")]
+    assert photo.attachments == ["photo"]
+    voice = parse_update(
+        {"message": {**base, "voice": {"file_id": "AwACAgQAAxk", "duration": 3, "file_size": 7}}}, verified=True
+    )
+    assert voice is not None and voice.file_refs == [FileRef("AwACAgQAAxk", 7, "voice")]
+    video = parse_update({"message": {**base, "video": {"file_id": "BAACAgQAAxk"}}}, verified=True)
+    assert video is not None and video.file_refs == [] and video.attachments == ["video"]
     bad = parse_update({"message": {**base, "document": {"file_id": "../../x"}}}, verified=True)
     assert bad is not None and bad.file_refs == []
 
