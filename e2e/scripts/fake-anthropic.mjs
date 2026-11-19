@@ -31,6 +31,15 @@ createServer((req, res) => {
     }
     const system = JSON.stringify(parsed?.system ?? '')
     let text = wantsJson ? JSON.stringify(FACTS) : 'Hello from the fake Claude.'
+    // A chat turn asks for the reply schema (brain/turn.py TurnOutput): answer it, so the owner's first message gets a reply.
+    const schemaProps = parsed?.output_config?.format?.schema?.properties ?? {}
+    if (wantsJson && 'reply' in schemaProps) {
+      text = JSON.stringify({
+        reply: 'Hello from the fake Claude.',
+        requested_action: { kind: 'none', summary: '' },
+        prediction: { expectation: 'The owner reads the reply.', confidence: 0.5 },
+      })
+    }
     if (system.includes('This is a rehearsal')) {
       // The rehearsal room (#58): the other side raises an objection.
       text = 'That is a big ask. What has changed since your last review?'
@@ -42,6 +51,23 @@ createServer((req, res) => {
       text = JSON.stringify({
         points: heads.map((heading) => ({ heading, advice: 'Be specific about what you want and why.', quote })),
       })
+    }
+    if (parsed?.stream === true) {
+      // The chat streams its answer (server-sent events); one text block in two pieces is enough for the SDK.
+      const usage = { input_tokens: 120, output_tokens: 40 }
+      const send = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify({ type: event, ...data })}\n\n`)
+      res.writeHead(200, { 'content-type': 'text/event-stream', 'request-id': `req_fake_${calls}` })
+      send('message_start', {
+        message: { id: `msg_fake_${calls}`, type: 'message', role: 'assistant', model: 'claude-haiku-5-5', content: [], stop_reason: null, stop_sequence: null, usage },
+      })
+      send('content_block_start', { index: 0, content_block: { type: 'text', text: '' } })
+      const half = Math.ceil(text.length / 2)
+      for (const piece of [text.slice(0, half), text.slice(half)])
+        send('content_block_delta', { index: 0, delta: { type: 'text_delta', text: piece } })
+      send('content_block_stop', { index: 0 })
+      send('message_delta', { delta: { stop_reason: 'end_turn', stop_sequence: null }, usage: { output_tokens: 40 } })
+      send('message_stop', {})
+      return void res.end()
     }
     res.writeHead(200, { 'content-type': 'application/json', 'request-id': `req_fake_${calls}` })
     res.end(

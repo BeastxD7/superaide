@@ -26,6 +26,9 @@ export const GOOGLE = process.env.E2E_GOOGLE === '1'
 export const FAKE_GOOGLE_PORT = 8300 + SLOT
 export const FAKE_GOOGLE_URL = `http://127.0.0.1:${FAKE_GOOGLE_PORT}`
 
+// The time-to-first-reply measurement (#411): E2E_TTFR=1 adds the `ttfr` project (*.ttfr.spec.ts). It needs E2E_BRAIN=1 too.
+export const TTFR = process.env.E2E_TTFR === '1'
+
 // "Brain first" tests: Superaide AI credits against a fake Anthropic (scripts/fake-anthropic.mjs). Muted by
 // default: only with E2E_BRAIN=1, which starts the fake and runs the API hosted, with a real model switched on.
 export const BRAIN = process.env.E2E_BRAIN === '1'
