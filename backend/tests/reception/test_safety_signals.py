@@ -5,7 +5,10 @@ model is not called for any of these and is never told what was detected."""
 # ruff: noqa: F811
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
+import time_machine
 from sqlalchemy import select
 
 from superaide.app.accounts import owner as hired_owner  # noqa: F401
@@ -29,6 +32,9 @@ from tests.reception.test_reception import (  # noqa: F401  (fixtures and helper
 )
 
 # --- the detector ----------------------------------------------------------------------------------------
+
+
+MIDDAY_UTC = datetime(2026, 11, 19, 12, 0, tzinfo=UTC)
 
 
 @pytest.mark.parametrize(
@@ -333,6 +339,7 @@ def _telegram_up(monkeypatch, outbox) -> None:
 
 
 @pytest.mark.parametrize(("opt_in", "pushed"), [(False, 0), (True, 1)])
+@time_machine.travel(MIDDAY_UTC, tick=True)  # not the 23:59 minute, where a 00:00-23:59 window ends
 def test_distress_breaks_quiet_hours_only_on_the_owners_urgent_over_cap_opt_in(
     opt_in, pushed, owner_world, ava, script, outbox, monkeypatch
 ):
