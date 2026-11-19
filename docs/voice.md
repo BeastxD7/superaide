@@ -8,7 +8,7 @@ There is no on/off flag (#448). Voice turns on when a provider key is present (`
 
 | Setting | Default | What it does |
 | --- | --- | --- |
-| `VOICE_PROVIDER` | `auto` | `auto` (deepgram when a key is present, else off), `none` (force off), `fake` (scripted, offline), `deepgram` (the hosted adapter below) or `realtime` (adapter stub, no vendor wired) |
+| `VOICE_PROVIDER` | `auto` | `auto` (deepgram when a key is present, else off), `none` (force off), `fake` (scripted, offline), `deepgram` (the hosted adapter below) |
 | `VOICE_PROVIDER_API_KEY` | empty | The vendor's key (falls back to `DEEPGRAM_API_KEY`). Normally saved in the vault under the `voice_provider` connection |
 | `BUDGET_MONTHLY_BY_BUCKET` | `{"voice_call": 5.00}` | A live call's own monthly cap in US dollars, inside `MAX_SPEND_USD` and the daily and monthly limits (the tightest wins) |
 | `VOICE_CALL_MAX_SECONDS` | `600` | The call ends at this much caller audio |
@@ -16,7 +16,7 @@ There is no on/off flag (#448). Voice turns on when a provider key is present (`
 ## The pieces
 
 - `voice/gateway.py`: the rules (`propose`, `readback`, `guard_spoken`, `check_confirmation`). `TEXT_CHANNELS = ("app",)`.
-- `voice/provider.py`: the provider interface (`open`, `listen`, `speak`, `close`), `NoProvider`, `FakeVoiceProvider` and `RealtimeVendorStub`. `choose()` reads `VOICE_PROVIDER`; an unknown name is `none`.
+- `voice/provider.py`: the provider interface (`open`, `listen`, `speak`, `close`), `NoProvider`, `FakeVoiceProvider` and `DeepgramVoiceProvider`. `choose()` reads `VOICE_PROVIDER`; an unknown name is `none`.
 - `voice/shell.py`: `VoiceShell.handle(transcript)` is the one handler: transcript to the text agent, a proposal to the gateway, the read-back back to the caller.
 - App, Approvals page: a voice-origin card shows "Heard on a call", the exact fields proposed, the sentence that was read back, and a button that is the only way to confirm.
 
@@ -47,4 +47,4 @@ Not done: a live run against the real API (the key and the owner's go-ahead are 
 
 ## Adding another vendor
 
-Copy `RealtimeVendorStub` in `voice/provider.py`, implement the four methods with the vendor's streaming API over `httpx` or a websocket (no SDK), and keep its rules: transcripts only (no audio, no vendor function calls, the session is created without tools), `speak` sends exactly the text it is given, the key goes only to the vendor and is never logged, and the vendor's price goes in `voice/prices.py` so the spend cap covers the call. Which vendor, and the cost, is the owner's decision.
+Copy `DeepgramVoiceProvider` in `voice/provider.py` (there is no placeholder class: a vendor is added when one is chosen), implement the four methods with the vendor's streaming API over `httpx` or a websocket (no SDK), and keep its rules: transcripts only (no audio, no vendor function calls, the session is created without tools), `speak` sends exactly the text it is given, the key goes only to the vendor and is never logged, and the vendor's price goes in `voice/prices.py` so the spend cap covers the call. Which vendor, and the cost, is the owner's decision.

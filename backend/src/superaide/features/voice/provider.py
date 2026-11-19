@@ -15,8 +15,6 @@ VOICE_PROVIDER picks the provider:
   said and Deepgram's voice for what the shell speaks, turn by turn. Every request goes through the budget guard
   (bucket `voice_call`, its own monthly cap inside MAX_SPEND_USD). Deepgram is already the vendor of the introduction
   call (ADR 0012), so it adds no new data holder.
-- `realtime`: the adapter stub for a real vendor (`RealtimeVendorStub`). It names the methods a vendor
-  adapter must fill in and refuses to run until one is written, so choosing it spends nothing.
 
 The vendor's key is read only from the settings the vault fills (`voice_provider_api_key`, saved under
 the `voice_provider` connection) and goes nowhere except the vendor's own request. Audio is never
@@ -36,7 +34,7 @@ from superaide.features.voice import providers
 from superaide.features.voice.providers import VoiceError
 from superaide.platform.config import Settings, get_settings
 
-PROVIDER_KINDS = ("auto", "none", "fake", "realtime", "deepgram")
+PROVIDER_KINDS = ("auto", "none", "fake", "deepgram")
 NEEDS_KEY_HINT = "Voice is off. Add a Deepgram key (DEEPGRAM_API_KEY, or save it under Connections) to turn it on."
 
 
@@ -60,7 +58,7 @@ def voice_available(settings: Settings | None = None) -> bool:
     kind = resolved_kind(s)
     if kind == "fake":
         return True
-    return kind in ("deepgram", "realtime") and bool(_key(s))
+    return kind == "deepgram" and bool(_key(s))
 
 
 def voice_hint(settings: Settings | None = None) -> str | None:
@@ -129,39 +127,6 @@ class FakeVoiceProvider:
 
     def close(self) -> None:
         self.closed = True
-
-
-class RealtimeVendorStub:
-    """Where a real vendor adapter goes (a realtime speech API with server-side transcripts).
-
-    To add one: copy this class, give it the vendor's name, and implement the four methods with that
-    vendor's streaming API over `httpx` or a websocket (no SDK, like voice/providers.py).
-    Rules an adapter must keep:
-    - `listen` yields transcript text only. Never audio, never a vendor "function call": the vendor
-      session is created with no tools and no instructions to act.
-    - `speak` sends exactly the text it is given and nothing else.
-    - the key is used only in the request to the vendor, and never logged.
-    - add the vendor's per-minute price to voice/prices.py so the spend cap covers the call.
-    """
-
-    name = "realtime"
-
-    def __init__(self, api_key: str) -> None:
-        self._key = api_key
-
-    def open(self) -> None:
-        if not self._key:
-            raise VoiceError("Live voice needs the vendor's API key. Save it under Connections.")
-        raise VoiceError("No realtime voice vendor is wired in yet. See docs/voice.md.")
-
-    def listen(self) -> Iterator[str]:
-        raise VoiceError("No realtime voice vendor is wired in yet.")
-
-    def speak(self, text: str) -> None:
-        raise VoiceError("No realtime voice vendor is wired in yet.")
-
-    def close(self) -> None:
-        return None
 
 
 class DeepgramVoiceProvider:
@@ -275,8 +240,6 @@ def choose(
             max_turn_seconds=s.voice_max_turn_seconds,
             client=client,
         )
-    if kind == "realtime":
-        return RealtimeVendorStub(s.voice_provider_api_key)
     return NoProvider()
 
 

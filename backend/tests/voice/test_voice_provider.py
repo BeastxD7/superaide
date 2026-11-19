@@ -46,15 +46,13 @@ def test_an_unknown_provider_name_fails_closed(monkeypatch, settings):
     assert provider.choose(settings).name == "none"
 
 
-def test_the_vendor_stub_spends_nothing_and_never_runs(monkeypatch, settings):
+def test_the_removed_realtime_stub_name_is_an_unknown_provider_and_fails_closed(monkeypatch, settings):
+    """`realtime` was an adapter stub with no vendor behind it (#403); it is now like any unknown name."""
     monkeypatch.setattr(settings, "voice_provider", "realtime")
-    p = provider.choose(settings)
-    assert p.name == "realtime"
-    with pytest.raises(VoiceError, match="API key"):
-        p.open()
     monkeypatch.setattr(settings, "voice_provider_api_key", "k" * 20)
-    with pytest.raises(VoiceError, match="No realtime voice vendor"):
-        provider.choose(settings).open()
+    assert provider.resolved_kind(settings) == "none"
+    assert not provider.voice_available(settings)
+    assert provider.choose(settings).name == "none"
 
 
 def test_the_fake_provider_replays_transcripts_and_records_speech(monkeypatch, settings):
@@ -156,11 +154,8 @@ def test_none_forces_voice_off_even_with_a_key(monkeypatch, settings):
 
 
 def test_a_vendor_name_without_a_key_is_off_and_never_builds_a_vendor_client(monkeypatch, settings):
-    for kind in ("deepgram", "realtime"):
-        monkeypatch.setattr(settings, "voice_provider", kind)
-        assert not provider.voice_available(settings)
-    assert provider.choose(settings).name == "realtime"  # the offline stub: it refuses to open without a key
     monkeypatch.setattr(settings, "voice_provider", "deepgram")
+    assert not provider.voice_available(settings)
     assert provider.choose(settings).name == "none"
 
 
