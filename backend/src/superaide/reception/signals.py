@@ -45,29 +45,33 @@ def _any(*patterns: str) -> re.Pattern[str]:
 
 # English first; Spanish, French and romanised Hindi for the most common phrases (the list grows with reports).
 _DISTRESS = _any(
-    r"\b(?:can'?t|cannot|can not|couldn'?t) (?:do|take|handle|go on|carry on|keep going|live) (?:with )?(?:this|like this|any ?more)",
-    r"\bcan'?t (?:do|take|go on|keep going)\b.{0,20}\bany ?more\b",
-    r"\b(?:want|wanna|going|plan(?:ning)?|ready) to (?:die|end it|end my life|kill myself|disappear)\b",
+    # "I can't do this anymore": the "anymore" (or "go on" at the end of a clause) is what separates it from
+    # "I can't do this Friday" and "I can't take this call".
+    r"\bcan'?t (?:do|take|handle|stand|bear|live)(?: this| it| that| life)?(?: like this)? any ?more\b",
+    r"\bcan'?t (?:go on|carry on|keep going)(?: like this| living)?(?: any ?more)?(?:[.!?,;]|$)",
+    r"\bi (?:really |just |only )?(?:want|wanna|need) to (?:die|end it|end my life|kill myself|disappear)\b",
+    r"\bi(?:'m| am|'ll| will) (?:going to|gonna|about to) (?:die|kill myself|end it|end my life)\b",
     r"\bkill(?:ing)? myself\b|\bsuicid|\bself[- ]?harm|\bhurt(?:ing)? myself\b|\bend(?:ing)? (?:it all|my life)\b",
     r"\bno (?:reason|point) (?:to|in) (?:live|living|go on|going on)\b",
     r"\b(?:better off|world is better) without me\b|\bdon'?t want to (?:be here|be alive|live|wake up)\b",
     r"\bgive up on (?:life|everything)\b",
-    r"\bquiero morir|\bme quiero matar|\bsuicidarme|\bno puedo mas\b|\bno quiero vivir",
+    r"\bquiero morir|\bme quiero matar|\bsuicidarme|\bno puedo mas\b|\bno quiero vivir|\bya no quiero vivir",
     r"\bje veux mourir|\bme suicider|\bj'en peux plus\b|\bje n'en peux plus\b",
     r"\bmarna chahta|\bmarna chahti|\bjeena nahi|\bjeene ka mann nahi|\bkhudkushi|\bmar jaana chahta|\bmar jana chahta",
 )
 _THREAT = _any(
-    r"\bi(?:'ll| will|'m going to| am going to|'m gonna) (?:kill|hurt|find|destroy|ruin|burn|shoot|stab|beat) (?:you|him|her|them)\b",
-    r"\b(?:you|he|she|they)(?:'ll| will) (?:regret|pay for|be sorry)\b",
-    r"\bi know where (?:you|he|she|they) (?:live|work|stay)s?\b",
-    r"\bwatch your back\b|\bbomb\b|\bi(?:'ll| will) (?:come|be) (?:for|after) (?:you|him|her)\b",
+    r"\bi(?:'ll| will|'m going to| am going to|'m gonna) (?:kill|hurt|destroy|ruin|burn|shoot|stab|beat) (?:you|him|her|them)\b",
+    r"\bi(?:'ll| will|'m going to| am going to|'m gonna) find you and\b",
+    r"\b(?:you|he|she|they)(?:'ll| will) (?:regret|be sorry)\b",
+    r"\bi know where you (?:live|work|stay)s?\b",
+    r"\bwatch your back\b|\bbomb threat\b|\b(?:there(?:'s| is) a|i(?:'ve| have) a|plant(?:ed|ing)? a) bomb\b",
     r"\bte voy a matar|\bje vais te tuer|\bmain tujhe maar|\bmaar dunga|\bmar dunga tujhe",
 )
 _HARASS = _any(
     r"\b(?:fuck|screw|piss) (?:you|off)\b|\bbitch\b|\bbastard\b|\basshole\b|\bmotherfucker\b|\bscumbag\b|\bshut (?:the f\w+ )?up\b",
     r"\b(?:you(?:'re| are)|ur) (?:a )?(?:stupid|useless|worthless|pathetic|idiot|moron|slut)\b",
     r"\bchutiya|\bmadarchod|\bbehenchod|\bharamzada|\bgaandu\b|\bputa\b|\bcabron|\bconnard|\bsalope",
-    r"\bsend (?:me )?(?:nudes|pics of yourself)\b|\bsexy\b.{0,20}\b(?:baby|girl)\b",
+    r"\bsend (?:me )?(?:nudes|pics of yourself)\b",
 )
 _AUTHORITY = _any(
     r"\b(?:your|the|his|her) (?:boss|manager|ceo|director|owner|employer|supervisor|principal|client|lawyer|attorney)\b"
@@ -75,26 +79,34 @@ _AUTHORITY = _any(
     r"\b(?:he|she|they|\w+) (?:asked|told|sent|instructed|authori[sz]ed|said to|wants) (?:me|us) to\b",
     r"\b(?:he|she|they|\w+) (?:said|told me|says) (?:you|ava|the assistant)(?: can| could| should| will| would|'ll)\b",
     r"\bon behalf of\b|\bacting for\b|\bper (?:his|her|their) (?:instruction|request)s?\b|\bhe (?:has )?(?:approved|authori[sz]ed)\b",
-    r"\bi(?:'m| am) (?:his|her|the) (?:assistant|lawyer|attorney|accountant|driver|courier|friend|brother|sister|wife|husband|colleague|doctor|nurse|banker|agent)\b",
+    r"\bi(?:'m| am) (?:his|her|the) (?:assistant|lawyer|attorney|accountant|brother|sister|wife|husband|doctor|nurse|banker|agent)\b",
     r"\bi(?:'m| am) (?:calling|writing|messaging|from) (?:from|on behalf of|for) (?:the )?(?:bank|police|tax|irs|hmrc|court|customs|immigration|hospital|your (?:boss|company|office))\b",
-    r"\b(?:official|urgent|authori[sz]ed) (?:request|order|instruction)\b",
     r"\bme (?:pidio|dijo) que\b|\bil m'a (?:demande|dit) de\b|\bunhone(?:n)? (?:kaha|bola) (?:ki )?(?:mujhe|tum)\b|\bsir ne (?:kaha|bola)\b",
 )
+# A request is a verb that asks Ava to hand something over, within a few words of the thing: "send me the OTP",
+# "what is his pin number". Giving one's own details ("my account number is 4411") or mentioning a code of conduct is not.
+_ASK = (
+    r"(?:send|give|share|tell|provide|need|want|what(?:'s| is| are)|read(?: out)?|forward|text|whatsapp|collect|get|"
+    r"reveal|pass|ask(?:ed|ing)? (?:you )?for|looking for|hand over|let me (?:know|have))"
+)
+# The determiner after the verb ("send me THE otp", "what is HIS pin") is what makes it a request for someone's
+# secret; "send quote, my account number is 4111" has none.
+_DET = r"(?:(?:the|his|her|their|your|ava's|that|this|an?)\s+)"
 _CREDENTIAL = _any(
-    r"\b(?:otp|one[- ]time (?:code|pass(?:word|code)?)|verification code|security code|auth(?:entication)? code|2fa|mfa)\b",
-    r"\b(?:pass ?(?:word|code)|pin(?: number| code)?|cvv|cvc|api[- ]?key|secret key|private key|seed phrase|recovery phrase)\b",
-    r"\b(?:door|gate|alarm|entry|access|lock|garage|building|wifi|wi-fi|safe|locker) ?(?:code|pin|combination|password|key)\b",
-    r"\b(?:login|log in|sign[- ]?in) (?:details|credentials|info(?:rmation)?)\b|\bcredentials\b",
-    r"\b(?:card|account|credit card|debit card|aadhaar|aadhar|social security|ssn|passport) (?:number|no\.?|details|digits)\b",
+    rf"\b{_ASK}\b.{{0,25}}\b{_DET}?(?:otp|one[- ]time (?:code|pass(?:word|code)?)|verification code|security code|auth(?:entication)? code|2fa|mfa)\b",
+    rf"\b{_ASK}\b.{{0,25}}\b{_DET}(?:pass ?(?:word|code)|pin(?: number| code)?|cvv|cvc|api[- ]?key|secret key|private key|seed phrase|recovery phrase)\b",
+    rf"\b{_ASK}\b.{{0,25}}\b{_DET}(?:\w+ )?(?:door|gate|alarm|entry|access|lock|garage|wifi|wi-fi|locker) ?(?:code|pin|combination|password)\b",
+    rf"\b{_ASK}\b.{{0,25}}\b{_DET}(?:login|log in|sign[- ]?in) (?:details|credentials|info(?:rmation)?)\b",
+    rf"\b{_ASK}\b.{{0,25}}\b{_DET}(?:card|account|credit card|debit card|aadhaar|aadhar|social security|ssn|passport) (?:number|no\.?|details|digits)\b",
     r"\b(?:contrasena|clave|mot de passe)\b",
 )
 _PAYMENT = _any(
-    r"\b(?:send|transfer|wire|pay|give|lend|loan|remit|venmo|zelle|paypal|cashapp|cash app)\b.{0,25}"
+    r"\b(?:send|transfer|wire|lend|loan|remit|venmo|zelle|paypal|cashapp|cash app)\b.{0,25}"
     r"(?:\$|usd|eur|inr|rs\.?|rupees?|dollars?|euros?|pounds?|money|cash|funds|payment|upi|crypto|bitcoin|btc|usdt|eth)\b",
+    r"\bpay (?:me|us)\b",
     r"\b(?:gift ?cards?|itunes card|google play card|steam card|western union|moneygram|bitcoin|usdt|crypto wallet)\b",
-    r"\b(?:bank|wire|account|upi|payment|iban|swift|routing) (?:details|info(?:rmation)?|transfer|id|number)\b",
-    r"\b(?:unpaid|overdue|outstanding) (?:invoice|fine|tax|bill|balance|fee)\b|\bprocessing fee\b|\bclaim your (?:prize|refund|reward)\b",
-    r"[\$₹€£]\s?\d{3,}|\b\d{3,}\s?(?:usd|eur|inr|rupees|dollars)\b",
+    rf"\b{_ASK}\b.{{0,25}}\b{_DET}(?:bank|wire|account|upi|payment|iban|swift|routing) (?:details|info(?:rmation)?|id)\b",
+    r"\bprocessing fee\b|\bclaim your (?:prize|refund|reward)\b",
 )
 _PRIVATE = _any(
     r"\b(?:home|house|residential|current|exact|his|her|their) (?:address|location|whereabouts)\b",

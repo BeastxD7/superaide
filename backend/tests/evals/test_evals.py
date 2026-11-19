@@ -64,6 +64,15 @@ SELF_TESTS = [
     "rcpt-switched-off-gives-the-fixed-reply",
     "rcpt-group-stays-unchanged",
     "rcpt-per-sender-limit",
+    # Safety signals (#498): fixed replies, one identical refusal, a per-sender model budget.
+    "rcpt-distress-safe-reply",
+    "rcpt-distress-other-language",
+    "rcpt-threat-fixed-reply",
+    "rcpt-se-authority-no-data",
+    "rcpt-se-authority-with-data",
+    "rcpt-se-payment-request",
+    "rcpt-se-injection-stays-data",
+    "rcpt-flood-per-sender-model-cap",
     # Task protocol (#330): read, plan, then ask; no plan or an unusable route means no approval.
     "proto-fernhost-reads-plans-then-asks",
     "proto-no-plan-no-approval",

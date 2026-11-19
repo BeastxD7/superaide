@@ -45,6 +45,7 @@ from superaide.reception.models import ReceptionMessage, ReceptionSettings
 log = logging.getLogger(__name__)
 
 PROVIDERS = ("telegram", "slack")
+GREETING_START = "Hi, I'm "  # greeting() always opens with this
 CLAIM_NOTE = (
     "If we already work together and you've linked another channel, I've sent a code there: type it here to "
     "link this account."
@@ -87,7 +88,8 @@ REFUSAL_MARK = "I can't share or help with that"
 REFUSAL_REPLY = f"{REFUSAL_MARK}. I'm an AI assistant, and I've passed your message on instead."
 BOUNDARY_MARK = "I'm here to pass on messages"
 BOUNDARY_REPLY = (
-    f"{BOUNDARY_MARK}, and I won't continue this conversation in that tone. What you wrote is still passed on."
+    f"I'm an AI assistant. {BOUNDARY_MARK}, and I won't continue this conversation in that tone. "
+    "What you wrote is still passed on."
 )
 MODEL_LIMIT_REPLY = (
     "I've passed that on. I can't answer every message today, but anything else you send is still passed on."
@@ -191,7 +193,16 @@ def _model_turns(session: Session, sender: Sender, now: datetime) -> int:
 
 
 def _first_reply(session: Session, ctx: Context) -> bool:
-    return session.scalar(select(Event.id).where(Event.context_id == ctx.id, Event.direction == "out").limit(1)) is None
+    """No greeting yet in this conversation. A fixed safety reply (#498) is not a greeting, so a thread that opened
+    with one still gets the introduction and the limit notice on its first ordinary turn."""
+    return (
+        session.scalar(
+            select(Event.id)
+            .where(Event.context_id == ctx.id, Event.direction == "out", Event.content.startswith(GREETING_START))
+            .limit(1)
+        )
+        is None
+    )
 
 
 def _resume_text(session: Session, sender: Sender, rs: ReceptionSettings, now: datetime, hour: int, day: int) -> str:
@@ -471,8 +482,10 @@ def store_message(
         session, owner, topic=taken.topic, why=taken.message, deadline=None, deadline_at=deadline_at, now=arrived
     )
     rank = r.rank
-    if sig.wants_data or sig.has(signals.AUTHORITY, signals.CREDENTIAL, signals.PAYMENT):
-        rank = "unverified"  # asking for data in someone's name: never a normal message
+    if sig.wants_data:
+        rank = (
+            "unverified"  # asking for data or money, or for private details in someone's name: never a normal message
+        )
     elif sig.has(*signals.SEVERE) and rank in ("normal", "low"):
         rank = "urgent"
     handle = f"@{msg.sender_username}" if msg.sender_username else msg.sender_display
@@ -491,6 +504,8 @@ def store_message(
         audit(session, "reception", "signals", message_id=row.id, labels=list(sig.labels))
     if agent.settings.triage_enabled:
         _to_triage(session, owner, row, inbound, now)
+        if sig.has(*signals.SEVERE):  # distress or a threat is also told at once, not only held in Needs you (#498)
+            _note(session, owner, row, now)
     else:
         _note(session, owner, row, now)
     return row
@@ -533,21 +548,18 @@ def _reason(session: Session, owner: Person, row: ReceptionMessage) -> str:
     name = _first_name(row)
     who = f"{name}, someone new," if name else "someone new"
     when = f"{where} at {_local_time(session, owner, row)}"
-    sig = signals.from_hits(row.rule_hits)
-    if signals.DISTRESS in sig:
-        return (
-            f"Message from {who} on {when} may be from someone in distress. I replied with a caring note and a "
-            "pointer to help. Please read it now"
-        )
-    if signals.THREAT in sig:
+    sig = signals.Signals(signals.from_hits(row.rule_hits))
+    if sig.has(signals.DISTRESS):
+        return f"Message from {who} on {when} may be from someone in distress. Please read it now"
+    if sig.has(signals.THREAT):
         return f"Message from {who} on {when} contains what looks like a threat. Please read it now"
-    if signals.CREDENTIAL in sig or signals.PAYMENT in sig or signals.AUTHORITY in sig:
+    if sig.wants_data:
         return (
             f"Message from {who} on {when} asks for private details, codes or money, and may claim to speak for "
-            "you. I declined and told them nothing. It may be a scam"
+            "you. I shared nothing. It may be a scam"
         )
-    if signals.HARASSMENT in sig:
-        return f"Message from {who} on {when} is abusive. I replied once, calmly, and will not reply again"
+    if sig.has(signals.HARASSMENT):
+        return f"Message from {who} on {when} is abusive"
     if row.rank == "unverified":
         return f"Message from {who} on {when} asks for something risky (money, codes or secrecy)"
     if row.rank == "urgent":

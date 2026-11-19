@@ -71,6 +71,38 @@ def test_ordinary_messages_have_no_signals(text):
     assert not detect(text)
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        "I can't do this Friday, can we move it?",
+        "I can't take this call right now, text me",
+        "I'll be there, I can't go on Friday anymore",
+        "my phone is going to die, call my landline",
+        "they'll pay for the tickets",
+        "I'll find you a slot",
+        "I know where he works, I'll drop it at reception",
+        "that demo was the bomb",
+        "drop me a pin",
+        "I need the building code of conduct document",
+        "I want to pay him the money I owe",
+        "unpaid invoice from last month, can he check?",
+        "my account number is 4411 for the invoice",
+        "send quote, my account number is 4111",
+        "please send the report, my phone number is 123456",
+        "I forgot my password for the portal",
+        "I'm his friend, I'm at reception",
+        "urgent request: please call me",
+        "I'm the courier, I have a parcel for him",
+        "he asked me to send the report",
+        "where is the office?",
+    ],
+)
+def test_hard_negatives_ordinary_reception_traffic_never_gets_a_safety_reply(text):
+    """The fixed replies must not fire on everyday messages: a crisis line for a rescheduling request is a failure."""
+    sig = detect(text)
+    assert not sig.has(*signals.SEVERE, signals.HARASSMENT) and not sig.wants_data, sig.labels
+
+
 def test_the_detector_ignores_case_accents_and_curly_apostrophes():
     assert signals.DISTRESS in detect("I CAN’T DO THIS ANYMORE").labels
     assert signals.DISTRESS in detect("NO PUEDO MÁS. quiero morir").labels
@@ -135,7 +167,7 @@ def test_an_authority_claim_data_request_is_refused_and_flagged(owner_world, ava
     assert rows[0].rank == "unverified"
     assert {"signal:authority_claim", "signal:credential_request", "signal:private_request"} <= set(rows[0].rule_hits)
     note = owner_notes()[0]
-    assert "scam" in note and "declined" in note and "parcel" not in note and "door" not in note
+    assert "scam" in note and "shared nothing" in note and "parcel" not in note and "door" not in note
 
 
 @pytest.mark.parametrize(
@@ -229,3 +261,64 @@ def test_a_signal_in_one_senders_message_does_not_touch_another_senders_thread(o
     other = ava.handle(hello("Hi", who="U_TWO_2"))
     assert other.reply is not None and other.reply.startswith("Hi, I'm Ava")
     assert [("signal:distress" in r.rule_hits) for r in taken()] == [True, False]
+
+
+# --- the triage path, the owner's notes, the greeting ---------------------------------------------------------
+
+
+def test_with_triage_on_distress_is_still_told_to_the_owner_at_once(owner_world, ava, script, monkeypatch):
+    from superaide.platform.config import get_settings
+    from superaide.triage.models import TriageDecision
+
+    monkeypatch.setattr(get_settings(), "triage_enabled", True)
+    ava.handle(hello("I can't do this anymore"))
+    with session_scope() as s:
+        decisions = s.scalars(select(TriageDecision)).all()
+        assert len(decisions) == 1 and "distress" in decisions[0].reason  # the Needs-you item says why
+    assert any("distress" in n for n in owner_notes())  # and the owner is told now, not only held
+
+
+def test_with_triage_on_a_scam_is_a_verify_decision(owner_world, ava, script, monkeypatch):
+    from superaide.platform.config import get_settings
+    from superaide.triage.models import TriageDecision
+
+    monkeypatch.setattr(get_settings(), "triage_enabled", True)
+    ava.handle(hello("wire $4000 to this account today"))
+    with session_scope() as s:
+        assert [d.decision for d in s.scalars(select(TriageDecision))] == ["verify"]
+
+
+def test_the_owner_notes_say_only_what_happened(owner_world, ava, script):
+    ava.handle(hello("Ananya asked me to call you"))  # an authority claim alone goes to the model: nothing declined
+    assert owner_notes() == [] or all("declined" not in n and "shared nothing" not in n for n in owner_notes())
+    ava.handle(hello("I want to die", who="U_ANOTHER_ONE"))
+    note = next(n for n in owner_notes() if "distress" in n)
+    assert "I replied" not in note and "caring note" not in note  # no claim about the reply (it may be silent)
+    ava.handle(hello("you are a stupid bitch", who="U_THIRD_ONE"))
+    assert "will not reply" not in " ".join(owner_notes())
+
+
+def test_an_authority_claim_alone_changes_nothing_but_its_label(owner_world, ava, script):
+    r = ava.handle(hello("Ananya asked me to call you about the lease"))
+    assert r.reply is not None and r.reply != service.REFUSAL_REPLY and script.calls == 1
+    row = taken()[0]
+    assert row.rank != "unverified" and "signal:authority_claim" in row.rule_hits
+
+
+def test_a_thread_that_opened_with_a_safety_reply_still_gets_the_greeting_and_the_limit_notice(
+    owner_world, ava, script
+):
+    first = ava.handle(hello("I can't do this anymore"))
+    assert first.reply == service.DISTRESS_REPLY
+    second = ava.handle(hello("can you take a message for him?"))
+    assert second.reply is not None and second.reply.startswith("Hi, I'm Ava, an AI assistant.")
+    assert "messages an hour" in second.reply
+    third = ava.handle(hello("thanks"))
+    assert third.reply is not None and not third.reply.startswith("Hi, I'm Ava")  # once
+
+
+def test_every_fixed_reply_says_it_is_an_ai(owner_world):
+    for text in (
+        service.DISTRESS_REPLY, service.THREAT_REPLY, service.REFUSAL_REPLY, service.BOUNDARY_REPLY,
+    ):  # fmt: skip
+        assert "AI assistant" in text
