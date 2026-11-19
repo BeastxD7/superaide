@@ -19,7 +19,7 @@ export function ConnectionsPage() {
           Give {me.agent.name} a way to reach people. Her AI model is chosen on the AI model page. Keys are checked with each service, stored encrypted, and
           never shown again in full.
         </p>
-        <div className="mt-6">
+        <div className="mt-6" data-tour="connections-list">
           <Connections agentName={me.agent.name} me={me} refreshMe={session.refresh} />
         </div>
         <div className="mt-6">

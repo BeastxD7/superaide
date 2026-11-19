@@ -85,6 +85,9 @@ type Fixtures = {
   api: Api
   ownerState: OwnerState
   owner: Person
+  // The guided tour (#626) greets every new owner with a prompt. Specs that are not about it never see it: the tour's
+  // answers are served as "already skipped". `test.use({ tourOn: true })` lets the real answers through.
+  tourOn: boolean
 }
 
 type WorkerFixtures = { silentBrowser: void }
@@ -116,8 +119,18 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
     },
     { scope: 'worker', auto: true },
   ],
-  context: async ({ context }, use) => {
+  tourOn: [false, { option: true }],
+  context: async ({ context, tourOn }, use) => {
     await context.addInitScript(silence)
+    if (!tourOn) {
+      await context.route(
+        (url) => url.pathname.endsWith('/api/app/tour'),
+        (route) =>
+          route.request().method() === 'GET'
+            ? route.fulfill({ json: { tours: { welcome: 'skipped' } } })
+            : route.fallback(),
+      )
+    }
     await use(context)
   },
   // Every test starts from an empty database.

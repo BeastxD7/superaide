@@ -331,7 +331,7 @@ export function ChatPage() {
               </button>
             </div>
           )}
-          <div className="flex items-end gap-2 rounded-2xl border border-line bg-white p-1.5 shadow-[0_10px_30px_-24px_rgba(27,22,56,0.6)] focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-400/30">
+          <div data-tour="chat-composer" className="flex items-end gap-2 rounded-2xl border border-line bg-white p-1.5 shadow-[0_10px_30px_-24px_rgba(27,22,56,0.6)] focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-400/30">
             <input
               ref={fileRef}
               type="file"
@@ -349,6 +349,7 @@ export function ChatPage() {
               disabled={pending}
               className="grid size-10 touch:size-11 shrink-0 place-items-center rounded-xl text-muted hover:text-ink disabled:opacity-50"
               aria-label="Attach a PDF or text file"
+              data-tour="chat-attach"
             >
               <Paperclip className="size-5" />
             </button>
