@@ -489,6 +489,7 @@
  "memory.knowledge.pending -> jobs.queue",
  "memory.knowledge.profile -> app.accounts",
  "memory.knowledge.profile -> identity.resolver",
+ "memory.recall.scope -> intentions.service",
  "memory.recall.vectors -> brain.embed",
  "memory.recall.vectors -> jobs.queue",
  "memory.store -> channels.base",
