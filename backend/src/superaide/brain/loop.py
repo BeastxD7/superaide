@@ -1409,8 +1409,11 @@ class OwnerTurn:
 
     def _result(self, text: str, sources: list[Cited], notes: list[str], steps: int) -> LoopResult:
         from superaide.integrations.gmail import skill as gmail_skill
+        from superaide.reception.relay import pending_sentences
 
-        text, removed = capabilities.strip_claims(text, self.ok_tools, can_send=gmail_skill.can_draft(self.s))
+        text, removed = capabilities.strip_claims(
+            text, self.ok_tools, can_send=gmail_skill.can_draft(self.s), pending=pending_sentences(self.s)
+        )
         if removed:
             notes.append(f"claim_removed:{len(removed)}")
             audit(self.s, "brain", "action_claim_removed", kinds=sorted(set(removed)))

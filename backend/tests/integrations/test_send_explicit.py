@@ -66,7 +66,7 @@ def test_when_the_model_picks_an_automated_recipient_on_its_own_it_is_still_refu
 @pytest.mark.parametrize(
     "said",
     [
-        "I can't send messages to other people.",
+        "I can't email other people.",
         "I cannot send emails to anyone yet.",
         "Gmail is read-only here.",
         "I'm unable to send email to others.",
