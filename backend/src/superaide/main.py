@@ -121,7 +121,7 @@ def create_app(agent: Agent | None = None) -> FastAPI:
         from superaide.brain import platform_ai
 
         platform_ai.warn_if_unusable()
-        from superaide.brain import keyhealth
+        from superaide.brain.api import keyhealth
 
         keyhealth.warn_if_missing(settings)  # an error in the log, never a crash (#633)
         from superaide.platform import retired

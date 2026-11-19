@@ -514,7 +514,7 @@ def spend_cap(ctx: Context) -> list[Result]:
 @check("AI key")
 def ai_key(ctx: Context) -> list[Result]:
     """Whether Ava can think: a key is set, the provider accepts it, has credit, and the spend cap is not reached (#633)."""
-    from superaide.brain import keyhealth
+    from superaide.brain.api import keyhealth
 
     name = "AI key"
     try:

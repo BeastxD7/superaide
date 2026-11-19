@@ -28,7 +28,7 @@ from superaide.app.stream import stream_turn
 from superaide.approvals.api import batching, burden
 from superaide.approvals.binding import expired
 from superaide.approvals.models import Approval
-from superaide.brain import keyhealth
+from superaide.brain.api import keyhealth
 from superaide.brain.wiring import brain_ready, brain_status
 from superaide.channels import health
 from superaide.features.voice import gateway

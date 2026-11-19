@@ -259,7 +259,7 @@ def instances() -> list[dict[str, Any]]:
 
 def _ai_gaps(s: Any, settings: Any) -> list[dict[str, str]]:
     """The AI key trouble the owner sees in the app (key, credit, cap) as a Gaps row (#633)."""
-    from superaide.brain import keyhealth
+    from superaide.brain.api import keyhealth
 
     found = keyhealth.notice(s, settings)
     if found is None:
