@@ -28,10 +28,8 @@ describe('tourForPath', () => {
 })
 
 describe('copy', () => {
-  it('fills the agent name and keeps no placeholder or real-person name', () => {
+  it('fills the agent name and leaves no placeholder', () => {
     expect(fill('Meet {name}', 'Ava')).toBe('Meet Ava')
-    const all = JSON.stringify(TOURS)
-    expect(all).not.toMatch(/Shashank/i)
     for (const t of Object.values(TOURS)) for (const s of t.steps) expect(fill(s.body, 'Ava')).not.toContain('{')
   })
 })

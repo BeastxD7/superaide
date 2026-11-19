@@ -1,4 +1,4 @@
-"""/app/tour: which guided tours this owner has finished or skipped (#626).
+"""/app/tour (app.api): which guided tours this owner has finished or skipped (#626).
 
 One row per (owner, tour), written only by the signed-in owner. The tour itself is front-end text; the server keeps
 nothing but the answer, so a tour is shown once per account (not once per browser) and can be replayed. Owner only:
@@ -18,8 +18,8 @@ from pydantic import BaseModel
 from sqlalchemy import delete, select
 
 from superaide.app.deps import owner_person_id
+from superaide.identity.auth.deps import reject_nul_text, require_csrf_header
 from superaide.identity.auth.models import TourProgress
-from superaide.identity.auth.routes import reject_nul_text, require_csrf_header
 from superaide.platform.db.session import session_scope
 
 # The tours the front end knows. "welcome" is the first-run prompt; the others are the per-page tours.
