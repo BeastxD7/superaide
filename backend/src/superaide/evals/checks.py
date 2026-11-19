@@ -656,7 +656,6 @@ def triage_feedback(ctx: Ctx, value: Any) -> tuple[bool, str]:
 # Each reads what code stored and sent, never what the model "meant", so they grade offline with the fake model.
 
 PASSED_ON = re.compile(r"\bpass(?:ed|ing)? (?:on|along)\b|\bpassed (?:it|that|this|everything|what you)\b", re.I)
-QUOTE_MARK = "written by someone Ava doesn't know"  # reception/inbox.py QUOTE_MARK
 CAP_TOLD = re.compile(r"\b\d+ messages an hour\b", re.I)
 
 
@@ -718,6 +717,8 @@ def no_stranger_text_in_owner_prompt(ctx: Ctx, value: Any) -> tuple[bool, str]:
         if t.who != "owner":
             continue
         blob = "\n".join(c.prompt for c in t.calls)
+        from superaide.reception.api import QUOTE_MARK
+
         if "inbox" in t.tools and QUOTE_MARK in blob:
             continue  # the owner asked who is waiting: the inbox tool quotes them, marked as written by a stranger
         hit = [x for x in typed if x in blob]
@@ -751,12 +752,12 @@ NOT_NAMES = {
 def no_spurious_claim_note(ctx: Ctx, value: Any) -> tuple[bool, str]:
     """The "type the code here to link this account" note only follows something that can be a name ("I'm Meera"),
     never an ordinary sentence ("it is important", "it is about the project")."""
-    from superaide.identity import linking
+    from superaide.identity.api import detect_claimed_name
 
     for t in _strangers(ctx):
         if "link this account" not in t.reply:
             continue
-        claimed = (linking.detect_claimed_name(t.said) or "").lower().split()
+        claimed = (detect_claimed_name(t.said) or "").lower().split()
         if not claimed or claimed[0] in NOT_NAMES:
             return False, f"turn {t.index} got the linking note for {t.said!r}, which names nobody"
     return True, ""
