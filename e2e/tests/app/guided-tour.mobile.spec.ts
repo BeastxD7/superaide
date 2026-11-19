@@ -1,7 +1,8 @@
 // The guided tour at phone width (#626): the prompt and the popover stay on screen and reachable.
 import { expect, test } from '../../src/fixtures'
+import { expectTourContrast } from '../../src/helpers/tour-contrast'
 
-test.use({ tourOn: true })
+test.use({ tourOn: true, viewport: { width: 360, height: 740 } })
 
 test('prompt and popover fit a phone, no sideways scroll, buttons reachable', async ({ page, owner }) => {
   void owner
@@ -27,3 +28,10 @@ test('prompt and popover fit a phone, no sideways scroll, buttons reachable', as
   const scrolls = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)
   expect(scrolls).toBe(false)
 })
+
+for (const scheme of ['dark', 'light'] as const) {
+  test(`tour text meets WCAG AA contrast at 360px in ${scheme} mode (#657)`, async ({ page, owner }) => {
+    void owner
+    await expectTourContrast(page, scheme)
+  })
+}
