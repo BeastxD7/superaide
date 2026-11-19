@@ -22,6 +22,7 @@ EFFECTS: dict[str, str] = {
     "create_reminder": "write_own",
     "update_reminder": "write_own",
     "cancel_reminder": "write_own",
+    "set_presence": "write_own",
     "propose_action": "write_own",  # opens an approval; nothing happens until the owner says yes
     "gmail_draft_reply": "write_external",
     "create_event": "write_external",

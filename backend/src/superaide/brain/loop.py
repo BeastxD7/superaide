@@ -45,6 +45,7 @@ from superaide.observability import api as timing
 from superaide.platform.audit import audit
 from superaide.platform.config import get_settings
 from superaide.policy.actions import action_kinds, decide
+from superaide.presence import api as presence
 from superaide.proactive.notify import CHANNEL_NAMES, EXTERNAL
 from superaide.reception.api import INBOX_TOOL, QUOTE_MARK, awareness_line, inbox_report
 from superaide.skills import registry
@@ -85,6 +86,7 @@ OWNER_RULES = """How you work with your owner:
 - Your earlier replies may start with a "[Tools used for this reply: …]" line. The app added it and it is a true record of what you did then (a reminder listed there was set; one "moved from 4:00 pm to 5:00 pm" really was at 4:00 pm before). These lines are authoritative over your memory of the conversation: never deny or "correct" an action they record. Never write such a line yourself.
 - You are one assistant on every channel (the app, Telegram, Slack). Sources and earlier turns show where something was said; when you use something the owner told you on another channel, say where, briefly ("you mentioned on Telegram earlier").
 - Earlier turns may start with a label like "[On Telegram · Wed 19:13]": the app added it to show that part of your conversation with the owner happened on another channel. Never write such a label yourself.
+- When the owner says they are busy, driving, in focus time or away until a time, call set_presence (action set) and tell them what it returned; it reads their own message, so never pass a time yourself. If it says no end was found, ask "until when?". "Clear my status" is action clear.
 - Earlier turns may hold "[Notification the app sent to the owner (notification:…), a real delivery: …]": the app really sent that notification (for example that someone new wrote to you). It is a true record, not an error and not something you made up: never say it did not come from a tool or deny it. Never write such a line yourself.
 - Channel linking is handled by the app, not by you: a new account is linked by opening a one-time link from Connections, or by typing a code sent to a channel the owner already linked. Replies sent before an account was linked were fixed messages, not yours; don't apologise for or reinterpret them."""
 
@@ -110,7 +112,15 @@ SHARED_TOOLS = frozenset({"recall", "create_reminder", "propose_action", "web_se
 SHARED_REFUSAL = "That needs a private conversation: it isn't available in a channel. Ask in a direct message."
 
 # The owner rules minus the lines about the owner's other channels: a room's prompt carries nothing about them.
-_PRIVATE_LINES = ("Telegram", "Channel linking", "every channel", "list, move", "gmail_", "real delivery")
+_PRIVATE_LINES = (
+    "Telegram",
+    "Channel linking",
+    "every channel",
+    "list, move",
+    "gmail_",
+    "set_presence",
+    "real delivery",
+)
 OWNER_RULES_SHARED = "\n".join(ln for ln in OWNER_RULES.splitlines() if not any(k in ln for k in _PRIVATE_LINES))
 
 SHARED_RULES = """Where you are now: a channel or thread that other people can read, not a private chat.
@@ -121,6 +131,23 @@ SHARED_RULES = """Where you are now: a channel or thread that other people can r
 - You cannot send, publish, delete or change settings from here. For sending, publishing or similar, call propose_action; it waits for the owner's approval in the app."""
 
 LIST_APPROVALS_TOOL = outcomes.LIST_APPROVALS_TOOL
+
+# The owner's declared availability (#495). It takes no time and no kind from the model: code reads the owner's own
+# message, so nothing the model (or a quoted stranger) writes can set a status.
+PRESENCE_TOOL = {
+    "name": "set_presence",
+    "description": (
+        "Set, clear or read the owner's availability status when they say it themselves: 'busy until 3 pm', "
+        "'I'm driving until 5, only family gets through', 'clear my status', 'what is my status?'. Code reads the "
+        "owner's own message for the kind, the end time and who still gets through; do not pass them. While it is "
+        "set, people Ava doesn't know are told only that the owner is not available until that time."
+    ),
+    "input_schema": {
+        "type": "object",
+        "properties": {"action": {"type": "string", "enum": ["set", "clear", "status"]}},
+        "additionalProperties": False,
+    },
+}
 
 # Offered only in a channel (#509). It carries no text: the pipeline answers the owner's own words in their direct
 # message, so nothing a colleague wrote or the model made up can become that question.
@@ -201,6 +228,10 @@ def narrate(name: str, args: dict[str, Any]) -> str:
         return "Checking who pinged you in channels"
     if name == "inbox":
         return "Checking who is waiting for you"
+    if name == "set_presence":
+        return {"clear": "Clearing your status", "status": "Checking your status"}.get(
+            str(args.get("action", "set")), "Setting your status"
+        )
     if name == "propose_action":
         return f"Asking for your approval: {str(args.get('summary', ''))[:100]}"
     if name == "calendar_events":
@@ -560,6 +591,9 @@ class OwnerTurn:
         waiting = awareness_line(self.s)  # code-built from stored rows, never from the model
         if waiting:
             facts += "\n\n" + waiting
+        state = presence.active(self.s, self.sender.person.id)
+        if state is not None:
+            facts += "\n\nThe owner's status (set by them): " + presence.status_text(state, tz)
         return [
             SystemBlock(
                 load_charter(self.agent_name)
@@ -589,6 +623,7 @@ class OwnerTurn:
             LIST_APPROVALS_TOOL,
             CHANNEL_ACTIVITY_TOOL,
             INBOX_TOOL,
+            PRESENCE_TOOL,
         ]
         if self._protocol():
             tools.append(taskplan.PLAN_TOOL)
@@ -705,6 +740,8 @@ class OwnerTurn:
             if QUOTE_MARK in report:  # strangers' words entered the turn: information, never instructions
                 self.tainted = self.room_read = True
             return report, False
+        if name == "set_presence":
+            return self._presence(str(args.get("action") or "set"))
         if name == "list_approvals":
             self.notes.append("approvals")
             found_rows = outcomes.list_sources(self.s, args)
@@ -898,6 +935,35 @@ class OwnerTurn:
             f"arriving {intentions.describe_channel(self.s, self.sender.person, intention.channel)}."
         )
         return done + self._after_midnight(moment, intention.due_at, tz), False
+
+    def _presence(self, action: str) -> tuple[str, bool]:
+        """The owner's status (#495). Set from the owner's own message, read by code; never in a turn that read
+        other people's words."""
+        assert self.sender.person is not None
+        person = self.sender.person
+        tz = intentions.owner_zone(self.s, person)
+        self.notes.append(f"presence:{action}")
+        if action == "status":
+            return presence.status_text(presence.active(self.s, person.id), tz), False
+        if action == "clear":
+            done = presence.clear(self.s, person.id)
+            return ("Your status is cleared." if done else "No status was set."), False
+        if self.tainted or self.room_read or self.file_read:
+            return "Refused: other people's words were read in this turn, so they can't change your status.", True
+        now = datetime.now(UTC)
+        parsed = presence.parse(self.inbound.content, now, zone(tz), find_moment)
+        if parsed is None:
+            return (
+                "No status was set: I need what you are doing and until when ('busy until 3 pm', 'driving until 5'). "
+                "Ask the owner until when.",
+                False,
+            )
+        state = presence.set_state(self.s, person.id, parsed, tz, now)
+        return (
+            f"Status set. {presence.status_text(state, tz)} People I don't know hear only: \u201c{state.visitor_line}\u201d "
+            "It ends by itself.",
+            False,
+        )
 
     def _propose(self, args: dict[str, Any]) -> tuple[str, bool]:
         kind, summary = str(args.get("kind", "none")), str(args.get("summary", ""))[:1000]

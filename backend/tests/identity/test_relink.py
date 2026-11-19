@@ -380,6 +380,7 @@ def test_the_owner_turn_on_telegram_offers_no_sensitive_tools(bots, model, monke
         "calendar_events", "web_search", "web_fetch",
         "list_approvals",  # a read of the owner's own approval rows (#340)
         "inbox",  # who is waiting for the owner: stored rows, read-only, untrusted text (#476)
+        "set_presence",  # the owner's own availability status, read from their message by code (#495)
         "channel_activity",  # what others said to Ava in rooms, read-only, untrusted text (#509)
     }  # fmt: skip
     assert seen and set(seen) <= allowed

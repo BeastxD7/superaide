@@ -755,3 +755,16 @@ Ava does not need a tool call to know. A turn that read the words is tainted lik
 is refused in it, so what a stranger wrote can't make Ava act. Not offered in channels (`SHARED_TOOLS`), never to
 strangers or colleagues. Still open: a conversation state (read, answered, ended) beyond the message status, a
 live refresh, and an Inbox page with unread counts (the "Messages taken" list is the page today).
+
+## Owner presence (#495, 2026-11)
+
+`presence_state` (`presence/`) holds what the owner said about being reachable: kind, an end time (required, so a state
+always expires), who still gets through (`family`, `partner`, `boss`, `team`, `vip`, from the owner's words), and a visitor
+line. The owner sets it in their own chat ("busy until 3 pm", "driving until 5, only family gets through"): the
+`set_presence` tool takes no time and no kind from the model, code reads the owner's actual message
+(`presence/parse.py`), and the tool is refused in a turn that read other people's words. Code applies it: (1) a stranger's
+first reply gets one fixed line ("They're not available until 17:00 IST. ..."), never the kind or a reason, and a stranger's
+note stays in the app (no push) while it is on; (2) `triage.features.gather` raises `busy_until` for a sender the owner did
+not let through, so rule R8 holds them like any busy owner; (3) the owner's prompt carries the status. Not built yet:
+calendar-derived presence, a one-tap control in the app, the "extend" prompt ten minutes before the end, the briefing and
+proxy-message uses. The wording a visitor hears is neutral by default; whether Ava may say "driving" is the owner's call.

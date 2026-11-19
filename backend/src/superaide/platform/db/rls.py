@@ -104,6 +104,7 @@ TABLES: tuple[str, ...] = (
     "ambient_channel",  # channels the owner let Ava read in full (#509)
     "notification_delivery",  # pushes to the owner's Telegram or Slack and how they went (#491)
     "turn_timing",  # per-stage milliseconds of each message turn (#412)
+    "presence_state",  # what the owner said about being reachable, with an end time (#495)
     "approval_event",  # counts and timings of approval cards, no text (#407)
 )
 
