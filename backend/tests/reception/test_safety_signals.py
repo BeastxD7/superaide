@@ -8,6 +8,7 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
+from superaide.app.accounts import owner as hired_owner  # noqa: F401
 from superaide.memory.models import Event
 from superaide.platform.db.models import AuditLog
 from superaide.platform.db.session import session_scope
@@ -322,3 +323,28 @@ def test_every_fixed_reply_says_it_is_an_ai(owner_world):
         service.DISTRESS_REPLY, service.THREAT_REPLY, service.REFUSAL_REPLY, service.BOUNDARY_REPLY,
     ):  # fmt: skip
         assert "AI assistant" in text
+
+
+def _telegram_up(monkeypatch, outbox) -> None:
+    from superaide.proactive import notify
+
+    monkeypatch.setattr(notify, "messenger_for", lambda provider: outbox.get(provider))
+    monkeypatch.setattr(notify, "confirmed_here", lambda provider, identity: True)
+
+
+@pytest.mark.parametrize(("opt_in", "pushed"), [(False, 0), (True, 1)])
+def test_distress_breaks_quiet_hours_only_on_the_owners_urgent_over_cap_opt_in(
+    opt_in, pushed, owner_world, ava, script, outbox, monkeypatch
+):
+    from superaide.memory.knowledge.store import preferences_for
+
+    _telegram_up(monkeypatch, outbox)
+    with session_scope() as s:
+        pref = preferences_for(s, hired_owner(s))
+        pref.interrupt_channel = "telegram"
+        pref.quiet_start, pref.quiet_end = "00:00", "23:59"  # quiet all day
+    set_reception(urgent_over_cap=opt_in)
+    ava.handle(hello("I can't do this anymore"))
+    sent = [m for m in outbox["telegram"].sent if m.get("stable_key") == "9001"]
+    assert len(sent) == pushed
+    assert all("anymore" not in m["text"] for m in sent)  # still only fixed text

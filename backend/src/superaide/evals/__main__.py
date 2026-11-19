@@ -72,7 +72,8 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("list", help="list scenarios")
     v = sub.add_parser("voice-vs-text", help="30 tasks by text and by voice, offline (#125): how often voice diverges")
     v.add_argument("--out", help="where to write the JSON report (default backend/evals/results)")
-    g = sub.add_parser("gate", help="long-term-memory regression gate: offline, fails if a scenario regresses")
+    g = sub.add_parser("gate", help="regression gate (ltm or human): offline, fails if a scenario regresses")
+    g.add_argument("--suite", choices=("ltm", "human"), default="ltm", help="which scenarios to gate (default ltm)")
     g.add_argument("--update", action="store_true", help="record today's results as the baseline")
     t = sub.add_parser("triage", help="triage precision and recall on the labelled set (ADR 0010)")
     t.add_argument("--live", action="store_true", help="use the triage model (costs money)")
@@ -109,7 +110,7 @@ def main(argv: list[str] | None = None) -> int:
         from superaide.evals.gate import run_gate
 
         _env(args_for_offline())
-        return run_gate(update=args.update)
+        return run_gate(update=args.update, suite=args.suite)
 
     if args.cmd == "list":
         from superaide.evals.scenario import load_all
