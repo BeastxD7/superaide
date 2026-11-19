@@ -1,7 +1,7 @@
 """presence_state: the owner's declared availability with an end time (#495)
 
-Revision ID: 0094
-Revises: 0092
+Revision ID: 0095
+Revises: 0094
 Create Date: 2026-11-19 14:54:47.603435
 
 """
@@ -16,8 +16,8 @@ from alembic import op
 TABLES = ("presence_state",)
 
 # revision identifiers, used by Alembic.
-revision: str = "0094"
-down_revision: str | Sequence[str] | None = "0092"
+revision: str = "0095"
+down_revision: str | Sequence[str] | None = "0094"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

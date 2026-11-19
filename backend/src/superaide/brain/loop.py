@@ -103,7 +103,15 @@ SHARED_TOOLS = frozenset({"recall", "create_reminder", "propose_action", "web_se
 SHARED_REFUSAL = "That needs a private conversation: it isn't available in a channel. Ask in a direct message."
 
 # The owner rules minus the lines about the owner's other channels: a room's prompt carries nothing about them.
-_PRIVATE_LINES = ("Telegram", "Channel linking", "every channel", "list, move", "gmail_", "set_presence", "real delivery")
+_PRIVATE_LINES = (
+    "Telegram",
+    "Channel linking",
+    "every channel",
+    "list, move",
+    "gmail_",
+    "set_presence",
+    "real delivery",
+)
 OWNER_RULES_SHARED = "\n".join(ln for ln in OWNER_RULES.splitlines() if not any(k in ln for k in _PRIVATE_LINES))
 
 SHARED_RULES = """Where you are now: a channel or thread that other people can read, not a private chat.
