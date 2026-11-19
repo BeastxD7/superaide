@@ -491,9 +491,9 @@ class Agent:
         apology instead of silence, a 500, or a rolled-back inbound message (issue #83)."""
         log.error("turn failed on %s: %s", msg.provider, type(exc).__name__, exc_info=exc)
         audit(s, "pipeline", "turn_failed", provider=msg.provider, error=type(exc).__name__)
-        from superaide.reception import resilience
+        from superaide.reception.api import MODEL_ERROR, record_model_health
 
-        resilience.record_model(s, resilience.ERROR, type(exc).__name__)
+        record_model_health(s, MODEL_ERROR, type(exc).__name__)
         return "I couldn't think that through just now. Please try again in a moment."
 
     def _steady(self, s, text: str) -> str:
@@ -719,9 +719,9 @@ class Agent:
         do about it; anyone else gets a neutral line, because they can't act on it and it would show
         how the owner pays for the assistant."""
         audit(s, "pipeline", "budget_cap_reached", period=exc.period, audience="owner" if owner else "other")
-        from superaide.reception import resilience
+        from superaide.reception.api import MODEL_BUDGET, record_model_health
 
-        resilience.record_model(s, resilience.BUDGET, exc.period)
+        record_model_health(s, MODEL_BUDGET, exc.period)
         if not owner:
             return "Sorry, I can't help with this right now. Please try again a little later."
         if exc.period == "platform_day":
@@ -1065,6 +1065,6 @@ class Agent:
         sent = log_event(s, context=ctx, direction="out", content=text, audience=aud, thread_id=thread, meta=meta)
         if failed_kind and (retry or to is not None) and ctx.provider in {"telegram", "slack"}:
             # A visitor's reply is queued and retried with back-off (#503); the owner's own replies are in the app.
-            from superaide.reception import resilience
+            from superaide.reception.api import queue_visitor_reply
 
-            resilience.queue_reply(s, ctx, sent, strip_citations(wire), thread, failed_kind)
+            queue_visitor_reply(s, ctx, sent, strip_citations(wire), thread, failed_kind)

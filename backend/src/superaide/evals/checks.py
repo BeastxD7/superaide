@@ -619,10 +619,10 @@ def visitor_replies(ctx: Ctx, value: Any) -> tuple[bool, str]:
 @check("degraded")
 def degraded(ctx: Ctx, value: Any) -> tuple[bool, str]:
     """The owner's outage status: `{level, contains?}`, or `none` when everything works."""
-    from superaide.reception import resilience
+    from superaide.reception.api import outage_status
 
     with session_scope() as s:
-        st = resilience.status(s)
+        st = outage_status(s)
     if value == "none":
         return st is None, f"status {st}"
     if st is None:
