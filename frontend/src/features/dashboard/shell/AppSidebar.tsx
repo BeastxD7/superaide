@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronsUpDown, LogOut, Settings, Store } from 'lucide-react'
+import { ChevronsUpDown, Compass, LogOut, Settings, Store } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { BrandMark, PRODUCT } from '@/components/site'
@@ -29,6 +29,7 @@ import {
   SidebarRail,
   useSidebar,
 } from '@/components/ui/sidebar'
+import { useTour } from '@/features/tour/tour-context'
 import { useApprovals } from '@/features/dashboard/approvals/useApprovals'
 import { useReminders } from '@/features/dashboard/reminders/useReminders'
 import { useNeedsYou } from '@/features/needs-you/useNeedsYou'
@@ -67,7 +68,7 @@ export function AppSidebar({ session, me }: { session: Session; me: Me }) {
         </SidebarMenu>
 
         {/* The agent you hired, and whether it's working */}
-        <div className="mt-1 flex items-center gap-3 rounded-xl border border-lilac-200/70 bg-white/80 p-2.5 group-data-[collapsible=icon]:hidden">
+        <div data-tour="agent-card" className="mt-1 flex items-center gap-3 rounded-xl border border-lilac-200/70 bg-white/80 p-2.5 group-data-[collapsible=icon]:hidden">
           <Orb hue="indigo" size={40} mood={me.paused ? 'asleep' : 'idle'} />
           <div className="min-w-0 leading-tight">
             <p className="font-medium text-ink">{me.agent.name}</p>
@@ -80,7 +81,7 @@ export function AppSidebar({ session, me }: { session: Session; me: Me }) {
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent data-tour="nav">
         {NAV.map(({ group, items }) => (
           <SidebarGroup key={group}>
             <SidebarGroupLabel>{group}</SidebarGroupLabel>
@@ -131,6 +132,7 @@ export function AppSidebar({ session, me }: { session: Session; me: Me }) {
 
 function UserMenu({ session }: { session: Session }) {
   const { isMobile, setOpenMobile } = useSidebar()
+  const tour = useTour()
   const account = session.account
   if (!account) return null
   const initial = initialOf(account.user.name)
@@ -141,6 +143,7 @@ function UserMenu({ session }: { session: Session }) {
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
+              data-tour="account-menu"
               className="data-[state=open]:bg-sidebar-accent"
               aria-label={`Account: signed in as ${account.user.name} ${account.user.email}`}
             >
@@ -175,6 +178,10 @@ function UserMenu({ session }: { session: Session }) {
                   <Settings />
                   Settings
                 </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem disabled={!tour.pageTour} onSelect={() => { setOpenMobile(false); window.setTimeout(tour.tourThisPage, 150) }}>
+                <Compass />
+                Tour this page
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/" onClick={() => setOpenMobile(false)}>

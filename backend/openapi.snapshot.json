@@ -2620,6 +2620,23 @@
         "title": "TokenBody",
         "type": "object"
       },
+      "TourStatus": {
+        "properties": {
+          "status": {
+            "enum": [
+              "completed",
+              "skipped"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "TourStatus",
+        "type": "object"
+      },
       "TurnBody": {
         "properties": {
           "text": {
@@ -15821,6 +15838,128 @@
         "summary": "Undo one tidy",
         "tags": [
           "Owner: episodes"
+        ]
+      }
+    },
+    "/app/tour": {
+      "get": {
+        "description": "`tours` maps a tour id to `completed` or `skipped`; a tour not listed has not been seen.",
+        "operationId": "progress_app_tour_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Progress App Tour Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Which tours this owner has finished or skipped",
+        "tags": [
+          "Owner: guided tour"
+        ]
+      }
+    },
+    "/app/tour/reset": {
+      "post": {
+        "description": "Deletes this owner's tour answers, so the tours show again.",
+        "operationId": "reset_app_tour_reset_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Reset App Tour Reset Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Replay: forget every tour answer",
+        "tags": [
+          "Owner: guided tour"
+        ]
+      }
+    },
+    "/app/tour/{tour}": {
+      "post": {
+        "description": "Idempotent. `tour` must be one of the known tour ids.",
+        "operationId": "record_app_tour__tour__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tour",
+            "required": true,
+            "schema": {
+              "title": "Tour",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TourStatus"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Record App Tour  Tour  Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Record that a tour was finished or skipped",
+        "tags": [
+          "Owner: guided tour"
         ]
       }
     },

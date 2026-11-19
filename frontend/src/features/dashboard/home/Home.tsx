@@ -107,7 +107,7 @@ function AgentCard({ me }: { me: Me }) {
     STAGES.findIndex((s) => s.name === me.agent.stage),
   )
   return (
-    <Card className="bg-gradient-to-br from-lilac-100 to-white lg:col-span-2">
+    <Card data-tour="home-stage" className="bg-gradient-to-br from-lilac-100 to-white lg:col-span-2">
       <CardContent className="flex flex-col gap-6 sm:flex-row sm:items-center">
         <Orb hue="indigo" size={96} track mood={me.paused ? 'asleep' : 'idle'} label={me.agent.name} />
         <div className="min-w-0 flex-1">
@@ -164,7 +164,7 @@ function ReachCard({ me }: { me: Me }) {
     },
   ]
   return (
-    <Card>
+    <Card data-tour="home-channels">
       <CardHeader>
         <CardTitle>Where people reach {me.agent.name}</CardTitle>
         <CardDescription>Channels she listens on for you.</CardDescription>

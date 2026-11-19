@@ -17,6 +17,7 @@ import { TryAsVisitor } from '@/features/reception/TryAsVisitor'
 import { AppError, auth, type Preferences } from '@/lib/api'
 import { useSession } from '@/lib/session-context'
 import { PWA_ENABLED } from '@/lib/flags'
+import { TourCard } from '@/features/tour/TourCard'
 import { pushSupported, turnOnNotifications } from '@/features/pwa/push'
 
 export function SettingsPage() {
@@ -33,7 +34,7 @@ export function SettingsPage() {
           <p className="mt-1 text-body">Your account, and the rules {name} works by.</p>
         </div>
 
-        <Card>
+        <Card data-tour="settings-account">
           <CardHeader>
             <CardTitle>Account</CardTitle>
           </CardHeader>
@@ -59,7 +60,7 @@ export function SettingsPage() {
 
         <ConnectorSettings path="retention" title="Reminders and approvals" anchor="retention" />
 
-        <Card>
+        <Card data-tour="settings-rules">
           <CardHeader>
             <CardTitle>Your rules</CardTitle>
             <CardDescription>What you told {name} in your introduction.</CardDescription>
@@ -94,6 +95,8 @@ export function SettingsPage() {
         <AskLinkCard />
 
         <AccessLogCard name={name} />
+
+        <TourCard />
       </div>
     </div>
   )

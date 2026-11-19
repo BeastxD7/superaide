@@ -28,6 +28,7 @@ from superaide.app.stream import stream_turn
 from superaide.approvals.api import batching, burden
 from superaide.approvals.binding import expired
 from superaide.approvals.models import Approval
+from superaide.brain.api import keyhealth
 from superaide.brain.wiring import brain_ready, brain_status
 from superaide.channels import health
 from superaide.features.voice import gateway
@@ -332,6 +333,9 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 },
                 # Outage status for the banner (#503): None while everything works. Fixed text and counts only.
                 "degraded": outage_status(s),
+                # Why the AI cannot be used for a configuration reason (#633): key missing or rejected, out of
+                # credit, spend cap reached. None while fine. Fixed text; never the provider's message or a key.
+                "ai_notice": keyhealth.notice(s, settings),
             }
 
     @router.get(

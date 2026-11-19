@@ -121,6 +121,9 @@ def create_app(agent: Agent | None = None) -> FastAPI:
         from superaide.brain import platform_ai
 
         platform_ai.warn_if_unusable()
+        from superaide.brain.api import keyhealth
+
+        keyhealth.warn_if_missing(settings)  # an error in the log, never a crash (#633)
         from superaide.platform import retired
 
         retired.warn()  # a promoted flag still set in .env is ignored; say so once (#404)
@@ -307,6 +310,9 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     app.include_router(make_episodes_router(get_agent))  # 404 unless SLEEP_JOB_ENABLED
     app.include_router(make_tidy_router(get_agent))  # 404 unless SLEEP_JOB_ENABLED (#415)
 
+    from superaide.app.api import make_tour_router
+
+    app.include_router(make_tour_router(get_agent))  # the guided tour's answers (#626)
     from superaide.skills.releases_routes import make_skill_releases_router
 
     app.include_router(make_skill_releases_router(get_agent))  # 404 unless SKILL_COOLDOWN_ENABLED (#129)

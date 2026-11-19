@@ -257,6 +257,24 @@ def instances() -> list[dict[str, Any]]:
     return out
 
 
+def _ai_gaps(s: Any, settings: Any) -> list[dict[str, str]]:
+    """The AI key trouble the owner sees in the app (key, credit, cap) as a Gaps row (#633)."""
+    from superaide.brain.api import keyhealth
+
+    found = keyhealth.notice(s, settings)
+    if found is None:
+        return []
+    reason = found["reason"]
+    return [
+        {
+            "id": f"ai_{reason}",
+            "label": keyhealth.CAUSES[reason],
+            "detail": found["message"],
+            "fix": keyhealth.FIXES[reason],
+        }
+    ]
+
+
 @router.get(
     "/overview",
     summary="Overview",
@@ -295,7 +313,7 @@ def overview() -> dict[str, Any]:
             "model_mode": "Claude API (real replies)" if live["brain"] else "offline (no API key, replies are echoes)",
             "channels": {"telegram": live["telegram"], "slack": live["slack"]},
             "simulator": settings.enable_simulator,
-            "gaps": doctor.gaps(settings),
+            "gaps": doctor.gaps(settings) + _ai_gaps(s, settings),
             "spend": spend,
             # Gates from Infant to Child. Most are measured from phase 2 onward.
             "next_stage": "Child",
