@@ -3434,6 +3434,17 @@
               }
             ],
             "title": "Show First Name"
+          },
+          "urgent_over_cap": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Urgent Over Cap"
           }
         },
         "title": "SettingsBody",
