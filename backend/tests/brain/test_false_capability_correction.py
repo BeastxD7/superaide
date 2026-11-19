@@ -85,7 +85,9 @@ def test_the_pending_card_sentence_comes_from_the_approval_not_the_model(owner_w
         assert pending_sentences(s) == ["Your message to Meera on Slack is waiting for your OK."]
     # The model, asked to send it now, wrongly says it cannot. The reply names the real recipient and channel.
     ava.llm = FakeLLM(lambda *a: "I can't send messages to other people directly. Want me to draft it?")
-    ava.handle(sl(OWNER, "yes please send the message now"))
+    ava.handle(
+        sl(OWNER, "can you send that message to her now, please?")
+    )  # not a bare yes: that approves the card (#642)
     last = outbox["slack"].sent[-1]["text"]
     assert "Your message to Meera on Slack is waiting for your OK." in last
     assert EMAIL_CORRECTION not in last and "can't send messages to other people" not in last
