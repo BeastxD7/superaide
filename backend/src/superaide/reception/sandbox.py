@@ -32,7 +32,7 @@ from superaide.memory.store import get_or_create_context, log_event
 from superaide.pipeline import Agent
 from superaide.platform.audit import audit
 from superaide.platform.db.session import session_scope
-from superaide.reception.sandbox_guard import active, sandboxed
+from superaide.platform.sandbox_guard import active, sandboxed
 
 log = logging.getLogger(__name__)
 

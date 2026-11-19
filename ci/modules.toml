@@ -574,6 +574,7 @@ e2e = [
 [modules.reception]
 src = [
   "backend/src/superaide/reception/**",
+  "backend/src/superaide/platform/sandbox_guard.py",
 ]
 tests = [
   "backend/tests/reception/**",
