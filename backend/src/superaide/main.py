@@ -174,6 +174,9 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     from superaide.app.providers import make_router as make_providers_router
 
     app.include_router(make_providers_router(get_agent, apply_connections))
+    from superaide.app.media_settings import make_router as make_media_providers_router
+
+    app.include_router(make_media_providers_router(apply_connections))
     from superaide.integrations.gmail.routes import make_router as make_gmail_router
 
     app.include_router(make_gmail_router(get_agent))

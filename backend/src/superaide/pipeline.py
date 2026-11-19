@@ -336,12 +336,9 @@ class Agent:
 
                 try:
                     with s.begin_nested():
-                        # A file alone from a stranger is not a conversation: the fixed reply, no model.
-                        received = (
-                            None
-                            if msg.attachments and not msg.text.strip()
-                            else handle_stranger(self, s, sender, ctx, msg, inbound)
-                        )
+                        # A file alone from a stranger: the fixed reply, no model, unless the owner chose a
+                        # voice-note or photo service (reception/media.py).
+                        received = handle_stranger(self, s, sender, ctx, msg, inbound)
                 except Exception as exc:  # the fixed reply still goes out (issue #83)
                     self._turn_failed(s, exc, msg)
                     received = None
@@ -357,9 +354,10 @@ class Agent:
                 # else is said plainly in the same conversation, never silence: fixed text, no model, nothing from the
                 # file or its name stored or shown, and no action can come from it (#511).
                 read = None
-                if ctx.kind == "dm" and (msg.file_refs or msg.uploads):
+                media = attachments.media_for(self.settings) if msg.file_refs or msg.uploads else None
+                if ctx.kind == "dm" and attachments.has_work(msg, media):
                     read = attachments.read_message(
-                        msg, self.messengers.get(msg.provider), self.settings.attachment_max_bytes
+                        msg, self.messengers.get(msg.provider), self.settings.attachment_max_bytes, media
                     )
                     audit(
                         s, "pipeline", "attachment_read", provider=msg.provider, files=read.read,

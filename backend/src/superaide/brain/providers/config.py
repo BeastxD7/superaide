@@ -144,6 +144,8 @@ def overlay(session: Session) -> dict[str, Any]:
         providers[row.key] = {"preset": row.preset, "base_url": row.base_url, "api_key": key_for(session, row.key)}
     updates: dict[str, Any] = {"llm_providers": providers}
     for role in session.scalars(select(ModelRole).where(mine(ModelRole))):
+        if role.role not in ROLE_FIELDS:
+            continue  # voice-note and photo choices (brain/media) share the table; they are not chat models
         if role.provider == "anthropic" or role.provider in providers:
             updates[ROLE_FIELDS[role.role]] = qualified(role.provider, role.model)
     return updates
@@ -167,7 +169,7 @@ def view(session: Session) -> dict[str, Any]:
         )
     roles = {
         r.role: {"provider": r.provider, "model": r.model}
-        for r in session.scalars(select(ModelRole).where(mine(ModelRole)))
+        for r in session.scalars(select(ModelRole).where(mine(ModelRole), ModelRole.role.in_(ROLES)))
     }
     return {"providers": providers, "roles": roles}
 
