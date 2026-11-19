@@ -97,6 +97,7 @@ TABLES: tuple[str, ...] = (
     "triage_rule",
     "triage_settings",
     "reception_message",  # receptionist (ADR 0010 TR5)
+    "visitor_question",  # a visitor question for the owner (#494)
     "reception_settings",
     "ask_link",  # the "Ask my Ava" link
     "ask_request",
