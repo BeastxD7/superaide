@@ -52,8 +52,6 @@ export function SettingsPage() {
           </CardContent>
         </Card>
 
-        <TourCard />
-
         <EmailCard current={account.user.email} />
 
         <PasswordCard />
@@ -97,6 +95,8 @@ export function SettingsPage() {
         <AskLinkCard />
 
         <AccessLogCard name={name} />
+
+        <TourCard />
       </div>
     </div>
   )

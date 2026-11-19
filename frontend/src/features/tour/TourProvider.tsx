@@ -25,6 +25,8 @@ export function TourProvider({ ready, agentName, children }: { ready: boolean; a
   const [welcome, setWelcome] = useState(false)
   const [run, setRun] = useState<{ id: PageTourId; steps: TourStep[] } | null>(null)
   const tried = useRef(new Set<string>())
+  // Set by a replay: a read of the answers that started before it is out of date and must not bring them back.
+  const replayed = useRef(false)
   const pageTour = tourForPath(pathname)
   const busy = welcome || run !== null
 
@@ -32,7 +34,7 @@ export function TourProvider({ ready, agentName, children }: { ready: boolean; a
     if (!ready) return
     let alive = true
     call<{ tours: Progress }>('/tour').then(
-      (r) => alive && setProgress(r.tours),
+      (r) => alive && setProgress((p) => (replayed.current ? p : { ...r.tours, ...p })),
       () => undefined, // can't tell what was seen: show nothing rather than nag
     )
     return () => {
@@ -82,6 +84,7 @@ export function TourProvider({ ready, agentName, children }: { ready: boolean; a
           return
         }
         tried.current.clear()
+        replayed.current = true
         setProgress({ welcome: 'completed' })
         await save('welcome', 'completed')
         if (pathname === '/dashboard') begin('home')
