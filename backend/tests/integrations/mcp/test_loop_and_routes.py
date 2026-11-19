@@ -187,3 +187,18 @@ def test_one_owner_never_sees_or_uses_another_owners_server(browser, owner, call
         assert s.scalars(select(McpServer)).all() == []
     assert owner.get("/app/mcp/servers").json()["servers"][0]["enabled"] is True  # his is untouched
     assert calls == []
+
+
+def test_tools_asked_after_the_turns_session_closed_do_not_reopen_it(owner, calls):
+    """Regression: tools() can run after the turn's session closed; reading the servers on it left a transaction open,
+    which blocked the next TRUNCATE (and a real table lock). It reads with its own short session instead."""
+    add_and_approve(owner, {"search": "read"})
+    with use_instance(scope_of("jordan@example.com")), session_scope() as s:
+        turn = turn_for(s, Script("ok"))
+    with use_instance(scope_of("jordan@example.com")):
+        assert SEARCH in [t["name"] for t in turn.tools()]
+    from superaide.platform.db.session import get_engine
+
+    with get_engine().begin() as conn:  # would wait forever if the closed session had reopened a transaction on it
+        conn.execute(text("SET LOCAL lock_timeout = '3s'"))
+        conn.execute(text("TRUNCATE mcp_server CASCADE"))

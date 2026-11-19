@@ -647,8 +647,10 @@ class OwnerTurn:
             not self.shared and self.sender.relation == "manager"
         ):  # the owner's MCP servers (#666): never a room or visitor
             from superaide.integrations.mcp.tools import offered
+            from superaide.platform.db.session import session_scope
 
-            tools.extend(offered(self.s))
+            with session_scope() as cfg:  # its own short session, like _web_limits: tools() can outlive the turn's
+                tools.extend(offered(cfg))
         return [*(t for t in tools if t.get("name") in SHARED_TOOLS), HANDOFF_TOOL] if self.shared else tools
 
     def _protocol(self) -> bool:
