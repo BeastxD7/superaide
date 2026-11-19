@@ -292,7 +292,7 @@ class Agent:
                 if ctx.kind != "dm":
                     return HandleResult("unconfirmed")
                 reply = self._unconfirmed_reply(sender, msg.provider)
-                self._reply(s, ctx, aud, reply, thread)
+                self._reply(s, ctx, aud, reply, thread, retry=True)
                 return HandleResult("unconfirmed", reply)
 
             if not sender.known:
@@ -328,7 +328,7 @@ class Agent:
                 if received == "":
                     return HandleResult("stranger", None, ["rate_limited"])
                 reply = received if received is not None else self._ai_notice(self._stranger(s, sender, msg))
-                self._reply(s, ctx, aud, reply, thread)
+                self._reply(s, ctx, aud, reply, thread, retry=True)
                 return HandleResult("stranger", reply, ["receptionist"] if received is not None else [])
 
             file_block = ""
@@ -491,6 +491,9 @@ class Agent:
         apology instead of silence, a 500, or a rolled-back inbound message (issue #83)."""
         log.error("turn failed on %s: %s", msg.provider, type(exc).__name__, exc_info=exc)
         audit(s, "pipeline", "turn_failed", provider=msg.provider, error=type(exc).__name__)
+        from superaide.reception.api import MODEL_ERROR, record_model_health
+
+        record_model_health(s, MODEL_ERROR, type(exc).__name__)
         return "I couldn't think that through just now. Please try again in a moment."
 
     def _steady(self, s, text: str) -> str:
@@ -716,6 +719,9 @@ class Agent:
         do about it; anyone else gets a neutral line, because they can't act on it and it would show
         how the owner pays for the assistant."""
         audit(s, "pipeline", "budget_cap_reached", period=exc.period, audience="owner" if owner else "other")
+        from superaide.reception.api import MODEL_BUDGET, record_model_health
+
+        record_model_health(s, MODEL_BUDGET, exc.period)
         if not owner:
             return "Sorry, I can't help with this right now. Please try again a little later."
         if exc.period == "platform_day":
@@ -1004,9 +1010,10 @@ class Agent:
         meta: dict | None = None,
         *,
         to: str | None = None,
+        retry: bool = False,
     ) -> None:
         with timing.span("reply"):
-            self._reply_inner(s, ctx, aud, text, thread, meta, to=to)
+            self._reply_inner(s, ctx, aud, text, thread, meta, to=to, retry=retry)
 
     def _reply_inner(
         self,
@@ -1018,8 +1025,10 @@ class Agent:
         meta: dict | None = None,
         *,
         to: str | None = None,
+        retry: bool = False,
     ) -> None:
-        """`to` is set only for a model-written reply to someone who isn't the owner: on Telegram and Slack it
+        """`retry`: a reply to someone other than the owner is queued and retried when it cannot be sent (#503).
+        `to` is set only for a model-written reply to someone who isn't the owner: on Telegram and Slack it
         then ends with the Principal Card line (PRINCIPAL_CARD_ENABLED), as Gmail replies do (#135)."""
         messenger = self.messengers.get(ctx.provider)
         if messenger is None:
@@ -1036,6 +1045,7 @@ class Agent:
             from superaide.identity.principal import card
 
             wire = text + card.footer(s, channel=ctx.provider, to=to)
+        failed_kind = ""
         try:
             with timing.span("send"):
                 if sources and ctx.kind == "dm":
@@ -1046,8 +1056,15 @@ class Agent:
             log.warning("reply not delivered on %s: %s", ctx.provider, exc.kind)
             audit(s, "pipeline", "reply_not_delivered", provider=ctx.provider, reason=exc.kind)
             meta = {**(meta or {}), "undelivered": exc.kind}
+            failed_kind = exc.kind
         except Exception as exc:  # e.g. a Slack rate limit: the turn's work and its record are kept
             log.error("reply not sent on %s: %s", ctx.provider, type(exc).__name__)
             audit(s, "pipeline", "reply_not_delivered", provider=ctx.provider, reason=type(exc).__name__)
             meta = {**(meta or {}), "undelivered": type(exc).__name__}
-        log_event(s, context=ctx, direction="out", content=text, audience=aud, thread_id=thread, meta=meta)
+            failed_kind = type(exc).__name__
+        sent = log_event(s, context=ctx, direction="out", content=text, audience=aud, thread_id=thread, meta=meta)
+        if failed_kind and (retry or to is not None) and ctx.provider in {"telegram", "slack"}:
+            # A visitor's reply is queued and retried with back-off (#503); the owner's own replies are in the app.
+            from superaide.reception.api import queue_visitor_reply
+
+            queue_visitor_reply(s, ctx, sent, strip_citations(wire), thread, failed_kind)

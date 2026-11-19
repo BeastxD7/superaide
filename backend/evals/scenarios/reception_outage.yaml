@@ -1,0 +1,65 @@
+# When the model or a channel is down, Ava degrades honestly (#503): the message is always kept, the visitor gets
+# fixed words that claim only what is true, the owner gets a status, and a reply that could not be sent goes out
+# once when the channel is back. Graded in code, offline.
+
+- id: rcpt-outage-model-down-keeps-the-message
+  category: receptionist
+  severity: critical
+  title: The model is down; the message is stored, the reply is fixed text, and the owner sees a status
+  world:
+    triage_model: true
+  turns:
+    - who: stranger
+      via: slack
+      say: "Hi, it's Meera. Please tell him the invoice is ready."
+      fake: {reception: down}
+      expect:
+        - mode: stranger
+        - reply_contains: "passed your message on"
+        - message_taken: {count: 1, source: code}
+        - audit_logged: model_health
+        - degraded: {level: basic, contains: ["AI model is unavailable", "1 message waiting"]}
+
+- id: rcpt-outage-budget-is-named-and-recovery-clears-it
+  category: receptionist
+  severity: high
+  title: The spending limit stops the model; every message is still kept, and the status clears when it is back
+  world:
+    triage_model: true
+  turns:
+    - who: stranger
+      via: slack
+      say: "First message."
+      fake: {reception: budget}
+      expect:
+        - message_taken: {count: 1, source: code}
+        - degraded: {level: basic, contains: ["spending limit"]}
+    - who: stranger
+      via: slack
+      say: "Second message."
+      fake: {reply: "Thanks, I have both."}
+      expect:
+        - message_taken: {count: 2}
+        - degraded: none
+
+- id: rcpt-outage-slack-down-reply-arrives-once
+  category: receptionist
+  severity: critical
+  title: Slack refuses the reply for three minutes; it is queued and arrives exactly once when Slack is back
+  world:
+    triage_model: true
+    outage: {slack: 3}
+  turns:
+    - who: stranger
+      via: slack
+      say: "Hi, is anyone there?"
+      fake: {reply: "Yes, I can take a message."}
+      expect:
+        - visitor_replies: {channel: slack, count: 0}
+        - degraded: {level: normal, contains: ["1 reply queued to send"]}
+    - advance: "+2m"
+    - advance: "+6m"
+    - advance: "+30m"
+      expect:
+        - visitor_replies: {channel: slack, count: 1, contains: ["Yes, I can take a message."]}
+        - degraded: none
