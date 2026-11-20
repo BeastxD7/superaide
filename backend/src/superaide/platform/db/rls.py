@@ -41,6 +41,8 @@ TABLES: tuple[str, ...] = (
     "document",
     "episode",  # conversation episodes (#50)
     "document_chunk",
+    "recall_doc",  # the derived search index (#647)
+    "recall_embedding",  # its vectors; outside the ORM like memory_embedding, only where pgvector exists
     "chunk_embedding",  # outside the ORM like memory_embedding; only where pgvector exists
     "event",
     "identity_link_event",

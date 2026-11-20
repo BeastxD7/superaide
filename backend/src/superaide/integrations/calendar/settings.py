@@ -16,6 +16,20 @@ SKILL_ID = "superaide/google-calendar"
 CARD_NAME = "Capabilities → Google Calendar"
 CARD_LINK = "/dashboard/capabilities#calendar"
 
+# Who may be offered times (#674). Strings, because the setting card shows them as they are.
+VISITOR_EVERYONE = "Everyone"
+VISITOR_LISTED = "Listed friends and clients"
+VISITOR_CLIENTS = "Clients only"
+VISITOR_FRIENDS = "Friends only"
+# Working days as the number of days open from Monday (Monday to Friday is 5).
+WORKING_DAYS: dict[str, int] = {
+    "Monday to Thursday": 4,
+    "Monday to Friday": 5,
+    "Monday to Saturday": 6,
+    "Every day": 7,
+}
+DEFAULT_DAYS = "Monday to Friday"
+
 CHOICES: dict[str, Choice] = {
     "ahead_days": Choice(
         (7, 14, 30), 14, "How far ahead Ava reads", "Days of your calendar one question can cover.", "days"
@@ -40,6 +54,21 @@ CHOICES: dict[str, Choice] = {
         "How many times Ava offers someone she doesn't know who asks to meet you (0 turns this off). Only free times "
         "inside your day are offered, never what is in your calendar, and nothing is booked until you approve it.",
         "times",
+    ),
+    "visitor_who": Choice(
+        (VISITOR_EVERYONE, VISITOR_LISTED, VISITOR_CLIENTS, VISITOR_FRIENDS),
+        VISITOR_EVERYONE,
+        "Who Ava may offer meeting times to",
+        "Everyone: anyone who asks. Listed friends and clients: only accounts you listed under People (and your "
+        "colleagues). Clients only, or friends only (people you listed who are not clients): the same, narrower. "
+        "Ava decides this from your list, never from what someone says about themselves. Someone outside the group "
+        "is told she can't offer times and can leave a message.",
+    ),
+    "working_days": Choice(
+        tuple(WORKING_DAYS),
+        DEFAULT_DAYS,
+        "Days Ava may offer meeting times on",
+        "Visitors are only offered times on these days, inside your day's hours (your time zone).",
     ),
     "buffer_minutes": Choice(
         (0, 15, 30),

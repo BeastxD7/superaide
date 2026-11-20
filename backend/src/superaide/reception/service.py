@@ -471,7 +471,7 @@ def _schedule(
         with session.begin_nested():
             return booking.handle(
                 session, owner, identity_id=sender.identity.id, ctx=ctx, provider=msg.provider, ask=sched,
-                visitor_name=name,
+                visitor_name=name, sender=sender,
             )  # fmt: skip
     except Exception:
         log.exception("receptionist could not handle a booking")
