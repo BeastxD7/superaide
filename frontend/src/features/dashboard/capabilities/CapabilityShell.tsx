@@ -1,5 +1,6 @@
 'use client'
 
+import { PageContainer } from '@/components/layout'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb'
@@ -13,8 +14,7 @@ export function CapabilityShell({ cap, page, children }: { cap: CapabilityRoute;
   const lead = current?.summary ?? cap.summary
   const tabs = [{ slug: undefined as string | undefined, label: 'Overview' }, ...cap.pages.map((p) => ({ slug: p.slug as string | undefined, label: p.label }))]
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 lg:py-8">
+    <PageContainer width="form">
         <Breadcrumb className="mb-2">
           <BreadcrumbList>
             <BreadcrumbItem>
@@ -62,7 +62,6 @@ export function CapabilityShell({ cap, page, children }: { cap: CapabilityRoute;
           })}
         </nav>
         {children}
-      </div>
-    </div>
+    </PageContainer>
   )
 }

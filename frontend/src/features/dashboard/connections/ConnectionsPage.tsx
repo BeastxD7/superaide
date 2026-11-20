@@ -1,5 +1,6 @@
 'use client'
 
+import { PageContainer, PageHeader } from '@/components/layout'
 import { AmbientChannels } from '@/features/dashboard/connections/AmbientChannels'
 import { SetupCheckCard } from '@/features/dashboard/connections/SetupCheckCard'
 import { ConnectorSettings } from '@/features/dashboard/connections/ConnectorSettings'
@@ -12,26 +13,28 @@ export function ConnectionsPage() {
   const me = session.me
   if (!me) return null
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 lg:py-8">
-        <h1 className="text-3xl font-medium text-ink tight">Connections</h1>
-        <p className="mt-1 text-body">
-          Give {me.agent.name} a way to reach people. Her AI model is chosen on the AI model page. Keys are checked with each service, stored encrypted, and
-          never shown again in full.
-        </p>
-        <div className="mt-6" data-tour="connections-list">
+    <PageContainer width="list">
+        <PageHeader
+          title="Connections"
+          description={`Give ${me.agent.name} a way to reach people. Her AI model is chosen on the AI model page. Keys are checked with each service, stored encrypted, and never shown again in full.`}
+        />
+        <div className="mt-6 grid items-start gap-6 @4xl/page:grid-cols-2">
+        <div className="min-w-0 space-y-6">
+        <div data-tour="connections-list">
           <Connections agentName={me.agent.name} me={me} refreshMe={session.refresh} />
         </div>
-        <div className="mt-6">
+        <div>
           <ConnectorSettings path="channels" title="Reading and keeping" anchor="channels" />
         </div>
-        <div className="mt-6">
+        </div>
+        <div className="min-w-0 space-y-6">
+        <div>
           <AmbientChannels agentName={me.agent.name} />
         </div>
-        <div className="mt-6">
+        <div>
           <SetupCheckCard />
         </div>
-        <div className="mt-6">
+        <div>
           <HowThisWorks
             rules={[
               'A message from someone you have not added is never treated as you: it cannot give Ava orders or see your private notes.',
@@ -45,7 +48,8 @@ export function ConnectionsPage() {
             ]}
           />
         </div>
-      </div>
-    </div>
+        </div>
+        </div>
+    </PageContainer>
   )
 }
