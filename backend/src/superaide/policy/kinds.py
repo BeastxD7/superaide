@@ -41,6 +41,12 @@ KINDS: dict[str, KindInfo] = {
     "calendar_decline_event": KindInfo(
         "Decline a calendar event", "Declines the invitation in your Google Calendar.", True
     ),
+    "drive_create_file": KindInfo(
+        "Create a Google Doc or Sheet", "Creates the new file in your Google Drive, with exactly the text shown.", True
+    ),
+    "drive_append_doc": KindInfo(
+        "Add text to a Google Doc", "Adds exactly the text shown to the end of that Doc (a Doc Ava made).", True
+    ),
     "ask_reply": KindInfo(
         "Reply to someone from your Ask link",
         "Marks the request answered and gives you the text; you send it yourself (Superaide cannot send it).",

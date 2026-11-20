@@ -17,6 +17,8 @@ EFFECTS: dict[str, str] = {
     "calendar_free_busy": "read_private",
     "gmail_search": "read_private",
     "gmail_read_thread": "read_private",
+    "drive_search": "read_private",
+    "drive_read": "read_private",
     "web_search": "read_public",
     "web_fetch": "read_public",
     "create_reminder": "write_own",
@@ -28,6 +30,8 @@ EFFECTS: dict[str, str] = {
     "create_event": "write_external",
     "move_event": "write_external",
     "decline_event": "send",
+    "drive_create_file": "write_external",
+    "drive_append_doc": "write_external",
     "gmail_send": "send",
     "gmail_compose": "send",
     "relay_message": "send",  # opens an approval card; the message goes only after the owner approves it

@@ -180,8 +180,23 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     from superaide.integrations.gmail.routes import make_router as make_gmail_router
 
     app.include_router(make_gmail_router(get_agent))
+    from superaide.integrations.drive.routes import make_router as make_drive_router
+
+    app.include_router(make_drive_router(get_agent))
     from superaide.integrations.calendar import settings as calendar_settings
+    from superaide.integrations.drive import settings as drive_settings
     from superaide.skills.connector_settings import make_router as make_connector_settings_router
+
+    app.include_router(
+        make_connector_settings_router(
+            prefix="drive",
+            skill_id=drive_settings.SKILL_ID,
+            choices=drive_settings.CHOICES,
+            tag="Owner: Google Drive",
+            what="Google Drive limits",
+            event="drive_read_settings",
+        )
+    )
 
     app.include_router(
         make_connector_settings_router(

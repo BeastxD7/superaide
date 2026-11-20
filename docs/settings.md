@@ -36,6 +36,17 @@ Where: Capabilities → Google Calendar → Reading
 | Your day ends at | Free time is described up to this hour (24h clock). | 17, 18, 19, 20, 21, 22 | 20 |
 | Events she learns from per read | Events from one read that Ava may turn into notes about you (only when learning from connectors is on). | 5 events, 10 events, 20 events | 10 events |
 
+## Google Drive
+
+Where: Capabilities → Google Drive → Limits
+
+| Setting | What it does | Choices | Default |
+| --- | --- | --- | --- |
+| Files per search | Most files one search may return. | 5 files, 10 files, 20 files | 10 files |
+| Text she reads from one file | Characters of one document or sheet that can reach Ava; the rest is cut off. | 4000 characters, 8000 characters, 20000 characters | 8000 characters |
+| Drive lookups per hour | Searches and file reads together, so a runaway loop cannot go through your whole Drive. | 10 lookups, 30 lookups, 100 lookups | 30 lookups |
+| Longest draft she may propose | Characters in one new file or one addition. You still approve each one first. | 2000 characters, 5000 characters, 20000 characters | 5000 characters |
+
 ## Web research
 
 Where: Capabilities → Web research → Searching

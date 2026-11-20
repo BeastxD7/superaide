@@ -483,6 +483,10 @@ def make_router(get_agent: Callable[[], Any], apply: Callable[[], dict[str, bool
                 from superaide.integrations.gmail.routes import finish
 
                 return finish(code, pending)
+            if pending.get("purpose") == "drive":  # the Google Drive capability's sign-in (integrations/drive)
+                from superaide.integrations.drive.routes import finish as finish_drive
+
+                return finish_drive(code, pending)
             return _finish_google(code, pending, back)
 
     def _finish_google(code: str, pending: dict[str, Any], back: str) -> RedirectResponse:
