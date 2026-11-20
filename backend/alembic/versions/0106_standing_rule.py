@@ -1,7 +1,7 @@
 """standing_rule: owner-declared statements Ava may say and topics she must refuse (#486)
 
-Revision ID: 0105
-Revises: 0104
+Revision ID: 0106
+Revises: 0105
 Create Date: 2026-11-20 12:00:00.000000
 
 """
@@ -15,8 +15,8 @@ from alembic import op
 TABLES = ("standing_rule",)
 
 # revision identifiers, used by Alembic.
-revision: str = "0105"
-down_revision: str | Sequence[str] | None = "0104"
+revision: str = "0106"
+down_revision: str | Sequence[str] | None = "0105"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
