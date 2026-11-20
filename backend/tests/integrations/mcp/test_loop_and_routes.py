@@ -110,11 +110,11 @@ def test_a_non_owner_sender_gets_no_mcp_tools(owner, calls):
 
 
 def test_the_list_never_carries_a_secret_and_shows_each_tool_with_its_class(owner, calls):
-    canary = "Bearer sk-canary-aaaabbbbccccdddd"
+    canary = "Bearer canary-owner-header-value"
     server = add_and_approve(owner, {"search": "read"}, headers={"Authorization": canary})
     body = owner.get("/app/mcp/servers").text
-    assert canary not in body and "sk-canary" not in body
-    assert server["secrets"]["headers"]["Authorization"].endswith("dddd")
+    assert canary not in body and "canary-owner" not in body
+    assert server["secrets"]["headers"]["Authorization"].endswith("alue")
     by_name = {t["name"]: t for t in server["tools"]}
     assert by_name["search"]["risk"] == "read" and by_name["search"]["approval"] == "approved"
     assert by_name["create_note"]["risk"] == "write" and by_name["delete_note"]["risk"] == "destructive"
@@ -168,7 +168,7 @@ def test_removing_and_switching_off(owner, calls):
 
 
 def test_one_owner_never_sees_or_uses_another_owners_server(browser, owner, calls):
-    mine = add_and_approve(owner, {"search": "read"}, headers={"Authorization": "Bearer sk-aaaa1111bbbb2222"})
+    mine = add_and_approve(owner, {"search": "read"}, headers={"Authorization": "Bearer canary-other-owner-value"})
     other = browser()
     assert signup(other, **OTHER).status_code == 200 and hire(other).status_code == 200
     assert other.get("/app/mcp/servers").json()["servers"] == []

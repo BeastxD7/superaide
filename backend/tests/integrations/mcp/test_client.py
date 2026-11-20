@@ -270,7 +270,7 @@ def test_server_and_tool_limits_are_bounded():
 
 
 def test_secrets_live_only_in_the_vault_and_only_hints_are_shown(manager):
-    canary = "sk-canary-0123456789abcdef"
+    canary = "canary-owner-header-value"
     with session_scope() as s:
         server = service.create(
             s,
@@ -281,7 +281,7 @@ def test_secrets_live_only_in_the_vault_and_only_hints_are_shown(manager):
         )
         view = service.view(s, server)
         sid = server.id
-    assert canary not in str(view) and view["secrets"]["headers"]["Authorization"].endswith("cdef")
+    assert canary not in str(view) and view["secrets"]["headers"]["Authorization"].endswith("alue")
     with session_scope() as s:
         row = s.scalar(select(IntegrationSecret).where(IntegrationSecret.provider == "mcp"))
         assert row is not None and canary not in row.ciphertext and canary not in (row.hint or "")
@@ -295,7 +295,7 @@ def test_secrets_live_only_in_the_vault_and_only_hints_are_shown(manager):
 def test_removing_a_server_removes_its_secrets_and_approvals(server_id):
     with session_scope() as s:
         server = service.get(s, uuid.UUID(server_id))
-        service._save_blob(s, server, {"env": {"TOKEN": "abc123456789"}, "headers": {}}, None)  # noqa: SLF001
+        service._save_blob(s, server, {"env": {"TOKEN": "canary-env-value-one"}, "headers": {}}, None)  # noqa: SLF001
     with session_scope() as s:
         assert s.scalar(select(IntegrationSecret).where(IntegrationSecret.provider == "mcp")) is not None
         assert s.scalar(select(McpPin)) is not None
