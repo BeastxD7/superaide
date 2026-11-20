@@ -528,6 +528,7 @@ e2e = [
   "e2e/tests/policy/approval-burden.spec.ts",
   "e2e/tests/policy/approval-batching.spec.ts",
   "e2e/tests/journeys/approvals.spec.ts",
+  "e2e/tests/journeys/approvals-master-detail.spec.ts",
 ]
 
 [modules.principal]
@@ -857,6 +858,7 @@ e2e = [
   "e2e/tests/reminders/reminders-pill.mobile.spec.ts",
   "e2e/tests/journeys/workspace.spec.ts",
   "e2e/tests/journeys/approvals.spec.ts",
+  "e2e/tests/journeys/approvals-master-detail.spec.ts",
   "e2e/tests/journeys/reminders.spec.ts",
   "e2e/tests/journeys/calendar-connect.spec.ts",
   "e2e/tests/journeys/skills.spec.ts",
