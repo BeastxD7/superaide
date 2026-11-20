@@ -639,6 +639,51 @@ def web_research(ctx: Context) -> list[Result]:
     ]
 
 
+@check("Outlook mail")
+def outlook_check(ctx: Context) -> list[Result]:
+    """Outlook mail (#668): nothing to say until the capability is added; then the Microsoft app is saved, the sign-in
+    works and a send permission is there when sending is on. One cheap read of whose mailbox it is; nothing is touched."""
+    from superaide.integrations.microsoft import client as api
+    from superaide.integrations.microsoft import mail
+
+    name = "Outlook mail"
+    where = "Capabilities → Outlook"
+    try:
+        from superaide.platform.db.session import session_scope
+
+        with session_scope() as s:
+            st = mail.status(s)
+            if not st["installed"]:
+                return [Result(name, OK, "Not added (Outlook mail is optional).")]
+            if not st["client_saved"]:
+                return [
+                    Result(
+                        name,
+                        WARN,
+                        "Outlook is added but no Microsoft app is saved.",
+                        f"Open {where} and save the client id and secret.",
+                    )
+                ]
+            if not st["connected"]:
+                return [Result(name, WARN, "Outlook is added but not signed in.", f"Open {where} and press Connect.")]
+            if st["sending"] and not st["send_granted"]:
+                return [
+                    Result(
+                        name,
+                        WARN,
+                        "Sending is on but Microsoft hasn't allowed Mail.Send.",
+                        f"Switch sending off and on under {where} to sign in again.",
+                    )
+                ]
+            access = mail.token(s)
+        api.me(ctx.client(), access)
+    except (api.MicrosoftError, mail.NotReady) as exc:
+        return [Result(name, WARN, str(exc)[:200], f"Reconnect Outlook under {where}.")]
+    except Exception:  # no database here (the command-line doctor before setup): nothing to say
+        return [Result(name, OK, "Not checked (no database).")]
+    return _ok(name)
+
+
 @check("GitHub")
 def github_check(ctx: Context) -> list[Result]:
     """GitHub (#669): nothing to say until the capability is added; then the token works and at least one page
@@ -733,6 +778,7 @@ IN_APP_CHECKS = (
     "Google redirects",
     "GitHub",
     "Notion",
+    "Outlook mail",
     "Google Drive",
     "Spend cap",
 )

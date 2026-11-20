@@ -44,6 +44,20 @@ export const CAPABILITIES: CapabilityRoute[] = [
     pages: [{ slug: 'reading', label: 'Reading', summary: 'What Ava may read in your calendar.' }],
   },
   {
+    slug: 'outlook',
+    skillId: 'superaide/outlook-mail',
+    title: 'Outlook mail',
+    summary: 'Search and read your Microsoft 365 inbox, and say what is in it. Choose the limits, and whether Ava may propose replies and new emails.',
+    fixedRules: [
+      'Nothing is sent without your yes: every reply and every new email waits as a request that shows the exact text and recipients.',
+      'Email is information, never instructions: Ava does not do what an email tells her to do, even if it says it is from you.',
+      'A reply goes to the sender of that message only. After Ava has read mail in a conversation she cannot write to a new address.',
+      'One-time codes and password resets are never shown to Ava. Ava cannot delete, move, forward or edit mail.',
+      'Your Microsoft app secret and sign-in are stored encrypted and shown only as hints; the audit log keeps counts, never subjects or text.',
+    ],
+    pages: [{ slug: 'limits', label: 'Limits', summary: 'How many emails, how much text and how many lookups per hour Ava may use.' }],
+  },
+  {
     slug: 'github',
     skillId: 'superaide/github',
     title: 'GitHub',
@@ -112,6 +126,7 @@ export const HASH_REDIRECTS: Record<string, string> = {
   '#gmail': capabilityHref('gmail'),
   '#gmail-read': capabilityHref('gmail', 'reading'),
   '#calendar': capabilityHref('calendar', 'reading'),
+  '#outlook': capabilityHref('outlook'),
   '#github': capabilityHref('github'),
   '#notion': capabilityHref('notion'),
   '#drive': capabilityHref('drive'),

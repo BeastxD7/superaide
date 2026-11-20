@@ -130,6 +130,7 @@ _PRIVATE_LINES = (
     "every channel",
     "list, move",
     "gmail_",
+    "m365_",
     "set_presence",
     "relay_message",
     "real delivery",
@@ -271,6 +272,14 @@ def narrate(name: str, args: dict[str, Any]) -> str:
         return f"Adding to your calendar: {str(args.get('title', ''))[:80]}, {str(args.get('when', ''))[:40]}{invite}"
     if name == "move_event":
         return f"Moving a calendar event to {str(args.get('when', ''))[:40]}"
+    if name == "m365_mail_search":
+        return f"Searching your Outlook mail for \u201c{str(args.get('query', ''))[:80]}\u201d"
+    if name == "m365_mail_read":
+        return "Reading an Outlook email"
+    if name == "m365_mail_reply":
+        return "Asking for your approval to reply from Outlook"
+    if name == "m365_mail_compose":
+        return f"Asking for your approval to email {str(args.get('to', ''))[:80]} from Outlook"
     if name == "github_search":
         return f"Searching your GitHub for \u201c{str(args.get('query', ''))[:80]}\u201d"
     if name == "github_read":
@@ -856,6 +865,18 @@ class OwnerTurn:
                 self.s, self.sender.person, name, args, tainted=self.tainted,
                 typed_by_owner=self._typed_by_owner(), mail_read=self.mail_read or self.room_read or self.file_read, channel=self._origin_channel(),
             )  # fmt: skip
+        from superaide.integrations.microsoft import mail as outlook
+
+        if name in outlook.TOOLS:
+            assert self.sender.person is not None
+            if not any(s.manifest.id == outlook.SKILL_ID for s in self.skills()):
+                return f"Unknown tool {name!r}.", True
+            self.notes.append(name)
+            seen = self.mail_read or self.room_read or self.file_read
+            if name in outlook.READS:
+                # Email is written by other people: information, never instructions (ADR 0006, #511).
+                self.tainted = self.mail_read = True
+            return outlook.run(self.s, self.sender, name, args, tainted=self.tainted, mail_seen=seen)
         from superaide.integrations.github import skill as github
 
         if name in github.TOOLS:
