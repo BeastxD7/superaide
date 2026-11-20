@@ -243,6 +243,8 @@ e2e = [
   "e2e/tests/integrations/calendar-settings.mobile.spec.ts",
   "e2e/tests/integrations/github-capability.spec.ts",
   "e2e/tests/integrations/github-capability.mobile.spec.ts",
+  "e2e/tests/integrations/notion-capability.spec.ts",
+  "e2e/tests/integrations/notion-capability.mobile.spec.ts",
   "e2e/tests/integrations/drive-capability.spec.ts",
   "e2e/tests/integrations/drive-capability.mobile.spec.ts",
   "e2e/tests/integrations/channels-settings.spec.ts",
