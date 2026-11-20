@@ -39,6 +39,7 @@ FIELDS: dict[tuple[str, str], str] = {
     ("google", "client_secret"): "google_client_secret",
     ("google", "refresh_token"): "google_refresh_token",
     ("google", "gmail_refresh_token"): "gmail_refresh_token",  # the Gmail capability's own sign-in
+    ("github", "token"): "github_token",  # the GitHub capability's access token (#669)
     ("google", "drive_refresh_token"): "drive_refresh_token",  # the Google Drive capability's own sign-in
     # The voice call (ADR 0012): speech-to-text and natural voices.
     ("deepgram", "api_key"): "deepgram_api_key",
@@ -52,6 +53,7 @@ SECRET_NAMES = {
     "client_secret",
     "refresh_token",
     "gmail_refresh_token",
+    "token",
     "drive_refresh_token",
 }  # ids aren't secrets
 # The deployment's own Google OAuth client (the app owners sign in to, for sign-in and Calendar). It

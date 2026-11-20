@@ -496,6 +496,8 @@ class Settings(BaseSettings):
     school_playbook_enabled: bool = False
     # The owner's Gmail sign-in (same OAuth client as Calendar); kept per instance in the vault.
     gmail_refresh_token: str = ""
+    # The owner's GitHub access token; kept per instance in the vault (#669).
+    github_token: str = ""
     # The owner's Google Drive sign-in (same OAuth client); kept per instance in the vault (#667).
     drive_refresh_token: str = ""
 

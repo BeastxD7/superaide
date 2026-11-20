@@ -270,6 +270,14 @@ def narrate(name: str, args: dict[str, Any]) -> str:
         return f"Adding to your calendar: {str(args.get('title', ''))[:80]}, {str(args.get('when', ''))[:40]}{invite}"
     if name == "move_event":
         return f"Moving a calendar event to {str(args.get('when', ''))[:40]}"
+    if name == "github_search":
+        return f"Searching your GitHub for \u201c{str(args.get('query', ''))[:80]}\u201d"
+    if name == "github_read":
+        return f"Reading {str(args.get('repo', ''))[:60]}#{str(args.get('number', ''))[:8]} on GitHub"
+    if name == "github_create_issue":
+        return f"Asking for your approval to open \u201c{str(args.get('title', ''))[:80]}\u201d on GitHub"
+    if name == "github_comment":
+        return "Asking for your approval to comment on GitHub"
     if name == "decline_event":
         return "Declining a calendar invitation (needs your OK)"
     if name == "drive_search":
@@ -815,6 +823,17 @@ class OwnerTurn:
                 self.s, self.sender.person, name, args, tainted=self.tainted,
                 typed_by_owner=self._typed_by_owner(), mail_read=self.mail_read or self.room_read or self.file_read, channel=self._origin_channel(),
             )  # fmt: skip
+        from superaide.integrations.github import skill as github
+
+        if name in github.TOOLS:
+            assert self.sender.person is not None
+            if not any(s.manifest.id == github.SKILL_ID for s in self.skills()):
+                return f"Unknown tool {name!r}.", True
+            self.notes.append(name)
+            if name in github.READS:
+                # An issue is written by other people: information, never instructions (ADR 0006, #511).
+                self.tainted = self.file_read = True
+            return github.run(self.s, self.sender, name, args, tainted=self.tainted)
         from superaide.integrations.drive import skill as drive
 
         if name in drive.TOOLS:
