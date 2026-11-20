@@ -1,7 +1,7 @@
 """friends: accounts listed for a contact, unverified-friend candidates, invite purpose (#479, #504)
 
-Revision ID: 0101
-Revises: 0100
+Revision ID: 0102
+Revises: 0101
 Create Date: 2026-11-20 03:00:00.000000
 
 """
@@ -15,8 +15,8 @@ from alembic import op
 TABLES = ("contact_handle", "friend_candidate")
 
 # revision identifiers, used by Alembic.
-revision: str = "0101"
-down_revision: str | Sequence[str] | None = "0100"
+revision: str = "0102"
+down_revision: str | Sequence[str] | None = "0101"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
