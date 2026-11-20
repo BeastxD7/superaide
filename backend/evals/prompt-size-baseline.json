@@ -2,16 +2,16 @@
   "full": {
     "system_rules": 1844,
     "system_state": 1166,
-    "tools": 2099,
+    "tools": 2292,
     "tool_count": 11,
-    "fixed": 5109
+    "fixed": 5302
   },
   "compact": {
     "system_rules": 1003,
-    "system_state": 102,
-    "tools": 402,
+    "system_state": 101,
+    "tools": 522,
     "tool_count": 3,
-    "fixed": 1507
+    "fixed": 1626
   },
   "minimal": {
     "system_rules": 573,
