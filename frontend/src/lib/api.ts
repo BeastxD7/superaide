@@ -652,6 +652,15 @@ export type GmailStatus = {
   drafts_allowed: boolean
 }
 
+export type DriveStatus = {
+  last_changed?: Record<string, { by: 'you' | 'Ava' | 'operator'; at: string }>
+  installed: boolean
+  client_ready: boolean
+  connected: boolean
+  drafts: boolean
+  drafts_allowed: boolean
+}
+
 export type GmailReadSettings = {
   payment_preview: string
   bank_change_preview: string
