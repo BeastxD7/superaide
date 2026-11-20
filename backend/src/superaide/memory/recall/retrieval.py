@@ -269,7 +269,7 @@ def recall_messages(
         gate = _message_gate(aud) & ~Event.meta.has_key("ambient")
         if rooms:
             gate = gate | Event.meta.has_key("ambient")
-        stmt = select(Event).where(gate, Event.content != "", Event.direction == "in")
+        stmt = select(Event).where(gate, Event.content != "", Event.direction == "in", Event.erased_at.is_(None))
         if channel:
             stmt = stmt.join(Context, Context.id == Event.context_id).where(Context.provider == channel)
         if since is not None:

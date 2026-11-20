@@ -27,7 +27,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -219,32 +219,40 @@ def _channel_events(session: Session, row: AmbientChannel) -> Any:
     ids = select(Context.id).where(
         Context.provider == row.provider, Context.external_id == row.external_id, Context.kind == "group"
     )
-    return Event.context_id.in_(ids), Event.meta["ambient"].astext == "true"
+    return Event.context_id.in_(ids), Event.meta["ambient"].astext == "true", Event.erased_at.is_(None)
 
 
 def stored_count(session: Session, row: AmbientChannel) -> int:
-    where_ctx, where_ambient = _channel_events(session, row)
-    return int(session.scalar(select(func.count()).select_from(Event).where(where_ctx, where_ambient)) or 0)
+    where_ctx, where_ambient, where_kept = _channel_events(session, row)
+    return int(session.scalar(select(func.count()).select_from(Event).where(where_ctx, where_ambient, where_kept)) or 0)
 
 
 def erase(session: Session, row: AmbientChannel) -> int:
-    """Delete everything stored from this channel by reading it. (Messages that mentioned Ava are part of her
-    conversations and are not touched here.)"""
-    where_ctx, where_ambient = _channel_events(session, row)
-    n = rows_affected(session.execute(delete(Event).where(where_ctx, where_ambient)))
+    """Hide everything stored from this channel by reading it: a soft delete (the rows stay, no read path shows
+    them). Messages that mentioned Ava are part of her conversations and are not touched here."""
+    where_ctx, where_ambient, where_kept = _channel_events(session, row)
+    n = rows_affected(
+        session.execute(update(Event).where(where_ctx, where_ambient, where_kept).values(erased_at=datetime.now(UTC)))
+    )
     audit(session, "owner", "ambient_channel_erased", provider=row.provider, channel=row.external_id, messages=n)
     return int(n)
 
 
 def roll_off(session: Session) -> int:
-    """Delete room messages older than their channel's retention. Run by the daily job, for every channel
+    """Hide (soft delete) room messages older than their channel's retention. Run by the daily job, for every channel
     that has a row (switched off or not: what was kept still ages out)."""
     total = 0
     for row in session.scalars(select(AmbientChannel)):
         days = row.retention_days if row.retention_days > 0 else DEFAULT_RETENTION
-        where_ctx, where_ambient = _channel_events(session, row)
+        where_ctx, where_ambient, where_kept = _channel_events(session, row)
         cutoff = datetime.now(UTC) - timedelta(days=days)
-        n = rows_affected(session.execute(delete(Event).where(where_ctx, where_ambient, Event.created_at < cutoff)))
+        n = rows_affected(
+            session.execute(
+                update(Event)
+                .where(where_ctx, where_ambient, where_kept, Event.created_at < cutoff)
+                .values(erased_at=datetime.now(UTC))
+            )
+        )
         if n:
             audit(
                 session, "memory", "ambient_rolled_off", provider=row.provider, channel=row.external_id,

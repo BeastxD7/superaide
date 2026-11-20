@@ -83,6 +83,9 @@ class Event(Scoped, Base):
     # hits the unique index below and is dropped; threads keep their own history.
     external_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
     thread_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    # "Erase" is a soft delete (retention keeps everything): the row stays, every read path skips it, undo clears it.
+    erased_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    erased_by: Mapped[uuid.UUID | None] = mapped_column(nullable=True)  # the person who erased it
 
 
 class MemoryItem(Scoped, Base):
@@ -117,6 +120,9 @@ class MemoryItem(Scoped, Base):
         DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now()
     )
     valid_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Set with `valid_to` when the owner erased this note's source (a file, a person): what undo restores.
+    erased_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    erased_by: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
     # What kind of fact this is, where it came from, and how sure we are.
     # category: about | work | person | preference | urgency | availability | sharing | other
     category: Mapped[str] = mapped_column(String(30), default="other", server_default="other", index=True)
@@ -291,6 +297,9 @@ class Document(Scoped, Base):
     status: Mapped[str] = mapped_column(String(20), default="stored")
     warnings: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
     removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Erase = `removed_at` plus these two (the text and passages stay, hidden); undo clears all three.
+    erased_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    erased_by: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
     import_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("memory_import.id", ondelete="SET NULL"), nullable=True, index=True
     )
@@ -332,6 +341,7 @@ class Contact(Scoped, Base):
     relationship: Mapped[str] = mapped_column(String(30), default="other")  # family | partner | boss | team | ...
     vip: Mapped[bool] = mapped_column(Boolean, default=False)  # can always get through, even in quiet hours
     notes: Mapped[str] = mapped_column(Text, default="")
+    notes_hidden: Mapped[str] = mapped_column(Text, default="", server_default="")  # the notes while erased (soft)
     removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     import_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("memory_import.id", ondelete="SET NULL"), nullable=True, index=True

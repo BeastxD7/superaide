@@ -126,7 +126,7 @@ def recent(session: Session, context_id: uuid.UUID) -> list[dict[str, str]]:
     "visitor": unverified data, shown quoted."""
     rows = session.scalars(
         select(Event)
-        .where(Event.context_id == context_id, ~Event.meta.has_key("ambient"))
+        .where(Event.context_id == context_id, ~Event.meta.has_key("ambient"), Event.erased_at.is_(None))
         .order_by(Event.created_at.desc(), Event.id)
         .limit(SHOWN)
     ).all()
