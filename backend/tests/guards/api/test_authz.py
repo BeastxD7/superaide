@@ -24,7 +24,10 @@ from tests.api_support import OWNER, app_routes, fill_path, signup
 PUBLIC = {("GET", "/app/agents")}  # the marketplace
 ACCOUNT_ONLY = {("POST", "/app/hire")}  # any signed-in account (tested in test_hire_negative)
 # Owner GET routes that take an id: a random one is a 404 for the owner too (it is not their row).
-ID_ROUTES = {("GET", "/app/passages/{chunk_id}")}  # a cited passage of a shared file (#47)
+ID_ROUTES = {
+    ("GET", "/app/passages/{chunk_id}"),  # a cited passage of a shared file (#47)
+    ("GET", "/app/people/{contact_id}"),  # one person's record (#500)
+}
 # Owner routes behind a setting that's off by default: the owner gets 404 until it's on (ADR 0010
 # triage, TRIAGE_ENABLED). Everyone else is refused exactly as on any owner route.
 FLAG_GATED = {
