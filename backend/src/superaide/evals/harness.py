@@ -210,10 +210,14 @@ class OfflineModel:
         last = messages[-1]["content"] if messages else ""
         answered = isinstance(last, list) and any(b.get("type") == "tool_result" for b in last)
         if fake.tools and not answered and purpose == "chat_turn":
+            seen = re.findall(r"inbox id ([0-9a-f]{8})", str(messages))  # `{{inbox_id}}`: the id the prompt carries
             return [
-                {"type": "tool_use", "id": f"toolu_{i}_{uuid.uuid4().hex[:8]}", "name": t.name, "input": t.input}
+                {
+                    "type": "tool_use", "id": f"toolu_{i}_{uuid.uuid4().hex[:8]}", "name": t.name,
+                    "input": {k: (seen[-1] if v == "{{inbox_id}}" and seen else v) for k, v in t.input.items()},
+                }
                 for i, t in enumerate(fake.tools)
-            ]
+            ]  # fmt: skip
         return fake.reply
 
 

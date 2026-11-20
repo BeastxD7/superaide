@@ -89,6 +89,27 @@ test('reading order is the visual order: from a card, Shift+Tab goes back to the
   await expect(page.getByLabel('New reminder')).toBeFocused() // the disabled Add button is skipped
 })
 
+test('Home at 1920 spreads its overview cards across the page, and at 360 stacks them without sideways overflow', async ({ page, owner }) => {
+  void owner
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await page.goto('/dashboard')
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  const cards = page.locator('[data-responsive-grid] > [data-slot="card"]')
+  await expect(cards.first()).toBeVisible()
+  const lefts = new Set(await cards.evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().left))))
+  expect(lefts.size).toBeGreaterThanOrEqual(3) // three or more columns of cards
+  const inset = (await insetBox(page))!
+  expect(((await pageBox(page))!.width) / inset.width).toBeGreaterThan(0.8)
+  expect(await sideways(page)).toBeLessThanOrEqual(0)
+
+  await page.setViewportSize({ width: 360, height: 740 })
+  await page.goto('/dashboard')
+  await expect(cards.first()).toBeVisible()
+  expect(new Set(await cards.evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().left)))).size).toBe(1)
+  expect(await sideways(page)).toBeLessThanOrEqual(0)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0)
+})
+
 // Setup pages: two columns of cards on a wide screen, one on a phone, and no sideways overflow on either.
 const SETUP: [string, string][] = [
   ['/dashboard/connections', 'Connections'],

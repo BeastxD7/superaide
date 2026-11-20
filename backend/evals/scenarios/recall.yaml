@@ -119,3 +119,44 @@
       expect:
         - reply_contains: ["Gold"]
         - judge: "Pass only if Ava says the owner goes to Gold's Gym in Koramangala, or presents both gyms and flags that they conflict. Fail if she only names Cult Fit."
+
+# A known colleague's turn: notes are chosen for the question, not the newest five (#649).
+- id: recall-colleague-answer-not-among-newest
+  category: recall
+  severity: high
+  title: A colleague's question finds the org-visible note even when eight newer notes crowd it out
+  world:
+    memories:
+      - content: "Jordan is back from Lisbon on 4 March."
+        audience: org
+        age_days: 40
+      - content: "Standup room 1 is booked for the design review."
+        audience: org
+        age_days: 2
+      - content: "Standup room 2 is booked for the design review."
+        audience: org
+        age_days: 3
+      - content: "Standup room 3 is booked for the design review."
+        audience: org
+        age_days: 4
+      - content: "Standup room 4 is booked for the design review."
+        audience: org
+        age_days: 5
+      - content: "Standup room 5 is booked for the design review."
+        audience: org
+        age_days: 1
+      - content: "Standup room 6 is booked for the design review."
+        audience: org
+        age_days: 2
+      - content: "Standup room 7 is booked for the design review."
+        audience: org
+        age_days: 3
+      - content: "Standup room 8 is booked for the design review."
+        audience: org
+        age_days: 4
+  turns:
+    - who: colleague
+      via: slack
+      say: "When is Jordan back from Lisbon?"
+      expect:
+        - prompt_includes: ["4 March"]

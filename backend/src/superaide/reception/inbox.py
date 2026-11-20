@@ -163,6 +163,24 @@ def awareness_line(session: Session) -> str:
     )
 
 
+def referents(session: Session, args: dict[str, Any]) -> list[dict[str, str]]:
+    """What a plain `inbox` listing showed, as code-written records for the next turn (#643): the conversation id,
+    and a label of first name (letters only) and channel. Never a word the stranger typed beyond that name.
+    Empty when the call asked for one conversation."""
+    if str(args.get("id") or "").strip():
+        return []
+    now = datetime.now(UTC)
+    open_only = str(args.get("status") or "open") != "all"
+    out = []
+    for g in _people(_rows(session, open_only=open_only, now=now))[:MAX_PEOPLE]:
+        name = next((first_name(r) for r in g if first_name(r)), "") or "Someone who gave no name"
+        out.append({
+            "kind": "inbox_conversation", "id": _short(g[0]),
+            "label": f"{name} on {CHANNEL.get(g[0].provider, g[0].provider)}",
+        })  # fmt: skip
+    return out
+
+
 def report(session: Session, tz: tzinfo, args: dict[str, Any]) -> str:
     """`tz` is the owner's time zone, passed by the caller (times are shown in it)."""
     now = datetime.now(UTC)
