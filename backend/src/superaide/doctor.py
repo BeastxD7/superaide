@@ -612,9 +612,36 @@ def photo_reading(ctx: Context) -> list[Result]:
     ]
 
 
+@check("Web research")
+def web_research(ctx: Context) -> list[Result]:
+    """Says whether Ava can search the web, and what to add when she can't (#671). Never names the key."""
+    name = "Web research"
+    key = bool(ctx.settings.brave_search_api_key)
+    try:
+        from superaide.identity.vault import store as vault
+        from superaide.platform.db.session import session_scope
+
+        with session_scope() as s:
+            key = key or ("brave", "api_key") in vault.stored(s)
+    except Exception:
+        pass
+    if key:
+        return [
+            Result(name, OK, "Web search is ready: pages Ava opens are checked so they can't reach private addresses.")
+        ]
+    return [
+        Result(
+            name,
+            OK,
+            "Ava can read a web page you give her, but search needs Claude's built-in search or a Brave search key.",
+            "To search with other models: AI model page, Web search, add a Brave Search key.",
+        )
+    ]
+
+
 @check("GitHub")
 def github_check(ctx: Context) -> list[Result]:
-    """GitHub (#669): nothing to say until the capability is added; then the token works and at least one repository
+    """GitHub (#669): nothing to say until the capability is added; then the token works and at least one page
     is chosen. One cheap read of who the token belongs to; nothing is touched."""
     from superaide.integrations.github import client as api
     from superaide.integrations.github import skill as github
@@ -650,6 +677,49 @@ def github_check(ctx: Context) -> list[Result]:
     return _ok(name)
 
 
+@check("Notion")
+def notion_check(ctx: Context) -> list[Result]:
+    """Notion (#669): nothing to say until the capability is added; then the token works and at least one page
+    is chosen. One cheap read of who the token belongs to; nothing is touched."""
+    from superaide.integrations.notion import client as api
+    from superaide.integrations.notion import skill as notion
+
+    name = "Notion"
+    where = "Capabilities → Notion"
+    try:
+        from superaide.platform.db.session import session_scope
+
+        with session_scope() as s:
+            st = notion.status(s)
+            if not st["installed"]:
+                return [Result(name, OK, "Not added (Notion is optional).")]
+            if not st["connected"]:
+                return [
+                    Result(
+                        name,
+                        WARN,
+                        "Notion is added but not connected.",
+                        f"Open {where} and paste an integration secret.",
+                    )
+                ]
+            if not st["pages"]:
+                return [
+                    Result(
+                        name,
+                        WARN,
+                        "Notion is connected but no page is chosen.",
+                        f"Open {where} and pick the pages Ava may see.",
+                    )
+                ]
+            tok = notion.token(s)
+        api.viewer(ctx.client(), tok)
+    except (api.NotionError, notion.NotReady) as exc:
+        return [Result(name, WARN, str(exc)[:200], f"Paste a new integration secret under {where}.")]
+    except Exception:  # no database here (the command-line doctor before setup): nothing to say
+        return [Result(name, OK, "Not checked (no database).")]
+    return _ok(name)
+
+
 # The checks that make sense for an owner inside the app (#567): the ones about the deployment's addresses, spend
 # cap and storage. The rest (settings file, ports, migrations, chat tokens) are for the person running the server
 # and stay in `superaide doctor`.
@@ -658,9 +728,11 @@ IN_APP_CHECKS = (
     "Master key",
     "AI key",
     "Photo reading",
+    "Web research",
     "Public address",
     "Google redirects",
     "GitHub",
+    "Notion",
     "Google Drive",
     "Spend cap",
 )
