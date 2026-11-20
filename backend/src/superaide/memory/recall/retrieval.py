@@ -239,6 +239,17 @@ def recall_chunks(
     ]
 
 
+def search_files(session: Session, aud: Audience, query: str, *, file: str = "", limit: int = 6) -> list[Source]:
+    """Passages from the owner's shared files only, optionally from the file whose title contains `file`.
+
+    The audience gate is the same one `recall` uses (`chunk_filter`), so a visitor's turn gets nothing."""
+    wanted = file.strip().lower()[:200]
+    found = recall_chunks(session, aud, query, limit=limit * 4 if wanted else limit)
+    if wanted:
+        found = [s for s in found if wanted in s.title.lower()]
+    return found[:limit]
+
+
 ROOM_TITLE = "Room message"  # a message stored from a channel Ava reads whole: other people's words (#509)
 
 

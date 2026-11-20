@@ -612,6 +612,33 @@ def photo_reading(ctx: Context) -> list[Result]:
     ]
 
 
+@check("Web research")
+def web_research(ctx: Context) -> list[Result]:
+    """Says whether Ava can search the web, and what to add when she can't (#671). Never names the key."""
+    name = "Web research"
+    key = bool(ctx.settings.brave_search_api_key)
+    try:
+        from superaide.identity.vault import store as vault
+        from superaide.platform.db.session import session_scope
+
+        with session_scope() as s:
+            key = key or ("brave", "api_key") in vault.stored(s)
+    except Exception:
+        pass
+    if key:
+        return [
+            Result(name, OK, "Web search is ready: pages Ava opens are checked so they can't reach private addresses.")
+        ]
+    return [
+        Result(
+            name,
+            OK,
+            "Ava can read a web page you give her, but search needs Claude's built-in search or a Brave search key.",
+            "To search with other models: AI model page, Web search, add a Brave Search key.",
+        )
+    ]
+
+
 # The checks that make sense for an owner inside the app (#567): the ones about the deployment's addresses, spend
 # cap and storage. The rest (settings file, ports, migrations, chat tokens) are for the person running the server
 # and stay in `superaide doctor`.
@@ -620,6 +647,7 @@ IN_APP_CHECKS = (
     "Master key",
     "AI key",
     "Photo reading",
+    "Web research",
     "Public address",
     "Google redirects",
     "Google Drive",

@@ -281,6 +281,8 @@ def narrate(name: str, args: dict[str, Any]) -> str:
         return f"Searching the web for \u201c{str(args.get('query', ''))[:80]}\u201d"
     if name == "web_fetch":
         return f"Reading {str(args.get('url', ''))[:120]}"
+    if name == "search_files":
+        return f"Searching your files for \u201c{str(args.get('query', ''))[:80]}\u201d"
     return f"Using {name}"
 
 
@@ -422,6 +424,7 @@ def _bot_handle(session: Session, provider: str) -> str:
 
 
 # Tools that change something on the owner's behalf besides propose_action: not in a turn that read a file (#511).
+WEB_TOOLS = frozenset({"web_search", "web_fetch"})
 FILE_TURN_REFUSED = frozenset({"create_reminder", "update_reminder", "cancel_reminder"})
 
 
@@ -472,6 +475,7 @@ class OwnerTurn:
         self.pruned = 0  # citation marks removed from sentences their source does not back (verify.prune_marks)
         self.returned_uris: set[str] = set()  # ava:// sources tools actually returned this turn
         self.recall_hits = 0
+        self.web_used: dict[str, int] = {}
         self.handoff = False  # the owner asked, in a channel, for something answered in their DM (#509)
         self.ok_tools: set[str] = set()  # tools that succeeded this turn (an action claim needs one)
         self._pending_before: set[Any] | None = None  # approvals already waiting when the turn began
@@ -816,14 +820,53 @@ class OwnerTurn:
                 return f"Unknown tool {name!r}.", True
             self.notes.append(f"calendar:{name}")
             return calendar.run_tool(self.s, self.sender, name, args, tainted=self.tainted)
+        if name == "search_files":
+            return self._search_files(args)
         # Tools Superaide runs for models that can't (ADR 0007): web search and fetch.
         run = getattr(self.llm, "run_substitute", None)
+        if name in WEB_TOOLS and run is not None:
+            limit = self._web_limits()[name]
+            if self.web_used.get(name, 0) >= limit:  # the owner's per-step cap, enforced here, not by the prompt
+                audit(self.s, "web", "limit_reached", tool=name, limit=limit)
+                return (
+                    f"Stopped: {name} reached its limit of {limit} for this step. Tell the owner which setting it "
+                    "was and where to change it (Capabilities, Web research).",
+                    True,
+                )
+            self.web_used[name] = self.web_used.get(name, 0) + 1
         if run is not None and (out := run(name, args)) is not None:
-            if name in {"web_search", "web_fetch"}:
+            if name in WEB_TOOLS:
                 self.tainted = True  # web text entered the turn
                 self.notes.append(name)
+                self._audit_web(name, args, out)
             return out
         return f"Unknown tool {name!r}.", True
+
+    def _audit_web(self, name: str, args: dict[str, Any], out: tuple[Any, bool]) -> None:
+        """Reads are cheap, so each one is a line in the audit log: which tool, where (the host only, never the
+        query text, which can be private) and how many results."""
+        from urllib.parse import urlsplit
+
+        content, is_error = out
+        detail: dict[str, Any] = {"tool": name, "error": bool(is_error)}
+        if name == "web_fetch":
+            detail["host"] = (urlsplit(str(args.get("url", "")).strip()).hostname or "")[:200]
+        else:
+            detail["query_chars"] = len(str(args.get("query", "")))
+        detail["results"] = len(content) if isinstance(content, list) else 0
+        audit(self.s, "web", "web_read", **detail)
+
+    def _search_files(self, args: dict[str, Any]) -> tuple[Any, bool]:
+        """The owner's own shared files and pages, by meaning and keywords. Owner only (not offered in channels)."""
+        from superaide.memory.recall.retrieval import search_files
+
+        found = search_files(self.s, self.aud, str(args.get("query", "")), file=str(args.get("file") or ""))
+        audit(self.s, "files", "search_files", results=len(found))
+        self.notes.append(f"search_files:{len(found)}")
+        self.found.update((src.uri, src) for src in found)
+        if not found:
+            return "Nothing in the owner's shared files matched. Say so; don't guess.", False
+        return search_results(found), False
 
     def _moment(self, moment: str, day_of: datetime | None = None) -> tuple[datetime, str] | str:
         """The moment in the owner's words, or why it couldn't be read. With `day_of`, a bare time
