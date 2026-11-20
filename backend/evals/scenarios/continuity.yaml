@@ -9,7 +9,6 @@
   category: continuity
   severity: high
   based_on: '#643: "yes please" after "Would you like to read what Zeeshan wrote?" got a greeting'
-  known_gap: "#643: only the label and the first 160 characters of a tool result reach the next turn"
   title: The id a tool showed last turn is in the prompt of the next one
   world: {triage_model: true}
   turns:
@@ -26,6 +25,7 @@
     - say: "yes please"
       expect:
         - prior_ids_in_prompt: true
+        - prompt_includes: ["The owner said yes to your offer: read what Zeeshan wrote"]
 
 - id: continuity-slack-thread-under-ava
   category: continuity

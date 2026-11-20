@@ -53,6 +53,7 @@ from superaide.reception.api import (
     QUOTE_MARK,
     RELAY_TOOL,
     awareness_line,
+    inbox_referents,
     inbox_report,
     relay_pending,
     relay_request,
@@ -211,6 +212,8 @@ class LoopResult:
     steps: int = 0
     activity: list[dict[str, str]] = field(default_factory=list)  # what Ava did, in order, for the UI
     reasoning: str = ""
+    referents: list[dict[str, str]] = field(default_factory=list)  # what listings showed, for the next turn (#643)
+    offer: dict[str, Any] | None = None  # the single read "yes please" can accept next turn (#643)
 
 
 def narrate(name: str, args: dict[str, Any]) -> str:
@@ -470,6 +473,9 @@ class OwnerTurn:
         self.found: dict[str, Source] = {}  # notes and messages returned this turn, by uri
         self._known = ""  # the date, time zone and owner brief from the system prompt
         self.plan: taskplan.TaskPlan | None = None  # TASK_PROTOCOL_ENABLED: the plan that passed this turn
+        self.referents: list[dict[str, str]] = []  # what this turn's listings showed, for the next turn (#643)
+        self.offer: dict[str, Any] | None = None  # the one read the owner can accept with "yes please" (#643)
+        self._promise_retried = False
         self.plan_approved = False  # an approval was created under that plan (its line goes in the reply)
 
     # --- live progress ----------------------------------------------------------
@@ -684,6 +690,20 @@ class OwnerTurn:
                 result_hash=digest(content), turn_id=self.inbound.id,
             )  # fmt: skip
 
+    def _remember(self, found: list[dict[str, str]], *, tool: str, arg: str) -> None:
+        """Keep what a listing showed (never in a shared channel). Exactly one item makes an offer, and an offer
+        is only ever a read: a tool with any side effect is never one (#643)."""
+        from superaide.tooltrace.effects import is_read
+
+        if self.shared or not found:
+            return
+        self.referents.extend(found)
+        self.referents = self.referents[:10]
+        if len(found) == 1 and len(self.referents) == 1 and is_read(tool):
+            self.offer = {"tool": tool, "args": {arg: found[0]["id"]}, "effect": "read", "label": found[0]["label"]}
+        else:
+            self.offer = None
+
     def _observe(self, name: str, args: dict[str, Any], is_error: bool) -> None:
         from superaide.skills import signals
 
@@ -758,6 +778,7 @@ class OwnerTurn:
             assert self.sender.person is not None
             self.notes.append("inbox")
             report = inbox_report(self.s, zone(intentions.owner_zone(self.s, self.sender.person)), args)
+            self._remember(inbox_referents(self.s, args), tool="inbox", arg="id")
             if QUOTE_MARK in report:  # strangers' words entered the turn: information, never instructions
                 self.tainted = self.room_read = True
             return report, False
@@ -1163,6 +1184,15 @@ class OwnerTurn:
                 msgs = [*msgs, {"role": "assistant", "content": last.content}]
                 continue
             if last.stop_reason != "tool_use":
+                if self._unkept_promise(last):
+                    self._said = ""
+                    self.emit("retract", {})  # the draft already streamed to the chat is replaced
+                    msgs = [
+                        *msgs,
+                        {"role": "assistant", "content": last.content},
+                        {"role": "user", "content": capabilities.PROMISE_RETRY},
+                    ]
+                    continue
                 return self._finish(system, tools, msgs, last, step + 1)
             self._narrated()
             results = []
@@ -1372,6 +1402,20 @@ class OwnerTurn:
             return None
         return step
 
+    def _unkept_promise(self, last: StepResult) -> bool:
+        """The reply promises a lookup ("Let me fetch the message") and no tool ran in this turn: ask once for the
+        call or a plain "I can't" (#643). Not in a rehearsal, not past the step limit."""
+        if self._promise_retried or self._seq or self.replay is not None:
+            return False
+        if any(b.get("type") in {"tool_use", "server_tool_use"} for b in last.content):
+            return False
+        text = " ".join(str(b.get("text") or "") for b in last.content if b.get("type") == "text")
+        if not capabilities.promises_lookup(text):
+            return False
+        self._promise_retried = True
+        self.notes.append("promise_retry")
+        return True
+
     def _narrated(self) -> None:
         """The text of a step that went on to use tools was Ava saying what she's doing, not her answer."""
         said = self._said.strip()
@@ -1439,6 +1483,10 @@ class OwnerTurn:
         text, removed = capabilities.strip_claims(
             text, self.ok_tools, can_send=gmail_skill.can_draft(self.s), pending=relay_pending(self.s)
         )
+        if not self._seq and self.replay is None:  # no tool ran: a sentence promising a lookup is not left standing
+            text, kept = capabilities.strip_promises(text)
+            if kept:
+                notes.append(f"promise_replaced:{kept}")
         if removed:
             notes.append(f"claim_removed:{len(removed)}")
             audit(self.s, "brain", "action_claim_removed", kinds=sorted(set(removed)))
@@ -1455,4 +1503,6 @@ class OwnerTurn:
         text = self._no_hedged_approvals(text)
         if self.plan_approved and self.plan is not None and "approval_withdrawn:hedge" not in notes:
             text = text + "\n\n" + taskplan.plan_line(self.plan)
-        return LoopResult(text, sources, notes, self.tainted, steps, self.activity, self.reasoning.strip())
+        return LoopResult(
+            text, sources, notes, self.tainted, steps, self.activity, self.reasoning.strip(), self.referents, self.offer
+        )

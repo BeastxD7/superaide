@@ -336,3 +336,43 @@ def strip_false_denials(text: str, *, private_on: bool) -> tuple[str, int]:
     if not removed:
         return text, 0
     return "\n".join([*kept, CHANNEL_POLICY]), removed
+
+
+# --- promises of a lookup that was not made (#643) ------------------------------------------------
+
+PROMISE_RETRY = (
+    "You said you would look something up, but you called no tool. Call the tool now, or tell the owner plainly "
+    "that you cannot. Do not promise it again."
+)
+PROMISE_REPLACED = "I haven't looked that up yet, so I have nothing to report. Ask me again and I will."
+_PROMISE = re.compile(
+    r"\b(?:let me|i(?:'ll| will)(?: now)?|i(?:'m| am) going to|i(?:'m| am) about to)\s+(?:now\s+|just\s+|quickly\s+)?"
+    r"(?:fetch|read|look\s+up|look\s+at|look\s+into|check(?!\s+with)|pull\s+up|find|search|open)\b",
+    re.I,
+)
+_OFFER = re.compile(r"\b(?:if you(?:'d)? (?:like|want)|would you like|do you want|want me to|shall i|should i)\b", re.I)
+
+
+def _sentences(text: str) -> list[str]:
+    return re.findall(r"[^.!?\n]+[.!?]*\s*", text or "")
+
+
+def promises_lookup(text: str) -> bool:
+    """A sentence that says she is about to read, fetch or check something: a promise, not an offer or a question."""
+    return any(
+        _PROMISE.search(sent) and not _OFFER.search(sent) and not sent.rstrip().endswith("?")
+        for sent in _sentences(text)
+    )
+
+
+def strip_promises(text: str) -> tuple[str, int]:
+    """Each such sentence replaced by one plain statement (once); how many were replaced."""
+    out, n = [], 0
+    for sent in _sentences(text):
+        if _PROMISE.search(sent) and not _OFFER.search(sent) and not sent.rstrip().endswith("?"):
+            if n == 0:
+                out.append(PROMISE_REPLACED + " ")
+            n += 1
+        else:
+            out.append(sent)
+    return ("".join(out).strip() if n else text), n
