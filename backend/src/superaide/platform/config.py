@@ -515,6 +515,10 @@ class Settings(BaseSettings):
     linear_token: str = ""
     # The owner's Google Drive sign-in (same OAuth client); kept per instance in the vault (#667).
     drive_refresh_token: str = ""
+    # Microsoft 365 (#668): the owner's own Entra app registration and the Outlook mail sign-in (per-instance vault).
+    microsoft_client_id: str = ""
+    microsoft_client_secret: str = ""
+    microsoft_mail_refresh_token: str = ""
 
     # "Ask my Ava" link (docs/research/AGI era growth ideas.md, idea 1). Off: /p/ask/* and
     # /app/ask-link/* answer 404 (owner routes still 401/403 first). On: an owner can publish a

@@ -213,6 +213,22 @@ def create_app(agent: Agent | None = None) -> FastAPI:
             event="notion_read_settings",
         )
     )
+    from superaide.integrations.microsoft import settings as microsoft_settings
+    from superaide.integrations.microsoft.routes import make_callback_router as make_microsoft_callback_router
+    from superaide.integrations.microsoft.routes import make_router as make_microsoft_router
+
+    app.include_router(make_microsoft_router(get_agent))
+    app.include_router(make_microsoft_callback_router())
+    app.include_router(
+        make_github_limits_router(
+            prefix="microsoft-mail",
+            skill_id=microsoft_settings.SKILL_ID,
+            choices=microsoft_settings.CHOICES,
+            tag="Owner: Outlook",
+            what="Outlook limits",
+            event="m365_mail_read_settings",
+        )
+    )
     from superaide.integrations.linear import settings as linear_settings
     from superaide.integrations.linear.routes import make_router as make_linear_router
 

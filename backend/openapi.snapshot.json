@@ -767,27 +767,6 @@
         "title": "ClearBody",
         "type": "object"
       },
-      "ClientBody": {
-        "properties": {
-          "name": {
-            "maxLength": 60,
-            "minLength": 1,
-            "title": "Name",
-            "type": "string"
-          },
-          "scope": {
-            "default": "public",
-            "pattern": "^(public|owner)$",
-            "title": "Scope",
-            "type": "string"
-          }
-        },
-        "required": [
-          "name"
-        ],
-        "title": "ClientBody",
-        "type": "object"
-      },
       "CommitmentBody": {
         "additionalProperties": false,
         "properties": {
@@ -1879,6 +1858,28 @@
           "password"
         ],
         "title": "LoginBody",
+        "type": "object"
+      },
+      "MicrosoftMailSettingsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "max_recipients": {
+            "title": "Max Recipients"
+          },
+          "read_chars": {
+            "title": "Read Chars"
+          },
+          "reads_per_hour": {
+            "title": "Reads Per Hour"
+          },
+          "search_limit": {
+            "title": "Search Limit"
+          },
+          "write_chars": {
+            "title": "Write Chars"
+          }
+        },
+        "title": "MicrosoftMailSettingsBody",
         "type": "object"
       },
       "NotionSettingsBody": {
@@ -3047,6 +3048,20 @@
         "title": "SendBody",
         "type": "object"
       },
+      "SendingBody": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "SendingBody",
+        "type": "object"
+      },
       "ShareBody": {
         "properties": {
           "days": {
@@ -3903,6 +3918,27 @@
         "title": "SettingsBody",
         "type": "object"
       },
+      "superaide__features__memsocket__routes__ClientBody": {
+        "properties": {
+          "name": {
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "scope": {
+            "default": "public",
+            "pattern": "^(public|owner)$",
+            "title": "Scope",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ClientBody",
+        "type": "object"
+      },
       "superaide__features__mirror__routes__FeedbackBody": {
         "properties": {
           "action": {
@@ -4252,6 +4288,29 @@
           "token"
         ],
         "title": "TokenBody",
+        "type": "object"
+      },
+      "superaide__integrations__microsoft__routes__ClientBody": {
+        "additionalProperties": false,
+        "properties": {
+          "client_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Client Id",
+            "type": "string"
+          },
+          "client_secret": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Client Secret",
+            "type": "string"
+          }
+        },
+        "required": [
+          "client_id",
+          "client_secret"
+        ],
+        "title": "ClientBody",
         "type": "object"
       },
       "superaide__integrations__notion__routes__TokenBody": {
@@ -12670,7 +12729,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ClientBody"
+                "$ref": "#/components/schemas/superaide__features__memsocket__routes__ClientBody"
               }
             }
           },
@@ -12852,6 +12911,267 @@
         "summary": "Conversation history",
         "tags": [
           "Owner: chat & notebook"
+        ]
+      }
+    },
+    "/app/microsoft-mail/read-settings": {
+      "get": {
+        "description": "The owner's limits for Outlook limits, every allowed value and what it means (defaults until installed).",
+        "operationId": "get_settings_app_microsoft_mail_read_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Settings App Microsoft Mail Read Settings Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Outlook limits: your settings",
+        "tags": [
+          "Owner: Outlook"
+        ]
+      },
+      "put": {
+        "description": "Changes any of the settings. Each change is audited.",
+        "operationId": "put_settings_app_microsoft_mail_read_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MicrosoftMailSettingsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Put Settings App Microsoft Mail Read Settings Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Outlook limits: change your settings",
+        "tags": [
+          "Owner: Outlook"
+        ]
+      }
+    },
+    "/app/microsoft/mail": {
+      "delete": {
+        "description": "Deletes the stored sign-in (the app stays saved).",
+        "operationId": "disconnect_app_microsoft_mail_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Disconnect App Microsoft Mail Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Disconnect Outlook",
+        "tags": [
+          "Owner: Outlook"
+        ]
+      },
+      "get": {
+        "description": "Installed, app saved, connected and sending.",
+        "operationId": "status_app_microsoft_mail_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Status App Microsoft Mail Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Outlook capability status",
+        "tags": [
+          "Owner: Outlook"
+        ]
+      }
+    },
+    "/app/microsoft/mail/client": {
+      "put": {
+        "description": "The application (client) id and a client secret of an Entra app registration you made: redirect URI <app address>/api/app/microsoft/callback, delegated permissions Mail.Read, Mail.Send, offline_access and User.Read. Stored encrypted; the answer carries only hints.",
+        "operationId": "save_client_app_microsoft_mail_client_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/superaide__integrations__microsoft__routes__ClientBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Save Client App Microsoft Mail Client Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Save your Microsoft app",
+        "tags": [
+          "Owner: Outlook"
+        ]
+      }
+    },
+    "/app/microsoft/mail/connect": {
+      "post": {
+        "description": "Returns a Microsoft sign-in URL asking to read mail (Mail.Read). Save your app first.",
+        "operationId": "connect_app_microsoft_mail_connect_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Connect App Microsoft Mail Connect Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Connect Outlook mail (read-only)",
+        "tags": [
+          "Owner: Outlook"
+        ]
+      }
+    },
+    "/app/microsoft/mail/sending": {
+      "post": {
+        "description": "On: Ava may ask your approval to reply to an email or send a new one. If Microsoft hasn't allowed Mail.Send yet, the answer carries `url`, a sign-in asking for it. Nothing is sent without your yes.",
+        "operationId": "sending_app_microsoft_mail_sending_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendingBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Sending App Microsoft Mail Sending Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Turn Outlook sending on or off",
+        "tags": [
+          "Owner: Outlook"
         ]
       }
     },

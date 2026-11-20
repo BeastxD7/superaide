@@ -110,6 +110,25 @@ def notion_line(session: Session) -> str:
     return "Notion: connected, read-only: you can search and read the chosen pages. Drafts are off."
 
 
+def outlook_line(session: Session) -> str:
+    from superaide.integrations.microsoft import mail
+
+    st = mail.status(session)
+    if not st["installed"]:
+        return "Outlook mail: not added. The owner can add it under Capabilities → Outlook."
+    if not st["connected"]:
+        return (
+            "Outlook mail: added but not connected. To connect: Capabilities → Outlook → save the Microsoft app, "
+            "then sign in."
+        )
+    if st["sending"] and st["send_granted"]:
+        return (
+            "Outlook mail: connected: you can search and read the owner's Outlook inbox, and ask the owner to approve "
+            "a reply or a new email (m365_mail_reply, m365_mail_compose)."
+        )
+    return "Outlook mail: connected, read-only: you can search and read the owner's Outlook inbox. Sending is off."
+
+
 def linear_line(session: Session) -> str:
     from superaide.integrations.linear import skill as linear
 
@@ -217,6 +236,7 @@ def block(session: Session, *, tz: str, web: bool) -> str:
         "What you can do right now (from the app's own state, authoritative; answer 'what can you do?' from it):",
         "- " + gmail_line(session, tz),
         "- " + calendar_line(session),
+        "- " + outlook_line(session),
         "- " + github_line(session),
         "- " + notion_line(session),
         "- " + linear_line(session),

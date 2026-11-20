@@ -41,6 +41,9 @@ KINDS: dict[str, KindInfo] = {
     "calendar_decline_event": KindInfo(
         "Decline a calendar event", "Declines the invitation in your Google Calendar.", True
     ),
+    "m365_mail_send": KindInfo(
+        "Send an Outlook email", "Sends exactly the email shown, from your Outlook mailbox.", True
+    ),
     "github_create_issue": KindInfo(
         "Open a GitHub issue", "Opens the new issue in that repository, with exactly the text shown.", True
     ),
