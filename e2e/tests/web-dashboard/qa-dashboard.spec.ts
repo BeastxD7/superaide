@@ -310,10 +310,10 @@ test.describe('dashboard: people', () => {
   test('lists the people from the introduction, VIPs marked', async ({ page, owner }) => {
     void owner
     await page.goto('/dashboard/people')
-    const priya = page.getByRole('row').filter({ hasText: 'Priya' })
+    const priya = page.getByRole('list', { name: 'Your people' }).getByRole('listitem').filter({ hasText: 'Priya' })
     await expect(priya).toContainText('Partner')
     await expect(priya).toContainText('VIP')
-    await expect(page.getByRole('row').filter({ hasText: 'Arjun' })).not.toContainText('VIP')
+    await expect(page.getByRole('list', { name: 'Your people' }).getByRole('listitem').filter({ hasText: 'Arjun' })).not.toContainText('VIP')
   })
 
   test('chat still works after the People list fails to load', async ({ page, owner }) => {
