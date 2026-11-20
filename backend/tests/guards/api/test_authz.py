@@ -345,6 +345,26 @@ def test_the_github_routes_are_owner_routes(app, browser, owner):
         assert stranger.request(method, path, json={}).status_code == 403
 
 
+# --- the Google Drive capability (/app/drive, #667) --------------------------------------------
+
+DRIVE_ROUTES = {
+    ("GET", "/app/drive"),
+    ("POST", "/app/drive/connect"),
+    ("POST", "/app/drive/drafts"),
+    ("GET", "/app/drive/read-settings"),
+    ("PUT", "/app/drive/read-settings"),
+}
+
+
+def test_the_drive_routes_are_owner_routes(app, browser, owner):
+    assert DRIVE_ROUTES <= set(owner_routes(app))  # so every check above covers them too
+    stranger = browser()
+    signup(stranger, name="Mallory Tan", email="mallory@example.com")
+    for method, path in DRIVE_ROUTES:
+        assert browser().request(method, path, json={}).status_code == 401
+        assert stranger.request(method, path, json={}).status_code == 403
+
+
 def test_an_owner_cannot_attach_an_address_to_someone_who_isnt_their_contact(owner):
     with session_scope() as s:
         someone = Person(display_name="Priya Tan", relation="contact")  # a Person, but not the owner's contact

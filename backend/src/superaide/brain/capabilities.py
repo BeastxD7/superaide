@@ -92,6 +92,22 @@ def github_line(session: Session) -> str:
     return "GitHub: connected, read-only: you can search and read issues and pull requests. Drafts are off."
 
 
+def drive_line(session: Session) -> str:
+    from superaide.integrations.drive import skill as drive
+
+    st = drive.status(session)
+    if not st["installed"]:
+        return "Google Drive: not added. The owner can add it under Capabilities → Google Drive."
+    if not st["connected"]:
+        return "Google Drive: added but not connected. To connect: Capabilities → Google Drive → Connect."
+    if drive.can_write(session):
+        return (
+            "Google Drive: connected: you can search and read Docs and Sheets, and ask the owner to approve a new "
+            "Doc or Sheet or text added to a Doc you made (drive_create_file, drive_append_doc)."
+        )
+    return "Google Drive: connected, read-only: you can search and read Docs and Sheets. Drafts are off."
+
+
 def card_line(session: Session) -> str:
     """The share card, from the database (#475): what strangers are told about the owner, and the one honest answer
     to "share my name" / "tell people where I work": she cannot change it in chat, here is where."""
@@ -166,6 +182,7 @@ def block(session: Session, *, tz: str, web: bool) -> str:
         "- " + gmail_line(session, tz),
         "- " + calendar_line(session),
         "- " + github_line(session),
+        "- " + drive_line(session),
         "- Web search: " + ("on." if web else "off (the Web skill is not added)."),
         "- Reminders: always available (create, list, move, cancel).",
         *(["- " + shared] if (shared := card_line(session)) else []),
@@ -220,6 +237,8 @@ def shared_block(session: Session, *, web: bool) -> str:
             f"({cal}), GitHub, the reminder list, and the status of approvals. These tools EXIST and may be set up; "
             "they "
             "are not used in this room because other people can read your reply.",
+            f"({cal}), Google Drive, the reminder list, and the status of approvals. These tools EXIST and may be set "
+            "up; they are not used in this room because other people can read your reply.",
             "- When asked about any of them: say it is a channel privacy rule, not a missing connection, and offer "
             "to answer in a direct message. Never say you have no access, no email tool or no capabilities list, "
             "and never suggest the owner's setup is wrong.",
@@ -258,6 +277,8 @@ _CLAIMS: list[tuple[re.Pattern[str], set[str], str]] = [
             "decline_event",
             "github_create_issue",
             "github_comment",
+            "drive_create_file",
+            "drive_append_doc",
         },
         "an approval",
     ),

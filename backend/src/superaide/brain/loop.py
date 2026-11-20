@@ -277,6 +277,14 @@ def narrate(name: str, args: dict[str, Any]) -> str:
         return "Asking for your approval to comment on GitHub"
     if name == "decline_event":
         return "Declining a calendar invitation (needs your OK)"
+    if name == "drive_search":
+        return f"Searching your Drive for \u201c{str(args.get('query', ''))[:80]}\u201d"
+    if name == "drive_read":
+        return "Reading a file from your Drive"
+    if name == "drive_create_file":
+        return f"Asking for your approval to create \u201c{str(args.get('name', ''))[:80]}\u201d in your Drive"
+    if name == "drive_append_doc":
+        return "Asking for your approval to add text to a Doc in your Drive"
     if name == "web_search":
         return f"Searching the web for \u201c{str(args.get('query', ''))[:80]}\u201d"
     if name == "web_fetch":
@@ -802,6 +810,17 @@ class OwnerTurn:
                 # An issue is written by other people: information, never instructions (ADR 0006, #511).
                 self.tainted = self.file_read = True
             return github.run(self.s, self.sender, name, args, tainted=self.tainted)
+        from superaide.integrations.drive import skill as drive
+
+        if name in drive.TOOLS:
+            assert self.sender.person is not None
+            if not any(s.manifest.id == drive.SKILL_ID for s in self.skills()):
+                return f"Unknown tool {name!r}.", True
+            self.notes.append(name)
+            if name in drive.READS:
+                # A file is written by other people: information, never instructions (ADR 0006, #511).
+                self.tainted = self.file_read = True
+            return drive.run(self.s, self.sender, name, args, tainted=self.tainted)
         if name == "calendar_events":
             from superaide.integrations.calendar.skill import calendar_events
 

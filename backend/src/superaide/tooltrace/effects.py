@@ -19,6 +19,8 @@ EFFECTS: dict[str, str] = {
     "gmail_read_thread": "read_private",
     "github_search": "read_private",
     "github_read": "read_private",
+    "drive_search": "read_private",
+    "drive_read": "read_private",
     "web_search": "read_public",
     "web_fetch": "read_public",
     "create_reminder": "write_own",
@@ -32,8 +34,11 @@ EFFECTS: dict[str, str] = {
     "decline_event": "send",
     "github_create_issue": "write_external",
     "github_comment": "write_external",
+    "drive_create_file": "write_external",
+    "drive_append_doc": "write_external",
     "gmail_send": "send",
     "gmail_compose": "send",
+    "visitor_booking": "write_external",  # opens an approval card; the event is created only after the owner approves
     "relay_message": "send",  # opens an approval card; the message goes only after the owner approves it
 }
 

@@ -536,6 +536,55 @@ def ai_key(ctx: Context) -> list[Result]:
     return [Result(name, status, keyhealth.CAUSES[reason], keyhealth.FIXES[reason])]
 
 
+@check("Google Drive")
+def google_drive(ctx: Context) -> list[Result]:
+    """Google Drive (#667): nothing to say until the capability is added; then it is connected, the Drive API is on in
+    the owner's Google project, and drafts have the permission they need. One cheap read; no file is touched."""
+    from superaide.integrations.drive import client as api
+    from superaide.integrations.drive import skill as drive
+    from superaide.integrations.google import client as google
+
+    name = "Google Drive"
+    where = "Capabilities → Google Drive"
+    try:
+        from superaide.platform.db.session import session_scope
+
+        with session_scope() as s:
+            st = drive.status(s)
+            if not st["installed"]:
+                return [Result(name, OK, "Not added (Google Drive is optional).")]
+            if not st["connected"]:
+                return [
+                    Result(name, WARN, "Google Drive is added but not connected.", f"Open {where} and press Connect.")
+                ]
+            if st["drafts"] and not st["drafts_allowed"]:
+                return [
+                    Result(
+                        name,
+                        WARN,
+                        "Drive drafts are on but Google has not allowed Ava to make files (drive.file).",
+                        f"Open {where}, turn drafts off and on again, and tick the box on Google's screen.",
+                    )
+                ]
+            tok = drive.token(s)
+        api.search(ctx.client(), tok, api.query_for(""), 1)
+    except google.ApiDisabled:
+        return [
+            Result(
+                name,
+                FAIL,
+                "The Google Drive API is not switched on in your Google project.",
+                "In Google Cloud open APIs & Services, Library, Google Drive API, press Enable (and Google Docs API "
+                "if you use drafts).",
+            )
+        ]
+    except (google.GoogleError, drive.NotReady) as exc:
+        return [Result(name, WARN, str(exc)[:200], f"Reconnect Google Drive under {where}.")]
+    except Exception:  # no database here (the command-line doctor before setup): nothing to say
+        return [Result(name, OK, "Not checked (no database).")]
+    return _ok(name)
+
+
 @check("Photo reading")
 def photo_reading(ctx: Context) -> list[Result]:
     """Says so when photos go to Claude by default (nobody chose it), so the owner can turn it off (#511)."""
@@ -612,6 +661,7 @@ IN_APP_CHECKS = (
     "Public address",
     "Google redirects",
     "GitHub",
+    "Google Drive",
     "Spend cap",
 )
 

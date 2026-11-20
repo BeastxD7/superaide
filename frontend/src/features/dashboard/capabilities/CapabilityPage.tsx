@@ -15,6 +15,8 @@ import { GithubPanel } from '@/features/dashboard/connections/GithubPanel'
 import { GmailPanel } from '@/features/dashboard/connections/GmailPanel'
 import { ConnectorSettings } from '@/features/dashboard/connections/ConnectorSettings'
 import { GmailDrafts } from '@/features/dashboard/connections/GmailDrafts'
+import { DriveDrafts } from '@/features/dashboard/connections/DriveDrafts'
+import { DrivePanel } from '@/features/dashboard/connections/DrivePanel'
 import { GmailReadSettings } from '@/features/dashboard/connections/GmailReadSettings'
 import { SettingRow } from '@/features/dashboard/settings/SettingRow'
 import { SettingsSection } from '@/features/dashboard/settings/SettingsSection'
@@ -51,6 +53,7 @@ export function CapabilityPage({ slug, page }: { slug: string; page?: string }) 
         <>
           {slug === 'gmail' && <GmailPanel name={name} />}
           {slug === 'github' && <GithubPanel name={name} />}
+          {slug === 'drive' && <DrivePanel name={name} />}
           {slug === 'calendar' && card?.google_connected === false && (
             <Notice tone="warn">
               Google isn&apos;t connected, so Ava can&apos;t see your calendar yet.{' '}
@@ -82,6 +85,10 @@ export function CapabilityPage({ slug, page }: { slug: string; page?: string }) 
         <ConnectorSettings path="github" title={`How ${name} uses your GitHub`} anchor="github" />
       ) : page === 'use' && slug === 'web' ? (
         <ConnectorSettings path="web" title={`How ${name} uses the web`} anchor="web" />
+      ) : page === 'limits' && slug === 'drive' ? (
+        <ConnectorSettings path="drive" title={`How ${name} uses your Drive`} anchor="drive" />
+      ) : page === 'drafts' && slug === 'drive' ? (
+        <DriveDrafts name={name} />
       ) : page === 'reading' && slug === 'calendar' ? (
         <ConnectorSettings path="calendar" title={`What ${name} may read in your calendar`} anchor="calendar" />
       ) : page === 'reading' ? (

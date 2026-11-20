@@ -34,9 +34,8 @@ export function ContactPage() {
   const { data, error, reload } = useResource<ContactRecord>(`/people/${id}`)
   const name = me?.agent.name ?? 'Ava'
   return (
-    <div className="flex-1 overflow-y-auto focus-visible:outline-2 focus-visible:-outline-offset-2" tabIndex={0} role="region" aria-label="Person">
-      <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 lg:py-8">
-        <Link href="/dashboard/people" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink">
+    <div className="max-w-3xl py-4">
+        <Link href="/dashboard/people" className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink @3xl/md:hidden">
           <ArrowLeft className="size-4" aria-hidden /> People
         </Link>
         {error && !data ? (
@@ -48,7 +47,6 @@ export function ContactPage() {
         ) : (
           <Record key={data.id} record={data} assistant={name} reload={reload} />
         )}
-      </div>
     </div>
   )
 }

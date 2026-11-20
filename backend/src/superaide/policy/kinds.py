@@ -47,6 +47,12 @@ KINDS: dict[str, KindInfo] = {
     "github_comment": KindInfo(
         "Comment on GitHub", "Adds exactly the comment shown to that issue or pull request.", True
     ),
+    "drive_create_file": KindInfo(
+        "Create a Google Doc or Sheet", "Creates the new file in your Google Drive, with exactly the text shown.", True
+    ),
+    "drive_append_doc": KindInfo(
+        "Add text to a Google Doc", "Adds exactly the text shown to the end of that Doc (a Doc Ava made).", True
+    ),
     "ask_reply": KindInfo(
         "Reply to someone from your Ask link",
         "Marks the request answered and gives you the text; you send it yourself (Superaide cannot send it).",
@@ -61,6 +67,12 @@ KINDS: dict[str, KindInfo] = {
     "relay_message": KindInfo(
         "Send a message to someone who wrote to Ava",
         "Sends exactly the text on the card to that person, in their own Telegram or Slack chat with Ava.",
+        True,
+    ),
+    "visitor_booking": KindInfo(
+        "Book time with someone who wrote to Ava",
+        "Adds a private event at the time on the card to your Google Calendar, invites them only if they gave an "
+        "email, and tells them in their chat with Ava.",
         True,
     ),
     "message_someone_else": KindInfo(

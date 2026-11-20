@@ -6,9 +6,9 @@ import { cn } from '@/lib/utils'
 //
 //   reading  48rem   prose and single-column forms: lines stay at a comfortable measure
 //   form     56rem   settings-style pages with labelled fields
-//   list     72rem   cards and lists that may sit two or three across
-//   wide     100rem  dashboards, tables and boards; stops here on very large monitors (2560) because a row of cards
-//                    wider than this is not scanned any faster, and the empty margins are calmer than stretched cards
+//   list     96rem   cards and lists that may sit two or three across
+//   wide     120rem  dashboards, tables and boards; stops here (1920px) and is centred beyond it,
+//                    so the owner's 1920 screens are filled and a 2560 one keeps calm margins
 //   full     none    master-detail screens and canvases that own the whole inset
 //
 // The content box switches layouts on its own width (container queries, `@3xl/page:`...) and not on the window's:
@@ -18,8 +18,8 @@ export type PageWidth = 'reading' | 'form' | 'list' | 'wide' | 'full'
 const PAGE_MAX: Record<PageWidth, string> = {
   reading: 'max-w-3xl',
   form: 'max-w-4xl',
-  list: 'max-w-6xl',
-  wide: 'max-w-[100rem]',
+  list: 'max-w-[96rem]',
+  wide: 'max-w-[120rem]',
   full: 'max-w-none',
 }
 
@@ -64,12 +64,14 @@ export function PageHeader({
   description,
   actions,
   sticky = false,
+  as: Heading = 'h1',
   className,
 }: {
   title: ReactNode
   description?: ReactNode
   actions?: ReactNode
   sticky?: boolean
+  as?: 'h1' | 'h2' // a page that shows another h1 beside this one (a list with a person open) uses h2
   className?: string
 }) {
   return (
@@ -84,7 +86,7 @@ export function PageHeader({
       )}
     >
       <div className="min-w-0">
-        <h1 className={cn('font-medium text-ink tight', sticky ? 'text-2xl' : 'text-3xl')}>{title}</h1>
+        <Heading className={cn('font-medium text-ink tight', sticky ? 'text-2xl' : 'text-3xl')}>{title}</Heading>
         {description && !sticky && <p className="mt-1 max-w-[70ch] text-body">{description}</p>}
       </div>
       {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
