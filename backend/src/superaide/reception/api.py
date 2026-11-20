@@ -3,6 +3,7 @@
 from superaide.platform.sandbox_guard import active as sandbox_active
 from superaide.reception.card import FIELDS, HELP, PLACE, RULES, SETTINGS_PATH
 from superaide.reception.inbox import INBOX_TOOL, QUOTE_MARK, awareness_line
+from superaide.reception.inbox import referents as inbox_referents
 from superaide.reception.inbox import report as inbox_report
 from superaide.reception.relay import RELAY_TOOL
 from superaide.reception.relay import pending_sentences as relay_pending
@@ -33,6 +34,7 @@ __all__ = [
     "relay_request",
     "relay_pending",
     "awareness_line",
+    "inbox_referents",
     "inbox_report",
     "PLACE",
     "RULES",
