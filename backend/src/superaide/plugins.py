@@ -18,6 +18,7 @@ import superaide.identity.claims  # noqa: F401  (EXECUTORS["identity_claim_pick"
 import superaide.integrations.calendar.skill  # noqa: F401  (the calendar executors)
 import superaide.integrations.gmail.skill  # noqa: F401  (EXECUTORS["gmail_send"], DISCARDERS["gmail_send"])
 import superaide.memory.knowledge.connector_facts  # noqa: F401  (subscribes to SkillRemoved, CalendarEventsRead, MailIngested)
+import superaide.reception.booking  # noqa: F401  (EXECUTORS["visitor_booking"])
 import superaide.reception.relay  # noqa: F401  (EXECUTORS["relay_message"])
 import superaide.skills.receipts  # noqa: F401  (subscribes to ApprovalDecided)
 import superaide.triage.buttons  # noqa: F401  (PRESS_HANDLERS["telegram"])

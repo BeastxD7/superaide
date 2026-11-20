@@ -58,12 +58,25 @@ class AskOwner(BaseModel):
     question: str = ""
 
 
+class ScheduleAsk(BaseModel):
+    """The visitor wants to meet (#496). Only a proposal: code reads free/busy, picks the times and says them."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    minutes: int = 30
+    day: str = ""  # the visitor's own words for the day ("Thursday", "next week"), or empty
+    timezone: str = ""  # an IANA zone name, only if the visitor said where they are
+    email: str = ""  # only if the visitor gave one
+    pick: int = 0  # the number (1-3) of a time the system offered, when they chose one
+
+
 class ReceptionTurn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     reply: str
     take_message: TakenMessage | None = None
     ask_owner: AskOwner | None = None
+    schedule: ScheduleAsk | None = None
 
 
 def first_name(owner: Person) -> str:
@@ -90,6 +103,16 @@ CAPABILITY_EMPTY = (
 )
 
 
+SCHEDULING_RULE = (
+    "- If they want to meet or speak with {owner_ref}, fill `schedule` (minutes: how long, 30 if not said; "
+    "day: their own words for the day, empty if none; timezone: an IANA name such as Europe/London only if they "
+    "said where they are; "
+    "email: only if they gave one) and say nothing about times: the system replies with real ones. When they choose "
+    "one of the numbered times the system offered, set `schedule.pick` to that number and nothing else. Never name, "
+    "guess or confirm a time yourself, and never say whether {owner_ref} is free or busy.\n"
+)
+
+
 def has_card(session: Session, owner: Person, rs: ReceptionSettings) -> bool:
     """Whether the owner has given anything real to share: public profile text, a public note, or a card value
     switched on. Ticked share options without values do not count, so the greeting never promises what Ava
@@ -108,11 +131,17 @@ def system_prompt(session: Session, owner: Person, rs: ReceptionSettings, agent_
 
     owner_ref = f"{first_name(owner)}" if rs.show_first_name and first_name(owner) else "the person you work for"
     capability = CAPABILITY_WITH_CARD if has_card(session, owner, rs) else CAPABILITY_EMPTY
+    from superaide.reception import booking
+
+    offers_times = booking.available(session)
+    if offers_times:
+        capability += " You can also offer times for a meeting: the system finds them, you never name one."
     persona = (
         PERSONA.read_text(encoding="utf-8")
         .replace("{capability}", capability)
         .replace("{agent_name}", agent_name)
         .replace("{owner_ref}", owner_ref)
+        .replace("{scheduling}", SCHEDULING_RULE.replace("{owner_ref}", owner_ref) if offers_times else "")
     )
     parts = ["Public information (all you may share):"]
     if rs.public_profile.strip():
