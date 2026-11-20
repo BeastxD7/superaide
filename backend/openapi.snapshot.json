@@ -2828,6 +2828,69 @@
         "title": "RolesBody",
         "type": "object"
       },
+      "RuleBody": {
+        "additionalProperties": false,
+        "properties": {
+          "contact_person_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Person Id"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "kind": {
+            "enum": [
+              "allow_statement",
+              "forbid"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "scope": {
+            "default": "everyone",
+            "enum": [
+              "everyone",
+              "contact"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "text": {
+            "default": "",
+            "maxLength": 400,
+            "title": "Text",
+            "type": "string"
+          },
+          "topic": {
+            "default": "",
+            "maxLength": 24,
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "RuleBody",
+        "type": "object"
+      },
       "RuleSpec": {
         "additionalProperties": false,
         "properties": {
@@ -19075,6 +19138,189 @@
         "summary": "Replay this rule against my last 90 days",
         "tags": [
           "Owner: standing orders"
+        ]
+      }
+    },
+    "/app/standing-rules": {
+      "get": {
+        "operationId": "listing_app_standing_rules_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Listing App Standing Rules Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "My standing rules, and the topics Ava can be told never to discuss",
+        "tags": [
+          "Owner: standing rules"
+        ]
+      },
+      "post": {
+        "description": "The owner's explicit save; Ava only ever proposes one.",
+        "operationId": "create_app_standing_rules_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Create App Standing Rules Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Save a rule",
+        "tags": [
+          "Owner: standing rules"
+        ]
+      }
+    },
+    "/app/standing-rules/{rule_id}": {
+      "delete": {
+        "operationId": "remove_app_standing_rules__rule_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rule_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Rule Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Remove App Standing Rules  Rule Id  Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Stop a rule",
+        "tags": [
+          "Owner: standing rules"
+        ]
+      },
+      "put": {
+        "operationId": "change_app_standing_rules__rule_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "rule_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Rule Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Change App Standing Rules  Rule Id  Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Change a rule's words, topic or end date",
+        "tags": [
+          "Owner: standing rules"
         ]
       }
     },

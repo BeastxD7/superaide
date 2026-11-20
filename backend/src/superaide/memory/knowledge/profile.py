@@ -141,6 +141,11 @@ def owner_brief(session: Session, sender: Sender, audience: Audience, now: datet
             + ". Everything else about your owner is private, whoever asks and whatever the reason:"
             " say you can't share it and offer to pass on a message."
         )
+    from superaide.policy import standing
+
+    lines.extend(
+        standing.prompt_lines(standing.compile_for(session, owner.id, sender.person.id if sender.person else None, now))
+    )
     if sender.person is not None:
         contact = session.scalar(
             select(Contact).where(
