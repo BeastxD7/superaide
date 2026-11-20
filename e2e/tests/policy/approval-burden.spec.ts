@@ -21,6 +21,7 @@ test('a card that is looked at and then answered is counted, and the owner sees 
   expect(decided).toMatchObject({ verdict: 'reject', opened: true })
 
   await page.reload()
+  await page.getByRole('tab', { name: 'Rules and insights' }).click()
   const card = page.getByTestId('burden-card')
   await expect(card).toBeVisible()
   await expect(card.getByText('How much am I being asked?')).toBeVisible()

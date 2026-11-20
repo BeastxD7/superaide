@@ -13,6 +13,7 @@ test('lists what ran on a mandate without asking', async ({ page, owner }) => {
     r.fulfill({ json: { mandates: [mandate], skipping: true, skips: [{ at: '2026-10-24T08:00:00Z', tool: 'create_event', summary: 'Add “Gym” to your calendar, Sun 25 Oct, 07:00–07:30' }] } }),
   )
   await page.goto('/dashboard/approvals')
+  await page.getByRole('tab', { name: 'Rules and insights' }).click()
   const box = page.getByTestId('mandate-skips')
   await expect(box).toContainText('Done on a mandate, without asking')
   await expect(box).toContainText('Add “Gym” to your calendar')
@@ -22,10 +23,12 @@ test('says so when nothing has been skipped yet, and shows no list while skippin
   void owner
   await page.route('**/api/app/mandates', (r) => r.fulfill({ json: { mandates: [mandate], skipping: true, skips: [] } }))
   await page.goto('/dashboard/approvals')
+  await page.getByRole('tab', { name: 'Rules and insights' }).click()
   await expect(page.getByTestId('mandate-skips')).toContainText('Nothing yet')
   await page.unroute('**/api/app/mandates')
   await page.route('**/api/app/mandates', (r) => r.fulfill({ json: { mandates: [mandate], skipping: false, skips: [] } }))
   await page.reload()
+  await page.getByRole('tab', { name: 'Rules and insights' }).click()
   await expect(page.getByText('What Ava may do without asking')).toBeVisible()
   await expect(page.getByTestId('mandate-skips')).toHaveCount(0)
 })
