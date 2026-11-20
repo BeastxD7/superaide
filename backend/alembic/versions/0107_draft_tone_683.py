@@ -1,7 +1,7 @@
 """draft_tone: owner tone setting for drafted replies (#683)
 
-Revision ID: 0106
-Revises: 0105
+Revision ID: 0107
+Revises: 0106
 Create Date: 2026-11-20 15:00:00.000000
 
 """
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0106"
-down_revision: str | Sequence[str] | None = "0105"
+revision: str = "0107"
+down_revision: str | Sequence[str] | None = "0106"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
