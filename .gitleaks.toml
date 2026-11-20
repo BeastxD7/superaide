@@ -74,3 +74,9 @@ description = "Made-up search key in an early commit of the web research tests (
 condition = "AND"
 paths = ['''(^|/)test_web_research\.py$''']
 regexes = ['''^BSA-secret-123456$''']
+
+[[allowlists]]
+description = "A made-up environment value in the MCP client tests (an early commit of the branch has it; the file no longer does)"
+condition = "AND"
+paths = ['''(^|/)tests/integrations/mcp/test_client\.py$''']
+regexes = ['''^abc123456789$''']

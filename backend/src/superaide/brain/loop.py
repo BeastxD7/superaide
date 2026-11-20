@@ -34,6 +34,7 @@ from superaide.intentions.when import clean_task, find_moment, names_a_day, zone
 from superaide.memory.audience import Audience
 from superaide.memory.models import Event
 from superaide.memory.recall.retrieval import (
+    DM_TITLE,
     ROOM_TITLE,
     VISITOR_MARK,
     VISITOR_TITLE,
@@ -672,6 +673,14 @@ class OwnerTurn:
         ]
         if self._protocol():
             tools.append(taskplan.PLAN_TOOL)
+        if (
+            not self.shared and self.sender.relation == "manager"
+        ):  # the owner's MCP servers (#666): never a room or visitor
+            from superaide.integrations.mcp.api import offered
+            from superaide.platform.db.session import session_scope
+
+            with session_scope() as cfg:  # its own short session, like _web_limits: tools() can outlive the turn's
+                tools.extend(offered(cfg))
         return [*(t for t in tools if t.get("name") in SHARED_TOOLS), HANDOFF_TOOL] if self.shared else tools
 
     def _protocol(self) -> bool:
@@ -748,13 +757,13 @@ class OwnerTurn:
             kinds = args.get("kinds")
             recalled = recall_scoped(
                 self.s, self.aud, str(args.get("query", "")), exclude_event=self.inbound.id,
-                channel=str(args.get("channel") or "") or None, rooms=not self.shared,
+                channel=str(args.get("channel") or "") or None, rooms=not self.shared, dms=not self.shared,
                 since=str(args.get("since") or ""), until=str(args.get("until") or ""),
                 person=str(args.get("person") or ""), kinds=[str(k) for k in kinds] if isinstance(kinds, list) else None,
                 asked=self.inbound.content or "",
             )  # fmt: skip
             found = recalled.sources
-            if any(src.title.startswith((ROOM_TITLE, VISITOR_TITLE)) for src in found):
+            if any(src.title.startswith((ROOM_TITLE, VISITOR_TITLE, DM_TITLE)) for src in found):
                 self.tainted = self.room_read = (
                     True  # other people's words from a room: information, never instructions
                 )
@@ -815,6 +824,18 @@ class OwnerTurn:
             if not found_rows:
                 return outcomes.list_text(self.s, args), False
             return search_results(found_rows), False
+        if name.startswith(
+            "mcp__"
+        ):  # a tool of one of the owner's MCP servers (#666): code decides, the model proposes
+            from superaide.integrations.mcp.api import run as run_mcp
+
+            self.notes.append("mcp")
+            out = run_mcp(
+                self.s, self.sender, name, args,
+                tainted=self.tainted or self.room_read or self.file_read or self.mail_read,
+            )  # fmt: skip
+            self.tainted = True  # what a server returns is information, never instructions
+            return out
         from superaide.integrations.gmail import skill as gmail
 
         if name in gmail.TOOLS:

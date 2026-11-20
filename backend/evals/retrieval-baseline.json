@@ -25,7 +25,7 @@
     "paraphrase-vendor@colleague": "pass",
     "paraphrase-vendor@group": "pass",
     "paraphrase-vendor@stranger": "pass",
-    "person-colleague-signoff": "known_gap",
+    "person-colleague-signoff": "pass",
     "person-colleague-signoff@colleague": "pass",
     "person-colleague-signoff@group": "pass",
     "person-colleague-signoff@stranger": "pass",
@@ -79,9 +79,9 @@
     },
     "person": {
       "recall@1": 0.4,
-      "recall@5": 0.8,
-      "mrr": 0.6667,
-      "ndcg@5": 0.7,
+      "recall@5": 1.0,
+      "mrr": 0.7333,
+      "ndcg@5": 0.8,
       "absent_ok": 1.0
     },
     "paraphrase": {
