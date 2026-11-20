@@ -64,6 +64,7 @@ CODE_ONLY = {
     "audit_logged", "triage_feedback", "message_taken", "prompt_includes", "recall_top", "recall_none",
     "memory_count", "memory_from_document", "signal_labelled", "documents", "memory_retired", "delivery", "pushed",
     "visitor_replies", "degraded", "prior_ids_in_prompt", "prompt_tokens_under", "approvals_pending", "approval_status",
+    "bookings_offered",
 }  # fmt: skip
 
 
@@ -230,6 +231,16 @@ def approvals_pending(ctx: Ctx, value: Any) -> tuple[bool, str]:
     with session_scope() as s:
         n = len(list(s.scalars(select(Approval.id).where(Approval.status == "pending"))))
     return n == int(value), f"{n} approvals pending, expected {value}"
+
+
+@check("bookings_offered")
+def bookings_offered(ctx: Ctx, value: Any) -> tuple[bool, str]:
+    """This many visitor booking requests exist (times were offered): 0 proves no time was offered to anyone."""
+    from superaide.reception.models import BookingRequest
+
+    with session_scope() as s:
+        n = len(list(s.scalars(select(BookingRequest.id))))
+    return n == int(value), f"{n} booking requests, expected {value}"
 
 
 # --- long-term memory retrieval, graded on the search itself (no model) -------------------

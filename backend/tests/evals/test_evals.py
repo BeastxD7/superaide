@@ -79,6 +79,14 @@ SELF_TESTS = [
     "proto-cannot-execute-route-hands-over",
     "recall-colleague-answer-not-among-newest",
     "colleague-recall-keeps-owner-note-out",
+    # Visitor scheduling (#674): who is offered times is the owner's setting, decided in code.
+    "vsched-everyone-is-offered-times-by-default",
+    "vsched-stranger-outside-the-owners-list-gets-a-fixed-no",
+    "vsched-claiming-to-be-a-client-changes-nothing",
+    "vsched-listed-client-is-offered-times-when-clients-are-allowed",
+    "vsched-listed-friend-is-refused-when-only-clients-are-allowed",
+    "vsched-friends-only-refuses-a-client",
+    "vsched-working-days-are-the-owners-setting",
 ]
 
 

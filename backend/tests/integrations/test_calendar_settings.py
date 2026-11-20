@@ -56,6 +56,8 @@ def test_defaults_are_todays_behaviour(cal):
             "day_end": 20,
             "events_per_read": 10,
             "visitor_slots": 3,
+            "visitor_who": "Everyone",
+            "working_days": "Monday to Friday",
             "buffer_minutes": 15,
         }
     out, err = run(calendar.calendar_events, {"days": 30})
