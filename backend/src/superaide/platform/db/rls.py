@@ -83,6 +83,7 @@ TABLES: tuple[str, ...] = (
     "action_log",  # hash-chained gateway log (#113)
     "mandate",  # signed narrowing tokens (#112)
     "mcp_pin",  # approved MCP tool hashes (#116)
+    "mcp_server",  # the owner's MCP servers (#666)
     "skill_release",  # when each skill version was released, for the cooldown (#129)
     "skill_tombstone",  # retired skill names, reserved for good (#129)
     "skill_scan",  # scanner verdicts per skill version (#130)

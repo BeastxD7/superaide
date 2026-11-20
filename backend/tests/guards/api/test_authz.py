@@ -410,6 +410,29 @@ def test_an_owner_cannot_attach_an_address_to_someone_who_isnt_their_contact(own
     assert r.status_code == 404
 
 
+# --- the MCP servers (/app/mcp, issue #666) -----------------------------------------------------
+
+MCP_ROUTES = {
+    ("GET", "/app/mcp/servers"),
+    ("POST", "/app/mcp/servers"),
+    ("PATCH", "/app/mcp/servers/{server_id}"),
+    ("DELETE", "/app/mcp/servers/{server_id}"),
+    ("POST", "/app/mcp/servers/{server_id}/test"),
+    ("POST", "/app/mcp/servers/{server_id}/approve"),
+    ("PUT", "/app/mcp/servers/{server_id}/tools/{tool}/risk"),
+}
+
+
+def test_the_mcp_routes_are_owner_routes(app, browser, owner):
+    assert MCP_ROUTES <= set(owner_routes(app))  # so every check above covers them too
+    stranger = browser()
+    signup(stranger, name="Mallory Tan", email="mallory@example.com")
+    for method, path in MCP_ROUTES:
+        url = fill_path(path)
+        assert browser().request(method, url, json={}).status_code == 401
+        assert stranger.request(method, url, json={}).status_code == 403
+
+
 def test_calendar_actions_switch_is_an_owner_route(app, browser, owner_data):
     """POST /app/skills/{publisher}/{name}/options (calendar actions' consent) is covered by the
     enumerated 401/403 checks above; this pins it, and that a stranger can't switch it on."""
