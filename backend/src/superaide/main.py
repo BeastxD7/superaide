@@ -334,7 +334,7 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     from superaide.rules.routes import make_router as make_rules_router
 
     app.include_router(make_rules_router(get_agent))  # 404 unless EXPERIMENT_TIME_TRAVEL_RULES
-    from superaide.policy.standing_routes import make_router as make_standing_rules_router
+    from superaide.rules.standing_routes import make_router as make_standing_rules_router
 
     app.include_router(make_standing_rules_router(get_agent))
     from superaide.mandate.routes import make_router as make_mandate_router
