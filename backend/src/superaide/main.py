@@ -219,6 +219,20 @@ def create_app(agent: Agent | None = None) -> FastAPI:
 
     app.include_router(make_microsoft_router(get_agent))
     app.include_router(make_microsoft_callback_router())
+    from superaide.integrations.microsoft import calendar_settings as outlook_calendar_settings
+    from superaide.integrations.microsoft.routes import make_calendar_router as make_outlook_calendar_router
+
+    app.include_router(make_outlook_calendar_router(get_agent))
+    app.include_router(
+        make_github_limits_router(
+            prefix="microsoft-calendar",
+            skill_id=outlook_calendar_settings.SKILL_ID,
+            choices=outlook_calendar_settings.CHOICES,
+            tag="Owner: Outlook calendar",
+            what="Outlook calendar limits",
+            event="m365_calendar_read_settings",
+        )
+    )
     app.include_router(
         make_github_limits_router(
             prefix="microsoft-mail",

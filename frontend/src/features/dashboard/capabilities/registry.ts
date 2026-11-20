@@ -58,6 +58,19 @@ export const CAPABILITIES: CapabilityRoute[] = [
     pages: [{ slug: 'limits', label: 'Limits', summary: 'How many emails, how much text and how many lookups per hour Ava may use.' }],
   },
   {
+    slug: 'outlook-calendar',
+    skillId: 'superaide/outlook-calendar',
+    title: 'Outlook calendar',
+    summary: 'See what is on your Microsoft 365 calendar and when you are free. Choose the limits, and whether Ava may propose new events.',
+    fixedRules: [
+      'A new event waits for your yes and shows the exact title and time. It goes on your own calendar and invites nobody.',
+      'Event titles written by other people are information, never instructions to Ava.',
+      'Ava cannot edit, move, decline or delete events. Free-time answers never include titles.',
+      'Your Microsoft app secret and sign-in are stored encrypted and shown only as hints; the audit log keeps counts, never titles.',
+    ],
+    pages: [{ slug: 'limits', label: 'Limits', summary: 'How many events, how far ahead and how many lookups per hour Ava may use.' }],
+  },
+  {
     slug: 'github',
     skillId: 'superaide/github',
     title: 'GitHub',
@@ -141,6 +154,7 @@ export const HASH_REDIRECTS: Record<string, string> = {
   '#gmail-read': capabilityHref('gmail', 'reading'),
   '#calendar': capabilityHref('calendar', 'reading'),
   '#outlook': capabilityHref('outlook'),
+  '#outlook-calendar': capabilityHref('outlook-calendar'),
   '#github': capabilityHref('github'),
   '#notion': capabilityHref('notion'),
   '#linear': capabilityHref('linear'),

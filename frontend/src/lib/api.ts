@@ -663,6 +663,17 @@ export type OutlookStatus = {
   send_granted: boolean
 }
 
+export type OutlookCalendarStatus = {
+  last_changed?: Record<string, { by: 'you' | 'Ava' | 'operator'; at: string }>
+  installed: boolean
+  client_saved: boolean
+  connected: boolean
+  address: string
+  hint: string
+  changes: boolean
+  changes_granted: boolean
+}
+
 export type GithubStatus = {
   last_changed?: Record<string, { by: 'you' | 'Ava' | 'operator'; at: string }>
   installed: boolean

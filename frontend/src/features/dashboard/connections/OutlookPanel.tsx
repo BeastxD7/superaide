@@ -17,12 +17,38 @@ const RESULT: Record<string, { tone: 'info' | 'error'; text: string }> = {
   failed: { tone: 'error', text: "Microsoft didn't connect. Check the client id, the secret and the redirect address on your app, then try again." },
 }
 
-// The Outlook mail capability: save your own Microsoft app (client id and secret), sign in, and say whether she may send.
-// Secrets go to the server once and are sealed in the vault; only hints come back.
-export function OutlookPanel({ name }: { name: string }) {
-  const [status, setStatus] = useState<OutlookStatus | null>(null)
+// Save your own Microsoft app (client id and secret). Shared by the Outlook mail and Outlook calendar pages: one app, two sign-ins.
+export function MicrosoftAppForm({ busy, onSave }: { busy: boolean; onSave: (clientId: string, secret: string) => Promise<void> }) {
   const [clientId, setClientId] = useState('')
   const [secret, setSecret] = useState('')
+  return (
+    <form
+      className="grid gap-2"
+      onSubmit={(e) => {
+        e.preventDefault()
+        void onSave(clientId, secret) // the form goes away once the app is saved, taking the secret with it
+      }}
+    >
+      <p className="text-body">
+        In the Azure portal, register an app (Microsoft Entra, App registrations) with the redirect address{' '}
+        <code>{typeof window === 'undefined' ? '' : window.location.origin}/api/app/microsoft/callback</code>, the delegated permissions Mail.Read, Mail.Send, Calendars.Read, Calendars.ReadWrite, offline_access and User.Read (only those you use), and a client secret. Paste its ids here. The secret is stored encrypted and never shown again.
+      </p>
+      <Label htmlFor="ms-client-id">Application (client) ID</Label>
+      <Input id="ms-client-id" autoComplete="off" required value={clientId} onChange={(e) => setClientId(e.target.value)} className="min-h-11" />
+      <Label htmlFor="ms-client-secret">Client secret value</Label>
+      <Input id="ms-client-secret" type="password" autoComplete="off" required value={secret} onChange={(e) => setSecret(e.target.value)} className="min-h-11" />
+      <div>
+        <Button size="sm" type="submit" disabled={busy || !clientId.trim() || !secret.trim()}>
+          Save Microsoft app
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+// The Outlook mail capability: save your own Microsoft app, sign in, and say whether she may send.
+export function OutlookPanel({ name }: { name: string }) {
+  const [status, setStatus] = useState<OutlookStatus | null>(null)
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [saved, setSaved] = useState<string | null>(null)
@@ -79,31 +105,15 @@ export function OutlookPanel({ name }: { name: string }) {
       {problem && <Notice tone="error">{problem}</Notice>}
       {saved && <Notice tone="info">{saved}</Notice>}
       {!status.client_saved ? (
-        <form
-          className="grid gap-2"
-          onSubmit={(e) => {
-            e.preventDefault()
-            void act(async () => {
-              const next = await call<OutlookStatus>('/microsoft/mail/client', { method: 'PUT', json: { client_id: clientId, client_secret: secret } })
-              setSecret('')
-              return next
-            }, 'Your Microsoft app is saved. Now connect Outlook.')
-          }}
-        >
-          <p className="text-body">
-            In the Azure portal, register an app (Microsoft Entra, App registrations) with the redirect address{' '}
-            <code>{typeof window === 'undefined' ? '' : window.location.origin}/api/app/microsoft/callback</code>, the delegated permissions Mail.Read, Mail.Send, offline_access and User.Read, and a client secret. Paste its ids here. The secret is stored encrypted and never shown again.
-          </p>
-          <Label htmlFor="ms-client-id">Application (client) ID</Label>
-          <Input id="ms-client-id" autoComplete="off" required value={clientId} onChange={(e) => setClientId(e.target.value)} className="min-h-11" />
-          <Label htmlFor="ms-client-secret">Client secret value</Label>
-          <Input id="ms-client-secret" type="password" autoComplete="off" required value={secret} onChange={(e) => setSecret(e.target.value)} className="min-h-11" />
-          <div>
-            <Button size="sm" type="submit" disabled={busy || !clientId.trim() || !secret.trim()}>
-              Save Microsoft app
-            </Button>
-          </div>
-        </form>
+        <MicrosoftAppForm
+          busy={busy}
+          onSave={(clientId, secret) =>
+            act(
+              () => call<OutlookStatus>('/microsoft/mail/client', { method: 'PUT', json: { client_id: clientId, client_secret: secret } }),
+              'Your Microsoft app is saved. Now connect Outlook.',
+            )
+          }
+        />
       ) : !status.connected ? (
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-body">{name} can read your Outlook mail only after you allow it on Microsoft&apos;s screen.</p>

@@ -272,6 +272,12 @@ def narrate(name: str, args: dict[str, Any]) -> str:
         return f"Adding to your calendar: {str(args.get('title', ''))[:80]}, {str(args.get('when', ''))[:40]}{invite}"
     if name == "move_event":
         return f"Moving a calendar event to {str(args.get('when', ''))[:40]}"
+    if name == "m365_calendar_events":
+        return "Checking your Outlook calendar"
+    if name == "m365_calendar_free_busy":
+        return f"Checking when you're free in Outlook: {str(args.get('date', 'today'))[:40]}"
+    if name == "m365_calendar_create_event":
+        return f"Asking for your approval to add \u201c{str(args.get('title', ''))[:80]}\u201d to Outlook"
     if name == "m365_mail_search":
         return f"Searching your Outlook mail for \u201c{str(args.get('query', ''))[:80]}\u201d"
     if name == "m365_mail_read":
@@ -874,6 +880,17 @@ class OwnerTurn:
                 typed_by_owner=self._typed_by_owner(), mail_read=self.mail_read or self.room_read or self.file_read, channel=self._origin_channel(),
             )  # fmt: skip
         from superaide.integrations.microsoft import mail as outlook
+        from superaide.integrations.microsoft import outlook_calendar as outlook_cal
+
+        if name in outlook_cal.TOOLS:
+            assert self.sender.person is not None
+            if not any(s.manifest.id == outlook_cal.SKILL_ID for s in self.skills()):
+                return f"Unknown tool {name!r}.", True
+            self.notes.append(name)
+            if name in outlook_cal.READS:
+                # Invitations are written by other people: information, never instructions (ADR 0006, #511).
+                self.tainted = self.file_read = True
+            return outlook_cal.run(self.s, self.sender, name, args, tainted=self.tainted)
 
         if name in outlook.TOOLS:
             assert self.sender.person is not None

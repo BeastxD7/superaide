@@ -114,6 +114,7 @@ Long comments are shortened here; the full text is next to the variable in `back
 | `MICROSOFT_CLIENT_ID` | empty |  | Microsoft 365 (Outlook mail): the owner's Entra app registration (Azure portal, App registrations; redirect URI <FRONTEND_ORIGIN>/api/app/microsoft/callback; delegated permissions Mail.Read, Mail.Send, offline_access, User.Read). Normally leave blank: each owner saves them under Capabilities and they are kept in their vault. |
 | `MICROSOFT_CLIENT_SECRET` | empty |  | Same note as the entry above. |
 | `MICROSOFT_MAIL_REFRESH_TOKEN` | empty | yes | Outlook mail refresh token, same rules. Secret. |
+| `MICROSOFT_CALENDAR_REFRESH_TOKEN` | empty | yes | Outlook calendar refresh token, same rules. Secret. |
 | `GOOGLE_FAKE_BASE_URL` | empty |  | End-to-end tests only: a fake Google at this address replaces accounts.google.com, and only while ENABLE_SIMULATOR is on. Never set on a real server. Default empty. |
 
 ### Operator console, origins and API surface

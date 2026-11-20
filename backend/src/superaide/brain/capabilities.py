@@ -110,6 +110,22 @@ def notion_line(session: Session) -> str:
     return "Notion: connected, read-only: you can search and read the chosen pages. Drafts are off."
 
 
+def outlook_calendar_line(session: Session) -> str:
+    from superaide.integrations.microsoft import outlook_calendar as cal
+
+    st = cal.status(session)
+    if not st["installed"]:
+        return "Outlook calendar: not added. The owner can add it under Capabilities → Outlook calendar."
+    if not st["connected"]:
+        return "Outlook calendar: added but not connected. To connect: Capabilities → Outlook calendar → sign in."
+    if st["changes"] and st["changes_granted"]:
+        return (
+            "Outlook calendar: connected: you can read events and free time, and ask the owner to approve a new event "
+            "(m365_calendar_create_event; nobody is invited)."
+        )
+    return "Outlook calendar: connected, read-only: you can read events and free time. Changes are off."
+
+
 def outlook_line(session: Session) -> str:
     from superaide.integrations.microsoft import mail
 
@@ -237,6 +253,7 @@ def block(session: Session, *, tz: str, web: bool) -> str:
         "- " + gmail_line(session, tz),
         "- " + calendar_line(session),
         "- " + outlook_line(session),
+        "- " + outlook_calendar_line(session),
         "- " + github_line(session),
         "- " + notion_line(session),
         "- " + linear_line(session),

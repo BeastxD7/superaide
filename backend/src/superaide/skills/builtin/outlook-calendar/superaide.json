@@ -1,0 +1,67 @@
+{
+  "$schema": "../../manifest.schema.json",
+  "id": "superaide/outlook-calendar",
+  "version": "1.0.0",
+  "publisher": "Superaide",
+  "tier": "official",
+  "title": "Outlook calendar",
+  "summary": "Ava reads your Outlook (Microsoft 365) calendar and tells you what is on and when you are free. With changes on, she can propose a new event. Nothing is added without your OK, and nobody is invited.",
+  "tools": [
+    {
+      "name": "m365_calendar_events",
+      "description": "List the owner's Outlook events for a day or a few days (UTC times). Returns items you can cite (title, time, place, organiser).",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "date": {"type": "string", "description": "First day, YYYY-MM-DD. Default today."},
+          "days": {"type": "integer", "description": "How many days (the owner's setting caps the window)", "minimum": 1, "maximum": 30}
+        },
+        "additionalProperties": false
+      },
+      "effect": "read_private"
+    },
+    {
+      "name": "m365_calendar_free_busy",
+      "description": "When the owner is busy and free over a day or a few days (UTC). No titles or details.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "date": {"type": "string", "description": "First day, YYYY-MM-DD. Default today."},
+          "days": {"type": "integer", "description": "How many days", "minimum": 1, "maximum": 30}
+        },
+        "additionalProperties": false
+      },
+      "effect": "read_private"
+    },
+    {
+      "name": "m365_calendar_create_event",
+      "description": "Propose a NEW event on the owner's own Outlook calendar. It always waits for the owner's approval, shows the exact event, and invites nobody. Never edits, moves or declines anything.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {"type": "string", "description": "The event title"},
+          "start": {"type": "string", "description": "ISO start time with its offset, e.g. 2026-11-25T15:00:00+05:30"},
+          "minutes": {"type": "integer", "description": "Length in minutes, 5 to 1440. Default 60.", "minimum": 5, "maximum": 1440}
+        },
+        "required": ["title", "start"],
+        "additionalProperties": false
+      },
+      "effect": "write_external"
+    }
+  ],
+  "connectors": [],
+  "network": ["graph.microsoft.com", "login.microsoftonline.com"],
+  "settings": {
+    "type": "object",
+    "properties": {
+      "changes": {
+        "type": "boolean",
+        "default": false,
+        "description": "Let Ava propose new events. Each one waits for your approval."
+      }
+    },
+    "additionalProperties": false
+  },
+  "default_installed": false,
+  "removable": true
+}

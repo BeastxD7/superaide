@@ -546,6 +546,18 @@ def test_the_outlook_routes_need_the_csrf_header_and_refuse_bad_input(browser, o
     assert owner.put("/app/microsoft-mail/read-settings", json={"nope": 1}).status_code == 422
 
 
+def test_the_outlook_calendar_routes_need_the_csrf_header_and_refuse_bad_input(browser, owner):
+    plain = browser(csrf=False)
+    plain.cookies.set("superaide_session", owner.cookies.get("superaide_session"))
+    assert plain.post("/app/microsoft/calendar/changes", json={}).status_code == 403
+    assert plain.post("/app/microsoft/calendar/connect").status_code == 403
+    assert plain.delete("/app/microsoft/calendar").status_code == 403
+    assert plain.put("/app/microsoft-calendar/read-settings", json={"events_limit": 10}).status_code == 403
+    assert owner.post("/app/microsoft/calendar/changes", json={"enabled": "maybe"}).status_code == 422
+    assert owner.put("/app/microsoft-calendar/read-settings", json={"window_days": "lots"}).status_code in (409, 422)
+    assert owner.put("/app/microsoft-calendar/read-settings", json={"nope": 1}).status_code == 422
+
+
 def test_the_outlook_callback_is_public_but_only_ever_redirects(browser):
     r = browser().get("/app/microsoft/callback", params={"code": "x", "state": "y"}, follow_redirects=False)
     assert r.status_code == 303 and "microsoft=expired" in r.headers["location"]

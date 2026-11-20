@@ -11,6 +11,7 @@ import { useAppData } from '@/features/dashboard/data'
 import { CapabilityShell } from '@/features/dashboard/capabilities/CapabilityShell'
 import { capabilityBySlug, capabilityHref } from '@/features/dashboard/capabilities/registry'
 import { PrincipalCardPage } from '@/features/principal-card/PrincipalCardPage'
+import { OutlookCalendarPanel } from '@/features/dashboard/connections/OutlookCalendarPanel'
 import { OutlookPanel } from '@/features/dashboard/connections/OutlookPanel'
 import { GithubPanel } from '@/features/dashboard/connections/GithubPanel'
 import { LinearPanel } from '@/features/dashboard/connections/LinearPanel'
@@ -56,6 +57,7 @@ export function CapabilityPage({ slug, page }: { slug: string; page?: string }) 
         <>
           {slug === 'gmail' && <GmailPanel name={name} />}
           {slug === 'outlook' && <OutlookPanel name={name} />}
+          {slug === 'outlook-calendar' && <OutlookCalendarPanel name={name} />}
           {slug === 'github' && <GithubPanel name={name} />}
           {slug === 'notion' && <NotionPanel name={name} />}
           {slug === 'linear' && <LinearPanel name={name} />}
@@ -91,6 +93,8 @@ export function CapabilityPage({ slug, page }: { slug: string; page?: string }) 
         <ConnectorSettings path="linear" title={`How ${name} uses your Linear`} anchor="linear" />
       ) : page === 'limits' && slug === 'notion' ? (
         <ConnectorSettings path="notion" title={`How ${name} uses your Notion`} anchor="notion" />
+      ) : page === 'limits' && slug === 'outlook-calendar' ? (
+        <ConnectorSettings path="microsoft-calendar" title={`How ${name} uses your Outlook calendar`} anchor="outlook-calendar" />
       ) : page === 'limits' && slug === 'outlook' ? (
         <ConnectorSettings path="microsoft-mail" title={`How ${name} uses your Outlook`} anchor="outlook" />
       ) : page === 'limits' && slug === 'github' ? (

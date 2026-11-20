@@ -613,6 +613,20 @@
         "title": "ChangeBody",
         "type": "object"
       },
+      "ChangesBody": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "ChangesBody",
+        "type": "object"
+      },
       "ChannelBody": {
         "additionalProperties": false,
         "properties": {
@@ -1852,6 +1866,25 @@
           "password"
         ],
         "title": "LoginBody",
+        "type": "object"
+      },
+      "MicrosoftCalendarSettingsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "events_limit": {
+            "title": "Events Limit"
+          },
+          "reads_per_hour": {
+            "title": "Reads Per Hour"
+          },
+          "title_chars": {
+            "title": "Title Chars"
+          },
+          "window_days": {
+            "title": "Window Days"
+          }
+        },
+        "title": "MicrosoftCalendarSettingsBody",
         "type": "object"
       },
       "MicrosoftMailSettingsBody": {
@@ -12768,6 +12801,82 @@
         ]
       }
     },
+    "/app/microsoft-calendar/read-settings": {
+      "get": {
+        "description": "The owner's limits for Outlook calendar limits, every allowed value and what it means (defaults until installed).",
+        "operationId": "get_settings_app_microsoft_calendar_read_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Settings App Microsoft Calendar Read Settings Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Outlook calendar limits: your settings",
+        "tags": [
+          "Owner: Outlook calendar"
+        ]
+      },
+      "put": {
+        "description": "Changes any of the settings. Each change is audited.",
+        "operationId": "put_settings_app_microsoft_calendar_read_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MicrosoftCalendarSettingsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Put Settings App Microsoft Calendar Read Settings Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Outlook calendar limits: change your settings",
+        "tags": [
+          "Owner: Outlook calendar"
+        ]
+      }
+    },
     "/app/microsoft-mail/read-settings": {
       "get": {
         "description": "The owner's limits for Outlook limits, every allowed value and what it means (defaults until installed).",
@@ -12841,6 +12950,142 @@
         "summary": "Outlook limits: change your settings",
         "tags": [
           "Owner: Outlook"
+        ]
+      }
+    },
+    "/app/microsoft/calendar": {
+      "delete": {
+        "description": "Deletes the stored sign-in.",
+        "operationId": "disconnect_app_microsoft_calendar_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Disconnect App Microsoft Calendar Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Disconnect the Outlook calendar",
+        "tags": [
+          "Owner: Outlook calendar"
+        ]
+      },
+      "get": {
+        "description": "Installed, app saved, connected and changes.",
+        "operationId": "status_app_microsoft_calendar_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Status App Microsoft Calendar Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Outlook calendar status",
+        "tags": [
+          "Owner: Outlook calendar"
+        ]
+      }
+    },
+    "/app/microsoft/calendar/changes": {
+      "post": {
+        "description": "On: Ava may ask your approval to add an event (no invitations are sent). If Microsoft hasn't allowed Calendars.ReadWrite yet, the answer carries `url`, a sign-in asking for it.",
+        "operationId": "changes_app_microsoft_calendar_changes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangesBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Changes App Microsoft Calendar Changes Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Turn Outlook calendar changes on or off",
+        "tags": [
+          "Owner: Outlook calendar"
+        ]
+      }
+    },
+    "/app/microsoft/calendar/connect": {
+      "post": {
+        "description": "Returns a Microsoft sign-in URL asking to read the calendar (Calendars.Read). Save the app first.",
+        "operationId": "connect_app_microsoft_calendar_connect_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Connect App Microsoft Calendar Connect Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Connect the Outlook calendar (read-only)",
+        "tags": [
+          "Owner: Outlook calendar"
         ]
       }
     },

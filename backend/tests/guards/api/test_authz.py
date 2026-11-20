@@ -393,6 +393,25 @@ OUTLOOK_ROUTES = {
 }
 
 
+OUTLOOK_CALENDAR_ROUTES = {
+    ("GET", "/app/microsoft/calendar"),
+    ("POST", "/app/microsoft/calendar/connect"),
+    ("DELETE", "/app/microsoft/calendar"),
+    ("POST", "/app/microsoft/calendar/changes"),
+    ("GET", "/app/microsoft-calendar/read-settings"),
+    ("PUT", "/app/microsoft-calendar/read-settings"),
+}
+
+
+def test_the_outlook_calendar_routes_are_owner_routes(app, browser, owner):
+    assert OUTLOOK_CALENDAR_ROUTES <= set(owner_routes(app))
+    stranger = browser()
+    signup(stranger, name="Mallory Tan", email="mallory@example.com")
+    for method, path in OUTLOOK_CALENDAR_ROUTES:
+        assert browser().request(method, path, json={}).status_code == 401
+        assert stranger.request(method, path, json={}).status_code == 403
+
+
 def test_the_outlook_routes_are_owner_routes(app, browser, owner):
     assert OUTLOOK_ROUTES <= set(owner_routes(app))  # so every check above covers them too
     stranger = browser()

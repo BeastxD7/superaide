@@ -46,6 +46,7 @@ FIELDS: dict[tuple[str, str], str] = {
     ("microsoft", "client_id"): "microsoft_client_id",  # the owner's Entra app registration (#668)
     ("microsoft", "client_secret"): "microsoft_client_secret",
     ("microsoft", "mail_refresh_token"): "microsoft_mail_refresh_token",  # the Outlook mail capability's sign-in
+    ("microsoft", "calendar_refresh_token"): "microsoft_calendar_refresh_token",  # the Outlook calendar's sign-in
     # The voice call (ADR 0012): speech-to-text and natural voices.
     ("deepgram", "api_key"): "deepgram_api_key",
     ("elevenlabs", "api_key"): "elevenlabs_api_key",
@@ -61,6 +62,7 @@ SECRET_NAMES = {
     "token",
     "drive_refresh_token",
     "mail_refresh_token",
+    "calendar_refresh_token",
 }  # ids aren't secrets
 # The deployment's own Google OAuth client (the app owners sign in to, for sign-in and Calendar). It
 # spends nothing and reads nothing by itself, so a hosted server offers it to every owner; the

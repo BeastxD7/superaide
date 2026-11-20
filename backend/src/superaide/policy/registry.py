@@ -45,6 +45,7 @@ TOOL_RULES: dict[str, Rule] = {
     # #668: a reply or a new email from the owner's Outlook. Always the owner's yes (no mandate, no batching): the
     # payload is the exact text and recipients.
     "m365_mail_send": Rule(int(Trust.LINKED), manager_only=True, needs_approval=True),
+    "m365_calendar_create_event": Rule(int(Trust.LINKED), manager_only=True, needs_approval=True),
     # #669: a new issue or a comment in a repository the owner chose. Always the owner's yes (no mandate, no
     # batching): the payload is the exact text.
     "github_create_issue": Rule(int(Trust.LINKED), manager_only=True, needs_approval=True),

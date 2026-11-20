@@ -23,6 +23,8 @@ AUTHORITY = "https://login.microsoftonline.com/common/oauth2/v2.0"
 GRAPH = "https://graph.microsoft.com/v1.0"
 READ_SCOPES = ["offline_access", "User.Read", "Mail.Read"]
 SEND_SCOPE = "Mail.Send"  # only when the owner turns sending on
+CAL_READ_SCOPES = ["offline_access", "User.Read", "Calendars.Read"]
+CAL_WRITE_SCOPE = "Calendars.ReadWrite"  # only when the owner turns calendar changes on
 CLIENT_ID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 SECRET_RE = re.compile(r"^[A-Za-z0-9_~.\-]{8,255}$")
 MESSAGE_ID_RE = re.compile(r"^[A-Za-z0-9_\-=+/]{16,400}$")
@@ -140,9 +142,9 @@ def exchange_code(
         "sign-in",
     )  # fmt: skip
     granted = sorted({s.rsplit("/", 1)[-1] for s in str(body.get("scope", "")).split()})
-    needed = {s for s in wanted if s.startswith("Mail.")}
+    needed = {s for s in wanted if s.startswith(("Mail.", "Calendars."))}
     if not needed <= {g for g in granted}:
-        raise ScopeMissing("Mail access wasn't granted.")
+        raise ScopeMissing("The permission wasn't granted.")
     if not body.get("refresh_token"):
         raise MicrosoftError("Microsoft gave no refresh token. Make sure offline_access is allowed on the app.")
     return str(body["refresh_token"]), granted
@@ -247,3 +249,38 @@ def reply(client: httpx.Client, token: str, message_id: str, body: str) -> None:
     if not valid_message_id(message_id):
         raise NotFound("That isn't a message id from a search result.")
     _call(client, "POST", f"/me/messages/{quote(message_id, safe='')}/reply", token, json={"comment": body})
+
+
+# --- calendar -----------------------------------------------------------------------------
+
+_EVENT_FIELDS = "id,subject,start,end,isAllDay,showAs,organizer,location,isCancelled"
+
+
+def _utc_header() -> dict[str, str]:
+    return {"Prefer": 'outlook.timezone="UTC"'}
+
+
+def calendar_view(client: httpx.Client, token: str, start: str, end: str, limit: int) -> list[dict[str, Any]]:
+    """Events between two UTC instants (recurring ones expanded), earliest first."""
+    headers = {"Authorization": f"Bearer {token}", **_utc_header()}
+    try:
+        r = client.get(
+            f"{GRAPH}/me/calendarView", headers=headers,
+            params={"startDateTime": start, "endDateTime": end, "$top": str(max(1, min(limit, 50))),
+                    "$orderby": "start/dateTime", "$select": _EVENT_FIELDS},
+        )  # fmt: skip
+        data = _check(r)
+    except httpx.HTTPError as exc:
+        raise MicrosoftError("Couldn't reach Microsoft just now.") from exc
+    items = data.get("value")
+    return [e for e in items if isinstance(e, dict) and not e.get("isCancelled")] if isinstance(items, list) else []
+
+
+def create_event(client: httpx.Client, token: str, subject: str, start: str, end: str) -> dict[str, Any]:
+    """A new event on the owner's own calendar, with no attendees (so nobody is invited). Times are UTC."""
+    body = {
+        "subject": subject,
+        "start": {"dateTime": start, "timeZone": "UTC"},
+        "end": {"dateTime": end, "timeZone": "UTC"},
+    }
+    return _call(client, "POST", "/me/events", token, json=body)
