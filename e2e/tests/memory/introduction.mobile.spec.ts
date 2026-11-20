@@ -20,8 +20,23 @@ async function expectNoHorizontalScroll(page: Page): Promise<void> {
 
 // `line` is fully visible in the conversation, and the conversation ends above `control`.
 async function expectAboveControls(meet: Meet, line: Locator, control: Locator): Promise<void> {
-  await control.scrollIntoViewIfNeeded()
-  await expect(control).toBeInViewport({ ratio: 1 })
+  // The panel (a scroller of its own) and the conversation can still be resizing when we first look: the
+  // connection rows arrive after the step renders and the conversation glides to its end. Scroll again on
+  // every try and require the panel's height to be unchanged between two frames, so the assertion
+  // below judges the settled layout, not a frame in the middle of it (#707).
+  await expect(async () => {
+    await control.scrollIntoViewIfNeeded()
+    const heights = await control.evaluate(
+      (el) =>
+        new Promise<number[]>((resolve) => {
+          const read = () => [el.getBoundingClientRect().top, document.querySelector('main')!.scrollTop]
+          const a = read()
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve([...a, ...read()])))
+        }),
+    )
+    expect(heights.slice(0, 2), 'layout is still moving').toEqual(heights.slice(2))
+    await expect(control).toBeInViewport({ ratio: 1, timeout: 500 })
+  }).toPass({ timeout: 10_000 })
   await expect(line).toBeInViewport({ ratio: 1 })
   const main = await box(meet.conversation())
   const l = await box(line)
