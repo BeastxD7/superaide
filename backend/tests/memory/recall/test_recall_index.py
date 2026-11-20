@@ -331,7 +331,7 @@ def test_a_changed_row_loses_its_vectors_so_they_are_re_embedded(world, by):
         assert index.embed_missing(s, MoneyEmbedder()) == 1
 
 
-def test_the_embedding_job_keeps_the_index_in_step_and_queues_the_index_check(manager):
+def test_the_embedding_job_keeps_the_index_in_step_and_queues_nothing_more(manager):
     load()
     with session_scope() as s:
         remember_fact(s, owner=manager, content="Jordan flies to Tokyo on Friday.", category="work")
@@ -341,4 +341,4 @@ def test_the_embedding_job_keeps_the_index_in_step_and_queues_the_index_check(ma
         docs = list(s.scalars(select(RecallDoc)))
         assert [(d.kind, d.text) for d in docs] == [("note", "Jordan flies to Tokyo on Friday.")]
         assert s.execute(text("SELECT model FROM recall_embedding")).scalars().all() == ["fake"]
-        assert s.scalar(select(Job.id).where(Job.kind == "recall_index_policy"))
+        assert s.scalar(select(func.count()).select_from(Job).where(Job.status == "queued")) == 0

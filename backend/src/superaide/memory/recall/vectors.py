@@ -341,7 +341,8 @@ def _embed_missing_chunks(session: Session, emb: Embedder) -> int:
 
 def _refresh_index(session: Session, emb: Embedder) -> None:
     """Keep the derived recall index (#647) in step: rebuild it from the sources, embed what has no vector for this
-    model, and queue the approximate-index check. The index is derived, so a failure here never breaks the job."""
+    model, and check whether a model has outgrown the exact scan. The index is derived, so a failure here never
+    breaks the job."""
     from superaide.memory.recall import index, index_policy
 
     try:
@@ -351,10 +352,8 @@ def _refresh_index(session: Session, emb: Embedder) -> None:
         n = index.embed_missing(session, emb)
         if n:
             log.info("indexed %d recall rows with %s", n, emb.name)
-        if emb.name != "none":
-            enqueue(
-                session, index_policy.JOB_KIND, {}, dedupe_key=f"recall_policy:{emb.name}:{datetime.now(UTC):%Y%m%d}"
-            )
+        if n:
+            index_policy.apply(session)  # a count per model; builds an approximate index past the threshold
     except Exception:
         log.exception("recall index refresh failed; the next run retries")
 
