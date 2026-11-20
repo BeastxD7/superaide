@@ -64,6 +64,9 @@ class Event(Scoped, Base):
         Index("ix_event_context_created", "context_id", text("created_at DESC"), text("id DESC")),
         Index("ix_event_agent_created", "agent_id", text("created_at DESC"), text("id DESC")),
         Index("ix_event_fts", text("to_tsvector('english', content)"), postgresql_using="gin"),  # recall
+        Index(
+            "ix_event_agent_person_created", "agent_id", "resolved_person_id", "created_at"
+        ),  # recall by person (#644)
     )
 
     context_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("context.id"), index=True)
