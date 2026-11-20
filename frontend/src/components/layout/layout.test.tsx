@@ -7,7 +7,7 @@ describe('layout primitives', () => {
     const out = html(<PageContainer width="wide">x</PageContainer>)
     expect(out).toContain('data-page-container')
     expect(out).toContain('overflow-y-auto')
-    expect(out).toContain('max-w-[100rem]')
+    expect(out).toContain('max-w-[120rem]')
     expect(html(<PageContainer width="reading">x</PageContainer>)).toContain('max-w-3xl')
   })
 

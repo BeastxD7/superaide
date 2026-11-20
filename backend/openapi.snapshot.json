@@ -1241,6 +1241,25 @@
         "title": "DrillBody",
         "type": "object"
       },
+      "DriveSettingsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "read_chars": {
+            "title": "Read Chars"
+          },
+          "reads_per_hour": {
+            "title": "Reads Per Hour"
+          },
+          "search_limit": {
+            "title": "Search Limit"
+          },
+          "write_chars": {
+            "title": "Write Chars"
+          }
+        },
+        "title": "DriveSettingsBody",
+        "type": "object"
+      },
       "EmailBody": {
         "properties": {
           "email": {
@@ -8440,6 +8459,191 @@
         "summary": "Ask three advisers about a high-stakes choice",
         "tags": [
           "Owner: dissent desk"
+        ]
+      }
+    },
+    "/app/drive": {
+      "get": {
+        "description": "Installed, connected and drafts.",
+        "operationId": "status_app_drive_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Status App Drive Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Google Drive capability status",
+        "tags": [
+          "Owner: Google Drive"
+        ]
+      }
+    },
+    "/app/drive/connect": {
+      "post": {
+        "description": "Returns a Google sign-in URL asking to read Drive (drive.readonly). Install the capability first.",
+        "operationId": "connect_app_drive_connect_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Connect App Drive Connect Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Connect Google Drive (read-only)",
+        "tags": [
+          "Owner: Google Drive"
+        ]
+      }
+    },
+    "/app/drive/drafts": {
+      "post": {
+        "description": "On: Ava may ask your approval to create a new Doc or Sheet and to add text to one she made. If Google hasn't allowed that yet, the answer carries `url`, a sign-in asking for drive.file too (files Ava makes herself only). Nothing is written without your yes.",
+        "operationId": "drafts_app_drive_drafts_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Drafts App Drive Drafts Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Turn Drive drafts on or off",
+        "tags": [
+          "Owner: Google Drive"
+        ]
+      }
+    },
+    "/app/drive/read-settings": {
+      "get": {
+        "description": "The owner's limits for Google Drive limits, every allowed value and what it means (defaults until installed).",
+        "operationId": "get_settings_app_drive_read_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Settings App Drive Read Settings Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Google Drive limits: your settings",
+        "tags": [
+          "Owner: Google Drive"
+        ]
+      },
+      "put": {
+        "description": "Changes any of the settings. Each change is audited.",
+        "operationId": "put_settings_app_drive_read_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DriveSettingsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Put Settings App Drive Read Settings Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Google Drive limits: change your settings",
+        "tags": [
+          "Owner: Google Drive"
         ]
       }
     },
