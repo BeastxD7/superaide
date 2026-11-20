@@ -191,10 +191,10 @@ def _triage_knn_compare(args: argparse.Namespace) -> None:
     from superaide.triage import knn
 
     embedder = get_embedder(get_settings())
-    if type(embedder).__name__ == "VoyageEmbedder" and not args.allow_remote:
+    if (type(embedder).__name__ == "VoyageEmbedder" or getattr(embedder, "remote", False)) and not args.allow_remote:
         sys.exit(
-            "EMBEDDER=voyage would send your labelled messages to Voyage AI. Run with --allow-remote to do that, "
-            "or use the local embedder (EMBEDDER=local)."
+            f"EMBEDDER={get_settings().embedder} would send your labelled messages to Voyage AI or another remote "
+            "server. Run with --allow-remote to do that, or use the local embedder (EMBEDDER=local)."
         )
     with session_scope() as s:
         scopes = active_scopes(s) or [default_scope()]
@@ -390,7 +390,9 @@ def _reset_db(args: argparse.Namespace) -> None:
             sys.exit(f"{refusal} To wipe it anyway: --i-know-this-is-live --confirm-db-name {name}")
     engine = get_engine(url)
     with engine.begin() as conn:
-        conn.execute(text("DROP TABLE IF EXISTS memory_embedding, chunk_embedding"))  # outside the ORM metadata
+        conn.execute(
+            text("DROP TABLE IF EXISTS memory_embedding, chunk_embedding, recall_embedding")
+        )  # outside the ORM metadata
     Base.metadata.drop_all(engine)
     with engine.begin() as conn:
         conn.execute(text("DROP TABLE IF EXISTS alembic_version"))
