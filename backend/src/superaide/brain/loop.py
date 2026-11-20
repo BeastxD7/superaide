@@ -39,7 +39,7 @@ from superaide.memory.recall.retrieval import (
     VISITOR_TITLE,
     Source,
     pre_recall,
-    recall,
+    recall_scoped,
     visitor_report,
 )
 from superaide.observability import api as timing
@@ -719,10 +719,15 @@ class OwnerTurn:
             self.notes.append("handoff")
             return "Done: the answer goes to the owner's direct message. Reply with one short neutral line.", False
         if name == "recall":
-            found = recall(
+            kinds = args.get("kinds")
+            recalled = recall_scoped(
                 self.s, self.aud, str(args.get("query", "")), exclude_event=self.inbound.id,
                 channel=str(args.get("channel") or "") or None, rooms=not self.shared,
+                since=str(args.get("since") or ""), until=str(args.get("until") or ""),
+                person=str(args.get("person") or ""), kinds=[str(k) for k in kinds] if isinstance(kinds, list) else None,
+                asked=self.inbound.content or "",
             )  # fmt: skip
+            found = recalled.sources
             if any(src.title.startswith((ROOM_TITLE, VISITOR_TITLE)) for src in found):
                 self.tainted = self.room_read = (
                     True  # other people's words from a room: information, never instructions
@@ -731,7 +736,7 @@ class OwnerTurn:
             self.recall_hits += len(found)
             self.found.update((src.uri, src) for src in found)
             if not found:
-                return "Nothing in your notes or messages matches that.", False
+                return recalled.nothing(str(args.get("channel") or "") or None), False
             return search_results(found), False
         if self.file_read and name in FILE_TURN_REFUSED:
             audit(self.s, "policy", "tool_refused_file_turn", tool=name)
@@ -1183,7 +1188,14 @@ class OwnerTurn:
                 on_event=self.on_model_event if streaming else None,
             )
             context_watch.observe(
-                self.s, self.model, system=system, messages=msgs, tools=tools, usage=last.usage, max_tokens=MAX_TOKENS
+                self.s,
+                self.model,
+                system=system,
+                messages=msgs,
+                tools=tools,
+                usage=last.usage,
+                max_tokens=MAX_TOKENS,
+                owner=self.sender.person,
             )
             if last.stop_reason == "max_tokens":
                 last = self._more_room(system, tools, msgs, last)

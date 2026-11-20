@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import ColumnElement, Select, and_, case, desc, false, func, literal, select, text
+from sqlalchemy import Boolean, ColumnElement, Select, and_, case, desc, false, func, literal, select, text
 from sqlalchemy.orm import Session, aliased
 
 from superaide.memory.audience import Audience, memory_filter
@@ -29,11 +29,13 @@ from superaide.memory.consolidation import importance
 from superaide.memory.consolidation.echo import label as echo_label
 from superaide.memory.models import Context, Document, DocumentChunk, Event, MemoryItem
 from superaide.memory.recall import lexicon
+from superaide.memory.recall.scope import Scope, understand
 from superaide.platform.tenancy.service import instance_owner
 from superaide.reception.models import ReceptionMessage
 
 LANG = "english"
 RRF_K = 60
+VISITOR_TRGM_MIN = 0.55  # 'invoce' in '... invoice ...' 0.57; 'gather' in '... whether ...' stays below
 TRGM_MIN = 0.4  # word_similarity: "colour" in "… clour …" 0.44, "black" in "… back …" 0.38
 CHANNELS = {"telegram": "telegram", "slack": "slack", "web": "web", "app": "web"}
 CHANNEL_NAMES = {"telegram": "Telegram", "slack": "Slack", "web": "the app"}
@@ -59,6 +61,8 @@ def channel_name(provider: str | None) -> str:
 def _tsquery(term_groups: list[set[str]], *, any_word: bool) -> Any | None:
     """`(colour | color) & black`, or with any_word `colour | color | black`."""
     groups = [sorted(g) for g in term_groups if g]
+    if any_word:  # chatter ("please", "send", "ok") is no reason to return a note (#644)
+        groups = [g for g in groups if not set(g) & lexicon.CHATTER]
     if not groups:
         return None
     if any_word:
@@ -97,7 +101,7 @@ def _arms(
         stmt = base().where(doc.op("@@")(q)).order_by(desc(func.ts_rank_cd(doc, q))).limit(limit)
         arms.append(list(session.scalars(stmt)))
     if not strict and _has_trgm(session):
-        score = _trgm_score(column, lexicon.words(query))
+        score = _trgm_score(column, lexicon.content_words(query))
         if score is not None:
             arms.append(list(session.scalars(base().where(score >= TRGM_MIN).order_by(desc(score)).limit(limit))))
     return arms
@@ -131,11 +135,17 @@ def recall_memories(
     limit: int = 6,
     channel: str | None = None,
     strict: bool = False,
+    since: datetime | None = None,
+    until: datetime | None = None,
 ) -> list[Source]:
     origin = aliased(Context)
 
     def base() -> Select[Any]:
         stmt = select(MemoryItem).where(memory_filter(aud))
+        if since is not None:
+            stmt = stmt.where(MemoryItem.created_at >= since)
+        if until is not None:
+            stmt = stmt.where(MemoryItem.created_at < until)
         if channel:
             stmt = stmt.join(origin, origin.id == MemoryItem.origin_context_id).where(origin.provider == channel)
         return stmt
@@ -187,12 +197,24 @@ def _excerpt(text: str, words: list[str], size: int = 1000) -> str:
     return ("… " if start else "") + text[start : start + size].strip()
 
 
-def recall_chunks(session: Session, aud: Audience, query: str, limit: int = 4) -> list[Source]:
+def recall_chunks(
+    session: Session,
+    aud: Audience,
+    query: str,
+    limit: int = 4,
+    since: datetime | None = None,
+    until: datetime | None = None,
+) -> list[Source]:
     """Passages of the owner's shared files and pages that match the question, cited as `ava://chunk/<id>`."""
     gate = chunk_filter(aud)
 
     def base() -> Select[Any]:
-        return select(DocumentChunk).join(Document, Document.id == DocumentChunk.document_id).where(gate)
+        stmt = select(DocumentChunk).join(Document, Document.id == DocumentChunk.document_id).where(gate)
+        if since is not None:
+            stmt = stmt.where(DocumentChunk.created_at >= since)
+        if until is not None:
+            stmt = stmt.where(DocumentChunk.created_at < until)
+        return stmt
 
     if not lexicon.words(query):
         return []
@@ -231,6 +253,9 @@ def recall_messages(
     limit: int = 6,
     channel: str | None = None,
     rooms: bool = False,
+    since: datetime | None = None,
+    until: datetime | None = None,
+    person_ids: set[uuid.UUID] | None = None,
 ) -> list[Source]:
     """`rooms`: also the messages stored from channels the owner let Ava read whole (#509). Only the owner's own
     private chat passes it; for anyone else those messages do not exist, even the reader's own."""
@@ -247,11 +272,19 @@ def recall_messages(
         stmt = select(Event).where(gate, Event.content != "", Event.direction == "in")
         if channel:
             stmt = stmt.join(Context, Context.id == Event.context_id).where(Context.provider == channel)
+        if since is not None:
+            stmt = stmt.where(Event.created_at >= since)
+        if until is not None:
+            stmt = stmt.where(Event.created_at < until)
+        if person_ids is not None:  # a person was asked for: only what they sent (nobody matched: nothing)
+            stmt = stmt.where(Event.resolved_person_id.in_(person_ids)) if person_ids else stmt.where(false())
         return stmt
 
-    if lexicon.words(query):
+    if person_ids is not None and not person_ids:
+        found = []
+    elif lexicon.content_words(query):
         found = _fuse(_arms(session, query, Event.content, base, limit * 2, strict=False))[:limit]
-    elif channel:  # "what did I say on Telegram?": the latest there
+    elif channel or person_ids:  # "what did I say on Telegram?": the latest there
         found = list(session.scalars(base().order_by(Event.created_at.desc()).limit(limit)))
     else:
         found = []
@@ -294,6 +327,96 @@ def resolve_channel(channel: str | None, query: str) -> tuple[str | None, str]:
     return picked, query
 
 
+# How much a kind of source counts when the searches of every kind are fused by score (reciprocal rank, k = 60, times
+# the weight). Notes are distilled, so they edge out raw messages on a tie; nothing is always first. When a person, a
+# time or a channel narrows the question, the messages that passed that test count more than a note that could not.
+KIND_WEIGHT = {"note": 1.0, "visitor": 0.95, "message": 0.9, "chunk": 0.9}
+NARROWED_BOOST = 1.6
+
+
+@dataclass
+class Recalled:
+    sources: list[Source]
+    scope: Scope
+
+    def nothing(self, channel: str | None) -> str:
+        return self.scope.nothing(channel)
+
+
+def _blend(lists: dict[str, list[Source]], narrowed: set[str], limit: int) -> list[Source]:
+    scored: list[tuple[float, int, Source]] = []
+    order = 0
+    for kind, found in lists.items():
+        weight = KIND_WEIGHT[kind] * (NARROWED_BOOST if kind in narrowed else 1.0)
+        for rank, src in enumerate(found):
+            scored.append((weight / (RRF_K + rank + 1), -order, src))
+            order += 1
+    scored.sort(key=lambda t: (t[0], t[1]), reverse=True)
+    return [src for _, _, src in scored[:limit]]
+
+
+def recall_scoped(
+    session: Session,
+    aud: Audience,
+    query: str,
+    limit: int = 8,
+    exclude_event: uuid.UUID | None = None,
+    channel: str | None = None,
+    rooms: bool = False,
+    *,
+    since: str = "",
+    until: str = "",
+    person: str = "",
+    kinds: list[str] | None = None,
+    asked: str = "",
+) -> Recalled:
+    """Notes, messages, visitor messages and passages, each searched behind the audience gate and fused by score.
+    `since`/`until` (ISO dates), `person` (a name) and `kinds` are the model's; the time words and names in the
+    question or in `asked` (the owner's own message) are read in code (recall/scope.py) and left out of the text
+    searched. `rooms`: see `recall_messages`."""
+    picked, query = resolve_channel(channel, query)
+    scope = understand(
+        session, aud, query, asked=asked, since=since, until=until, person=person, kinds=kinds
+    )  # fmt: skip
+    chatter_only = not lexicon.content_words(scope.text) and not lexicon.content_words(scope.message_text)
+    if chatter_only and not picked and not scope.filtered:
+        return Recalled([], scope)
+    has_words = bool(lexicon.content_words(scope.text))
+    k = scope.kinds
+    lists: dict[str, list[Source]] = {}
+    if "notes" in k and has_words:
+        lists["note"] = recall_memories(
+            session, aud, scope.text, limit=limit, channel=picked, since=scope.hard_since, until=scope.hard_until
+        )
+    if "messages" in k:
+        lists["message"] = [
+            m
+            for m in recall_messages(
+                session,
+                aud,
+                scope.message_text,
+                limit=limit,
+                channel=picked,
+                rooms=rooms,
+                since=scope.since,
+                until=scope.until,
+                person_ids=scope.person_ids,
+            )  # fmt: skip
+            if not (exclude_event and m.uri.endswith(str(exclude_event)))
+        ]
+    if "files" in k and has_words and not picked and not scope.asked_person:
+        lists["chunk"] = recall_chunks(
+            session, aud, scope.text, limit=limit, since=scope.hard_since, until=scope.hard_until
+        )
+    if "visitors" in k and rooms:  # strangers' words: the owner's private chat only
+        lists["visitor"] = visitor_sources(
+            session, aud, scope.message_text, provider=picked, limit=limit, since=scope.since, until=scope.until,
+            identity_ids=scope.identity_ids,
+        )  # fmt: skip
+    narrowed = {"message", "visitor"} if (scope.filtered or picked) else set()
+    return Recalled(_blend(lists, narrowed, limit), scope)
+
+
 def recall(
     session: Session,
     aud: Audience,
@@ -302,23 +425,10 @@ def recall(
     exclude_event: uuid.UUID | None = None,
     channel: str | None = None,
     rooms: bool = False,
+    **filters: Any,
 ) -> list[Source]:
-    """Notes and messages fused into one list; never more than `limit`. `rooms`: see `recall_messages`."""
-    picked, query = resolve_channel(channel, query)
-    if not lexicon.words(query) and not picked:
-        return []
-    notes = recall_memories(session, aud, query, limit=limit, channel=picked) if lexicon.words(query) else []
-    msgs = [
-        m
-        for m in recall_messages(session, aud, query, limit=limit, channel=picked, rooms=rooms)
-        if not m.uri.endswith(str(exclude_event))
-    ]
-    passages = recall_chunks(session, aud, query, limit=limit) if lexicon.words(query) and not picked else []
-    seen = visitor_sources(session, aud, query, provider=picked) if rooms else []  # strangers' words: owner only
-    # Notes are distilled, so they lead; messages and passages always keep a couple of seats when they match.
-    m, c = min(len(msgs), 2), min(len(passages), 2)
-    seats = max(limit - m - c, limit // 4)
-    return (seen + notes[:seats] + msgs[:m] + passages[:c] + notes[seats:] + msgs[m:] + passages[c:])[:limit]
+    """Notes and messages fused into one list; never more than `limit`. See `recall_scoped` for the filters."""
+    return recall_scoped(session, aud, query, limit, exclude_event, channel, rooms, **filters).sources
 
 
 FUZZY_WORD_MIN = 0.45  # "favrite" in "… favourite …" 0.5, "cusine" in "… cuisine …" 0.5
@@ -354,7 +464,6 @@ def pre_recall(session: Session, aud: Audience, query: str, limit: int = 4) -> l
 
 VISITOR_TITLE = "Visitor message"  # a Source title that makes the caller taint the turn
 VISITOR_MARK = "from someone Ava does not know"  # in a report holding visitor text: the turn cannot act on it
-RETENTION_DAYS = 30  # follows the ambient-channel default (channels.ambient.DEFAULT_RETENTION)
 TEXT_CHARS = 600
 MAX_ROWS = 20
 CHANNEL_LABEL = {"telegram": "Telegram", "slack": "Slack"}
@@ -363,6 +472,9 @@ CHANNEL_LABEL = {"telegram": "Telegram", "slack": "Slack"}
 # --- what strangers told Ava (#512, docs/design/cross-channel-owner-memory.md) ---------------------------------
 # A stranger's message is stored as a reception_message. The gate is decided here, in code and in the SQL: only the
 # owner's own private audience reads it; the text is rendered by code and the caller marks the turn tainted.
+
+
+_VISITOR_TEXT = ReceptionMessage.message  # searched with `ix_reception_message_fts`, the same expression
 
 
 def _owner_gate(session: Session, aud: Audience) -> ColumnElement[bool]:
@@ -376,10 +488,6 @@ def _owner_gate(session: Session, aud: Audience) -> ColumnElement[bool]:
     return ReceptionMessage.agent_id == found[1].agent_id
 
 
-def _since(days: int) -> datetime:
-    return datetime.now(UTC) - timedelta(days=max(1, min(RETENTION_DAYS, days)))
-
-
 def visitor_rows(
     session: Session,
     aud: Audience,
@@ -389,28 +497,53 @@ def visitor_rows(
     hours: int | None = None,
     limit: int = MAX_ROWS,
     cited: bool = False,
+    since: datetime | None = None,
+    until: datetime | None = None,
+    identity_ids: set[uuid.UUID] | None = None,
 ) -> list[ReceptionMessage]:
-    """Newest first. `query`: only rows whose topic, name or message contain any of its words. `cited`: only rows
-    that link to their inbound event (what a citation points at). Nothing for anyone but the owner's private audience:
-    the gate is part of the statement."""
-    since = _since(RETENTION_DAYS)
+    """Visitor messages, most relevant first, then newest. Nothing is dropped for being old: the owner's messages are
+    kept, and `since`/`until` (or `hours`) narrow by time only when asked. `identity_ids`: only those senders (an empty
+    set: nobody). `query`: the content words (chatter dropped) rank the rows; a row that matches none is returned only
+    when a sender or a channel was asked for, so "yes please" cannot find a message by accident. `cited`: only rows
+    that link to their inbound event. Nothing for anyone but the owner's private audience: the gate is part of the
+    statement."""
+    stmt = select(ReceptionMessage).where(_owner_gate(session, aud), ReceptionMessage.status != "spam")
     if hours is not None:
-        since = max(since, datetime.now(UTC) - timedelta(hours=hours))
-    stmt = select(ReceptionMessage).where(
-        _owner_gate(session, aud), ReceptionMessage.created_at >= since, ReceptionMessage.status != "spam"
-    )
+        since = (
+            max(since, datetime.now(UTC) - timedelta(hours=hours))
+            if since
+            else datetime.now(UTC) - timedelta(hours=hours)
+        )
+    if since is not None:
+        stmt = stmt.where(ReceptionMessage.created_at >= since)
+    if until is not None:
+        stmt = stmt.where(ReceptionMessage.created_at < until)
     if provider:
         stmt = stmt.where(ReceptionMessage.provider == provider)
     if cited:
         stmt = stmt.where(ReceptionMessage.inbound_event_id.is_not(None))
-    words = lexicon.words(query)
+    if identity_ids is not None:
+        stmt = stmt.where(ReceptionMessage.identity_id.in_(identity_ids)) if identity_ids else stmt.where(false())
+    narrowed = identity_ids is not None or bool(provider)
+    words = lexicon.content_words(query)
+    order: list[Any] = []
     if words:
-        doc = func.to_tsvector(
-            "english", ReceptionMessage.topic + " " + ReceptionMessage.name + " " + ReceptionMessage.message
-        )
-        any_word = " or ".join(dict.fromkeys(words))
-        stmt = stmt.where(doc.op("@@")(func.websearch_to_tsquery("english", any_word)))
-    return list(session.scalars(stmt.order_by(ReceptionMessage.created_at.desc()).limit(limit)))
+        doc = func.to_tsvector(LANG, _VISITOR_TEXT)
+        fts = _tsquery(lexicon.groups(" ".join(words)), any_word=True)
+        typo = (
+            _trgm_score(_VISITOR_TEXT, [w for w in words if len(w) >= 6]) if _has_trgm(session) else None
+        )  # stricter than for notes: a stranger's message must not match by a loose resemblance
+        match = doc.op("@@", return_type=Boolean)(fts) if fts is not None else false()
+        score: Any = func.ts_rank_cd(doc, fts) if fts is not None else literal(0.0)
+        if typo is not None:
+            match = match | (typo >= VISITOR_TRGM_MIN)
+            score = score + case((typo >= VISITOR_TRGM_MIN, typo), else_=0.0)
+        if not narrowed:
+            stmt = stmt.where(match)
+        order.append(desc(score))
+    elif query.strip() and not narrowed:  # a question of nothing but chatter finds nothing
+        return []
+    return list(session.scalars(stmt.order_by(*order, ReceptionMessage.created_at.desc()).limit(limit)))
 
 
 def _one_line(text: str) -> str:
@@ -435,15 +568,22 @@ def _uri(row: ReceptionMessage) -> str:
 
 
 def visitor_sources(
-    session: Session, aud: Audience, query: str, *, provider: str | None = None, limit: int = 3
+    session: Session,
+    aud: Audience,
+    query: str,
+    *,
+    provider: str | None = None,
+    limit: int = 3,
+    since: datetime | None = None,
+    until: datetime | None = None,
+    identity_ids: set[uuid.UUID] | None = None,
 ) -> list[Source]:
-    """Visitor messages as `recall` sources (cited like any message). Empty unless `aud` is the owner's own."""
-    if lexicon.words(query):
-        rows = visitor_rows(session, aud, query=query, provider=provider, limit=limit, cited=True)
-    elif provider:  # "who wrote on Telegram?": the question is the channel, not a word
-        rows = visitor_rows(session, aud, provider=provider, limit=limit, cited=True)
-    else:
-        rows = []
+    """Visitor messages as `recall` sources (cited like any message). Empty unless `aud` is the owner's own. A message
+    is returned when it matches a content word of the question, or when a sender or a channel was asked for."""
+    rows = visitor_rows(
+        session, aud, query=query, provider=provider, limit=limit, cited=True, since=since, until=until,
+        identity_ids=identity_ids,
+    )  # fmt: skip
     return [
         Source(
             uri=_uri(r),
@@ -463,9 +603,6 @@ def visitor_report(session: Session, owner_id: uuid.UUID, aud: Audience, hours: 
     rows = visitor_rows(session, aud, hours=hours)
     span = f"in the last {hours} hours"
     if not rows:
-        return (
-            f"Nobody Ava does not know has written to Ava in a direct message {span} "
-            f"(messages are kept {RETENTION_DAYS} days)."
-        )
+        return f"Nobody Ava does not know has written to Ava in a direct message {span}."
     head = f"{len(rows)} direct message{'s' if len(rows) != 1 else ''} {span} {VISITOR_MARK}, newest first:"
     return "\n".join([head, *(f"- {render(r)}" + (f" {_uri(r)}" if r.inbound_event_id else "") for r in rows)])
