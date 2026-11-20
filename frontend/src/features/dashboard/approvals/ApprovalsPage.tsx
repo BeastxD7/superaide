@@ -88,7 +88,7 @@ export function ApprovalsPage() {
               role="tab"
               aria-selected={view === key}
               onClick={() => setView(key)}
-              className={`min-h-9 rounded-md px-3 ${view === key ? 'bg-white font-medium text-ink shadow-sm' : 'text-body hover:text-ink'}`}
+              className={`min-h-11 rounded-md px-3 ${view === key ? 'bg-white font-medium text-ink shadow-sm' : 'text-body hover:text-ink'}`}
             >
               {label}
             </button>
