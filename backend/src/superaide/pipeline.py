@@ -33,11 +33,11 @@ from superaide.identity import friends, linking
 from superaide.identity.models import Person
 from superaide.identity.resolver import Sender, resolve
 from superaide.intentions.when import is_reminder_request
+from superaide.memory.api import memories_for_question
 from superaide.memory.audience import Audience, audience_for, visible_memories
 from superaide.memory.knowledge import trust
 from superaide.memory.knowledge.profile import owner_brief
 from superaide.memory.models import Context
-from superaide.memory.recall.retrieval import memories_for_question
 from superaide.memory.store import (
     Timeline,
     get_or_create_context,
