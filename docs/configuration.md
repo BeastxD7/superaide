@@ -43,7 +43,7 @@ Long comments are shortened here; the full text is next to the variable in `back
 | `RUN_CHANNELS_IN_API` | `true` |  | Run the Telegram and Slack listeners inside the API process (follow connections made in the app). true \| false. Default true. Production compose sets false on the api and runs them in the worker. |
 | `RUN_JOBS_IN_API` | `true` |  | Run background jobs (reminders, follow-ups, digests) inside the API process. true \| false. Default true. Same note. |
 | `REMINDER_AUTO_CLOSE_DAYS` | `7` |  | Days a delivered reminder stays open before it is closed for the owner (marked done, audited). 0 = never. Default 7. |
-| `THIRD_PARTY_MESSAGE_RETENTION_DAYS` | `0` |  | Empty the text of third parties' messages older than this many days. 0 = never (deleting by age is the owner's call). Default 0. |
+| `THIRD_PARTY_MESSAGE_RETENTION_DAYS` | `0` |  | Hide (soft delete, the rows are kept) third parties' messages older than this many days. 0 = never (hiding by age is the owner's call). Default 0. |
 
 ### Claude API and spend limits
 
@@ -107,6 +107,8 @@ Long comments are shortened here; the full text is next to the variable in `back
 | `GOOGLE_REDIRECT_ORIGINS` | empty |  | Extra origins registered with Google as authorised redirect URIs besides FRONTEND_ORIGIN (comma-separated exact origins, no wildcards; each must also be allowed by LINK_ORIGINS or DEV_ORIGINS), for example http://127.0.0.1:3000. Default empty. |
 | `GOOGLE_REFRESH_TOKEN` | empty | yes | Calendar refresh token for a self-hosted server. Secret. Normally leave blank: each owner signs in from Connections and the token is kept in their vault. |
 | `GMAIL_REFRESH_TOKEN` | empty | yes | Gmail refresh token, same rules. Secret. |
+| `GITHUB_TOKEN` | empty | yes | GitHub access token (fine-grained, read access to the repositories you choose). Secret. Normally leave blank: each owner pastes it under Capabilities and it is kept in their vault. |
+| `DRIVE_REFRESH_TOKEN` | empty | yes | Google Drive refresh token, same rules. Secret. |
 | `GOOGLE_FAKE_BASE_URL` | empty |  | End-to-end tests only: a fake Google at this address replaces accounts.google.com, and only while ENABLE_SIMULATOR is on. Never set on a real server. Default empty. |
 
 ### Operator console, origins and API surface

@@ -53,6 +53,7 @@ from superaide.reception.api import (
     QUOTE_MARK,
     RELAY_TOOL,
     awareness_line,
+    inbox_referents,
     inbox_report,
     relay_pending,
     relay_request,
@@ -211,6 +212,8 @@ class LoopResult:
     steps: int = 0
     activity: list[dict[str, str]] = field(default_factory=list)  # what Ava did, in order, for the UI
     reasoning: str = ""
+    referents: list[dict[str, str]] = field(default_factory=list)  # what listings showed, for the next turn (#643)
+    offer: dict[str, Any] | None = None  # the single read "yes please" can accept next turn (#643)
 
 
 def narrate(name: str, args: dict[str, Any]) -> str:
@@ -267,8 +270,24 @@ def narrate(name: str, args: dict[str, Any]) -> str:
         return f"Adding to your calendar: {str(args.get('title', ''))[:80]}, {str(args.get('when', ''))[:40]}{invite}"
     if name == "move_event":
         return f"Moving a calendar event to {str(args.get('when', ''))[:40]}"
+    if name == "github_search":
+        return f"Searching your GitHub for \u201c{str(args.get('query', ''))[:80]}\u201d"
+    if name == "github_read":
+        return f"Reading {str(args.get('repo', ''))[:60]}#{str(args.get('number', ''))[:8]} on GitHub"
+    if name == "github_create_issue":
+        return f"Asking for your approval to open \u201c{str(args.get('title', ''))[:80]}\u201d on GitHub"
+    if name == "github_comment":
+        return "Asking for your approval to comment on GitHub"
     if name == "decline_event":
         return "Declining a calendar invitation (needs your OK)"
+    if name == "drive_search":
+        return f"Searching your Drive for \u201c{str(args.get('query', ''))[:80]}\u201d"
+    if name == "drive_read":
+        return "Reading a file from your Drive"
+    if name == "drive_create_file":
+        return f"Asking for your approval to create \u201c{str(args.get('name', ''))[:80]}\u201d in your Drive"
+    if name == "drive_append_doc":
+        return "Asking for your approval to add text to a Doc in your Drive"
     if name == "web_search":
         return f"Searching the web for \u201c{str(args.get('query', ''))[:80]}\u201d"
     if name == "web_fetch":
@@ -376,7 +395,8 @@ def render(content: list[dict[str, Any]]) -> tuple[str, list[Cited]]:
 
 # Lines only the app may write (see OWNER_RULES); a model that copies them from history must not show them.
 APP_LABEL = re.compile(
-    r"^[ \t]*\[(?:Tools used for this reply:|On (?:Telegram|Slack|the app)\b|\u2014 )[^\]\n]*\][ \t]*\n?", re.M
+    r"^[ \t]*\[(?:Tools used for this reply:|On (?:Telegram|Slack|the app)\b|\u2014 |This reply listed for the owner:|The owner said yes to your offer:)[^\]\n]*\][ \t]*\n?",
+    re.M,
 )
 
 
@@ -470,6 +490,11 @@ class OwnerTurn:
         self.found: dict[str, Source] = {}  # notes and messages returned this turn, by uri
         self._known = ""  # the date, time zone and owner brief from the system prompt
         self.plan: taskplan.TaskPlan | None = None  # TASK_PROTOCOL_ENABLED: the plan that passed this turn
+        self.referents: list[dict[str, str]] = []  # what this turn's listings showed, for the next turn (#643)
+        self.offer: dict[str, Any] | None = None  # the one read the owner can accept with "yes please" (#643)
+        self._promise_retried = False
+        self._retry_pending = False  # the retry step has been asked for and not yet answered
+        self._hosted_used = False  # a hosted tool (web search) ran at the provider: that counts as a lookup
         self.plan_approved = False  # an approval was created under that plan (its line goes in the reply)
 
     # --- live progress ----------------------------------------------------------
@@ -692,6 +717,20 @@ class OwnerTurn:
                 result_hash=digest(content), turn_id=self.inbound.id,
             )  # fmt: skip
 
+    def _remember(self, found: list[dict[str, str]], *, tool: str, arg: str) -> None:
+        """Keep what a listing showed (never in a shared channel). Exactly one item makes an offer, and an offer
+        is only ever a read: a tool with any side effect is never one (#643)."""
+        from superaide.tooltrace.effects import is_read
+
+        if self.shared or not found:
+            return
+        have = {r["id"] for r in self.referents}
+        self.referents = [*self.referents, *(r for r in found if r["id"] not in have)][:10]
+        if len(found) == 1 and len(self.referents) == 1 and is_read(tool):
+            self.offer = {"tool": tool, "args": {arg: found[0]["id"]}, "effect": "read", "label": found[0]["label"]}
+        else:
+            self.offer = None
+
     def _observe(self, name: str, args: dict[str, Any], is_error: bool) -> None:
         from superaide.skills import signals
 
@@ -766,6 +805,7 @@ class OwnerTurn:
             assert self.sender.person is not None
             self.notes.append("inbox")
             report = inbox_report(self.s, zone(intentions.owner_zone(self.s, self.sender.person)), args)
+            self._remember(inbox_referents(self.s, args), tool="inbox", arg="id")
             if QUOTE_MARK in report:  # strangers' words entered the turn: information, never instructions
                 self.tainted = self.room_read = True
             return report, False
@@ -803,6 +843,28 @@ class OwnerTurn:
                 self.s, self.sender.person, name, args, tainted=self.tainted,
                 typed_by_owner=self._typed_by_owner(), mail_read=self.mail_read or self.room_read or self.file_read, channel=self._origin_channel(),
             )  # fmt: skip
+        from superaide.integrations.github import skill as github
+
+        if name in github.TOOLS:
+            assert self.sender.person is not None
+            if not any(s.manifest.id == github.SKILL_ID for s in self.skills()):
+                return f"Unknown tool {name!r}.", True
+            self.notes.append(name)
+            if name in github.READS:
+                # An issue is written by other people: information, never instructions (ADR 0006, #511).
+                self.tainted = self.file_read = True
+            return github.run(self.s, self.sender, name, args, tainted=self.tainted)
+        from superaide.integrations.drive import skill as drive
+
+        if name in drive.TOOLS:
+            assert self.sender.person is not None
+            if not any(s.manifest.id == drive.SKILL_ID for s in self.skills()):
+                return f"Unknown tool {name!r}.", True
+            self.notes.append(name)
+            if name in drive.READS:
+                # A file is written by other people: information, never instructions (ADR 0006, #511).
+                self.tainted = self.file_read = True
+            return drive.run(self.s, self.sender, name, args, tainted=self.tainted)
         if name == "calendar_events":
             from superaide.integrations.calendar.skill import calendar_events
 
@@ -994,7 +1056,7 @@ class OwnerTurn:
             )
         return relay_request(
             self.s, self.sender.person, self.sender, to=str(args.get("to") or ""), text=str(args.get("text") or ""),
-            typed=self._typed_by_owner(),
+            typed=self._typed_by_owner(), confirm_old=args.get("confirm_old") is True,
         )  # fmt: skip
 
     def _presence(self, action: str) -> tuple[str, bool]:
@@ -1149,19 +1211,15 @@ class OwnerTurn:
         for step in range(MAX_STEPS):
             self._said = ""
             self.emit("status", {"text": "Thinking" if step == 0 else "Working it out"})
-            last = self.llm.step(
-                purpose=self.purpose,
-                model=self.model,
-                system=system,
-                messages=msgs,
-                tools=tools,
-                max_tokens=MAX_TOKENS,
-                effort="low" if step else None,
-                max_web_searches=self._web_limits()["web_search"]
-                if any(t.get("name") == "web_search" for t in tools)
-                else 0,
-                on_event=self.on_model_event if streaming else None,
-            )
+            before = last
+            try:
+                last = self._step(system, tools, msgs, step, streaming)
+            except BudgetExceeded:
+                if not (self._retry_pending and before is not None):
+                    raise
+                log.info("promise retry refused by the spend cap; answering with the first reply")
+                return self._finish(system, tools, msgs, before, step)
+            self._retry_pending = False
             context_watch.observe(
                 self.s,
                 self.model,
@@ -1176,6 +1234,11 @@ class OwnerTurn:
                 last = self._more_room(system, tools, msgs, last)
             if any(b.get("type") in {"web_search_tool_result", "web_fetch_tool_result"} for b in last.content):
                 self.tainted = True
+            if any(
+                b.get("type") in {"server_tool_use", "web_search_tool_result", "web_fetch_tool_result"}
+                for b in last.content
+            ):
+                self._hosted_used = True
             if last.stop_reason in {"max_tokens", "model_context_window_exceeded"}:
                 return self._cut_off(system, tools, msgs, last, step + 1)
             if last.stop_reason == "pause_turn":  # a server tool hit its own limit: carry on
@@ -1183,6 +1246,15 @@ class OwnerTurn:
                 msgs = [*msgs, {"role": "assistant", "content": last.content}]
                 continue
             if last.stop_reason != "tool_use":
+                if self._unkept_promise(last):
+                    self._said = ""
+                    self.emit("retract", {})  # the draft already streamed to the chat is replaced
+                    msgs = [
+                        *msgs,
+                        {"role": "assistant", "content": last.content},
+                        {"role": "user", "content": capabilities.PROMISE_RETRY},
+                    ]
+                    continue
                 return self._finish(system, tools, msgs, last, step + 1)
             self._narrated()
             results = []
@@ -1212,6 +1284,28 @@ class OwnerTurn:
             sources,
             self.notes + ["step_limit"],
             MAX_STEPS,
+        )
+
+    def _step(
+        self,
+        system: list[SystemBlock],
+        tools: list[dict[str, Any]],
+        msgs: list[dict[str, Any]],
+        step: int,
+        streaming: bool,
+    ) -> StepResult:
+        return self.llm.step(
+            purpose=self.purpose,
+            model=self.model,
+            system=system,
+            messages=msgs,
+            tools=tools,
+            max_tokens=MAX_TOKENS,
+            effort="low" if step else None,
+            max_web_searches=self._web_limits()["web_search"]
+            if any(t.get("name") == "web_search" for t in tools)
+            else 0,
+            on_event=self.on_model_event if streaming else None,
         )
 
     def _more_room(
@@ -1392,6 +1486,20 @@ class OwnerTurn:
             return None
         return step
 
+    def _unkept_promise(self, last: StepResult) -> bool:
+        """The reply promises a lookup ("Let me fetch the message") and no tool ran in this turn: ask once for the
+        call or a plain "I can't" (#643). Not in a rehearsal, not past the step limit."""
+        if self._promise_retried or self._seq or self._hosted_used or self.replay is not None:
+            return False
+        if any(b.get("type") in {"tool_use", "server_tool_use"} for b in last.content):
+            return False
+        text = " ".join(str(b.get("text") or "") for b in last.content if b.get("type") == "text")
+        if not capabilities.promises_lookup(text):
+            return False
+        self._promise_retried = self._retry_pending = True
+        self.notes.append("promise_retry")
+        return True
+
     def _narrated(self) -> None:
         """The text of a step that went on to use tools was Ava saying what she's doing, not her answer."""
         said = self._said.strip()
@@ -1459,6 +1567,12 @@ class OwnerTurn:
         text, removed = capabilities.strip_claims(
             text, self.ok_tools, can_send=gmail_skill.can_draft(self.s), pending=relay_pending(self.s)
         )
+        if (
+            not (self._seq or self._hosted_used) and self.replay is None
+        ):  # no tool ran: a sentence promising a lookup is not left standing
+            text, kept = capabilities.strip_promises(text)
+            if kept:
+                notes.append(f"promise_replaced:{kept}")
         if removed:
             notes.append(f"claim_removed:{len(removed)}")
             audit(self.s, "brain", "action_claim_removed", kinds=sorted(set(removed)))
@@ -1475,4 +1589,6 @@ class OwnerTurn:
         text = self._no_hedged_approvals(text)
         if self.plan_approved and self.plan is not None and "approval_withdrawn:hedge" not in notes:
             text = text + "\n\n" + taskplan.plan_line(self.plan)
-        return LoopResult(text, sources, notes, self.tainted, steps, self.activity, self.reasoning.strip())
+        return LoopResult(
+            text, sources, notes, self.tainted, steps, self.activity, self.reasoning.strip(), self.referents, self.offer
+        )

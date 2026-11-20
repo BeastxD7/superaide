@@ -1381,6 +1381,25 @@
         "title": "DrillBody",
         "type": "object"
       },
+      "DriveSettingsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "read_chars": {
+            "title": "Read Chars"
+          },
+          "reads_per_hour": {
+            "title": "Reads Per Hour"
+          },
+          "search_limit": {
+            "title": "Search Limit"
+          },
+          "write_chars": {
+            "title": "Write Chars"
+          }
+        },
+        "title": "DriveSettingsBody",
+        "type": "object"
+      },
       "EmailBody": {
         "properties": {
           "email": {
@@ -1479,6 +1498,28 @@
         ],
         "title": "Feedback",
         "type": "string"
+      },
+      "GithubSettingsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "comments_read": {
+            "title": "Comments Read"
+          },
+          "read_chars": {
+            "title": "Read Chars"
+          },
+          "reads_per_hour": {
+            "title": "Reads Per Hour"
+          },
+          "search_limit": {
+            "title": "Search Limit"
+          },
+          "write_chars": {
+            "title": "Write Chars"
+          }
+        },
+        "title": "GithubSettingsBody",
+        "type": "object"
       },
       "GoogleClientBody": {
         "properties": {
@@ -2189,6 +2230,17 @@
         "title": "ProviderBody",
         "type": "object"
       },
+      "PurgeBody": {
+        "properties": {
+          "confirm": {
+            "default": "",
+            "title": "Confirm",
+            "type": "string"
+          }
+        },
+        "title": "PurgeBody",
+        "type": "object"
+      },
       "QueueBody": {
         "properties": {
           "question": {
@@ -2517,6 +2569,24 @@
           "text"
         ],
         "title": "ReplyBody",
+        "type": "object"
+      },
+      "ReposBody": {
+        "additionalProperties": false,
+        "properties": {
+          "repos": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Repos",
+            "type": "array"
+          }
+        },
+        "required": [
+          "repos"
+        ],
+        "title": "ReposBody",
         "type": "object"
       },
       "ResetBody": {
@@ -3293,21 +3363,6 @@
         "title": "TestBody",
         "type": "object"
       },
-      "TokenBody": {
-        "properties": {
-          "token": {
-            "maxLength": 200,
-            "minLength": 16,
-            "title": "Token",
-            "type": "string"
-          }
-        },
-        "required": [
-          "token"
-        ],
-        "title": "TokenBody",
-        "type": "object"
-      },
       "TourStatus": {
         "properties": {
           "status": {
@@ -3425,6 +3480,20 @@
           "text"
         ],
         "title": "WriteBody",
+        "type": "object"
+      },
+      "WritesBody": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "WritesBody",
         "type": "object"
       },
       "superaide__api__admin__LinkBody": {
@@ -3680,6 +3749,21 @@
         "title": "StartBody",
         "type": "object"
       },
+      "superaide__identity__auth__routes__TokenBody": {
+        "properties": {
+          "token": {
+            "maxLength": 200,
+            "minLength": 16,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "TokenBody",
+        "type": "object"
+      },
       "superaide__identity__claims_routes__AnswerBody": {
         "additionalProperties": false,
         "properties": {
@@ -3919,6 +4003,22 @@
           }
         },
         "title": "PreviewBody",
+        "type": "object"
+      },
+      "superaide__integrations__github__routes__TokenBody": {
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "TokenBody",
         "type": "object"
       },
       "superaide__mandate__routes__CreateBody": {
@@ -8601,6 +8701,191 @@
         ]
       }
     },
+    "/app/drive": {
+      "get": {
+        "description": "Installed, connected and drafts.",
+        "operationId": "status_app_drive_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Status App Drive Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Google Drive capability status",
+        "tags": [
+          "Owner: Google Drive"
+        ]
+      }
+    },
+    "/app/drive/connect": {
+      "post": {
+        "description": "Returns a Google sign-in URL asking to read Drive (drive.readonly). Install the capability first.",
+        "operationId": "connect_app_drive_connect_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Connect App Drive Connect Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Connect Google Drive (read-only)",
+        "tags": [
+          "Owner: Google Drive"
+        ]
+      }
+    },
+    "/app/drive/drafts": {
+      "post": {
+        "description": "On: Ava may ask your approval to create a new Doc or Sheet and to add text to one she made. If Google hasn't allowed that yet, the answer carries `url`, a sign-in asking for drive.file too (files Ava makes herself only). Nothing is written without your yes.",
+        "operationId": "drafts_app_drive_drafts_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Drafts App Drive Drafts Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Turn Drive drafts on or off",
+        "tags": [
+          "Owner: Google Drive"
+        ]
+      }
+    },
+    "/app/drive/read-settings": {
+      "get": {
+        "description": "The owner's limits for Google Drive limits, every allowed value and what it means (defaults until installed).",
+        "operationId": "get_settings_app_drive_read_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Settings App Drive Read Settings Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Google Drive limits: your settings",
+        "tags": [
+          "Owner: Google Drive"
+        ]
+      },
+      "put": {
+        "description": "Changes any of the settings. Each change is audited.",
+        "operationId": "put_settings_app_drive_read_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DriveSettingsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Put Settings App Drive Read Settings Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Google Drive limits: change your settings",
+        "tags": [
+          "Owner: Google Drive"
+        ]
+      }
+    },
     "/app/episodes": {
       "get": {
         "description": "The owner's own episodes, newest first. 404 while SLEEP_JOB_ENABLED is off.",
@@ -8949,6 +9234,285 @@
         "summary": "Decline an account",
         "tags": [
           "Owner: people & rules"
+        ]
+      }
+    },
+    "/app/github": {
+      "get": {
+        "description": "Installed, connected, repositories and drafts.",
+        "operationId": "status_app_github_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Status App Github Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "GitHub capability status",
+        "tags": [
+          "Owner: GitHub"
+        ]
+      }
+    },
+    "/app/github/read-settings": {
+      "get": {
+        "description": "The owner's limits for GitHub limits, every allowed value and what it means (defaults until installed).",
+        "operationId": "get_settings_app_github_read_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Settings App Github Read Settings Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "GitHub limits: your settings",
+        "tags": [
+          "Owner: GitHub"
+        ]
+      },
+      "put": {
+        "description": "Changes any of the settings. Each change is audited.",
+        "operationId": "put_settings_app_github_read_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GithubSettingsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Put Settings App Github Read Settings Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "GitHub limits: change your settings",
+        "tags": [
+          "Owner: GitHub"
+        ]
+      }
+    },
+    "/app/github/repos": {
+      "put": {
+        "description": "owner/name, at most 20. Ava sees nothing outside this list. Each change is audited.",
+        "operationId": "set_repos_app_github_repos_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReposBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Set Repos App Github Repos Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Choose the repositories Ava may see",
+        "tags": [
+          "Owner: GitHub"
+        ]
+      }
+    },
+    "/app/github/token": {
+      "delete": {
+        "description": "Deletes the stored access token.",
+        "operationId": "disconnect_app_github_token_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Disconnect App Github Token Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Disconnect GitHub",
+        "tags": [
+          "Owner: GitHub"
+        ]
+      },
+      "post": {
+        "description": "Checks the token with GitHub, then stores it encrypted. Use a fine-grained token limited to the repositories you want Ava to see (read access to issues and pull requests; write access to issues only if you will turn drafts on). The answer never contains the token.",
+        "operationId": "connect_app_github_token_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/superaide__integrations__github__routes__TokenBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Connect App Github Token Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Connect GitHub with an access token",
+        "tags": [
+          "Owner: GitHub"
+        ]
+      }
+    },
+    "/app/github/writes": {
+      "post": {
+        "description": "On: Ava may ask your approval to open an issue or comment. Nothing is written without your yes.",
+        "operationId": "writes_app_github_writes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WritesBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Writes App Github Writes Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Turn GitHub drafts on or off",
+        "tags": [
+          "Owner: GitHub"
         ]
       }
     },
@@ -9661,7 +10225,7 @@
     },
     "/app/intro/documents/{document_id}/erase": {
       "post": {
-        "description": "Deletes its text, its passages, what Ava learned only from it and their vectors. Unlike remove, this cannot be undone. A fact you also said yourself, or that another file supports, stays.",
+        "description": "Hides it: its text, its passages, what Ava learned only from it and their vectors are no longer read by anything. Nothing is deleted, and `restore` brings it all back. A fact you also said yourself, or that another file supports, stays. A real, permanent delete is the separate `purge`.",
         "operationId": "erase_document_route_app_intro_documents__document_id__erase_post",
         "parameters": [
           {
@@ -9704,7 +10268,68 @@
             "X-Requested-With": []
           }
         ],
-        "summary": "Erase a file or link for good",
+        "summary": "Erase a file or link",
+        "tags": [
+          "Introduction"
+        ]
+      }
+    },
+    "/app/intro/documents/{document_id}/purge": {
+      "post": {
+        "description": "The permanent delete: its text, passages, what Ava learned only from it and their vectors are removed and cannot be restored. Needs `confirm: \"purge\"` in the body, as a second confirmation.",
+        "operationId": "purge_document_route_app_intro_documents__document_id__purge_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PurgeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Purge Document Route App Intro Documents  Document Id  Purge Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Delete a file or link for good",
         "tags": [
           "Introduction"
         ]
@@ -9756,6 +10381,57 @@
           }
         ],
         "summary": "Remove a file or link",
+        "tags": [
+          "Introduction"
+        ]
+      }
+    },
+    "/app/intro/documents/{document_id}/restore": {
+      "post": {
+        "description": "Brings back a file or link that was erased (not purged) and the facts hidden with it.",
+        "operationId": "restore_document_route_app_intro_documents__document_id__restore_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Restore Document Route App Intro Documents  Document Id  Restore Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Undo erasing a file or link",
         "tags": [
           "Introduction"
         ]
@@ -12978,7 +13654,7 @@
     },
     "/app/people/{contact_id}/erase": {
       "post": {
-        "description": "Deletes the notes they asked Ava to keep and notes about them, and empties the text of their messages. For a person on the owner's People list.",
+        "description": "Hides the notes they asked Ava to keep and notes about them, the text of their messages and the contact's notes. Nothing is deleted; `restore` brings it back. For a person on the owner's People list.",
         "operationId": "erase_person_route_app_people__contact_id__erase_post",
         "parameters": [
           {
@@ -13258,6 +13934,118 @@
           }
         ],
         "summary": "A one-time invite link for a contact",
+        "tags": [
+          "Owner: people & rules"
+        ]
+      }
+    },
+    "/app/people/{contact_id}/purge": {
+      "post": {
+        "description": "The permanent delete: their notes are removed and the text of their messages emptied. Cannot be restored. Needs `confirm: \"purge\"` in the body, as a second confirmation.",
+        "operationId": "purge_person_route_app_people__contact_id__purge_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contact_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Contact Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PurgeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Purge Person Route App People  Contact Id  Purge Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Delete what Ava holds about a person for good",
+        "tags": [
+          "Owner: people & rules"
+        ]
+      }
+    },
+    "/app/people/{contact_id}/restore": {
+      "post": {
+        "description": "Brings back what was hidden by `erase` for this person (not what was purged).",
+        "operationId": "restore_person_route_app_people__contact_id__restore_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contact_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Contact Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Restore Person Route App People  Contact Id  Restore Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Undo erasing a person",
         "tags": [
           "Owner: people & rules"
         ]
@@ -14868,7 +15656,7 @@
     },
     "/app/receptionist/conversations": {
       "get": {
-        "description": "People Ava doesn't know who wrote in the last 30 days, one row each, newest first, with whether you are handling the conversation yourself (Ava stays out of it until you hand it back or you go quiet).",
+        "description": "People Ava doesn't know who wrote, one row each, newest first, with whether you are handling the conversation yourself (Ava stays out of it until you hand it back or you go quiet).",
         "operationId": "conversations_app_receptionist_conversations_get",
         "responses": {
           "200": {
@@ -15009,7 +15797,7 @@
     },
     "/app/receptionist/messages": {
       "get": {
-        "description": "What people Ava doesn't know asked her to pass on (last 30 days). All of it is unverified.",
+        "description": "What people Ava doesn't know asked her to pass on (newest first, any age). All unverified.",
         "operationId": "messages_app_receptionist_messages_get",
         "responses": {
           "200": {
@@ -15176,7 +15964,7 @@
     },
     "/app/receptionist/questions": {
       "get": {
-        "description": "Things people Ava doesn't know asked that she couldn't answer, newest first (last 30 days).",
+        "description": "Things people Ava doesn't know asked that she couldn't answer, newest first.",
         "operationId": "questions_app_receptionist_questions_get",
         "responses": {
           "200": {
@@ -19536,7 +20324,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TokenBody"
+                "$ref": "#/components/schemas/superaide__identity__auth__routes__TokenBody"
               }
             }
           },

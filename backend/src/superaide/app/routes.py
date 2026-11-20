@@ -39,7 +39,14 @@ from superaide.intentions import service as intentions
 from superaide.intentions.models import Intention
 from superaide.intentions.when import clean_task, find_moment, zone
 from superaide.memory.knowledge import extract
-from superaide.memory.knowledge.erase import erase_document, erase_person
+from superaide.memory.knowledge.erase import (
+    erase_document,
+    erase_person,
+    purge_document,
+    purge_person,
+    restore_document,
+    restore_person,
+)
 from superaide.memory.knowledge.erase import vacuum as erase_vacuum
 from superaide.memory.knowledge.ingest import ingest
 from superaide.memory.knowledge.store import conflicts_of, preferences_for, resolve_conflict, retire_document
@@ -69,6 +76,13 @@ def _require_text(extracted: extract.Extracted) -> None:
     """Scanned PDFs and script-only pages come back with no text: say why instead of saving nothing."""
     if not extracted.text.strip():
         raise HTTPException(422, " ".join(extracted.warnings) or "I couldn't find any text in that.")
+
+
+PURGE_WORD = "purge"
+
+
+class PurgeBody(BaseModel):
+    confirm: str = ""
 
 
 class ResolveConflict(BaseModel):
@@ -470,9 +484,10 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
     @router.post(
         "/intro/documents/{document_id}/erase",
         tags=["Introduction"],
-        summary="Erase a file or link for good",
-        description="Deletes its text, its passages, what Ava learned only from it and their vectors. Unlike "
-        "remove, this cannot be undone. A fact you also said yourself, or that another file supports, stays.",
+        summary="Erase a file or link",
+        description="Hides it: its text, its passages, what Ava learned only from it and their vectors are no longer "
+        "read by anything. Nothing is deleted, and `restore` brings it all back. A fact you also said yourself, or "
+        "that another file supports, stays. A real, permanent delete is the separate `purge`.",
     )
     def erase_document_route(document_id: uuid.UUID, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         with session_scope() as s:
@@ -480,15 +495,50 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             if doc is None or doc.owner_person_id != person_id:
                 raise HTTPException(404, "Not found")
             counts = erase_document(s, require(s, Person, person_id), doc)
-        erase_vacuum()
         return {"status": "erased", **counts}
+
+    @router.post(
+        "/intro/documents/{document_id}/restore",
+        tags=["Introduction"],
+        summary="Undo erasing a file or link",
+        description="Brings back a file or link that was erased (not purged) and the facts hidden with it.",
+    )
+    def restore_document_route(
+        document_id: uuid.UUID, person_id: uuid.UUID = Depends(owner_person_id)
+    ) -> dict[str, Any]:
+        with session_scope() as s:
+            doc = s.get(Document, document_id)
+            if doc is None or doc.owner_person_id != person_id or doc.erased_at is None:
+                raise HTTPException(404, "Not found")
+            counts = restore_document(s, require(s, Person, person_id), doc)
+        return {"status": "restored", **counts}
+
+    @router.post(
+        "/intro/documents/{document_id}/purge",
+        tags=["Introduction"],
+        summary="Delete a file or link for good",
+        description="The permanent delete: its text, passages, what Ava learned only from it and their vectors are "
+        'removed and cannot be restored. Needs `confirm: "purge"` in the body, as a second confirmation.',
+    )
+    def purge_document_route(
+        document_id: uuid.UUID, body: PurgeBody, person_id: uuid.UUID = Depends(owner_person_id)
+    ) -> dict[str, Any]:
+        if body.confirm != PURGE_WORD:
+            raise HTTPException(422, f'Send confirm: "{PURGE_WORD}" to delete this for good.')
+        with session_scope() as s:
+            doc = s.get(Document, document_id)
+            if doc is None or doc.owner_person_id != person_id:
+                raise HTTPException(404, "Not found")
+            counts = purge_document(s, require(s, Person, person_id), doc)
+        erase_vacuum()
+        return {"status": "purged", **counts}
 
     @router.post(
         "/people/{contact_id}/erase",
         tags=["Owner: people & rules"],
         summary="Erase what Ava holds about a person",
-        description="Deletes the notes they asked Ava to keep and notes about them, and empties the text of their "
-        "messages. For a person on the owner's People list.",
+        description="Hides the notes they asked Ava to keep and notes about them, the text of their messages and the "
+        "contact's notes. Nothing is deleted; `restore` brings it back. For a person on the owner's People list.",
     )
     def erase_person_route(contact_id: uuid.UUID, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         with session_scope() as s:
@@ -496,8 +546,41 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
             if contact is None or contact.owner_person_id != person_id or contact.removed_at is not None:
                 raise HTTPException(404, "Not found")
             counts = erase_person(s, require(s, Person, person_id), contact.person_id)
-        erase_vacuum()
         return {"status": "erased", **counts}
+
+    @router.post(
+        "/people/{contact_id}/restore",
+        tags=["Owner: people & rules"],
+        summary="Undo erasing a person",
+        description="Brings back what was hidden by `erase` for this person (not what was purged).",
+    )
+    def restore_person_route(contact_id: uuid.UUID, person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
+        with session_scope() as s:
+            contact = s.get(Contact, contact_id)
+            if contact is None or contact.owner_person_id != person_id or contact.removed_at is not None:
+                raise HTTPException(404, "Not found")
+            counts = restore_person(s, require(s, Person, person_id), contact.person_id)
+        return {"status": "restored", **counts}
+
+    @router.post(
+        "/people/{contact_id}/purge",
+        tags=["Owner: people & rules"],
+        summary="Delete what Ava holds about a person for good",
+        description="The permanent delete: their notes are removed and the text of their messages emptied. Cannot be "
+        'restored. Needs `confirm: "purge"` in the body, as a second confirmation.',
+    )
+    def purge_person_route(
+        contact_id: uuid.UUID, body: PurgeBody, person_id: uuid.UUID = Depends(owner_person_id)
+    ) -> dict[str, Any]:
+        if body.confirm != PURGE_WORD:
+            raise HTTPException(422, f'Send confirm: "{PURGE_WORD}" to delete this for good.')
+        with session_scope() as s:
+            contact = s.get(Contact, contact_id)
+            if contact is None or contact.owner_person_id != person_id or contact.removed_at is not None:
+                raise HTTPException(404, "Not found")
+            counts = purge_person(s, require(s, Person, person_id), contact.person_id)
+        erase_vacuum()
+        return {"status": "purged", **counts}
 
     @router.get(
         "/intro/call",

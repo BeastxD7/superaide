@@ -183,8 +183,39 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     from superaide.integrations.mcp.api import make_router as make_mcp_router
 
     app.include_router(make_mcp_router())
+    from superaide.integrations.github import settings as github_settings
+    from superaide.integrations.github.routes import make_router as make_github_router
+
+    app.include_router(make_github_router(get_agent))
+    from superaide.skills.connector_settings import make_router as make_github_limits_router
+
+    app.include_router(
+        make_github_limits_router(
+            prefix="github",
+            skill_id=github_settings.SKILL_ID,
+            choices=github_settings.CHOICES,
+            tag="Owner: GitHub",
+            what="GitHub limits",
+            event="github_read_settings",
+        )
+    )
+    from superaide.integrations.drive.routes import make_router as make_drive_router
+
+    app.include_router(make_drive_router(get_agent))
     from superaide.integrations.calendar import settings as calendar_settings
+    from superaide.integrations.drive import settings as drive_settings
     from superaide.skills.connector_settings import make_router as make_connector_settings_router
+
+    app.include_router(
+        make_connector_settings_router(
+            prefix="drive",
+            skill_id=drive_settings.SKILL_ID,
+            choices=drive_settings.CHOICES,
+            tag="Owner: Google Drive",
+            what="Google Drive limits",
+            event="drive_read_settings",
+        )
+    )
 
     app.include_router(
         make_connector_settings_router(

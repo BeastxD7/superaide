@@ -38,6 +38,29 @@ Where: Capabilities → Google Calendar → Reading
 | Meeting times Ava may offer visitors | How many times Ava offers someone she doesn't know who asks to meet you (0 turns this off). Only free times inside your day are offered, never what is in your calendar, and nothing is booked until you approve it. | 0 times, 2 times, 3 times | 3 times |
 | Gap kept around your events | Minutes kept clear before and after anything in your calendar when Ava offers a visitor a time. | 0 minutes, 15 minutes, 30 minutes | 15 minutes |
 
+## GitHub
+
+Where: Capabilities → GitHub → Limits
+
+| Setting | What it does | Choices | Default |
+| --- | --- | --- | --- |
+| Issues per search | Most issues or pull requests one search may return. | 5 results, 10 results, 20 results | 10 results |
+| Comments she reads per issue | The newest comments of an issue that Ava reads. | 5 comments, 10 comments, 30 comments | 10 comments |
+| Text she reads from one issue | Characters of one issue (its description and comments together) that can reach Ava; the rest is cut off. | 2000 characters, 6000 characters, 15000 characters | 6000 characters |
+| GitHub lookups per hour | Searches and reads together, so a runaway loop cannot go through your repositories. | 10 lookups, 30 lookups, 100 lookups | 30 lookups |
+| Longest draft she may propose | Characters in one new issue or comment. You still approve each one first. | 1000 characters, 3000 characters, 10000 characters | 3000 characters |
+
+## Google Drive
+
+Where: Capabilities → Google Drive → Limits
+
+| Setting | What it does | Choices | Default |
+| --- | --- | --- | --- |
+| Files per search | Most files one search may return. | 5 files, 10 files, 20 files | 10 files |
+| Text she reads from one file | Characters of one document or sheet that can reach Ava; the rest is cut off. | 4000 characters, 8000 characters, 20000 characters | 8000 characters |
+| Drive lookups per hour | Searches and file reads together, so a runaway loop cannot go through your whole Drive. | 10 lookups, 30 lookups, 100 lookups | 30 lookups |
+| Longest draft she may propose | Characters in one new file or one addition. You still approve each one first. | 2000 characters, 5000 characters, 20000 characters | 5000 characters |
+
 ## Web research
 
 Where: Capabilities → Web research → Searching

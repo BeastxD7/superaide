@@ -1,5 +1,6 @@
 'use client'
 
+import { PageContainer, PageHeader } from '@/components/layout'
 import { ConnectorSettings } from '@/features/dashboard/connections/ConnectorSettings'
 import { useState, type FormEvent } from 'react'
 import { Loadable } from '@/components/load-state'
@@ -27,13 +28,11 @@ export function SettingsPage() {
   const name = me.agent.name
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="mx-auto w-full max-w-3xl space-y-4 px-4 py-6 sm:px-6 lg:py-8">
-        <div>
-          <h1 className="text-3xl font-medium text-ink tight">Settings</h1>
-          <p className="mt-1 text-body">Your account, and the rules {name} works by.</p>
-        </div>
+    <PageContainer width="list">
+        <PageHeader title="Settings" description={`Your account, and the rules ${name} works by.`} />
 
+        <div className="mt-4 grid items-start gap-4 @4xl/page:grid-cols-2">
+        <div className="min-w-0 space-y-4">
         <Card data-tour="settings-account">
           <CardHeader>
             <CardTitle>Account</CardTitle>
@@ -58,6 +57,8 @@ export function SettingsPage() {
 
         {PWA_ENABLED && <NotificationsCard name={name} />}
 
+        </div>
+        <div className="min-w-0 space-y-4">
         <ConnectorSettings path="retention" title="Reminders and approvals" anchor="retention" />
 
         <Card data-tour="settings-rules">
@@ -97,8 +98,9 @@ export function SettingsPage() {
         <AccessLogCard name={name} />
 
         <TourCard />
-      </div>
-    </div>
+        </div>
+        </div>
+    </PageContainer>
   )
 }
 

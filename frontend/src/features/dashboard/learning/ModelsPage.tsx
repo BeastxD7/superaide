@@ -1,5 +1,6 @@
 'use client'
 
+import { PageContainer, PageHeader, ResponsiveGrid } from '@/components/layout'
 import { CheckCircle2, ExternalLink, Globe, KeyRound, Loader2, PlugZap, Server } from 'lucide-react'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
@@ -91,15 +92,13 @@ export function ModelsPage() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 lg:py-8">
-        <h1 className="text-3xl font-medium text-ink tight">AI model</h1>
-        <p className="mt-1 text-body">
-          Choose the AI that {name} thinks with: bring your own key from any provider below
-          {data?.credits.available ? ', or use Superaide AI credits with no key at all' : ''}. Your own key is always
-          used first. Keys are checked with the service, kept encrypted, and never shown again. Every call counts
-          against your spending cap.
-        </p>
+    <PageContainer width="list">
+        <PageHeader
+          title="AI model"
+          description={`Choose the AI that ${name} thinks with: bring your own key from any provider below${
+            data?.credits.available ? ', or use Superaide AI credits with no key at all' : ''
+          }. Your own key is always used first. Keys are checked with the service, kept encrypted, and never shown again. Every call counts against your spending cap.`}
+        />
         {me && !me.onboarding.done && (
           <div className="mt-4">
             <Notice tone="info">
@@ -140,7 +139,7 @@ export function ModelsPage() {
         {data?.credits.available && <CreditsCard settings={data} onChanged={reload} />}
 
         <h2 className="mt-8 text-lg font-medium text-ink">Providers</h2>
-        <ul className="mt-3 grid gap-3 sm:grid-cols-2" aria-label="Providers">
+        <ResponsiveGrid as="ul" min="22rem" className="mt-3" aria-label="Providers">
           {!data &&
             [0, 1, 2, 3].map((i) => (
               <li key={i} className="rounded-xl border border-line bg-white p-4">
@@ -194,7 +193,7 @@ export function ModelsPage() {
               onChanged={changed}
             />
           )}
-        </ul>
+        </ResponsiveGrid>
 
         {data && <WebSearchCard settings={data} onChanged={reload} />}
 
@@ -209,8 +208,7 @@ export function ModelsPage() {
         )}
 
         {data && <MediaProvidersCard key={`media-${[...connected].join(',')}`} />}
-      </div>
-    </div>
+    </PageContainer>
   )
 }
 

@@ -106,6 +106,58 @@ def card_note(ev: Event) -> str:
     )
 
 
+OFFER_TOOLS = frozenset({"inbox"})  # reads only: a unit test holds this to the registry's read classes (#643)
+_SAFE_ID = re.compile(r"^[0-9a-f]{8}$")
+_SAFE_LABEL = re.compile(r"^(?:[^\W\d_]|['\- ]){1,40} on [^\W\d_ ]{1,20}$")  # letters (any script), then a channel
+YES = frozenset({
+    "yes", "yes please", "yes pls", "yeah", "yeah please", "yep", "yep please", "yup", "sure", "sure please", "ok",
+    "okay", "ok please", "please", "please do", "go ahead", "do it", "yes do it", "yes go ahead", "yes read it",
+    "yes please do", "sounds good", "yes thanks", "yes thank you",
+})  # fmt: skip
+
+
+def is_yes(text: str) -> bool:
+    """The owner's message is only an affirmation from this closed list (letters and spaces compared, any case)."""
+    return " ".join(re.sub(r"[^a-z ]", " ", (text or "").lower()).split()) in YES
+
+
+def referent_note(ev: Event) -> str:
+    """What an earlier reply's listing showed (#643), from the record code wrote: the item's id and a label of first
+    name and channel. The records are re-checked here; nothing a stranger typed beyond that name is in them."""
+    found = (ev.meta or {}).get("referents") or []
+    items = []
+    for r in found[:10]:
+        if (
+            isinstance(r, dict)
+            and r.get("kind") == "inbox_conversation"
+            and _SAFE_ID.match(str(r.get("id", "")))
+            and _SAFE_LABEL.match(str(r.get("label", "")))
+        ):
+            items.append(f"{r['label']} (inbox id {r['id']})")
+    return f"[This reply listed for the owner: {'; '.join(items)}.]" if items else ""
+
+
+def offer_note(history: list[Event], current_text: str) -> str:
+    """A code-written note when the owner's whole message is "yes please" and the turn right before it made one
+    read offer (#643): the model is told what the yes accepts. Never for an offer that is not the latest turn."""
+    events = list(history)
+    if events and events[-1].direction == "in" and (events[-1].content or "").strip() == current_text.strip():
+        events.pop()  # the current message is already logged
+    if not events or events[-1].direction != "out" or not is_yes(current_text):
+        return ""
+    offer = (events[-1].meta or {}).get("offer")
+    if not isinstance(offer, dict) or offer.get("tool") not in OFFER_TOOLS:
+        return ""
+    wanted = str((offer.get("args") or {}).get("id", ""))
+    label = str(offer.get("label", ""))
+    if offer.get("effect") != "read" or not _SAFE_ID.match(wanted) or not _SAFE_LABEL.match(label):
+        return ""
+    return (
+        f"[The owner said yes to your offer: read what {label.split(' on ')[0]} wrote (inbox id {wanted}). "
+        "Call inbox with that id.]"
+    )
+
+
 REMINDER_TOOLS = {"create_reminder", "update_reminder", "cancel_reminder", "list_reminders"}
 
 
@@ -157,6 +209,7 @@ def build_messages(
     labels: dict[Any, str] | None = None,
     tz: Any = None,
     label_chars: int = LABELLED_CHARS,
+    referents: bool = True,
 ) -> list[dict[str, Any]]:
     """Map the episodic log to alternating user/assistant turns. `labels` marks turns that
     happened on another channel ("[On Telegram · Wed 19:13] …"). With the owner's `tz`, a turn
@@ -174,6 +227,8 @@ def build_messages(
             content = used + "\n" + content
         if role == "assistant" and (card := card_note(ev)):
             content = card + "\n" + content
+        if role == "assistant" and referents and (found := referent_note(ev)):
+            content = found + "\n" + content
         at = ev.created_at
         if tz is not None and prev is not None and at is not None and at - prev >= GAP:
             content = gap_line(prev, at, tz) + "\n" + content
@@ -188,10 +243,15 @@ def build_messages(
             turns.append({"role": role, "content": content})
     while turns and turns[0]["role"] != "user":
         turns.pop(0)
+    offered = offer_note(history, current_text) if referents else ""
+    lead = offered + "\n" if offered else ""
     if turns and turns[-1]["role"] == "user" and turns[-1]["content"].endswith(current_text):
+        if lead:
+            body = turns[-1]["content"]
+            turns[-1]["content"] = body[: len(body) - len(current_text)] + lead + current_text
         return turns  # the current message is already the last logged event
     if turns and turns[-1]["role"] == "user":
-        turns[-1]["content"] += "\n" + current_text
+        turns[-1]["content"] += "\n" + lead + current_text
     else:
-        turns.append({"role": "user", "content": current_text})
+        turns.append({"role": "user", "content": lead + current_text})
     return turns

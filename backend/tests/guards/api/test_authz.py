@@ -213,6 +213,19 @@ def test_the_owner_cannot_remove_someone_elses_document_or_forget_their_facts(ow
     assert all(m["id"] != fact_id for m in owner.get("/app/notebook").json()["memories"])
 
 
+def test_the_owner_cannot_erase_restore_or_purge_someone_elses_document_or_person(owner):
+    """#645: the soft erase, its undo and the confirmed purge are scoped to the caller's own rows."""
+    doc_id, _ = _other_persons_rows()
+    for verb in ("erase", "restore", "purge"):
+        r = owner.post(f"/app/intro/documents/{doc_id}/{verb}", json={"confirm": "purge"})
+        assert r.status_code == 404 and "priya" not in r.text.lower(), verb
+    with session_scope() as s:
+        doc = s.get(Document, uuid.UUID(doc_id))
+        assert doc is not None and doc.removed_at is None and doc.erased_at is None
+    for verb in ("erase", "restore", "purge"):
+        assert owner.post(f"/app/people/{uuid.uuid4()}/{verb}", json={"confirm": "purge"}).status_code == 404
+
+
 @pytest.mark.parametrize(
     "path",
     [
@@ -319,6 +332,48 @@ def test_the_gmail_routes_are_owner_routes(app, browser, owner):
     stranger = browser()
     signup(stranger, name="Mallory Tan", email="mallory@example.com")
     for method, path in GMAIL_ROUTES:
+        assert browser().request(method, path, json={}).status_code == 401
+        assert stranger.request(method, path, json={}).status_code == 403
+
+
+# --- the GitHub capability (/app/github, #669) --------------------------------------------------
+
+GITHUB_ROUTES = {
+    ("GET", "/app/github"),
+    ("POST", "/app/github/token"),
+    ("DELETE", "/app/github/token"),
+    ("PUT", "/app/github/repos"),
+    ("POST", "/app/github/writes"),
+    ("GET", "/app/github/read-settings"),
+    ("PUT", "/app/github/read-settings"),
+}
+
+
+def test_the_github_routes_are_owner_routes(app, browser, owner):
+    assert GITHUB_ROUTES <= set(owner_routes(app))  # so every check above covers them too
+    stranger = browser()
+    signup(stranger, name="Mallory Tan", email="mallory@example.com")
+    for method, path in GITHUB_ROUTES:
+        assert browser().request(method, path, json={}).status_code == 401
+        assert stranger.request(method, path, json={}).status_code == 403
+
+
+# --- the Google Drive capability (/app/drive, #667) --------------------------------------------
+
+DRIVE_ROUTES = {
+    ("GET", "/app/drive"),
+    ("POST", "/app/drive/connect"),
+    ("POST", "/app/drive/drafts"),
+    ("GET", "/app/drive/read-settings"),
+    ("PUT", "/app/drive/read-settings"),
+}
+
+
+def test_the_drive_routes_are_owner_routes(app, browser, owner):
+    assert DRIVE_ROUTES <= set(owner_routes(app))  # so every check above covers them too
+    stranger = browser()
+    signup(stranger, name="Mallory Tan", email="mallory@example.com")
+    for method, path in DRIVE_ROUTES:
         assert browser().request(method, path, json={}).status_code == 401
         assert stranger.request(method, path, json={}).status_code == 403
 

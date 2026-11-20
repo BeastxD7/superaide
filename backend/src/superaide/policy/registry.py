@@ -42,6 +42,14 @@ TOOL_RULES: dict[str, Rule] = {
     "calendar_create_event": Rule(int(Trust.LINKED), manager_only=True, needs_approval=True),
     "calendar_move_event": Rule(int(Trust.LINKED), manager_only=True, needs_approval=True),
     "calendar_decline_event": Rule(int(Trust.LINKED), manager_only=True, needs_approval=True),
+    # #669: a new issue or a comment in a repository the owner chose. Always the owner's yes (no mandate, no
+    # batching): the payload is the exact text.
+    "github_create_issue": Rule(int(Trust.LINKED), manager_only=True, needs_approval=True),
+    "github_comment": Rule(int(Trust.LINKED), manager_only=True, needs_approval=True),
+    # #667: a new Doc or Sheet, or text added to a Doc Ava made, in the owner's Drive. Always the owner's yes
+    # (no mandate, no batching): the payload is the exact text.
+    "drive_create_file": Rule(int(Trust.LINKED), manager_only=True, needs_approval=True),
+    "drive_append_doc": Rule(int(Trust.LINKED), manager_only=True, needs_approval=True),
     # #478: a message the owner asked Ava to send to someone who wrote to her (reception/relay.py).
     "relay_message": Rule(int(Trust.LINKED), manager_only=True, needs_approval=True),
     # #666: a call to a tool of one of the owner's MCP servers (integrations/mcp/tools.py).

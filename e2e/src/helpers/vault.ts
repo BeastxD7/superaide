@@ -57,7 +57,16 @@ export async function plantSlackChannel(channel: string, title: string, stored =
 
 export async function storedRoomMessages(channel: string): Promise<number> {
   const [row] = await query<{ n: string }>(
-    `SELECT count(*) AS n FROM event e JOIN context c ON c.id = e.context_id WHERE c.external_id = $1 AND e.meta ? 'ambient'`,
+    `SELECT count(*) AS n FROM event e JOIN context c ON c.id = e.context_id WHERE c.external_id = $1 AND e.meta ? 'ambient' AND e.erased_at IS NULL`,
+    [channel],
+  )
+  return Number(row.n)
+}
+
+/** Room messages that were erased: soft-deleted, still in the table (#645). */
+export async function hiddenRoomMessages(channel: string): Promise<number> {
+  const [row] = await query<{ n: string }>(
+    `SELECT count(*) AS n FROM event e JOIN context c ON c.id = e.context_id WHERE c.external_id = $1 AND e.meta ? 'ambient' AND e.erased_at IS NOT NULL`,
     [channel],
   )
   return Number(row.n)

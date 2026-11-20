@@ -48,7 +48,7 @@ test('on a very large monitor the page stops growing at its cap and stays centre
   await expect(page.getByRole('heading', { level: 1, name: 'Reminders' })).toBeVisible()
   const content = (await pageBox(page))!
   const inset = (await insetBox(page))!
-  expect(content.width).toBeLessThanOrEqual(1152) // the `list` width is 72rem
+  expect(content.width).toBeLessThanOrEqual(1536) // the `list` width is 96rem
   const left = content.x - inset.x
   const right = inset.x + inset.width - (content.x + content.width)
   expect(Math.abs(left - right)).toBeLessThan(2)
@@ -88,3 +88,60 @@ test('reading order is the visual order: from a card, Shift+Tab goes back to the
   await page.keyboard.press('Shift+Tab')
   await expect(page.getByLabel('New reminder')).toBeFocused() // the disabled Add button is skipped
 })
+
+test('Home at 1920 spreads its overview cards across the page, and at 360 stacks them without sideways overflow', async ({ page, owner }) => {
+  void owner
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await page.goto('/dashboard')
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  const cards = page.locator('[data-responsive-grid] > [data-slot="card"]')
+  await expect(cards.first()).toBeVisible()
+  const lefts = new Set(await cards.evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().left))))
+  expect(lefts.size).toBeGreaterThanOrEqual(3) // three or more columns of cards
+  const inset = (await insetBox(page))!
+  expect(((await pageBox(page))!.width) / inset.width).toBeGreaterThan(0.8)
+  expect(await sideways(page)).toBeLessThanOrEqual(0)
+
+  await page.setViewportSize({ width: 360, height: 740 })
+  await page.goto('/dashboard')
+  await expect(cards.first()).toBeVisible()
+  expect(new Set(await cards.evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().left)))).size).toBe(1)
+  expect(await sideways(page)).toBeLessThanOrEqual(0)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0)
+})
+
+// Setup pages: two columns of cards on a wide screen, one on a phone, and no sideways overflow on either.
+const SETUP: [string, string][] = [
+  ['/dashboard/connections', 'Connections'],
+  ['/dashboard/settings', 'Settings'],
+  ['/dashboard/models', 'AI model'],
+]
+
+for (const [path, title] of SETUP) {
+  test(`${title} at 1920 fills the page, and at 360 stays in one column without sideways overflow`, async ({ page, owner }) => {
+    void owner
+    await page.setViewportSize({ width: 1920, height: 1080 })
+    await page.goto(path)
+    await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible()
+    const inset = (await insetBox(page))!
+    const content = (await pageBox(page))!
+    expect(content.width / inset.width).toBeGreaterThan(0.8)
+    expect(await sideways(page)).toBeLessThanOrEqual(0)
+    // Cards sit side by side: more than one distinct left edge among the page's card-like children.
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const root = document.querySelector('[data-page-container] > div')!
+          const lefts = [...root.querySelectorAll('[data-slot="card"], li[aria-label], [data-tour]')].map((e) => Math.round(e.getBoundingClientRect().left))
+          return new Set(lefts).size
+        }),
+      )
+      .toBeGreaterThanOrEqual(2)
+
+    await page.setViewportSize({ width: 360, height: 740 })
+    await page.goto(path)
+    await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible()
+    expect(await sideways(page)).toBeLessThanOrEqual(0)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0)
+  })
+}

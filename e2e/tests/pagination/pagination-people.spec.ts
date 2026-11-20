@@ -26,23 +26,23 @@ test('People shows 50 at a time, VIPs first, and Load more reaches everyone from
   })
   await page.goto('/dashboard/people')
   const heading = page.getByRole('heading', { level: 1 })
-  const table = page.getByRole('table')
+  const table = page.getByRole('list', { name: 'Your people' })
   await expect(heading).toBeVisible()
   const before = await table.boundingBox()
   release()
-  const rows = table.getByRole('row')
-  await expect(rows).toHaveCount(51) // header + 50
+  const rows = table.getByRole('listitem')
+  await expect(rows).toHaveCount(50)
   const after = await table.boundingBox()
   expect(after?.y).toBe(before?.y) // the table starts where the skeleton started
-  await expect(rows.nth(1)).toContainText('Contact 120') // the VIP comes first
-  await expect(rows.nth(1)).toContainText('VIP')
+  await expect(rows.nth(0)).toContainText('Contact 120') // the VIP comes first
+  await expect(rows.nth(0)).toContainText('VIP')
 
   const more = page.getByRole('button', { name: 'Load more' })
   await more.focus()
   await page.keyboard.press('Enter')
-  await expect(rows).toHaveCount(101)
+  await expect(rows).toHaveCount(100)
   await page.keyboard.press('Enter')
-  await expect(rows).toHaveCount(total + 1)
+  await expect(rows).toHaveCount(total)
   await expect(page.getByText('That is everyone')).toBeVisible()
   await page.waitForTimeout(700)
   const results = await new AxeBuilder({ page }).analyze()

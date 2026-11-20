@@ -278,8 +278,8 @@ class Settings(BaseSettings):
     llm_providers: dict[str, dict[str, str]] = Field(default_factory=dict, exclude=True)
     # Use a scripted fake model instead of the real API (tests, offline demos).
     fake_llm: bool = False
-    # Empty the text of third parties' messages older than this many days (0 = never). Off: deleting by age is
-    # the owner's decision (issue #48).
+    # Hide (soft delete: the rows stay) third parties' messages older than this many days (0 = never). Off: hiding by
+    # age is the owner's decision (issues #48, #645).
     third_party_message_retention_days: int = 0
     # Embeddings for recall (ADR 0008 WP2b): local (on this machine, free, the default) | voyage
     # (Voyage AI's API: private facts leave the machine, so it's opt-in) | fake (tests) | none
@@ -496,6 +496,10 @@ class Settings(BaseSettings):
     school_playbook_enabled: bool = False
     # The owner's Gmail sign-in (same OAuth client as Calendar); kept per instance in the vault.
     gmail_refresh_token: str = ""
+    # The owner's GitHub access token; kept per instance in the vault (#669).
+    github_token: str = ""
+    # The owner's Google Drive sign-in (same OAuth client); kept per instance in the vault (#667).
+    drive_refresh_token: str = ""
 
     # "Ask my Ava" link (docs/research/AGI era growth ideas.md, idea 1). Off: /p/ask/* and
     # /app/ask-link/* answer 404 (owner routes still 401/403 first). On: an owner can publish a

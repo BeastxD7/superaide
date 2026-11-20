@@ -33,6 +33,7 @@ from superaide.identity import friends, linking
 from superaide.identity.models import Person
 from superaide.identity.resolver import Sender, resolve
 from superaide.intentions.when import is_reminder_request
+from superaide.memory.api import memories_for_question
 from superaide.memory.audience import Audience, audience_for, visible_memories
 from superaide.memory.knowledge import trust
 from superaide.memory.knowledge.profile import owner_brief
@@ -890,6 +891,7 @@ class Agent:
                 labels,
                 tz=owner_tz,
                 label_chars=int(channel_settings.load(s)["cross_channel_chars"]),
+                referents=not shared,  # what a listing showed stays out of a channel others can read (#643)
             )
             if shared and (thread_block := self._slack_thread_block(ctx, msg, sender.name)):
                 messages[0] = {**messages[0], "content": thread_block + "\n\n" + str(messages[0]["content"])}
@@ -923,6 +925,10 @@ class Agent:
             meta["activity"] = result.activity[:20]
         if result.reasoning:
             meta["reasoning"] = result.reasoning
+        if result.referents:
+            meta["referents"] = result.referents  # ids and labels code wrote; the next turn's prompt shows them
+            if result.offer:
+                meta["offer"] = result.offer
         if playbook_arm is not None:
             meta["playbook_arm"] = playbook_arm
         if cards := self._cards_of_turn(s, inbound):
@@ -998,7 +1004,10 @@ class Agent:
         if is_owner and (told := self._key_missing(s)) is not None:
             return told, ["key_missing"]
         with timing.span("retrieval"):
-            memories = visible_memories(s, aud, limit=30 if is_owner else 5)
+            if is_owner or aud.has_unknown:  # the owner's newest 30; unknown audiences: public notes, newest first
+                memories = visible_memories(s, aud, limit=30 if is_owner else 5)
+            else:  # a known person: notes chosen for their question, topped up with the newest allowed (#649)
+                memories = memories_for_question(s, aud, msg.text, limit=5)
             brief = owner_brief(s, sender, aud)
         if is_owner and sender.person and self.settings.school_enabled and self.settings.school_playbook_enabled:
             from superaide.features.school import playbook as school_playbook

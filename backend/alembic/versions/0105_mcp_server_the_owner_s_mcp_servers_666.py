@@ -1,7 +1,7 @@
 """mcp_server: the owner's MCP servers (#666)
 
-Revision ID: 0104
-Revises: 0103
+Revision ID: 0105
+Revises: 0104
 Create Date: 2026-11-20 02:26:07.361603
 
 """
@@ -14,8 +14,8 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0104"
-down_revision: str | Sequence[str] | None = "0103"
+revision: str = "0105"
+down_revision: str | Sequence[str] | None = "0104"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

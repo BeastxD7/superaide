@@ -133,6 +133,7 @@ Skills are registered with declared effects (`S/skills/`, [ADR 0006](docs/decisi
 | --- | --- | --- |
 | Gmail: search, read thread, draft, send, compose | `S/integrations/gmail/` | `installed_skill` row: Capabilities, Gmail (Reading, Drafts, Signature); [docs/settings.md](docs/settings.md); refresh token in the vault |
 | Google Calendar: read, free/busy, create, move, decline | `S/integrations/calendar/` | Capabilities, Calendar; push via `GOOGLE_CALENDAR_PUSH` (off) |
+| Google Drive, Docs, Sheets: search, read, draft a new file, add to a file Ava made (all writes by approval) | `S/integrations/drive/` | Capabilities, Google Drive |
 | Web research: search (Brave or model-native) and fetch, with citations and SSRF guards | `S/tools/web.py` | `WEB_TOOLS_ENABLED` (on), Capabilities, Web research; a turn that read the web is *tainted* |
 | Reminders | `S/intentions/` | Reminders page; auto-close days in Settings |
 | Voice | `S/features/voice/` | `VOICE_PROVIDER` (on when a Deepgram key is present); calls have their own cap |

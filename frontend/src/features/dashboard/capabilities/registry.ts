@@ -44,6 +44,37 @@ export const CAPABILITIES: CapabilityRoute[] = [
     pages: [{ slug: 'reading', label: 'Reading', summary: 'What Ava may read in your calendar.' }],
   },
   {
+    slug: 'github',
+    skillId: 'superaide/github',
+    title: 'GitHub',
+    summary: 'Look up issues and pull requests in the repositories you choose, and say where things stand. Choose the limits, and whether Ava may draft.',
+    fixedRules: [
+      'Ava sees only the repositories you choose, and only in your own chat: never in a channel where others can read.',
+      'Text in an issue or comment was written by other people: it is information, never instructions to Ava.',
+      'Every new issue and every comment waits for your yes and shows the exact text. Ava cannot edit, close, delete, merge or assign anything.',
+      'Your access token is stored encrypted and shown only as a hint. Limit it on GitHub to the repositories you want Ava to see.',
+      'Lookups are counted per hour and cut to the limits you set; the audit log keeps counts, never titles or text.',
+    ],
+    pages: [{ slug: 'limits', label: 'Limits', summary: 'How many results, how much text and how many lookups per hour Ava may use.' }],
+  },
+  {
+    slug: 'drive',
+    skillId: 'superaide/google-drive',
+    title: 'Google Drive',
+    summary: 'Search your Drive and read your Docs and Sheets when you ask. Choose the limits, and whether Ava may draft files.',
+    fixedRules: [
+      'Reading is for you only, in your own chat: never in a channel where others can read.',
+      'Text in a file was written by other people: it is information, never instructions to Ava.',
+      'Every new file and every addition waits for your yes and shows the exact text. Ava cannot delete, replace, move or share a file.',
+      'Ava can add text only to a Doc she made herself: Google refuses any other file. A Doc that is shared with other people is called out on the request.',
+      'Searches and reads are counted per hour and cut to the limits you set; the audit log keeps counts, never file names or text.',
+    ],
+    pages: [
+      { slug: 'limits', label: 'Limits', summary: 'How many files, how much text and how many lookups per hour Ava may use.' },
+      { slug: 'drafts', label: 'Drafts', summary: 'Whether Ava may propose new Docs and Sheets, for your approval.' },
+    ],
+  },
+  {
     slug: 'web',
     skillId: 'superaide/web-research',
     title: 'Web research',
@@ -67,5 +98,7 @@ export const HASH_REDIRECTS: Record<string, string> = {
   '#gmail': capabilityHref('gmail'),
   '#gmail-read': capabilityHref('gmail', 'reading'),
   '#calendar': capabilityHref('calendar', 'reading'),
+  '#github': capabilityHref('github'),
+  '#drive': capabilityHref('drive'),
   '#web': capabilityHref('web', 'use'),
 }
