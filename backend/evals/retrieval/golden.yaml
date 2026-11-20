@@ -58,7 +58,7 @@ queries:
   - {id: person-meera, category: person, say: "what did Meera say",
      expect: [v_meera_invoice, v_meera_coffee], absent: [v_zeeshan_contract]}
   - {id: person-colleague-signoff, category: person, say: "invoice sign-off",
-     expect: [c_signoff]}  # readable once the owner decides colleagues' DMs are visible to the owner
+     expect: [c_signoff]}  # the owner may recall known people's DMs (#646)
   - {id: person-meera-note, category: person, say: "when should I call Meera", expect: [n_meera_hours]}
   - {id: kind-file, category: person, say: "when is the fire drill", expect: [f_drill]}
   # ---- paraphrase ---------------------------------------------------------------------------------------------
