@@ -10,6 +10,7 @@ READ = frozenset({"read_public", "read_private"})
 
 EFFECTS: dict[str, str] = {
     "recall": "read_private",
+    "search_files": "read_private",
     "list_reminders": "read_private",
     "list_approvals": "read_private",
     "inbox": "read_private",
