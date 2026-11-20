@@ -551,6 +551,22 @@ def test_the_outlook_callback_is_public_but_only_ever_redirects(browser):
     assert r.status_code == 303 and "microsoft=expired" in r.headers["location"]
 
 
+def test_the_linear_routes_need_the_csrf_header_and_refuse_bad_input(browser, owner):
+    plain = browser(csrf=False)
+    plain.cookies.set("superaide_session", owner.cookies.get("superaide_session"))
+    for path in ("/app/linear/token", "/app/linear/writes"):
+        assert plain.post(path, json={}).status_code == 403
+    assert plain.put("/app/linear/teams", json={"teams": []}).status_code == 403
+    assert plain.delete("/app/linear/token").status_code == 403
+    assert plain.put("/app/linear/read-settings", json={"search_limit": 5}).status_code == 403
+    assert owner.post("/app/linear/writes", json={"enabled": "maybe"}).status_code == 422
+    assert owner.post("/app/linear/token", json={}).status_code == 422
+    assert owner.post("/app/linear/token", json={"token": "x", "extra": 1}).status_code == 422
+    assert owner.put("/app/linear/teams", json={"teams": "ENG"}).status_code == 422
+    assert owner.put("/app/linear/read-settings", json={"read_chars": "lots"}).status_code in (409, 422)
+    assert owner.put("/app/linear/read-settings", json={"nope": 1}).status_code == 422
+
+
 def test_the_drive_routes_need_the_csrf_header_and_refuse_bad_input(browser, owner):
     plain = browser(csrf=False)
     plain.cookies.set("superaide_session", owner.cookies.get("superaide_session"))

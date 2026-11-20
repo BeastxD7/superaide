@@ -109,6 +109,7 @@ Long comments are shortened here; the full text is next to the variable in `back
 | `GMAIL_REFRESH_TOKEN` | empty | yes | Gmail refresh token, same rules. Secret. |
 | `GITHUB_TOKEN` | empty | yes | GitHub access token (fine-grained, read access to the repositories you choose). Secret. Normally leave blank: each owner pastes it under Capabilities and it is kept in their vault. |
 | `NOTION_TOKEN` | empty | yes | Notion integration secret (an internal integration, shared with the pages you choose). Secret. Normally leave blank: each owner pastes it under Capabilities and it is kept in their vault. |
+| `LINEAR_TOKEN` | empty | yes | Linear personal API key. Secret. Normally leave blank: each owner pastes it under Capabilities and it is kept in their vault. |
 | `DRIVE_REFRESH_TOKEN` | empty | yes | Google Drive refresh token, same rules. Secret. |
 | `MICROSOFT_CLIENT_ID` | empty |  | Microsoft 365 (Outlook mail): the owner's Entra app registration (Azure portal, App registrations; redirect URI <FRONTEND_ORIGIN>/api/app/microsoft/callback; delegated permissions Mail.Read, Mail.Send, offline_access, User.Read). Normally leave blank: each owner saves them under Capabilities and they are kept in their vault. |
 | `MICROSOFT_CLIENT_SECRET` | empty |  | Same note as the entry above. |

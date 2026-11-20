@@ -106,6 +106,7 @@ def sections() -> list[tuple[str, str, list[tuple[str, Any, str, str, str]]]]:
     from superaide.integrations.calendar import settings as calendar
     from superaide.integrations.drive import settings as drive
     from superaide.integrations.github import settings as github
+    from superaide.integrations.linear import settings as linear
     from superaide.integrations.microsoft import settings as outlook
     from superaide.integrations.notion import settings as notion
     from superaide.reception import api as card
@@ -119,6 +120,7 @@ def sections() -> list[tuple[str, str, list[tuple[str, Any, str, str, str]]]]:
         ("Google Calendar", "Capabilities → Google Calendar → Reading", _simple_rows(calendar.CHOICES)),
         ("Outlook mail", "Capabilities → Outlook → Limits", _simple_rows(outlook.CHOICES)),
         ("GitHub", "Capabilities → GitHub → Limits", _simple_rows(github.CHOICES)),
+        ("Linear", "Capabilities → Linear → Limits", _simple_rows(linear.CHOICES)),
         ("Notion", "Capabilities → Notion → Limits", _simple_rows(notion.CHOICES)),
         ("Google Drive", "Capabilities → Google Drive → Limits", _simple_rows(drive.CHOICES)),
         ("Web research", "Capabilities → Web research → Searching", _simple_rows(web_settings.CHOICES)),

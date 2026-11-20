@@ -288,6 +288,14 @@ def narrate(name: str, args: dict[str, Any]) -> str:
         return f"Asking for your approval to open \u201c{str(args.get('title', ''))[:80]}\u201d on GitHub"
     if name == "github_comment":
         return "Asking for your approval to comment on GitHub"
+    if name == "linear_search":
+        return f"Searching your Linear for \u201c{str(args.get('query', ''))[:80]}\u201d"
+    if name == "linear_read":
+        return f"Reading {str(args.get('identifier', ''))[:20]} on Linear"
+    if name == "linear_create_issue":
+        return f"Asking for your approval to open \u201c{str(args.get('title', ''))[:80]}\u201d on Linear"
+    if name == "linear_comment":
+        return "Asking for your approval to comment on Linear"
     if name == "notion_search":
         return f"Searching your Notion for \u201c{str(args.get('query', ''))[:80]}\u201d"
     if name == "notion_read":
@@ -888,6 +896,17 @@ class OwnerTurn:
                 # An issue is written by other people: information, never instructions (ADR 0006, #511).
                 self.tainted = self.file_read = True
             return github.run(self.s, self.sender, name, args, tainted=self.tainted)
+        from superaide.integrations.linear import skill as linear
+
+        if name in linear.TOOLS:
+            assert self.sender.person is not None
+            if not any(s.manifest.id == linear.SKILL_ID for s in self.skills()):
+                return f"Unknown tool {name!r}.", True
+            self.notes.append(name)
+            if name in linear.READS:
+                # An issue is written by other people: information, never instructions (ADR 0006, #511).
+                self.tainted = self.file_read = True
+            return linear.run(self.s, self.sender, name, args, tainted=self.tainted)
         from superaide.integrations.notion import skill as notion
 
         if name in notion.TOOLS:

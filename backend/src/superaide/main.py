@@ -229,6 +229,20 @@ def create_app(agent: Agent | None = None) -> FastAPI:
             event="m365_mail_read_settings",
         )
     )
+    from superaide.integrations.linear import settings as linear_settings
+    from superaide.integrations.linear.routes import make_router as make_linear_router
+
+    app.include_router(make_linear_router(get_agent))
+    app.include_router(
+        make_github_limits_router(
+            prefix="linear",
+            skill_id=linear_settings.SKILL_ID,
+            choices=linear_settings.CHOICES,
+            tag="Owner: Linear",
+            what="Linear limits",
+            event="linear_read_settings",
+        )
+    )
     from superaide.integrations.drive.routes import make_router as make_drive_router
 
     app.include_router(make_drive_router(get_agent))

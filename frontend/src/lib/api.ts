@@ -673,6 +673,16 @@ export type GithubStatus = {
   writes: boolean
 }
 
+export type LinearStatus = {
+  last_changed?: Record<string, { by: 'you' | 'Ava' | 'operator'; at: string }>
+  installed: boolean
+  connected: boolean
+  login: string
+  hint: string
+  teams: string[]
+  writes: boolean
+}
+
 export type NotionStatus = {
   last_changed?: Record<string, { by: 'you' | 'Ava' | 'operator'; at: string }>
   installed: boolean

@@ -244,6 +244,8 @@ e2e = [
   "e2e/tests/integrations/github-capability.spec.ts",
   "e2e/tests/integrations/github-capability.mobile.spec.ts",
   "e2e/tests/integrations/notion-capability.spec.ts",
+  "e2e/tests/integrations/linear-capability.spec.ts",
+  "e2e/tests/integrations/linear-capability.mobile.spec.ts",
   "e2e/tests/integrations/notion-capability.mobile.spec.ts",
   "e2e/tests/integrations/outlook-capability.spec.ts",
   "e2e/tests/integrations/outlook-capability.mobile.spec.ts",

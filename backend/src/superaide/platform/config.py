@@ -500,6 +500,8 @@ class Settings(BaseSettings):
     github_token: str = ""
     # The owner's Notion integration secret; kept per instance in the vault (#669).
     notion_token: str = ""
+    # The owner's Linear API key; kept per instance in the vault (#669).
+    linear_token: str = ""
     # The owner's Google Drive sign-in (same OAuth client); kept per instance in the vault (#667).
     drive_refresh_token: str = ""
     # Microsoft 365 (#668): the owner's own Entra app registration and the Outlook mail sign-in (per-instance vault).

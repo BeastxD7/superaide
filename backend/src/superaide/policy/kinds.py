@@ -50,6 +50,10 @@ KINDS: dict[str, KindInfo] = {
     "github_comment": KindInfo(
         "Comment on GitHub", "Adds exactly the comment shown to that issue or pull request.", True
     ),
+    "linear_create_issue": KindInfo(
+        "Open a Linear issue", "Opens the new issue in that Linear team, with exactly the text shown.", True
+    ),
+    "linear_comment": KindInfo("Comment in Linear", "Adds exactly the comment shown to that Linear issue.", True),
     "notion_create_page": KindInfo(
         "Add a Notion page", "Adds the new page under that page in Notion, with exactly the text shown.", True
     ),

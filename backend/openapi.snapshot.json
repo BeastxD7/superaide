@@ -1810,6 +1810,28 @@
         "title": "LessonBody",
         "type": "object"
       },
+      "LinearSettingsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "comments_read": {
+            "title": "Comments Read"
+          },
+          "read_chars": {
+            "title": "Read Chars"
+          },
+          "reads_per_hour": {
+            "title": "Reads Per Hour"
+          },
+          "search_limit": {
+            "title": "Search Limit"
+          },
+          "write_chars": {
+            "title": "Write Chars"
+          }
+        },
+        "title": "LinearSettingsBody",
+        "type": "object"
+      },
       "LoginBody": {
         "properties": {
           "email": {
@@ -3406,6 +3428,24 @@
         "title": "SwitchBody",
         "type": "object"
       },
+      "TeamsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "teams": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Teams",
+            "type": "array"
+          }
+        },
+        "required": [
+          "teams"
+        ],
+        "title": "TeamsBody",
+        "type": "object"
+      },
       "TelegramBody": {
         "properties": {
           "bot_token": {
@@ -4145,6 +4185,22 @@
         "type": "object"
       },
       "superaide__integrations__github__routes__TokenBody": {
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "TokenBody",
+        "type": "object"
+      },
+      "superaide__integrations__linear__routes__TokenBody": {
         "additionalProperties": false,
         "properties": {
           "token": {
@@ -11264,6 +11320,285 @@
         "summary": "Turn the journal on or off",
         "tags": [
           "Owner: decision journal"
+        ]
+      }
+    },
+    "/app/linear": {
+      "get": {
+        "description": "Installed, connected, teams and drafts.",
+        "operationId": "status_app_linear_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Status App Linear Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Linear capability status",
+        "tags": [
+          "Owner: Linear"
+        ]
+      }
+    },
+    "/app/linear/read-settings": {
+      "get": {
+        "description": "The owner's limits for Linear limits, every allowed value and what it means (defaults until installed).",
+        "operationId": "get_settings_app_linear_read_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Settings App Linear Read Settings Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Linear limits: your settings",
+        "tags": [
+          "Owner: Linear"
+        ]
+      },
+      "put": {
+        "description": "Changes any of the settings. Each change is audited.",
+        "operationId": "put_settings_app_linear_read_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinearSettingsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Put Settings App Linear Read Settings Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Linear limits: change your settings",
+        "tags": [
+          "Owner: Linear"
+        ]
+      }
+    },
+    "/app/linear/teams": {
+      "put": {
+        "description": "Linear team keys such as ENG, at most 20. Ava sees issues in these teams, nothing else. Each change is audited.",
+        "operationId": "set_teams_app_linear_teams_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Set Teams App Linear Teams Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Choose the teams Ava may see",
+        "tags": [
+          "Owner: Linear"
+        ]
+      }
+    },
+    "/app/linear/token": {
+      "delete": {
+        "description": "Deletes the stored API key.",
+        "operationId": "disconnect_app_linear_token_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Disconnect App Linear Token Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Disconnect Linear",
+        "tags": [
+          "Owner: Linear"
+        ]
+      },
+      "post": {
+        "description": "Checks the key with Linear, then stores it encrypted. Create a personal API key in Linear (Settings, Security and access); it can do whatever you can, so Ava's reach is limited here by the teams you choose and by your approval of every draft. The answer never contains the key.",
+        "operationId": "connect_app_linear_token_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/superaide__integrations__linear__routes__TokenBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Connect App Linear Token Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Connect Linear with an API key",
+        "tags": [
+          "Owner: Linear"
+        ]
+      }
+    },
+    "/app/linear/writes": {
+      "post": {
+        "description": "On: Ava may ask your approval to open an issue or comment. Nothing is written without your yes.",
+        "operationId": "writes_app_linear_writes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WritesBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Writes App Linear Writes Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Turn Linear drafts on or off",
+        "tags": [
+          "Owner: Linear"
         ]
       }
     },
