@@ -67,7 +67,9 @@ def _price_state(settings: Any, cap: str, provider: str, model: str) -> dict[str
             with session_scope() as s:
                 owner = media.owner_stt_prices(s)
             per = mp.stt_per_minute(provider, media.kind_of(settings, provider), model, cfg.get("base_url"), owner)
-            return {"known": True, "free": per == 0, "unit": "minute", "usd": float(per)}
+            kind = media.kind_of(settings, provider)
+            builtin = (provider, model) not in owner and (kind, model) in mp.STT_BUILTIN  # a list price, overridable
+            return {"known": True, "free": per == 0, "unit": "minute", "usd": float(per), "builtin": builtin}
         price = load_prices(settings).price_for(model, provider)
         free = price.input == 0 and price.output == 0
         local = is_local_url(cfg.get("base_url")) if cfg else False
@@ -100,7 +102,7 @@ def make_router(apply: Callable[[], Any]) -> APIRouter:
     def view() -> dict[str, Any]:
         settings = runtime_settings()
         with session_scope() as s:
-            choices = media.get_choices(s)
+            choices, defaults = media.effective_choices(s, settings)
         caps = []
         for cap in media.CAPABILITIES:
             choice = choices.get(cap)
@@ -113,6 +115,15 @@ def make_router(apply: Callable[[], Any]) -> APIRouter:
                     "suggested": SUGGESTED[cap],
                     "choice": {"provider": choice.provider, "model": choice.model} if choice else None,
                     "on": choice is not None and ready is None,
+                    # Nobody chose this: it is on because Claude is connected. The page says where photos go.
+                    "default": cap in defaults,
+                    "vendor_notice": (
+                        f"Photos people send are read by {provider_label(choice.provider)} using {choice.model}, which "
+                        "means each photo is sent to that company. This is on because Claude is connected. "
+                        "Turn it off to stop."
+                    )
+                    if cap in defaults and choice
+                    else None,
                     "problem": ready,  # why a saved choice cannot run now (e.g. its provider was disconnected)
                     "price": _price_state(settings, cap, choice.provider, choice.model) if choice else None,
                     "providers": candidates(settings, cap),

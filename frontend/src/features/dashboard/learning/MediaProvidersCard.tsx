@@ -112,6 +112,11 @@ function CapabilityRow({ cap, onChanged }: { cap: MediaCapability; onChanged: ()
       <p className="font-medium text-ink">{cap.label}</p>
       <p className="text-xs text-muted">{cap.hint}</p>
       <p className="mt-1 text-xs text-body" data-testid={`media-status-${cap.id}`}>{status}</p>
+      {cap.vendor_notice && (
+        <div className="mt-2" data-testid={`media-notice-${cap.id}`}>
+          <Notice tone="warn">{cap.vendor_notice}</Notice>
+        </div>
+      )}
       {usable.length === 0 ? (
         <p className="mt-3 text-sm text-body">No service is connected that can do this yet. Connect one above first.</p>
       ) : (
@@ -153,6 +158,23 @@ function CapabilityRow({ cap, onChanged }: { cap: MediaCapability; onChanged: ()
               </datalist>
             </div>
           </div>
+          {perMinute && cap.price?.builtin && !needsPrice && model.trim() === cap.choice?.model && (
+            <p className="mt-3 text-xs text-muted" data-testid="media-list-price">
+              Price used for your spending cap: US${cap.price.usd} per audio minute. This is the service&apos;s list price
+              as Superaide last knew it, not a checked price.{' '}
+              <button
+                type="button"
+                className="underline"
+                onClick={() => {
+                  setInput(String(cap.price?.usd ?? ''))
+                  setNeedsPrice(true)
+                }}
+              >
+                Change it
+              </button>{' '}
+              if your plan differs.
+            </p>
+          )}
           {needsPrice && (
             <div className="mt-3 grid gap-3 sm:grid-cols-2" aria-label={`Price of ${model}`}>
               <p className="text-xs text-muted sm:col-span-2">
