@@ -241,6 +241,8 @@ e2e = [
   "e2e/tests/integrations/setup-check.spec.ts",
   "e2e/tests/integrations/calendar-settings.spec.ts",
   "e2e/tests/integrations/calendar-settings.mobile.spec.ts",
+  "e2e/tests/integrations/drive-capability.spec.ts",
+  "e2e/tests/integrations/drive-capability.mobile.spec.ts",
   "e2e/tests/integrations/channels-settings.spec.ts",
   "e2e/tests/integrations/channels-settings.mobile.spec.ts",
   "e2e/tests/integrations/retention-settings.spec.ts",
