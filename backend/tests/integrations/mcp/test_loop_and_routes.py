@@ -202,3 +202,4 @@ def test_tools_asked_after_the_turns_session_closed_do_not_reopen_it(owner, call
     with get_engine().begin() as conn:  # would wait forever if the closed session had reopened a transaction on it
         conn.execute(text("SET LOCAL lock_timeout = '3s'"))
         conn.execute(text("TRUNCATE mcp_server CASCADE"))
+    turn.s.rollback()  # tools() still reads skills on the closed session (not ours); release it so no lock outlives us
