@@ -33,6 +33,21 @@ CHOICES: dict[str, Choice] = {
         "Events from one read that Ava may turn into notes about you (only when learning from connectors is on).",
         "events",
     ),
+    "visitor_slots": Choice(
+        (0, 2, 3),
+        3,
+        "Meeting times Ava may offer visitors",
+        "How many times Ava offers someone she doesn't know who asks to meet you (0 turns this off). Only free times "
+        "inside your day are offered, never what is in your calendar, and nothing is booked until you approve it.",
+        "times",
+    ),
+    "buffer_minutes": Choice(
+        (0, 15, 30),
+        15,
+        "Gap kept around your events",
+        "Minutes kept clear before and after anything in your calendar when Ava offers a visitor a time.",
+        "minutes",
+    ),
 }
 
 

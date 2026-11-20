@@ -50,7 +50,14 @@ def run(fn, args):
 
 def test_defaults_are_todays_behaviour(cal):
     with session_scope() as s:
-        assert cal_settings.load(s) == {"ahead_days": 14, "day_start": 8, "day_end": 20, "events_per_read": 10}
+        assert cal_settings.load(s) == {
+            "ahead_days": 14,
+            "day_start": 8,
+            "day_end": 20,
+            "events_per_read": 10,
+            "visitor_slots": 3,
+            "buffer_minutes": 15,
+        }
     out, err = run(calendar.calendar_events, {"days": 30})
     assert not err and cal["span"] == timedelta(days=14)  # the old fixed 14-day cap
     assert "Only" not in str(out[-1]) or "14 days" in str(out[-1])
