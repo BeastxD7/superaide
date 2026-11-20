@@ -29,7 +29,7 @@ from sqlalchemy.orm import Session
 from superaide.approvals.models import Approval
 from superaide.integrations.mcp import service, transport
 from superaide.integrations.mcp.models import McpServer
-from superaide.mcp import pin
+from superaide.mcp.api import tool_hash
 from superaide.platform.audit import audit
 from superaide.policy.registry import EXECUTORS
 
@@ -138,7 +138,7 @@ def execute(
     """Call the tool now (the checks are done). Audits the call; the arguments only as keys and a short digest."""
     try:
         result = transport.call_tool(
-            service.target_for(session, server), tool["name"], args, expected_hash=pin.tool_hash(tool)
+            service.target_for(session, server), tool["name"], args, expected_hash=tool_hash(tool)
         )
     except transport.McpError as exc:
         audit(

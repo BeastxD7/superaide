@@ -237,7 +237,7 @@ def test_calls_per_hour_are_limited_per_server(server_id, manager, calls):
 def test_a_result_is_cut_and_only_text_is_kept(server_id, calls):
     with session_scope() as s:
         target = service.target_for(s, service.get(s, uuid.UUID(server_id)))
-        h = service.pin.tool_hash(next(t for t in service.get(s, uuid.UUID(server_id)).tools if t["name"] == "big"))
+        h = service.tool_hash(next(t for t in service.get(s, uuid.UUID(server_id)).tools if t["name"] == "big"))
     res = transport.call_tool(target, "big", {}, expected_hash=h)
     assert res.truncated and len(res.text) < transport.MAX_RESULT_CHARS + 100 and res.text.endswith("too long]")
 
@@ -245,7 +245,7 @@ def test_a_result_is_cut_and_only_text_is_kept(server_id, calls):
 def test_a_slow_server_is_stopped_at_the_time_limit(server_id, calls):
     with session_scope() as s:
         server = service.get(s, uuid.UUID(server_id))
-        h = service.pin.tool_hash(next(t for t in server.tools if t["name"] == "slow"))
+        h = service.tool_hash(next(t for t in server.tools if t["name"] == "slow"))
         target = service.target_for(s, server)
     fast = transport.Target(**{**target.__dict__, "timeout_s": 1})
     with pytest.raises(transport.McpError, match="did not answer"):
@@ -329,14 +329,14 @@ def test_a_stdio_server_sees_none_of_ava_environment(monkeypatch, tmp_path):
     )
     listed = transport.list_tools(target)
     tool = next(t for t in listed if t["name"] == "env_names")
-    got = transport.call_tool(target, "env_names", {}, expected_hash=service.pin.tool_hash(tool))
+    got = transport.call_tool(target, "env_names", {}, expected_hash=service.tool_hash(tool))
     visible = set(got.text.split("\n", 1)[-1].replace("\n", ",").split(","))
     assert "NOTES_TOKEN" in visible  # what the owner stored for it
     assert visible.isdisjoint(
         {"ANTHROPIC_API_KEY", "DATABASE_URL", "SECRETS_MASTER_KEY", "ADMIN_TOKEN", "CANARY_SECRET"}
     )
     home = next(t for t in listed if t["name"] == "env_value")
-    value = transport.call_tool(target, "env_value", {"name": "HOME"}, expected_hash=service.pin.tool_hash(home)).text
+    value = transport.call_tool(target, "env_value", {"name": "HOME"}, expected_hash=service.tool_hash(home)).text
     assert "superaide-mcp-" in value  # an empty temporary home, not the owner's
 
 

@@ -180,7 +180,7 @@ def create_app(agent: Agent | None = None) -> FastAPI:
     from superaide.integrations.gmail.routes import make_router as make_gmail_router
 
     app.include_router(make_gmail_router(get_agent))
-    from superaide.integrations.mcp.routes import make_router as make_mcp_router
+    from superaide.integrations.mcp.api import make_router as make_mcp_router
 
     app.include_router(make_mcp_router())
     from superaide.integrations.calendar import settings as calendar_settings

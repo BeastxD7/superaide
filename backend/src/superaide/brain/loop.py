@@ -646,7 +646,7 @@ class OwnerTurn:
         if (
             not self.shared and self.sender.relation == "manager"
         ):  # the owner's MCP servers (#666): never a room or visitor
-            from superaide.integrations.mcp.tools import offered
+            from superaide.integrations.mcp.api import offered
             from superaide.platform.db.session import session_scope
 
             with session_scope() as cfg:  # its own short session, like _web_limits: tools() can outlive the turn's
@@ -782,7 +782,7 @@ class OwnerTurn:
         if name.startswith(
             "mcp__"
         ):  # a tool of one of the owner's MCP servers (#666): code decides, the model proposes
-            from superaide.integrations.mcp.tools import run as run_mcp
+            from superaide.integrations.mcp.api import run as run_mcp
 
             self.notes.append("mcp")
             out = run_mcp(

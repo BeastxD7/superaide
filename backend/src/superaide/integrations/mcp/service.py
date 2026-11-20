@@ -29,7 +29,7 @@ from superaide.identity.vault import store
 from superaide.identity.vault.crypto import mask
 from superaide.integrations.mcp import transport
 from superaide.integrations.mcp.models import McpServer
-from superaide.mcp import pin
+from superaide.mcp.api import pin_tools, tool_hash
 from superaide.mcp.models import McpPin
 from superaide.platform.audit import audit
 from superaide.platform.db.models import AuditLog
@@ -274,7 +274,7 @@ def approval_state(pins: dict[str, str], tool: dict[str, Any]) -> str:
     have = pins.get(tool["name"])
     if have is None:
         return "new"
-    return "approved" if have == pin.tool_hash(tool) else "changed"
+    return "approved" if have == tool_hash(tool) else "changed"
 
 
 def approve(
@@ -286,7 +286,7 @@ def approve(
     missing = [n for n in wanted if n not in listed]
     if missing:
         raise Refused(f"Not in the server's last listing: {', '.join(m[:40] for m in missing[:3])}. Test it again.")
-    return pin.pin(
+    return pin_tools(
         session, skill_id=PIN_SKILL, server=str(server.id), tools=[listed[n] for n in wanted],
         by=str(user_id or "owner"),
     )  # fmt: skip
@@ -298,7 +298,7 @@ def set_risk(session: Session, server: McpServer, tool: str, risk: str, *, user_
         raise Refused("That tool is not in the server's last listing. Test the server again.", 404)
     if risk not in RISKS:
         raise Refused(f"The risk class is one of: {', '.join(RISKS)}.")
-    server.risk = {**(server.risk or {}), tool: {"class": risk, "hash": pin.tool_hash(listed[tool])}}
+    server.risk = {**(server.risk or {}), tool: {"class": risk, "hash": tool_hash(listed[tool])}}
     audit(session, "mcp", "mcp_risk_set", server_id=server.id, tool=tool, risk=risk, user_id=user_id)
 
 
@@ -306,7 +306,7 @@ def effective_risk(server: McpServer, tool: dict[str, Any]) -> str:
     """The owner's class if it was set for this exact tool definition; otherwise write, or destructive when the
     server itself says destructive (a hint can only make a tool stricter, never looser)."""
     mine = (server.risk or {}).get(tool["name"])
-    if isinstance(mine, dict) and mine.get("class") in RISKS and mine.get("hash") == pin.tool_hash(tool):
+    if isinstance(mine, dict) and mine.get("class") in RISKS and mine.get("hash") == tool_hash(tool):
         return str(mine["class"])
     if (tool.get("annotations") or {}).get("destructiveHint") is True:
         return "destructive"

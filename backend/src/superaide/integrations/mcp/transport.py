@@ -38,7 +38,7 @@ from mcp import Client, StdioServerParameters
 from mcp.client.streamable_http import streamable_http_client
 from mcp_types import TextContent
 
-from superaide.mcp.pin import tool_hash
+from superaide.mcp.api import tool_hash
 from superaide.platform.security import urls
 
 log = logging.getLogger(__name__)
