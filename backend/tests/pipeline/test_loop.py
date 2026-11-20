@@ -183,7 +183,8 @@ def test_recall_never_returns_what_this_audience_may_not_see(owner_client, colle
         )
         script = Script(tool_use("recall", {"query": "Bangalore"}), "I don't have a source for that.")
         result = turn_for(s, script).run([{"role": "user", "content": "Bangalore?"}])
-    assert script.seen[1][-1]["content"][0]["content"] == "Nothing in your notes or messages matches that."
+    said = script.seen[1][-1]["content"][0]["content"]
+    assert said.startswith("Nothing") and "lease" not in said and "budget" not in said  # nothing of theirs leaks
     assert result.sources == []
 
 

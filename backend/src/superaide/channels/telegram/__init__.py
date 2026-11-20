@@ -76,15 +76,21 @@ ATTACHMENT_KINDS = ("photo", "document", "voice", "audio", "video", "video_note"
 
 
 def _document_refs(message: dict[str, Any]) -> list[FileRef]:
-    """The one document a message may carry (photos, voice and video are acknowledged only). Just its id and size."""
-    doc = message.get("document")
-    if not isinstance(doc, dict):
-        return []
-    fid = doc.get("file_id")
-    if not isinstance(fid, str) or not re.fullmatch(r"[A-Za-z0-9_-]{5,200}", fid):
-        return []
-    size = doc.get("file_size")
-    return [FileRef(fid, size if isinstance(size, int) and size > 0 else 0)]
+    """The files a message may carry that can be read: a document, a voice note or audio file, a photo (its largest
+    size). Video is acknowledged only. Just the id, the size and the platform's own kind (#501, #511)."""
+    out: list[FileRef] = []
+    for kind in ("document", "voice", "audio", "photo"):
+        item = message.get(kind)
+        if kind == "photo":
+            item = item[-1] if isinstance(item, list) and item and isinstance(item[-1], dict) else None
+        if not isinstance(item, dict):
+            continue
+        fid = item.get("file_id")
+        if not isinstance(fid, str) or not re.fullmatch(r"[A-Za-z0-9_-]{5,200}", fid):
+            continue
+        size = item.get("file_size")
+        out.append(FileRef(fid, size if isinstance(size, int) and size > 0 else 0, kind))
+    return out[:3]
 
 
 def parse_update(update: dict[str, Any], *, verified: bool, bot: str = "") -> InboundMessage | None:

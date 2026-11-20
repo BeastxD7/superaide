@@ -301,6 +301,10 @@ def handle_stranger(
     rs = settings_for(session, owner)
     if not rs.enabled or linking.detect_code(msg.text) is not None:
         return None
+    if msg.attachments and not msg.text.strip():  # a file alone: read only if the owner chose a service (#501, #511)
+        from superaide.reception import media as visitor_media
+
+        return visitor_media.handle(agent, session, owner, sender, ctx, msg, inbound)
     now = datetime.now(UTC)
     claimed = linking.detect_claimed_name(msg.text)
     if claimed:
