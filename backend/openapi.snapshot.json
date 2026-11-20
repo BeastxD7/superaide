@@ -3506,6 +3506,74 @@
         "title": "TestBody",
         "type": "object"
       },
+      "ToneBody": {
+        "additionalProperties": false,
+        "properties": {
+          "tone": {
+            "anyOf": [
+              {
+                "maxLength": 12,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "neutral, warm, formal or brief; null lets Ava learn it from how you write again.",
+            "title": "Tone"
+          }
+        },
+        "required": [
+          "tone"
+        ],
+        "title": "ToneBody",
+        "type": "object"
+      },
+      "ToneOption": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "label"
+        ],
+        "title": "ToneOption",
+        "type": "object"
+      },
+      "ToneView": {
+        "properties": {
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/ToneOption"
+            },
+            "title": "Options",
+            "type": "array"
+          },
+          "source": {
+            "description": "default, observed (learned from how you write) or owner (you chose it).",
+            "title": "Source",
+            "type": "string"
+          },
+          "tone": {
+            "title": "Tone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tone",
+          "source",
+          "options"
+        ],
+        "title": "ToneView",
+        "type": "object"
+      },
       "TourStatus": {
         "properties": {
           "status": {
@@ -7457,6 +7525,78 @@
           }
         ],
         "summary": "Mark the briefing as read",
+        "tags": [
+          "Owner: briefing"
+        ]
+      }
+    },
+    "/app/briefing/tone": {
+      "get": {
+        "description": "The tone drafted replies are written in, and who chose it: Ava learns it from how you write until you pick one yourself. It changes the style of a draft only.",
+        "operationId": "get_tone_app_briefing_tone_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ToneView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Tone of drafted replies",
+        "tags": [
+          "Owner: briefing"
+        ]
+      },
+      "put": {
+        "description": "Pick neutral, warm, formal or brief, or send null to let it be learned from how you write.",
+        "operationId": "put_tone_app_briefing_tone_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToneBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ToneView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Set the tone of drafted replies",
         "tags": [
           "Owner: briefing"
         ]
