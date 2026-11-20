@@ -10,6 +10,7 @@ READ = frozenset({"read_public", "read_private"})
 
 EFFECTS: dict[str, str] = {
     "recall": "read_private",
+    "search_files": "read_private",
     "list_reminders": "read_private",
     "list_approvals": "read_private",
     "inbox": "read_private",
@@ -19,6 +20,8 @@ EFFECTS: dict[str, str] = {
     "gmail_read_thread": "read_private",
     "github_search": "read_private",
     "github_read": "read_private",
+    "notion_search": "read_private",
+    "notion_read": "read_private",
     "drive_search": "read_private",
     "drive_read": "read_private",
     "web_search": "read_public",
@@ -34,6 +37,8 @@ EFFECTS: dict[str, str] = {
     "decline_event": "send",
     "github_create_issue": "write_external",
     "github_comment": "write_external",
+    "notion_create_page": "write_external",
+    "notion_comment": "write_external",
     "drive_create_file": "write_external",
     "drive_append_doc": "write_external",
     "gmail_send": "send",
