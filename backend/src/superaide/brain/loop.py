@@ -22,7 +22,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.approvals import outcomes, recipients
-from superaide.brain import capabilities, taskplan, verify
+from superaide.brain import capabilities, context_watch, taskplan, verify
 from superaide.brain.llm import LLM, StepResult, SystemBlock
 from superaide.brain.providers.thinking import strip_think
 from superaide.brain.spend.budget import BudgetExceeded
@@ -1161,6 +1161,16 @@ class OwnerTurn:
                 if any(t.get("name") == "web_search" for t in tools)
                 else 0,
                 on_event=self.on_model_event if streaming else None,
+            )
+            context_watch.observe(
+                self.s,
+                self.model,
+                system=system,
+                messages=msgs,
+                tools=tools,
+                usage=last.usage,
+                max_tokens=MAX_TOKENS,
+                owner=self.sender.person,
             )
             if last.stop_reason == "max_tokens":
                 last = self._more_room(system, tools, msgs, last)
