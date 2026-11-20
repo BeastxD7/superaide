@@ -484,6 +484,12 @@
           },
           "visitor_slots": {
             "title": "Visitor Slots"
+          },
+          "visitor_who": {
+            "title": "Visitor Who"
+          },
+          "working_days": {
+            "title": "Working Days"
           }
         },
         "title": "CalendarSettingsBody",
