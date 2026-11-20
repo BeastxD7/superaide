@@ -163,6 +163,7 @@ def build_map(session: Session, owner_id: uuid.UUID) -> dict[str, Any]:
         .where(
             MemoryItem.subject_person_ids.contains([owner_id]),
             MemoryItem.valid_to.is_not(None),
+            MemoryItem.erased_at.is_(None),  # an erased note is hidden, not an older belief
             MemoryItem.valid_to <= now,
             MemoryItem.superseded_by.in_(live_ids) if live_ids else MemoryItem.id.is_(None),
             gate,
@@ -192,7 +193,12 @@ def build_map(session: Session, owner_id: uuid.UUID) -> dict[str, Any]:
         edges.append({"from": f"fact:{old.id}", "to": f"fact:{old.superseded_by}", "kind": "replaced_by"})
     forgotten = session.scalars(
         select(MemoryItem)
-        .where(MemoryItem.subject_person_ids.contains([owner_id]), MemoryItem.valid_to.is_not(None), gate)
+        .where(
+            MemoryItem.subject_person_ids.contains([owner_id]),
+            MemoryItem.valid_to.is_not(None),
+            MemoryItem.erased_at.is_(None),
+            gate,
+        )
         .where(MemoryItem.valid_to <= now)
         .order_by(MemoryItem.valid_to.desc())
         .limit(MAX_FORGOTTEN)

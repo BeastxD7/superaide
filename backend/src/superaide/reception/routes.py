@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -27,8 +27,6 @@ from superaide.reception import ask, card, takeover, takeover_send
 from superaide.reception.models import ReceptionMessage, ReceptionSettings, VisitorQuestion
 from superaide.reception.service import card_preferences, greeting, settings_for
 from superaide.reception.turn import has_card
-
-WINDOW = timedelta(days=30)
 
 
 class CardBody(BaseModel):
@@ -200,7 +198,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
     @router.get(
         "/receptionist/messages",
         summary="Messages taken",
-        description="What people Ava doesn't know asked her to pass on (last 30 days). All of it is unverified.",
+        description="What people Ava doesn't know asked her to pass on (newest first, any age). All unverified.",
     )
     def messages(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         with session_scope() as s:
@@ -208,7 +206,6 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 select(ReceptionMessage)
                 .where(
                     ReceptionMessage.agent_id == scope_or_default().agent_id,
-                    ReceptionMessage.created_at >= datetime.now(UTC) - WINDOW,
                 )
                 .order_by(ReceptionMessage.created_at.desc())
                 .limit(200)
@@ -258,7 +255,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
     @router.get(
         "/receptionist/questions",
         summary="Questions waiting for you",
-        description="Things people Ava doesn't know asked that she couldn't answer, newest first (last 30 days).",
+        description="Things people Ava doesn't know asked that she couldn't answer, newest first.",
     )
     def questions(person_id: uuid.UUID = Depends(owner_person_id)) -> dict[str, Any]:
         with session_scope() as s:
@@ -267,7 +264,6 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 select(VisitorQuestion)
                 .where(
                     VisitorQuestion.agent_id == scope_or_default().agent_id,
-                    VisitorQuestion.created_at >= datetime.now(UTC) - WINDOW,
                 )
                 .order_by(VisitorQuestion.created_at.desc())
                 .limit(100)
@@ -303,7 +299,7 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         "/receptionist/conversations",
         summary="Conversations you can step into",
         description=(
-            "People Ava doesn't know who wrote in the last 30 days, one row each, newest first, with whether you are "
+            "People Ava doesn't know who wrote, one row each, newest first, with whether you are "
             "handling the conversation yourself (Ava stays out of it until you hand it back or you go quiet)."
         ),
     )
@@ -315,7 +311,6 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 select(ReceptionMessage.context_id, func.max(ReceptionMessage.created_at))
                 .where(
                     ReceptionMessage.agent_id == scope_or_default().agent_id,
-                    ReceptionMessage.created_at >= datetime.now(UTC) - WINDOW,
                 )
                 .group_by(ReceptionMessage.context_id)
                 .order_by(func.max(ReceptionMessage.created_at).desc())

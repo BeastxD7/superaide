@@ -1,5 +1,6 @@
 'use client'
 
+import { PageContainer, PageHeader, ResponsiveGrid } from '@/components/layout'
 import { AlarmClock, AlertTriangle, ArrowRight, BookOpen, Check, Clock, MessageCircle, Plug, ShieldCheck, Star, Users } from 'lucide-react'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
@@ -40,12 +41,15 @@ export function DashboardHome() {
   const first = me.person.name.split(' ')[0]
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:py-8">
-        <h1 className="text-3xl font-medium text-ink tight">
-          {greeting()}, {first}
-        </h1>
-        <p className="mt-1 text-body">
+    <PageContainer width="wide">
+        <PageHeader
+          title={
+            <>
+              {greeting()}, {first}
+            </>
+          }
+          description={
+            <>
           {me.paused
             ? me.can_resume
               ? `${name} is paused, so nobody gets a reply until you resume her.`
@@ -54,7 +58,9 @@ export function DashboardHome() {
               ? `${name} is on duty. She answers what you allowed and keeps the rest for you.`
               : `${name} is in offline mode, so her replies are placeholders for now.`}
           {me.paused && me.can_resume && <ResumeButton name={name} />}
-        </p>
+            </>
+          }
+        />
 
         {me.brain === 'offline' && !me.paused && (
           <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-lilac-200 bg-lilac-50 p-4 sm:flex-row sm:items-center">
@@ -69,14 +75,17 @@ export function DashboardHome() {
           </div>
         )}
 
+        {/* What needs you comes first and stays at a readable width; the overview cards below use the whole page. */}
+        <div className="max-w-5xl">
         <BriefingCard name={name} />
         <ApprovalsCard name={name} />
         <UndeliveredCard name={name} />
         <QuestionCard name={name} />
 
         <AskRequests className="mt-6" />
+        </div>
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-3">
+        <ResponsiveGrid min="20rem" className="mt-6 gap-4">
           <AgentCard me={me} />
           <ReachCard me={me} />
           <KnowsCard name={name} state={notebook} />
@@ -84,9 +93,8 @@ export function DashboardHome() {
           <RulesCard name={name} state={prefs} />
           <ComingUpCard name={name} state={reminders} />
           <LatestCard name={name} state={messages} />
-        </div>
-      </div>
-    </div>
+        </ResponsiveGrid>
+    </PageContainer>
   )
 }
 
@@ -109,7 +117,7 @@ function AgentCard({ me }: { me: Me }) {
     STAGES.findIndex((s) => s.name === me.agent.stage),
   )
   return (
-    <Card data-tour="home-stage" className="bg-gradient-to-br from-lilac-100 to-white lg:col-span-2">
+    <Card data-tour="home-stage" className="bg-gradient-to-br from-lilac-100 to-white @4xl/page:col-span-2">
       <CardContent className="flex flex-col gap-6 sm:flex-row sm:items-center">
         <Orb hue="indigo" size={96} track mood={me.paused ? 'asleep' : 'idle'} label={me.agent.name} />
         <div className="min-w-0 flex-1">
@@ -403,7 +411,7 @@ function ComingUpList({ reminders }: { reminders: Reminder[] }) {
 
 function LatestCard({ name, state }: { name: string; state: LoadState<Message[]> }) {
   return (
-    <Card className="lg:col-span-3">
+    <Card className="col-span-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <MessageCircle className="size-4 text-violet-600" aria-hidden />

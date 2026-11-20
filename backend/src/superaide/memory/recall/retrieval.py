@@ -280,7 +280,7 @@ def recall_messages(
         gate = _message_gate(aud) & ~Event.meta.has_key("ambient")
         if rooms:
             gate = gate | Event.meta.has_key("ambient")
-        stmt = select(Event).where(gate, Event.content != "", Event.direction == "in")
+        stmt = select(Event).where(gate, Event.content != "", Event.direction == "in", Event.erased_at.is_(None))
         if channel:
             stmt = stmt.join(Context, Context.id == Event.context_id).where(Context.provider == channel)
         if since is not None:
@@ -471,6 +471,27 @@ def pre_recall(session: Session, aud: Audience, query: str, limit: int = 4) -> l
         return []
     query = " ".join(query.split())[:300]
     return recall_memories(session, aud, query, limit=limit, strict=True) or fuzzy_memories(session, aud, query, limit)
+
+
+def memories_for_question(session: Session, aud: Audience, query: str, limit: int = 5) -> list[MemoryItem]:
+    """The notes for a known non-owner's turn (#649): chosen by code for their question (the strict and fuzzy note
+    search `pre_recall` uses), topped up with the newest notes, never more than `limit`. Every note comes from a
+    query that carries `memory_filter`; the ids found by search are re-read through the gate, so nothing outside
+    the audience can enter the prompt. No tools and no model call are involved."""
+    from superaide.memory.audience import visible_memories
+
+    found: list[uuid.UUID] = []
+    for src in pre_recall(session, aud, query, limit=limit):
+        if src.uri.startswith("ava://memory/"):
+            found.append(uuid.UUID(src.uri.rsplit("/", 1)[1]))
+    by_id = {m.id: m for m in session.scalars(select(MemoryItem).where(memory_filter(aud), MemoryItem.id.in_(found)))}
+    picked = [by_id[i] for i in found if i in by_id]
+    for m in visible_memories(session, aud, limit=limit):
+        if len(picked) >= limit:
+            break
+        if m.id not in {p.id for p in picked}:
+            picked.append(m)
+    return picked[:limit]
 
 
 VISITOR_TITLE = "Visitor message"  # a Source title that makes the caller taint the turn
