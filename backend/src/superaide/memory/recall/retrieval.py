@@ -24,6 +24,7 @@ from typing import Any
 from sqlalchemy import Boolean, ColumnElement, Select, and_, case, desc, false, func, literal, select, text
 from sqlalchemy.orm import Session, aliased
 
+from superaide.identity.models import Person
 from superaide.memory.audience import Audience, memory_filter
 from superaide.memory.consolidation import importance
 from superaide.memory.consolidation.echo import label as echo_label
@@ -239,11 +240,35 @@ def recall_chunks(
     ]
 
 
+DM_TITLE = "DM from "  # what a known person wrote to Ava in their own DM, read back to the owner only (#646)
 ROOM_TITLE = "Room message"  # a message stored from a channel Ava reads whole: other people's words (#509)
 
 
 def _message_gate(aud: Audience) -> ColumnElement[bool]:
     return Event.audience_person_ids.contains(sorted(aud.person_ids))
+
+
+def _dm_gate(session: Session, aud: Audience) -> ColumnElement[bool]:
+    """Known people's DMs with Ava, readable by the instance owner alone (#646, ADR 0008 addendum). Decided here, in
+    code and in the SQL: the audience must be the owner's own private one (one verified person, nobody unknown, who is
+    this instance's owner). The rows: what a known, active person sent in a one-to-one chat of this instance, never
+    the owner's own words (those pass the ordinary gate), never a stranger's (those are reception messages), never
+    a room's. Anyone else asking gets `false()`, whatever the caller passed."""
+    if aud.has_unknown or len(aud.person_ids) != 1:
+        return false()
+    found = instance_owner(session)
+    if found is None or aud.person_ids != {found[1].id}:
+        return false()
+    known = select(Person.id).where(Person.agent_id == found[1].agent_id, Person.status == "active")
+    return and_(
+        Event.agent_id == found[1].agent_id,
+        Event.context_id.in_(select(Context.id).where(Context.kind == "dm", Context.agent_id == found[1].agent_id)),
+        Event.resolved_person_id.in_(known),
+        Event.resolved_person_id != found[1].id,
+        Event.audience_has_unknown.is_(False),
+        Event.direction == "in",
+        ~Event.meta.has_key("ambient"),
+    )
 
 
 def recall_messages(
@@ -256,9 +281,12 @@ def recall_messages(
     since: datetime | None = None,
     until: datetime | None = None,
     person_ids: set[uuid.UUID] | None = None,
+    dms: bool = False,
 ) -> list[Source]:
-    """`rooms`: also the messages stored from channels the owner let Ava read whole (#509). Only the owner's own
-    private chat passes it; for anyone else those messages do not exist, even the reader's own."""
+    """`dms`: also what known people wrote to Ava in their own DMs, titled "DM from <name>". Only the owner's own
+    private chat passes it, and the SQL checks that again (`_dm_gate`). `rooms`: also the messages stored from
+    channels the owner let Ava read whole (#509). Only the owner's own private chat passes it; for anyone else
+    those messages do not exist, even the reader's own."""
     if aud.has_unknown or not aud.person_ids:
         return []  # only for a known audience, and only what they all saw
 
@@ -269,6 +297,8 @@ def recall_messages(
         gate = _message_gate(aud) & ~Event.meta.has_key("ambient")
         if rooms:
             gate = gate | Event.meta.has_key("ambient")
+        if dms:
+            gate = gate | _dm_gate(session, aud)
         stmt = select(Event).where(gate, Event.content != "", Event.direction == "in", Event.erased_at.is_(None))
         if channel:
             stmt = stmt.join(Context, Context.id == Event.context_id).where(Context.provider == channel)
@@ -289,10 +319,17 @@ def recall_messages(
     else:
         found = []
     contexts = _contexts(session, {e.context_id for e in found})
+    others = {p for e in found if (p := e.resolved_person_id) and p not in aud.person_ids}
+    names = (
+        {p.id: p.display_name for p in session.scalars(select(Person).where(Person.id.in_(others)))} if others else {}
+    )
     out = []
     for e in found:
         provider = contexts[e.context_id].provider if e.context_id in contexts else ""
-        who = ROOM_TITLE if e.meta.get("ambient") else "You" if e.direction == "in" else "Ava"
+        if e.resolved_person_id in names and not e.meta.get("ambient"):  # a known person's own DM: whose words
+            who = f"{DM_TITLE}{names[e.resolved_person_id]}"
+        else:
+            who = ROOM_TITLE if e.meta.get("ambient") else "You" if e.direction == "in" else "Ava"
         out.append(
             Source(
                 uri=f"ava://msg/{provider}/{e.id}",
@@ -364,6 +401,7 @@ def recall_scoped(
     channel: str | None = None,
     rooms: bool = False,
     *,
+    dms: bool = False,
     since: str = "",
     until: str = "",
     person: str = "",
@@ -373,7 +411,7 @@ def recall_scoped(
     """Notes, messages, visitor messages and passages, each searched behind the audience gate and fused by score.
     `since`/`until` (ISO dates), `person` (a name) and `kinds` are the model's; the time words and names in the
     question or in `asked` (the owner's own message) are read in code (recall/scope.py) and left out of the text
-    searched. `rooms`: see `recall_messages`."""
+    searched. `rooms`, `dms`: see `recall_messages`."""
     picked, query = resolve_channel(channel, query)
     scope = understand(
         session, aud, query, asked=asked, since=since, until=until, person=person, kinds=kinds
@@ -398,6 +436,7 @@ def recall_scoped(
                 limit=limit,
                 channel=picked,
                 rooms=rooms,
+                dms=dms,
                 since=scope.since,
                 until=scope.until,
                 person_ids=scope.person_ids,

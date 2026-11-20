@@ -323,15 +323,15 @@ class Result:
 def search(world: World, q: Query) -> Result:
     """One query, the way the owner's `recall` tool runs it (brain/loop.py `_dispatch`)."""
     from superaide.evals.checks import _audience
-    from superaide.memory.recall.retrieval import ROOM_TITLE, VISITOR_TITLE, recall
+    from superaide.memory.recall.retrieval import DM_TITLE, ROOM_TITLE, VISITOR_TITLE, recall
     from superaide.platform.db.session import session_scope
 
     who = {"owner": "owner", "colleague": "colleague", "stranger": "stranger", "group": "group"}[q.as_]
     aud = _audience(who)
     shared = q.as_ in ("stranger", "group")  # a channel or thread others can read
     with session_scope() as s:
-        found = recall(s, aud, q.say, limit=LIMIT, channel=q.channel, rooms=not shared, asked=q.say)
-    tainted = any(src.title.startswith((ROOM_TITLE, VISITOR_TITLE)) for src in found)
+        found = recall(s, aud, q.say, limit=LIMIT, channel=q.channel, rooms=not shared, dms=not shared, asked=q.say)
+    tainted = any(src.title.startswith((ROOM_TITLE, VISITOR_TITLE, DM_TITLE)) for src in found)
     return Result(q, [world.names.get(src.uri.rsplit("/", 1)[-1], "?") for src in found], tainted)
 
 

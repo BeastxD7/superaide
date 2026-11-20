@@ -13,12 +13,12 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 import pytest
-from sqlalchemy import text
+from sqlalchemy import select, text
 
 from superaide.evals import retrieval
 from superaide.evals.checks import _audience
 from superaide.memory.recall import timewords
-from superaide.memory.recall.retrieval import ROOM_TITLE, VISITOR_TITLE, recall_scoped, visitor_rows
+from superaide.memory.recall.retrieval import DM_TITLE, ROOM_TITLE, VISITOR_TITLE, recall_scoped, visitor_rows
 from superaide.platform.db.session import get_engine, session_scope
 from superaide.platform.tenancy.context import InstanceScope, use_instance
 
@@ -305,3 +305,111 @@ def test_the_models_own_dates_are_read_in_the_owners_zone():
     assert timewords.parse_date("2026-11-09", TZ) == datetime(2026, 11, 8, 18, 30, tzinfo=UTC)
     assert timewords.parse_date("2026-11-09", TZ, end=True) == datetime(2026, 11, 9, 18, 30, tzinfo=UTC)
     assert timewords.parse_date("last week", TZ) is None and timewords.parse_date("", TZ) is None
+
+
+# --- #646: the owner may recall what known people wrote to Ava in their DMs -------------------------------------
+
+
+def _owner_dm_ask(who: str, query: str, **kw: Any) -> Any:
+    aud = _audience(who)
+    with session_scope() as s:
+        return recall_scoped(s, aud, query, rooms=True, dms=True, asked=query, **kw)
+
+
+def test_the_owner_finds_a_known_persons_dm_titled_with_their_name(world):
+    got = _owner_dm_ask("owner", "invoice sign-off")
+    hit = [src for src in got.sources if world.names.get(src.uri.rsplit("/", 1)[-1]) == "c_signoff"]
+    assert hit and hit[0].title.startswith(DM_TITLE + "Priya Tan")
+    assert hit[0].uri.startswith("ava://msg/slack/")
+
+
+def test_asking_for_a_person_by_name_returns_their_dm(world):
+    got = _owner_dm_ask("owner", "what did Priya say about the sign-off")
+    assert any(world.names.get(src.uri.rsplit("/", 1)[-1]) == "c_signoff" for src in got.sources)
+
+
+def test_without_the_dms_flag_the_owner_does_not_get_them(world):
+    aud = _audience("owner")
+    with session_scope() as s:
+        got = recall_scoped(s, aud, "invoice sign-off", rooms=True, asked="invoice sign-off")
+    assert not any(world.names.get(src.uri.rsplit("/", 1)[-1]) == "c_signoff" for src in got.sources)
+
+
+def _second_person_dm(world) -> str:
+    """A second known person (Ananya Menon) DMs Ava on Telegram about a distinctive word."""
+    from superaide.identity.models import ChannelIdentity, Person
+    from superaide.memory.models import Context, Event
+
+    with session_scope() as s:
+        p = Person(display_name="Ananya Menon", relation="colleague")
+        s.add(p)
+        s.flush()
+        ident = ChannelIdentity(
+            provider="telegram", tenant_scope="", stable_key="777001", person_id=p.id, trust_level=2
+        )
+        ctx = Context(provider="telegram", external_id="777001", kind="dm", audience_class="private_1to1")
+        s.add_all([ident, ctx])
+        s.flush()
+        s.add(
+            Event(
+                context_id=ctx.id, direction="in", sender_identity_id=ident.id, resolved_person_id=p.id,
+                audience_person_ids=[p.id], audience_has_unknown=False, content="the zebrafish deposit is due Friday",
+            )
+        )  # fmt: skip
+        return str(p.id)
+
+
+def test_nobody_but_the_owner_gets_known_persons_dms_even_if_the_flag_is_passed(world):
+    _second_person_dm(world)
+    for who in ("colleague", "stranger", "group"):
+        got = _owner_dm_ask(who, "zebrafish deposit")
+        assert got.sources == [], who
+    # the colleague with the flag still cannot read another colleague's DM, only her own words
+    got = _owner_dm_ask("colleague", "invoice sign-off")
+    assert not any(src.title.startswith(DM_TITLE) for src in got.sources)
+
+
+def test_the_owner_finds_the_second_persons_dm_and_it_is_labelled(world):
+    _second_person_dm(world)
+    got = _owner_dm_ask("owner", "zebrafish deposit")
+    assert [src.title.startswith(DM_TITLE + "Ananya Menon · telegram") for src in got.sources] == [True]
+
+
+def test_a_strangers_dm_and_an_unknown_senders_event_stay_out(world):
+    from superaide.memory.models import Context, Event
+
+    with session_scope() as s:
+        ctx = Context(provider="telegram", external_id="999", kind="dm", audience_class="mixed_external")
+        s.add(ctx)
+        s.flush()
+        s.add(Event(context_id=ctx.id, direction="in", resolved_person_id=None, audience_person_ids=[],
+                    audience_has_unknown=True, content="quokka password reset"))  # fmt: skip
+    assert _owner_dm_ask("owner", "quokka password reset").sources == []
+
+
+def test_a_group_message_by_a_known_person_stays_out(world):
+    from superaide.identity.models import Person
+    from superaide.memory.models import Context, Event
+
+    with session_scope() as s:
+        priya = s.scalar(select(Person).where(Person.display_name == "Priya Tan"))
+        ctx = Context(provider="slack", external_id="C_room", kind="group", audience_class="team")
+        s.add(ctx)
+        s.flush()
+        s.add(Event(context_id=ctx.id, direction="in", resolved_person_id=priya.id, audience_person_ids=[priya.id],
+                    audience_has_unknown=True, content="axolotl budget approval"))  # fmt: skip
+    assert _owner_dm_ask("owner", "axolotl budget approval").sources == []
+
+
+def test_a_second_instance_owner_sees_none_of_the_first_instances_dms(world):
+    other = InstanceScope(tenant_id=uuid.uuid4(), agent_id=uuid.uuid4())
+    owner = _audience("owner")
+    with use_instance(other), session_scope() as s:
+        got = recall_scoped(s, owner, "invoice sign-off", rooms=True, dms=True)
+    assert got.sources == []
+
+
+def test_a_recalled_dm_taints_the_owner_turn_like_other_peoples_words():
+    from superaide.brain import loop
+
+    assert loop.DM_TITLE == DM_TITLE
