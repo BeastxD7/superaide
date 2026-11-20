@@ -326,7 +326,7 @@ def recall_messages(
     out = []
     for e in found:
         provider = contexts[e.context_id].provider if e.context_id in contexts else ""
-        if e.resolved_person_id in names:  # a known person's own DM: say whose words these are
+        if e.resolved_person_id in names and not e.meta.get("ambient"):  # a known person's own DM: whose words
             who = f"{DM_TITLE}{names[e.resolved_person_id]}"
         else:
             who = ROOM_TITLE if e.meta.get("ambient") else "You" if e.direction == "in" else "Ava"
