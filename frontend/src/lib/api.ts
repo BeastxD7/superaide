@@ -202,6 +202,46 @@ export type PersonCard = {
   channels: string[]
 }
 
+export type ContactFact = {
+  id: string
+  content: string
+  category: string
+  about_them: boolean
+  source: string
+  source_label: string
+  source_title: string | null
+  learned_at: string
+  confidence: number
+  audience: { kind: 'owner' | 'people' | 'team' | 'anyone'; label: string }
+}
+
+export type FriendTier = 'colleague' | 'verified_friend' | 'unverified_friend' | 'not_linked'
+
+export type ContactHandle = { id: string; provider: string; kind: 'username' | 'id'; value: string }
+
+export type PendingFriend = {
+  identity_id: string
+  provider: string
+  platform_id: string
+  username: string
+  display_name: string
+  via: 'handle' | 'invite'
+  contact: { id: string; name: string }
+  first_seen: string
+}
+
+export type ContactRecord = {
+  id: string
+  name: string
+  tier: FriendTier
+  handles: ContactHandle[]
+  relationship: string
+  vip: boolean
+  notes: string
+  channels: { provider: string; handle: string; last_seen_at: string | null }[]
+  facts: ContactFact[]
+}
+
 export type Preferences = {
   urgent_topics: string[]
   digest: string

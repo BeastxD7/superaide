@@ -1,6 +1,7 @@
 'use client'
 
 import { Star } from 'lucide-react'
+import Link from 'next/link'
 import { BrandIcon } from '@/components/BrandIcon'
 import { isBrand } from '@/components/brands/marks'
 import { Notice } from '@/components/site'
@@ -12,6 +13,7 @@ import type { PersonCard } from '@/lib/api'
 import { initialOf } from '@/lib/initial'
 import { usePaginated } from '@/lib/paginated'
 import { useSession } from '@/lib/session-context'
+import { PendingFriends } from '@/features/dashboard/people/PendingFriends'
 
 // Where someone is recognised, or that they are not yet. The table shows it as a column from the small
 // breakpoint up; below it the same line sits under the name, so a phone loses nothing (#300).
@@ -47,6 +49,7 @@ export function PeoplePage() {
           {name} treats these people as yours. VIPs always get through to you, even in quiet hours. She recognises
           someone on a channel only once they&apos;ve linked it, never from a name alone.
         </p>
+        <PendingFriends />
         {error && (
           <div className="mt-4">
             <Notice tone="error">{error}</Notice>
@@ -73,7 +76,9 @@ export function PeoplePage() {
                       <span className="grid size-8 shrink-0 place-items-center rounded-full bg-lilac-100 text-xs font-semibold text-violet-700">
                         {initialOf(p.name)}
                       </span>
-                      <span className="min-w-0 font-medium text-ink [overflow-wrap:anywhere]">{p.name}</span>
+                      <Link href={`/dashboard/people/${p.id}`} className="inline-flex min-w-0 touch:min-h-11 touch:min-w-11 items-center font-medium text-ink [overflow-wrap:anywhere] hover:underline">
+                        {p.name}
+                      </Link>
                     </span>
                     <span className="mt-1.5 block text-xs text-body sm:hidden">
                       <span className="text-muted">Recognised on: </span>
