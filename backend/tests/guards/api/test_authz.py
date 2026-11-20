@@ -380,6 +380,28 @@ def test_the_notion_routes_are_owner_routes(app, browser, owner):
         assert stranger.request(method, path, json={}).status_code == 403
 
 
+# --- the Linear capability (/app/linear, #669) --------------------------------------------------
+
+LINEAR_ROUTES = {
+    ("GET", "/app/linear"),
+    ("POST", "/app/linear/token"),
+    ("DELETE", "/app/linear/token"),
+    ("PUT", "/app/linear/teams"),
+    ("POST", "/app/linear/writes"),
+    ("GET", "/app/linear/read-settings"),
+    ("PUT", "/app/linear/read-settings"),
+}
+
+
+def test_the_linear_routes_are_owner_routes(app, browser, owner):
+    assert LINEAR_ROUTES <= set(owner_routes(app))  # so every check above covers them too
+    stranger = browser()
+    signup(stranger, name="Mallory Tan", email="mallory@example.com")
+    for method, path in LINEAR_ROUTES:
+        assert browser().request(method, path, json={}).status_code == 401
+        assert stranger.request(method, path, json={}).status_code == 403
+
+
 # --- the Google Drive capability (/app/drive, #667) --------------------------------------------
 
 DRIVE_ROUTES = {

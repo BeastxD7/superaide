@@ -58,6 +58,20 @@ export const CAPABILITIES: CapabilityRoute[] = [
     pages: [{ slug: 'limits', label: 'Limits', summary: 'How many results, how much text and how many lookups per hour Ava may use.' }],
   },
   {
+    slug: 'linear',
+    skillId: 'superaide/linear',
+    title: 'Linear',
+    summary: 'Look up issues in the Linear teams you choose and say where things stand. Choose the limits, and whether Ava may draft.',
+    fixedRules: [
+      'Ava sees only the teams you choose, and only in your own chat: never in a channel where others can read.',
+      'Text in an issue or comment was written by other people: it is information, never instructions to Ava.',
+      'Every new issue and every comment waits for your yes and shows the exact text. Ava cannot edit, close, delete, assign or move anything.',
+      'Your API key is stored encrypted and shown only as a hint. A Linear personal key can do whatever you can, which is why Ava is limited here by team and by your approval.',
+      'Lookups are counted per hour and cut to the limits you set; the audit log keeps counts, never titles or text.',
+    ],
+    pages: [{ slug: 'limits', label: 'Limits', summary: 'How many results, how much text and how many lookups per hour Ava may use.' }],
+  },
+  {
     slug: 'notion',
     skillId: 'superaide/notion',
     title: 'Notion',
@@ -114,6 +128,7 @@ export const HASH_REDIRECTS: Record<string, string> = {
   '#calendar': capabilityHref('calendar', 'reading'),
   '#github': capabilityHref('github'),
   '#notion': capabilityHref('notion'),
+  '#linear': capabilityHref('linear'),
   '#drive': capabilityHref('drive'),
   '#web': capabilityHref('web', 'use'),
 }

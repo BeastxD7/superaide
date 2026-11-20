@@ -110,6 +110,24 @@ def notion_line(session: Session) -> str:
     return "Notion: connected, read-only: you can search and read the chosen pages. Drafts are off."
 
 
+def linear_line(session: Session) -> str:
+    from superaide.integrations.linear import skill as linear
+
+    st = linear.status(session)
+    if not st["installed"]:
+        return "Linear: not added. The owner can add it under Capabilities → Linear."
+    if not st["connected"]:
+        return "Linear: added but not connected. To connect: Capabilities → Linear → paste an API key."
+    if not st["teams"]:
+        return "Linear: connected, but the owner hasn't chosen any teams yet (Capabilities → Linear)."
+    if st["writes"]:
+        return (
+            "Linear: connected: you can search and read issues in the chosen teams, and ask the owner to approve a "
+            "new issue or a comment (linear_create_issue, linear_comment)."
+        )
+    return "Linear: connected, read-only: you can search and read issues. Drafts are off."
+
+
 def drive_line(session: Session) -> str:
     from superaide.integrations.drive import skill as drive
 
@@ -201,6 +219,7 @@ def block(session: Session, *, tz: str, web: bool) -> str:
         "- " + calendar_line(session),
         "- " + github_line(session),
         "- " + notion_line(session),
+        "- " + linear_line(session),
         "- " + drive_line(session),
         "- Web search: " + ("on." if web else "off (the Web skill is not added)."),
         "- Reminders: always available (create, list, move, cancel).",
@@ -253,8 +272,8 @@ def shared_block(session: Session, *, web: bool) -> str:
             "for, search the web (" + ("on" if web else "off") + "), and queue something for the owner's approval "
             "in the app.",
             f"- Only in a direct message with the owner (never in a channel): Gmail ({mail}), Google Calendar "
-            f"({cal}), GitHub, Notion, the reminder list, and the status of approvals. These tools EXIST and may be "
-            "set up; they "
+            f"({cal}), GitHub, Notion, Linear, the reminder list, and the status of approvals. These tools EXIST and "
+            "may be set up; they "
             "are not used in this room because other people can read your reply.",
             f"({cal}), Google Drive, the reminder list, and the status of approvals. These tools EXIST and may be set "
             "up; they are not used in this room because other people can read your reply.",
@@ -296,6 +315,8 @@ _CLAIMS: list[tuple[re.Pattern[str], set[str], str]] = [
             "decline_event",
             "github_create_issue",
             "github_comment",
+            "linear_create_issue",
+            "linear_comment",
             "notion_create_page",
             "notion_comment",
             "drive_create_file",
