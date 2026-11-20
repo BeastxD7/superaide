@@ -4,7 +4,7 @@ import { expect, test } from '../../src/fixtures'
 test.describe('tone of drafted replies', () => {
   test('the owner sees the tone, changes it, and can hand it back to be learned', async ({ page, owner }) => {
     void owner
-    await page.goto('/settings')
+    await page.goto('/dashboard/settings')
     const card = page.getByTestId('tone-card')
     await expect(card.getByText('Tone of drafted replies')).toBeVisible()
     await expect(card.getByTestId('tone-source')).toHaveText('Nothing learned yet.')
