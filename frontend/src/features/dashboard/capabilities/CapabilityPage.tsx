@@ -12,6 +12,7 @@ import { CapabilityShell } from '@/features/dashboard/capabilities/CapabilityShe
 import { capabilityBySlug, capabilityHref } from '@/features/dashboard/capabilities/registry'
 import { PrincipalCardPage } from '@/features/principal-card/PrincipalCardPage'
 import { GithubPanel } from '@/features/dashboard/connections/GithubPanel'
+import { NotionPanel } from '@/features/dashboard/connections/NotionPanel'
 import { GmailPanel } from '@/features/dashboard/connections/GmailPanel'
 import { ConnectorSettings } from '@/features/dashboard/connections/ConnectorSettings'
 import { GmailDrafts } from '@/features/dashboard/connections/GmailDrafts'
@@ -53,6 +54,7 @@ export function CapabilityPage({ slug, page }: { slug: string; page?: string }) 
         <>
           {slug === 'gmail' && <GmailPanel name={name} />}
           {slug === 'github' && <GithubPanel name={name} />}
+          {slug === 'notion' && <NotionPanel name={name} />}
           {slug === 'drive' && <DrivePanel name={name} />}
           {slug === 'calendar' && card?.google_connected === false && (
             <Notice tone="warn">
@@ -81,6 +83,8 @@ export function CapabilityPage({ slug, page }: { slug: string; page?: string }) 
             ))}
           </SettingsSection>
         </>
+      ) : page === 'limits' && slug === 'notion' ? (
+        <ConnectorSettings path="notion" title={`How ${name} uses your Notion`} anchor="notion" />
       ) : page === 'limits' && slug === 'github' ? (
         <ConnectorSettings path="github" title={`How ${name} uses your GitHub`} anchor="github" />
       ) : page === 'use' && slug === 'web' ? (

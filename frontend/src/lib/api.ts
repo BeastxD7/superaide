@@ -662,6 +662,16 @@ export type GithubStatus = {
   writes: boolean
 }
 
+export type NotionStatus = {
+  last_changed?: Record<string, { by: 'you' | 'Ava' | 'operator'; at: string }>
+  installed: boolean
+  connected: boolean
+  login: string
+  hint: string
+  pages: string[]
+  writes: boolean
+}
+
 export type DriveStatus = {
   last_changed?: Record<string, { by: 'you' | 'Ava' | 'operator'; at: string }>
   installed: boolean

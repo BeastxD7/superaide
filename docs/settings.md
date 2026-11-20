@@ -50,6 +50,18 @@ Where: Capabilities → GitHub → Limits
 | GitHub lookups per hour | Searches and reads together, so a runaway loop cannot go through your repositories. | 10 lookups, 30 lookups, 100 lookups | 30 lookups |
 | Longest draft she may propose | Characters in one new issue or comment. You still approve each one first. | 1000 characters, 3000 characters, 10000 characters | 3000 characters |
 
+## Notion
+
+Where: Capabilities → Notion → Limits
+
+| Setting | What it does | Choices | Default |
+| --- | --- | --- | --- |
+| Pages per search | Most pages one search may return. | 5 results, 10 results, 20 results | 10 results |
+| Blocks she reads per page | How many paragraphs, headings and list items from the top of one page Ava reads. | 20 blocks, 50 blocks, 100 blocks | 50 blocks |
+| Text she reads from one page | Characters of one page that can reach Ava; the rest is cut off. | 2000 characters, 6000 characters, 15000 characters | 6000 characters |
+| Notion lookups per hour | Searches and reads together, so a runaway loop cannot go through your workspace. | 10 lookups, 30 lookups, 100 lookups | 30 lookups |
+| Longest draft she may propose | Characters in one new page or comment. You still approve each one first. | 1000 characters, 3000 characters, 10000 characters | 3000 characters |
+
 ## Google Drive
 
 Where: Capabilities → Google Drive → Limits
