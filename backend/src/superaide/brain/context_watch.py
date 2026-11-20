@@ -15,8 +15,8 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from superaide.brain import context_window as cw
+from superaide.brain.keyhealth import get_state  # the instance's small JSON state (policy.killswitch behind it)
 from superaide.platform.audit import audit
-from superaide.policy.killswitch import get_state
 
 log = logging.getLogger(__name__)
 
@@ -89,7 +89,7 @@ def observe(
     tools: Any,
     usage: Any,
     max_tokens: int,
-    owner_notice: bool = True,
+    owner: Any = None,
 ) -> bool:
     """Compare the provider's prompt token count with the estimate of what was sent. True when it was cut."""
     try:
@@ -121,10 +121,10 @@ def observe(
         _save(session, {**detail, **stamps})
         if not recent:
             audit(session, "brain", "prompt_truncated", **detail)
-            if owner_notice:
+            if owner is not None:
                 from superaide.brain import keynote
 
-                keynote.note_truncation(session, model_id, info.tokens)
+                keynote.note_truncation(session, owner, model_id, info.tokens)
         return True
     except Exception:
         log.exception("couldn't check whether the prompt was cut")
