@@ -528,7 +528,10 @@ def ai_key(ctx: Context) -> list[Result]:
         return _ok(name)
     reason = found["reason"]
     status = FAIL if reason in (keyhealth.KEY_MISSING, keyhealth.KEY_INVALID) else WARN
-    if reason == keyhealth.CONTEXT_SMALL:  # the notice names the model and its window, and has the exact steps
+    if reason in (
+        keyhealth.CONTEXT_SMALL,
+        keyhealth.CONTEXT_CUT,
+    ):  # the notice names the model and its window, and has the exact steps
         return [Result(name, status, found["message"].removesuffix(" " + found["fix"]), found["fix"])]
     return [Result(name, status, keyhealth.CAUSES[reason], keyhealth.FIXES[reason])]
 
