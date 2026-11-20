@@ -252,6 +252,8 @@ export type Preferences = {
   timezone: string
   shareable: { value: string; label: string }[]
   never_share: string
+  draft_tone: string
+  draft_tone_source: 'default' | 'observed' | 'owner'
 }
 
 // The signed-in account, from /auth/me. The session itself is an httpOnly cookie
@@ -659,6 +661,16 @@ export type GithubStatus = {
   login: string
   hint: string
   repos: string[]
+  writes: boolean
+}
+
+export type LinearStatus = {
+  last_changed?: Record<string, { by: 'you' | 'Ava' | 'operator'; at: string }>
+  installed: boolean
+  connected: boolean
+  login: string
+  hint: string
+  teams: string[]
   writes: boolean
 }
 

@@ -40,6 +40,7 @@ FIELDS: dict[tuple[str, str], str] = {
     ("google", "refresh_token"): "google_refresh_token",
     ("google", "gmail_refresh_token"): "gmail_refresh_token",  # the Gmail capability's own sign-in
     ("github", "token"): "github_token",  # the GitHub capability's access token (#669)
+    ("linear", "token"): "linear_token",  # the Linear capability's API key (#669)
     ("notion", "token"): "notion_token",  # the Notion capability's integration secret (#669)
     ("google", "drive_refresh_token"): "drive_refresh_token",  # the Google Drive capability's own sign-in
     # The voice call (ADR 0012): speech-to-text and natural voices.

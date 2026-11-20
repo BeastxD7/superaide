@@ -244,6 +244,8 @@ e2e = [
   "e2e/tests/integrations/github-capability.spec.ts",
   "e2e/tests/integrations/github-capability.mobile.spec.ts",
   "e2e/tests/integrations/notion-capability.spec.ts",
+  "e2e/tests/integrations/linear-capability.spec.ts",
+  "e2e/tests/integrations/linear-capability.mobile.spec.ts",
   "e2e/tests/integrations/notion-capability.mobile.spec.ts",
   "e2e/tests/integrations/drive-capability.spec.ts",
   "e2e/tests/integrations/drive-capability.mobile.spec.ts",
@@ -622,6 +624,7 @@ tests = [
 e2e = [
   "e2e/tests/briefing/briefing.spec.ts",
   "e2e/tests/briefing/briefing.mobile.spec.ts",
+  "e2e/tests/briefing/tone.spec.ts",
 ]
 
 [modules.commitments]

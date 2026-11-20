@@ -6,10 +6,13 @@ a time zone they stated, a slot number they chose); code decides everything else
 - Whether booking is on at all: Google Calendar connected, the calendar skill on, calendar actions allowed by the owner,
   and the owner's "meeting times" setting above 0. When it is not, the visitor gets one fixed sentence, whatever the
   reason (a probe cannot tell "not connected" from "calendar full").
-- Which times are offered: `slots.py`, from Google's free/busy (never event details), the owner's working hours, a
-  buffer, a lead time, the owner's away date and active status, and times already held for someone else. The model never
-  sees the calendar, and the visitor sees two or three slots, never the grid. The same slots are re-offered while the
-  request is live, so asking again does not walk the calendar.
+- Who is offered times (#674): the owner's "who" setting (everyone, listed friends and clients, clients only, friends
+  only). The group is read in code by `identity.friends.tier_of` and the owner's contact list; a visitor outside it
+  hears the same fixed sentence as for every other "no".
+- Which times are offered: `slots.py`, from Google's free/busy (never event details), the owner's working hours and
+  days, a buffer, a lead time, the owner's away date and active status, and times already held for someone else. The
+  model never sees the calendar, and the visitor sees two or three slots, never the grid. The same slots are
+  re-offered while the request is live, so asking again does not walk the calendar.
 - What the visitor hears: fixed templates. The model's own reply is dropped on a scheduling turn.
 - Booking: the visitor picks a slot by number. Code re-checks the time is still free, opens an approval card for the
   owner (kind `visitor_booking`; there is no path that skips the card: not a stage, not a mandate) and holds the slot
@@ -121,6 +124,37 @@ def available(session: Session) -> bool:
         return False
 
 
+def allowed(session: Session, sender: Any | None) -> bool:
+    """Whether this sender's group may be offered times, by the owner's "who" setting. The group comes from
+    `friends.tier_of` and the owner's contact list (database only): nothing the visitor said, claimed or is named can
+    move them into a group. An unreadable setting means "not allowed"."""
+    from superaide.identity import friends
+
+    try:
+        rule = cal_settings.load(session)["visitor_who"]
+        if rule == cal_settings.VISITOR_EVERYONE:
+            return True
+        if sender is None:
+            return False
+        tier = friends.tier_of(session, sender)
+        if tier is friends.Tier.COLLEAGUE:
+            return True
+        if tier is friends.Tier.STRANGER:
+            return False
+        contact = friends.contact_of(session, sender)
+        if contact is None:
+            return False
+        is_client = contact.relationship == "client"
+        return (
+            rule == cal_settings.VISITOR_LISTED
+            or (rule == cal_settings.VISITOR_CLIENTS and is_client)
+            or (rule == cal_settings.VISITOR_FRIENDS and not is_client)
+        )
+    except Exception:
+        log.warning("couldn't tell which group the visitor is in", exc_info=True)
+        return False
+
+
 def who(session: Session, owner: Person) -> str:
     from superaide.reception import ask
 
@@ -222,12 +256,17 @@ def handle(
     provider: str,
     ask: Any,
     visitor_name: str = "",
+    sender: Any = None,
 ) -> str:
-    """The visitor's reply for a scheduling turn. `ask` is the model's `ScheduleAsk`: only a proposal."""
+    """The visitor's reply for a scheduling turn. `ask` is the model's `ScheduleAsk`: only a proposal. `sender` is the
+    resolved sender: with no sender the group cannot be known, so only "everyone" offers times."""
     expire_old(session)
     if not available(session):
         audit(session, "reception", "booking_unavailable", identity_id=identity_id)
         return UNAVAILABLE
+    if not allowed(session, sender):
+        audit(session, "reception", "booking_refused", identity_id=identity_id, reason="group")
+        return UNAVAILABLE  # the same words as every other "no": a visitor cannot tell which rule said it
     name = who(session, owner)
     live = _live(session, identity_id)
     if ask.pick:
@@ -265,6 +304,7 @@ def handle(
         buffer=int(cfg["buffer_minutes"]),
         lead=LEAD,
         days=horizon,
+        open_days=cal_settings.WORKING_DAYS[cfg["working_days"]],
     )
     chosen = slots.choose(
         found, zone(tz_name), limit=int(cfg["visitor_slots"]), want=_wanted_day(ask.day, tz_name, now)

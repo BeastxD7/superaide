@@ -118,6 +118,7 @@ Long comments are shortened here; the full text is next to the variable in `back
 | `GMAIL_REFRESH_TOKEN` | empty | yes | Gmail refresh token, same rules. Secret. |
 | `GITHUB_TOKEN` | empty | yes | GitHub access token (fine-grained, read access to the repositories you choose). Secret. Normally leave blank: each owner pastes it under Capabilities and it is kept in their vault. |
 | `NOTION_TOKEN` | empty | yes | Notion integration secret (an internal integration, shared with the pages you choose). Secret. Normally leave blank: each owner pastes it under Capabilities and it is kept in their vault. |
+| `LINEAR_TOKEN` | empty | yes | Linear personal API key. Secret. Normally leave blank: each owner pastes it under Capabilities and it is kept in their vault. |
 | `DRIVE_REFRESH_TOKEN` | empty | yes | Google Drive refresh token, same rules. Secret. |
 | `GOOGLE_FAKE_BASE_URL` | empty |  | End-to-end tests only: a fake Google at this address replaces accounts.google.com, and only while ENABLE_SIMULATOR is on. Never set on a real server. Default empty. |
 
