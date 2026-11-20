@@ -373,6 +373,11 @@ class OwnerPreference(Scoped, Base):
     card_role_public: Mapped[bool] = mapped_column(Boolean, default=False)
     card_city_public: Mapped[bool] = mapped_column(Boolean, default=False)
     card_email_public: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Tone of drafted replies (#683): one of briefing.tone.TONES. `draft_tone_source` says who chose it: "default"
+    # (nothing known yet), "observed" (learned in code from how the owner writes, no consent gate: #486/#497) or
+    # "owner" (set by hand in settings; learning never overwrites it).
+    draft_tone: Mapped[str] = mapped_column(String(12), default="neutral", server_default="neutral")
+    draft_tone_source: Mapped[str] = mapped_column(String(10), default="default", server_default="default")
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
     )

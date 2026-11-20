@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
 
 from superaide.app.deps import owner_person_id
-from superaide.briefing import service
+from superaide.briefing import service, tone
 from superaide.identity.auth.routes import reject_nul_text, require_csrf_header
 from superaide.identity.models import Person
 from superaide.platform.db.session import require, session_scope
@@ -61,6 +61,31 @@ class SendBody(BaseModel):
     )
 
 
+class ToneOption(BaseModel):
+    value: str
+    label: str
+
+
+class ToneView(BaseModel):
+    tone: str
+    source: str = Field(description="default, observed (learned from how you write) or owner (you chose it).")
+    options: list[ToneOption]
+
+
+class ToneBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    tone: str | None = Field(
+        description="neutral, warm, formal or brief; null lets Ava learn it from how you write again.",
+        max_length=12,
+    )
+
+
+def _tone_view(pref: Any) -> ToneView:
+    chosen, source, options = tone.view(pref)
+    return ToneView(tone=chosen, source=source, options=[ToneOption(value=v, label=n) for v, n in options])
+
+
 def make_router(get_agent: Callable[[], Any]) -> APIRouter:
     router = APIRouter(
         prefix="/app/briefing",
@@ -85,6 +110,31 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
         with session_scope() as s:
             require(s, Person, person_id)
             service.mark_seen(s)
+
+    @router.get(
+        "/tone",
+        summary="Tone of drafted replies",
+        description="The tone drafted replies are written in, and who chose it: Ava learns it from how you write "
+        "until you pick one yourself. It changes the style of a draft only.",
+    )
+    def get_tone(person_id: uuid.UUID = Depends(owner_person_id)) -> ToneView:
+        with session_scope() as s:
+            owner = require(s, Person, person_id)
+            return _tone_view(tone.learn(s, owner))
+
+    @router.put(
+        "/tone",
+        summary="Set the tone of drafted replies",
+        description="Pick neutral, warm, formal or brief, or send null to let it be learned from how you write.",
+    )
+    def put_tone(body: ToneBody, person_id: uuid.UUID = Depends(owner_person_id)) -> ToneView:
+        with session_scope() as s:
+            owner = require(s, Person, person_id)
+            try:
+                pref = tone.set_tone(s, owner, body.tone)
+            except tone.ToneError as exc:
+                raise HTTPException(422, str(exc)) from exc
+            return _tone_view(pref)
 
     def _act(person_id: uuid.UUID, work: Callable[..., Any]) -> DraftView:
         refused: service.BriefingError | None = None

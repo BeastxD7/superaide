@@ -622,6 +622,7 @@ tests = [
 e2e = [
   "e2e/tests/briefing/briefing.spec.ts",
   "e2e/tests/briefing/briefing.mobile.spec.ts",
+  "e2e/tests/briefing/tone.spec.ts",
 ]
 
 [modules.commitments]
