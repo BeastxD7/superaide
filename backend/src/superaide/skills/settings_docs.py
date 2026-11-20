@@ -105,6 +105,7 @@ def sections() -> list[tuple[str, str, list[tuple[str, Any, str, str, str]]]]:
     from superaide.channels import settings as channels
     from superaide.integrations.calendar import settings as calendar
     from superaide.integrations.drive import settings as drive
+    from superaide.integrations.github import settings as github
     from superaide.reception import api as card
     from superaide.skills import retention_settings, web_settings
 
@@ -114,6 +115,7 @@ def sections() -> list[tuple[str, str, list[tuple[str, Any, str, str, str]]]]:
     return [
         ("Gmail", "Capabilities → Gmail → Reading", _gmail_rows()),
         ("Google Calendar", "Capabilities → Google Calendar → Reading", _simple_rows(calendar.CHOICES)),
+        ("GitHub", "Capabilities → GitHub → Limits", _simple_rows(github.CHOICES)),
         ("Google Drive", "Capabilities → Google Drive → Limits", _simple_rows(drive.CHOICES)),
         ("Web research", "Capabilities → Web research → Searching", _simple_rows(web_settings.CHOICES)),
         ("Channels and messages", "Connections → Reading and keeping", _simple_rows(channels.CHOICES)),
