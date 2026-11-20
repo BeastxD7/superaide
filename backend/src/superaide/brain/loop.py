@@ -1138,7 +1138,14 @@ class OwnerTurn:
                 on_event=self.on_model_event if streaming else None,
             )
             context_watch.observe(
-                self.s, self.model, system=system, messages=msgs, tools=tools, usage=last.usage, max_tokens=MAX_TOKENS
+                self.s,
+                self.model,
+                system=system,
+                messages=msgs,
+                tools=tools,
+                usage=last.usage,
+                max_tokens=MAX_TOKENS,
+                owner=self.sender.person,
             )
             if last.stop_reason == "max_tokens":
                 last = self._more_room(system, tools, msgs, last)

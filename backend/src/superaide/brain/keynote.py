@@ -42,10 +42,8 @@ def note_owner(session: Session, owner: Any, provider: str, *, what: str = "", r
 TRUNCATION_NOTE_EVERY = timedelta(days=7)
 
 
-def note_truncation(session: Session, model: str, window: int) -> bool:
+def note_truncation(session: Session, owner: Any, model: str, window: int) -> bool:
     """Tell the owner in the app, once per model per week, that the server cut the start of a prompt (#641)."""
-    from superaide.app.accounts import owner as hired_by
-
     state = get_state(session, "prompt_truncated_note")
     now = datetime.now(UTC)
     try:
@@ -53,13 +51,12 @@ def note_truncation(session: Session, model: str, window: int) -> bool:
             return False
     except ValueError:
         pass
-    boss = hired_by(session)
-    if boss is None:
+    if owner is None:
         return False
     set_state(session, "prompt_truncated_note", {**state, model: now.isoformat()})
     text = (
         f"The model {model.split('::')[-1]} has a {window:,}-token window and its server cut the start of what I "
         "was told, so I may have forgotten my rules or the conversation. Open the AI model page to fix it."
     )
-    notify_owner(session, boss, text, {"kind": "prompt_truncated"}, channel="app")
+    notify_owner(session, owner, text, {"kind": "prompt_truncated"}, channel="app")
     return True
