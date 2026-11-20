@@ -35,6 +35,8 @@ Where: Capabilities → Google Calendar → Reading
 | Your day starts at | Free time is described from this hour (24h clock). | 6, 7, 8, 9, 10 | 8 |
 | Your day ends at | Free time is described up to this hour (24h clock). | 17, 18, 19, 20, 21, 22 | 20 |
 | Events she learns from per read | Events from one read that Ava may turn into notes about you (only when learning from connectors is on). | 5 events, 10 events, 20 events | 10 events |
+| Meeting times Ava may offer visitors | How many times Ava offers someone she doesn't know who asks to meet you (0 turns this off). Only free times inside your day are offered, never what is in your calendar, and nothing is booked until you approve it. | 0 times, 2 times, 3 times | 3 times |
+| Gap kept around your events | Minutes kept clear before and after anything in your calendar when Ava offers a visitor a time. | 0 minutes, 15 minutes, 30 minutes | 15 minutes |
 
 ## Web research
 

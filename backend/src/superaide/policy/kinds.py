@@ -63,6 +63,12 @@ KINDS: dict[str, KindInfo] = {
         "tool as you approved it, and shows you what it returned.",
         True,
     ),
+    "visitor_booking": KindInfo(
+        "Book time with someone who wrote to Ava",
+        "Adds a private event at the time on the card to your Google Calendar, invites them only if they gave an "
+        "email, and tells them in their chat with Ava.",
+        True,
+    ),
     "message_someone_else": KindInfo(
         "Message someone for you",
         "Nothing: Superaide cannot send messages to other people yet (no web forms, contact pages or chat DMs).",
