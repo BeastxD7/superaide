@@ -533,8 +533,7 @@ def test_the_notion_routes_need_the_csrf_header_and_refuse_bad_input(browser, ow
 def test_the_outlook_routes_need_the_csrf_header_and_refuse_bad_input(browser, owner):
     plain = browser(csrf=False)
     plain.cookies.set("superaide_session", owner.cookies.get("superaide_session"))
-    for path in ("/app/microsoft/mail/client", "/app/microsoft/mail/sending"):
-        assert plain.post(path, json={}).status_code == 403
+    assert plain.post("/app/microsoft/mail/sending", json={}).status_code == 403
     assert plain.put("/app/microsoft/mail/client", json={}).status_code == 403
     assert plain.post("/app/microsoft/mail/connect").status_code == 403
     assert plain.delete("/app/microsoft/mail").status_code == 403

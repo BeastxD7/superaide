@@ -44,14 +44,17 @@ class FakeMicrosoft:
         self.rotations = 0
         self.scopes_granted = "offline_access User.Read Mail.Read"
         self.fail_with: httpx.Response | None = None
+        priya = {"emailAddress": {"name": "Priya Tan", "address": "priya@example.com"}}
+        bank = {"emailAddress": {"name": "Bank", "address": "no-reply@bank.example"}}
+        quoted = "\n\nOn Mon, 2 Nov 2026, Jordan wrote:\n> old stuff"
+        code = "Your verification code is 482913. Do not share this one-time code."
         self.messages: dict[str, dict[str, Any]] = {
-            MID: {"id": MID, "subject": "Invoice March", "from": {"emailAddress": {"name": "Priya Tan", "address": "priya@example.com"}},
-                  "receivedDateTime": "2026-11-02T10:00:00Z", "isRead": False, "bodyPreview": "Please see attached.",
-                  "body": {"contentType": "text", "content": "Hello,\nPay by Friday. " + INJECTION + "\n\nOn Mon, 2 Nov 2026, Jordan wrote:\n> old stuff"}},
-            MID2: {"id": MID2, "subject": "Your one-time code", "from": {"emailAddress": {"name": "Bank", "address": "no-reply@bank.example"}},
-                   "receivedDateTime": "2026-11-03T10:00:00Z", "isRead": True,
-                   "bodyPreview": "Your verification code is 482913. Do not share this one-time code.",
-                   "body": {"contentType": "text", "content": "Your verification code is 482913. Do not share this one-time code."}},
+            MID: {"id": MID, "subject": "Invoice March", "from": priya, "receivedDateTime": "2026-11-02T10:00:00Z",
+                  "isRead": False, "bodyPreview": "Please see attached.",
+                  "body": {"contentType": "text", "content": "Hello,\nPay by Friday. " + INJECTION + quoted}},
+            MID2: {"id": MID2, "subject": "Your one-time code", "from": bank,
+                   "receivedDateTime": "2026-11-03T10:00:00Z",
+                   "isRead": True, "bodyPreview": code, "body": {"contentType": "text", "content": code}},
         }  # fmt: skip
 
     def graph(self, marker: str, method: str = "GET") -> list[tuple[str, str, dict[str, Any], bytes]]:
