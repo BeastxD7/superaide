@@ -37,6 +37,7 @@ from superaide.memory.audience import Audience, audience_for, visible_memories
 from superaide.memory.knowledge import trust
 from superaide.memory.knowledge.profile import owner_brief
 from superaide.memory.models import Context
+from superaide.memory.recall.retrieval import memories_for_question
 from superaide.memory.store import (
     Timeline,
     get_or_create_context,
@@ -998,7 +999,10 @@ class Agent:
         if is_owner and (told := self._key_missing(s)) is not None:
             return told, ["key_missing"]
         with timing.span("retrieval"):
-            memories = visible_memories(s, aud, limit=30 if is_owner else 5)
+            if is_owner or aud.has_unknown:  # the owner's newest 30; unknown audiences: public notes, newest first
+                memories = visible_memories(s, aud, limit=30 if is_owner else 5)
+            else:  # a known person: notes chosen for their question, topped up with the newest allowed (#649)
+                memories = memories_for_question(s, aud, msg.text, limit=5)
             brief = owner_brief(s, sender, aud)
         if is_owner and sender.person and self.settings.school_enabled and self.settings.school_playbook_enabled:
             from superaide.features.school import playbook as school_playbook

@@ -77,6 +77,8 @@ SELF_TESTS = [
     "proto-fernhost-reads-plans-then-asks",
     "proto-no-plan-no-approval",
     "proto-cannot-execute-route-hands-over",
+    "recall-colleague-answer-not-among-newest",
+    "colleague-recall-keeps-owner-note-out",
 ]
 
 
