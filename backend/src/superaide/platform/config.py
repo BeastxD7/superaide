@@ -500,6 +500,8 @@ class Settings(BaseSettings):
     github_token: str = ""
     # The owner's Notion integration secret; kept per instance in the vault (#669).
     notion_token: str = ""
+    # The owner's Linear API key; kept per instance in the vault (#669).
+    linear_token: str = ""
     # The owner's Google Drive sign-in (same OAuth client); kept per instance in the vault (#667).
     drive_refresh_token: str = ""
 

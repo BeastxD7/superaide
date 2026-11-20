@@ -52,6 +52,18 @@ Where: Capabilities → GitHub → Limits
 | GitHub lookups per hour | Searches and reads together, so a runaway loop cannot go through your repositories. | 10 lookups, 30 lookups, 100 lookups | 30 lookups |
 | Longest draft she may propose | Characters in one new issue or comment. You still approve each one first. | 1000 characters, 3000 characters, 10000 characters | 3000 characters |
 
+## Linear
+
+Where: Capabilities → Linear → Limits
+
+| Setting | What it does | Choices | Default |
+| --- | --- | --- | --- |
+| Issues per search | Most issues one search may return. | 5 results, 10 results, 20 results | 10 results |
+| Comments she reads per issue | The newest comments of an issue that Ava reads. | 5 comments, 10 comments, 30 comments | 10 comments |
+| Text she reads from one issue | Characters of one issue (its description and comments together) that can reach Ava; the rest is cut off. | 2000 characters, 6000 characters, 15000 characters | 6000 characters |
+| Linear lookups per hour | Searches and reads together, so a runaway loop cannot go through your issues. | 10 lookups, 30 lookups, 100 lookups | 30 lookups |
+| Longest draft she may propose | Characters in one new issue or comment. You still approve each one first. | 1000 characters, 3000 characters, 10000 characters | 3000 characters |
+
 ## Notion
 
 Where: Capabilities → Notion → Limits
