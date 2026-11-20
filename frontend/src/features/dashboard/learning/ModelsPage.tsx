@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAppData } from '@/features/dashboard/data'
 import { AppError, call, type ConnectionTest, type ModelSettings, type ProviderPreset, type RoleName } from '@/lib/api'
+import { MediaProvidersCard } from './MediaProvidersCard'
 import { useSession } from '@/lib/session-context'
 import { errorMessage } from '@/lib/action'
 
@@ -205,6 +206,8 @@ export function ModelsPage() {
             onSaved={reload}
           />
         )}
+
+        {data && <MediaProvidersCard key={`media-${[...connected].join(',')}`} />}
     </PageContainer>
   )
 }

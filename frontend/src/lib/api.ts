@@ -42,7 +42,7 @@ export type Me = {
     line: string
   } | null
   // Why the AI cannot be used for a configuration reason (#633); null while fine. Fixed text, never a provider message.
-  ai_notice?: { reason: 'key_missing' | 'key_invalid' | 'credit_low' | 'spend_cap' | 'context_small'; message: string; action: string; href: string } | null
+  ai_notice?: { reason: 'key_missing' | 'key_invalid' | 'credit_low' | 'spend_cap' | 'context_small' | 'context_cut'; message: string; action: string; href: string } | null
   channels: {
     web: boolean
     telegram: boolean
@@ -200,6 +200,46 @@ export type PersonCard = {
   relationship: string
   vip: boolean
   channels: string[]
+}
+
+export type ContactFact = {
+  id: string
+  content: string
+  category: string
+  about_them: boolean
+  source: string
+  source_label: string
+  source_title: string | null
+  learned_at: string
+  confidence: number
+  audience: { kind: 'owner' | 'people' | 'team' | 'anyone'; label: string }
+}
+
+export type FriendTier = 'colleague' | 'verified_friend' | 'unverified_friend' | 'not_linked'
+
+export type ContactHandle = { id: string; provider: string; kind: 'username' | 'id'; value: string }
+
+export type PendingFriend = {
+  identity_id: string
+  provider: string
+  platform_id: string
+  username: string
+  display_name: string
+  via: 'handle' | 'invite'
+  contact: { id: string; name: string }
+  first_seen: string
+}
+
+export type ContactRecord = {
+  id: string
+  name: string
+  tier: FriendTier
+  handles: ContactHandle[]
+  relationship: string
+  vip: boolean
+  notes: string
+  channels: { provider: string; handle: string; last_seen_at: string | null }[]
+  facts: ContactFact[]
 }
 
 export type Preferences = {
@@ -578,6 +618,23 @@ export type ModelSettings = {
 }
 
 export type ConnectionTest = { ok: boolean; message: string; models: string[] }
+
+// /app/media-providers: which service listens to voice notes and which looks at photos (#501, #511).
+export type MediaCapabilityId = 'transcribe' | 'vision'
+export type MediaCapability = {
+  id: MediaCapabilityId
+  label: string
+  hint: string
+  suggested: string[]
+  choice: { provider: string; model: string } | null
+  on: boolean
+  problem: string | null // why a saved choice cannot run now
+  default: boolean // photos read by Claude because Claude is connected, not because the owner chose it
+  vendor_notice: string | null
+  price: { known: boolean; free: boolean; unit: 'minute' | 'mtok'; usd?: number; builtin?: boolean } | null
+  providers: { key: string; label: string; models: string[]; ready: boolean }[]
+}
+export type MediaSettings = { capabilities: MediaCapability[] }
 
 // Triage and escalation (ADR 0010). Every /needs-you and /triage route answers 404 while the
 // backend's TRIAGE_ENABLED is off, and the app then hides the inbox.

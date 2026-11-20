@@ -30,6 +30,7 @@ EFFECTS: dict[str, str] = {
     "decline_event": "send",
     "gmail_send": "send",
     "gmail_compose": "send",
+    "visitor_booking": "write_external",  # opens an approval card; the event is created only after the owner approves
     "relay_message": "send",  # opens an approval card; the message goes only after the owner approves it
 }
 

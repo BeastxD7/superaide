@@ -116,3 +116,38 @@ class ChannelInvite(Scoped, Base):
     endpoint_key: Mapped[str] = mapped_column(String(200), default="", server_default="")
     # A confirm-this-bot invite works only for the account that was waiting to be confirmed.
     for_identity_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("channel_identity.id"), nullable=True)
+    # link: connects the owner's own account (redeem_invite). friend: made for a contact; whoever opens it becomes an
+    # unverified friend waiting for the owner's approval, never a linked person (identity/friends.py, #479/#504).
+    purpose: Mapped[str] = mapped_column(String(10), default="link", server_default="link")
+
+
+class ContactHandle(Scoped, Base):
+    """An account the owner says belongs to a contact (#479): a Telegram username or id, a Slack member id.
+
+    A username can be released and taken by someone else, so a match on it only makes the sender an unverified
+    friend the owner must approve; an id is immutable, and the owner typing it is the owner's approval."""
+
+    __tablename__ = "contact_handle"
+    __table_args__ = (UniqueConstraint("agent_id", "provider", "kind", "value", name="uq_contact_handle_value"),)
+
+    contact_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("contact.id", ondelete="CASCADE"), index=True)
+    provider: Mapped[str] = mapped_column(String(20))
+    kind: Mapped[str] = mapped_column(String(10))  # username | id
+    value: Mapped[str] = mapped_column(String(200))
+
+
+class FriendCandidate(Scoped, Base):
+    """An account that is acknowledged as a contact's but not trusted until the owner approves it (#479, #504).
+
+    The account stays unlinked (`channel_identity.person_id` is NULL), so it is a stranger to the audience gate and
+    the model; this row only decides the fixed acknowledgement and what the owner is asked. Written by code from
+    a handle the owner listed or an invite the owner made, never from message content."""
+
+    __tablename__ = "friend_candidate"
+    __table_args__ = (UniqueConstraint("identity_id", name="uq_friend_candidate_identity"),)
+
+    identity_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("channel_identity.id", ondelete="CASCADE"), index=True)
+    contact_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("contact.id", ondelete="CASCADE"), index=True)
+    via: Mapped[str] = mapped_column(String(10))  # handle | invite
+    state: Mapped[str] = mapped_column(String(10), default="pending")  # pending | declined
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

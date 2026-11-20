@@ -330,7 +330,7 @@ def search(world: World, q: Query) -> Result:
     aud = _audience(who)
     shared = q.as_ in ("stranger", "group")  # a channel or thread others can read
     with session_scope() as s:
-        found = recall(s, aud, q.say, limit=LIMIT, channel=q.channel, rooms=not shared)
+        found = recall(s, aud, q.say, limit=LIMIT, channel=q.channel, rooms=not shared, asked=q.say)
     tainted = any(src.title.startswith((ROOM_TITLE, VISITOR_TITLE)) for src in found)
     return Result(q, [world.names.get(src.uri.rsplit("/", 1)[-1], "?") for src in found], tainted)
 

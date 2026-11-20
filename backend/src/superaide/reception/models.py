@@ -13,7 +13,7 @@ import uuid
 from datetime import UTC, datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, text
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from superaide.platform.db.models import Base, Scoped
@@ -87,9 +87,47 @@ class VisitorQuestion(Scoped, Base):
     answered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class BookingRequest(Scoped, Base):
+    """A visitor's request for time with the owner (#496). Slots are chosen by code from the owner's real free/busy and
+    stored here; the visitor picks one by number, never by typing a time. Nothing is written to the owner's calendar
+    until the owner approves the card (`approval_id`): `pending` is only a hold in this table that keeps the same time
+    from being offered twice.
+
+    state: proposed (times offered) | pending (visitor chose, waiting for the owner) | approved (event created) |
+    declined | expired | failed (approved, but the calendar refused or the time was taken)"""
+
+    __tablename__ = "booking_request"
+    __table_args__ = (Index("ix_booking_request_agent_state", "agent_id", "state", "created_at"),)
+
+    identity_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("channel_identity.id"), index=True)
+    context_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("context.id"))
+    provider: Mapped[str] = mapped_column(String(20))  # telegram | slack
+    minutes: Mapped[int] = mapped_column(Integer, default=30)
+    # The zone times are shown to the visitor in: an IANA name they stated and code validated, else UTC.
+    tz_name: Mapped[str] = mapped_column(String(64), default="UTC")
+    visitor_name: Mapped[str] = mapped_column(String(40), default="")  # their claim, letters only, display only
+    visitor_email: Mapped[str] = mapped_column(String(254), default="")  # validated syntax; unverified
+    slots: Mapped[list[dict[str, str]]] = mapped_column(JSONB, default=list)  # [{"start": ISO UTC, "end": ISO UTC}]
+    chosen: Mapped[int | None] = mapped_column(Integer, nullable=True)  # index into slots
+    state: Mapped[str] = mapped_column(String(10), default="proposed")
+    approval_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    event_id: Mapped[str] = mapped_column(String(1024), default="")
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class ReceptionMessage(Scoped, Base):
     __tablename__ = "reception_message"
-    __table_args__ = (Index("ix_reception_message_agent_status", "agent_id", "status", "created_at"),)
+    __table_args__ = (
+        Index("ix_reception_message_agent_status", "agent_id", "status", "created_at"),
+        # Recall by time and by sender, and the words of a message (#644). The expression is the one recall searches.
+        Index("ix_reception_message_agent_created", "agent_id", "created_at"),
+        Index(
+            "ix_reception_message_fts",
+            text("to_tsvector('english', message)"),
+            postgresql_using="gin",
+        ),
+    )
 
     identity_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("channel_identity.id"), index=True)
     context_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("context.id"))

@@ -76,6 +76,10 @@ BUCKETS = {
     "replay_turn": "learning",  # #110: rehearsing the owner's recent tasks (replay before update, audition, drill)
     "dissent": "dissent",  # #126: three models on one high-stakes choice
     "fork_night": "fork",  # #127: three read-only overnight drafts of one choice
+    "media_stt": "media",  # #501/#511: voice notes and photos the owner's own contacts send
+    "media_vision": "media",
+    "visitor_stt": "receptionist",  # the same, from someone Ava does not know: the receptionist's bucket
+    "visitor_vision": "receptionist",
     "rule_compile": "rules",  # #52: turning a standing order into a structured rule (one small call)
 }
 

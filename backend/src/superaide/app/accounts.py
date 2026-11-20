@@ -212,7 +212,7 @@ def redeem_invite(
     invite = session.scalar(
         select(ChannelInvite).where(ChannelInvite.code_hash == _hash(code), ChannelInvite.provider == provider)
     )
-    if invite is None or invite.used_at is not None or invite.expires_at <= now:
+    if invite is None or invite.used_at is not None or invite.expires_at <= now or invite.purpose != "link":
         audit(session, "identity", "invite_rejected", provider=provider)
         return None
     if invite.endpoint_key and invite.endpoint_key != endpoint:

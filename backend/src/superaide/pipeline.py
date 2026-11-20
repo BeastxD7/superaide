@@ -29,7 +29,7 @@ from superaide.channels import api as attachments
 from superaide.channels.base import InboundMessage, Messenger
 from superaide.channels.format import strip_citations
 from superaide.channels.health import DeliveryFailed
-from superaide.identity import linking
+from superaide.identity import friends, linking
 from superaide.identity.models import Person
 from superaide.identity.resolver import Sender, resolve
 from superaide.intentions.when import is_reminder_request
@@ -284,6 +284,12 @@ class Agent:
             if invite_code is not None:
                 if sender.known:
                     reply = f"You're already linked here, {sender.name}. Just message me."
+                elif (
+                    friend_reply := friends.redeem_invite(
+                        s, code=invite_code, identity=sender.identity, endpoint=msg.endpoint
+                    )
+                ) is not None:  # an invite the owner made for a contact: unverified until the owner approves
+                    reply = friend_reply
                 else:
                     from superaide.app.accounts import redeem_invite
 
@@ -327,6 +333,13 @@ class Agent:
                 takeover.visitor_wrote(s, held)
                 return HandleResult("takeover", None, ["owner_handling"])
 
+            if not sender.known and ctx.kind == "dm":
+                try:  # an account the owner listed for a contact: acknowledged, not trusted (#479, #504)
+                    with s.begin_nested():
+                        friends.observe(s, sender, msg)
+                except Exception:
+                    log.warning("friend lookup failed", exc_info=True)
+
             if not sender.known:
                 from superaide.identity import claims
 
@@ -348,18 +361,16 @@ class Agent:
 
                 try:
                     with s.begin_nested():
-                        # A file alone from a stranger is not a conversation: the fixed reply, no model.
-                        received = (
-                            None
-                            if msg.attachments and not msg.text.strip()
-                            else handle_stranger(self, s, sender, ctx, msg, inbound)
-                        )
+                        # A file alone from a stranger: the fixed reply, no model, unless the owner chose a
+                        # voice-note or photo service (reception/media.py).
+                        received = handle_stranger(self, s, sender, ctx, msg, inbound)
                 except Exception as exc:  # the fixed reply still goes out (issue #83)
                     self._turn_failed(s, exc, msg)
                     received = None
                 if received == "":
                     return HandleResult("stranger", None, ["rate_limited"])
                 reply = received if received is not None else self._ai_notice(self._stranger(s, sender, msg))
+                reply = friends.acknowledge(s, ctx, sender, reply)
                 self._reply(s, ctx, aud, reply, thread, retry=True)
                 return HandleResult("stranger", reply, ["receptionist"] if received is not None else [])
 
@@ -369,9 +380,10 @@ class Agent:
                 # else is said plainly in the same conversation, never silence: fixed text, no model, nothing from the
                 # file or its name stored or shown, and no action can come from it (#511).
                 read = None
-                if ctx.kind == "dm" and (msg.file_refs or msg.uploads):
+                media = attachments.media_for(self.settings) if msg.file_refs or msg.uploads else None
+                if ctx.kind == "dm" and attachments.has_work(msg, media):
                     read = attachments.read_message(
-                        msg, self.messengers.get(msg.provider), self.settings.attachment_max_bytes
+                        msg, self.messengers.get(msg.provider), self.settings.attachment_max_bytes, media
                     )
                     audit(
                         s, "pipeline", "attachment_read", provider=msg.provider, files=read.read,
@@ -459,7 +471,7 @@ class Agent:
                         reply, notes = self._think(s, sender, ctx, aud, msg, file_block)
                 except Exception as exc:
                     reply, notes = self._turn_failed(s, exc, msg), ["failed"]
-                reply = self._steady(s, reply)
+                reply = friends.greet(s, ctx, sender, self._steady(s, reply))
                 outsider = sender.relation != "manager" and not self._is_owner(s, sender)  # the owner gets no card
                 self._reply(s, ctx, aud, reply, thread, to=(sender.name if sender.known else "") if outsider else None)
             return HandleResult("known", reply, notes)

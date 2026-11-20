@@ -528,15 +528,45 @@ def ai_key(ctx: Context) -> list[Result]:
         return _ok(name)
     reason = found["reason"]
     status = FAIL if reason in (keyhealth.KEY_MISSING, keyhealth.KEY_INVALID) else WARN
-    if reason == keyhealth.CONTEXT_SMALL:  # the notice names the model and its window, and has the exact steps
+    if reason in (
+        keyhealth.CONTEXT_SMALL,
+        keyhealth.CONTEXT_CUT,
+    ):  # the notice names the model and its window, and has the exact steps
         return [Result(name, status, found["message"].removesuffix(" " + found["fix"]), found["fix"])]
     return [Result(name, status, keyhealth.CAUSES[reason], keyhealth.FIXES[reason])]
+
+
+@check("Photo reading")
+def photo_reading(ctx: Context) -> list[Result]:
+    """Says so when photos go to Claude by default (nobody chose it), so the owner can turn it off (#511)."""
+    from superaide.brain.media import service as media
+
+    name = "Photo reading"
+    try:
+        from superaide.identity.vault.store import runtime_settings
+        from superaide.platform.db.session import session_scope
+
+        with session_scope() as s:
+            choices, defaults = media.effective_choices(s, runtime_settings())
+    except Exception:
+        return _ok(name)
+    if "vision" not in defaults:
+        return _ok(name)
+    return [
+        Result(
+            name,
+            OK,
+            f"Photos people send are read by Claude ({choices['vision'].model}), which means the photo is sent to "
+            "Anthropic. Nobody chose this: it is on because Claude is connected. Voice notes stay off.",
+            "Turn it off: AI model page, Voice notes and photos, Turn off.",
+        )
+    ]
 
 
 # The checks that make sense for an owner inside the app (#567): the ones about the deployment's addresses, spend
 # cap and storage. The rest (settings file, ports, migrations, chat tokens) are for the person running the server
 # and stay in `superaide doctor`.
-IN_APP_CHECKS = ("Database", "Master key", "AI key", "Public address", "Google redirects", "Spend cap")
+IN_APP_CHECKS = ("Database", "Master key", "AI key", "Photo reading", "Public address", "Google redirects", "Spend cap")
 
 
 def run_in_app(settings: Settings, http: httpx.Client | None = None) -> list[Result]:
