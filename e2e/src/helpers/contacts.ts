@@ -27,3 +27,17 @@ export async function seedMeera(ownerPersonId: string): Promise<SeededContact> {
   )
   return { contactId: row.id, personId: row.person_id }
 }
+
+/** Meera plus an unlinked Telegram account (id 4242) waiting for the owner's approval. */
+export async function seedPendingMeera(ownerPersonId: string): Promise<SeededContact> {
+  const meera = await seedMeera(ownerPersonId)
+  await query(
+    `UPDATE channel_identity SET person_id = NULL, trust_level = 1, aux_handles = '{"username": "meera_i", "display_name": "Meera"}' WHERE stable_key = '4242'`,
+  )
+  await query(
+    `INSERT INTO friend_candidate (id, tenant_id, agent_id, created_at, identity_id, contact_id, via, state)
+     SELECT gen_random_uuid(), i.tenant_id, i.agent_id, now(), i.id, $1::uuid, 'handle', 'pending' FROM channel_identity i WHERE i.stable_key = '4242'`,
+    [meera.contactId],
+  )
+  return meera
+}

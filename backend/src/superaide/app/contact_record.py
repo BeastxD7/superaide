@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 
 from superaide.app.deps import owner_person_id
 from superaide.identity.auth.deps import reject_nul_text, require_csrf_header
-from superaide.identity.models import ChannelIdentity, Person
+from superaide.identity.models import ChannelIdentity, ContactHandle, FriendCandidate, Person
 from superaide.memory.models import Contact, Document, MemoryItem
 from superaide.platform.audit import audit
 from superaide.platform.db.session import session_scope
@@ -105,9 +105,29 @@ def record(s: Session, owner_id: uuid.UUID, contact: Contact, person: Person) ->
             .order_by(ChannelIdentity.provider, ChannelIdentity.id)
         )
     ]
+    pending = s.scalar(
+        select(FriendCandidate.id).where(FriendCandidate.contact_id == contact.id, FriendCandidate.state == "pending")
+    )
+    tier = (
+        "colleague"
+        if person.relation == "colleague"
+        else "verified_friend"
+        if channels
+        else "unverified_friend"
+        if pending
+        else "not_linked"
+    )
+    handles = [
+        {"id": str(h.id), "provider": h.provider, "kind": h.kind, "value": h.value}
+        for h in s.scalars(
+            select(ContactHandle).where(ContactHandle.contact_id == contact.id).order_by(ContactHandle.created_at)
+        )
+    ]
     return {
         "id": str(contact.id),
         "name": person.display_name,
+        "tier": tier,
+        "handles": handles,
         "relationship": contact.relationship,
         "vip": contact.vip,
         "notes": contact.notes,

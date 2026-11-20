@@ -215,9 +215,26 @@ export type ContactFact = {
   audience: { kind: 'owner' | 'people' | 'team' | 'anyone'; label: string }
 }
 
+export type FriendTier = 'colleague' | 'verified_friend' | 'unverified_friend' | 'not_linked'
+
+export type ContactHandle = { id: string; provider: string; kind: 'username' | 'id'; value: string }
+
+export type PendingFriend = {
+  identity_id: string
+  provider: string
+  platform_id: string
+  username: string
+  display_name: string
+  via: 'handle' | 'invite'
+  contact: { id: string; name: string }
+  first_seen: string
+}
+
 export type ContactRecord = {
   id: string
   name: string
+  tier: FriendTier
+  handles: ContactHandle[]
   relationship: string
   vip: boolean
   notes: string
