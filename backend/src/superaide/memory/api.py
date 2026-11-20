@@ -2,9 +2,11 @@
 
 from superaide.memory.consolidation.changes import KINDS, ChangeError, retired_state, undo
 from superaide.memory.knowledge.extract import Extracted, ExtractError, extract_file
+from superaide.memory.knowledge.store import preferences_for
 from superaide.memory.recall.retrieval import memories_for_question
 
 # memories_for_question: the notes for a known non-owner's turn, chosen for their question (#649)
+# preferences_for: the owner's settings row, made on first use (#683)
 # extract_file / ExtractError / Extracted: reading an uploaded or sent file into clean text (no model, stores nothing)
 __all__ = [
     "KINDS",
@@ -13,6 +15,7 @@ __all__ = [
     "Extracted",
     "extract_file",
     "memories_for_question",
+    "preferences_for",
     "retired_state",
     "undo",
 ]

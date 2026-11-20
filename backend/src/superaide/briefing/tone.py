@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.identity.models import Person
-from superaide.memory.knowledge.store import preferences_for
+from superaide.memory.api import preferences_for
 from superaide.memory.models import Event, OwnerPreference
 from superaide.platform.audit import audit
 
