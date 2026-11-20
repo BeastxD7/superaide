@@ -157,7 +157,7 @@ def test_disconnecting_what_isnt_connected_is_harmless(owner, network, provider)
     assert network == []
 
 
-@pytest.mark.parametrize("provider", ["whatsapp", "github", "anthropic", "ANTHROPIC", "..", " telegram"])
+@pytest.mark.parametrize("provider", ["whatsapp", "github", "notion", "anthropic", "ANTHROPIC", "..", " telegram"])
 def test_disconnecting_an_unknown_service_is_404(owner, provider):
     assert owner.post(f"/app/connections/{provider}/disconnect").status_code == 404
 

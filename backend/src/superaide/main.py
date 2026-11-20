@@ -196,6 +196,20 @@ def create_app(agent: Agent | None = None) -> FastAPI:
             event="github_read_settings",
         )
     )
+    from superaide.integrations.notion import settings as notion_settings
+    from superaide.integrations.notion.routes import make_router as make_notion_router
+
+    app.include_router(make_notion_router(get_agent))
+    app.include_router(
+        make_github_limits_router(
+            prefix="notion",
+            skill_id=notion_settings.SKILL_ID,
+            choices=notion_settings.CHOICES,
+            tag="Owner: Notion",
+            what="Notion limits",
+            event="notion_read_settings",
+        )
+    )
     from superaide.integrations.drive.routes import make_router as make_drive_router
 
     app.include_router(make_drive_router(get_agent))

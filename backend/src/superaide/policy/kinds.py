@@ -47,6 +47,10 @@ KINDS: dict[str, KindInfo] = {
     "github_comment": KindInfo(
         "Comment on GitHub", "Adds exactly the comment shown to that issue or pull request.", True
     ),
+    "notion_create_page": KindInfo(
+        "Add a Notion page", "Adds the new page under that page in Notion, with exactly the text shown.", True
+    ),
+    "notion_comment": KindInfo("Comment in Notion", "Adds exactly the comment shown to that Notion page.", True),
     "drive_create_file": KindInfo(
         "Create a Google Doc or Sheet", "Creates the new file in your Google Drive, with exactly the text shown.", True
     ),

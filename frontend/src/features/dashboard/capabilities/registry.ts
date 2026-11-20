@@ -58,6 +58,20 @@ export const CAPABILITIES: CapabilityRoute[] = [
     pages: [{ slug: 'limits', label: 'Limits', summary: 'How many results, how much text and how many lookups per hour Ava may use.' }],
   },
   {
+    slug: 'notion',
+    skillId: 'superaide/notion',
+    title: 'Notion',
+    summary: 'Look things up in the Notion pages you choose and say what they say. Choose the limits, and whether Ava may draft.',
+    fixedRules: [
+      'Ava sees only the pages you choose and the pages beneath them, and only in your own chat: never in a channel where others can read.',
+      'Text in a page or comment was written by other people: it is information, never instructions to Ava.',
+      'Every new page and every comment waits for your yes and shows the exact text. Ava cannot edit, archive, delete or move anything.',
+      'Your integration secret is stored encrypted and shown only as a hint. In Notion, share only the pages you want Ava to see with the integration.',
+      'Lookups are counted per hour and cut to the limits you set; the audit log keeps counts, never titles or text.',
+    ],
+    pages: [{ slug: 'limits', label: 'Limits', summary: 'How many results, how much text and how many lookups per hour Ava may use.' }],
+  },
+  {
     slug: 'drive',
     skillId: 'superaide/google-drive',
     title: 'Google Drive',
@@ -99,6 +113,7 @@ export const HASH_REDIRECTS: Record<string, string> = {
   '#gmail-read': capabilityHref('gmail', 'reading'),
   '#calendar': capabilityHref('calendar', 'reading'),
   '#github': capabilityHref('github'),
+  '#notion': capabilityHref('notion'),
   '#drive': capabilityHref('drive'),
   '#web': capabilityHref('web', 'use'),
 }

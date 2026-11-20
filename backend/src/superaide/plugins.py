@@ -19,6 +19,7 @@ import superaide.integrations.calendar.skill  # noqa: F401  (the calendar execut
 import superaide.integrations.drive.skill  # noqa: F401  (the Drive executors)
 import superaide.integrations.github.skill  # noqa: F401  (the GitHub executors)
 import superaide.integrations.gmail.skill  # noqa: F401  (EXECUTORS["gmail_send"], DISCARDERS["gmail_send"])
+import superaide.integrations.notion.skill  # noqa: F401  (the Notion executors)
 import superaide.memory.knowledge.connector_facts  # noqa: F401  (subscribes to SkillRemoved, CalendarEventsRead, MailIngested)
 import superaide.reception.booking  # noqa: F401  (EXECUTORS["visitor_booking"])
 import superaide.reception.relay  # noqa: F401  (EXECUTORS["relay_message"])

@@ -1713,6 +1713,28 @@
         "title": "LoginBody",
         "type": "object"
       },
+      "NotionSettingsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "blocks_read": {
+            "title": "Blocks Read"
+          },
+          "read_chars": {
+            "title": "Read Chars"
+          },
+          "reads_per_hour": {
+            "title": "Reads Per Hour"
+          },
+          "search_limit": {
+            "title": "Search Limit"
+          },
+          "write_chars": {
+            "title": "Write Chars"
+          }
+        },
+        "title": "NotionSettingsBody",
+        "type": "object"
+      },
       "OptionBody": {
         "properties": {
           "accepted": {
@@ -1880,6 +1902,24 @@
           "items"
         ],
         "title": "Page[dict[str, Any]]",
+        "type": "object"
+      },
+      "PagesBody": {
+        "additionalProperties": false,
+        "properties": {
+          "pages": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Pages",
+            "type": "array"
+          }
+        },
+        "required": [
+          "pages"
+        ],
+        "title": "PagesBody",
         "type": "object"
       },
       "PasswordBody": {
@@ -3848,6 +3888,22 @@
         "type": "object"
       },
       "superaide__integrations__github__routes__TokenBody": {
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "TokenBody",
+        "type": "object"
+      },
+      "superaide__integrations__notion__routes__TokenBody": {
         "additionalProperties": false,
         "properties": {
           "token": {
@@ -12651,6 +12707,285 @@
         "summary": "Mark a notification as seen",
         "tags": [
           "Owner: reminders"
+        ]
+      }
+    },
+    "/app/notion": {
+      "get": {
+        "description": "Installed, connected, pages and drafts.",
+        "operationId": "status_app_notion_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Status App Notion Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Notion capability status",
+        "tags": [
+          "Owner: Notion"
+        ]
+      }
+    },
+    "/app/notion/pages": {
+      "put": {
+        "description": "Notion page links or ids, at most 20. Ava sees these pages and the pages beneath them, nothing else. Each change is audited.",
+        "operationId": "set_pages_app_notion_pages_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PagesBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Set Pages App Notion Pages Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Choose the pages Ava may see",
+        "tags": [
+          "Owner: Notion"
+        ]
+      }
+    },
+    "/app/notion/read-settings": {
+      "get": {
+        "description": "The owner's limits for Notion limits, every allowed value and what it means (defaults until installed).",
+        "operationId": "get_settings_app_notion_read_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Settings App Notion Read Settings Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Notion limits: your settings",
+        "tags": [
+          "Owner: Notion"
+        ]
+      },
+      "put": {
+        "description": "Changes any of the settings. Each change is audited.",
+        "operationId": "put_settings_app_notion_read_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotionSettingsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Put Settings App Notion Read Settings Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Notion limits: change your settings",
+        "tags": [
+          "Owner: Notion"
+        ]
+      }
+    },
+    "/app/notion/token": {
+      "delete": {
+        "description": "Deletes the stored integration secret.",
+        "operationId": "disconnect_app_notion_token_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Disconnect App Notion Token Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Disconnect Notion",
+        "tags": [
+          "Owner: Notion"
+        ]
+      },
+      "post": {
+        "description": "Checks the secret with Notion, then stores it encrypted. Create an internal integration in Notion, share only the pages you want Ava to see with it (read content; insert content and comments only if you will turn drafts on). The answer never contains the secret.",
+        "operationId": "connect_app_notion_token_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/superaide__integrations__notion__routes__TokenBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Connect App Notion Token Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Connect Notion with an integration secret",
+        "tags": [
+          "Owner: Notion"
+        ]
+      }
+    },
+    "/app/notion/writes": {
+      "post": {
+        "description": "On: Ava may ask your approval to add a page or a comment. Nothing is written without your yes.",
+        "operationId": "writes_app_notion_writes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WritesBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Writes App Notion Writes Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Turn Notion drafts on or off",
+        "tags": [
+          "Owner: Notion"
         ]
       }
     },

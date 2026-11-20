@@ -495,6 +495,22 @@ def test_the_github_routes_need_the_csrf_header_and_refuse_bad_input(browser, ow
     assert owner.put("/app/github/read-settings", json={"nope": 1}).status_code == 422
 
 
+def test_the_notion_routes_need_the_csrf_header_and_refuse_bad_input(browser, owner):
+    plain = browser(csrf=False)
+    plain.cookies.set("superaide_session", owner.cookies.get("superaide_session"))
+    for path in ("/app/notion/token", "/app/notion/writes"):
+        assert plain.post(path, json={}).status_code == 403
+    assert plain.put("/app/notion/pages", json={"pages": []}).status_code == 403
+    assert plain.delete("/app/notion/token").status_code == 403
+    assert plain.put("/app/notion/read-settings", json={"search_limit": 5}).status_code == 403
+    assert owner.post("/app/notion/writes", json={"enabled": "maybe"}).status_code == 422
+    assert owner.post("/app/notion/token", json={}).status_code == 422
+    assert owner.post("/app/notion/token", json={"token": "x", "extra": 1}).status_code == 422
+    assert owner.put("/app/notion/pages", json={"pages": "abc"}).status_code == 422
+    assert owner.put("/app/notion/read-settings", json={"read_chars": "lots"}).status_code in (409, 422)
+    assert owner.put("/app/notion/read-settings", json={"nope": 1}).status_code == 422
+
+
 def test_the_drive_routes_need_the_csrf_header_and_refuse_bad_input(browser, owner):
     plain = browser(csrf=False)
     plain.cookies.set("superaide_session", owner.cookies.get("superaide_session"))

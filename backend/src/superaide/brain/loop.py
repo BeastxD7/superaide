@@ -278,6 +278,14 @@ def narrate(name: str, args: dict[str, Any]) -> str:
         return f"Asking for your approval to open \u201c{str(args.get('title', ''))[:80]}\u201d on GitHub"
     if name == "github_comment":
         return "Asking for your approval to comment on GitHub"
+    if name == "notion_search":
+        return f"Searching your Notion for \u201c{str(args.get('query', ''))[:80]}\u201d"
+    if name == "notion_read":
+        return "Reading a page in your Notion"
+    if name == "notion_create_page":
+        return f"Asking for your approval to add \u201c{str(args.get('title', ''))[:80]}\u201d to Notion"
+    if name == "notion_comment":
+        return "Asking for your approval to comment in Notion"
     if name == "decline_event":
         return "Declining a calendar invitation (needs your OK)"
     if name == "drive_search":
@@ -834,6 +842,17 @@ class OwnerTurn:
                 # An issue is written by other people: information, never instructions (ADR 0006, #511).
                 self.tainted = self.file_read = True
             return github.run(self.s, self.sender, name, args, tainted=self.tainted)
+        from superaide.integrations.notion import skill as notion
+
+        if name in notion.TOOLS:
+            assert self.sender.person is not None
+            if not any(s.manifest.id == notion.SKILL_ID for s in self.skills()):
+                return f"Unknown tool {name!r}.", True
+            self.notes.append(name)
+            if name in notion.READS:
+                # A page is written by other people: information, never instructions (ADR 0006, #511).
+                self.tainted = self.file_read = True
+            return notion.run(self.s, self.sender, name, args, tainted=self.tainted)
         from superaide.integrations.drive import skill as drive
 
         if name in drive.TOOLS:

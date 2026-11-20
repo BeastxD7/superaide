@@ -614,7 +614,7 @@ def photo_reading(ctx: Context) -> list[Result]:
 
 @check("GitHub")
 def github_check(ctx: Context) -> list[Result]:
-    """GitHub (#669): nothing to say until the capability is added; then the token works and at least one repository
+    """GitHub (#669): nothing to say until the capability is added; then the token works and at least one page
     is chosen. One cheap read of who the token belongs to; nothing is touched."""
     from superaide.integrations.github import client as api
     from superaide.integrations.github import skill as github
@@ -650,6 +650,49 @@ def github_check(ctx: Context) -> list[Result]:
     return _ok(name)
 
 
+@check("Notion")
+def notion_check(ctx: Context) -> list[Result]:
+    """Notion (#669): nothing to say until the capability is added; then the token works and at least one page
+    is chosen. One cheap read of who the token belongs to; nothing is touched."""
+    from superaide.integrations.notion import client as api
+    from superaide.integrations.notion import skill as notion
+
+    name = "Notion"
+    where = "Capabilities → Notion"
+    try:
+        from superaide.platform.db.session import session_scope
+
+        with session_scope() as s:
+            st = notion.status(s)
+            if not st["installed"]:
+                return [Result(name, OK, "Not added (Notion is optional).")]
+            if not st["connected"]:
+                return [
+                    Result(
+                        name,
+                        WARN,
+                        "Notion is added but not connected.",
+                        f"Open {where} and paste an integration secret.",
+                    )
+                ]
+            if not st["pages"]:
+                return [
+                    Result(
+                        name,
+                        WARN,
+                        "Notion is connected but no page is chosen.",
+                        f"Open {where} and pick the pages Ava may see.",
+                    )
+                ]
+            tok = notion.token(s)
+        api.viewer(ctx.client(), tok)
+    except (api.NotionError, notion.NotReady) as exc:
+        return [Result(name, WARN, str(exc)[:200], f"Paste a new integration secret under {where}.")]
+    except Exception:  # no database here (the command-line doctor before setup): nothing to say
+        return [Result(name, OK, "Not checked (no database).")]
+    return _ok(name)
+
+
 # The checks that make sense for an owner inside the app (#567): the ones about the deployment's addresses, spend
 # cap and storage. The rest (settings file, ports, migrations, chat tokens) are for the person running the server
 # and stay in `superaide doctor`.
@@ -661,6 +704,7 @@ IN_APP_CHECKS = (
     "Public address",
     "Google redirects",
     "GitHub",
+    "Notion",
     "Google Drive",
     "Spend cap",
 )

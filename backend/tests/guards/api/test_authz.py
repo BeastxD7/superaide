@@ -358,6 +358,28 @@ def test_the_github_routes_are_owner_routes(app, browser, owner):
         assert stranger.request(method, path, json={}).status_code == 403
 
 
+# --- the Notion capability (/app/notion, #669) --------------------------------------------------
+
+NOTION_ROUTES = {
+    ("GET", "/app/notion"),
+    ("POST", "/app/notion/token"),
+    ("DELETE", "/app/notion/token"),
+    ("PUT", "/app/notion/pages"),
+    ("POST", "/app/notion/writes"),
+    ("GET", "/app/notion/read-settings"),
+    ("PUT", "/app/notion/read-settings"),
+}
+
+
+def test_the_notion_routes_are_owner_routes(app, browser, owner):
+    assert NOTION_ROUTES <= set(owner_routes(app))  # so every check above covers them too
+    stranger = browser()
+    signup(stranger, name="Mallory Tan", email="mallory@example.com")
+    for method, path in NOTION_ROUTES:
+        assert browser().request(method, path, json={}).status_code == 401
+        assert stranger.request(method, path, json={}).status_code == 403
+
+
 # --- the Google Drive capability (/app/drive, #667) --------------------------------------------
 
 DRIVE_ROUTES = {

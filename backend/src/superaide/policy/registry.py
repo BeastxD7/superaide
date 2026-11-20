@@ -46,6 +46,10 @@ TOOL_RULES: dict[str, Rule] = {
     # batching): the payload is the exact text.
     "github_create_issue": Rule(int(Trust.LINKED), manager_only=True, needs_approval=True),
     "github_comment": Rule(int(Trust.LINKED), manager_only=True, needs_approval=True),
+    # #669: a new page or a comment under a page the owner chose. Always the owner's yes (no mandate, no batching):
+    # the payload is the exact text.
+    "notion_create_page": Rule(int(Trust.LINKED), manager_only=True, needs_approval=True),
+    "notion_comment": Rule(int(Trust.LINKED), manager_only=True, needs_approval=True),
     # #667: a new Doc or Sheet, or text added to a Doc Ava made, in the owner's Drive. Always the owner's yes
     # (no mandate, no batching): the payload is the exact text.
     "drive_create_file": Rule(int(Trust.LINKED), manager_only=True, needs_approval=True),
