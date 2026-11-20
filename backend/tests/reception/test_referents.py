@@ -134,6 +134,9 @@ def test_the_offer_is_a_read_only_and_only_for_the_latest_turn_with_exactly_one_
 
 
 def test_an_offer_never_has_a_side_effect_tool():
+    from superaide.brain.turn import OFFER_TOOLS
+
+    assert OFFER_TOOLS and all(is_read(t) for t in OFFER_TOOLS)
     for tool, effect in EFFECTS.items():
         turn = SimpleNamespace(shared=False, referents=[], offer=None)
         OwnerTurn._remember(turn, [{"kind": "x", "id": "3649daf7", "label": "A on B"}], tool=tool, arg="id")  # type: ignore[arg-type]

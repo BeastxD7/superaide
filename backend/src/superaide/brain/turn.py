@@ -106,6 +106,7 @@ def card_note(ev: Event) -> str:
     )
 
 
+OFFER_TOOLS = frozenset({"inbox"})  # reads only: a unit test holds this to the registry's read classes (#643)
 _SAFE_ID = re.compile(r"^[0-9a-f]{8}$")
 _SAFE_LABEL = re.compile(r"^(?:[^\W\d_]|['\- ]){1,40} on [^\W\d_ ]{1,20}$")  # letters (any script), then a channel
 YES = frozenset({
@@ -139,15 +140,13 @@ def referent_note(ev: Event) -> str:
 def offer_note(history: list[Event], current_text: str) -> str:
     """A code-written note when the owner's whole message is "yes please" and the turn right before it made one
     read offer (#643): the model is told what the yes accepts. Never for an offer that is not the latest turn."""
-    from superaide.tooltrace.effects import is_read
-
     events = list(history)
     if events and events[-1].direction == "in" and (events[-1].content or "").strip() == current_text.strip():
         events.pop()  # the current message is already logged
     if not events or events[-1].direction != "out" or not is_yes(current_text):
         return ""
     offer = (events[-1].meta or {}).get("offer")
-    if not isinstance(offer, dict) or offer.get("tool") != "inbox" or not is_read("inbox"):
+    if not isinstance(offer, dict) or offer.get("tool") not in OFFER_TOOLS:
         return ""
     wanted = str((offer.get("args") or {}).get("id", ""))
     label = str(offer.get("label", ""))
