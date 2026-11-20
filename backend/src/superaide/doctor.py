@@ -720,6 +720,49 @@ def notion_check(ctx: Context) -> list[Result]:
     return _ok(name)
 
 
+@check("Linear")
+def linear_check(ctx: Context) -> list[Result]:
+    """Linear (#669): nothing to say until the capability is added; then the token works and at least one team
+    is chosen. One cheap read of who the token belongs to; nothing is touched."""
+    from superaide.integrations.linear import client as api
+    from superaide.integrations.linear import skill as linear
+
+    name = "Linear"
+    where = "Capabilities → Linear"
+    try:
+        from superaide.platform.db.session import session_scope
+
+        with session_scope() as s:
+            st = linear.status(s)
+            if not st["installed"]:
+                return [Result(name, OK, "Not added (Linear is optional).")]
+            if not st["connected"]:
+                return [
+                    Result(
+                        name,
+                        WARN,
+                        "Linear is added but not connected.",
+                        f"Open {where} and paste an API key.",
+                    )
+                ]
+            if not st["teams"]:
+                return [
+                    Result(
+                        name,
+                        WARN,
+                        "Linear is connected but no team is chosen.",
+                        f"Open {where} and pick the teams Ava may see.",
+                    )
+                ]
+            tok = linear.token(s)
+        api.viewer(ctx.client(), tok)
+    except (api.LinearError, linear.NotReady) as exc:
+        return [Result(name, WARN, str(exc)[:200], f"Paste a new API key under {where}.")]
+    except Exception:  # no database here (the command-line doctor before setup): nothing to say
+        return [Result(name, OK, "Not checked (no database).")]
+    return _ok(name)
+
+
 # The checks that make sense for an owner inside the app (#567): the ones about the deployment's addresses, spend
 # cap and storage. The rest (settings file, ports, migrations, chat tokens) are for the person running the server
 # and stay in `superaide doctor`.
@@ -733,6 +776,7 @@ IN_APP_CHECKS = (
     "Google redirects",
     "GitHub",
     "Notion",
+    "Linear",
     "Google Drive",
     "Spend cap",
 )
