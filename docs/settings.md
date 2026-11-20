@@ -40,6 +40,29 @@ Where: Capabilities → Google Calendar → Reading
 | Days Ava may offer meeting times on | Visitors are only offered times on these days, inside your day's hours (your time zone). | Monday to Thursday, Monday to Friday, Monday to Saturday, Every day | Monday to Friday |
 | Gap kept around your events | Minutes kept clear before and after anything in your calendar when Ava offers a visitor a time. | 0 minutes, 15 minutes, 30 minutes | 15 minutes |
 
+## Outlook mail
+
+Where: Capabilities → Outlook → Limits
+
+| Setting | What it does | Choices | Default |
+| --- | --- | --- | --- |
+| Emails per search | Most emails one search may return. | 5 emails, 10 emails, 20 emails | 10 emails |
+| Text she reads from one email | Characters of one email's own text (no quoted history or signature) that can reach Ava; the rest is cut off. | 1000 characters, 3000 characters, 8000 characters | 3000 characters |
+| Outlook lookups per hour | Searches and reads together, so a runaway loop cannot go through your mailbox. | 10 lookups, 30 lookups, 100 lookups | 30 lookups |
+| Longest email she may propose | Characters in one reply or new email. You still approve each one first. | 1000 characters, 3000 characters, 8000 characters | 3000 characters |
+| Most recipients of one new email | Addresses on one email Ava proposes. A reply goes to its sender only. | 1 people, 3 people, 5 people | 3 people |
+
+## Outlook calendar
+
+Where: Capabilities → Outlook calendar → Limits
+
+| Setting | What it does | Choices | Default |
+| --- | --- | --- | --- |
+| Events per lookup | Most events one lookup may return. | 10 events, 25 events, 50 events | 25 events |
+| How far ahead she looks | The furthest day from today that Ava can look at. | 7 days, 14 days, 30 days | 14 days |
+| Calendar lookups per hour | Event lists and free-time checks together, so a runaway loop cannot go through your calendar. | 10 lookups, 30 lookups, 100 lookups | 30 lookups |
+| Event title length | Characters of an event title that can reach Ava. | 60 characters, 120 characters, 200 characters | 120 characters |
+
 ## GitHub
 
 Where: Capabilities → GitHub → Limits
