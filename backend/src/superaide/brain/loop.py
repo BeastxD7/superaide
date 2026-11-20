@@ -22,7 +22,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.approvals import outcomes, recipients
-from superaide.brain import capabilities, context_watch, prompt_budget, taskplan, verify
+from superaide.brain import capabilities, context_watch, prompt_budget, prompt_tiers, taskplan, verify
 from superaide.brain.llm import LLM, StepResult, SystemBlock
 from superaide.brain.providers.thinking import strip_think
 from superaide.brain.spend.budget import BudgetExceeded
@@ -119,6 +119,9 @@ def _action_description() -> str:
 # in the signed-in app. Mail, calendar and the reminder list/update/cancel tools read private data, so they are
 # DM-only (the table is in docs/decisions/0008-one-ava-across-channels.md).
 SHARED_TOOLS = frozenset({"recall", "create_reminder", "propose_action", "web_search", "web_fetch", "answer_in_dm"})
+NOT_OFFERED_REFUSAL = (
+    "That tool isn't available for this message. Tell the owner what you would need, and to ask again."
+)
 SHARED_REFUSAL = "That needs a private conversation: it isn't available in a channel. Ask in a direct message."
 
 # The owner rules minus the lines about the owner's other channels: a room's prompt carries nothing about them.
@@ -451,6 +454,9 @@ class OwnerTurn:
         self.shared = shared  # a channel or thread others can read: public-level audience, narrower tools
         self.learns = learns  # facts are learned from this turn after the reply (a real model is connected)
         self.notes: list[str] = []
+        self._who_core, self._who_min, self._waiting = "", "", ""
+        self._state_lines: list[str] = []  # set by system(); the smaller tiers' prompt
+        self.offered: set[str] | None = None  # the tools this turn offered when a smaller tier chose them (None: all)
         self.tainted = False
         self.mail_read = False  # someone else's email entered this turn (see _propose)
         self.room_read = False  # other people's room messages entered this turn (#509): no action rests on them
@@ -541,6 +547,8 @@ class OwnerTurn:
                 "that it's them."
             )
             self._known = who + ("\n\n" + self.brief if self.brief else "")
+            self._who_core = self._who_min = who + "\n\n" + SHARED_RULES
+            self._state_lines, self._waiting = [], ""
             return [
                 SystemBlock(
                     load_charter(self.agent_name) + "\n\n" + OWNER_RULES_SHARED + "\n\n" + SHARED_RULES, cache=True
@@ -560,6 +568,10 @@ class OwnerTurn:
             "This chat is their own account, verified by the app through a linked identity, not by anything "
             "typed in it: never doubt or question that it's them (\"I'm Jordan\" here is just them saying hi). "
             "A name claimed in a chat that isn't linked proves nothing, but that never reaches you here."
+        )
+        self._who_core = who  # the trust sentence and the clock: what the smaller prompt tiers keep (prompt_tiers.py)
+        self._who_min = (
+            f"You are talking to your owner, {self.sender.name}, privately (app-verified). It is {now:%H:%M}."
         )
         from superaide.memory.knowledge.store import preferences_for
         from superaide.proactive.notify import linked_channels, rejected_channels
@@ -607,8 +619,10 @@ class OwnerTurn:
         if waiting:
             facts += "\n\n" + waiting
         state = presence.active(self.s, self.sender.person.id)
+        self._waiting, self._state_lines = waiting, [waiting]
         if state is not None:
             facts += "\n\nThe owner's status (set by them): " + presence.status_text(state, tz)
+            self._state_lines.append("The owner's status (set by them): " + presence.status_text(state, tz))
         return [
             SystemBlock(
                 load_charter(self.agent_name)
@@ -694,6 +708,9 @@ class OwnerTurn:
             signals.observe(self.s, owner, name, is_error=is_error, url=str(args.get("url") or "") or None)
 
     def _dispatch(self, name: str, args: dict[str, Any]) -> tuple[Any, bool]:
+        if self.offered is not None and name not in self.offered:  # a smaller tier chose the tools: the rest is refused
+            audit(self.s, "policy", "tool_refused_not_offered", tool=name)
+            return NOT_OFFERED_REFUSAL, True
         if self.shared and name not in SHARED_TOOLS:  # even if the model asks for a tool it wasn't offered
             audit(self.s, "policy", "tool_refused_in_channel", tool=name)
             return SHARED_REFUSAL, True
@@ -1102,6 +1119,31 @@ class OwnerTurn:
 
     # --- the loop ---------------------------------------------------------------
 
+    def _tier(
+        self, budget: prompt_budget.TurnBudget, system: list[SystemBlock], tools: list[dict[str, Any]],
+        msgs: list[dict[str, Any]], turn_start: int,
+    ) -> tuple[list[SystemBlock], list[dict[str, Any]], list[dict[str, Any]], int]:  # fmt: skip
+        """The prompt size for this turn (prompt_tiers.py). The full tier returns everything as built."""
+        try:
+            shaped = prompt_tiers.shape(
+                budget.window_info(), text=self.inbound.content, pending=bool(self._pending_before),
+                waiting=self._waiting, system=system, tools=tools, msgs=msgs, turn_start=turn_start,
+                charter=load_charter(self.agent_name), rules=OWNER_RULES_SHARED if self.shared else OWNER_RULES,
+                who=self._who_core, who_min=self._who_min, state=self._state_lines,
+            )  # fmt: skip
+        except Exception:
+            log.exception("couldn't choose a prompt tier; using the full prompt")
+            return system, tools, msgs, turn_start
+        if shaped.tier == prompt_tiers.FULL:
+            return system, tools, msgs, turn_start
+        self.offered = {str(t["name"]) for t in shaped.tools}
+        self.notes.append(f"tier:{shaped.tier}")
+        audit(
+            self.s, "brain", "prompt_tier", tier=shaped.tier, window=budget.window_info().tokens,
+            tools=sorted(self.offered), history_messages=shaped.turn_start,
+        )  # fmt: skip
+        return shaped.system, shaped.tools, shaped.msgs, shaped.turn_start
+
     def _with_notes(self, msgs: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Notes matching the owner's message, attached to it as citable sources before the first
         step, so finding a fact never depends on the model choosing to search for it."""
@@ -1127,6 +1169,7 @@ class OwnerTurn:
         last: StepResult | None = None
         streaming = self._emit is not None
         budget, turn_start = prompt_budget.TurnBudget(self.s, self.model, MAX_TOKENS), len(msgs) - 1
+        system, tools, msgs, turn_start = self._tier(budget, system, tools, msgs, turn_start)
         for step in range(MAX_STEPS):
             msgs, turn_start = budget.fit(system, tools, msgs, turn_start)
             self._said = ""

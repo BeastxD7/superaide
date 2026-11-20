@@ -55,7 +55,8 @@ def rows(s, action: str) -> list[AuditLog]:
     return list(s.scalars(select(AuditLog).where(AuditLog.action == action)))
 
 
-def test_a_cut_prompt_is_audited_once_shown_and_told_to_the_owner_once(owner_client):  # noqa: F811
+def test_a_cut_prompt_is_audited_once_shown_and_told_to_the_owner_once(owner_client, monkeypatch):  # noqa: F811
+    monkeypatch.setattr("superaide.brain.prompt_tiers.select_tier", lambda *a, **k: "full")  # this tests the budget
     with session_scope() as s:
         for _ in range(3):
             big_turn(s, 2_050).run([{"role": "user", "content": "hi"}])
