@@ -50,6 +50,8 @@ COLLEAGUE_TG, COLLEAGUE_SLACK = "7002", "U_PRIYA"
 STRANGER_TG, STRANGER_SLACK = "7999", "U_STRANGER"
 VIP_TG, VIP_SLACK = "7003", "U_DANA"
 CONTACT_TG, CONTACT_SLACK = "7004", "U_SAM"
+CLIENT_TG, FRIEND_TG = "7005", "7006"  # listed by username, never approved: unverified friends (Telegram only)
+CLIENT_USERNAME, FRIEND_USERNAME = "rahul_v", "ananya_m"
 TEAM = "T_OURS"
 AVA_THREAD_TS = "1790000000.000200"  # the ts Slack gave Ava's reply: the thread a reply under it carries
 GROUP_TG, GROUP_SLACK = "-100777", "C_TEAM"
@@ -188,9 +190,12 @@ class OfflineModel:
                 raise BudgetExceeded("today's receptionist limit", "bucket")
             if fake.reception == "down":
                 raise ConnectionError("the model provider is overloaded")
+            from superaide.reception.turn import ScheduleAsk
+
             return ReceptionTurn(
                 reply=fake.reply if self.turn else "Hello! I can pass a message on if you like.",
                 take_message=TakenMessage.model_validate(fake.take) if fake.take else None,
+                schedule=ScheduleAsk.model_validate(fake.schedule) if fake.schedule else None,
             )
         if output_model is FactList:
             return FactList.model_validate(
@@ -398,6 +403,8 @@ def build_world(sc: Scenario, start: datetime, run: Run | None = None) -> uuid.U
         if w.second_owner and run is not None:
             _second_owner(s, run)
         _reception_world(s, sc, person)
+        if w.listed_visitors:
+            _listed_visitors(s, person)
         if w.triage_enabled:
             _triage_world(s, sc, person, start)
         return person.id
@@ -419,6 +426,18 @@ def _reception_world(s: Any, sc: Scenario, owner: Person) -> None:
         pref = preferences_for(s, owner)
         for k, v in sc.world.reception_card.items():
             setattr(pref, k, v)
+
+
+def _listed_visitors(s: Any, owner: Person) -> None:
+    """Rahul Verma (a client) and Ananya Menon (a friend) are on the owner's list with a Telegram username. Nobody
+    has confirmed those accounts yet, so they are unverified friends when they write (identity/friends.py)."""
+    from superaide.identity.friends import add_handle
+    from superaide.memory.knowledge.store import add_contact
+
+    for name, relationship, username in (
+        ("Rahul Verma", "client", CLIENT_USERNAME), ("Ananya Menon", "friend", FRIEND_USERNAME),
+    ):  # fmt: skip
+        add_handle(s, add_contact(s, owner=owner, name=name, relationship=relationship), "telegram", f"@{username}")
 
 
 FILLER_TOPICS = [
@@ -556,6 +575,7 @@ def inbound(turn: Turn, owner: Person, text_: str, mid: str = "") -> InboundMess
         ("stranger", "telegram"): STRANGER_TG, ("stranger", "slack"): STRANGER_SLACK,
         ("vip", "telegram"): VIP_TG, ("vip", "slack"): VIP_SLACK,
         ("contact", "telegram"): CONTACT_TG, ("contact", "slack"): CONTACT_SLACK,
+        ("listed_client", "telegram"): CLIENT_TG, ("listed_friend", "telegram"): FRIEND_TG,
     }.get((turn.who, turn.via))  # fmt: skip
     if sender is None:
         raise ValueError(f"{turn.who} can't write on {turn.via}")
@@ -565,6 +585,7 @@ def inbound(turn: Turn, owner: Person, text_: str, mid: str = "") -> InboundMess
         return InboundMessage(
             provider="telegram", tenant_scope="", sender_id=sender, chat_id=chat, chat_kind=turn.chat,
             text=text_, verified=True, message_id=mid, thread_id=thread,
+            sender_username={CLIENT_TG: CLIENT_USERNAME, FRIEND_TG: FRIEND_USERNAME}.get(sender, ""),
         )  # fmt: skip
     chat = GROUP_SLACK if turn.chat == "group" else f"D_{sender}"
     return InboundMessage(
@@ -677,6 +698,7 @@ def run_scenario(sc: Scenario, *, inner: LLM | None = None, judge: Judge | None 
             ),
             _many_owners(sc.world.second_owner),
             _gmail_drafts(sc.world.gmail_drafts),
+            _fake_calendar(sc),
         ):
             clock.shift(timedelta(days=-1))
             run.owner_id = build_world(sc, run.start, run)
@@ -822,6 +844,36 @@ def _many_owners(on: bool) -> Iterator[None]:
         yield
     finally:
         settings.allow_many_owners = saved
+
+
+@contextmanager
+def _fake_calendar(sc: Scenario) -> Iterator[None]:
+    """The owner has connected Google Calendar and allowed actions; free/busy says nothing is busy (#674). The
+    owner's calendar settings come from the scenario. Nothing reaches the network."""
+    from superaide.integrations.calendar import settings as cal_settings
+    from superaide.integrations.calendar import skill as calendar
+    from superaide.integrations.google import client as google
+
+    fakes: dict[tuple[Any, str], Any] = {}
+    if sc.world.calendar:
+        real = cal_settings.load
+        fakes = {
+            (calendar, "connected"): lambda: True,
+            (calendar, "can_write"): lambda session: True,
+            (calendar, "enabled"): lambda session: True,
+            (calendar, "actions_on"): lambda session: True,
+            (calendar, "_token"): lambda: "eval-token",
+            (google, "free_busy"): lambda token, start, end: [],
+            (cal_settings, "load"): lambda session: {**real(session), **sc.world.calendar_settings},
+        }
+    saved = {key: getattr(key[0], key[1]) for key in fakes}
+    for (owner, name), fn in fakes.items():
+        setattr(owner, name, fn)
+    try:
+        yield
+    finally:
+        for (owner, name), fn in saved.items():
+            setattr(owner, name, fn)
 
 
 @contextmanager

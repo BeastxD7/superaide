@@ -133,6 +133,13 @@ class World(Strict):
     outage: dict[Literal["telegram", "slack"], int] = Field(default_factory=dict)
     # Gmail can save drafts (the owner connected it): a reply about sending is checked differently (capabilities.py).
     gmail_drafts: bool = False
+    # A fake calendar (#674): Google connected, calendar actions allowed, nothing busy, no network. Only free/busy is
+    # ever read. `calendar_settings` are the owner's settings (visitor_who, working_days, visitor_slots, ...).
+    calendar: bool = False
+    calendar_settings: dict[str, Any] = Field(default_factory=dict)
+    # People the owner listed under People for visitors to write from on Telegram (`who: listed_client` and
+    # `who: listed_friend` are accounts listed by username but not yet approved: unverified friends).
+    listed_visitors: bool = False
 
 
 class FakeTool(Strict):
@@ -148,6 +155,7 @@ class FakeTurn(Strict):
     reply: str = "OK."
     facts: list[dict[str, Any]] = Field(default_factory=list)  # what the fact extractor reads (world.learn_model)
     triage: dict[str, Any] | Literal["budget"] | None = None  # the triage classifier's answer (world.triage_model)
+    schedule: dict[str, Any] | None = None  # the receptionist's proposal to meet (a ScheduleAsk): code decides the rest
     take: dict[str, Any] | None = None  # the message the receptionist takes (a TakenMessage), with `reply`
     reception: Literal["down", "budget"] | None = None  # the receptionist's model fails this turn (#503)
 
@@ -175,7 +183,9 @@ class Press(Strict):
 
 
 class Turn(Strict):
-    who: Literal["owner", "colleague", "stranger", "second_owner", "vip", "contact"] = "owner"
+    who: Literal[
+        "owner", "colleague", "stranger", "second_owner", "vip", "contact", "listed_client", "listed_friend"
+    ] = "owner"
     via: Literal["web", "telegram", "slack"] = "web"
     chat: Literal["dm", "group"] = "dm"
     say: str | None = None

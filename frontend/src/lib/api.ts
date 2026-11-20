@@ -252,6 +252,8 @@ export type Preferences = {
   timezone: string
   shareable: { value: string; label: string }[]
   never_share: string
+  draft_tone: string
+  draft_tone_source: 'default' | 'observed' | 'owner'
 }
 
 // The signed-in account, from /auth/me. The session itself is an httpOnly cookie

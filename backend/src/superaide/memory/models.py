@@ -9,6 +9,7 @@ from typing import Any
 
 from sqlalchemy import (
     Boolean,
+    Computed,
     DateTime,
     Float,
     ForeignKey,
@@ -21,7 +22,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from superaide.platform.db.models import Base, Scoped
@@ -373,6 +374,11 @@ class OwnerPreference(Scoped, Base):
     card_role_public: Mapped[bool] = mapped_column(Boolean, default=False)
     card_city_public: Mapped[bool] = mapped_column(Boolean, default=False)
     card_email_public: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Tone of drafted replies (#683): one of briefing.tone.TONES. `draft_tone_source` says who chose it: "default"
+    # (nothing known yet), "observed" (learned in code from how the owner writes, no consent gate: #486/#497) or
+    # "owner" (set by hand in settings; learning never overwrites it).
+    draft_tone: Mapped[str] = mapped_column(String(12), default="neutral", server_default="neutral")
+    draft_tone_source: Mapped[str] = mapped_column(String(10), default="default", server_default="default")
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC)
     )
@@ -387,3 +393,38 @@ class Onboarding(Scoped, Base):
     step: Mapped[str] = mapped_column(String(30), default="hello")
     answers: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class RecallDoc(Scoped, Base):
+    """One searchable row of the derived recall index (#647, report 5.2 and 7.3). The source tables (notes, events,
+    visitor messages, passages, episodes) stay the truth: this table is rebuilt from them (`memory/recall/index.py`)
+    and carries the same audience-gate columns, so the gate, the instance scope, validity and retirement live in the
+    one statement that searches it. Never written by the model."""
+
+    __tablename__ = "recall_doc"
+    __table_args__ = (
+        UniqueConstraint("agent_id", "kind", "ref_id", name="uq_recall_doc_source"),
+        Index("ix_recall_doc_agent_kind_at", "agent_id", "kind", text("occurred_at DESC")),
+        Index("ix_recall_doc_agent_person", "agent_id", "said_by_person_id", "occurred_at"),
+        Index("ix_recall_doc_tsv", "tsv", postgresql_using="gin"),
+    )
+
+    kind: Mapped[str] = mapped_column(String(20))  # note | message | visitor_message | chunk | episode | approval
+    ref_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))  # the source row; it stays the truth
+    said_by_person_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    said_by_identity_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    provider: Mapped[str] = mapped_column(String(20), default="")
+    context_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    thread_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    valid_from: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    valid_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    retired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # soft delete only
+    # The audience gate, same columns and meaning as on `memory_item`; `room` marks a channel Ava reads whole.
+    allowed_kind: Mapped[str] = mapped_column(String(20), default="persons")  # public | org | persons | room
+    allowed_person_ids: Mapped[list[uuid.UUID]] = mapped_column(ARRAY(UUID(as_uuid=True)), default=list)
+    has_unknown: Mapped[bool] = mapped_column(Boolean, default=False)
+    min_trust: Mapped[int] = mapped_column(Integer, default=2)
+    taint: Mapped[str] = mapped_column(String(10), default="owner")  # owner | known | stranger | document | web
+    text: Mapped[str] = mapped_column(Text)
+    tsv: Mapped[Any] = mapped_column(TSVECTOR, Computed("to_tsvector('english', text)", persisted=True))

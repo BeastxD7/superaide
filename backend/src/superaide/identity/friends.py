@@ -81,6 +81,23 @@ def tier_of(session: Session, sender: Sender) -> Tier:
     return Tier.UNVERIFIED_FRIEND if cand is not None and person is None else Tier.STRANGER
 
 
+def contact_of(session: Session, sender: Sender) -> Contact | None:
+    """The owner's contact this sender stands for, by the same rules as `tier_of`: the person the account is linked to,
+    or the contact an unverified friend was listed for. None for a stranger. Database only, never the message."""
+    person = sender.person
+    if person is not None and not sender.unconfirmed:
+        return _contact_of(session, person)
+    cand = session.scalar(
+        select(FriendCandidate).where(
+            FriendCandidate.identity_id == sender.identity.id, FriendCandidate.state == "pending"
+        )
+    )
+    if cand is None or person is not None:
+        return None
+    contact = session.get(Contact, cand.contact_id)
+    return contact if contact is not None and contact.removed_at is None else None
+
+
 def _contact_of(session: Session, person: Person) -> Contact | None:
     return session.scalar(select(Contact).where(Contact.person_id == person.id, Contact.removed_at.is_(None)))
 

@@ -24,6 +24,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from superaide.approvals.models import Approval
+from superaide.briefing import tone
 from superaide.briefing.models import ReplyDraft
 from superaide.commitments import api as commitments
 from superaide.identity.models import ChannelIdentity, Person
@@ -143,8 +144,9 @@ def waiting(session: Session, now: datetime) -> list[Conversation]:
 # --- the words ---------------------------------------------------------------------------------------
 
 
-def draft_text(agent: Any, session: Session, conv: Conversation) -> tuple[str, str]:
-    """(words, origin). The model proposes; a refusal, a missing model or any failure gives the fixed sentence."""
+def draft_text(agent: Any, session: Session, conv: Conversation, owner: Person | None = None) -> tuple[str, str]:
+    """(words, origin). The model proposes; a refusal, a missing model or any failure gives the fixed sentence.
+    The owner's tone setting (#683) is added as one fixed sentence chosen in code; it changes the style only."""
     from superaide.brain.providers.types import SystemBlock
     from superaide.brain.spend.budget import AgentFrozen, BudgetExceeded
     from superaide.brain.wiring import brain_ready, with_credits
@@ -152,6 +154,11 @@ def draft_text(agent: Any, session: Session, conv: Conversation) -> tuple[str, s
     latest = conv.group[0]
     if agent is None or not brain_ready(agent.settings):
         return SAFE, "code"
+    system = [SystemBlock(SYSTEM, cache=True)]
+    if owner is not None:
+        system.append(
+            SystemBlock(tone.instruction(tone.learn(session, owner)) + " The rules above still apply.", cache=False)
+        )
     quoted = plain(latest.message, QUOTE_CHARS)
     topic = plain(latest.topic, 80)
     prompt = (
@@ -163,7 +170,7 @@ def draft_text(agent: Any, session: Session, conv: Conversation) -> tuple[str, s
         result = agent.llm.complete(
             purpose=PURPOSE,
             model=with_credits(agent.settings).model_triage,
-            system=[SystemBlock(SYSTEM, cache=True)],
+            system=system,
             messages=[{"role": "user", "content": prompt}],
             max_tokens=MAX_TOKENS,
             output_model=DraftOut,
@@ -190,7 +197,7 @@ def ensure_draft(agent: Any, session: Session, owner: Person, conv: Conversation
     )
     if row is not None or not make:
         return row
-    text, origin = draft_text(agent, session, conv)
+    text, origin = draft_text(agent, session, conv, owner)
     row = ReplyDraft(
         owner_person_id=owner.id, identity_id=conv.identity.id, context_id=conv.context.id,
         source_message_id=latest.id, provider=latest.provider, recipient=first_name(latest), text=text,
