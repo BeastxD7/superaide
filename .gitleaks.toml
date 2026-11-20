@@ -68,3 +68,9 @@ description = "A made-up Telegram token in the doctor tests (the scan reads ever
 condition = "AND"
 paths = ['''(^|/)test_doctor\.py$''']
 regexes = ['''^123456789:AAEsecretsecretsecretsecretsecret12$''']
+
+[[allowlists]]
+description = "Made-up search key in an early commit of the web research tests (the test now builds its placeholder)"
+condition = "AND"
+paths = ['''(^|/)test_web_research\.py$''']
+regexes = ['''^BSA-secret-123456$''']
