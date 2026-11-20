@@ -107,7 +107,7 @@ def card_note(ev: Event) -> str:
 
 
 _SAFE_ID = re.compile(r"^[0-9a-f]{8}$")
-_SAFE_LABEL = re.compile(r"^[A-Za-z'\- ]{1,40} on [A-Za-z ]{1,20}$")
+_SAFE_LABEL = re.compile(r"^(?:[^\W\d_]|['\- ]){1,40} on [^\W\d_ ]{1,20}$")  # letters (any script), then a channel
 YES = frozenset({
     "yes", "yes please", "yes pls", "yeah", "yeah please", "yep", "yep please", "yup", "sure", "sure please", "ok",
     "okay", "ok please", "please", "please do", "go ahead", "do it", "yes do it", "yes go ahead", "yes read it",

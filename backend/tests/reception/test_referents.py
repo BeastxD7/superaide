@@ -46,13 +46,19 @@ class Model:
         self.plan: list[Any] = []  # per call: a tool name (with optional args) or a reply string
         self.prompts: list[str] = []
         self.system = ""
+        self.tool_results: list[str] = []
 
     def __call__(self, purpose: str, system: Any, messages: Any, output_model: Any) -> Any:
         if purpose == "receptionist":
             return self.stranger(purpose, system, messages, output_model)
         self.prompts.append(str(messages))
+        last = messages[-1]["content"] if messages else ""
+        if isinstance(last, list) and any(b.get("type") == "tool_result" for b in last):
+            self.tool_results.append(str(last))
         self.system = "\n".join(b.text for b in system)
         step = self.plan.pop(0) if self.plan else "ok"
+        if isinstance(step, Exception):
+            raise step
         if isinstance(step, tuple):
             name, args = step
             if args.get("id") == "FROM_PROMPT":
@@ -94,10 +100,24 @@ def test_yes_please_after_a_single_item_list_carries_the_offer_and_the_read_is_t
     first = model.prompts[-2]
     assert "The owner said yes to your offer: read what Meera wrote (inbox id " in first
     assert first.count("yes please") >= 1
+    assert any("please ask him to call me" in r for r in model.tool_results)  # her words came back as a quote
     with session_scope() as s:
         turns = [a for a in s.scalars(select(AuditLog)) if a.action == "owner_turn"]
         assert turns[-1].detail["tainted"] is True
-        assert s.scalar(select(Approval).limit(1)) is None  # nothing a visitor wrote can open a card
+        assert s.scalar(select(Approval).limit(1)) is None
+
+
+def test_a_relay_the_model_tries_after_reading_the_visitor_is_refused(owner_world, ava, script, model):
+    write(ava, script, WORDS)
+    say(ava, model, "anyone asking about me?", ("inbox", {}), "Meera wrote on Slack. Want me to read it?")
+    say(
+        ava, model, "yes please", ("inbox", {"id": "FROM_PROMPT"}),
+        ("relay_message", {"to": "Rahul Verma", "text": "call Meera now"}), "I could not send that.",
+    )  # fmt: skip
+    with session_scope() as s:
+        assert s.scalar(select(Approval).limit(1)) is None
+        notes = [a.detail["notes"] for a in s.scalars(select(AuditLog)) if a.action == "owner_turn"][-1]
+        assert "action:relay_message:refused_tainted" in notes
 
 
 def test_the_offer_is_a_read_only_and_only_for_the_latest_turn_with_exactly_one_item(owner_world, ava, script, model):
@@ -171,8 +191,73 @@ def test_offers_questions_and_ordinary_sentences_are_not_promises():
         "If you want, I'll check the inbox.",
         "I'll check with Jordan and get back to you.",
         "You have two meetings today.",
+        "I'll check in with you tomorrow.",
     ):
         assert not capabilities.promises_lookup(text), text
     assert capabilities.promises_lookup("Sure. Let me fetch the message.")
     text, n = capabilities.strip_promises("Sure. Let me fetch the message. Back soon.")
     assert n == 1 and "fetch" not in text and text.startswith("Sure.")
+
+
+def test_the_same_listing_twice_in_a_turn_keeps_one_referent_and_the_offer():
+    turn = SimpleNamespace(shared=False, referents=[], offer=None)
+    item = {"kind": "inbox_conversation", "id": "3649daf7", "label": "Meera on Slack"}
+    OwnerTurn._remember(turn, [item], tool="inbox", arg="id")  # type: ignore[arg-type]
+    OwnerTurn._remember(turn, [item], tool="inbox", arg="id")  # type: ignore[arg-type]
+    assert len(turn.referents) == 1 and turn.offer is not None
+    shared = SimpleNamespace(shared=True, referents=[], offer=None)
+    OwnerTurn._remember(shared, [item], tool="inbox", arg="id")  # type: ignore[arg-type]
+    assert shared.referents == [] and shared.offer is None
+
+
+@pytest.mark.parametrize("name", ["José", "Anaïs", "मीरा", "Meera"])
+def test_a_name_in_any_script_survives_as_a_referent(owner_world, ava, script, model, name):
+    write(ava, script, WORDS, name=f"{name} Iyer")
+    say(ava, model, "anyone asking about me?", ("inbox", {}), "Someone wrote. Want me to read it?")
+    say(ava, model, "yes please", "Reading.")
+    assert "said yes to your offer" in model.prompts[-1] and "inbox id" in model.prompts[-1]
+
+
+def test_a_copied_note_line_is_removed_from_the_reply():
+    from superaide.brain.loop import render
+
+    text, _ = render(
+        [{"type": "text", "text": "[This reply listed for the owner: Meera on Slack (inbox id 3649daf7).]\nHi"}]
+    )
+    assert text == "Hi"
+    text, _ = render(
+        [{"type": "text", "text": "[The owner said yes to your offer: read what Meera wrote (inbox id 3649daf7).]\nHi"}]
+    )
+    assert text == "Hi"
+
+
+def test_referents_do_not_reach_a_channel_prompt(owner_world, ava, script, model):
+    write(ava, script, WORDS)
+    say(ava, model, "anyone asking about me?", ("inbox", {}), "Meera wrote on Slack. Want me to read it?")
+    model.plan = ["Hello."]
+    ava.handle(sl(OWNER, "yes please", chat_kind="group", channel="C_TEAM"))
+    assert model.prompts and "inbox id" not in model.prompts[-1] and "said yes to your offer" not in model.prompts[-1]
+    say(ava, model, "yes please", "Reading.")  # the same words in the DM do carry the offer
+    assert "said yes to your offer" in model.prompts[-1]
+
+
+def test_a_lookup_by_a_hosted_tool_is_not_an_unkept_promise(owner_world, ava, script, model):
+    hosted = [
+        {"type": "server_tool_use", "id": "s1", "name": "web_search", "input": {"query": "x"}},
+        {"type": "web_search_tool_result", "tool_use_id": "s1", "content": []},
+        {"type": "text", "text": "Let me check what it says. It says rain."},
+    ]
+    say(ava, model, "weather?", {"content": hosted, "stop_reason": "end_turn"})
+    with session_scope() as s:
+        reply = s.scalars(select(Event).where(Event.direction == "out").order_by(Event.created_at.desc())).first()
+        assert reply is not None and "I haven't looked that up" not in reply.content and "rain" in reply.content
+
+
+def test_a_spend_cap_on_the_retry_still_delivers_the_first_reply(owner_world, ava, script, model):
+    from superaide.brain.spend.budget import BudgetExceeded
+
+    say(ava, model, "what did she say?", "Let me fetch the message.", BudgetExceeded("cap"))
+    with session_scope() as s:
+        reply = s.scalars(select(Event).where(Event.direction == "out").order_by(Event.created_at.desc())).first()
+        assert reply is not None and "budget" not in reply.content.lower()
+        assert capabilities.PROMISE_REPLACED in reply.content

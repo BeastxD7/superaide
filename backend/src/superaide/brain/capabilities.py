@@ -347,7 +347,7 @@ PROMISE_RETRY = (
 PROMISE_REPLACED = "I haven't looked that up yet, so I have nothing to report. Ask me again and I will."
 _PROMISE = re.compile(
     r"\b(?:let me|i(?:'ll| will)(?: now)?|i(?:'m| am) going to|i(?:'m| am) about to)\s+(?:now\s+|just\s+|quickly\s+)?"
-    r"(?:fetch|read|look\s+up|look\s+at|look\s+into|check(?!\s+with)|pull\s+up|find|search|open)\b",
+    r"(?:fetch|read|look\s+up|look\s+at|look\s+into|check(?!\s+(?:with|in)\b)|pull\s+up|find|search|open)\b",
     re.I,
 )
 _OFFER = re.compile(r"\b(?:if you(?:'d)? (?:like|want)|would you like|do you want|want me to|shall i|should i)\b", re.I)

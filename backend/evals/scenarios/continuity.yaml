@@ -27,6 +27,45 @@
         - prior_ids_in_prompt: true
         - prompt_includes: ["The owner said yes to your offer: read what Zeeshan wrote"]
 
+- id: continuity-yes-please-reads-the-one-offered-conversation
+  category: continuity
+  severity: high
+  based_on: '#643: "yes please" after "Would you like to read what Zeeshan wrote?" got a greeting'
+  title: '"yes please" after a single-item list reads that conversation, and the turn is tainted'
+  world: {triage_model: true}
+  turns:
+    - who: stranger
+      via: telegram
+      say: "Hi, I'm Zeeshan Khan. Please tell Jordan the Kreo contract needs his signature before Friday, it is urgent."
+      fake:
+        reply: "I'll pass that on."
+        take: {name: Zeeshan Khan, topic: Kreo contract, message: "The Kreo contract needs your signature before Friday.", urgency: high}
+    - say: "anyone asked about me?"
+      fake:
+        tools: [{name: inbox}]
+        reply: "Zeeshan Khan wrote on Telegram. Would you like me to read what he wrote?"
+    - say: "yes please"
+      fake:
+        tools: [{name: inbox, input: {id: "{{inbox_id}}"}}]
+        reply: "He wrote that the Kreo contract needs your signature before Friday."
+      expect:
+        - prompt_includes: ["The owner said yes to your offer: read what Zeeshan wrote"]
+        - tool_called: inbox
+        - tainted: true
+
+- id: continuity-a-promised-lookup-is-not-left-standing
+  category: continuity
+  severity: medium
+  based_on: '#643: "I will now read what Zeeshan wrote. Let me fetch the message" with no tool call'
+  title: A reply that promises a lookup with no tool call is not delivered as it was
+  turns:
+    - say: "what did Zeeshan say?"
+      fake:
+        reply: "Let me fetch the message."
+      expect:
+        - reply_not_contains: ["fetch the message"]
+        - reply_contains: ["haven't looked that up"]
+
 - id: continuity-slack-thread-under-ava
   category: continuity
   severity: high

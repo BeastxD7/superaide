@@ -379,7 +379,8 @@ def render(content: list[dict[str, Any]]) -> tuple[str, list[Cited]]:
 
 # Lines only the app may write (see OWNER_RULES); a model that copies them from history must not show them.
 APP_LABEL = re.compile(
-    r"^[ \t]*\[(?:Tools used for this reply:|On (?:Telegram|Slack|the app)\b|\u2014 )[^\]\n]*\][ \t]*\n?", re.M
+    r"^[ \t]*\[(?:Tools used for this reply:|On (?:Telegram|Slack|the app)\b|\u2014 |This reply listed for the owner:|The owner said yes to your offer:)[^\]\n]*\][ \t]*\n?",
+    re.M,
 )
 
 
@@ -476,6 +477,8 @@ class OwnerTurn:
         self.referents: list[dict[str, str]] = []  # what this turn's listings showed, for the next turn (#643)
         self.offer: dict[str, Any] | None = None  # the one read the owner can accept with "yes please" (#643)
         self._promise_retried = False
+        self._retry_pending = False  # the retry step has been asked for and not yet answered
+        self._hosted_used = False  # a hosted tool (web search) ran at the provider: that counts as a lookup
         self.plan_approved = False  # an approval was created under that plan (its line goes in the reply)
 
     # --- live progress ----------------------------------------------------------
@@ -697,8 +700,8 @@ class OwnerTurn:
 
         if self.shared or not found:
             return
-        self.referents.extend(found)
-        self.referents = self.referents[:10]
+        have = {r["id"] for r in self.referents}
+        self.referents = [*self.referents, *(r for r in found if r["id"] not in have)][:10]
         if len(found) == 1 and len(self.referents) == 1 and is_read(tool):
             self.offer = {"tool": tool, "args": {arg: found[0]["id"]}, "effect": "read", "label": found[0]["label"]}
         else:
@@ -1150,19 +1153,15 @@ class OwnerTurn:
         for step in range(MAX_STEPS):
             self._said = ""
             self.emit("status", {"text": "Thinking" if step == 0 else "Working it out"})
-            last = self.llm.step(
-                purpose=self.purpose,
-                model=self.model,
-                system=system,
-                messages=msgs,
-                tools=tools,
-                max_tokens=MAX_TOKENS,
-                effort="low" if step else None,
-                max_web_searches=self._web_limits()["web_search"]
-                if any(t.get("name") == "web_search" for t in tools)
-                else 0,
-                on_event=self.on_model_event if streaming else None,
-            )
+            before = last
+            try:
+                last = self._step(system, tools, msgs, step, streaming)
+            except BudgetExceeded:
+                if not (self._retry_pending and before is not None):
+                    raise
+                log.info("promise retry refused by the spend cap; answering with the first reply")
+                return self._finish(system, tools, msgs, before, step)
+            self._retry_pending = False
             context_watch.observe(
                 self.s,
                 self.model,
@@ -1177,6 +1176,11 @@ class OwnerTurn:
                 last = self._more_room(system, tools, msgs, last)
             if any(b.get("type") in {"web_search_tool_result", "web_fetch_tool_result"} for b in last.content):
                 self.tainted = True
+            if any(
+                b.get("type") in {"server_tool_use", "web_search_tool_result", "web_fetch_tool_result"}
+                for b in last.content
+            ):
+                self._hosted_used = True
             if last.stop_reason in {"max_tokens", "model_context_window_exceeded"}:
                 return self._cut_off(system, tools, msgs, last, step + 1)
             if last.stop_reason == "pause_turn":  # a server tool hit its own limit: carry on
@@ -1222,6 +1226,28 @@ class OwnerTurn:
             sources,
             self.notes + ["step_limit"],
             MAX_STEPS,
+        )
+
+    def _step(
+        self,
+        system: list[SystemBlock],
+        tools: list[dict[str, Any]],
+        msgs: list[dict[str, Any]],
+        step: int,
+        streaming: bool,
+    ) -> StepResult:
+        return self.llm.step(
+            purpose=self.purpose,
+            model=self.model,
+            system=system,
+            messages=msgs,
+            tools=tools,
+            max_tokens=MAX_TOKENS,
+            effort="low" if step else None,
+            max_web_searches=self._web_limits()["web_search"]
+            if any(t.get("name") == "web_search" for t in tools)
+            else 0,
+            on_event=self.on_model_event if streaming else None,
         )
 
     def _more_room(
@@ -1405,14 +1431,14 @@ class OwnerTurn:
     def _unkept_promise(self, last: StepResult) -> bool:
         """The reply promises a lookup ("Let me fetch the message") and no tool ran in this turn: ask once for the
         call or a plain "I can't" (#643). Not in a rehearsal, not past the step limit."""
-        if self._promise_retried or self._seq or self.replay is not None:
+        if self._promise_retried or self._seq or self._hosted_used or self.replay is not None:
             return False
         if any(b.get("type") in {"tool_use", "server_tool_use"} for b in last.content):
             return False
         text = " ".join(str(b.get("text") or "") for b in last.content if b.get("type") == "text")
         if not capabilities.promises_lookup(text):
             return False
-        self._promise_retried = True
+        self._promise_retried = self._retry_pending = True
         self.notes.append("promise_retry")
         return True
 
@@ -1483,7 +1509,9 @@ class OwnerTurn:
         text, removed = capabilities.strip_claims(
             text, self.ok_tools, can_send=gmail_skill.can_draft(self.s), pending=relay_pending(self.s)
         )
-        if not self._seq and self.replay is None:  # no tool ran: a sentence promising a lookup is not left standing
+        if (
+            not (self._seq or self._hosted_used) and self.replay is None
+        ):  # no tool ran: a sentence promising a lookup is not left standing
             text, kept = capabilities.strip_promises(text)
             if kept:
                 notes.append(f"promise_replaced:{kept}")

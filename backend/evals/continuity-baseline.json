@@ -1,4 +1,5 @@
 {
+  "continuity-a-promised-lookup-is-not-left-standing": "pass",
   "continuity-inbox-id-in-next-prompt": "pass",
   "continuity-no-email-correction-on-a-chat-relay": "pass",
   "continuity-owner-prompt-does-not-grow": "pass",
@@ -6,5 +7,6 @@
   "continuity-send-two-cards-asks-which": "pass",
   "continuity-slack-thread-under-ava": "pass",
   "continuity-small-talk-prompt-is-minimal": "known_gap",
-  "continuity-tainted-turn-cannot-send-by-text": "pass"
+  "continuity-tainted-turn-cannot-send-by-text": "pass",
+  "continuity-yes-please-reads-the-one-offered-conversation": "pass"
 }
