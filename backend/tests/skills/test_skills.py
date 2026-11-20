@@ -123,7 +123,7 @@ def test_only_installed_skills_give_ava_tools():
         ]
         registry.remove(s, "superaide/reminders")
         names = [t.get("name") for t in registry.tools_for(registry.active(s), web_allowed=True)]
-        assert names == ["recall"]
+        assert names == ["recall", "search_files"]
 
 
 @pytest.fixture
