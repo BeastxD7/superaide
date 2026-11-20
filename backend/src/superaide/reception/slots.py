@@ -5,7 +5,8 @@ buffer, a lead time); output is at most three slots. The visitor, and the model,
 free grid or the owner's zone: only the slots returned here, and only after the owner's settings allowed them.
 
 Rules, all in code:
-- Working days are Monday to Friday, between `day_start` and `day_end` in the owner's zone.
+- Working days (`open_days` counted from Monday: 5 is Monday to Friday, the default; the owner's setting), between
+  `day_start` and `day_end` in the owner's zone.
 - A slot starts on a 30-minute boundary, never sooner than `lead` from now, never inside `blocked` (away, a status).
 - A slot keeps `buffer` minutes clear of every busy interval and of every time already held for someone else.
 - Daylight saving: wall-clock times that do not exist (the spring gap) are skipped; times are compared in UTC.
@@ -60,6 +61,7 @@ def candidates(
     buffer: int,
     lead: timedelta,
     days: int,
+    open_days: int = 5,
 ) -> dict[date, list[Interval]]:
     """Every free slot per owner-local day over the next `days` days. Internal: callers choose from it."""
     zone_ = tz
@@ -70,7 +72,7 @@ def candidates(
     first_day = now.astimezone(zone_).date()
     for n in range(days + 1):
         day = first_day + timedelta(days=n)
-        if day.weekday() >= 5:
+        if day.weekday() >= open_days:
             continue
         wall = datetime.combine(day, time(day_start))
         closes = datetime.combine(day, time(day_end))

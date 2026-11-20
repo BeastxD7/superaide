@@ -975,6 +975,8 @@ def make_router(get_agent: Callable[[], Any]) -> APIRouter:
                 "timezone": pref.timezone,
                 "shareable": [{"value": v, "label": SHARE_LABELS.get(v, v)} for v in pref.shareable],
                 "never_share": pref.never_share,
+                "draft_tone": pref.draft_tone,
+                "draft_tone_source": pref.draft_tone_source,
             }
 
     def question_on(person_id: uuid.UUID = Depends(owner_person_id)) -> uuid.UUID:
