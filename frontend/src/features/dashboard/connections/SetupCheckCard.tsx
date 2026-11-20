@@ -12,6 +12,30 @@ export type SetupReport = { results: SetupResult[]; fails: number; warns: number
 
 const LABEL = { ok: 'Fine', warn: 'Look at this', fail: 'Fix this' } as const
 
+// The photo default (#511): the row says photos go to Claude, and this is the one-click way to stop it.
+function PhotosOff({ onDone }: { onDone: () => void }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  async function off() {
+    setBusy(true)
+    try {
+      await call('/media-providers/vision/remove', { method: 'POST', json: {} })
+      onDone()
+    } catch (e) {
+      setError(errorMessage(e))
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="mt-2">
+      <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void off()}>
+        Turn off photo reading
+      </Button>
+      {error && <Notice tone="error">{error}</Notice>}
+    </div>
+  )
+}
+
 // "Check my setup" (#567): runs the in-app checks from the server's doctor and says how to fix each problem.
 export function SetupCheckCard() {
   const [report, setReport] = useState<SetupReport | null>(null)
@@ -59,6 +83,7 @@ export function SetupCheckCard() {
                   </p>
                   {r.cause && <p className="mt-0.5 text-body">{r.cause}</p>}
                   {r.fix && r.status !== 'ok' && <p className="mt-0.5 text-ink">Fix: {r.fix}</p>}
+                  {r.name === 'Photo reading' && r.fix && <PhotosOff onDone={() => void run()} />}
                 </li>
               ))}
             </ul>

@@ -589,7 +589,9 @@ export type MediaCapability = {
   choice: { provider: string; model: string } | null
   on: boolean
   problem: string | null // why a saved choice cannot run now
-  price: { known: boolean; free: boolean; unit: 'minute' | 'mtok'; usd?: number } | null
+  default: boolean // photos read by Claude because Claude is connected, not because the owner chose it
+  vendor_notice: string | null
+  price: { known: boolean; free: boolean; unit: 'minute' | 'mtok'; usd?: number; builtin?: boolean } | null
   providers: { key: string; label: string; models: string[]; ready: boolean }[]
 }
 export type MediaSettings = { capabilities: MediaCapability[] }

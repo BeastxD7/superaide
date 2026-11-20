@@ -54,11 +54,39 @@ class Choice:
 # --- the owner's choice -------------------------------------------------------------------------------------------
 
 
+OFF = "off"  # the stored "turned off on purpose" marker; it is what stops the photo default from coming back
+DEFAULT_VISION = Choice("anthropic", "claude-haiku-5-5")
+
+
 def get_choices(session: Session) -> dict[str, Choice]:
+    """What the owner saved. A "turned off" marker is not a choice, so it is left out."""
     from superaide.platform.tenancy.context import mine
 
     rows = session.scalars(select(ModelRole).where(mine(ModelRole), ModelRole.role.in_(CAPABILITIES)))
-    return {r.role: Choice(r.provider, r.model) for r in rows}
+    return {r.role: Choice(r.provider, r.model) for r in rows if r.provider != OFF}
+
+
+def _turned_off(session: Session) -> set[str]:
+    from superaide.platform.tenancy.context import mine
+
+    rows = session.scalars(select(ModelRole).where(mine(ModelRole), ModelRole.role.in_(CAPABILITIES)))
+    return {r.role for r in rows if r.provider == OFF}
+
+
+def effective_choices(session: Session, settings: Any) -> tuple[dict[str, Choice], set[str]]:
+    """The choices in force, and which of them are defaults the owner never picked.
+
+    Photos default to Claude when the owner has connected Claude and has neither chosen a photo service nor turned
+    photos off (the owner's rule: a feature that needs a key turns on once the key exists). Voice has no default:
+    there is no audio vendor to assume, so it stays off until a transcriber is configured.
+    """
+    chosen = get_choices(session)
+    defaults: set[str] = set()
+    if "vision" not in chosen and "vision" not in _turned_off(session):
+        if provider_ready(settings, "vision", DEFAULT_VISION.provider) is None:
+            chosen["vision"] = DEFAULT_VISION
+            defaults.add("vision")
+    return chosen, defaults
 
 
 def set_choice(session: Session, cap: str, provider: str, model: str, *, user_id: Any) -> None:
@@ -84,6 +112,9 @@ def clear_choice(session: Session, cap: str, *, user_id: Any) -> None:
 
     for row in session.scalars(select(ModelRole).where(mine(ModelRole), ModelRole.role == cap)):
         session.delete(row)
+    if cap == "vision":  # remember it was turned off, or the Claude default would switch it back on
+        session.flush()
+        set_choice(session, cap, OFF, OFF, user_id=user_id)
     audit(session, "providers", "media_provider_cleared", capability=cap, user_id=user_id)
 
 
@@ -222,12 +253,11 @@ class MediaService:
         self.settings = settings
         self.choices = choices if choices is not None else self._load()
 
-    @staticmethod
-    def _load() -> dict[str, Choice]:
+    def _load(self) -> dict[str, Choice]:
         from superaide.platform.db.session import session_scope
 
         with session_scope() as s:
-            return get_choices(s)
+            return effective_choices(s, self.settings)[0]
 
     def configured(self, cap: str) -> bool:
         c = self.choices.get(cap)
