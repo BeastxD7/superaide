@@ -22,7 +22,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from superaide.approvals import outcomes, recipients
-from superaide.brain import capabilities, context_watch, taskplan, verify
+from superaide.brain import capabilities, context_watch, prompt_budget, taskplan, verify
 from superaide.brain.llm import LLM, StepResult, SystemBlock
 from superaide.brain.providers.thinking import strip_think
 from superaide.brain.spend.budget import BudgetExceeded
@@ -1126,7 +1126,9 @@ class OwnerTurn:
         msgs = self._with_notes(list(messages))
         last: StepResult | None = None
         streaming = self._emit is not None
+        budget, turn_start = prompt_budget.TurnBudget(self.s, self.model, MAX_TOKENS), len(msgs) - 1
         for step in range(MAX_STEPS):
+            msgs, turn_start = budget.fit(system, tools, msgs, turn_start)
             self._said = ""
             self.emit("status", {"text": "Thinking" if step == 0 else "Working it out"})
             last = self.llm.step(
