@@ -376,6 +376,10 @@ def test_the_notion_routes_are_owner_routes(app, browser, owner):
     stranger = browser()
     signup(stranger, name="Mallory Tan", email="mallory@example.com")
     for method, path in NOTION_ROUTES:
+        assert browser().request(method, path, json={}).status_code == 401
+        assert stranger.request(method, path, json={}).status_code == 403
+
+
 # --- the Outlook mail capability (/app/microsoft/mail, #668) ----------------------------------------
 
 OUTLOOK_ROUTES = {
