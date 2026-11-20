@@ -19,6 +19,7 @@ from superaide.platform.config import Settings
 from superaide.platform.db.session import session_scope
 from tests.pipeline.test_loop import Script, owner_client, tool_use, turn_for  # noqa: F401  (fixture)
 
+FAKE_KEY = "k" * 24  # built, not a real-looking token
 PAGE = "https://93.184.216.34/page"
 
 
@@ -125,8 +126,8 @@ def test_check_my_setup_says_how_to_get_web_search_and_never_shows_the_key():
     off = [r for r in doctor.run_in_app(Settings(_env_file=None)) if r.name == "Web research"]
     on = [
         r
-        for r in doctor.run_in_app(Settings(_env_file=None, brave_search_api_key="BSA-secret-123456"))
+        for r in doctor.run_in_app(Settings(_env_file=None, brave_search_api_key=FAKE_KEY))
         if r.name == "Web research"
     ]
     assert off and "Brave" in off[0].fix and on and on[0].status == doctor.OK
-    assert "secret" not in repr(on)
+    assert FAKE_KEY not in repr(on)
