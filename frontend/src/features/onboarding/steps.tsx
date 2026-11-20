@@ -520,7 +520,7 @@ function FilesAndLinks({
     }
   }
 
-  // Remove hides a file and what was learned from it; erase deletes its text, passages and notes for good.
+  // Remove hides a file and what was learned from it; erase hides them too, and keeps them (nothing is deleted).
   const [erasing, setErasing] = useState<string | null>(null)
   async function erase(doc: SharedDoc) {
     setBusy(`Erasing ${doc.title}…`)
@@ -630,14 +630,14 @@ function FilesAndLinks({
                 {erasing === d.id ? (
                   <>
                     <button onClick={() => void erase(d)} className="shrink-0 rounded-full bg-danger px-2 py-0.5 text-xs font-medium text-white">
-                      Erase for good
+                      Erase
                     </button>
                     <button onClick={() => setErasing(null)} className="shrink-0 text-xs text-muted hover:text-ink">
                       Cancel
                     </button>
                   </>
                 ) : (
-                  <button onClick={() => setErasing(d.id)} className="shrink-0 text-xs text-muted hover:text-danger" aria-label={`Erase ${d.title} for good`}>
+                  <button onClick={() => setErasing(d.id)} className="shrink-0 text-xs text-muted hover:text-danger" aria-label={`Erase ${d.title}`}>
                     Erase
                   </button>
                 )}

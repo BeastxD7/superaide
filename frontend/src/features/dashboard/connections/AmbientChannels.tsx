@@ -149,7 +149,7 @@ export function AmbientChannels({ agentName }: { agentName: string }) {
     try {
       await call(`/ambient/channels/${encodeURIComponent(c.channel_id)}/messages`, { method: 'DELETE' })
       await load()
-      setSaved(`Deleted what was stored from ${label(c)}.`)
+      setSaved(`Erased what was stored from ${label(c)}. It is hidden and no longer used; nothing was deleted.`)
     } catch (e) {
       setProblem(errorMessage(e))
     } finally {
@@ -236,7 +236,7 @@ export function AmbientChannels({ agentName }: { agentName: string }) {
                   )}
                   {c.stored > 0 && (
                     <Button variant="outline" className="min-h-11" disabled={busy} onClick={() => void erase(c)}>
-                      Delete the {c.stored} stored message{c.stored === 1 ? '' : 's'}
+                      Erase the {c.stored} stored message{c.stored === 1 ? '' : 's'}
                     </Button>
                   )}
                 </div>

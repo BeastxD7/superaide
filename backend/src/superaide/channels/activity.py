@@ -91,6 +91,7 @@ def _rows(session: Session, owner_id: uuid.UUID, hours: int, *, room: bool) -> l
             Context.kind != "dm",
             Event.audience_has_unknown.is_(True),
             Event.content != "",
+            Event.erased_at.is_(None),
             (Event.resolved_person_id.is_(None)) | (Event.resolved_person_id != owner_id),
             Event.meta.has_key("ambient") if room else ~Event.meta.has_key("ambient"),
         )

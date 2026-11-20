@@ -292,7 +292,7 @@ export function NotebookPage() {
                       <Button
                         size="sm"
                         variant="destructive"
-                        aria-label={`Erase ${d.title} for good`}
+                        aria-label={`Confirm erase ${d.title}`}
                         onClick={async () => {
                           setActionError(null)
                           try {
@@ -306,7 +306,7 @@ export function NotebookPage() {
                           }
                         }}
                       >
-                        Erase for good
+                        Erase
                       </Button>
                       <Button size="sm" variant="ghost" autoFocus onClick={() => setErasing(null)}>
                         Keep
@@ -324,7 +324,7 @@ export function NotebookPage() {
         )}
         {erased && unread.length === 0 && (
           <p role="status" className="mt-4 text-sm text-muted">
-            Erased. Its text and anything {name} learned only from it are gone.
+            Erased. Its text and anything {name} learned only from it are hidden and no longer used. Nothing was deleted.
           </p>
         )}
 
