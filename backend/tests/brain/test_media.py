@@ -409,3 +409,87 @@ def test_nobody_but_the_owner_may_use_it(owner_client):  # noqa: F811
 def session_count(model) -> int:
     with session_scope() as s:
         return len(list(s.scalars(select(model))))
+
+
+# --- photos default to Claude when it is connected (#511) -------------------------------------------------------
+
+
+@pytest.fixture
+def claude_connected(monkeypatch):
+    monkeypatch.setattr("superaide.brain.wiring.provider_usable", lambda s, k: k == "anthropic")
+
+
+def test_no_claude_key_means_no_default(adapters):
+    with session_scope() as s:
+        assert media.effective_choices(s, runtime_settings()) == ({}, set())
+
+
+def test_a_claude_key_makes_photos_default_to_claude_and_voice_stays_off(adapters, claude_connected):
+    svc = media.MediaService(runtime_settings())
+    assert svc.configured("vision") and not svc.configured("transcribe")
+    svc.describe(PNG)
+    [entry] = ledger()
+    assert entry.provider == "anthropic" and entry.purpose == "media_vision"
+    with session_scope() as s:
+        choices, defaults = media.effective_choices(s, runtime_settings())
+        assert defaults == {"vision"} and "transcribe" not in choices
+        assert media.get_choices(s) == {}  # nothing was saved: it is a default, not a choice
+
+
+def test_turning_the_default_off_sticks_and_choosing_again_replaces_it(adapters, claude_connected):
+    with session_scope() as s:
+        media.clear_choice(s, "vision", user_id=None)
+    svc = media.MediaService(runtime_settings())
+    assert not svc.configured("vision")
+    with pytest.raises(media.MediaRefused):
+        svc.describe(PNG)
+    assert adapters["vision"].calls == [] and ledger() == []
+    with session_scope() as s:
+        assert media.effective_choices(s, runtime_settings()) == ({}, set())
+        assert media.get_choices(s) == {}
+        assert len(list(s.scalars(select(ModelRole)))) == 1  # the marker, not a second row
+    choose("vision", "anthropic", "claude-haiku-5-5")
+    with session_scope() as s:
+        choices, defaults = media.effective_choices(s, runtime_settings())
+        assert choices["vision"].provider == "anthropic" and defaults == set()
+
+
+def test_the_page_and_the_setup_check_say_photos_go_to_claude_and_one_click_turns_it_off(
+    owner_client,  # noqa: F811
+    service,
+    adapters,
+    claude_connected,  # noqa: F811
+):
+    from superaide import doctor
+
+    [vision] = [c for c in owner_client.get("/app/media-providers").json()["capabilities"] if c["id"] == "vision"]
+    assert vision["default"] and vision["on"] and "sent to that company" in vision["vendor_notice"]
+    [row] = [r for r in owner_client.post("/app/setup-check").json()["results"] if r["name"] == "Photo reading"]
+    assert row["status"] == "ok" and "sent to Anthropic" in row["cause"] and "Turn off" in row["fix"]
+    off = owner_client.post("/app/media-providers/vision/remove").json()
+    [vision] = [c for c in off["capabilities"] if c["id"] == "vision"]
+    assert not vision["on"] and vision["choice"] is None and vision["vendor_notice"] is None
+    [row] = [r for r in owner_client.post("/app/setup-check").json()["results"] if r["name"] == "Photo reading"]
+    assert row["cause"] == "" and doctor.OK == row["status"]
+
+
+def test_an_explicit_choice_has_no_notice(owner_client, service, adapters, claude_connected):  # noqa: F811
+    done = owner_client.put("/app/media-providers/vision", json={"provider": "anthropic", "model": "claude-haiku-5-5"})
+    [vision] = [c for c in done.json()["capabilities"] if c["id"] == "vision"]
+    assert vision["on"] and not vision["default"] and vision["vendor_notice"] is None
+
+
+def test_built_in_voice_prices_are_labelled_list_prices_and_an_owner_price_replaces_the_label(
+    owner_client,  # noqa: F811
+    service,
+    adapters,  # noqa: F811
+):
+    owner_client.post("/app/providers/openai", json={"api_key": KEY})
+    done = owner_client.put("/app/media-providers/transcribe", json={"provider": "openai", "model": "whisper-1"})
+    [t] = [c for c in done.json()["capabilities"] if c["id"] == "transcribe"]
+    assert t["price"]["builtin"] is True and t["price"]["usd"] == 0.006
+    own = owner_client.post(
+        "/app/media-providers/prices", json={"provider": "openai", "model": "whisper-1", "usd_per_minute": "0.004"}
+    )
+    [t] = [c for c in own.json()["capabilities"] if c["id"] == "transcribe"]
+    assert t["price"]["builtin"] is False and t["price"]["usd"] == 0.004

@@ -159,3 +159,18 @@ def test_a_voice_note_over_the_limit_is_refused_before_it_is_sent(agent, manager
     outbox["telegram"].files["AwACAgQAAxk"] = OGG + b"\0" * (5 * 1024 * 1024)
     res = agent.handle(voice())
     assert "over my 4 MB limit" in res.reply and chosen["transcribe"].calls == []
+
+
+def test_with_a_claude_key_and_no_choice_a_photo_is_read_by_claude_but_a_voice_note_is_not(
+    agent, manager, outbox, fakes, monkeypatch
+):
+    monkeypatch.setattr("superaide.brain.wiring.provider_usable", lambda s, k: k == "anthropic")
+    outbox["telegram"].files["AwACAgQAAxk"] = OGG
+    outbox["telegram"].files["AgACAgQAAxk"] = PNG
+    assert agent.handle(voice()).reply == ATTACHMENT_NOTICE and fakes["transcribe"].calls == []
+    agent.handle(photo("what is this?"))
+    assert len(fakes["vision"].calls) == 1
+    with session_scope() as s:
+        media.clear_choice(s, "vision", user_id=None)
+    outbox["telegram"].fetch_log.clear()
+    assert agent.handle(photo()).reply == ATTACHMENT_NOTICE and len(fakes["vision"].calls) == 1

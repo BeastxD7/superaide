@@ -215,6 +215,8 @@
  "commitments.service -> memory.knowledge.store",
  "commitments.service -> proactive.notify",
  "commitments.service -> triage.store",
+ "doctor -> brain.media.service",
+ "doctor -> identity.vault.store",
  "evals.__main__ -> brain.llm",
  "evals.__main__ -> brain.spend.budget",
  "evals.checks -> identity.trust",
