@@ -288,7 +288,18 @@ class Settings(BaseSettings):
     embed_cache_dir: str = ""  # where the local model is kept; default ~/.cache/superaide/models
     voyage_api_key: str = ""
     embed_model_voyage: str = "voyage-4-lite"
-    embed_monthly_usd: float = 1.00  # cap on Voyage spend in any 30 days (local costs nothing)
+    embed_monthly_usd: float = 1.00  # cap on paid embedding spend (Voyage, a remote OpenAI-compatible) in 30 days
+    # `ollama` and `openai` embedders (#647): Ollama must be on this computer; an OpenAI-compatible endpoint on another
+    # host needs a key and a price (US dollars per million tokens), or it is refused.
+    embed_ollama_url: str = "http://localhost:11434"
+    embed_model_ollama: str = "nomic-embed-text"
+    embed_openai_url: str = ""  # e.g. https://api.openai.com/v1 or http://localhost:1234/v1
+    embed_openai_key: str = ""
+    embed_model_openai: str = "text-embedding-3-small"
+    embed_openai_price_per_mtok_usd: float = 0.0
+    embed_openai_dimensions: int = 0  # 0 = the model's own; otherwise sent as `dimensions`
+    embed_query_prefix: str = ""  # override a model's query prefix (blank = what the model card says)
+    embed_document_prefix: str = ""
     # Let Ava search and read the web for the owner (costs US$0.01 a search, from the research budget)
     web_tools_enabled: bool = True
     # Web search for models without a built-in one (Brave Search API). What one search costs on your

@@ -127,6 +127,7 @@ def test_every_table_with_agent_id_has_the_policy_or_a_reason_not_to():
     with_agent = {t.name for t in Base.metadata.sorted_tables if "agent_id" in t.c} | {
         "memory_embedding",
         "chunk_embedding",
+        "recall_embedding",
     }
     assert with_agent - set(rls.TABLES) - set(rls.EXEMPT) == set(), "add new tables to db/rls.py and their migration"
     assert set(rls.TABLES) - with_agent == set()

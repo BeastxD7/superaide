@@ -71,12 +71,21 @@ Long comments are shortened here; the full text is next to the variable in `back
 | `WEB_TOOLS_ENABLED` | `true` |  | --- Web search and reading --- Let Ava search and read the web for the owner (about US$0.01 a search, from the research budget). true \| false. Default true. |
 | `BRAVE_SEARCH_API_KEY` | empty | yes | Brave Search API key, for models without built-in search (Claude has its own). Secret. Default empty. |
 | `WEB_SEARCH_USD_PER_CALL` | `0.01` |  | What one search costs on your plan in US dollars, charged against the cap before each search. Default 0.01. |
-| `EMBEDDER` | `local` |  | --- Embeddings for recall --- local: on this machine, free, about 220 MB model downloaded once. voyage: Voyage AI's API, so private facts leave the machine (needs VOYAGE_API_KEY). fake: tests. none: no embeddings. Default local. |
+| `EMBEDDER` | `local` |  | --- Embeddings for recall --- local: on this machine, free, about 220 MB model downloaded once. voyage: Voyage AI's API, so private facts leave the machine (needs VOYAGE_API_KEY). ollama: Ollama's /api/embed on this computer, free. openai: an OpenAI-compatible /embeddings endpoint (EMBED_OPENAI_URL): free on this computer, otherwise needs a key and a price and is capped. fake: tests. none: no embeddings. Default local. |
 | `EMBED_MODEL_LOCAL` | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` |  | Local model name (50+ languages). Default shown. |
 | `EMBED_CACHE_DIR` | empty |  | Where the local model is kept. Default empty = ~/.cache/superaide/models. |
 | `VOYAGE_API_KEY` | empty | yes | Voyage AI key. Secret. Only used when EMBEDDER=voyage. |
 | `EMBED_MODEL_VOYAGE` | `voyage-4-lite` |  | Same note as the entry above. |
-| `EMBED_MONTHLY_USD` | `1.00` |  | Cap on Voyage spend in any 30 days, US dollars (local costs nothing). Default 1.00. |
+| `EMBED_MONTHLY_USD` | `1.00` |  | Cap on paid embedding spend (Voyage, a remote OpenAI-compatible endpoint) in any 30 days, US dollars. Default 1.00. |
+| `EMBED_OLLAMA_URL` | `http://localhost:11434` |  | Ollama embedder: where Ollama runs (must be this computer). Default shown. |
+| `EMBED_MODEL_OLLAMA` | `nomic-embed-text` |  | Ollama embedding model. Default shown. |
+| `EMBED_OPENAI_URL` | empty |  | OpenAI-compatible embeddings endpoint (ends in /v1). Default empty. |
+| `EMBED_OPENAI_KEY` | empty | yes | Its API key. Secret. Not needed on this computer. Default empty. |
+| `EMBED_MODEL_OPENAI` | `text-embedding-3-small` |  | Its model. Default shown. |
+| `EMBED_OPENAI_PRICE_PER_MTOK_USD` | `0.0` |  | US dollars per million tokens; a remote endpoint with no price is refused. Default 0.0. |
+| `EMBED_OPENAI_DIMENSIONS` | `0` |  | Vector size to ask for; 0 = the model's own. Default 0. |
+| `EMBED_QUERY_PREFIX` | empty |  | Override a model's query prefix (blank = what the model card says, see KNOWN_MODELS in brain/embed.py). |
+| `EMBED_DOCUMENT_PREFIX` | empty |  | Override a model's document prefix. Default empty. |
 
 ### Telegram
 
