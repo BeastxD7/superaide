@@ -161,6 +161,9 @@ def system_prompt(session: Session, owner: Person, rs: ReceptionSettings, agent_
     away = _away_line(session, owner)
     if away:
         parts.append(away)
+    from superaide.policy import standing
+
+    parts.extend(standing.prompt_lines(standing.compile_for(session, owner.id, None)))
     if len(parts) == 1:
         parts.append("(None. You can only take a message.)")
     return [SystemBlock(persona, cache=True), SystemBlock("\n\n".join(parts))]
