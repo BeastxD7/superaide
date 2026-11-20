@@ -64,12 +64,14 @@ export function PageHeader({
   description,
   actions,
   sticky = false,
+  as: Heading = 'h1',
   className,
 }: {
   title: ReactNode
   description?: ReactNode
   actions?: ReactNode
   sticky?: boolean
+  as?: 'h1' | 'h2' // a page that shows another h1 beside this one (a list with a person open) uses h2
   className?: string
 }) {
   return (
@@ -84,7 +86,7 @@ export function PageHeader({
       )}
     >
       <div className="min-w-0">
-        <h1 className={cn('font-medium text-ink tight', sticky ? 'text-2xl' : 'text-3xl')}>{title}</h1>
+        <Heading className={cn('font-medium text-ink tight', sticky ? 'text-2xl' : 'text-3xl')}>{title}</Heading>
         {description && !sticky && <p className="mt-1 max-w-[70ch] text-body">{description}</p>}
       </div>
       {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
