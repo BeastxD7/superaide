@@ -272,6 +272,7 @@ e2e = [
   "e2e/tests/console/console-sync.spec.ts",
   "e2e/tests/console/operator-visit.spec.ts",
   "e2e/tests/console/people-counts.spec.ts",
+  "e2e/tests/console/console-wide.spec.ts",
   "e2e/tests/console/people-counts.mobile.spec.ts",
   "e2e/tests/console/status-sync.spec.ts",
 ]

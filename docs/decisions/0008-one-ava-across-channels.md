@@ -374,3 +374,21 @@ For the owner in a non-DM context (`ctx.kind != "dm"`) the pipeline runs the own
 Open: promoting a private memory to the channel ("want me to share it here?") would be a
 disclosure write and is not built; Ava points to the DM. Slack replies in a thread that do not
 @-mention Ava are not delivered to her (Slack `message` events in channels are ignored by design).
+
+## Addendum (November 2026): the owner may recall known people's DMs (issue #646)
+
+Decided by the owner (via the coordinator): the owner may recall what known people wrote to Ava in their own DMs. It is
+the owner's own assistant. Unverified senders stay public-information only, and audience labels still apply.
+
+- **Decided in code, in the SQL.** `recall_messages(..., dms=True)` adds one more arm to the message gate
+  (`memory/recall/retrieval.py` `_dm_gate`). It is `false()` unless the asking audience is the owner's own private one
+  (one verified person, nobody unknown, who is this instance's owner), whatever the caller passes. The model cannot
+  turn it on: `OwnerTurn` passes `dms=not self.shared`, so a room or thread never gets it.
+- **Which rows.** Inbound messages of this instance, in a one-to-one (`dm`) context, from a known, active `Person`
+  other than the owner, with no unknown participant and not ambient. Never: a stranger (their words are reception
+  messages, read only by `visitor_rows`), a group, Ava's own replies, another instance.
+- **Labels.** A result is titled `DM from <name> · <channel> · <date>`, so it is never mistaken for the owner's own
+  words. Because these are other people's words, a turn that recalls one is marked tainted like room and visitor
+  messages: information, never instructions, and no action rests on it.
+- **Not changed.** Colleagues, strangers and groups still see only what their audience allows, and notes keep the
+  `memory_filter` gate. A known person's DM is still never shown to another known person.

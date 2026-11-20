@@ -40,7 +40,7 @@
   --s-6: 32px;
   --s-7: 48px;
   --gutter: 24px;
-  --max: 1152px;
+  --max: 1920px; /* the same 120rem cap as the app's wide pages; centred beyond it */
 
   /* Shape and motion */
   --r-panel: 28px;
@@ -320,6 +320,7 @@ textarea {
   box-shadow: var(--shadow-card);
   padding: var(--s-5);
   display: grid;
+  grid-template-columns: minmax(0, 1fr); /* a wide child (the growth chart) scrolls inside the card instead of widening it */
   gap: var(--s-4);
   align-content: start;
   min-width: 0;
@@ -347,14 +348,15 @@ textarea {
 /* Rows of cards: equal columns, one gap */
 .c-grid {
   display: grid;
-  grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr));
+  /* At most --cols columns, fewer when the room (the page beside an open sidebar, not the window) cannot give each 15rem. */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, max(15rem, calc((100% - (var(--cols, 2) - 1) * var(--s-5)) / var(--cols, 2)))), 1fr));
   gap: var(--s-5);
 }
 
 /* Stat tiles: same height, number big, label small */
 .c-stats {
   display: grid;
-  grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, max(10rem, calc((100% - (var(--cols, 3) - 1) * var(--s-4)) / var(--cols, 3)))), 1fr));
   grid-auto-rows: 1fr; /* every tile in every row the same height */
   gap: var(--s-4);
 }
@@ -857,13 +859,16 @@ input[type='checkbox'] {
 
 .growth-frame {
   border-radius: var(--r-tile);
-  overflow: hidden;
+  overflow-x: auto; /* scroll sideways rather than shrink the chart until its labels are unreadable */
   background: var(--mist);
+  width: min(100%, 72rem); /* and stop growing on a very wide screen: the labels would be larger than the page's text */
+  margin-inline: auto;
 }
 
 .growth {
   display: block;
   width: 100%;
+  min-width: 640px;
   height: auto;
 }
 
@@ -1265,15 +1270,6 @@ blockquote {
     grid-template-columns: 1fr;
   }
 
-  /* Keep the growth chart legible: scroll it sideways rather than shrink it. */
-  .growth-frame {
-    overflow-x: auto;
-  }
-
-  .growth {
-    min-width: 640px;
-  }
-
   .log-row {
     grid-template-columns: 1fr;
     gap: 2px;
@@ -1308,13 +1304,8 @@ blockquote {
     --gutter: 16px;
   }
 
-  .c-grid,
   .c-fields {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .c-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .c-card {
