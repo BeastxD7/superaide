@@ -116,6 +116,44 @@ CREATE INDEX IF NOT EXISTS ix_{CHUNK_TABLE}_agent_model ON {CHUNK_TABLE} (agent_
 """
 
 
+RECALL_TABLE = "recall_embedding"
+recall_embedding = Table(
+    RECALL_TABLE,
+    _meta,
+    Column("doc_id", UUID(as_uuid=True), primary_key=True),
+    Column("model", String(160), primary_key=True),
+    Column("tenant_id", UUID(as_uuid=True), nullable=False),
+    Column("agent_id", UUID(as_uuid=True), nullable=False),
+    Column("embedding", Vector(), nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+)
+
+RECALL_CREATE_SQL = f"""
+CREATE TABLE IF NOT EXISTS {RECALL_TABLE} (
+    doc_id uuid NOT NULL REFERENCES recall_doc(id) ON DELETE CASCADE,
+    model varchar(160) NOT NULL,
+    tenant_id uuid NOT NULL,
+    agent_id uuid NOT NULL,
+    embedding vector NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (doc_id, model)
+);
+CREATE INDEX IF NOT EXISTS ix_{RECALL_TABLE}_agent_model ON {RECALL_TABLE} (agent_id, model);
+"""
+
+
+class SizedVector(Vector):
+    """`vector(n)`: the cast an approximate index is built on, so a query uses the very same expression."""
+
+    cache_ok = True
+
+    def __init__(self, dim: int) -> None:
+        self.dim = int(dim)
+
+    def get_col_spec(self, **kw: Any) -> str:
+        return f"vector({self.dim})"
+
+
 def ensure_vector_store(engine: Engine) -> bool:
     """Install pgvector and the embeddings table if the server has pgvector. False if not."""
     with engine.begin() as conn:
@@ -124,6 +162,8 @@ def ensure_vector_store(engine: Engine) -> bool:
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         conn.execute(text(CREATE_SQL))
         conn.execute(text(CHUNK_CREATE_SQL))
+        if conn.scalar(text("SELECT to_regclass('recall_doc') IS NOT NULL")):
+            conn.execute(text(RECALL_CREATE_SQL))
     return True
 
 
@@ -299,9 +339,30 @@ def _embed_missing_chunks(session: Session, emb: Embedder) -> int:
     return done
 
 
+def _refresh_index(session: Session, emb: Embedder) -> None:
+    """Keep the derived recall index (#647) in step: rebuild it from the sources, embed what has no vector for this
+    model, and queue the approximate-index check. The index is derived, so a failure here never breaks the job."""
+    from superaide.memory.recall import index, index_policy
+
+    try:
+        with session.begin_nested():
+            index.sync(session)
+        session.commit()
+        n = index.embed_missing(session, emb)
+        if n:
+            log.info("indexed %d recall rows with %s", n, emb.name)
+        if emb.name != "none":
+            enqueue(
+                session, index_policy.JOB_KIND, {}, dedupe_key=f"recall_policy:{emb.name}:{datetime.now(UTC):%Y%m%d}"
+            )
+    except Exception:
+        log.exception("recall index refresh failed; the next run retries")
+
+
 @handler(JOB_KIND)
 def run(session: Session, job: Job) -> None:
     emb = embedder()
+    _refresh_index(session, emb)
     if isinstance(emb, LocalEmbedder) and emb.failed:
         return  # logged when it failed; recall stays keyword-only
     if isinstance(emb, LocalEmbedder) and not emb.ready():
