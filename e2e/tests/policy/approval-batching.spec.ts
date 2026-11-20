@@ -64,13 +64,15 @@ test('an email is never grouped, however many are waiting', async ({ page, owner
   await page.goto('/dashboard/approvals')
   await expect(page.getByText('Waiting for your OK')).toBeVisible()
   await expect(page.getByTestId('approval-batch')).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Yes, go ahead' })).toHaveCount(2)
+  await expect(page.getByRole('list', { name: 'Waiting requests' }).getByRole('listitem')).toHaveCount(2) // one row each; the chosen one is open beside the list
+  await expect(page.getByRole('button', { name: 'Yes, go ahead' })).toHaveCount(1)
 })
 
 test('after five identical yeses an offer for a narrow mandate appears, and a tap signs it', async ({ page, owner }) => {
   void owner
   for (let i = 0; i < 5; i++) await calendarCard(`Gym ${i}`, 'approved')
   await page.goto('/dashboard/approvals')
+  await page.getByRole('tab', { name: 'Rules and insights' }).click()
   const offer = page.getByTestId('mandate-suggestion')
   await expect(offer).toContainText('Always do this kind of thing?')
   await expect(offer).toContainText('at most 25 times')

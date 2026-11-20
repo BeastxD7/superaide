@@ -50,3 +50,11 @@ Code decides everything; the model never sees a stranger's file.
   ("Voice note from someone I don't know, transcribed by software"). No model turn, no claimed name, no linking. Their
   calls draw from the receptionist's budget bucket.
 - Type comes from the file's first bytes, never its name or MIME type; the filename sent to a service is ours.
+
+## Photos default to Claude
+
+When Claude is connected and you have not picked a photo service, photos are read by Claude (`claude-haiku-5-5`). The settings page and the Check-my-setup list both say so, because each photo is sent to Anthropic. Turn it off once (the Turn off button, in either place) and it stays off until you choose a service. Voice notes have no default: they stay off until you configure a transcriber.
+
+## Prices
+
+Built-in transcription prices (OpenAI whisper-1, gpt-4o-transcribe, gpt-4o-mini-transcribe) are list prices copied into the code. They are not checked live, so verify them against the vendor's current price page. The settings page labels them as list prices and lets you enter your own, which always wins.
