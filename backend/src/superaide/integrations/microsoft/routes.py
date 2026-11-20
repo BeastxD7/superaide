@@ -28,8 +28,8 @@ from superaide.identity.vault import store
 from superaide.integrations.google.client import pkce_pair
 from superaide.integrations.microsoft import client as api
 from superaide.integrations.microsoft import mail
+from superaide.links import public_url
 from superaide.platform.audit import audit
-from superaide.platform.config import get_settings
 from superaide.platform.db.session import session_scope
 from superaide.platform.tenancy.context import InstanceScope, scope_or_default, use_instance
 from superaide.platform.tenancy.models import PlatformState
@@ -59,7 +59,7 @@ def _pending_key(state: str) -> str:
 
 
 def redirect_uri() -> str:
-    return f"{get_settings().frontend_origin.rstrip('/')}{CALLBACK_PATH}"
+    return public_url(CALLBACK_PATH)
 
 
 def _view(s: Any) -> dict[str, Any]:
@@ -137,7 +137,7 @@ def make_callback_router() -> APIRouter:
             if row is not None:
                 pending = dict(row.value or {})
                 s.delete(row)  # one use only
-        back = f"{get_settings().frontend_origin.rstrip('/')}{BACK}"
+        back = public_url(BACK)
         if error or not code:
             return RedirectResponse(f"{back}?microsoft=cancelled", status_code=303)
         fresh = bool(pending.get("at")) and datetime.now(UTC) - datetime.fromisoformat(pending["at"]) < PENDING_TTL
