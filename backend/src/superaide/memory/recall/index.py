@@ -49,12 +49,18 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import ARRAY, UUID, array, insert
 from sqlalchemy.orm import Session
 
-from superaide.brain.embed import Embedder, get_embedder
 from superaide.memory.audience import CLOCK_SKEW, Audience
 from superaide.memory.models import Context, Document, DocumentChunk, Episode, Event, MemoryItem, RecallDoc
 from superaide.memory.recall import lexicon
 from superaide.memory.recall.retrieval import RRF_K, TRGM_MIN, VISITOR_TRGM_MIN, _has_trgm, _tsquery
-from superaide.memory.recall.vectors import RECALL_TABLE, SizedVector, Vector, recall_embedding
+from superaide.memory.recall.vectors import (
+    RECALL_TABLE,
+    Embedder,
+    SizedVector,
+    Vector,
+    get_embedder,
+    recall_embedding,
+)
 from superaide.platform.config import get_settings
 from superaide.platform.tenancy.context import scope_or_default
 from superaide.platform.tenancy.service import instance_owner

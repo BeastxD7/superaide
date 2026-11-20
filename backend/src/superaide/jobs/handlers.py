@@ -14,7 +14,6 @@ def load() -> None:
     import superaide.memory.knowledge.connector_facts  # noqa: F401  (registers connector_facts)
     import superaide.memory.knowledge.learn  # noqa: F401  (registers learn_from_turn)
     import superaide.memory.knowledge.pending  # noqa: F401  (registers read_pending)
-    import superaide.memory.recall.index_policy  # noqa: F401  (registers recall_index_policy)
     import superaide.memory.recall.vectors  # noqa: F401  (registers embed_memories)
     import superaide.proactive.digest  # noqa: F401  (registers send_digest)
     import superaide.proactive.prep  # noqa: F401  (registers meeting_prep, scan_meetings)

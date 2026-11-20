@@ -17,8 +17,6 @@ import time
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from superaide.jobs.models import Job
-from superaide.jobs.queue import handler
 from superaide.memory.recall import index
 from superaide.memory.recall.vectors import RECALL_TABLE
 from superaide.platform.audit import audit
@@ -27,7 +25,6 @@ from superaide.platform.tenancy.context import scope_or_default
 
 log = logging.getLogger(__name__)
 
-JOB_KIND = "recall_index_policy"
 ROW_THRESHOLD = 200_000  # embedded rows of one model in one instance (report 7.1: "about 200,000")
 PROBES = 20
 MAX_DIM = 2000  # pgvector's limit for an indexed `vector`
@@ -112,10 +109,3 @@ def apply(session: Session, threshold: int | None = None) -> list[str]:
         if built:
             made.append(model)
     return made
-
-
-@handler(JOB_KIND)
-def run(session: Session, job: Job) -> None:
-    made = apply(session)
-    if made:
-        log.info("approximate recall index built for %s", ", ".join(made))
