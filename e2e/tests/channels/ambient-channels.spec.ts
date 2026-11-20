@@ -2,7 +2,7 @@
 import AxeBuilder from '@axe-core/playwright'
 import type { Page } from '@playwright/test'
 import { expect, test } from '../../src/fixtures'
-import { plantMissingScopes, plantSlackChannel, storedRoomMessages } from '../../src/helpers/vault'
+import { hiddenRoomMessages, plantMissingScopes, plantSlackChannel, storedRoomMessages } from '../../src/helpers/vault'
 
 const shot = async (page: Page, name: string, project: string) => {
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${process.env.SHOT_PREFIX ?? 'after'}-${name}-${project}.png` })
@@ -66,9 +66,10 @@ test('stopping can delete what was stored, and a stop without deleting keeps it'
   await expect(group.getByText('Off. 3 earlier messages still stored')).toBeVisible()
   expect(await storedRoomMessages('C0TEAM01')).toBe(3)
 
-  await group.getByRole('button', { name: 'Delete the 3 stored messages' }).click()
-  await expect(group.getByText('Deleted what was stored from #team.')).toBeVisible()
+  await group.getByRole('button', { name: 'Erase the 3 stored messages' }).click()
+  await expect(group.getByText('Erased what was stored from #team.')).toBeVisible()
   expect(await storedRoomMessages('C0TEAM01')).toBe(0)
+  expect(await hiddenRoomMessages('C0TEAM01')).toBe(3) // erase hides, it never deletes (#645)
 })
 
 test('a Slack app missing the listing permissions is named', async ({ page, owner }) => {

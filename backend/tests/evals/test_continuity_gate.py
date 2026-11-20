@@ -27,6 +27,7 @@ def test_the_suite_replays_the_thread_and_the_prompt_budget():
         "continuity-inbox-id-in-next-prompt", "continuity-slack-thread-under-ava", "continuity-send-one-clean-card",
         "continuity-send-two-cards-asks-which", "continuity-tainted-turn-cannot-send-by-text",
         "continuity-no-email-correction-on-a-chat-relay", "continuity-small-talk-prompt-is-minimal",
+        "continuity-yes-please-reads-the-one-offered-conversation", "continuity-a-promised-lookup-is-not-left-standing",
     } <= ids  # fmt: skip
 
 

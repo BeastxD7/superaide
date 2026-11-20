@@ -890,6 +890,7 @@ class Agent:
                 labels,
                 tz=owner_tz,
                 label_chars=int(channel_settings.load(s)["cross_channel_chars"]),
+                referents=not shared,  # what a listing showed stays out of a channel others can read (#643)
             )
             if shared and (thread_block := self._slack_thread_block(ctx, msg, sender.name)):
                 messages[0] = {**messages[0], "content": thread_block + "\n\n" + str(messages[0]["content"])}
@@ -923,6 +924,10 @@ class Agent:
             meta["activity"] = result.activity[:20]
         if result.reasoning:
             meta["reasoning"] = result.reasoning
+        if result.referents:
+            meta["referents"] = result.referents  # ids and labels code wrote; the next turn's prompt shows them
+            if result.offer:
+                meta["offer"] = result.offer
         if playbook_arm is not None:
             meta["playbook_arm"] = playbook_arm
         if cards := self._cards_of_turn(s, inbound):

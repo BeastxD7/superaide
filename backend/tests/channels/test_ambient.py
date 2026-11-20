@@ -49,12 +49,17 @@ def switch(channel: str = CHANNEL, *, on: bool = True, retention: int | None = N
         )  # fmt: skip
 
 
-def stored(channel: str = CHANNEL) -> list[Event]:
+def stored(channel: str = CHANNEL, *, hidden: bool = False) -> list[Event]:
+    """The room messages anything can read; `hidden=True`: the soft-deleted ones (#645: kept, never shown)."""
     with session_scope() as s:
         out = list(
             s.scalars(
                 select(Event).join(Context, Context.id == Event.context_id)
-                .where(Context.external_id == channel, Event.meta.has_key("ambient"))
+                .where(
+                    Context.external_id == channel,
+                    Event.meta.has_key("ambient"),
+                    Event.erased_at.is_not(None) if hidden else Event.erased_at.is_(None),
+                )
                 .order_by(Event.created_at)
             )
         )  # fmt: skip
@@ -264,6 +269,7 @@ def test_old_room_messages_age_out_by_their_channels_retention(agent, owner_link
     with session_scope() as s:
         assert ambient.roll_off(s) == 2
     assert [e.content for e in stored()] == ["fresh"]
+    assert sorted(e.content for e in stored(hidden=True)) == ["old and gone", "old but kept"]  # soft: still stored
     assert [e.content for e in stored(OTHER)] == ["old in the 90 day room"]
     with session_scope() as s:  # what was said TO Ava is not room data and is not touched
         assert s.scalar(select(func.count()).select_from(Event).where(Event.content.contains("real conversation")))
@@ -280,7 +286,7 @@ def test_leftovers_of_a_switched_off_channel_still_age_out(agent, owner_linked):
         assert ambient.roll_off(s) == 1
 
 
-def test_erasing_a_channel_deletes_its_stored_messages_and_only_those(agent, owner_linked):
+def test_erasing_a_channel_hides_its_stored_messages_and_only_those(agent, owner_linked):
     switch()
     switch(OTHER)
     agent.handle(room(COLLEAGUE_SLACK, "here"))
@@ -290,6 +296,7 @@ def test_erasing_a_channel_deletes_its_stored_messages_and_only_those(agent, own
         row = ambient.find(s, "slack", CHANNEL)
         assert row is not None and ambient.stored_count(s, row) == 1 and ambient.erase(s, row) == 1
     assert stored() == [] and len(stored(OTHER)) == 1
+    assert [e.content for e in stored(hidden=True)] == ["here"]  # hidden from every read, kept in the table
     with session_scope() as s:
         assert s.scalar(select(func.count()).select_from(Event).where(Event.content.contains("hello")))
 

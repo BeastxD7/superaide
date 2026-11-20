@@ -2090,6 +2090,17 @@
         "title": "ProviderBody",
         "type": "object"
       },
+      "PurgeBody": {
+        "properties": {
+          "confirm": {
+            "default": "",
+            "title": "Confirm",
+            "type": "string"
+          }
+        },
+        "title": "PurgeBody",
+        "type": "object"
+      },
       "QueueBody": {
         "properties": {
           "question": {
@@ -10056,7 +10067,7 @@
     },
     "/app/intro/documents/{document_id}/erase": {
       "post": {
-        "description": "Deletes its text, its passages, what Ava learned only from it and their vectors. Unlike remove, this cannot be undone. A fact you also said yourself, or that another file supports, stays.",
+        "description": "Hides it: its text, its passages, what Ava learned only from it and their vectors are no longer read by anything. Nothing is deleted, and `restore` brings it all back. A fact you also said yourself, or that another file supports, stays. A real, permanent delete is the separate `purge`.",
         "operationId": "erase_document_route_app_intro_documents__document_id__erase_post",
         "parameters": [
           {
@@ -10099,7 +10110,68 @@
             "X-Requested-With": []
           }
         ],
-        "summary": "Erase a file or link for good",
+        "summary": "Erase a file or link",
+        "tags": [
+          "Introduction"
+        ]
+      }
+    },
+    "/app/intro/documents/{document_id}/purge": {
+      "post": {
+        "description": "The permanent delete: its text, passages, what Ava learned only from it and their vectors are removed and cannot be restored. Needs `confirm: \"purge\"` in the body, as a second confirmation.",
+        "operationId": "purge_document_route_app_intro_documents__document_id__purge_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PurgeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Purge Document Route App Intro Documents  Document Id  Purge Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Delete a file or link for good",
         "tags": [
           "Introduction"
         ]
@@ -10151,6 +10223,57 @@
           }
         ],
         "summary": "Remove a file or link",
+        "tags": [
+          "Introduction"
+        ]
+      }
+    },
+    "/app/intro/documents/{document_id}/restore": {
+      "post": {
+        "description": "Brings back a file or link that was erased (not purged) and the facts hidden with it.",
+        "operationId": "restore_document_route_app_intro_documents__document_id__restore_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Restore Document Route App Intro Documents  Document Id  Restore Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Undo erasing a file or link",
         "tags": [
           "Introduction"
         ]
@@ -13017,7 +13140,7 @@
     },
     "/app/people/{contact_id}/erase": {
       "post": {
-        "description": "Deletes the notes they asked Ava to keep and notes about them, and empties the text of their messages. For a person on the owner's People list.",
+        "description": "Hides the notes they asked Ava to keep and notes about them, the text of their messages and the contact's notes. Nothing is deleted; `restore` brings it back. For a person on the owner's People list.",
         "operationId": "erase_person_route_app_people__contact_id__erase_post",
         "parameters": [
           {
@@ -13297,6 +13420,118 @@
           }
         ],
         "summary": "A one-time invite link for a contact",
+        "tags": [
+          "Owner: people & rules"
+        ]
+      }
+    },
+    "/app/people/{contact_id}/purge": {
+      "post": {
+        "description": "The permanent delete: their notes are removed and the text of their messages emptied. Cannot be restored. Needs `confirm: \"purge\"` in the body, as a second confirmation.",
+        "operationId": "purge_person_route_app_people__contact_id__purge_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contact_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Contact Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PurgeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Purge Person Route App People  Contact Id  Purge Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Delete what Ava holds about a person for good",
+        "tags": [
+          "Owner: people & rules"
+        ]
+      }
+    },
+    "/app/people/{contact_id}/restore": {
+      "post": {
+        "description": "Brings back what was hidden by `erase` for this person (not what was purged).",
+        "operationId": "restore_person_route_app_people__contact_id__restore_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "contact_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Contact Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Restore Person Route App People  Contact Id  Restore Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Undo erasing a person",
         "tags": [
           "Owner: people & rules"
         ]
@@ -14907,7 +15142,7 @@
     },
     "/app/receptionist/conversations": {
       "get": {
-        "description": "People Ava doesn't know who wrote in the last 30 days, one row each, newest first, with whether you are handling the conversation yourself (Ava stays out of it until you hand it back or you go quiet).",
+        "description": "People Ava doesn't know who wrote, one row each, newest first, with whether you are handling the conversation yourself (Ava stays out of it until you hand it back or you go quiet).",
         "operationId": "conversations_app_receptionist_conversations_get",
         "responses": {
           "200": {
@@ -15048,7 +15283,7 @@
     },
     "/app/receptionist/messages": {
       "get": {
-        "description": "What people Ava doesn't know asked her to pass on (last 30 days). All of it is unverified.",
+        "description": "What people Ava doesn't know asked her to pass on (newest first, any age). All unverified.",
         "operationId": "messages_app_receptionist_messages_get",
         "responses": {
           "200": {
@@ -15215,7 +15450,7 @@
     },
     "/app/receptionist/questions": {
       "get": {
-        "description": "Things people Ava doesn't know asked that she couldn't answer, newest first (last 30 days).",
+        "description": "Things people Ava doesn't know asked that she couldn't answer, newest first.",
         "operationId": "questions_app_receptionist_questions_get",
         "responses": {
           "200": {

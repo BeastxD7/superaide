@@ -135,6 +135,7 @@ def make_episodes(
         Event.created_at <= now - GAP,  # only conversations that have gone quiet
         (Event.direction == "out") | (Event.trust_at_time >= int(Trust.LINKED)),  # the taint gate
         Event.content != "",
+        Event.erased_at.is_(None),
     )
     if watermark is not None:
         q = q.where(Event.created_at > watermark)
