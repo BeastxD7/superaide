@@ -190,6 +190,7 @@ tests = [
 ]
 e2e = [
   "e2e/tests/brain/ai-key-banner.spec.ts",
+  "e2e/tests/brain/media-providers.spec.ts",
 ]
 
 [modules.brainshare]

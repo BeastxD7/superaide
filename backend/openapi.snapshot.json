@@ -556,6 +556,28 @@
         "title": "ChatBody",
         "type": "object"
       },
+      "ChoiceBody": {
+        "properties": {
+          "model": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Model",
+            "type": "string"
+          },
+          "provider": {
+            "maxLength": 24,
+            "minLength": 1,
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "model"
+        ],
+        "title": "ChoiceBody",
+        "type": "object"
+      },
       "ClaimBody": {
         "properties": {
           "counterparty": {
@@ -2864,6 +2886,42 @@
           "action"
         ],
         "title": "StepUpBody",
+        "type": "object"
+      },
+      "SttPriceBody": {
+        "properties": {
+          "model": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Model",
+            "type": "string"
+          },
+          "provider": {
+            "maxLength": 24,
+            "minLength": 1,
+            "title": "Provider",
+            "type": "string"
+          },
+          "usd_per_minute": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Usd Per Minute"
+          }
+        },
+        "required": [
+          "provider",
+          "model",
+          "usd_per_minute"
+        ],
+        "title": "SttPriceBody",
         "type": "object"
       },
       "StyleBody": {
@@ -10329,6 +10387,254 @@
         "summary": "My agent and settings",
         "tags": [
           "Owner: chat & notebook"
+        ]
+      }
+    },
+    "/app/media-providers": {
+      "get": {
+        "description": "Which service reads voice notes and photos.",
+        "operationId": "get_app_media_providers_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get App Media Providers Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Voice note and photo settings",
+        "tags": [
+          "Model providers"
+        ]
+      }
+    },
+    "/app/media-providers/prices": {
+      "post": {
+        "description": "US dollars per audio minute for a transcription model Superaide has no price for.",
+        "operationId": "set_price_app_media_providers_prices_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SttPriceBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Set Price App Media Providers Prices Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Set a voice-note price",
+        "tags": [
+          "Model providers"
+        ]
+      }
+    },
+    "/app/media-providers/{capability}": {
+      "put": {
+        "description": "The provider and model for 'transcribe' (voice notes) or 'vision' (photos). Needs a known price.",
+        "operationId": "choose_app_media_providers__capability__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "capability",
+            "required": true,
+            "schema": {
+              "title": "Capability",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChoiceBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Choose App Media Providers  Capability  Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Choose a service",
+        "tags": [
+          "Model providers"
+        ]
+      }
+    },
+    "/app/media-providers/{capability}/remove": {
+      "post": {
+        "description": "Stop reading this kind of file.",
+        "operationId": "remove_app_media_providers__capability__remove_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "capability",
+            "required": true,
+            "schema": {
+              "title": "Capability",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Remove App Media Providers  Capability  Remove Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Turn off",
+        "tags": [
+          "Model providers"
+        ]
+      }
+    },
+    "/app/media-providers/{capability}/test": {
+      "post": {
+        "description": "One tiny real call (a grey square, or half a second of silence). Counted against your spend cap.",
+        "operationId": "test_app_media_providers__capability__test_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "capability",
+            "required": true,
+            "schema": {
+              "title": "Capability",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChoiceBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Test App Media Providers  Capability  Test Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Test a choice",
+        "tags": [
+          "Model providers"
         ]
       }
     },
