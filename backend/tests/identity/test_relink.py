@@ -378,6 +378,7 @@ def test_the_owner_turn_on_telegram_offers_no_sensitive_tools(bots, model, monke
     allowed = {
         "propose_action", "recall", "create_reminder", "list_reminders", "update_reminder", "cancel_reminder",
         "calendar_events", "web_search", "web_fetch",
+        "search_files",  # a read of the owner's own shared files, never offered in a group channel (#671)
         "list_approvals",  # a read of the owner's own approval rows (#340)
         "inbox",  # who is waiting for the owner: stored rows, read-only, untrusted text (#476)
         "relay_message",  # opens an approval card (decided only in the app) for a message to a stranger (#478)
