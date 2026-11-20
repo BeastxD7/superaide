@@ -854,23 +854,26 @@ def _fake_calendar(sc: Scenario) -> Iterator[None]:
     from superaide.integrations.calendar import skill as calendar
     from superaide.integrations.google import client as google
 
-    names = ("connected", "can_write", "enabled", "actions_on", "_token")
-    saved = ({n: getattr(calendar, n) for n in names}, google.free_busy, cal_settings.load)
+    fakes: dict[tuple[Any, str], Any] = {}
     if sc.world.calendar:
-        calendar.connected = lambda: True
-        calendar.can_write = lambda session: True  # type: ignore[assignment]
-        calendar.enabled = lambda session: True  # type: ignore[assignment]
-        calendar.actions_on = lambda session: True  # type: ignore[assignment]
-        calendar._token = lambda: "eval-token"
-        google.free_busy = lambda token, start, end: []  # type: ignore[assignment]
         real = cal_settings.load
-        cal_settings.load = lambda session: {**real(session), **sc.world.calendar_settings}
+        fakes = {
+            (calendar, "connected"): lambda: True,
+            (calendar, "can_write"): lambda session: True,
+            (calendar, "enabled"): lambda session: True,
+            (calendar, "actions_on"): lambda session: True,
+            (calendar, "_token"): lambda: "eval-token",
+            (google, "free_busy"): lambda token, start, end: [],
+            (cal_settings, "load"): lambda session: {**real(session), **sc.world.calendar_settings},
+        }
+    saved = {key: getattr(key[0], key[1]) for key in fakes}
+    for (owner, name), fn in fakes.items():
+        setattr(owner, name, fn)
     try:
         yield
     finally:
-        for n, fn in saved[0].items():
-            setattr(calendar, n, fn)
-        google.free_busy, cal_settings.load = saved[1], saved[2]  # type: ignore[assignment]
+        for (owner, name), fn in saved.items():
+            setattr(owner, name, fn)
 
 
 @contextmanager
