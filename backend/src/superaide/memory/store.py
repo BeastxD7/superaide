@@ -176,13 +176,13 @@ def recent_events(session: Session, context: Context, limit: int = 12, thread_id
     # Room messages stored by "read the whole channel" (#509) are not conversation: they never become user turns.
     rows = session.scalars(
         select(Event)
-        .where(Event.context_id == context.id, in_thread, ~Event.meta.has_key("ambient"))
+        .where(Event.context_id == context.id, in_thread, ~Event.meta.has_key("ambient"), Event.erased_at.is_(None))
         .order_by(Event.created_at.desc(), Event.id)
         .limit(limit)
     ).all()
     if not (thread_id and context.kind == "dm"):
         return list(reversed(rows))
-    ambient = ~Event.meta.has_key("ambient")
+    ambient = ~Event.meta.has_key("ambient") & Event.erased_at.is_(None)
     root = session.scalars(
         select(Event).where(Event.context_id == context.id, Event.external_id == thread_id, ambient).limit(1)
     ).first()
@@ -239,6 +239,7 @@ def owner_timeline(
             Event.audience_has_unknown.is_(False),
             or_(Event.resolved_person_id == owner_id, Event.direction == "out"),
             Event.content != "",
+            Event.erased_at.is_(None),
             Event.created_at > now - TIMELINE_WINDOW,
         )
         .order_by(Event.created_at.desc())

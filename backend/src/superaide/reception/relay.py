@@ -39,7 +39,7 @@ from superaide.reception.inbox import CHANNEL, plain
 from superaide.reception.models import ReceptionMessage
 
 KIND = "relay_message"
-WINDOW = timedelta(days=30)
+FRESH = timedelta(days=30)  # answering a message older than this needs the owner to say so
 MAX_TEXT = 400
 PER_RECIPIENT_PER_DAY = 3  # relays that actually went to one person in 24 hours: code's cap, whatever anyone asks
 
@@ -58,6 +58,11 @@ RELAY_TOOL: dict[str, Any] = {
         "properties": {
             "to": {"type": "string", "description": "The recipient's name as the owner typed it"},
             "text": {"type": "string", "description": "What to tell them: only what the owner said, short"},
+            "confirm_old": {
+                "type": "boolean",
+                "description": "true only when the owner said, in their own message, to answer a message that is "
+                "months old after being told how old it is",
+            },
         },
         "required": ["to", "text"],
         "additionalProperties": False,
@@ -102,15 +107,7 @@ def _candidates(session: Session, to: str) -> list[list[ReceptionMessage]]:
     """The conversations (one list of rows per sender, newest first) whose given first name is `to`'s first
     word, or whose short id is `to`. Only senders Ava still doesn't know: a linked contact is reached normally."""
     wanted = _first(to)
-    since = datetime.now(UTC) - WINDOW
-    rows = list(
-        session.scalars(
-            select(ReceptionMessage)
-            .where(ReceptionMessage.created_at >= since)
-            .order_by(ReceptionMessage.created_at.desc())
-            .limit(500)
-        )
-    )
+    rows = list(session.scalars(select(ReceptionMessage).order_by(ReceptionMessage.created_at.desc()).limit(500)))
     groups: dict[uuid.UUID, list[ReceptionMessage]] = {}
     for r in rows:
         groups.setdefault(r.identity_id, []).append(r)
@@ -155,7 +152,9 @@ def _introduction(session: Session, to_name: str) -> str:
     return f"{hi} this is {agent}, {who}."
 
 
-def request(session: Session, owner: Person, sender: Any, *, to: str, text: str, typed: str) -> tuple[str, bool]:
+def request(
+    session: Session, owner: Person, sender: Any, *, to: str, text: str, typed: str, confirm_old: bool = False
+) -> tuple[str, bool]:
     """The tool's work: (what to tell the model, is it an error). Opens one approval card or refuses, in code."""
     from superaide.policy.actions import TOOL_RULES, decide
 
@@ -173,7 +172,7 @@ def request(session: Session, owner: Person, sender: Any, *, to: str, text: str,
     if not found:
         audit(session, "reception", "relay_refused", reason="no match")
         return (
-            f"No one called {to} has written to Ava (people she doesn't know, in the last 30 days), so nothing "
+            f"No one called {to} has written to Ava (people she doesn't know), so nothing "
             "was queued. Tell the owner, and offer to check the inbox for who has written.",
             True,
         )
@@ -189,6 +188,15 @@ def request(session: Session, owner: Person, sender: Any, *, to: str, text: str,
         )
     group = found[0]
     latest = group[0]
+    age = datetime.now(UTC) - latest.created_at
+    if age > FRESH and not confirm_old:
+        audit(session, "reception", "relay_refused", reason="old message", age_days=age.days)
+        return (
+            f"{to}'s last message is {age.days} days old (written {latest.created_at:%d %b %Y}). The message exists, "
+            "but answering one this old needs the owner to say so: ask them whether to answer it anyway, then call "
+            "this tool again with confirm_old true. Nothing was queued.",
+            True,
+        )
     identity = session.get(ChannelIdentity, latest.identity_id)
     ctx = session.get(Context, latest.context_id)
     if identity is None or ctx is None or ctx.kind != "dm" or identity.lifecycle != "active":

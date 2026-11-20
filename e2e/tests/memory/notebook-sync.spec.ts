@@ -18,10 +18,12 @@ test.describe('the notebook stays in step', () => {
     await expect(section.getByText('Saved, not read yet')).toBeVisible()
 
     await section.getByRole('button', { name: 'Erase notes.md', exact: true }).click()
-    await section.getByRole('button', { name: 'Erase notes.md for good' }).click()
+    await section.getByRole('button', { name: 'Confirm erase notes.md' }).click()
     await expect(page.getByText('Erased. Its text')).toBeVisible()
     await expect(section).toHaveCount(0)
-    expect(await query('SELECT id FROM document')).toEqual([])
+    // Erase hides, it never deletes (#645): the row stays, marked erased
+    expect(await query('SELECT id FROM document WHERE erased_at IS NULL')).toEqual([])
+    expect((await query('SELECT id FROM document WHERE erased_at IS NOT NULL')).length).toBe(1)
   })
 
   test('after "not found" the note leaves the list', async ({ page, context, owner }) => {

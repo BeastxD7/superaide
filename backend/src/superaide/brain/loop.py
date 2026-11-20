@@ -974,7 +974,7 @@ class OwnerTurn:
             )
         return relay_request(
             self.s, self.sender.person, self.sender, to=str(args.get("to") or ""), text=str(args.get("text") or ""),
-            typed=self._typed_by_owner(),
+            typed=self._typed_by_owner(), confirm_old=args.get("confirm_old") is True,
         )  # fmt: skip
 
     def _presence(self, action: str) -> tuple[str, bool]:
