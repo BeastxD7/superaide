@@ -1,8 +1,8 @@
 """recall_doc and recall_embedding: one derived search index over notes, messages, visitor messages, passages,
 episodes (#647)
 
-Revision ID: 0105
-Revises: 0104
+Revision ID: 0106
+Revises: 0105
 Create Date: 2026-11-20 16:00:00.000000
 
 `recall_doc` is a per-instance table under Row-Level Security, rebuilt from the source tables (they stay the truth).
@@ -17,8 +17,8 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "0105"
-down_revision: str | Sequence[str] | None = "0104"
+revision: str = "0106"
+down_revision: str | Sequence[str] | None = "0105"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
