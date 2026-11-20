@@ -323,6 +323,28 @@ def test_the_gmail_routes_are_owner_routes(app, browser, owner):
         assert stranger.request(method, path, json={}).status_code == 403
 
 
+# --- the GitHub capability (/app/github, #669) --------------------------------------------------
+
+GITHUB_ROUTES = {
+    ("GET", "/app/github"),
+    ("POST", "/app/github/token"),
+    ("DELETE", "/app/github/token"),
+    ("PUT", "/app/github/repos"),
+    ("POST", "/app/github/writes"),
+    ("GET", "/app/github/read-settings"),
+    ("PUT", "/app/github/read-settings"),
+}
+
+
+def test_the_github_routes_are_owner_routes(app, browser, owner):
+    assert GITHUB_ROUTES <= set(owner_routes(app))  # so every check above covers them too
+    stranger = browser()
+    signup(stranger, name="Mallory Tan", email="mallory@example.com")
+    for method, path in GITHUB_ROUTES:
+        assert browser().request(method, path, json={}).status_code == 401
+        assert stranger.request(method, path, json={}).status_code == 403
+
+
 def test_an_owner_cannot_attach_an_address_to_someone_who_isnt_their_contact(owner):
     with session_scope() as s:
         someone = Person(display_name="Priya Tan", relation="contact")  # a Person, but not the owner's contact

@@ -496,6 +496,8 @@ class Settings(BaseSettings):
     school_playbook_enabled: bool = False
     # The owner's Gmail sign-in (same OAuth client as Calendar); kept per instance in the vault.
     gmail_refresh_token: str = ""
+    # The owner's GitHub access token; kept per instance in the vault (#669).
+    github_token: str = ""
 
     # "Ask my Ava" link (docs/research/AGI era growth ideas.md, idea 1). Off: /p/ask/* and
     # /app/ask-link/* answer 404 (owner routes still 401/403 first). On: an owner can publish a

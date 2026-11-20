@@ -41,6 +41,12 @@ KINDS: dict[str, KindInfo] = {
     "calendar_decline_event": KindInfo(
         "Decline a calendar event", "Declines the invitation in your Google Calendar.", True
     ),
+    "github_create_issue": KindInfo(
+        "Open a GitHub issue", "Opens the new issue in that repository, with exactly the text shown.", True
+    ),
+    "github_comment": KindInfo(
+        "Comment on GitHub", "Adds exactly the comment shown to that issue or pull request.", True
+    ),
     "ask_reply": KindInfo(
         "Reply to someone from your Ask link",
         "Marks the request answered and gives you the text; you send it yourself (Superaide cannot send it).",

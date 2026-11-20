@@ -1334,6 +1334,28 @@
         "title": "Feedback",
         "type": "string"
       },
+      "GithubSettingsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "comments_read": {
+            "title": "Comments Read"
+          },
+          "read_chars": {
+            "title": "Read Chars"
+          },
+          "reads_per_hour": {
+            "title": "Reads Per Hour"
+          },
+          "search_limit": {
+            "title": "Search Limit"
+          },
+          "write_chars": {
+            "title": "Write Chars"
+          }
+        },
+        "title": "GithubSettingsBody",
+        "type": "object"
+      },
       "GoogleClientBody": {
         "properties": {
           "client_id": {
@@ -2373,6 +2395,24 @@
         "title": "ReplyBody",
         "type": "object"
       },
+      "ReposBody": {
+        "additionalProperties": false,
+        "properties": {
+          "repos": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Repos",
+            "type": "array"
+          }
+        },
+        "required": [
+          "repos"
+        ],
+        "title": "ReposBody",
+        "type": "object"
+      },
       "ResetBody": {
         "properties": {
           "password": {
@@ -3129,21 +3169,6 @@
         "title": "TestBody",
         "type": "object"
       },
-      "TokenBody": {
-        "properties": {
-          "token": {
-            "maxLength": 200,
-            "minLength": 16,
-            "title": "Token",
-            "type": "string"
-          }
-        },
-        "required": [
-          "token"
-        ],
-        "title": "TokenBody",
-        "type": "object"
-      },
       "TourStatus": {
         "properties": {
           "status": {
@@ -3261,6 +3286,20 @@
           "text"
         ],
         "title": "WriteBody",
+        "type": "object"
+      },
+      "WritesBody": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "title": "WritesBody",
         "type": "object"
       },
       "superaide__api__admin__LinkBody": {
@@ -3516,6 +3555,21 @@
         "title": "StartBody",
         "type": "object"
       },
+      "superaide__identity__auth__routes__TokenBody": {
+        "properties": {
+          "token": {
+            "maxLength": 200,
+            "minLength": 16,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "TokenBody",
+        "type": "object"
+      },
       "superaide__identity__claims_routes__AnswerBody": {
         "additionalProperties": false,
         "properties": {
@@ -3755,6 +3809,22 @@
           }
         },
         "title": "PreviewBody",
+        "type": "object"
+      },
+      "superaide__integrations__github__routes__TokenBody": {
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "TokenBody",
         "type": "object"
       },
       "superaide__mandate__routes__CreateBody": {
@@ -8785,6 +8855,285 @@
         "summary": "Decline an account",
         "tags": [
           "Owner: people & rules"
+        ]
+      }
+    },
+    "/app/github": {
+      "get": {
+        "description": "Installed, connected, repositories and drafts.",
+        "operationId": "status_app_github_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Status App Github Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "GitHub capability status",
+        "tags": [
+          "Owner: GitHub"
+        ]
+      }
+    },
+    "/app/github/read-settings": {
+      "get": {
+        "description": "The owner's limits for GitHub limits, every allowed value and what it means (defaults until installed).",
+        "operationId": "get_settings_app_github_read_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Settings App Github Read Settings Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "GitHub limits: your settings",
+        "tags": [
+          "Owner: GitHub"
+        ]
+      },
+      "put": {
+        "description": "Changes any of the settings. Each change is audited.",
+        "operationId": "put_settings_app_github_read_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GithubSettingsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Put Settings App Github Read Settings Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "GitHub limits: change your settings",
+        "tags": [
+          "Owner: GitHub"
+        ]
+      }
+    },
+    "/app/github/repos": {
+      "put": {
+        "description": "owner/name, at most 20. Ava sees nothing outside this list. Each change is audited.",
+        "operationId": "set_repos_app_github_repos_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReposBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Set Repos App Github Repos Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Choose the repositories Ava may see",
+        "tags": [
+          "Owner: GitHub"
+        ]
+      }
+    },
+    "/app/github/token": {
+      "delete": {
+        "description": "Deletes the stored access token.",
+        "operationId": "disconnect_app_github_token_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Disconnect App Github Token Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Disconnect GitHub",
+        "tags": [
+          "Owner: GitHub"
+        ]
+      },
+      "post": {
+        "description": "Checks the token with GitHub, then stores it encrypted. Use a fine-grained token limited to the repositories you want Ava to see (read access to issues and pull requests; write access to issues only if you will turn drafts on). The answer never contains the token.",
+        "operationId": "connect_app_github_token_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/superaide__integrations__github__routes__TokenBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Connect App Github Token Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Connect GitHub with an access token",
+        "tags": [
+          "Owner: GitHub"
+        ]
+      }
+    },
+    "/app/github/writes": {
+      "post": {
+        "description": "On: Ava may ask your approval to open an issue or comment. Nothing is written without your yes.",
+        "operationId": "writes_app_github_writes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WritesBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Writes App Github Writes Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "X-Requested-With": []
+          }
+        ],
+        "summary": "Turn GitHub drafts on or off",
+        "tags": [
+          "Owner: GitHub"
         ]
       }
     },
@@ -19016,7 +19365,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TokenBody"
+                "$ref": "#/components/schemas/superaide__identity__auth__routes__TokenBody"
               }
             }
           },

@@ -36,6 +36,18 @@ Where: Capabilities → Google Calendar → Reading
 | Your day ends at | Free time is described up to this hour (24h clock). | 17, 18, 19, 20, 21, 22 | 20 |
 | Events she learns from per read | Events from one read that Ava may turn into notes about you (only when learning from connectors is on). | 5 events, 10 events, 20 events | 10 events |
 
+## GitHub
+
+Where: Capabilities → GitHub → Limits
+
+| Setting | What it does | Choices | Default |
+| --- | --- | --- | --- |
+| Issues per search | Most issues or pull requests one search may return. | 5 results, 10 results, 20 results | 10 results |
+| Comments she reads per issue | The newest comments of an issue that Ava reads. | 5 comments, 10 comments, 30 comments | 10 comments |
+| Text she reads from one issue | Characters of one issue (its description and comments together) that can reach Ava; the rest is cut off. | 2000 characters, 6000 characters, 15000 characters | 6000 characters |
+| GitHub lookups per hour | Searches and reads together, so a runaway loop cannot go through your repositories. | 10 lookups, 30 lookups, 100 lookups | 30 lookups |
+| Longest draft she may propose | Characters in one new issue or comment. You still approve each one first. | 1000 characters, 3000 characters, 10000 characters | 3000 characters |
+
 ## Web research
 
 Where: Capabilities → Web research → Searching

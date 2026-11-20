@@ -479,6 +479,22 @@ def test_the_gmail_routes_need_the_csrf_header_and_refuse_bad_input(browser, own
                       ).status_code in (400, 422)  # fmt: skip
 
 
+def test_the_github_routes_need_the_csrf_header_and_refuse_bad_input(browser, owner):
+    plain = browser(csrf=False)
+    plain.cookies.set("superaide_session", owner.cookies.get("superaide_session"))
+    for path in ("/app/github/token", "/app/github/writes"):
+        assert plain.post(path, json={}).status_code == 403
+    assert plain.put("/app/github/repos", json={"repos": []}).status_code == 403
+    assert plain.delete("/app/github/token").status_code == 403
+    assert plain.put("/app/github/read-settings", json={"search_limit": 5}).status_code == 403
+    assert owner.post("/app/github/writes", json={"enabled": "maybe"}).status_code == 422
+    assert owner.post("/app/github/token", json={}).status_code == 422
+    assert owner.post("/app/github/token", json={"token": "x", "extra": 1}).status_code == 422
+    assert owner.put("/app/github/repos", json={"repos": "acme/billing"}).status_code == 422
+    assert owner.put("/app/github/read-settings", json={"read_chars": "lots"}).status_code in (409, 422)
+    assert owner.put("/app/github/read-settings", json={"nope": 1}).status_code == 422
+
+
 ALLOWED = "http://localhost:3000"
 
 

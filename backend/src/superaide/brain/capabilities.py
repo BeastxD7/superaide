@@ -74,6 +74,24 @@ def calendar_line(session: Session) -> str:
     return "Calendar: connected: you can read events and free time, and ask the owner to approve changes."
 
 
+def github_line(session: Session) -> str:
+    from superaide.integrations.github import skill as github
+
+    st = github.status(session)
+    if not st["installed"]:
+        return "GitHub: not added. The owner can add it under Capabilities → GitHub."
+    if not st["connected"]:
+        return "GitHub: added but not connected. To connect: Capabilities → GitHub → paste an access token."
+    if not st["repos"]:
+        return "GitHub: connected, but the owner hasn't chosen any repositories yet (Capabilities → GitHub)."
+    if st["writes"]:
+        return (
+            "GitHub: connected: you can search and read issues and pull requests in the chosen repositories, and ask "
+            "the owner to approve a new issue or a comment (github_create_issue, github_comment)."
+        )
+    return "GitHub: connected, read-only: you can search and read issues and pull requests. Drafts are off."
+
+
 def card_line(session: Session) -> str:
     """The share card, from the database (#475): what strangers are told about the owner, and the one honest answer
     to "share my name" / "tell people where I work": she cannot change it in chat, here is where."""
@@ -147,6 +165,7 @@ def block(session: Session, *, tz: str, web: bool) -> str:
         "What you can do right now (from the app's own state, authoritative; answer 'what can you do?' from it):",
         "- " + gmail_line(session, tz),
         "- " + calendar_line(session),
+        "- " + github_line(session),
         "- Web search: " + ("on." if web else "off (the Web skill is not added)."),
         "- Reminders: always available (create, list, move, cancel).",
         *(["- " + shared] if (shared := card_line(session)) else []),
@@ -198,7 +217,8 @@ def shared_block(session: Session, *, web: bool) -> str:
             "for, search the web (" + ("on" if web else "off") + "), and queue something for the owner's approval "
             "in the app.",
             f"- Only in a direct message with the owner (never in a channel): Gmail ({mail}), Google Calendar "
-            f"({cal}), the reminder list, and the status of approvals. These tools EXIST and may be set up; they "
+            f"({cal}), GitHub, the reminder list, and the status of approvals. These tools EXIST and may be set up; "
+            "they "
             "are not used in this room because other people can read your reply.",
             "- When asked about any of them: say it is a channel privacy rule, not a missing connection, and offer "
             "to answer in a direct message. Never say you have no access, no email tool or no capabilities list, "
@@ -229,7 +249,16 @@ _CLAIMS: list[tuple[re.Pattern[str], set[str], str]] = [
     ),
     (
         re.compile(r"\b(i(?:'ve| have)?\s+(?:just\s+)?queued\b|queued (?:it |that )?for your approval)", re.I),
-        {"propose_action", "gmail_send", "gmail_compose", "create_event", "move_event", "decline_event"},
+        {
+            "propose_action",
+            "gmail_send",
+            "gmail_compose",
+            "create_event",
+            "move_event",
+            "decline_event",
+            "github_create_issue",
+            "github_comment",
+        },
         "an approval",
     ),
 ]
