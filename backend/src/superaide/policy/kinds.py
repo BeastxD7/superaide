@@ -69,6 +69,12 @@ KINDS: dict[str, KindInfo] = {
         "Sends exactly the text on the card to that person, in their own Telegram or Slack chat with Ava.",
         True,
     ),
+    "mcp_tool_call": KindInfo(
+        "Use a tool of one of your MCP servers",
+        "Runs exactly that tool with exactly those arguments on your MCP server, if the server still describes the "
+        "tool as you approved it, and shows you what it returned.",
+        True,
+    ),
     "visitor_booking": KindInfo(
         "Book time with someone who wrote to Ava",
         "Adds a private event at the time on the card to your Google Calendar, invites them only if they gave an "

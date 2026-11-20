@@ -161,6 +161,7 @@ from superaide.identity import models as _identity_models  # noqa: E402, F401
 from superaide.identity.auth import models as _auth_models  # noqa: E402, F401
 from superaide.identity.principal import models as _principal_models  # noqa: E402, F401
 from superaide.integrations.calendar import models as _integrations_calendar_models  # noqa: E402, F401
+from superaide.integrations.mcp import models as _integrations_mcp_models  # noqa: E402, F401
 from superaide.intentions import models as _intentions_models  # noqa: E402, F401
 from superaide.jobs import models as _jobs_models  # noqa: E402, F401
 from superaide.mandate import models as _mandate_models  # noqa: E402, F401
