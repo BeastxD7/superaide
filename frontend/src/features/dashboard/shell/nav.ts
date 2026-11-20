@@ -8,6 +8,7 @@ import {
   Inbox,
   MessageCircle,
   Plug,
+  Wrench,
   Puzzle,
   Settings,
   ShieldQuestion,
@@ -41,6 +42,7 @@ export const NAV: { group: string; items: NavItem[] }[] = [
     items: [
       { href: '/dashboard/capabilities', label: 'Capabilities', icon: Puzzle },
       { href: '/dashboard/connections', label: 'Connections', icon: Plug },
+      { href: '/dashboard/tools', label: 'Tools (MCP)', icon: Wrench },
       { href: '/dashboard/models', label: 'AI model', icon: Brain },
       { href: '/dashboard/settings', label: 'Settings', icon: Settings },
     ],
