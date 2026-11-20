@@ -43,6 +43,7 @@ export function MasterDetail({
         <section
           aria-label={listLabel}
           data-pane="list"
+          tabIndex={0}
           className={cn(
             'min-h-0 w-full shrink-0 overflow-y-auto border-line/70 px-4 pb-6 sm:px-6 @3xl/md:border-r @3xl/md:px-4 lg:pb-8',
             width,
@@ -54,7 +55,8 @@ export function MasterDetail({
         <section
           aria-label={detailLabel}
           data-pane="detail"
-          className={cn('min-h-0 min-w-0 flex-1 overflow-y-auto px-4 pb-6 sm:px-6 @3xl/md:px-8 lg:pb-8', selected ? 'block' : 'hidden @3xl/md:block')}
+          tabIndex={0}
+          className={cn('min-h-0 min-w-0 flex-1 overflow-y-auto focus-visible:outline-2 focus-visible:-outline-offset-2 px-4 pb-6 sm:px-6 @3xl/md:px-8 lg:pb-8', selected ? 'block' : 'hidden @3xl/md:block')}
         >
           {selected ? detail : empty}
         </section>

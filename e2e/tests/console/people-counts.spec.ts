@@ -32,7 +32,7 @@ test.describe('people lists tell the whole story', () => {
     await expect(card.getByText('Zed', { exact: true })).toHaveCount(0)
     await card.getByRole('link', { name: '+2 more on the People page' }).click()
     await expect(page).toHaveURL(/\/dashboard\/people$/)
-    await expect(page.getByRole('row').filter({ hasText: 'Zed' })).toBeVisible()
+    await expect(page.getByRole('list', { name: 'Your people' }).getByRole('listitem').filter({ hasText: 'Zed' })).toBeVisible()
   })
 
   test('the introduction closing line counts one person once and says "matters"', async ({ page, api, owner }) => {
