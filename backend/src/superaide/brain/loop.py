@@ -669,6 +669,14 @@ class OwnerTurn:
         ]
         if self._protocol():
             tools.append(taskplan.PLAN_TOOL)
+        if (
+            not self.shared and self.sender.relation == "manager"
+        ):  # the owner's MCP servers (#666): never a room or visitor
+            from superaide.integrations.mcp.api import offered
+            from superaide.platform.db.session import session_scope
+
+            with session_scope() as cfg:  # its own short session, like _web_limits: tools() can outlive the turn's
+                tools.extend(offered(cfg))
         return [*(t for t in tools if t.get("name") in SHARED_TOOLS), HANDOFF_TOOL] if self.shared else tools
 
     def _protocol(self) -> bool:
@@ -812,6 +820,18 @@ class OwnerTurn:
             if not found_rows:
                 return outcomes.list_text(self.s, args), False
             return search_results(found_rows), False
+        if name.startswith(
+            "mcp__"
+        ):  # a tool of one of the owner's MCP servers (#666): code decides, the model proposes
+            from superaide.integrations.mcp.api import run as run_mcp
+
+            self.notes.append("mcp")
+            out = run_mcp(
+                self.s, self.sender, name, args,
+                tainted=self.tainted or self.room_read or self.file_read or self.mail_read,
+            )  # fmt: skip
+            self.tainted = True  # what a server returns is information, never instructions
+            return out
         from superaide.integrations.gmail import skill as gmail
 
         if name in gmail.TOOLS:

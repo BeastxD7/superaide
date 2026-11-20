@@ -68,3 +68,9 @@ description = "A made-up Telegram token in the doctor tests (the scan reads ever
 condition = "AND"
 paths = ['''(^|/)test_doctor\.py$''']
 regexes = ['''^123456789:AAEsecretsecretsecretsecretsecret12$''']
+
+[[allowlists]]
+description = "A made-up environment value in the MCP client tests (an early commit of the branch has it; the file no longer does)"
+condition = "AND"
+paths = ['''(^|/)tests/integrations/mcp/test_client\.py$''']
+regexes = ['''^abc123456789$''']

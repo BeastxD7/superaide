@@ -52,6 +52,8 @@ TOOL_RULES: dict[str, Rule] = {
     "drive_append_doc": Rule(int(Trust.LINKED), manager_only=True, needs_approval=True),
     # #478: a message the owner asked Ava to send to someone who wrote to her (reception/relay.py).
     "relay_message": Rule(int(Trust.LINKED), manager_only=True, needs_approval=True),
+    # #666: a call to a tool of one of the owner's MCP servers (integrations/mcp/tools.py).
+    "mcp_tool_call": Rule(int(Trust.LINKED), manager_only=True, needs_approval=True),
 }
 # Never through a chat channel, whatever the sender's trust: these need the signed-in app (or the
 # operator's CLI). Anything not in RULES is refused too; this set names them so the refusal is explicit
